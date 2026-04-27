@@ -2127,80 +2127,91 @@ Rules:
                       border: Border.all(color: color.withValues(alpha: 0.2)),
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Score circle
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                _aiScoreColor(score).withValues(alpha: 0.7),
-                                _aiScoreColor(score),
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${score.toInt()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Score circle
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    _aiScoreColor(score).withValues(alpha: 0.7),
+                                    _aiScoreColor(score),
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${score.toInt()}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Product name — short
-                        Text(
-                          pName.length > (productCount > 2 ? 20 : 30)
-                              ? '${pName.substring(0, productCount > 2 ? 18 : 28)}…'
-                              : pName,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: productCount > 3
-                                ? 8
-                                : (productCount > 2 ? 9 : 10),
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        // Quick info
-                        if (strengths.isNotEmpty)
-                          Text(
-                            '✅ ${strengths.first}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 8,
-                              color: context.textSecondary,
+                            const SizedBox(height: 6),
+                            // Product name — short
+                            Text(
+                              pName.length > (productCount > 2 ? 20 : 30)
+                                  ? '${pName.substring(0, productCount > 2 ? 18 : 28)}…'
+                                  : pName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: productCount > 3
+                                    ? 8
+                                    : (productCount > 2 ? 9 : 10),
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        const SizedBox(height: 6),
-                        // Detail button
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _isTr ? 'Detay' : 'Detail',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: color,
+                          ],
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 6),
+                            // Quick info
+                            if (strengths.isNotEmpty)
+                              Text(
+                                '✅ ${strengths.first}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 8,
+                                  color: context.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            const SizedBox(height: 6),
+                            // Detail button
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _isTr ? 'Detay' : 'Detail',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -4226,71 +4237,82 @@ Rules:
                       border: Border.all(color: color.withValues(alpha: 0.2)),
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Star rating
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            5,
-                            (s) => Icon(
-                              s < rating
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
-                              size: productCount > 3 ? 10 : 13,
-                              color: s < rating
-                                  ? const Color(0xFFFFD700)
-                                  : context.textTertiaryColor,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Star rating
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                5,
+                                (s) => Icon(
+                                  s < rating
+                                      ? Icons.star_rounded
+                                      : Icons.star_outline_rounded,
+                                  size: productCount > 3 ? 10 : 13,
+                                  color: s < rating
+                                      ? const Color(0xFFFFD700)
+                                      : context.textTertiaryColor,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            // Product name
+                            Text(
+                              name.length > (productCount > 2 ? 20 : 30)
+                                  ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                  : name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: productCount > 3
+                                    ? 8
+                                    : (productCount > 2 ? 9 : 10),
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
-                        // Product name
-                        Text(
-                          name.length > (productCount > 2 ? 20 : 30)
-                              ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
-                              : name,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: productCount > 3
-                                ? 8
-                                : (productCount > 2 ? 9 : 10),
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (idealUser.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            idealUser,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 8,
-                              color: context.textSecondary,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (idealUser.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                idealUser,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 8,
+                                  color: context.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _isTr ? 'Detay' : 'Detail',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _isTr ? 'Detay' : 'Detail',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: color,
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -4514,58 +4536,69 @@ Rules:
                     ),
                   ),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Trend icon
-                      Icon(
-                        trendIcon,
-                        color: trendColor,
-                        size: productCount > 3 ? 20 : 24,
-                      ),
-                      const SizedBox(height: 4),
-                      // Change percent
-                      Text(
-                        '${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: productCount > 3 ? 13 : 15,
-                          fontWeight: FontWeight.w900,
-                          color: trendColor,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Product name
-                      Text(
-                        name.length > (productCount > 2 ? 20 : 30)
-                            ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
-                            : name,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: productCount > 3
-                              ? 8
-                              : (productCount > 2 ? 9 : 10),
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _isTr ? 'Detay' : 'Detail',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: color,
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Trend icon
+                          Icon(
+                            trendIcon,
+                            color: trendColor,
+                            size: productCount > 3 ? 20 : 24,
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          // Change percent
+                          Text(
+                            '${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: productCount > 3 ? 13 : 15,
+                              fontWeight: FontWeight.w900,
+                              color: trendColor,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // Product name
+                          Text(
+                            name.length > (productCount > 2 ? 20 : 30)
+                                ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                : name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: productCount > 3
+                                  ? 8
+                                  : (productCount > 2 ? 9 : 10),
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _isTr ? 'Detay' : 'Detail',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -6242,97 +6275,108 @@ Rules:
                                 ),
                               ),
                               child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Score circle or loading
-                                  if (isLoading) ...[
-                                    SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: Center(
-                                        child: SizedBox(
-                                          width: 22,
-                                          height: 22,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: matchColor,
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Score circle or loading
+                                      if (isLoading) ...[
+                                        SizedBox(
+                                          width: 44,
+                                          height: 44,
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: matchColor,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    if (stepText.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          stepText,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 8,
-                                            color: matchColor.withValues(alpha: 0.8),
-                                            fontStyle: FontStyle.italic,
+                                        if (stepText.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              stepText,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 8,
+                                                color: matchColor.withValues(alpha: 0.8),
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
-                                          textAlign: TextAlign.center,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                      ] else
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween(
+                                            begin: 0,
+                                            end: (matchScore ?? 0) / 100,
+                                          ),
+                                          duration: const Duration(
+                                            milliseconds: 1200,
+                                          ),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (context, value, _) =>
+                                              _buildMatchScoreRing(
+                                                progress: value,
+                                                color: matchColor,
+                                                size: 46,
+                                                strokeWidth: 4,
+                                                fontSize: 11,
+                                              ),
                                         ),
-                                      ),
-                                  ] else
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(
-                                        begin: 0,
-                                        end: (matchScore ?? 0) / 100,
-                                      ),
-                                      duration: const Duration(
-                                        milliseconds: 1200,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      builder: (context, value, _) =>
-                                          _buildMatchScoreRing(
-                                            progress: value,
-                                            color: matchColor,
-                                            size: 46,
-                                            strokeWidth: 4,
-                                            fontSize: 11,
-                                          ),
-                                    ),
-                                  const SizedBox(height: 8),
-                                  // Product name
-                                  Text(
-                                    product.name.length >
-                                            (productCount > 2 ? 20 : 30)
-                                        ? '${product.name.substring(0, productCount > 2 ? 18 : 28)}…'
-                                        : product.name,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: productCount > 3
-                                          ? 8
-                                          : (productCount > 2 ? 9 : 10),
-                                      fontWeight: FontWeight.w700,
-                                      color: context.textPrimary,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  // Detail button
-                                  if (matchScore != null) ...[
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        _detailCtaLabel(),
+                                      const SizedBox(height: 8),
+                                      // Product name
+                                      Text(
+                                        product.name.length >
+                                                (productCount > 2 ? 20 : 30)
+                                            ? '${product.name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                            : product.name,
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 9,
+                                          fontSize: productCount > 3
+                                              ? 8
+                                              : (productCount > 2 ? 9 : 10),
                                           fontWeight: FontWeight.w700,
-                                          color: color,
+                                          color: context.textPrimary,
                                         ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Detail button
+                                      if (matchScore != null) ...[
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: color.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            _detailCtaLabel(),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: color,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
