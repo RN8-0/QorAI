@@ -2010,25 +2010,27 @@ class _GeminiMatchScoreNotifier
     state = const AsyncValue.loading();
 
     try {
-      // Outer guard sits well above the inner Gemini timeout (20s) so the
-      // model has room to deliver a full 4-6 sentence reason. A previous
-      // 12s outer was killing every Gemini call before it returned and
-      // forcing the local fallback ("Tech score 100 / 4.5G Yes stand out
-      // most.") to render — exactly the regression the user reported.
+      // 45s outer guard — Gemini heavy tier with 1024 thinking tokens takes
+      // 15-30s. Previous 18s was firing before Gemini could respond, forcing
+      // every call through the fallback path and showing 0% / empty results.
       await _doFetchMatchScore(
         product: product,
         user: user,
         forCompareBatch: forCompareBatch,
       ).timeout(
-        const Duration(seconds: 18),
+        const Duration(seconds: 45),
         onTimeout: () {
-          throw Exception('match score outer timeout (18s)');
+          throw Exception('match score outer timeout (45s)');
         },
       );
     } catch (e, st) {
       debugPrint('[GeminiMatch] failed: $e\n$st');
       _clearStep(product.id);
-      await _fallbackToLocal(product);
+      try {
+        await _fallbackToLocal(product);
+      } catch (fallbackError) {
+        debugPrint('[GeminiMatch] fallback also failed: $fallbackError');
+      }
     } finally {
       // Defensive: never leave UI stuck on the spinner.
       _clearStep(product.id);
@@ -2284,6 +2286,7 @@ class _GeminiMatchScoreNotifier
       // Small delay so the "Results ready" step message is briefly visible.
       await Future<void>.delayed(const Duration(milliseconds: 300));
       _clearStep(product.id);
+      if (!mounted) return; // orphaned future safety (45s outer timeout may have already returned)
       state = AsyncValue.data(matchResult);
 
       final subForQuota = _ref.read(subscriptionServiceProvider);

@@ -5974,10 +5974,10 @@ Rules:
       }
     }
 
-    // Combined loading state: spinner goes in header row (like other AI sections)
-    // so the card never expands body during analysis.
-    final isMatchLoading = isUserProfileLoading ||
-        (_matchScoreExpanded && _matchScoreFetched && anyProductLoading);
+    // Combined loading state: spinner goes in header row (like other AI sections).
+    // Guard EVERYTHING with _matchScoreExpanded so no spinner appears before user taps.
+    final isMatchLoading = _matchScoreExpanded &&
+        (isUserProfileLoading || (_matchScoreFetched && anyProductLoading));
 
     return Container(
       padding: const EdgeInsets.all(16),
