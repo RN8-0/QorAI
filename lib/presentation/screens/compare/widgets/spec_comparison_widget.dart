@@ -2077,10 +2077,11 @@ Rules:
         // Per-product columns — side by side like Specs tab
         if (products.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(productCount, (i) {
-              final pName = productNames[i];
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: List.generate(productCount, (i) {
+                final pName = productNames[i];
               // Find matching product data
               Map<String, dynamic> pData = {};
               for (final e in products.entries) {
@@ -2207,6 +2208,7 @@ Rules:
                 ),
               );
             }),
+          ),
           ),
         ],
 
@@ -4190,11 +4192,12 @@ Rules:
         // Per-product columns with star ratings
         if (perProduct.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(perProduct.length.clamp(0, productCount), (
-              i,
-            ) {
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: List.generate(perProduct.length.clamp(0, productCount), (
+                i,
+              ) {
               final p = perProduct[i];
               final rating = (p['rating'] as num?)?.toInt() ?? 3;
               final name = p['name'] as String? ?? '';
@@ -4296,6 +4299,7 @@ Rules:
               );
             }),
           ),
+          ),
         ],
 
         // Final verdict
@@ -4368,10 +4372,11 @@ Rules:
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Products in side-by-side columns — show ALL products, match by name
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(productCount, (i) {
-            final wProduct = widget.products[i];
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(productCount, (i) {
+              final wProduct = widget.products[i];
             // Find matching AI product by name (first 3 words, then any word overlap)
             Map<String, dynamic>? p;
             final wWords = wProduct.name.toLowerCase().split(' ');
@@ -4568,6 +4573,7 @@ Rules:
               ),
             );
           }),
+        ),
         ),
       ],
     );
@@ -6175,10 +6181,11 @@ Rules:
                     )
                   else if (_matchScoreFetched) ...[
                     // Side-by-side product columns – shown only when all scores ready
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: List.generate(productCount, (i) {
-                        final product = widget.products[i];
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: List.generate(productCount, (i) {
+                          final product = widget.products[i];
                         final matchAsync = ref.watch(
                           geminiMatchScoreProvider(
                             LocalizedProductKey(
@@ -6332,6 +6339,7 @@ Rules:
                           ),
                         );
                       }),
+                    ),
                     ),
                   ],
                 ],
