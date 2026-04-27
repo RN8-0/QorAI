@@ -60,17 +60,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   static double _savedScrollOffset = 0.0;
 
   // ── Staged rendering: her postFrame'de tek bir section parti açılır.
-  // Tek frame'de 100+ kart build edilmesini engeller.
-  // 0 = sadece AppBar + QuizReminder + SearchBar (en hafif iskelet)
+  // 6 stage = en ağır section'lar (4 horizontal liste) tek frame'e binmez.
+  // 0 = sadece AppBar (skeleton) + SearchBar
   // 1 = + Categories (yatay 2-row chip ListView)
-  // 2 = + For You + Trending
-  // 3 = + TopInCategory + RecentlyViewed + RecentlyAnalyzed
-  // 4 = + NewArrivals + Priority + ValuePicks + Discover
+  // 2 = + Real AppBar + For You + Trending
+  // 3 = + QuizReminder + TopInCategory + RecentlyViewed + RecentlyAnalyzed
+  // 4 = + NewArrivals
+  // 5 = + Priority + ValuePicks
+  // 6 = + Discover
   int _renderStage = 0;
-  static const int _kMaxRenderStage = 4;
+  static const int _kMaxRenderStage = 6;
   // Stage'ler arası gecikme. 48ms ≈ 3 vsync (60Hz) — bir önceki stage'in
   // layout + paint + GPU submit'i tamamen biter, sonraki stage temiz başlar.
   static const Duration _kStageDelay = Duration(milliseconds: 48);
+  // Feed READY guard: feed AsyncValue.data state'e geçmeden Stage 2+
+  // açılmaz. Aksi halde shimmer→gerçek geçiş tüm Consumer'ları aynı anda
+  // rebuild eder → büyük spike. Feed hazır olunca kademeli olarak açılır.
+  bool _feedReadyForReveal = false;
 
   // ── Progressive category rendering: start with few, add on scroll ──
   int _visibleCategoryCount = _kInitialVisibleCategories;
@@ -102,10 +108,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       // Bir önceki stage'in pipeline'ı tamamen bitsin diye delay veriyoruz.
       Future<void>.delayed(_kStageDelay, () {
         if (!mounted || _renderStage >= _kMaxRenderStage) return;
-        setState(() => _renderStage++);
+        // Stage 0 → 1 (Categories) feed'den bağımsız — hemen açılabilir.
+        // Stage 2+ ürün section'larıdır → feed READY beklemeli.
+        // Aksi halde feed sonradan READY olduğunda shimmer→data geçişi
+        // tüm Consumer'ları aynı frame'de rebuild eder ve büyük spike olur.
+        final nextStage = _renderStage + 1;
+        if (nextStage >= 2 && !_feedReadyForReveal) {
+          // Feed henüz hazır değil. Listener feed READY olunca
+          // _scheduleNextStage'i tekrar tetikleyecek.
+          return;
+        }
+        setState(() => _renderStage = nextStage);
         _scheduleNextStage();
       });
     });
+  }
+
+  /// homeFeedProvider AsyncValue.data state'e ilk kez geçtiğinde çağrılır.
+  /// Feed gelmeden Stage 2+ açılmamalı; aksi halde aynı frame'de tüm
+  /// shimmer'lar gerçek karta dönüp Consumer rebuild dalgası yaratır.
+  void _onFeedReady() {
+    if (_feedReadyForReveal) return;
+    _feedReadyForReveal = true;
+    // Stage motoru durmuş olabilir (Stage 1'de feed bekliyordu).
+    // Bir sonraki stage'i hemen tetikle.
+    if (_renderStage < _kMaxRenderStage) {
+      _scheduleNextStage();
+    }
   }
 
   void _handleScroll() {
@@ -147,6 +176,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Feed READY guard: feed AsyncValue.data state'e ilk kez geçtiğinde
+    // stage motoruna haber ver. Stage 2+ ancak feed hazır olunca açılır
+    // → shimmer→data geçişinin Consumer rebuild dalgası önlenir.
+    ref.listen<AsyncValue<HomeFeed>>(homeFeedProvider, (prev, next) {
+      if (next.hasValue && next.value!.all.isNotEmpty) {
+        _onFeedReady();
+      }
+    });
+    // In-memory cache hit (tab switch / fast restart) durumunda listener
+    // tetiklenmez çünkü değişim yoktur. Anlık state'i de kontrol et.
+    if (!_feedReadyForReveal) {
+      final current = ref.read(homeFeedProvider);
+      if (current.hasValue && (current.value?.all.isNotEmpty ?? false)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _onFeedReady();
+        });
+      }
+    }
     return Scaffold(
       body: RefreshIndicator(
         color: AppTheme.primaryBlue,
@@ -179,17 +226,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // skeleton versiyonlar; gerçek (Consumer'lı) versiyonlar Stage
             // 1'de yerlerini alır. Skeleton ve real aynı boyutta → swap
             // anında layout shift olmaz.
-            // Stage 0: skeleton AppBar (provider yok). Stage 1'de gerçek
-            // AppBar + QuizReminder yerleşince skeleton kalkar.
-            if (_renderStage == 0)
+            // ── STAGE 0-1: Skeleton AppBar; Stage 2'de real ile değişir ──
+            if (_renderStage < 2)
               _buildStaticAppBarSkeleton(context)
-            else ...[
+            else
               _buildAppBar(context),
-              _buildQuizReminder(),
-            ],
             SliverToBoxAdapter(child: _buildSearchBar(context)),
 
-            // ── STAGE 1: Categories ──────────────────────────────────────
+            // ── STAGE 1: Categories (feed'den bağımsız) ──────────────────
             if (_renderStage >= 1) ...[
               SliverToBoxAdapter(
                 child: _SectionHeader(
@@ -199,7 +243,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
             ],
 
-            // ── STAGE 2: For You + Trending ──────────────────────────────
+            // ── STAGE 2: Real AppBar (üstte değişti) + For You + Trending ─
             if (_renderStage >= 2) ...[
               SliverToBoxAdapter(
                 child: Consumer(builder: (context, ref, _) {
@@ -225,14 +269,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: _buildTrendsSection()),
             ],
 
-            // ── STAGE 3: TopInCategory + RecentlyViewed + RecentlyAnalyzed ──
+            // ── STAGE 3: QuizReminder + TopInCat + RecentlyViewed + Analyzed
+            // QuizReminder Stage 0'dan Stage 3'e taşındı: categoryCovers
+            // network call + CachedNetworkImage decode artık ilk frame'i
+            // bloklamaz.
             if (_renderStage >= 3) ...[
+              _buildQuizReminder(),
               ..._buildTopInCategorySection(),
               ..._buildRecentlyViewedSection(),
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            // ── STAGE 4: NewArrivals + Priority + ValuePicks + Discover ──
+            // ── STAGE 4: NewArrivals (tek section, izole) ────────────────
             if (_renderStage >= 4) ...[
               // ─── NEW ARRIVALS
               SliverToBoxAdapter(
@@ -247,11 +295,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               SliverToBoxAdapter(child: _buildNewArrivalsSection()),
-              // ÔöÇÔöÇ DYNAMIC PRIORITY CATEGORIES ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+            ],
+
+            // ── STAGE 5: Priority categories + ValuePicks ────────────────
+            if (_renderStage >= 5) ...[
               ..._buildPriorityCategorySections(),
-              // ÔöÇÔöÇ VALUE PICKS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
               ..._buildValuePicksSection(),
-              // ÔöÇÔöÇ DISCOVER ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+            ],
+
+            // ── STAGE 6: Discover (en alt, ekran dışı genelde) ───────────
+            if (_renderStage >= 6) ...[
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.exploreProducts ?? 'Discover',

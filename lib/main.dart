@@ -27,10 +27,13 @@ import 'package:qor_ai/presentation/providers/providers.dart';
 // Sıralı queue + aralarındaki nefes payı (gap) sayesinde her init kendi
 // başına çalışır, UI thread arasında frame paint penceresi açılır.
 //
-// İlk 750ms tamamen UI'a bırakılır → HomeScreen Stage 0 paint olur,
-// homeFeedProvider Hive read'i başlar (provider içinde de endOfFrame
-// guard var). Sonra ağır init'ler ardışık başlar.
-const _kStartupInitialIdle = Duration(milliseconds: 750);
+// İlk 2500ms tamamen UI'a bırakılır → HomeScreen Stage 0 + feed READY +
+// Stage 1-6 reveal pipeline tamamen yerleşir. Önceki 750ms değeri spec
+// init ile HomeScreen mount'un çakışmasına yol açıyordu (logta görüldü:
+// spec init sırasında Stage 1-3 build ediliyor → 174 frame skip).
+// Spec translations sadece compare/PC builder'da kritik — HomeScreen
+// tamamen yerleştikten sonra başlamak güvenli.
+const _kStartupInitialIdle = Duration(milliseconds: 2500);
 const _kStartupGap = Duration(milliseconds: 600);
 
 Future<void> _clearLegacyFeedCache(CacheService cacheService) async {

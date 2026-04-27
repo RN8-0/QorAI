@@ -54,8 +54,13 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   void _primeBackgroundState() {
+    // HomeScreen Stage 2'de bu provider'lar ilk kez okunduğunda PocketBase
+    // fetch tetiklenip UI thread'de Consumer rebuild yaratıyordu. 1.2s'de
+    // önceden ısıtarak Stage 2 reveal'i anında cache hit ile karşılansın.
     try {
       ref.read(countryInitProvider);
+      ref.read(userProfileProvider);
+      ref.read(subscriptionServiceProvider);
     } catch (_) {}
   }
 
