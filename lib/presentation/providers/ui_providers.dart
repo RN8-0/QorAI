@@ -66,17 +66,29 @@ class CountryNotifier extends StateNotifier<String> {
   }
 
   void _attachAutoDetectionListener() {
-    _ref.listen(detectedLocationProvider, (_, next) {
-      next.whenData((location) {
-        if (_cacheService.isCountryManuallySet()) return;
-        final detectedCode = _resolveBestCountryCode(location.countryCode);
-        if (detectedCode.isEmpty) return;
-        if (state != detectedCode) {
-          state = detectedCode;
-        }
-        _cacheService.saveCountry(detectedCode);
-        final info = SupportedCountries.countries[detectedCode];
-        _cacheService.saveCurrency(info?.currency ?? location.currency);
+    // IP detection HomeScreen first data render'dan sonra calsin.
+    // Aksi halde:
+    //   1. CountryNotifier ctor → _load() → listener register → detectedLocationProvider start
+    //   2. ipapi.co network fetch (1-3s, hatta rate limit fail)
+    //   3. detection biter → state degisir → homeFeedProvider invalidate
+    //   4. homeFeedProvider yeniden tetiklenir (logta gorulen "joining existing fetch")
+    //   5. _homeFeedReadyCacheKey country'ye bagli → key degisir → ready cache miss
+    // 3.5s gecikme → HomeScreen tum stage reveal'i biter, sonra IP detection
+    // baslar. Detection sonrasi state degisirse background refresh tetiklenir.
+    Future<void>.delayed(const Duration(milliseconds: 3500), () {
+      if (!mounted) return;
+      _ref.listen(detectedLocationProvider, (_, next) {
+        next.whenData((location) {
+          if (_cacheService.isCountryManuallySet()) return;
+          final detectedCode = _resolveBestCountryCode(location.countryCode);
+          if (detectedCode.isEmpty) return;
+          if (state != detectedCode) {
+            state = detectedCode;
+          }
+          _cacheService.saveCountry(detectedCode);
+          final info = SupportedCountries.countries[detectedCode];
+          _cacheService.saveCurrency(info?.currency ?? location.currency);
+        });
       });
     });
   }

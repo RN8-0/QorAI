@@ -70,9 +70,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // 6 = + Discover
   int _renderStage = 0;
   static const int _kMaxRenderStage = 6;
-  // Stage'ler arası gecikme. 48ms ≈ 3 vsync (60Hz) — bir önceki stage'in
-  // layout + paint + GPU submit'i tamamen biter, sonraki stage temiz başlar.
-  static const Duration _kStageDelay = Duration(milliseconds: 48);
+  // Stage'ler arası gecikme. 32ms ≈ 2 vsync (60Hz) — feed-aware guard
+  // shimmer→data dalga spike'ını zaten önlediği için reveal hızlandırılabilir.
+  // Toplam Stage 2→6 reveal: 5 × 32ms = 160ms (önceden 240ms).
+  static const Duration _kStageDelay = Duration(milliseconds: 32);
   // Feed READY guard: feed AsyncValue.data state'e geçmeden Stage 2+
   // açılmaz. Aksi halde shimmer→gerçek geçiş tüm Consumer'ları aynı anda
   // rebuild eder → büyük spike. Feed hazır olunca kademeli olarak açılır.
