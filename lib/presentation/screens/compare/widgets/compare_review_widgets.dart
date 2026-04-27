@@ -193,6 +193,13 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
               ),
             ),
 
+          // ── Translate button ──
+          if (reviewText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: _CompareTranslateButton(text: reviewText),
+            ),
+
           // ── Action bar: Like / Dislike / Reply ──
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
@@ -799,37 +806,121 @@ class _MatchScoreRingPainter extends CustomPainter {
 
 // ─── Sort Chip ───────────────────────────────────────────────────────────────
 
-class _SortChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
+// ─── Translate Button ────────────────────────────────────────────────────────
 
-  const _SortChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
+class _CompareTranslateButton extends ConsumerStatefulWidget {
+  final String text;
+  const _CompareTranslateButton({required this.text});
+
+  @override
+  ConsumerState<_CompareTranslateButton> createState() =>
+      _CompareTranslateButtonState();
+}
+
+class _CompareTranslateButtonState
+    extends ConsumerState<_CompareTranslateButton> {
+  String? _translated;
+  bool _loading = false;
+  bool _showOriginal = false;
+
+  Future<void> _translate() async {
+    if (_translated != null) {
+      setState(() => _showOriginal = !_showOriginal);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final targetLang = Localizations.localeOf(context).languageCode;
+      final dio = ref.read(dioProvider);
+      final response = await dio.get(
+        'https://translate.googleapis.com/translate_a/single',
+        queryParameters: {
+          'client': 'gtx',
+          'sl': 'auto',
+          'tl': targetLang,
+          'dt': 't',
+          'q': widget.text,
+        },
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 10),
+        ),
+      );
+      final data = response.data;
+      final buffer = StringBuffer();
+      if (data is List && data.isNotEmpty && data[0] is List) {
+        for (final part in data[0] as List) {
+          if (part is List && part.isNotEmpty && part[0] is String) {
+            buffer.write(part[0] as String);
+          }
+        }
+      }
+      final translated = buffer.toString().trim();
+      if (mounted && translated.isNotEmpty) {
+        setState(() {
+          _translated = translated;
+          _showOriginal = false;
+          _loading = false;
+        });
+      } else if (mounted) {
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: active ? AppTheme.brandBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: active ? Colors.white : context.textTertiaryColor,
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _loading ? null : _translate,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_loading)
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                )
+              else
+                Icon(
+                  Icons.translate_rounded,
+                  size: 14,
+                  color: AppTheme.primaryBlue,
+                ),
+              const SizedBox(width: 4),
+              Text(
+                _translated != null
+                    ? (_showOriginal
+                        ? (isTr ? 'Çeviriyi Gör' : 'See Translation')
+                        : (isTr ? 'Orijinali Gör' : 'See Original'))
+                    : (isTr ? 'Çeviriyi Gör' : 'See Translation'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+            ],
           ),
         ),
-      ),
+        if (_translated != null && !_showOriginal) ...[
+          const SizedBox(height: 6),
+          Text(
+            _translated!,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              height: 1.5,
+              color: context.textPrimary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

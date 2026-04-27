@@ -39,6 +39,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
+import 'package:dio/dio.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

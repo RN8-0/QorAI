@@ -60,7 +60,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
-  bool _reviewSortByTop = true;
 
   // Cached key specs — computed once and reused in every build
   List<_CompareSpecRow> _cachedKeySpecs = [];
@@ -1948,21 +1947,6 @@ Rules:
     if (score >= 60) return AppTheme.scoreAverage;
     if (score >= 40) return AppTheme.orange500;
     return AppTheme.error;
-  }
-
-  Widget _buildAiShimmer() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ShimmerBlock(width: 200, height: 20),
-        const SizedBox(height: 10),
-        _ShimmerBlock(width: double.infinity, height: 14),
-        const SizedBox(height: 8),
-        _ShimmerBlock(width: double.infinity, height: 14),
-        const SizedBox(height: 8),
-        _ShimmerBlock(width: 160, height: 14),
-      ],
-    );
   }
 
   Widget _buildAiError(VoidCallback onRetry, {String? errorMsg}) {
@@ -5941,6 +5925,45 @@ Rules:
       const Color(0xFF10B981),
     ];
 
+    // Deferred fetch: profile might have loaded AFTER the user tapped
+    if (_matchScoreExpanded &&
+        !_matchScoreFetched &&
+        quizCompleted &&
+        !isUserProfileLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _matchScoreFetched) return;
+        final sub = ref.read(subscriptionServiceProvider);
+        if (!sub.canUseCompareAi) {
+          _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+          return;
+        }
+        sub.recordCompareAi();
+        setState(() => _matchScoreFetched = true);
+        final lc = Localizations.localeOf(context).languageCode;
+        for (final product in widget.products) {
+          ref
+              .read(
+                geminiMatchScoreProvider(
+                  LocalizedProductKey(productId: product.id, languageCode: lc),
+                ).notifier,
+              )
+              .fetchMatchScore(product: product, forCompareBatch: true);
+        }
+      });
+    }
+
+    // Compute step text: first non-empty step from any loading product
+    String matchStepText = '';
+    if (_matchScoreExpanded && _matchScoreFetched) {
+      for (final product in widget.products) {
+        final step = ref.watch(aiMatchStepProvider(product.id));
+        if (step.isNotEmpty) {
+          matchStepText = step;
+          break;
+        }
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -6044,13 +6067,30 @@ Rules:
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        context.l10n?.aiCompatibilityAnalysis ??
-                            'AI-powered compatibility analysis',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary,
-                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: matchStepText.isNotEmpty
+                            ? Text(
+                                matchStepText,
+                                key: ValueKey(matchStepText),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppTheme.brandBlue,
+                                  fontStyle: FontStyle.italic,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : Text(
+                                context.l10n?.aiCompatibilityAnalysis ??
+                                    'AI-powered compatibility analysis',
+                                key: const ValueKey('subtitle'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: context.textSecondary,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -6373,32 +6413,32 @@ Rules:
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary,
-                        ),
+                      // During loading: subtitle becomes step text with accent color
+                      // After load: show normal subtitle
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: isLoading && loadingStatusText != null && loadingStatusText.trim().isNotEmpty
+                            ? Text(
+                                loadingStatusText,
+                                key: ValueKey(loadingStatusText),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: gradient[0],
+                                  fontStyle: FontStyle.italic,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : Text(
+                                subtitle,
+                                key: const ValueKey('subtitle'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: context.textSecondary,
+                                ),
+                              ),
                       ),
-                      if (isLoading &&
-                          loadingStatusText != null &&
-                          loadingStatusText.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Text(
-                            loadingStatusText,
-                            key: ValueKey(loadingStatusText),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: gradient[0].withValues(alpha: 0.9),
-                              fontStyle: FontStyle.italic,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -6422,24 +6462,16 @@ Rules:
             ),
           ),
           // Error state with retry
+          // Error state with retry
           if (isExpanded && isError && onRetry != null) ...[
             const SizedBox(height: 14),
             _buildAiError(onRetry, errorMsg: errorMsg),
           ]
-          // Loading shimmer
-          else if (isExpanded && isLoading) ...[
-            const SizedBox(height: 14),
-            _buildAiShimmer(),
-          ]
+          // Loading: no expansion, step text shown in subtitle above
           // Structured content widget (the ONLY content display path)
-          else if (isExpanded && contentWidget != null) ...[
+          else if (isExpanded && !isLoading && contentWidget != null) ...[
             const SizedBox(height: 14),
             GestureDetector(onTap: () {}, child: contentWidget),
-          ]
-          // No data yet and not loading — idle state (card just opened, fetch will start)
-          else if (isExpanded && content == null && !isLoading && !isError) ...[
-            const SizedBox(height: 14),
-            _buildAiShimmer(),
           ],
         ],
       ),
@@ -6501,29 +6533,6 @@ Rules:
                     fontWeight: FontWeight.w700,
                     color: context.textPrimary,
                   ),
-                ),
-              ),
-              // Sort toggle: Top / Newest
-              Container(
-                decoration: BoxDecoration(
-                  color: context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: context.dividerColor),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SortChip(
-                      label: 'Top',
-                      active: _reviewSortByTop,
-                      onTap: () => setState(() => _reviewSortByTop = true),
-                    ),
-                    _SortChip(
-                      label: 'Yeni',
-                      active: !_reviewSortByTop,
-                      onTap: () => setState(() => _reviewSortByTop = false),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -6599,33 +6608,45 @@ Rules:
               if (records.isEmpty) {
                 return _buildEmptyReviews();
               }
-              // Sort: Top = most liked - disliked, Newest = by timestamp desc
+              // Sort: YouTube-style algorithm (Wilson score + recency bonus + reply count)
               final sorted = List<RecordModel>.from(records);
-              if (_reviewSortByTop) {
-                sorted.sort((a, b) {
-                  final scoreA =
-                      ((a.data['likedBy'] as List?)?.length ?? 0) -
-                      ((a.data['dislikedBy'] as List?)?.length ?? 0);
-                  final scoreB =
-                      ((b.data['likedBy'] as List?)?.length ?? 0) -
-                      ((b.data['dislikedBy'] as List?)?.length ?? 0);
-                  return scoreB.compareTo(scoreA);
-                });
-              } else {
-                sorted.sort((a, b) {
-                  final tsA =
+              sorted.sort((a, b) {
+                double ytScore(RecordModel r) {
+                  final likes = ((r.data['likedBy'] as List?)?.length ?? 0);
+                  final dislikes =
+                      ((r.data['dislikedBy'] as List?)?.length ?? 0);
+                  final replies =
+                      ((r.data['replyCount'] as num?)?.toInt() ?? 0);
+                  final ts =
                       DateTime.tryParse(
-                        a.data['timestamp']?.toString() ?? '',
+                        r.data['timestamp']?.toString() ?? '',
                       ) ??
                       DateTime(2000);
-                  final tsB =
-                      DateTime.tryParse(
-                        b.data['timestamp']?.toString() ?? '',
-                      ) ??
-                      DateTime(2000);
-                  return tsB.compareTo(tsA);
-                });
-              }
+                  final total = likes + dislikes;
+                  // Wilson score lower bound (95% confidence)
+                  double wilson = 0;
+                  if (total > 0) {
+                    final p = likes / total;
+                    const z = 1.96;
+                    wilson =
+                        (p +
+                            z * z / (2 * total) -
+                            z *
+                                sqrt(
+                                  p * (1 - p) / total +
+                                      z * z / (4 * total * total),
+                                )) /
+                        (1 + z * z / total);
+                  }
+                  final hoursSince =
+                      DateTime.now().difference(ts).inHours.toDouble();
+                  // Recency bonus decays over 72 hours
+                  final recency = exp(-hoursSince / 72.0);
+                  return wilson * 100 + replies * 0.8 + recency * 5;
+                }
+
+                return ytScore(b).compareTo(ytScore(a));
+              });
               return Column(
                 children: sorted.map((record) {
                   final data = record.data;
