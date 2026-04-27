@@ -60,6 +60,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
+  bool _reviewSortByTop = true;
 
   // Cached key specs — computed once and reused in every build
   List<_CompareSpecRow> _cachedKeySpecs = [];
@@ -6490,6 +6491,29 @@ Rules:
                   ),
                 ),
               ),
+              // Sort toggle: Top / Newest
+              Container(
+                decoration: BoxDecoration(
+                  color: context.surfaceVariantColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: context.dividerColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SortChip(
+                      label: 'Top',
+                      active: _reviewSortByTop,
+                      onTap: () => setState(() => _reviewSortByTop = true),
+                    ),
+                    _SortChip(
+                      label: 'Yeni',
+                      active: !_reviewSortByTop,
+                      onTap: () => setState(() => _reviewSortByTop = false),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -6563,8 +6587,35 @@ Rules:
               if (records.isEmpty) {
                 return _buildEmptyReviews();
               }
+              // Sort: Top = most liked - disliked, Newest = by timestamp desc
+              final sorted = List<RecordModel>.from(records);
+              if (_reviewSortByTop) {
+                sorted.sort((a, b) {
+                  final scoreA =
+                      ((a.data['likedBy'] as List?)?.length ?? 0) -
+                      ((a.data['dislikedBy'] as List?)?.length ?? 0);
+                  final scoreB =
+                      ((b.data['likedBy'] as List?)?.length ?? 0) -
+                      ((b.data['dislikedBy'] as List?)?.length ?? 0);
+                  return scoreB.compareTo(scoreA);
+                });
+              } else {
+                sorted.sort((a, b) {
+                  final tsA =
+                      DateTime.tryParse(
+                        a.data['timestamp']?.toString() ?? '',
+                      ) ??
+                      DateTime(2000);
+                  final tsB =
+                      DateTime.tryParse(
+                        b.data['timestamp']?.toString() ?? '',
+                      ) ??
+                      DateTime(2000);
+                  return tsB.compareTo(tsA);
+                });
+              }
               return Column(
-                children: records.map((record) {
+                children: sorted.map((record) {
                   final data = record.data;
                   return _CompareReviewCard(
                     data: data,
@@ -6719,6 +6770,9 @@ Rules:
         builder: (dialogCtx, setDialogState) {
           final theme = Theme.of(dialogCtx);
           final hasText = textController.text.trim().isNotEmpty;
+          int selectedRating = 0;
+          // Track rating inside StatefulBuilder scope via a local variable
+          // updated through setDialogState
           return Dialog(
             backgroundColor: theme.colorScheme.surface,
             shape: RoundedRectangleBorder(
@@ -6728,176 +6782,55 @@ Rules:
               horizontal: 24,
               vertical: 40,
             ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Title
-                  Text(
-                    context.l10n?.writeAReview ?? 'Yorum Yaz',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  // Subtitle — product names
-                  Text(
-                    widget.products.map((p) => p.name).join(' vs '),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Text input
-                  TextField(
-                    controller: textController,
-                    maxLines: 4,
-                    minLines: 2,
-                    autofocus: true,
-                    onChanged: (_) => setDialogState(() {}),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    decoration: InputDecoration(
-                      hintText:
-                          context.l10n?.shareYourExperience ??
-                          'Deneyiminizi paylaşın...',
-                      hintStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.4,
+            child: _WriteReviewDialogContent(
+              textController: textController,
+              products: widget.products,
+              accentGradient: _accentGradient,
+              onSubmit: (int rating) async {
+                HapticFeedback.mediumImpact();
+                try {
+                  final docKey = _comparisonReviewDocKey();
+                  final productIds =
+                      widget.products.map((p) => p.id).toList()..sort();
+                  await pb.collection('comparison_reviews').create(
+                    body: {
+                      'docKey': docKey,
+                      'userId': userId,
+                      'displayName': resolvedDisplayName,
+                      'reviewText': textController.text.trim(),
+                      'timestamp': DateTime.now().toUtc().toIso8601String(),
+                      'productIds': productIds,
+                      'rating': rating,
+                      'likedBy': <String>[],
+                      'dislikedBy': <String>[],
+                    },
+                  );
+                  if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                  // Refresh reviews list
+                  setState(() => _reviewsFuture = null);
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          context.l10n?.reviewSubmitted ?? 'Yorum gönderildi! ✨',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 13),
                         ),
+                        behavior: SnackBarBehavior.floating,
                       ),
-                      filled: true,
-                      fillColor: theme.colorScheme.surfaceContainerHighest,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text('Yorum gönderilemedi: $e'),
+                        behavior: SnackBarBehavior.floating,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Buttons row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(dialogCtx).pop(),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                context.l10n?.cancel ?? 'İptal',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: hasText
-                              ? () async {
-                                  HapticFeedback.mediumImpact();
-                                  try {
-                                    final docKey = _comparisonReviewDocKey();
-                                    final productIds =
-                                        widget.products
-                                            .map((p) => p.id)
-                                            .toList()
-                                          ..sort();
-                                    await pb
-                                        .collection('comparison_reviews')
-                                        .create(
-                                          body: {
-                                            'docKey': docKey,
-                                            'userId': userId,
-                                            'displayName': resolvedDisplayName,
-                                            'reviewText': textController.text
-                                                .trim(),
-                                            'timestamp': DateTime.now()
-                                                .toUtc()
-                                                .toIso8601String(),
-                                            'productIds': productIds,
-                                          },
-                                        );
-                                    if (dialogCtx.mounted)
-                                      Navigator.of(dialogCtx).pop();
-                                    if (ctx.mounted) {
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            context.l10n?.reviewSubmitted ??
-                                                'Yorum gönderildi! ✨',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (ctx.mounted) {
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Yorum gönderilemedi: $e',
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              : null,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              gradient: hasText ? _accentGradient : null,
-                              color: hasText
-                                  ? null
-                                  : theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.2,
-                                    ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                context.l10n?.submitReview ?? 'Gönder',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    );
+                  }
+                }
+              },
+              onCancel: () => Navigator.of(dialogCtx).pop(),
             ),
           );
         },

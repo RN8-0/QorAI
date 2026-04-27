@@ -23,6 +23,18 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
   final TextEditingController _replyCtrl = TextEditingController();
   bool _submitting = false;
 
+  late List<String> _likedBy;
+  late List<String> _dislikedBy;
+  bool _likeLoading = false;
+  bool _dislikeLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _likedBy = List<String>.from(widget.data['likedBy'] as List? ?? []);
+    _dislikedBy = List<String>.from(widget.data['dislikedBy'] as List? ?? []);
+  }
+
   @override
   void dispose() {
     _replyCtrl.dispose();
@@ -45,6 +57,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     final timestamp =
         DateTime.tryParse(widget.data['timestamp']?.toString() ?? '') ??
         DateTime.now();
+    final rating = (widget.data['rating'] as num?)?.toDouble() ?? 0;
     final isAnonymous = userId == 'anonymous';
 
     String resolvedName;
@@ -112,12 +125,31 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        _formatTime(timestamp),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: context.textTertiaryColor,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatTime(timestamp),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
+                          if (rating > 0) ...[
+                            const SizedBox(width: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(5, (i) {
+                                return Icon(
+                                  i < rating.round()
+                                      ? Icons.star_rounded
+                                      : Icons.star_outline_rounded,
+                                  size: 13,
+                                  color: AppTheme.amber500,
+                                );
+                              }),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -176,11 +208,29 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
               ),
             ),
 
-          // ── Action bar: Reply ──
+          // ── Action bar: Like / Dislike / Reply ──
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Row(
               children: [
+                // Like button
+                _LikeDislikeButton(
+                  icon: Icons.thumb_up_rounded,
+                  count: _likedBy.length,
+                  active: currentUserId != null && _likedBy.contains(currentUserId),
+                  loading: _likeLoading,
+                  onTap: currentUserId == null ? null : () => _toggleLike(currentUserId),
+                ),
+                const SizedBox(width: 8),
+                // Dislike button
+                _LikeDislikeButton(
+                  icon: Icons.thumb_down_rounded,
+                  count: _dislikedBy.length,
+                  active: currentUserId != null && _dislikedBy.contains(currentUserId),
+                  loading: _dislikeLoading,
+                  isDislike: true,
+                  onTap: currentUserId == null ? null : () => _toggleDislike(currentUserId),
+                ),
                 const Spacer(),
                 if (currentUserId != null)
                   GestureDetector(
@@ -282,6 +332,146 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Future<void> _toggleLike(String currentUserId) async {
+    if (_likeLoading || _dislikeLoading) return;
+    HapticFeedback.lightImpact();
+    setState(() => _likeLoading = true);
+    final wasLiked = _likedBy.contains(currentUserId);
+    // Optimistic update
+    setState(() {
+      if (wasLiked) {
+        _likedBy.remove(currentUserId);
+      } else {
+        _likedBy.add(currentUserId);
+        _dislikedBy.remove(currentUserId);
+      }
+    });
+    try {
+      await ref
+          .read(pbDataSourceProvider)
+          .toggleComparisonReviewLike(widget.docId, currentUserId);
+    } catch (_) {
+      // Revert on error
+      if (mounted) {
+        setState(() {
+          if (wasLiked) {
+            _likedBy.add(currentUserId);
+          } else {
+            _likedBy.remove(currentUserId);
+          }
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _likeLoading = false);
+    }
+  }
+
+  Future<void> _toggleDislike(String currentUserId) async {
+    if (_likeLoading || _dislikeLoading) return;
+    HapticFeedback.lightImpact();
+    setState(() => _dislikeLoading = true);
+    final wasDisliked = _dislikedBy.contains(currentUserId);
+    // Optimistic update
+    setState(() {
+      if (wasDisliked) {
+        _dislikedBy.remove(currentUserId);
+      } else {
+        _dislikedBy.add(currentUserId);
+        _likedBy.remove(currentUserId);
+      }
+    });
+    try {
+      await ref
+          .read(pbDataSourceProvider)
+          .toggleComparisonReviewDislike(widget.docId, currentUserId);
+    } catch (_) {
+      // Revert on error
+      if (mounted) {
+        setState(() {
+          if (wasDisliked) {
+            _dislikedBy.add(currentUserId);
+          } else {
+            _dislikedBy.remove(currentUserId);
+          }
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _dislikeLoading = false);
+    }
+  }
+}
+
+class _LikeDislikeButton extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final bool active;
+  final bool loading;
+  final bool isDislike;
+  final VoidCallback? onTap;
+
+  const _LikeDislikeButton({
+    required this.icon,
+    required this.count,
+    required this.active,
+    required this.loading,
+    this.isDislike = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = isDislike ? AppTheme.error : AppTheme.brandBlue;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active
+              ? activeColor.withValues(alpha: 0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active
+                ? activeColor.withValues(alpha: 0.4)
+                : context.dividerColor,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading)
+              SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: active ? activeColor : context.textTertiaryColor,
+                ),
+              )
+            else
+              Icon(
+                icon,
+                size: 13,
+                color: active ? activeColor : context.textTertiaryColor,
+              ),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '$count',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: active ? activeColor : context.textTertiaryColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -619,6 +809,226 @@ class _MatchScoreRingPainter extends CustomPainter {
         oldDelegate.color != color ||
         oldDelegate.backgroundColor != backgroundColor ||
         oldDelegate.strokeWidth != strokeWidth;
+  }
+}
+
+// ─── Sort Chip ───────────────────────────────────────────────────────────────
+
+class _SortChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _SortChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? AppTheme.brandBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: active ? Colors.white : context.textTertiaryColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Write Review Dialog ─────────────────────────────────────────────────────
+
+class _WriteReviewDialogContent extends StatefulWidget {
+  final TextEditingController textController;
+  final List<dynamic> products;
+  final LinearGradient accentGradient;
+  final Future<void> Function(int rating) onSubmit;
+  final VoidCallback onCancel;
+
+  const _WriteReviewDialogContent({
+    required this.textController,
+    required this.products,
+    required this.accentGradient,
+    required this.onSubmit,
+    required this.onCancel,
+  });
+
+  @override
+  State<_WriteReviewDialogContent> createState() =>
+      _WriteReviewDialogContentState();
+}
+
+class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
+  int _rating = 0;
+  bool _submitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasText = widget.textController.text.trim().isNotEmpty;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Title
+          Text(
+            'Yorum Yaz',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Subtitle — product names
+          Text(
+            widget.products.map((p) => (p as dynamic).name as String).join(' vs '),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Star rating selector
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) {
+              final starValue = i + 1;
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _rating = _rating == starValue ? 0 : starValue;
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    starValue <= _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 32,
+                    color: AppTheme.amber500,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          // Text input
+          TextField(
+            controller: widget.textController,
+            maxLines: 4,
+            minLines: 2,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: theme.colorScheme.onSurface,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Deneyiminizi paylaşın...',
+              hintStyle: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Buttons row
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: widget.onCancel,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'İptal',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.7,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: (hasText && !_submitting)
+                      ? () async {
+                          setState(() => _submitting = true);
+                          await widget.onSubmit(_rating);
+                          if (mounted) setState(() => _submitting = false);
+                        }
+                      : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: hasText ? widget.accentGradient : null,
+                      color: hasText
+                          ? null
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Gönder',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

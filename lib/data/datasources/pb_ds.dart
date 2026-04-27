@@ -1144,6 +1144,52 @@ class PbDataSource {
         .update(reviewId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
+  Future<void> toggleComparisonReviewLike(
+    String reviewId,
+    String userId,
+  ) async {
+    final record = await _pb
+        .collection('comparison_reviews')
+        .getOne(reviewId);
+    final liked = List<String>.from(record.data['likedBy'] as List? ?? []);
+    final disliked = List<String>.from(
+      record.data['dislikedBy'] as List? ?? [],
+    );
+    if (liked.contains(userId)) {
+      liked.remove(userId);
+    } else {
+      liked.add(userId);
+      disliked.remove(userId);
+    }
+    await _pb.collection('comparison_reviews').update(
+      reviewId,
+      body: {'likedBy': liked, 'dislikedBy': disliked},
+    );
+  }
+
+  Future<void> toggleComparisonReviewDislike(
+    String reviewId,
+    String userId,
+  ) async {
+    final record = await _pb
+        .collection('comparison_reviews')
+        .getOne(reviewId);
+    final liked = List<String>.from(record.data['likedBy'] as List? ?? []);
+    final disliked = List<String>.from(
+      record.data['dislikedBy'] as List? ?? [],
+    );
+    if (disliked.contains(userId)) {
+      disliked.remove(userId);
+    } else {
+      disliked.add(userId);
+      liked.remove(userId);
+    }
+    await _pb.collection('comparison_reviews').update(
+      reviewId,
+      body: {'likedBy': liked, 'dislikedBy': disliked},
+    );
+  }
+
   Stream<List<ReviewModel>> watchProductReviews(
     String productId, {
     int limit = 30,
