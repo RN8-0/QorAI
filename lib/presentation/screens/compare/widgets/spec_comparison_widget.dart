@@ -6878,7 +6878,7 @@ Rules:
               borderRadius: BorderRadius.circular(20),
             ),
             insetPadding: const EdgeInsets.symmetric(
-              horizontal: 24,
+              horizontal: 16,
               vertical: 40,
             ),
             child: _WriteReviewDialogContent(

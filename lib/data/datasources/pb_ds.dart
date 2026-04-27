@@ -1279,7 +1279,7 @@ class PbDataSource {
             'reviewId': reviewId,
             'userId': userId,
             'displayName': displayName,
-            'text': text,
+            'text': text, 'likedBy': [], 'dislikedBy': [],
           },
         );
   }
@@ -1290,6 +1290,36 @@ class PbDataSource {
     required String replyId,
   }) async {
     await _pb.collection('review_replies').delete(replyId);
+  }
+
+  Future<void> toggleReplyLike(String replyId, String userId) async {
+    final record = await _pb.collection('review_replies').getOne(replyId);
+    final liked = List<String>.from(record.data['likedBy'] ?? []);
+    final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
+    if (liked.contains(userId)) {
+      liked.remove(userId);
+    } else {
+      liked.add(userId);
+      disliked.remove(userId);
+    }
+    await _pb
+        .collection('review_replies')
+        .update(replyId, body: {'likedBy': liked, 'dislikedBy': disliked});
+  }
+
+  Future<void> toggleReplyDislike(String replyId, String userId) async {
+    final record = await _pb.collection('review_replies').getOne(replyId);
+    final liked = List<String>.from(record.data['likedBy'] ?? []);
+    final disliked = List<String>.from(record.data['dislikedBy'] ?? []);
+    if (disliked.contains(userId)) {
+      disliked.remove(userId);
+    } else {
+      disliked.add(userId);
+      liked.remove(userId);
+    }
+    await _pb
+        .collection('review_replies')
+        .update(replyId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
   // ────────────────────────────────────────────────────────────────────────
