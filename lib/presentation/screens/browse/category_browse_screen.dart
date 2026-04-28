@@ -79,7 +79,9 @@ class CategoryBrowseScreen extends ConsumerStatefulWidget {
 class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   FilterState _filterState = const FilterState();
   _SortOption _sortOption = _SortOption.techScore;
-  final TextEditingController _searchController = TextEditingController();
+  // Search bar is an isolated StatefulWidget — its setState doesn't rebuild
+  // the product grid. Parent state is only updated via debounced callback.
+  final GlobalKey<_IsolatedSearchBarState> _searchBarKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
 
@@ -92,7 +94,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _fetchingAll = false; // cursor pagination in progress
   bool _remoteSearching = false;
   String? _error;
-  Timer? _searchDebounce;
   Timer? _scrollDebounce;
   int _totalProductCount = 0;
 
@@ -147,31 +148,22 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     _activeCategoryId = widget.categoryId;
     _activeCategoryName = widget.categoryName;
     _loadProducts();
-    _searchController.addListener(_onSearchChanged);
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _scrollDebounce?.cancel();
-    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    final q = _searchController.text.trim().toLowerCase();
+  void _onSearchQueryChanged(String q) {
     setState(() {
       _searchQuery = q;
       if (q.isEmpty) _remoteSearchResults = null;
     });
-    _searchDebounce?.cancel();
-    if (q.length >= 2) {
-      _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-        _doRemoteSearch(q);
-      });
-    }
+    if (q.length >= 2) _doRemoteSearch(q);
   }
 
   /// Remote search via Cloud Function — returns ALL matching products from server.
@@ -274,7 +266,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final ds = ref.read(pbDataSourceProvider);
       final page = await ds.getProductsPageTs(
         category: _activeCategoryId,
-        limit: 200,
+        limit: 40,
         page: _currentPage,
         sortBy: _serverSortBy(),
       );
@@ -370,7 +362,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final ds = ref.read(pbDataSourceProvider);
       final result = await ds.getProductsPageTs(
         category: _activeCategoryId,
-        limit: 200,
+        limit: 40,
         page: 1,
         sortBy: _serverSortBy(),
       );
@@ -560,7 +552,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   _activeCategoryId = id;
                   _activeCategoryName = itemName;
                   _allProducts = [];
-                  _searchController.clear();
+                  _searchBarKey.currentState?.clear();
                   _searchQuery = '';
                   _filterState = const FilterState();
                 });
@@ -654,79 +646,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      color: context.backgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
-          boxShadow: [
-            ...AppTheme.cardShadow,
-            BoxShadow(
-              color: AppTheme.brandBlue.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: context.textPrimary,
-          ),
-          decoration: InputDecoration(
-            hintText:
-                context.l10n?.searchInCategoryHint(_activeCategoryName) ??
-                'Search in $_activeCategoryName...',
-            hintStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: context.textTertiaryColor,
-            ),
-            prefixIcon: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.brandCyan.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.search_rounded,
-                color: AppTheme.brandCyan,
-                size: 18,
-              ),
-            ),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    color: context.textSecondary,
-                    onPressed: () => _searchController.clear(),
-                  )
-                : null,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(
-                color: AppTheme.primaryBlue,
-                width: 1.4,
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _IsolatedSearchBar(
+      key: _searchBarKey,
+      categoryName: _activeCategoryName,
+      onQueryChanged: _onSearchQueryChanged,
     );
   }
 
@@ -756,7 +679,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '"${_searchController.text.trim()}"',
+                '"$_searchQuery"',
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
@@ -1138,6 +1061,141 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     );
   }
 }
+// ---------------------------------------------------------------------------
+// Isolated Search Bar — own State scope, typing never rebuilds the product grid
+// ---------------------------------------------------------------------------
+
+class _IsolatedSearchBar extends StatefulWidget {
+  const _IsolatedSearchBar({
+    super.key,
+    required this.categoryName,
+    required this.onQueryChanged,
+  });
+
+  final String categoryName;
+  /// Called after 300ms debounce with the trimmed, lower-cased query.
+  /// Called immediately with '' when cleared.
+  final ValueChanged<String> onQueryChanged;
+
+  @override
+  State<_IsolatedSearchBar> createState() => _IsolatedSearchBarState();
+}
+
+class _IsolatedSearchBarState extends State<_IsolatedSearchBar> {
+  final TextEditingController _ctrl = TextEditingController();
+  Timer? _debounce;
+  bool _hasText = false;
+
+  /// Called from parent when subcategory changes.
+  void clear() {
+    _ctrl.clear();
+    _debounce?.cancel();
+    if (_hasText) setState(() => _hasText = false);
+    widget.onQueryChanged('');
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged(String value) {
+    final hasText = value.isNotEmpty;
+    // Only setState for clear-button visibility — cheap rebuild of this widget only.
+    if (hasText != _hasText) setState(() => _hasText = hasText);
+
+    _debounce?.cancel();
+    if (value.trim().isEmpty) {
+      widget.onQueryChanged('');
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      widget.onQueryChanged(value.trim().toLowerCase());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: context.backgroundColor,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.15)),
+          boxShadow: [
+            ...AppTheme.cardShadow,
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _ctrl,
+          onChanged: _onTextChanged,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: context.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText:
+                context.l10n?.searchInCategoryHint(widget.categoryName) ??
+                'Search in ${widget.categoryName}...',
+            hintStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: context.textTertiaryColor,
+            ),
+            prefixIcon: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.brandCyan.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.search_rounded,
+                color: AppTheme.brandCyan,
+                size: 18,
+              ),
+            ),
+            suffixIcon: _hasText
+                ? IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: context.textSecondary,
+                    onPressed: clear,
+                  )
+                : null,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryBlue,
+                width: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Product List Tile (horizontal card for list view)
 // ---------------------------------------------------------------------------
