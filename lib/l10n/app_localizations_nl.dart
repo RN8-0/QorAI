@@ -3748,7 +3748,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get resendEmail => 'E-mail opnieuw sturen';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Opnieuw sturen (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Opnieuw sturen (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>

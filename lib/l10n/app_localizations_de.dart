@@ -3751,7 +3751,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get resendEmail => 'E-Mail erneut senden';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Erneut senden (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Erneut senden (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>

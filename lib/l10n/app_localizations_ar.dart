@@ -3708,7 +3708,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get emailSpamNote =>
-      'إذا لم يصل البريد خلال دقائق، يرجى التحقق من مجلد البريد العشوائي أيضًا.';
+      'إذا لم يصل البريد خلال دقائق ، يرجى التحقق من مجلد البريد العشوائي أيضًا.';
 
   @override
   String get checkVerification => 'التحقق من التحقق';
@@ -3717,7 +3717,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get resendEmail => 'إعادة إرسال البريد';
 
   @override
-  String resendEmailCooldown(int seconds) => 'إعادة الإرسال (${seconds}ث)';
+  String resendEmailCooldown(int seconds) {
+    return 'إعادة الإرسال ($secondsث)';
+  }
 
   @override
   String get verificationEmailSent =>

@@ -3746,7 +3746,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get resendEmail => 'Reenviar e-mail';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Reenviar (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Reenviar (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>

@@ -3748,24 +3748,26 @@ class AppLocalizationsFr extends AppLocalizations {
   String get editedLabel => 'modifié';
 
   @override
-  String get emailVerificationRequired => "Vérification de l'e-mail requise";
+  String get emailVerificationRequired => 'Vérification de l\'e-mail requise';
 
   @override
   String get emailVerificationBody =>
-      "Vérifiez votre e-mail pour utiliser les fonctionnalités IA. Nous avons envoyé un lien de vérification à :";
+      'Vérifiez votre e-mail pour utiliser les fonctionnalités IA. Nous avons envoyé un lien de vérification à :';
 
   @override
   String get emailSpamNote =>
-      "Si l'e-mail n'arrive pas dans quelques minutes, vérifiez aussi votre dossier Spam.";
+      'Si l\'e-mail n\'arrive pas dans quelques minutes, vérifiez aussi votre dossier Spam.';
 
   @override
   String get checkVerification => 'Vérifier la confirmation';
 
   @override
-  String get resendEmail => "Renvoyer l'e-mail";
+  String get resendEmail => 'Renvoyer l\'e-mail';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Renvoyer (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Renvoyer (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>
@@ -3773,5 +3775,5 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notVerifiedYet =>
-      "Ne semble pas encore vérifié. Ouvrez l'e-mail et cliquez sur le lien.";
+      'Ne semble pas encore vérifié. Ouvrez l\'e-mail et cliquez sur le lien.';
 }

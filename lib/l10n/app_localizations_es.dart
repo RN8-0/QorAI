@@ -3745,8 +3745,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editedLabel => 'editado';
 
   @override
-  String get emailVerificationRequired =>
-      'Se requiere verificación de correo';
+  String get emailVerificationRequired => 'Se requiere verificación de correo';
 
   @override
   String get emailVerificationBody =>
@@ -3763,7 +3762,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resendEmail => 'Reenviar correo';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Reenviar (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Reenviar (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>
@@ -3772,3 +3773,4 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notVerifiedYet =>
       'Aún no parece verificado. Abre el correo y haz clic en el enlace.';
+}

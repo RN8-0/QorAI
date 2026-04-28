@@ -3741,8 +3741,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get emailVerificationBody =>
-      'AI özelliklerini kullanmak için e-posta adresini doğrula. '
-      'Aşağıdaki adrese bir doğrulama linki gönderdik:';
+      'AI özelliklerini kullanmak için e-posta adresini doğrula. Aşağıdaki adrese bir doğrulama linki gönderdik:';
 
   @override
   String get emailSpamNote =>
@@ -3755,7 +3754,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get resendEmail => 'Maili tekrar gönder';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Tekrar gönder (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Tekrar gönder (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>

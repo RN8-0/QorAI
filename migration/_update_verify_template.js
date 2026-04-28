@@ -8,9 +8,10 @@ const env = Object.fromEntries(
 
 const newTpl = {
   subject: 'Verify your email — {APP_NAME}',
-  body: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:540px;margin:0 auto;padding:24px;color:#1f2937;line-height:1.6">
+  body: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:540px;margin:0 auto;padding:24px;color:#1f2937;line-height:1.6;background:#ffffff">
   <div style="text-align:center;margin-bottom:24px">
-    <h1 style="font-size:22px;margin:0;color:#0f172a">{APP_NAME}</h1>
+    <img src="https://qorai.net/assets/logo.png" alt="{APP_NAME}" width="64" height="64" style="display:inline-block;width:64px;height:64px;border-radius:14px;margin-bottom:12px">
+    <h1 style="font-size:22px;margin:0;color:#0f172a;font-weight:700">{APP_NAME}</h1>
   </div>
   <h2 style="font-size:18px;color:#0f172a;margin:0 0 12px">Confirm your email address</h2>
   <p style="margin:0 0 16px;color:#374151">Welcome to {APP_NAME}! Please confirm your email address to activate AI features on your account. This link is valid for 24 hours.</p>

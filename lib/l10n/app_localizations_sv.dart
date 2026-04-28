@@ -3734,7 +3734,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get resendEmail => 'Skicka e-post igen';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Skicka igen (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Skicka igen (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>

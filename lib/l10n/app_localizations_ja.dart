@@ -3679,7 +3679,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get resendEmail => 'メールを再送信';
 
   @override
-  String resendEmailCooldown(int seconds) => '再送信 (${seconds}秒)';
+  String resendEmailCooldown(int seconds) {
+    return '再送信 ($seconds秒)';
+  }
 
   @override
   String get verificationEmailSent => '確認メールを送信しました。受信トレイを確認してください。';

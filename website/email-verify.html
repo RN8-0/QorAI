@@ -320,11 +320,12 @@
   const RTL_LANGS = ['ar', 'fa', 'he', 'ur'];
 
   function detectLang() {
+    // Default to English unless explicit ?lang= override is provided in URL.
+    // The verification email is generated server-side so the most reliable
+    // signal is the query string set by the backend / app.
     var fromQuery = (location.search.match(/[?&]lang=([a-zA-Z-]+)/) || [])[1];
-    var pool = [fromQuery, navigator.language].concat(navigator.languages || [])
-      .filter(Boolean).map(function (l) { return l.toLowerCase(); });
-    for (var i = 0; i < pool.length; i++) {
-      var two = pool[i].split(/[-_]/)[0];
+    if (fromQuery) {
+      var two = fromQuery.toLowerCase().split(/[-_]/)[0];
       if (STRINGS[two]) return two;
     }
     return 'en';

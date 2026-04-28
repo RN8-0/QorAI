@@ -3730,7 +3730,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get emailSpamNote =>
-      "If the mail doesn't arrive within a few minutes, please also check your Spam / Junk folder.";
+      'If the mail doesn\'t arrive within a few minutes, please also check your Spam / Junk folder.';
 
   @override
   String get checkVerification => 'Check verification';
@@ -3739,7 +3739,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resendEmail => 'Resend email';
 
   @override
-  String resendEmailCooldown(int seconds) => 'Resend (${seconds}s)';
+  String resendEmailCooldown(int seconds) {
+    return 'Resend (${seconds}s)';
+  }
 
   @override
   String get verificationEmailSent =>
@@ -3747,5 +3749,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notVerifiedYet =>
-      "Doesn't seem verified yet. Open the mail and click the link.";
+      'Doesn\'t seem verified yet. Open the mail and click the link.';
 }
