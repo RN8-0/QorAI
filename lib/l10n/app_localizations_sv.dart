@@ -3715,4 +3715,32 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get editedLabel => 'redigerad';
+
+  @override
+  String get emailVerificationRequired => 'E-postverifiering krävs';
+
+  @override
+  String get emailVerificationBody =>
+      'Verifiera din e-post för att använda AI-funktioner. Vi skickade en verifieringlänk till:';
+
+  @override
+  String get emailSpamNote =>
+      'Om e-postmeddelandet inte kommer inom några minuter, kontrollera även din Skräppost.';
+
+  @override
+  String get checkVerification => 'Kontrollera verifiering';
+
+  @override
+  String get resendEmail => 'Skicka e-post igen';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Skicka igen (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'Verifieringsmail skickat. Kontrollera din inkorg.';
+
+  @override
+  String get notVerifiedYet =>
+      'Verkar inte verifierat ännu. Öppna e-postmeddelandet och klicka på länken.';
 }

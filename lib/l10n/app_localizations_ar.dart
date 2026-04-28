@@ -3698,4 +3698,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get editedLabel => 'تم التعديل';
+
+  @override
+  String get emailVerificationRequired => 'التحقق من البريد الإلكتروني مطلوب';
+
+  @override
+  String get emailVerificationBody =>
+      'تحقق من بريدك الإلكتروني لاستخدام ميزات الذكاء الاصطناعي. أرسلنا رابط التحقق إلى:';
+
+  @override
+  String get emailSpamNote =>
+      'إذا لم يصل البريد خلال دقائق، يرجى التحقق من مجلد البريد العشوائي أيضًا.';
+
+  @override
+  String get checkVerification => 'التحقق من التحقق';
+
+  @override
+  String get resendEmail => 'إعادة إرسال البريد';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'إعادة الإرسال (${seconds}ث)';
+
+  @override
+  String get verificationEmailSent =>
+      'تم إرسال بريد التحقق. تحقق من صندوق الوارد.';
+
+  @override
+  String get notVerifiedYet =>
+      'لا يبدو أنه تم التحقق بعد. افتح البريد وانقر على الرابط.';
 }

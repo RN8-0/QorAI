@@ -3661,4 +3661,32 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get editedLabel => '編集済み';
+
+  @override
+  String get emailVerificationRequired => 'メール確認が必要です';
+
+  @override
+  String get emailVerificationBody =>
+      'AI機能を使用するにはメールを確認してください。確認リンクを以下に送信しました：';
+
+  @override
+  String get emailSpamNote =>
+      '数分以内にメールが届かない場合は、スパムフォルダもご確認ください。';
+
+  @override
+  String get checkVerification => '確認をチェック';
+
+  @override
+  String get resendEmail => 'メールを再送信';
+
+  @override
+  String resendEmailCooldown(int seconds) => '再送信 (${seconds}秒)';
+
+  @override
+  String get verificationEmailSent =>
+      '確認メールを送信しました。受信トレイを確認してください。';
+
+  @override
+  String get notVerifiedYet =>
+      'まだ確認されていないようです。メールを開いてリンクをクリックしてください。';
 }

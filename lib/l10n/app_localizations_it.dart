@@ -3732,4 +3732,32 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get editedLabel => 'modificato';
+
+  @override
+  String get emailVerificationRequired => 'Verifica e-mail richiesta';
+
+  @override
+  String get emailVerificationBody =>
+      "Verifica la tua e-mail per usare le funzionalità AI. Abbiamo inviato un link di verifica a:";
+
+  @override
+  String get emailSpamNote =>
+      "Se l'e-mail non arriva entro pochi minuti, controlla anche la cartella Spam.";
+
+  @override
+  String get checkVerification => 'Controlla verifica';
+
+  @override
+  String get resendEmail => "Invia di nuovo l'e-mail";
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Invia di nuovo (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'E-mail di verifica inviata. Controlla la tua casella di posta.';
+
+  @override
+  String get notVerifiedYet =>
+      "Non sembra ancora verificato. Apri l'e-mail e clicca sul link.";
 }

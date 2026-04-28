@@ -3727,4 +3727,33 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get editedLabel => 'editado';
+
+  @override
+  String get emailVerificationRequired =>
+      'Verificação de e-mail necessária';
+
+  @override
+  String get emailVerificationBody =>
+      'Verifique seu e-mail para usar os recursos de IA. Enviamos um link de verificação para:';
+
+  @override
+  String get emailSpamNote =>
+      'Se o e-mail não chegar em alguns minutos, verifique também a pasta de Spam.';
+
+  @override
+  String get checkVerification => 'Verificar confirmação';
+
+  @override
+  String get resendEmail => 'Reenviar e-mail';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Reenviar (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'E-mail de verificação enviado. Verifique sua caixa de entrada.';
+
+  @override
+  String get notVerifiedYet =>
+      'Parece que ainda não foi verificado. Abra o e-mail e clique no link.';
 }

@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "redigerad"
+  "editedLabel": "redigerad",
+  "emailVerificationRequired": "E-postverifiering krävs",
+  "emailVerificationBody": "Verifiera din e-post för att använda AI-funktioner. Vi skickade en verifieringlänk till:",
+  "emailSpamNote": "Om e-postmeddelandet inte kommer inom några minuter, kontrollera även din Skräppost.",
+  "checkVerification": "Kontrollera verifiering",
+  "resendEmail": "Skicka e-post igen",
+  "resendEmailCooldown": "Skicka igen ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "Verifieringsmail skickat. Kontrollera din inkorg.",
+  "notVerifiedYet": "Verkar inte verifierat ännu. Öppna e-postmeddelandet och klicka på länken."
 }

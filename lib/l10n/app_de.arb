@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "bearbeitet"
+  "editedLabel": "bearbeitet",
+  "emailVerificationRequired": "E-Mail-Bestätigung erforderlich",
+  "emailVerificationBody": "Bestätige deine E-Mail, um KI-Funktionen zu nutzen. Wir haben einen Bestätigungslink gesendet an:",
+  "emailSpamNote": "Falls die E-Mail nicht innerhalb weniger Minuten ankommt, überprüfe auch deinen Spam-Ordner.",
+  "checkVerification": "Bestätigung prüfen",
+  "resendEmail": "E-Mail erneut senden",
+  "resendEmailCooldown": "Erneut senden ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "Bestätigungs-E-Mail gesendet. Überprüfe deinen Posteingang.",
+  "notVerifiedYet": "Scheint noch nicht bestätigt. Öffne die E-Mail und klicke auf den Link."
 }

@@ -3735,4 +3735,33 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get editedLabel => 'düzenlendi';
+
+  @override
+  String get emailVerificationRequired => 'E-posta doğrulaması gerekli';
+
+  @override
+  String get emailVerificationBody =>
+      'AI özelliklerini kullanmak için e-posta adresini doğrula. '
+      'Aşağıdaki adrese bir doğrulama linki gönderdik:';
+
+  @override
+  String get emailSpamNote =>
+      'Mail birkaç dakika içinde gelmezse lütfen Spam / Önemsiz klasörünü de kontrol et.';
+
+  @override
+  String get checkVerification => 'Doğrulamayı kontrol et';
+
+  @override
+  String get resendEmail => 'Maili tekrar gönder';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Tekrar gönder (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'Doğrulama maili gönderildi. Gelen kutunu kontrol et.';
+
+  @override
+  String get notVerifiedYet =>
+      'Henüz doğrulanmamış görünüyor. Maili açıp linke tıkla.';
 }

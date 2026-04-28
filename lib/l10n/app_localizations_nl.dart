@@ -3729,4 +3729,32 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get editedLabel => 'bewerkt';
+
+  @override
+  String get emailVerificationRequired => 'E-mailverificatie vereist';
+
+  @override
+  String get emailVerificationBody =>
+      'Bevestig je e-mail om AI-functies te gebruiken. We hebben een verificatielink gestuurd naar:';
+
+  @override
+  String get emailSpamNote =>
+      'Als de e-mail niet binnen enkele minuten aankomt, controleer dan ook je Spam-map.';
+
+  @override
+  String get checkVerification => 'Verificatie controleren';
+
+  @override
+  String get resendEmail => 'E-mail opnieuw sturen';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Opnieuw sturen (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'Verificatie-e-mail verzonden. Controleer je inbox.';
+
+  @override
+  String get notVerifiedYet =>
+      'Lijkt nog niet geverifieerd. Open de e-mail en klik op de link.';
 }

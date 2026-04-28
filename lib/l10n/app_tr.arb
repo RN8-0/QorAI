@@ -1437,5 +1437,20 @@
       }
     }
   },
-  "editedLabel": "düzenlendi"
+  "editedLabel": "düzenlendi",
+  "emailVerificationRequired": "E-posta doğrulaması gerekli",
+  "emailVerificationBody": "AI özelliklerini kullanmak için e-posta adresini doğrula. Aşağıdaki adrese bir doğrulama linki gönderdik:",
+  "emailSpamNote": "Mail birkaç dakika içinde gelmezse lütfen Spam / Önemsiz klasörünü de kontrol et.",
+  "checkVerification": "Doğrulamayı kontrol et",
+  "resendEmail": "Maili tekrar gönder",
+  "resendEmailCooldown": "Tekrar gönder ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "Doğrulama maili gönderildi. Gelen kutunu kontrol et.",
+  "notVerifiedYet": "Henüz doğrulanmamış görünüyor. Maili açıp linke tıkla."
 }

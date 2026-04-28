@@ -3732,4 +3732,32 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get editedLabel => 'bearbeitet';
+
+  @override
+  String get emailVerificationRequired => 'E-Mail-Bestätigung erforderlich';
+
+  @override
+  String get emailVerificationBody =>
+      'Bestätige deine E-Mail, um KI-Funktionen zu nutzen. Wir haben einen Bestätigungslink gesendet an:';
+
+  @override
+  String get emailSpamNote =>
+      'Falls die E-Mail nicht innerhalb weniger Minuten ankommt, überprüfe auch deinen Spam-Ordner.';
+
+  @override
+  String get checkVerification => 'Bestätigung prüfen';
+
+  @override
+  String get resendEmail => 'E-Mail erneut senden';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Erneut senden (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'Bestätigungs-E-Mail gesendet. Überprüfe deinen Posteingang.';
+
+  @override
+  String get notVerifiedYet =>
+      'Scheint noch nicht bestätigt. Öffne die E-Mail und klicke auf den Link.';
 }

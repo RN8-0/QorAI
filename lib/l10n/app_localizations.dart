@@ -7209,6 +7209,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'edited'**
   String get editedLabel;
+
+  /// No description provided for @emailVerificationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Email verification required'**
+  String get emailVerificationRequired;
+
+  /// No description provided for @emailVerificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your email to use AI features. We sent a verification link to:'**
+  String get emailVerificationBody;
+
+  /// No description provided for @emailSpamNote.
+  ///
+  /// In en, this message translates to:
+  /// **'If the mail doesn\'t arrive within a few minutes, please also check your Spam / Junk folder.'**
+  String get emailSpamNote;
+
+  /// No description provided for @checkVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Check verification'**
+  String get checkVerification;
+
+  /// No description provided for @resendEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend email'**
+  String get resendEmail;
+
+  /// No description provided for @resendEmailCooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend ({seconds}s)'**
+  String resendEmailCooldown(int seconds);
+
+  /// No description provided for @verificationEmailSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification email sent. Check your inbox.'**
+  String get verificationEmailSent;
+
+  /// No description provided for @notVerifiedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Doesn\'t seem verified yet. Open the mail and click the link.'**
+  String get notVerifiedYet;
 }
 
 class _AppLocalizationsDelegate

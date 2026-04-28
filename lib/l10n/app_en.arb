@@ -1489,5 +1489,20 @@
       }
     }
   },
-  "editedLabel": "edited"
+  "editedLabel": "edited",
+  "emailVerificationRequired": "Email verification required",
+  "emailVerificationBody": "Verify your email to use AI features. We sent a verification link to:",
+  "emailSpamNote": "If the mail doesn't arrive within a few minutes, please also check your Spam / Junk folder.",
+  "checkVerification": "Check verification",
+  "resendEmail": "Resend email",
+  "resendEmailCooldown": "Resend ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "Verification email sent. Check your inbox.",
+  "notVerifiedYet": "Doesn't seem verified yet. Open the mail and click the link."
 }

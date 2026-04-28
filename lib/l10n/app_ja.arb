@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "編集済み"
+  "editedLabel": "編集済み",
+  "emailVerificationRequired": "メール確認が必要です",
+  "emailVerificationBody": "AI機能を使用するにはメールを確認してください。確認リンクを以下に送信しました：",
+  "emailSpamNote": "数分以内にメールが届かない場合は、スパムフォルダもご確認ください。",
+  "checkVerification": "確認をチェック",
+  "resendEmail": "メールを再送信",
+  "resendEmailCooldown": "再送信 ({seconds}秒)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "確認メールを送信しました。受信トレイを確認してください。",
+  "notVerifiedYet": "まだ確認されていないようです。メールを開いてリンクをクリックしてください。"
 }

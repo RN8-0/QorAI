@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "bewerkt"
+  "editedLabel": "bewerkt",
+  "emailVerificationRequired": "E-mailverificatie vereist",
+  "emailVerificationBody": "Bevestig je e-mail om AI-functies te gebruiken. We hebben een verificatielink gestuurd naar:",
+  "emailSpamNote": "Als de e-mail niet binnen enkele minuten aankomt, controleer dan ook je Spam-map.",
+  "checkVerification": "Verificatie controleren",
+  "resendEmail": "E-mail opnieuw sturen",
+  "resendEmailCooldown": "Opnieuw sturen ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "Verificatie-e-mail verzonden. Controleer je inbox.",
+  "notVerifiedYet": "Lijkt nog niet geverifieerd. Open de e-mail en klik op de link."
 }

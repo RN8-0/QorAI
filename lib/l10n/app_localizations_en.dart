@@ -3720,4 +3720,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editedLabel => 'edited';
+
+  @override
+  String get emailVerificationRequired => 'Email verification required';
+
+  @override
+  String get emailVerificationBody =>
+      'Verify your email to use AI features. We sent a verification link to:';
+
+  @override
+  String get emailSpamNote =>
+      "If the mail doesn't arrive within a few minutes, please also check your Spam / Junk folder.";
+
+  @override
+  String get checkVerification => 'Check verification';
+
+  @override
+  String get resendEmail => 'Resend email';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Resend (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'Verification email sent. Check your inbox.';
+
+  @override
+  String get notVerifiedYet =>
+      "Doesn't seem verified yet. Open the mail and click the link.";
 }

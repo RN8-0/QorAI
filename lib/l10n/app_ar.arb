@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "تم التعديل"
+  "editedLabel": "تم التعديل",
+  "emailVerificationRequired": "التحقق من البريد الإلكتروني مطلوب",
+  "emailVerificationBody": "تحقق من بريدك الإلكتروني لاستخدام ميزات الذكاء الاصطناعي. أرسلنا رابط التحقق إلى:",
+  "emailSpamNote": "إذا لم يصل البريد خلال دقائق ، يرجى التحقق من مجلد البريد العشوائي أيضًا.",
+  "checkVerification": "التحقق من التحقق",
+  "resendEmail": "إعادة إرسال البريد",
+  "resendEmailCooldown": "إعادة الإرسال ({seconds}ث)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "تم إرسال بريد التحقق. تحقق من صندوق الوارد.",
+  "notVerifiedYet": "لا يبدو أنه تم التحقق بعد. افتح البريد وانقر على الرابط."
 }

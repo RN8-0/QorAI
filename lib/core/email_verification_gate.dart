@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
+import 'package:qor_ai/l10n/app_localizations.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
 /// Mevcut kullanıcı AI özelliklerini kullanmak için gerekli e-posta
@@ -90,7 +91,8 @@ class _EmailVerificationDialogState
       result.when(
         success: (_) {
           _statusMessage =
-              'Doğrulama maili gönderildi. Gelen kutunu kontrol et.';
+              AppLocalizations.of(context)?.verificationEmailSent ??
+              'Verification email sent. Check your inbox.';
           _statusIsError = false;
           _startCooldown();
         },
@@ -131,13 +133,16 @@ class _EmailVerificationDialogState
     }
     setState(() {
       _checking = false;
-      _statusMessage = 'Henüz doğrulanmamış görünüyor. Maili açıp linke tıkla.';
+      _statusMessage =
+          AppLocalizations.of(context)?.notVerifiedYet ??
+          "Doesn't seem verified yet. Open the mail and click the link.";
       _statusIsError = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF101820) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F1722);
@@ -176,7 +181,7 @@ class _EmailVerificationDialogState
               ),
               const SizedBox(height: 16),
               Text(
-                'E-posta doğrulaması gerekli',
+                l?.emailVerificationRequired ?? 'Email verification required',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
@@ -186,8 +191,8 @@ class _EmailVerificationDialogState
               ),
               const SizedBox(height: 10),
               Text(
-                'AI özelliklerini kullanmak için e-posta adresini doğrula. '
-                'Aşağıdaki adrese bir doğrulama linki gönderdik:',
+                l?.emailVerificationBody ??
+                    'Verify your email to use AI features. We sent a verification link to:',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13.5,
@@ -197,8 +202,8 @@ class _EmailVerificationDialogState
               ),
               const SizedBox(height: 6),
               Text(
-                'Mail birkaç dakika içinde gelmezse lütfen Spam / Önemsiz '
-                'klasörünü de kontrol et.',
+                l?.emailSpamNote ??
+                    "If the mail doesn't arrive within a few minutes, please also check your Spam / Junk folder.",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11.5,
@@ -288,7 +293,7 @@ class _EmailVerificationDialogState
                           ),
                         )
                       : Text(
-                          'Doğrulamayı kontrol et',
+                          l?.checkVerification ?? 'Check verification',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -316,8 +321,9 @@ class _EmailVerificationDialogState
                         )
                       : Text(
                           _resendCooldown > 0
-                              ? 'Tekrar gönder (${_resendCooldown}s)'
-                              : 'Maili tekrar gönder',
+                              ? (l?.resendEmailCooldown(_resendCooldown) ??
+                                  'Resend (${_resendCooldown}s)')
+                              : (l?.resendEmail ?? 'Resend email'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
@@ -330,7 +336,7 @@ class _EmailVerificationDialogState
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'Vazgeç',
+                  l?.cancel ?? 'Cancel',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     color: textSecondary,

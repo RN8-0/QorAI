@@ -1358,5 +1358,20 @@
       }
     }
   },
-  "editedLabel": "modifié"
+  "editedLabel": "modifié",
+  "emailVerificationRequired": "Vérification de l'e-mail requise",
+  "emailVerificationBody": "Vérifiez votre e-mail pour utiliser les fonctionnalités IA. Nous avons envoyé un lien de vérification à :",
+  "emailSpamNote": "Si l'e-mail n'arrive pas dans quelques minutes, vérifiez aussi votre dossier Spam.",
+  "checkVerification": "Vérifier la confirmation",
+  "resendEmail": "Renvoyer l'e-mail",
+  "resendEmailCooldown": "Renvoyer ({seconds}s)",
+  "@resendEmailCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "verificationEmailSent": "E-mail de vérification envoyé. Vérifiez votre boîte de réception.",
+  "notVerifiedYet": "Ne semble pas encore vérifié. Ouvrez l'e-mail et cliquez sur le lien."
 }

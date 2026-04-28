@@ -3723,4 +3723,32 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get editedLabel => 'edytowano';
+
+  @override
+  String get emailVerificationRequired => 'Wymagana weryfikacja e-mail';
+
+  @override
+  String get emailVerificationBody =>
+      'Zweryfikuj swój e-mail, aby korzystać z funkcji AI. Wysłaliśmy link weryfikacyjny na:';
+
+  @override
+  String get emailSpamNote =>
+      'Jeśli e-mail nie dotrze w ciągu kilku minut, sprawdź folder Spam.';
+
+  @override
+  String get checkVerification => 'Sprawdź weryfikację';
+
+  @override
+  String get resendEmail => 'Wyślij e-mail ponownie';
+
+  @override
+  String resendEmailCooldown(int seconds) => 'Wyślij ponownie (${seconds}s)';
+
+  @override
+  String get verificationEmailSent =>
+      'E-mail weryfikacyjny wysłany. Sprawdź swoją skrzynkę odbioraczą.';
+
+  @override
+  String get notVerifiedYet =>
+      'Wygląda na to, że jeszcze nie zweryfikowano. Otwórz e-mail i kliknij link.';
 }
