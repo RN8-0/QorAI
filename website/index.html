@@ -9,8 +9,9 @@
   <meta property="og:description" content="Get expert product recommendations powered by AI. Compare products, read smart reviews, build your perfect setup.">
   <meta property="og:image" content="https://qorai.net/assets/logo.png">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/style.css?v=20260428b">
+  <link rel="stylesheet" href="/css/style.css?v=20260428c">
   <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <script>window.QOR_GA_ID='G-PLACEHOLDER';</script>
 </head>
 <body>
 
@@ -52,7 +53,7 @@
   <div class="hero-inner">
     <div class="hero-pill">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 17l-6.4 4.2L8 14.2 2 9.4h7.6L12 2z"/></svg>
-      Powered by Gemini & DeepSeek
+      AI-powered product advisor
     </div>
     <h1 class="hero-title">
       Find the <span class="grad">perfect tech</span><br>
@@ -73,11 +74,11 @@
       </a>
     </div>
 
-    <div class="stat-bar">
-      <div class="stat-card"><div class="stat-num">500K+</div><div class="stat-lbl">Products analyzed</div></div>
-      <div class="stat-card"><div class="stat-num">12</div><div class="stat-lbl">Languages</div></div>
-      <div class="stat-card"><div class="stat-num">98%</div><div class="stat-lbl">Match accuracy</div></div>
-      <div class="stat-card"><div class="stat-num">4.9★</div><div class="stat-lbl">App rating</div></div>
+    <div class="stat-bar" id="stat-bar">
+      <div class="stat-card"><div class="stat-num" id="stat-products">—</div><div class="stat-lbl">Products in catalog</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-categories">—</div><div class="stat-lbl">Categories</div></div>
+      <div class="stat-card"><div class="stat-num">iOS · Android</div><div class="stat-lbl">Native apps</div></div>
+      <div class="stat-card"><div class="stat-num">Free</div><div class="stat-lbl">To get started</div></div>
     </div>
   </div>
 </section>
@@ -217,8 +218,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js?v=20260428b"></script>
-<script src="/js/auth.js?v=20260428b"></script>
+<script src="/js/pb_client.js?v=20260428c"></script>
+<script src="/js/auth.js?v=20260428c"></script>
+<script src="/js/analytics.js?v=20260428c"></script>
 <script>
   function toggleTheme() {
     var c = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -229,6 +231,24 @@
   }
   document.getElementById('theme-toggle').textContent =
     (document.documentElement.getAttribute('data-theme') === 'light') ? '☀️' : '🌙';
+
+  // Live stats from PocketBase (real numbers, no mock data)
+  (async () => {
+    try {
+      const pb = getPb();
+      const total = await pb.collection('products').getList(1, 1, { $autoCancel:false });
+      const totalCount = total.totalItems || 0;
+      const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M+'
+                     : n >= 1e3 ? (n/1e3).toFixed(1).replace(/\.0$/,'')+'K+'
+                     : String(n);
+      const $p = document.getElementById('stat-products');
+      const $c = document.getElementById('stat-categories');
+      if ($p) $p.textContent = totalCount ? fmt(totalCount) : '—';
+      const sample = await pb.collection('products').getList(1, 200, { fields:'category', $autoCancel:false });
+      const cats = new Set((sample.items||[]).map(p=>p.category).filter(Boolean));
+      if ($c) $c.textContent = cats.size ? String(cats.size) : '—';
+    } catch(e) { /* keep dashes silently */ }
+  })();
 
   // AI demo
   const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';

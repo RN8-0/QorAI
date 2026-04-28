@@ -149,10 +149,18 @@ async function signInWithGoogle() {
     hideAuthError();
     await pbSignInWithGoogle();
     closeAuthModal();
+    if (typeof qorTrack === 'function') qorTrack('login', { method: 'google' });
   } catch (e) {
     console.warn('Google sign-in error:', e);
-    if (!String(e.message).includes('closed') && !String(e.message).includes('cancel')) {
-      showAuthError('Google sign-in failed. Please try email/password.');
+    const msg = String(e?.message || '').toLowerCase();
+    if (msg.includes('closed') || msg.includes('cancel') || msg.includes('popup')) {
+      // user closed the popup — silent
+      return;
+    }
+    if (msg.includes('not enabled') || msg.includes('provider') || msg.includes('oauth2') || msg.includes('config')) {
+      showAuthError('Google sign-in is not configured yet. Please use email and password for now.');
+    } else {
+      showAuthError('Google sign-in failed. Please try email and password.');
     }
   }
 }
@@ -169,8 +177,10 @@ async function submitAuth() {
     hideAuthError();
     if (authMode === 'signin') {
       await pbSignIn(email, password);
+      if (typeof qorTrack === 'function') qorTrack('login', { method: 'email' });
     } else {
       await pbRegister(email, password);
+      if (typeof qorTrack === 'function') qorTrack('sign_up', { method: 'email' });
     }
     closeAuthModal();
   } catch (e) {
@@ -208,15 +218,6 @@ function getPbAuthErrorMessage(error) {
 }
 
 // Expose
-window.openAuthModal = openAuthModal;
-window.closeAuthModal = closeAuthModal;
-window.signInWithGoogle = signInWithGoogle;
-window.submitAuth = submitAuth;
-window.signOutUser = signOutUser;
-window.switchAuthTab = switchAuthTab;
-window.toggleUserMenu = toggleUserMenu;
-
-
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.signInWithGoogle = signInWithGoogle;

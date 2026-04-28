@@ -75,8 +75,21 @@ async function pbRegister(email, password, name = '') {
 // Google sign-in is disabled until PB native OAuth2 is wired up on
 // an HTTPS PB server. Keep the function name so callers don't break.
 
+// ─── Google OAuth2 via PocketBase native popup flow ──────────────
+// Requires "google" to be enabled in PB Auth Providers (Admin UI)
+
 async function pbSignInWithGoogle() {
-  throw new Error('Google sign-in is temporarily unavailable. Please use email and password.');
+  const pb = getPb();
+  // Native PB OAuth2 popup. Throws on cancel/close — caller handles.
+  const authData = await pb.collection('users').authWithOAuth2({
+    provider: 'google',
+    // Optional: when PB returns the basic Google profile, copy missing fields.
+    createData: {
+      // emailVisibility helps the user manage their PB profile later
+      emailVisibility: true,
+    },
+  });
+  return authData;
 }
 
 async function pbSignInWithEmail(email, password) {
