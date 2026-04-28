@@ -217,6 +217,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (!mounted ||
         !_scrollController.hasClients ||
         _fetchingAll ||
+        _hydratingFilterCatalog ||
         _allLoaded) {
       return;
     }
@@ -227,6 +228,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       if (!mounted ||
           !_scrollController.hasClients ||
           _fetchingAll ||
+          _hydratingFilterCatalog ||
           _allLoaded) {
         return;
       }
@@ -596,19 +598,38 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     });
     try {
       final ds = ref.read(pbDataSourceProvider);
-      final fullCatalog = await ds.getAllProductsInCategoryTs(
-        category: _activeCategoryId,
-        sortBy: _serverSortBy(),
-      );
-      if (!mounted) return;
+      while (mounted && _filterState.isActive && !_allLoaded) {
+        final nextPageToFetch = _currentPage;
+        final result = await ds.getProductsPageTs(
+          category: _activeCategoryId,
+          limit: 40,
+          page: nextPageToFetch,
+          sortBy: _serverSortBy(),
+        );
+        if (!mounted) return;
 
-      final sanitized = _sanitizeCategoryProducts(fullCatalog);
-      setState(() {
-        _allProducts = sanitized;
-        _allLoaded = true;
-        _totalProductCount = sanitized.length;
-        _currentPage = 1;
-      });
+        final existingIds = _allProducts.map((p) => p.id).toSet();
+        final newProducts = _sanitizeCategoryProducts(
+          result.products,
+        ).where((p) => !existingIds.contains(p.id)).toList();
+
+        setState(() {
+          if (newProducts.isNotEmpty) {
+            _allProducts = [..._allProducts, ...newProducts];
+          }
+          _currentPage = result.nextPage;
+          _allLoaded = !result.hasMore;
+          _totalProductCount = result.totalFound;
+        });
+
+        if (!result.hasMore) {
+          break;
+        }
+
+        // Yield a frame between page fetches so UI stays responsive while
+        // filters progressively cover the full category.
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
     } catch (_) {
       // Keep the already loaded slice if the full fetch fails.
     } finally {
@@ -970,7 +991,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   Widget _buildBody(List<ProductEntity> products) {
     // Show spinner: initial load OR fetching still running with no products yet
-    if ((_loading && _allProducts.isEmpty) || (_fetchingAll && _allProducts.isEmpty)) {
+    if ((_loading && _allProducts.isEmpty) ||
+        (_fetchingAll && _allProducts.isEmpty)) {
       return const Center(
         child: CircularProgressIndicator(
           color: AppTheme.primaryBlue,
