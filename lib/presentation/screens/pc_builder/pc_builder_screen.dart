@@ -1120,9 +1120,17 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final current = _selected[component];
     if (current == null) return const [];
 
-    final pool = await ref.read(
-      pcBuilderProductsProvider(component.categoryId).future,
-    );
+    // Only need top-scored candidates — load first page sorted by techScore desc.
+    // Avoids getAllProductsInCategoryTs (which fetches 1000s of items for 8+ sec).
+    final ds = ref.read(pbDataSourceProvider);
+    final (:products, hasMore: _, nextPage: _, totalFound: _) = await ds
+        .getProductsPageTs(
+          category: component.categoryId,
+          limit: 30,
+          page: 1,
+          sortBy: 'techScore:desc',
+        );
+    final pool = products.cast<ProductEntity>();
     final candidates =
         pool
             .where((p) => p.id != current.id)
@@ -5093,6 +5101,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     );
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: context.backgroundColor,
       appBar: AppBar(
         backgroundColor: context.backgroundColor,
@@ -5480,28 +5489,28 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             child: pickerState.isLoading
                 ? Center(
                     child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: widget.component.accentColor,
-                      ),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: widget.component.accentColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          context.l10n?.loading ?? 'Loading...',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      context.l10n?.loading ?? 'Loading...',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: context.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : pickerState.items.isEmpty && !pickerState.isLoading
+                  )
+                : pickerState.items.isEmpty && !pickerState.isLoading
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -5515,7 +5524,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Text(
-                            context.l10n?.noProductsFound ?? 'No products found',
+                            context.l10n?.noProductsFound ??
+                                'No products found',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               color: context.textPrimary,
@@ -5622,7 +5632,11 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     );
   }
 
-  Widget _list(BuildContext context, List<ProductEntity> allProducts, PcPickerState pickerState) {
+  Widget _list(
+    BuildContext context,
+    List<ProductEntity> allProducts,
+    PcPickerState pickerState,
+  ) {
     final f = _applyFilters(allProducts);
     if (f.isEmpty) {
       // Check if compat filter is hiding everything
@@ -5725,12 +5739,14 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.metrics.pixels >=
-            notification.metrics.maxScrollExtent - 400) {
+        // Only trigger at scroll END, and only when truly near the bottom
+        // (extentAfter < 300px). Prevents spurious fires during sheet open
+        // animation (maxScrollExtent=0) and mid-scroll cascading.
+        if (notification is ScrollEndNotification &&
+            notification.metrics.maxScrollExtent > 0 &&
+            notification.metrics.extentAfter < 300) {
           ref
-              .read(
-                pcPickerProvider(widget.component.categoryId).notifier,
-              )
+              .read(pcPickerProvider(widget.component.categoryId).notifier)
               .loadMore();
         }
         return false;

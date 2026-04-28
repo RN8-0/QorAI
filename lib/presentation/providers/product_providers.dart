@@ -118,23 +118,12 @@ final pcPickerProvider = StateNotifierProvider.autoDispose
       return PcPickerNotifier(ds, categoryId.toLowerCase().trim());
     });
 
-// ── In-memory cache for PC builder (upgrade suggestions only) ──
-final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
 const int _homeFeedInitialCategoryCount = 14;
 // 50 → 15: UI'da sadece 8 kart görünüyor (_kHorizontalInitialItemLimit).
 // 15 item = 8 görünür + 7 buffer. Network ve heap maliyeti ~3.3x azalır.
 const int _homeFeedInitialPerCategory = 15;
-
-/// Clear PC Builder cache for a specific category (or all if null)
-void clearPcBuilderCache([String? category]) {
-  if (category != null) {
-    _pcBuilderCacheMap.remove(category.toLowerCase().trim());
-  } else {
-    _pcBuilderCacheMap.clear();
-  }
-}
 
 /// All category aliases — shared between pcBuilder and category providers.
 const pcCategoryAliases = <String, List<String>>{
@@ -188,112 +177,6 @@ const pcCategoryAliases = <String, List<String>>{
 };
 
 /// Cloud Function keyword search queries per PC component
-const _pcCategorySearchKeywords = <String, String>{
-  'cpus': 'cpu processor intel amd ryzen core i9 i7',
-  'gpus': 'gpu graphics card nvidia rtx amd radeon',
-  'motherboards': 'motherboard anakart asus gigabyte msi',
-  'ram': 'ram memory ddr4 ddr5 corsair kingston',
-  'ssd': 'ssd nvme m.2 solid state samsung wd',
-  'psu': 'power supply psu corsair evga seasonic',
-  'cases': 'pc case tower atx corsair nzxt fractal',
-  'coolers': 'cpu cooler fan heatsink noctua be quiet',
-  'monitors': 'monitor display screen 4k 144hz ips',
-  'keyboards': 'keyboard mechanical gaming corsair razer',
-  'mice': 'mouse gaming optical wireless logitech razer',
-  'headsets': 'headset headphones gaming audio',
-};
-
-/// PC Builder product provider — loads products for a category.
-/// Strategy:
-///   1. In-memory cache (instant)
-///   2. Paginated serverAndCache fetch (uses local cache if available, server otherwise)
-///   3. All aliases tried until one returns data
-final pcBuilderProductsProvider = FutureProvider.autoDispose
-    .family<List<ProductEntity>, String>((ref, categoryId) async {
-      final normalizedCategory = categoryId.toLowerCase().trim();
-
-      // 1) In-memory cache — instant
-      if (_pcBuilderCacheMap.containsKey(normalizedCategory)) {
-        return _pcBuilderCacheMap[normalizedCategory]!;
-      }
-
-      final aliases =
-          pcCategoryAliases[normalizedCategory] ?? [normalizedCategory];
-      final ds = ref.read(pbDataSourceProvider);
-
-      // 2) Typesense: fetch ALL products for category in one go (~100-500ms vs 10+s PocketBase)
-      for (final alias in aliases) {
-        try {
-          final sw = Stopwatch()..start();
-          final products = await ds.getAllProductsInCategoryTs(
-            category: alias,
-            perPage: 250,
-            maxTotal: 5000,
-          );
-          sw.stop();
-          if (products.isNotEmpty) {
-            final entities = products.cast<ProductEntity>();
-            entities.sort((a, b) => b.techScore.compareTo(a.techScore));
-            _pcBuilderCacheMap[normalizedCategory] = entities;
-            debugPrint(
-              '[PCBuilder] ✅ TS "$alias": ${entities.length} in ${sw.elapsedMilliseconds}ms',
-            );
-            return entities;
-          }
-        } catch (e) {
-          debugPrint('[PCBuilder] ❌ TS "$alias": $e');
-        }
-      }
-
-      // 3) Fallback: PocketBase paginated load
-      debugPrint(
-        '[PCBuilder] ⚠️ TS empty, falling back to PB for "$normalizedCategory"',
-      );
-      for (final alias in aliases) {
-        try {
-          final all = <ProductEntity>[];
-          int page = 1;
-          while (all.length < 5000) {
-            final result = await ds.getProductsPage(
-              category: alias,
-              limit: 500,
-              page: page,
-            );
-            all.addAll(result.products.cast<ProductEntity>());
-            if (!result.hasMore || result.products.isEmpty) break;
-            page = result.nextPage;
-          }
-          if (all.isNotEmpty) {
-            all.sort((a, b) => b.techScore.compareTo(a.techScore));
-            _pcBuilderCacheMap[normalizedCategory] = all;
-            return all;
-          }
-        } catch (_) {}
-      }
-
-      // 4) Last resort: Typesense text search
-      final keyword = _pcCategorySearchKeywords[normalizedCategory];
-      if (keyword != null) {
-        try {
-          final results = await ds.searchProducts(query: keyword, limit: 200);
-          if (results.isNotEmpty) {
-            final products = results.cast<ProductEntity>();
-            products.sort((a, b) => b.techScore.compareTo(a.techScore));
-            _pcBuilderCacheMap[normalizedCategory] = products;
-            debugPrint(
-              '[PCBuilder] ✅ TS search fallback "$normalizedCategory": ${products.length}',
-            );
-            return products;
-          }
-        } catch (e) {
-          debugPrint('[PCBuilder] ❌ search fallback "$normalizedCategory": $e');
-        }
-      }
-
-      debugPrint('[PCBuilder] ⚠️ All sources empty for "$normalizedCategory"');
-      return [];
-    });
-
 final productsByCategoryProvider = FutureProvider.autoDispose
     .family<Result<List<ProductEntity>>, String>((ref, category) async {
       const categoryAliases = <String, List<String>>{
