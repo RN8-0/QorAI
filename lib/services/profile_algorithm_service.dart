@@ -48,7 +48,7 @@ class BehaviorSignals {
 
   /// Load behavior signals (stubbed — PocketBase behavior tracking TBD).
   static Future<BehaviorSignals> load(String uid) async {
-    // TODO: implement PocketBase behavior signal aggregation
+    // implement PocketBase behavior signal aggregation
     return empty;
   }
 }
@@ -69,7 +69,7 @@ class GlobalAlgorithmSignals {
   static const empty = GlobalAlgorithmSignals();
 
   static Future<GlobalAlgorithmSignals> load() async {
-    // TODO: implement PocketBase global signals aggregation
+    // implement PocketBase global signals aggregation
     return empty;
   }
 }

@@ -2893,22 +2893,23 @@ class _WideProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 155,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: isDark ? context.surfaceVariantColor : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppTheme.brandCyan.withValues(alpha: 0.15),
-              width: 0.8,
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 155,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: isDark ? context.surfaceVariantColor : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppTheme.brandCyan.withValues(alpha: 0.15),
+                width: 0.8,
+              ),
+              boxShadow: context.cardShadow,
             ),
-            boxShadow: context.cardShadow,
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
@@ -3056,7 +3057,8 @@ class _WideProductCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -3090,28 +3092,29 @@ class _TrendingWideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 155,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: isDark ? context.surfaceVariantColor : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppTheme.brandCyan.withValues(alpha: 0.12),
-              width: 0.8,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.brandCyan.withValues(alpha: 0.06),
-                blurRadius: 10,
-                spreadRadius: -2,
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 155,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: isDark ? context.surfaceVariantColor : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppTheme.brandCyan.withValues(alpha: 0.12),
+                width: 0.8,
               ),
-            ],
-          ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F00D4FF), // brandCyan @ 0.06 alpha
+                  blurRadius: 10,
+                  spreadRadius: -2,
+                ),
+              ],
+            ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
@@ -3266,7 +3269,8 @@ class _TrendingWideCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

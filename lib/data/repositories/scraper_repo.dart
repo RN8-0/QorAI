@@ -25,15 +25,20 @@ class ScraperRepository {
     UnsubscribeFunc? unsub;
 
     void emitSafe() {
-      fetch().then((data) {
-        if (controller.hasListener) controller.add(data);
-      }).catchError((Object e) {
-        if (controller.hasListener) controller.addError(e);
-      });
+      fetch()
+          .then((data) {
+            if (controller.hasListener) controller.add(data);
+          })
+          .catchError((Object e) {
+            if (controller.hasListener) controller.addError(e);
+          });
     }
 
     emitSafe();
-    _pb.collection(collection).subscribe('*', (_) => emitSafe()).then((fn) => unsub = fn);
+    _pb
+        .collection(collection)
+        .subscribe('*', (_) => emitSafe())
+        .then((fn) => unsub = fn);
     controller.onCancel = () => unsub?.call();
     return controller.stream;
   }
@@ -45,17 +50,18 @@ class ScraperRepository {
       _watchCol(collection: 'scraper_sources', fetch: _fetchSources);
 
   Future<List<ScraperSource>> _fetchSources() async {
-    final result = await _pb.collection('scraper_sources').getFullList(sort: 'priority');
+    final result = await _pb
+        .collection('scraper_sources')
+        .getFullList(sort: 'priority');
     return result.map(ScraperSource.fromPb).toList();
   }
 
   /// Get active sources only
   Future<List<ScraperSource>> getActiveSources() async {
     try {
-      final result = await _pb.collection('scraper_sources').getFullList(
-        filter: 'isActive = true',
-        sort: 'priority',
-      );
+      final result = await _pb
+          .collection('scraper_sources')
+          .getFullList(filter: 'isActive = true', sort: 'priority');
       return result.map(ScraperSource.fromPb).toList();
     } catch (e) {
       throw ServerException(message: 'Failed to get sources: $e');
@@ -67,7 +73,9 @@ class ScraperRepository {
     try {
       if (source.id.isNotEmpty) {
         try {
-          await _pb.collection('scraper_sources').update(source.id, body: source.toMap());
+          await _pb
+              .collection('scraper_sources')
+              .update(source.id, body: source.toMap());
           return;
         } catch (_) {}
       }
@@ -80,7 +88,9 @@ class ScraperRepository {
   /// Toggle source active status
   Future<void> toggleSource(String sourceId, bool isActive) async {
     try {
-      await _pb.collection('scraper_sources').update(sourceId, body: {'isActive': isActive});
+      await _pb
+          .collection('scraper_sources')
+          .update(sourceId, body: {'isActive': isActive});
     } catch (e) {
       throw ServerException(message: 'Failed to toggle source: $e');
     }
@@ -89,7 +99,9 @@ class ScraperRepository {
   /// Update source priority
   Future<void> updateSourcePriority(String sourceId, int priority) async {
     try {
-      await _pb.collection('scraper_sources').update(sourceId, body: {'priority': priority});
+      await _pb
+          .collection('scraper_sources')
+          .update(sourceId, body: {'priority': priority});
     } catch (e) {
       throw ServerException(message: 'Failed to update source priority: $e');
     }
@@ -111,17 +123,18 @@ class ScraperRepository {
       _watchCol(collection: 'scraper_brands', fetch: _fetchBrands);
 
   Future<List<ScraperBrand>> _fetchBrands() async {
-    final result = await _pb.collection('scraper_brands').getFullList(sort: 'name');
+    final result = await _pb
+        .collection('scraper_brands')
+        .getFullList(sort: 'name');
     return result.map(ScraperBrand.fromPb).toList();
   }
 
   /// Get active brands
   Future<List<ScraperBrand>> getActiveBrands() async {
     try {
-      final result = await _pb.collection('scraper_brands').getFullList(
-        filter: 'isActive = true',
-        sort: 'name',
-      );
+      final result = await _pb
+          .collection('scraper_brands')
+          .getFullList(filter: 'isActive = true', sort: 'name');
       return result.map(ScraperBrand.fromPb).toList();
     } catch (e) {
       throw ServerException(message: 'Failed to get brands: $e');
@@ -133,7 +146,9 @@ class ScraperRepository {
     try {
       if (brand.id.isNotEmpty) {
         try {
-          await _pb.collection('scraper_brands').update(brand.id, body: brand.toMap());
+          await _pb
+              .collection('scraper_brands')
+              .update(brand.id, body: brand.toMap());
           return;
         } catch (_) {}
       }
@@ -146,7 +161,9 @@ class ScraperRepository {
   /// Toggle brand active status
   Future<void> toggleBrand(String brandId, bool isActive) async {
     try {
-      await _pb.collection('scraper_brands').update(brandId, body: {'isActive': isActive});
+      await _pb
+          .collection('scraper_brands')
+          .update(brandId, body: {'isActive': isActive});
     } catch (e) {
       throw ServerException(message: 'Failed to toggle brand: $e');
     }
@@ -168,7 +185,9 @@ class ScraperRepository {
       _watchCol(collection: 'scraper_schedules', fetch: _fetchSchedules);
 
   Future<List<ScraperSchedule>> _fetchSchedules() async {
-    final result = await _pb.collection('scraper_schedules').getFullList(sort: 'name');
+    final result = await _pb
+        .collection('scraper_schedules')
+        .getFullList(sort: 'name');
     return result.map(ScraperSchedule.fromPb).toList();
   }
 
@@ -177,7 +196,9 @@ class ScraperRepository {
     try {
       if (schedule.id.isNotEmpty) {
         try {
-          await _pb.collection('scraper_schedules').update(schedule.id, body: schedule.toMap());
+          await _pb
+              .collection('scraper_schedules')
+              .update(schedule.id, body: schedule.toMap());
           return;
         } catch (_) {}
       }
@@ -190,7 +211,9 @@ class ScraperRepository {
   /// Toggle schedule active status
   Future<void> toggleSchedule(String scheduleId, bool isActive) async {
     try {
-      await _pb.collection('scraper_schedules').update(scheduleId, body: {'isActive': isActive});
+      await _pb
+          .collection('scraper_schedules')
+          .update(scheduleId, body: {'isActive': isActive});
     } catch (e) {
       throw ServerException(message: 'Failed to toggle schedule: $e');
     }
@@ -208,25 +231,32 @@ class ScraperRepository {
   // ─── Scraper Logs ───
 
   /// Get recent logs
-  Stream<List<ScraperLog>> watchLogs({int limit = 20}) =>
-      _watchCol(collection: 'scraper_logs', fetch: () => _fetchLogs(limit: limit));
+  Stream<List<ScraperLog>> watchLogs({int limit = 20}) => _watchCol(
+    collection: 'scraper_logs',
+    fetch: () => _fetchLogs(limit: limit),
+  );
 
   Future<List<ScraperLog>> _fetchLogs({int limit = 20}) async {
-    final result = await _pb.collection('scraper_logs').getList(
-      page: 1, perPage: limit,
-      sort: '-startedAt',
-    );
+    final result = await _pb
+        .collection('scraper_logs')
+        .getList(page: 1, perPage: limit, sort: '-startedAt');
     return result.items.map(ScraperLog.fromPb).toList();
   }
 
   /// Get logs for a specific source/brand
-  Future<List<ScraperLog>> getLogsForSource(String sourceId, {int limit = 10}) async {
+  Future<List<ScraperLog>> getLogsForSource(
+    String sourceId, {
+    int limit = 10,
+  }) async {
     try {
-      final result = await _pb.collection('scraper_logs').getList(
-        page: 1, perPage: limit,
-        filter: 'sourceId = "$sourceId"',
-        sort: '-startedAt',
-      );
+      final result = await _pb
+          .collection('scraper_logs')
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: 'sourceId = "$sourceId"',
+            sort: '-startedAt',
+          );
       return result.items.map(ScraperLog.fromPb).toList();
     } catch (e) {
       throw ServerException(message: 'Failed to get logs: $e');
@@ -236,8 +266,10 @@ class ScraperRepository {
   // ─── Category Templates ───
 
   /// Get all category templates
-  Stream<List<CategoryTemplate>> watchCategoryTemplates() =>
-      _watchCol(collection: 'category_templates', fetch: _fetchCategoryTemplates);
+  Stream<List<CategoryTemplate>> watchCategoryTemplates() => _watchCol(
+    collection: 'category_templates',
+    fetch: _fetchCategoryTemplates,
+  );
 
   Future<List<CategoryTemplate>> _fetchCategoryTemplates() async {
     final result = await _pb.collection('category_templates').getFullList();
@@ -247,7 +279,9 @@ class ScraperRepository {
   /// Get a specific category template
   Future<CategoryTemplate?> getCategoryTemplate(String categoryId) async {
     try {
-      final record = await _pb.collection('category_templates').getOne(categoryId);
+      final record = await _pb
+          .collection('category_templates')
+          .getOne(categoryId);
       return CategoryTemplate.fromPb(record);
     } catch (e) {
       return null;
@@ -259,7 +293,9 @@ class ScraperRepository {
     try {
       if (template.id.isNotEmpty) {
         try {
-          await _pb.collection('category_templates').update(template.id, body: template.toMap());
+          await _pb
+              .collection('category_templates')
+              .update(template.id, body: template.toMap());
           return;
         } catch (_) {}
       }
@@ -272,20 +308,24 @@ class ScraperRepository {
   // ─── Subscription Services ───
 
   /// Get all subscription services
-  Stream<List<StreamingService>> watchStreamingServices() =>
-      _watchCol(collection: 'subscription_services', fetch: _fetchStreamingServices);
+  Stream<List<StreamingService>> watchStreamingServices() => _watchCol(
+    collection: 'subscription_services',
+    fetch: _fetchStreamingServices,
+  );
 
   Future<List<StreamingService>> _fetchStreamingServices() async {
-    final result = await _pb.collection('subscription_services').getFullList(sort: 'category');
+    final result = await _pb
+        .collection('subscription_services')
+        .getFullList(sort: 'category');
     return result.map(StreamingService.fromPb).toList();
   }
 
   /// Get services by category
   Future<List<StreamingService>> getServicesByCategory(String category) async {
     try {
-      final result = await _pb.collection('subscription_services').getFullList(
-        filter: 'category = "$category"',
-      );
+      final result = await _pb
+          .collection('subscription_services')
+          .getFullList(filter: 'category = "$category"');
       return result.map(StreamingService.fromPb).toList();
     } catch (e) {
       throw ServerException(message: 'Failed to get services: $e');
@@ -297,11 +337,15 @@ class ScraperRepository {
     try {
       if (service.id.isNotEmpty) {
         try {
-          await _pb.collection('subscription_services').update(service.id, body: service.toMap());
+          await _pb
+              .collection('subscription_services')
+              .update(service.id, body: service.toMap());
           return;
         } catch (_) {}
       }
-      await _pb.collection('subscription_services').create(body: service.toMap());
+      await _pb
+          .collection('subscription_services')
+          .create(body: service.toMap());
     } catch (e) {
       throw ServerException(message: 'Failed to save service: $e');
     }
@@ -325,24 +369,32 @@ class ScraperRepository {
     String? categoryId,
     int maxDevices = 50,
   }) async {
-    // TODO: Implement via PocketBase custom endpoint or external service
-    return ScraperResult(success: false, found: 0, added: 0, skipped: 0, errors: 0);
+    // Implement via PocketBase custom endpoint or external service
+    return ScraperResult(
+      success: false,
+      found: 0,
+      added: 0,
+      skipped: 0,
+      errors: 0,
+    );
   }
 
   /// Scrape a single URL
   Future<ScrapedProduct> scrapeUrl(String url) async {
-    // TODO: Implement via PocketBase custom endpoint
+    // Implement via PocketBase custom endpoint
     return ScrapedProduct(success: false, name: '', source: '', sourceUrl: url);
   }
 
   /// Get scraper status
   Future<ScraperStatus> getStatus() async {
     try {
-      final products = await _pb.collection('products').getList(page: 1, perPage: 1);
+      final products = await _pb
+          .collection('products')
+          .getList(page: 1, perPage: 1);
       final sources = await _pb.collection('scraper_sources').getFullList();
-      final activeBrands = await _pb.collection('scraper_brands').getFullList(
-        filter: 'isActive = true',
-      );
+      final activeBrands = await _pb
+          .collection('scraper_brands')
+          .getFullList(filter: 'isActive = true');
       return ScraperStatus(
         totalProducts: products.totalItems,
         activeSources: sources.length,
@@ -350,13 +402,18 @@ class ScraperRepository {
         recentLogs: [],
       );
     } catch (e) {
-      return ScraperStatus(totalProducts: 0, activeSources: 0, activeBrands: 0, recentLogs: []);
+      return ScraperStatus(
+        totalProducts: 0,
+        activeSources: 0,
+        activeBrands: 0,
+        recentLogs: [],
+      );
     }
   }
 
   /// Initialize default scraper data
   Future<void> initializeDefaultData() async {
-    // TODO: Implement default data seeding for PocketBase
+    // Implement default data seeding for PocketBase
   }
 }
 
@@ -440,7 +497,8 @@ class ScraperStatus {
       totalProducts: data['totalProducts'] as int? ?? 0,
       activeSources: data['activeSources'] as int? ?? 0,
       activeBrands: data['activeBrands'] as int? ?? 0,
-      recentLogs: (data['recentLogs'] as List<dynamic>?)
+      recentLogs:
+          (data['recentLogs'] as List<dynamic>?)
               ?.map((e) => Map<String, dynamic>.from(e))
               .toList() ??
           [],

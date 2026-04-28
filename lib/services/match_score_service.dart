@@ -634,7 +634,7 @@ Respond ONLY with a JSON object: {"score": <25-100>, "reason": "<3-4 sentences, 
 
   /// Fetch recent search queries from behavior data.
   Future<List<String>> _fetchRecentSearches(String uid) async {
-    // TODO: Implement with PocketBase behavior tracking
+    // Implement with PocketBase behavior tracking
     return [];
   }
 

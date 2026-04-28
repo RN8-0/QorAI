@@ -40,9 +40,9 @@ class AppTheme {
   static const Color brandDark = Color(0xFF0A1628);
 
   // Premium — violet tones
-  static const Color premiumDeep = Color(0xFF5B21B6);     // Deep violet
-  static const Color premiumBase = Color(0xFF7C3AED);     // Main violet
-  static const Color premiumLight = Color(0xFFA78BFA);    // Light violet
+  static const Color premiumDeep = Color(0xFF5B21B6); // Deep violet
+  static const Color premiumBase = Color(0xFF7C3AED); // Main violet
+  static const Color premiumLight = Color(0xFFA78BFA); // Light violet
 
   // Legacy premium aliases (backward compat)
   static const Color premiumBronze = premiumDeep;
@@ -402,7 +402,7 @@ class AppTheme {
   ];
 
   /// Card: soft ambient glow — dark theme version
-  static List<BoxShadow> get cardShadow => [
+  static final List<BoxShadow> cardShadow = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.28),
       blurRadius: 8,
