@@ -267,27 +267,38 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   Widget _buildDesktopLayout(int currentIndex) {
     final isWide = context.screenWidth >= Breakpoints.desktop;
-    return Row(
+    final location = GoRouterState.of(context).matchedLocation;
+    return Stack(
       children: [
-        _DesktopSidebar(
-          currentIndex: currentIndex,
-          onTap: _onNavTap,
-          isExpanded: isWide,
-        ),
-        Container(width: 1, color: context.dividerColor),
-        Expanded(
-          child: Column(
-            children: [
-              _buildConnectivityBanner(),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: widget.navigationShell,
+        Row(
+          children: [
+            _DesktopSidebar(
+              currentIndex: currentIndex,
+              onTap: _onNavTap,
+              isExpanded: isWide,
+            ),
+            Container(width: 1, color: context.dividerColor),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildConnectivityBanner(),
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: widget.navigationShell,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
+          ],
+        ),
+        // Tablet/Desktop'ta da AI chat balonu görünsün
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: _FloatingAiOverlay(currentRoute: location),
           ),
         ),
       ],

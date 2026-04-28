@@ -2820,6 +2820,7 @@ class _WideProductCard extends StatelessWidget {
                     imageUrl: product.imageURL.isNotEmpty
                         ? product.imageURL
                         : null,
+                    width: 139,
                     height: 89,
                     borderRadius: BorderRadius.circular(10),
                     padding: EdgeInsets.zero,
@@ -3021,6 +3022,7 @@ class _TrendingWideCard extends StatelessWidget {
                     imageUrl: product.imageURL.isNotEmpty
                         ? product.imageURL
                         : null,
+                    width: 139,
                     height: 89,
                     borderRadius: BorderRadius.circular(10),
                     padding: EdgeInsets.zero,

@@ -86,8 +86,11 @@ class _ProductImageBoxState extends State<ProductImageBox> {
       final url = _urls[_idx];
       // Decode to physical pixels, not logical — halves memory vs full-res.
       final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
-      final targetH = widget.height ?? 140.0;
-      final cacheW = (targetH * dpr).round().clamp(120, 900);
+      // Width bazlı cache: görsel, yükseklik değil genişlik boyutunda decode edilmeli.
+      // width verilmişse onu, yoksa height fallback — height-only'de caller'ın
+      // explicit width geçmesi önerilir (_WideProductCard gibi).
+      final targetW = widget.width ?? widget.height ?? 140.0;
+      final cacheW = (targetW * dpr).round().clamp(120, 900);
       imageWidget = CachedNetworkImage(
         key: ValueKey(url),
         imageUrl: url,
