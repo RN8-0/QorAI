@@ -19,11 +19,11 @@ LocalizedProductKey _detailLocalizedProductKey(
   );
 }
 
-void _requestDetailAiMatch(
+Future<void> _requestDetailAiMatch(
   BuildContext context,
   WidgetRef ref,
   ProductEntity product,
-) {
+) async {
   final isLoggedInNow = ref.read(authStateProvider).valueOrNull != null;
   if (!isLoggedInNow) {
     context.go(AppRoutes.login);
@@ -35,6 +35,9 @@ void _requestDetailAiMatch(
     context.push(AppRoutes.quiz);
     return;
   }
+
+  if (!await ensureEmailVerified(context, ref)) return;
+  if (!context.mounted) return;
 
   final subscription = ref.read(subscriptionServiceProvider);
   if (!subscription.canUseDetailMatchAi) {

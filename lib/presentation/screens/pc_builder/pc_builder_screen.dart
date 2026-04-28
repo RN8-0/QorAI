@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
@@ -1641,6 +1642,8 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   Future<void> _runAiAnalysis() async {
     if (_aiLoading) return;
     if (!requireAuth(context)) return;
+    if (!await ensureEmailVerified(context, ref)) return;
+    if (!mounted) return;
     // Check PC Builder AI limit
     if (_aiAnalysis == null) {
       final sub = ref.read(subscriptionServiceProvider);

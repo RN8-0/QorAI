@@ -45,12 +45,14 @@ class IpLocationService {
     } catch (_) {}
 
     // 2) Primary: ipapi.co/json/ (returns country, currency, country_name)
+    // Timeout 2s tutuluyor: ipapi.co sıkça 429 dönüyor, 5s blocking ana thread
+    // üzerinde feed init'i geciktiriyor. Hızlı fail → ipwho.is fallback.
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         'https://ipapi.co/json/',
         options: Options(
-          receiveTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 2),
+          sendTimeout: const Duration(seconds: 2),
         ),
       );
       final data = res.data;
@@ -72,8 +74,8 @@ class IpLocationService {
       final res = await _dio.get<Map<String, dynamic>>(
         'https://ipwho.is/',
         options: Options(
-          receiveTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 3),
+          sendTimeout: const Duration(seconds: 3),
         ),
       );
       final data = res.data;

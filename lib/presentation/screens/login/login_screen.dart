@@ -97,7 +97,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final raw = message.trim();
     if (raw.isEmpty) return raw;
 
-    final isTr = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     if (!isTr) return raw;
 
     final lower = raw.toLowerCase();
@@ -121,13 +122,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (lower.contains('timed out') || lower.contains('timeout')) {
       return 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.';
     }
-    if (lower.contains('password reset') && lower.contains('could not be sent')) {
+    if (lower.contains('password reset') &&
+        lower.contains('could not be sent')) {
       return 'Şifre sıfırlama e-postası gönderilemedi.';
     }
     if (lower.contains('registration failed')) {
       return 'Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.';
     }
-    if (lower.contains('authentication failed') || lower.contains('failed to authenticate')) {
+    if (lower.contains('authentication failed') ||
+        lower.contains('failed to authenticate')) {
       return 'Kimlik doğrulama başarısız oldu.';
     }
     if (lower.startsWith('google sign-in failed:')) {
@@ -164,7 +167,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     await Future.wait(
       pending.map(
-        (url) => precacheImage(CachedNetworkImageProvider(url), context).catchError((_) {}),
+        (url) => precacheImage(
+          CachedNetworkImageProvider(url),
+          context,
+        ).catchError((_) {}),
       ),
     );
   }
@@ -299,7 +305,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               duration: const Duration(seconds: 5),
             ),
           );
-          _navigateAfterLogin(user.quizCompleted);
+          _navigateAfterLogin(user.user.quizCompleted);
         }
       case Failure(error: final error):
         _showError(error.message);
@@ -343,12 +349,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final isDark = baseTheme.brightness == Brightness.dark;
         return Theme(
           data: baseTheme.copyWith(
-            colorScheme: (isDark ? const ColorScheme.dark() : const ColorScheme.light()).copyWith(
-              primary: AppTheme.primaryBlue,
-              onPrimary: Colors.white,
-              surface: context.surfaceColor,
-              onSurface: context.textPrimary,
-            ),
+            colorScheme:
+                (isDark ? const ColorScheme.dark() : const ColorScheme.light())
+                    .copyWith(
+                      primary: AppTheme.primaryBlue,
+                      onPrimary: Colors.white,
+                      surface: context.surfaceColor,
+                      onSurface: context.textPrimary,
+                    ),
             dialogTheme: baseTheme.dialogTheme.copyWith(
               backgroundColor: context.surfaceColor,
             ),
@@ -362,7 +370,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 }
                 return context.textPrimary;
               }),
-              todayForegroundColor: WidgetStateProperty.all(AppTheme.primaryBlue),
+              todayForegroundColor: WidgetStateProperty.all(
+                AppTheme.primaryBlue,
+              ),
               yearForegroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
                   return Colors.white;

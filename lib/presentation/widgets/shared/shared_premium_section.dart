@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
@@ -1800,7 +1801,8 @@ class SharedPremiumFeaturesSectionState
     );
     final hasData =
         ref.read(deepAnalysisCacheProvider(key)).valueOrNull != null;
-    if (!hasData && !_checkAiFeatureLimit()) return;
+    if (!hasData && !await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
     setState(() {
       _deepAnalysisExpanded = true;
       _deepAnalysisUserCollapsed = false;
@@ -1829,7 +1831,8 @@ class SharedPremiumFeaturesSectionState
     );
     final hasData =
         ref.read(alternativesCacheProvider(key)).valueOrNull != null;
-    if (!hasData && !_checkAiFeatureLimit()) return;
+    if (!hasData && !await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
     setState(() {
       _alternativesExpanded = true;
       _alternativesUserCollapsed = false;
@@ -1853,7 +1856,8 @@ class SharedPremiumFeaturesSectionState
       languageCode: lang,
     );
     final hasData = ref.read(advisorCacheProvider(key)).valueOrNull != null;
-    if (!hasData && !_checkAiFeatureLimit()) return;
+    if (!hasData && !await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
     setState(() {
       _advisorExpanded = true;
       _advisorUserCollapsed = false;
@@ -1887,7 +1891,8 @@ class SharedPremiumFeaturesSectionState
       languageCode: lang,
     );
     final hasData = ref.read(predictionCacheProvider(key)).valueOrNull != null;
-    if (!hasData && !_checkAiFeatureLimit()) return;
+    if (!hasData && !await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
     setState(() {
       _predictionExpanded = true;
       _predictionUserCollapsed = false;
@@ -1913,8 +1918,10 @@ class SharedPremiumFeaturesSectionState
   }
 
   /// Check detail AI feature limit — returns true if allowed
-  bool _checkAiFeatureLimit() {
+  Future<bool> _checkAiFeatureLimit() async {
     if (!requireAuth(context)) return false;
+    if (!await ensureEmailVerified(context, ref)) return false;
+    if (!mounted) return false;
     final sub = ref.read(subscriptionServiceProvider);
     if (!sub.canUseDetailAi) {
       showLimitReachedDialog(context, featureName: 'detail-ai');

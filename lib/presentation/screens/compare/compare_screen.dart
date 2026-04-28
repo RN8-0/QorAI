@@ -17,6 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
+import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/product_filter.dart';

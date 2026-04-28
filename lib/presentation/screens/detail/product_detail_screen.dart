@@ -13,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';

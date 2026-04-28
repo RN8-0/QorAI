@@ -260,6 +260,8 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
       setState(() => _expanded = !_expanded);
       return;
     }
+    if (!await ensureEmailVerified(context, ref)) return;
+    if (!mounted) return;
     // Check detail AI limit before fetching
     final sub = ref.read(subscriptionServiceProvider);
     if (!sub.canUseDetailAi) {
@@ -1714,38 +1716,44 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
           // ── Review text (collapsible) or edit field ──
           if (_isEditing)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TextField(
                     controller: _editCtrl,
-                    maxLines: 5,
-                    minLines: 2,
+                    maxLines: 8,
+                    minLines: 4,
                     autofocus: true,
                     cursorColor: AppTheme.brandBlue,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
+                      fontSize: 15,
+                      height: 1.45,
                       color: context.textPrimary,
                     ),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: context.surfaceVariantColor,
-                      contentPadding: const EdgeInsets.all(12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.5),
-                          width: 1.5,
+                          color: AppTheme.brandBlue.withValues(alpha: 0.55),
+                          width: 1.4,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -1753,15 +1761,23 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                         onPressed: _savingEdit
                             ? null
                             : () => setState(() => _isEditing = false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                        ),
                         child: Text(
                           context.l10n?.cancel ?? 'Cancel',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                             color: context.textTertiaryColor,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       ElevatedButton(
                         onPressed: _savingEdit ? null : _saveEdit,
                         style: ElevatedButton.styleFrom(
@@ -1772,14 +1788,15 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            horizontal: 20,
+                            vertical: 10,
                           ),
+                          minimumSize: const Size(0, 36),
                         ),
                         child: _savingEdit
                             ? const SizedBox(
-                                width: 14,
-                                height: 14,
+                                width: 16,
+                                height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Colors.white,
@@ -1788,7 +1805,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                             : Text(
                                 context.l10n?.save ?? 'Save',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -2096,25 +2113,28 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                     Expanded(
                       child: TextField(
                         controller: widget.replyController,
-                        maxLines: 5,
-                        minLines: 2,
+                        maxLines: 6,
+                        minLines: 3,
                         autofocus: true,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
+                          fontSize: 14,
+                          height: 1.45,
                           color: context.textPrimary,
                         ),
                         decoration: InputDecoration(
                           hintText:
                               context.l10n?.replyHint ?? 'Write your reply...',
                           hintStyle: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: context.textTertiaryColor,
                           ),
                           filled: true,
                           fillColor: context.surfaceVariantColor,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
+                            horizontal: 16,
+                            vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -2123,29 +2143,29 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.5),
-                              width: 1.5,
+                              color: AppTheme.brandBlue.withValues(alpha: 0.55),
+                              width: 1.4,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     GestureDetector(
                       onTap: widget.submitting ? null : widget.onSubmitReply,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        width: 40,
-                        height: 40,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [AppTheme.primaryBlue, AppTheme.neonPurple],
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: widget.submitting
                             ? const Padding(
-                                padding: EdgeInsets.all(10),
+                                padding: EdgeInsets.all(12),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Colors.white,
@@ -2154,7 +2174,7 @@ class _ReviewRepliesSectionState extends ConsumerState<_ReviewRepliesSection> {
                             : const Icon(
                                 Icons.send_rounded,
                                 color: Colors.white,
-                                size: 18,
+                                size: 20,
                               ),
                       ),
                     ),
@@ -2502,40 +2522,42 @@ class _ReplyItemState extends ConsumerState<_ReplyItem> {
                 const SizedBox(height: 3),
                 if (_isEditing)
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       TextField(
                         controller: _editCtrl,
-                        maxLines: 4,
-                        minLines: 2,
+                        maxLines: 6,
+                        minLines: 3,
                         autofocus: true,
                         cursorColor: AppTheme.brandBlue,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
+                          fontSize: 14,
+                          height: 1.45,
                           color: context.textPrimary,
                         ),
                         decoration: InputDecoration(
-                          isDense: true,
                           filled: true,
                           fillColor: context.surfaceColor,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
+                            horizontal: 14,
+                            vertical: 12,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.5),
-                              width: 1.5,
+                              color: AppTheme.brandBlue.withValues(alpha: 0.55),
+                              width: 1.4,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -2545,43 +2567,44 @@ class _ReplyItemState extends ConsumerState<_ReplyItem> {
                                 : () => setState(() => _isEditing = false),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
+                                horizontal: 12,
+                                vertical: 8,
                               ),
                               child: Text(
                                 context.l10n?.cancel ?? 'Cancel',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                   color: context.textTertiaryColor,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           GestureDetector(
                             onTap: _saving ? null : _saveEdit,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
+                                horizontal: 18,
+                                vertical: 9,
                               ),
                               decoration: BoxDecoration(
                                 color: AppTheme.brandBlue,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: _saving
                                   ? const SizedBox(
-                                      width: 12,
-                                      height: 12,
+                                      width: 14,
+                                      height: 14,
                                       child: CircularProgressIndicator(
-                                        strokeWidth: 1.5,
+                                        strokeWidth: 1.8,
                                         color: Colors.white,
                                       ),
                                     )
                                   : Text(
                                       context.l10n?.save ?? 'Save',
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.white,
                                       ),

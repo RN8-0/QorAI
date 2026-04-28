@@ -25,6 +25,7 @@ class UserModel extends UserEntity {
     super.favorites,
     super.quizCompleted,
     super.isPremium,
+    super.emailVerified,
     required super.createdAt,
     required super.updatedAt,
     super.affiliateClicks,
@@ -62,6 +63,7 @@ class UserModel extends UserEntity {
       favorites: List<String>.from(data['favorites'] ?? []),
       quizCompleted: data['quizCompleted'] ?? false,
       isPremium: data['isPremium'] ?? false,
+      emailVerified: _resolveVerified(record),
       createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
       updatedAt: _parseDate(data['updated']) ?? _parseDate(data['updatedAt']) ?? DateTime.now(),
       affiliateClicks: data['affiliateClicks'] ?? 0,
@@ -82,6 +84,17 @@ class UserModel extends UserEntity {
       ),
       userSubscriptionDetails: _parseSubscriptionDetails(data['userSubscriptionDetails']),
     );
+  }
+
+  /// PB auth collection'larında `verified` bool'u root JSON'da bulunur.
+  static bool _resolveVerified(RecordModel record) {
+    final data = record.data;
+    final dataVerified = data['verified'];
+    if (dataVerified is bool) return dataVerified;
+    final json = record.toJson();
+    final jsonVerified = json['verified'];
+    if (jsonVerified is bool) return jsonVerified;
+    return false;
   }
 
   /// E-posta: Google oturum > data.email > toJson().email (PB auth fields)
@@ -166,6 +179,7 @@ class UserModel extends UserEntity {
       favorites: entity.favorites,
       quizCompleted: entity.quizCompleted,
       isPremium: entity.isPremium,
+      emailVerified: entity.emailVerified,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       affiliateClicks: entity.affiliateClicks,

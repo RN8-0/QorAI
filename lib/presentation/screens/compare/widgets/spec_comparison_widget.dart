@@ -789,6 +789,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
     // Only check limit when actually fetching new AI data
     if (shouldFetch) {
+      if (!await ensureEmailVerified(context, ref)) return;
+      if (!mounted) return;
       final sub = ref.read(subscriptionServiceProvider);
       if (!sub.canUseCompareAi) {
         _showLimitExhaustedDialog(context, featureName: 'Compare AI');

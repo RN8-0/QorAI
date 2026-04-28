@@ -45,6 +45,7 @@ class UserEntity extends Equatable {
   final List<String> favorites; // Favorite product IDs
   final bool quizCompleted;
   final bool isPremium;
+  final bool emailVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int affiliateClicks;
@@ -78,6 +79,7 @@ class UserEntity extends Equatable {
     this.favorites = const [],
     this.quizCompleted = false,
     this.isPremium = false,
+    this.emailVerified = false,
     required this.createdAt,
     required this.updatedAt,
     this.affiliateClicks = 0,
@@ -95,7 +97,15 @@ class UserEntity extends Equatable {
   });
 
   @override
-  List<Object?> get props => [uid, email, updatedAt];
+  List<Object?> get props => [uid, email, updatedAt, emailVerified];
+
+  /// Anonymous guest hesap mı? (signInAnonymously ile oluşturulan guest_*@qorai.local)
+  bool get isAnonymousGuest =>
+      email.endsWith('@qorai.local') && email.startsWith('guest_');
+
+  /// AI özellikleri için e-posta doğrulaması gerekli mi?
+  /// Anonim guest'ler ve zaten doğrulanmış kullanıcılar geçer.
+  bool get requiresEmailVerification => !emailVerified && !isAnonymousGuest;
 
   /// Get age group as enum
   AgeRange? get ageRangeEnum => AgeRange.fromValue(ageRange);
@@ -142,6 +152,7 @@ class UserEntity extends Equatable {
     List<String>? favorites,
     bool? quizCompleted,
     bool? isPremium,
+    bool? emailVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? affiliateClicks,
@@ -173,6 +184,7 @@ class UserEntity extends Equatable {
       favorites: favorites ?? this.favorites,
       quizCompleted: quizCompleted ?? this.quizCompleted,
       isPremium: isPremium ?? this.isPremium,
+      emailVerified: emailVerified ?? this.emailVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       affiliateClicks: affiliateClicks ?? this.affiliateClicks,

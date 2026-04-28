@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:qor_ai/core/app_keys.dart';
 import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -137,6 +138,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+
+    if (!await ensureEmailVerified(context, ref)) return;
 
     HapticFeedback.lightImpact();
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);

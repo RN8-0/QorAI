@@ -21,6 +21,19 @@ import 'package:qor_ai/services/cache_service.dart';
 const String _kGoogleWebClientId =
     '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
 
+/// Yeni kayıt sonucu — kullanıcı + verification mail gönderim durumu.
+class SignUpOutcome {
+  final UserEntity user;
+  final bool verificationEmailSent;
+  final String? verificationError;
+
+  const SignUpOutcome({
+    required this.user,
+    required this.verificationEmailSent,
+    this.verificationError,
+  });
+}
+
 class AuthRepository {
   final PocketBase _pb;
   final PbDataSource _pbDS;
@@ -48,7 +61,7 @@ class AuthRepository {
   String? get _currentUid =>
       _pb.authStore.isValid ? _pb.authStore.record?.id : null;
 
-  Future<Result<UserEntity>> signUpWithEmail({
+  Future<Result<SignUpOutcome>> signUpWithEmail({
     required String email,
     required String password,
     String? displayName,
@@ -67,11 +80,29 @@ class AuthRepository {
       if (gender != null) body['gender'] = gender;
       await _pb.collection('users').create(body: body);
       await _pb.collection('users').authWithPassword(email, password);
-      // Verification e-postası gönder (hata kritik değil, sessizce geç)
+
+      // Verification mail gönder — hata olursa kullanıcıyı bilgilendir
+      // (mail gelmediği halde "gelir" demek yerine açıkça söyle).
+      bool verificationSent = false;
+      String? verificationError;
       try {
         await _pb.collection('users').requestVerification(email);
-      } catch (_) {}
-      return Success(UserModel.fromPb(_pb.authStore.record!));
+        verificationSent = true;
+      } on ClientException catch (e) {
+        verificationError = _getPbErrorMsg(e);
+        debugPrint('[auth] requestVerification failed: $e');
+      } catch (e) {
+        verificationError = e.toString();
+        debugPrint('[auth] requestVerification failed: $e');
+      }
+
+      return Success(
+        SignUpOutcome(
+          user: UserModel.fromPb(_pb.authStore.record!),
+          verificationEmailSent: verificationSent,
+          verificationError: verificationError,
+        ),
+      );
     } on ClientException catch (e) {
       return Failure(
         AuthException(message: _getPbErrorMsg(e), originalError: e),
@@ -80,6 +111,29 @@ class AuthRepository {
       return Failure(
         AuthException(
           message: 'Registration failed: ${e.toString()}',
+          originalError: e,
+        ),
+      );
+    }
+  }
+
+  /// PocketBase auth record'unu yeniden çekip authStore'u tazeler.
+  /// E-posta doğrulama sonrası `verified=true` durumunu local'e yansıtmak için.
+  Future<Result<void>> refreshSession() async {
+    try {
+      if (!_pb.authStore.isValid) {
+        return const Failure(AuthException(message: 'No active session'));
+      }
+      await _pb.collection('users').authRefresh();
+      return const Success(null);
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      return Failure(
+        AuthException(
+          message: 'Session refresh failed: ${e.toString()}',
           originalError: e,
         ),
       );
@@ -153,7 +207,9 @@ class AuthRepository {
       await googleSignIn.signOut();
       final account = await googleSignIn.signIn();
       if (account == null) {
-        return const Failure(AuthException(message: 'Google sign-in was cancelled'));
+        return const Failure(
+          AuthException(message: 'Google sign-in was cancelled'),
+        );
       }
       final gAuth = await account.authentication;
       final idToken = gAuth.idToken;
@@ -182,18 +238,24 @@ class AuthRepository {
               'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io/api/auth/google',
             ),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'idToken': idToken, 'audience': _kGoogleWebClientId}),
+            body: jsonEncode({
+              'idToken': idToken,
+              'audience': _kGoogleWebClientId,
+            }),
           )
           .timeout(
             const Duration(seconds: 20),
-            onTimeout: () =>
-                throw Exception('Server did not respond (timeout). Please check your connection.'),
+            onTimeout: () => throw Exception(
+              'Server did not respond (timeout). Please check your connection.',
+            ),
           );
 
       debugPrint('[auth] PB response ${httpResp.statusCode}: ${httpResp.body}');
       if (httpResp.statusCode != 200) {
-        final errBody = jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
-        final msg = errBody['message']?.toString() ??
+        final errBody =
+            jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
+        final msg =
+            errBody['message']?.toString() ??
             errBody['error']?.toString() ??
             'Google sign-in failed (${httpResp.statusCode})';
         return Failure(AuthException(message: msg));
@@ -203,7 +265,9 @@ class AuthRepository {
       final token = resp['token'] as String?;
       final record = (resp['record'] as Map?)?.cast<String, dynamic>();
       if (token == null || record == null) {
-        return const Failure(AuthException(message: 'Invalid response from server'));
+        return const Failure(
+          AuthException(message: 'Invalid response from server'),
+        );
       }
 
       final googleDisplayName = account.displayName?.trim();
@@ -221,23 +285,27 @@ class AuthRepository {
         if (googleDisplayName != null && googleDisplayName.isNotEmpty)
           'displayName': googleDisplayName,
         if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
-        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) 'photoURL': googlePhotoUrl,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
+          'photoURL': googlePhotoUrl,
       };
       final recModel = RecordModel.fromJson(recJson);
       _pb.authStore.save(token, recModel);
 
       final recordId = record['id']?.toString();
       final profileUpdate = <String, dynamic>{
-        if (googleDisplayName != null && googleDisplayName.isNotEmpty) 'name': googleDisplayName,
+        if (googleDisplayName != null && googleDisplayName.isNotEmpty)
+          'name': googleDisplayName,
         if (googleDisplayName != null && googleDisplayName.isNotEmpty)
           'displayName': googleDisplayName,
         if (googleEmail.isNotEmpty) 'googleEmail': googleEmail,
-        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) 'photoURL': googlePhotoUrl,
+        if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty)
+          'photoURL': googlePhotoUrl,
       };
       if (recordId != null && profileUpdate.isNotEmpty) {
         try {
-          final updatedRecord =
-              await _pb.collection('users').update(recordId, body: profileUpdate);
+          final updatedRecord = await _pb
+              .collection('users')
+              .update(recordId, body: profileUpdate);
           final updatedJson = updatedRecord.toJson();
           if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) {
             updatedJson['photoURL'] = googlePhotoUrl;
@@ -248,11 +316,16 @@ class AuthRepository {
       }
       return Success(UserModel.fromPb(recModel));
     } on ClientException catch (e) {
-      return Failure(AuthException(message: _getPbErrorMsg(e), originalError: e));
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
     } catch (e) {
       debugPrint('[auth] signInWithGoogle error: $e');
       return Failure(
-        AuthException(message: 'Google sign-in failed: ${e.toString()}', originalError: e),
+        AuthException(
+          message: 'Google sign-in failed: ${e.toString()}',
+          originalError: e,
+        ),
       );
     }
   }
@@ -393,11 +466,15 @@ class AuthRepository {
 
   Future<Result<UserEntity>> signInAnonymously() async {
     final ts = DateTime.now().millisecondsSinceEpoch;
-    return signUpWithEmail(
+    final result = await signUpWithEmail(
       email: 'guest_$ts@qorai.local',
       password: 'Guest@123456',
       displayName: 'Guest',
     );
+    return switch (result) {
+      Success(data: final outcome) => Success(outcome.user),
+      Failure(error: final e) => Failure(e),
+    };
   }
 
   Future<Result<void>> linkGoogleAccount() async => const Success(null);
@@ -619,5 +696,4 @@ class AuthRepository {
         : ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
     return languageCode == 'tr' ? tr : en;
   }
-
 }
