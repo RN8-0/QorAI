@@ -3748,8 +3748,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get editedLabel => 'modifié';
 
   @override
-  String get emailVerificationRequired =>
-      "Vérification de l'e-mail requise";
+  String get emailVerificationRequired => "Vérification de l'e-mail requise";
 
   @override
   String get emailVerificationBody =>

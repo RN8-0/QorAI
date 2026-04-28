@@ -1,104 +1,116 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E-posta Doğrulama — Qor AI</title>
-  <meta name="description" content="Qor AI hesabınızın e-posta adresini doğrulayın.">
+  <title>Email Verification — Qor AI</title>
+  <meta name="description" content="Verify your Qor AI account email address.">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
   <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
   <style>
-    .reset-wrap {
+    .verify-wrap {
       min-height: calc(100vh - 80px);
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 32px 20px;
     }
-    .reset-card {
+    .verify-card {
       width: 100%;
-      max-width: 460px;
+      max-width: 480px;
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 36px 32px;
-      box-shadow: 0 20px 60px var(--shadow);
+      border-radius: 22px;
+      padding: 40px 34px 32px;
+      box-shadow: 0 24px 70px var(--shadow);
       text-align: center;
     }
-    .reset-logo {
+    .verify-logo {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      margin-bottom: 22px;
+      margin-bottom: 26px;
     }
-    .reset-logo img { width: 32px; height: 32px; border-radius: 8px; }
-    .reset-logo span { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
-    .verify-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 18px;
-      margin: 0 auto 18px;
+    .verify-logo img { width: 36px; height: 36px; border-radius: 9px; }
+    .verify-logo span { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; color: var(--text); }
+    .verify-icon-wrap {
+      width: 92px;
+      height: 92px;
+      border-radius: 24px;
+      margin: 0 auto 22px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 34px;
       background: linear-gradient(135deg, #3b82f6, #06b6d4);
-      color: #fff;
+      box-shadow: 0 14px 36px rgba(59,130,246,.35);
+      transition: background .35s ease, box-shadow .35s ease, transform .35s ease;
     }
-    .verify-icon.success { background: linear-gradient(135deg, #10b981, #059669); }
-    .verify-icon.error { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-    .reset-title {
-      font-size: 24px;
+    .verify-icon-wrap.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      box-shadow: 0 14px 36px rgba(16,185,129,.4);
+      transform: scale(1.04);
+    }
+    .verify-icon-wrap.error {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      box-shadow: 0 14px 36px rgba(239,68,68,.35);
+    }
+    .verify-icon-wrap svg { width: 46px; height: 46px; color: #fff; }
+    .verify-title {
+      font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
       color: var(--text);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .reset-subtitle {
-      font-size: 14px;
+    .verify-subtitle {
+      font-size: 15px;
       color: var(--text2);
-      margin-bottom: 22px;
-      line-height: 1.55;
+      margin-bottom: 26px;
+      line-height: 1.6;
     }
-    .reset-msg {
+    .verify-msg {
       border-radius: 12px;
       padding: 14px 16px;
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 20px;
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin: 6px 0 18px;
       display: none;
       text-align: left;
     }
-    .reset-msg.error {
+    .verify-msg.error {
       background: rgba(239,68,68,.12);
       border: 1px solid rgba(239,68,68,.3);
       color: #fca5a5;
       display: block;
     }
-    .reset-msg.success {
+    .verify-msg.success {
       background: rgba(16,185,129,.12);
       border: 1px solid rgba(16,185,129,.3);
       color: #6ee7b7;
       display: block;
     }
-    .reset-btn {
-      display: inline-block;
+    .verify-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       background: var(--accent);
       color: #fff;
       font-size: 15px;
       font-weight: 700;
       border: none;
       border-radius: 12px;
-      padding: 14px 24px;
+      padding: 14px 28px;
       cursor: pointer;
       text-decoration: none;
       transition: opacity .18s, transform .18s;
-      margin-top: 8px;
+      margin-top: 4px;
     }
-    .reset-btn:hover { opacity: .9; }
-    .reset-back {
+    .verify-btn:hover { opacity: .92; transform: translateY(-1px); }
+    .verify-btn:active { transform: translateY(0); }
+    .verify-back {
       display: block;
       text-align: center;
       color: var(--text3);
@@ -106,18 +118,24 @@
       margin-top: 22px;
       text-decoration: none;
     }
-    .reset-back:hover { color: var(--accent); }
-    .reset-spinner {
+    .verify-back:hover { color: var(--accent); }
+    .verify-spinner {
       display: inline-block;
-      width: 32px;
-      height: 32px;
+      width: 38px;
+      height: 38px;
       border: 3px solid rgba(99,102,241,.2);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin .7s linear infinite;
-      margin: 8px auto 16px;
+      margin: 4px auto 16px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pop {
+      0% { transform: scale(.6); opacity: 0; }
+      60% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    .verify-icon-wrap.animated { animation: pop .45s cubic-bezier(.25,.9,.3,1.2); }
   </style>
 </head>
 <body>
@@ -128,30 +146,198 @@
     <span class="logo-text">Qor AI</span>
   </a>
   <div class="header-actions">
-    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">🌙</button>
   </div>
 </header>
 
-<main class="reset-wrap">
-  <div class="reset-card">
-    <div class="reset-logo">
+<main class="verify-wrap">
+  <div class="verify-card">
+    <div class="verify-logo">
       <img src="/assets/logo.png" alt="Qor AI">
       <span>Qor AI</span>
     </div>
 
-    <div class="verify-icon" id="verifyIcon">✉️</div>
-    <h1 class="reset-title" id="pageTitle">E-posta Doğrulanıyor…</h1>
-    <p class="reset-subtitle" id="pageSubtitle">Lütfen bekleyin, hesabınız doğrulanıyor.</p>
+    <div class="verify-icon-wrap" id="iconWrap">
+      <svg id="iconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+    </div>
 
-    <div id="spinner" class="reset-spinner"></div>
-    <div class="reset-msg" id="msgBox"></div>
+    <h1 class="verify-title" id="pageTitle">…</h1>
+    <p class="verify-subtitle" id="pageSubtitle">…</p>
 
-    <a class="reset-back" href="/">← Qor AI ana sayfaya dön</a>
+    <div id="spinner" class="verify-spinner"></div>
+    <div class="verify-msg" id="msgBox"></div>
+
+    <a id="openAppBtn" class="verify-btn" href="qorai://email-verified" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      <span id="openAppLabel">Open Qor AI App</span>
+    </a>
+
+    <a class="verify-back" href="/" id="homeBack">← Back to Qor AI home</a>
   </div>
 </main>
 
 <script>
   const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+
+  const STRINGS = {
+    en: {
+      verifying: 'Verifying your email…', verifyingSub: 'Please wait while we confirm your account.',
+      success: 'Email Verified', successSub: 'Your account has been verified successfully. You can now return to the Qor AI app and unlock all AI features.',
+      successMsg: 'Verification complete. In the app, tap "Check verification" to continue.',
+      already: 'Already Verified', alreadySub: 'This email address is already verified. You can return to the Qor AI app and sign in normally.',
+      alreadyMsg: 'Your account is active. You can sign in from the app.',
+      invalid: 'Invalid Link', invalidSub: 'This verification link is invalid or incomplete.', invalidMsg: 'Please request a new verification email from the Qor AI app.',
+      expired: 'Verification Failed', expiredSub: 'The link may be invalid or expired.', expiredMsg: 'Please request a new verification email from the Qor AI app.',
+      network: 'Network Error', networkSub: 'Could not reach the server. Please try again.', networkMsg: 'Check your internet connection and refresh this page.',
+      openApp: 'Open Qor AI App', backHome: '← Back to Qor AI home', themeAria: 'Toggle theme',
+    },
+    tr: {
+      verifying: 'E-posta doğrulanıyor…', verifyingSub: 'Lütfen bekleyin, hesabınız doğrulanıyor.',
+      success: 'E-postanız Doğrulandı', successSub: 'Hesabınız başarıyla doğrulandı. Artık Qor AI uygulamasına dönüp tüm AI özelliklerini kullanmaya başlayabilirsiniz.',
+      successMsg: 'Doğrulama tamamlandı. Uygulamadaki "Doğrulamayı kontrol et" butonuna basabilirsiniz.',
+      already: 'Zaten Doğrulanmış', alreadySub: 'Bu e-posta adresi zaten doğrulanmış. Qor AI uygulamasına dönüp giriş yapabilirsiniz.',
+      alreadyMsg: 'Hesabınız aktif. Uygulamadan giriş yapabilirsiniz.',
+      invalid: 'Geçersiz Bağlantı', invalidSub: 'Bu doğrulama bağlantısı geçersiz veya eksik.', invalidMsg: 'Lütfen Qor AI uygulamasından yeni bir doğrulama maili gönderin.',
+      expired: 'Doğrulama Başarısız', expiredSub: 'Bağlantı geçersiz veya süresi dolmuş olabilir.', expiredMsg: 'Lütfen Qor AI uygulamasından yeni bir doğrulama maili gönderin.',
+      network: 'Ağ Hatası', networkSub: 'Sunucuya ulaşılamadı. Lütfen tekrar deneyin.', networkMsg: 'İnternet bağlantınızı kontrol edip sayfayı yenileyin.',
+      openApp: 'Qor AI Uygulamasını Aç', backHome: '← Qor AI ana sayfaya dön', themeAria: 'Tema değiştir',
+    },
+    de: {
+      verifying: 'E-Mail wird bestätigt…', verifyingSub: 'Bitte warten, wir bestätigen Ihr Konto.',
+      success: 'E-Mail bestätigt', successSub: 'Ihr Konto wurde erfolgreich bestätigt. Sie können jetzt zur Qor AI App zurückkehren und alle KI-Funktionen nutzen.',
+      successMsg: 'Bestätigung abgeschlossen. Tippen Sie in der App auf „Bestätigung prüfen".',
+      already: 'Bereits bestätigt', alreadySub: 'Diese E-Mail-Adresse ist bereits bestätigt. Sie können sich in der App anmelden.',
+      alreadyMsg: 'Ihr Konto ist aktiv. Sie können sich in der App anmelden.',
+      invalid: 'Ungültiger Link', invalidSub: 'Dieser Bestätigungslink ist ungültig oder unvollständig.', invalidMsg: 'Bitte fordern Sie eine neue Bestätigungs-E-Mail in der Qor AI App an.',
+      expired: 'Bestätigung fehlgeschlagen', expiredSub: 'Der Link ist ungültig oder abgelaufen.', expiredMsg: 'Bitte fordern Sie eine neue Bestätigungs-E-Mail in der Qor AI App an.',
+      network: 'Netzwerkfehler', networkSub: 'Server nicht erreichbar. Bitte erneut versuchen.', networkMsg: 'Prüfen Sie Ihre Internetverbindung und laden Sie die Seite neu.',
+      openApp: 'Qor AI App öffnen', backHome: '← Zurück zu Qor AI', themeAria: 'Theme wechseln',
+    },
+    es: {
+      verifying: 'Verificando tu correo…', verifyingSub: 'Por favor espera mientras confirmamos tu cuenta.',
+      success: 'Correo verificado', successSub: 'Tu cuenta ha sido verificada con éxito. Puedes volver a la app Qor AI y desbloquear todas las funciones de IA.',
+      successMsg: 'Verificación completada. En la app, pulsa "Comprobar verificación".',
+      already: 'Ya verificado', alreadySub: 'Este correo ya está verificado. Puedes volver a la app Qor AI e iniciar sesión.',
+      alreadyMsg: 'Tu cuenta está activa. Puedes iniciar sesión desde la app.',
+      invalid: 'Enlace inválido', invalidSub: 'Este enlace de verificación es inválido o está incompleto.', invalidMsg: 'Solicita un nuevo correo de verificación desde la app Qor AI.',
+      expired: 'Verificación fallida', expiredSub: 'El enlace puede ser inválido o haber caducado.', expiredMsg: 'Solicita un nuevo correo de verificación desde la app Qor AI.',
+      network: 'Error de red', networkSub: 'No se pudo contactar el servidor. Inténtalo de nuevo.', networkMsg: 'Comprueba tu conexión a Internet y recarga la página.',
+      openApp: 'Abrir Qor AI', backHome: '← Volver al inicio de Qor AI', themeAria: 'Cambiar tema',
+    },
+    fr: {
+      verifying: 'Vérification de l\'e-mail…', verifyingSub: 'Veuillez patienter pendant la confirmation de votre compte.',
+      success: 'E-mail vérifié', successSub: 'Votre compte a été vérifié avec succès. Vous pouvez revenir à l\'application Qor AI et débloquer toutes les fonctionnalités IA.',
+      successMsg: 'Vérification terminée. Dans l\'app, appuyez sur « Vérifier la validation ».',
+      already: 'Déjà vérifié', alreadySub: 'Cette adresse e-mail est déjà vérifiée. Vous pouvez vous connecter à l\'application Qor AI.',
+      alreadyMsg: 'Votre compte est actif. Vous pouvez vous connecter depuis l\'app.',
+      invalid: 'Lien invalide', invalidSub: 'Ce lien de vérification est invalide ou incomplet.', invalidMsg: 'Veuillez demander un nouvel e-mail de vérification depuis l\'app Qor AI.',
+      expired: 'Échec de la vérification', expiredSub: 'Le lien est invalide ou expiré.', expiredMsg: 'Veuillez demander un nouvel e-mail de vérification depuis l\'app Qor AI.',
+      network: 'Erreur réseau', networkSub: 'Impossible de joindre le serveur. Veuillez réessayer.', networkMsg: 'Vérifiez votre connexion Internet et rechargez la page.',
+      openApp: 'Ouvrir Qor AI', backHome: '← Retour à l\'accueil Qor AI', themeAria: 'Changer de thème',
+    },
+    it: {
+      verifying: 'Verifica dell\'e-mail in corso…', verifyingSub: 'Attendi mentre confermiamo il tuo account.',
+      success: 'E-mail verificata', successSub: 'Il tuo account è stato verificato con successo. Puoi tornare nell\'app Qor AI e sbloccare tutte le funzioni IA.',
+      successMsg: 'Verifica completata. Nell\'app tocca "Controlla verifica".',
+      already: 'Già verificato', alreadySub: 'Questa e-mail è già verificata. Puoi accedere dall\'app Qor AI.',
+      alreadyMsg: 'Il tuo account è attivo. Puoi accedere dall\'app.',
+      invalid: 'Link non valido', invalidSub: 'Questo link di verifica non è valido o è incompleto.', invalidMsg: 'Richiedi una nuova e-mail di verifica dall\'app Qor AI.',
+      expired: 'Verifica fallita', expiredSub: 'Il link può essere non valido o scaduto.', expiredMsg: 'Richiedi una nuova e-mail di verifica dall\'app Qor AI.',
+      network: 'Errore di rete', networkSub: 'Impossibile contattare il server. Riprova.', networkMsg: 'Controlla la connessione Internet e ricarica la pagina.',
+      openApp: 'Apri Qor AI', backHome: '← Torna alla home Qor AI', themeAria: 'Cambia tema',
+    },
+    pt: {
+      verifying: 'Verificando seu e-mail…', verifyingSub: 'Aguarde enquanto confirmamos sua conta.',
+      success: 'E-mail verificado', successSub: 'Sua conta foi verificada com sucesso. Você pode voltar ao app Qor AI e desbloquear todos os recursos de IA.',
+      successMsg: 'Verificação concluída. No app, toque em "Verificar validação".',
+      already: 'Já verificado', alreadySub: 'Este e-mail já está verificado. Você pode entrar no app Qor AI.',
+      alreadyMsg: 'Sua conta está ativa. Você pode entrar pelo app.',
+      invalid: 'Link inválido', invalidSub: 'Este link de verificação é inválido ou está incompleto.', invalidMsg: 'Solicite um novo e-mail de verificação pelo app Qor AI.',
+      expired: 'Falha na verificação', expiredSub: 'O link pode ser inválido ou ter expirado.', expiredMsg: 'Solicite um novo e-mail de verificação pelo app Qor AI.',
+      network: 'Erro de rede', networkSub: 'Não foi possível alcançar o servidor. Tente novamente.', networkMsg: 'Verifique sua conexão e recarregue a página.',
+      openApp: 'Abrir Qor AI', backHome: '← Voltar ao início do Qor AI', themeAria: 'Alternar tema',
+    },
+    nl: {
+      verifying: 'E-mail wordt geverifieerd…', verifyingSub: 'Even geduld terwijl we uw account bevestigen.',
+      success: 'E-mail geverifieerd', successSub: 'Uw account is succesvol geverifieerd. U kunt terugkeren naar de Qor AI-app en alle AI-functies gebruiken.',
+      successMsg: 'Verificatie voltooid. Tik in de app op "Verificatie controleren".',
+      already: 'Al geverifieerd', alreadySub: 'Dit e-mailadres is al geverifieerd. U kunt zich in de Qor AI-app aanmelden.',
+      alreadyMsg: 'Uw account is actief. U kunt vanuit de app inloggen.',
+      invalid: 'Ongeldige link', invalidSub: 'Deze verificatielink is ongeldig of onvolledig.', invalidMsg: 'Vraag een nieuwe verificatie-e-mail aan in de Qor AI-app.',
+      expired: 'Verificatie mislukt', expiredSub: 'De link is ongeldig of verlopen.', expiredMsg: 'Vraag een nieuwe verificatie-e-mail aan in de Qor AI-app.',
+      network: 'Netwerkfout', networkSub: 'Server niet bereikbaar. Probeer het opnieuw.', networkMsg: 'Controleer uw internetverbinding en herlaad de pagina.',
+      openApp: 'Qor AI-app openen', backHome: '← Terug naar Qor AI home', themeAria: 'Thema wisselen',
+    },
+    pl: {
+      verifying: 'Weryfikacja e-maila…', verifyingSub: 'Proszę czekać, potwierdzamy Twoje konto.',
+      success: 'E-mail zweryfikowany', successSub: 'Twoje konto zostało pomyślnie zweryfikowane. Możesz wrócić do aplikacji Qor AI i odblokować wszystkie funkcje AI.',
+      successMsg: 'Weryfikacja ukończona. W aplikacji dotknij "Sprawdź weryfikację".',
+      already: 'Już zweryfikowane', alreadySub: 'Ten adres e-mail jest już zweryfikowany. Możesz zalogować się w aplikacji Qor AI.',
+      alreadyMsg: 'Twoje konto jest aktywne. Możesz zalogować się z aplikacji.',
+      invalid: 'Nieprawidłowy link', invalidSub: 'Ten link weryfikacyjny jest nieprawidłowy lub niekompletny.', invalidMsg: 'Poproś o nowy e-mail weryfikacyjny z aplikacji Qor AI.',
+      expired: 'Weryfikacja nie powiodła się', expiredSub: 'Link może być nieprawidłowy lub wygasł.', expiredMsg: 'Poproś o nowy e-mail weryfikacyjny z aplikacji Qor AI.',
+      network: 'Błąd sieci', networkSub: 'Nie można połączyć z serwerem. Spróbuj ponownie.', networkMsg: 'Sprawdź połączenie internetowe i odśwież stronę.',
+      openApp: 'Otwórz Qor AI', backHome: '← Powrót do strony Qor AI', themeAria: 'Zmień motyw',
+    },
+    sv: {
+      verifying: 'Verifierar din e-post…', verifyingSub: 'Vänta medan vi bekräftar ditt konto.',
+      success: 'E-post verifierad', successSub: 'Ditt konto har verifierats. Du kan nu återvända till Qor AI-appen och låsa upp alla AI-funktioner.',
+      successMsg: 'Verifiering klar. Tryck på "Kontrollera verifiering" i appen.',
+      already: 'Redan verifierad', alreadySub: 'Denna e-postadress är redan verifierad. Du kan logga in i Qor AI-appen.',
+      alreadyMsg: 'Ditt konto är aktivt. Du kan logga in från appen.',
+      invalid: 'Ogiltig länk', invalidSub: 'Denna verifieringslänk är ogiltig eller ofullständig.', invalidMsg: 'Begär ett nytt verifieringsmejl från Qor AI-appen.',
+      expired: 'Verifiering misslyckades', expiredSub: 'Länken kan vara ogiltig eller utgången.', expiredMsg: 'Begär ett nytt verifieringsmejl från Qor AI-appen.',
+      network: 'Nätverksfel', networkSub: 'Kunde inte nå servern. Försök igen.', networkMsg: 'Kontrollera din internetanslutning och ladda om sidan.',
+      openApp: 'Öppna Qor AI', backHome: '← Tillbaka till Qor AI', themeAria: 'Byt tema',
+    },
+    ja: {
+      verifying: 'メールを確認中…', verifyingSub: 'アカウントを確認しています。お待ちください。',
+      success: 'メールが確認されました', successSub: 'アカウントの確認が完了しました。Qor AI アプリに戻り、すべての AI 機能をご利用いただけます。',
+      successMsg: '確認が完了しました。アプリで「確認をチェック」をタップしてください。',
+      already: '確認済み', alreadySub: 'このメールアドレスは既に確認されています。Qor AI アプリからログインできます。',
+      alreadyMsg: 'アカウントは有効です。アプリからログインできます。',
+      invalid: '無効なリンク', invalidSub: 'この確認リンクは無効または不完全です。', invalidMsg: 'Qor AI アプリから新しい確認メールをリクエストしてください。',
+      expired: '確認に失敗しました', expiredSub: 'リンクが無効または期限切れの可能性があります。', expiredMsg: 'Qor AI アプリから新しい確認メールをリクエストしてください。',
+      network: 'ネットワークエラー', networkSub: 'サーバーに接続できません。再度お試しください。', networkMsg: 'インターネット接続を確認してページを再読み込みしてください。',
+      openApp: 'Qor AI アプリを開く', backHome: '← Qor AI ホームに戻る', themeAria: 'テーマを切り替え',
+    },
+    ar: {
+      verifying: 'جارٍ التحقق من بريدك الإلكتروني…', verifyingSub: 'يرجى الانتظار بينما نؤكد حسابك.',
+      success: 'تم التحقق من البريد الإلكتروني', successSub: 'تم التحقق من حسابك بنجاح. يمكنك العودة إلى تطبيق Qor AI واستخدام جميع ميزات الذكاء الاصطناعي.',
+      successMsg: 'اكتمل التحقق. اضغط على "تحقق من التأكيد" في التطبيق.',
+      already: 'تم التحقق مسبقًا', alreadySub: 'تم التحقق من هذا البريد الإلكتروني مسبقًا. يمكنك تسجيل الدخول من تطبيق Qor AI.',
+      alreadyMsg: 'حسابك نشط. يمكنك تسجيل الدخول من التطبيق.',
+      invalid: 'رابط غير صالح', invalidSub: 'رابط التحقق هذا غير صالح أو غير مكتمل.', invalidMsg: 'يرجى طلب رسالة تحقق جديدة من تطبيق Qor AI.',
+      expired: 'فشل التحقق', expiredSub: 'قد يكون الرابط غير صالح أو منتهي الصلاحية.', expiredMsg: 'يرجى طلب رسالة تحقق جديدة من تطبيق Qor AI.',
+      network: 'خطأ في الشبكة', networkSub: 'تعذر الوصول إلى الخادم. يرجى المحاولة مرة أخرى.', networkMsg: 'تحقق من اتصالك بالإنترنت وأعد تحميل الصفحة.',
+      openApp: 'فتح تطبيق Qor AI', backHome: '← العودة إلى الصفحة الرئيسية', themeAria: 'تبديل المظهر',
+    },
+  };
+
+  const RTL_LANGS = ['ar', 'fa', 'he', 'ur'];
+
+  function detectLang() {
+    var fromQuery = (location.search.match(/[?&]lang=([a-zA-Z-]+)/) || [])[1];
+    var pool = [fromQuery, navigator.language].concat(navigator.languages || [])
+      .filter(Boolean).map(function (l) { return l.toLowerCase(); });
+    for (var i = 0; i < pool.length; i++) {
+      var two = pool[i].split(/[-_]/)[0];
+      if (STRINGS[two]) return two;
+    }
+    return 'en';
+  }
+
+  const LANG = detectLang();
+  const T = STRINGS[LANG] || STRINGS.en;
+  document.documentElement.setAttribute('lang', LANG);
+  if (RTL_LANGS.indexOf(LANG) !== -1) document.documentElement.setAttribute('dir', 'rtl');
+  document.title = T.verifying + ' — Qor AI';
+  document.getElementById('theme-toggle').setAttribute('aria-label', T.themeAria);
+  document.getElementById('homeBack').textContent = T.backHome;
+  document.getElementById('openAppLabel').textContent = T.openApp;
 
   function toggleTheme() {
     var current = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -165,34 +351,49 @@
     return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : '';
   }
 
-  function showMsg(text, kind) {
-    var el = document.getElementById('msgBox');
-    el.textContent = text;
-    el.className = 'reset-msg ' + (kind || 'error');
-  }
-
   function setIcon(state) {
-    var el = document.getElementById('verifyIcon');
-    el.className = 'verify-icon ' + (state || '');
-    if (state === 'success') el.textContent = '✓';
-    else if (state === 'error') el.textContent = '!';
-    else el.textContent = '✉️';
+    var wrap = document.getElementById('iconWrap');
+    var svg = document.getElementById('iconSvg');
+    wrap.classList.remove('success', 'error', 'animated');
+    void wrap.offsetWidth;
+    wrap.classList.add('animated');
+    if (state === 'success') {
+      wrap.classList.add('success');
+      svg.innerHTML = '<polyline points="4,12 10,18 20,7"/>';
+    } else if (state === 'error') {
+      wrap.classList.add('error');
+      svg.innerHTML = '<line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/>';
+    } else {
+      svg.innerHTML = '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>';
+    }
   }
 
   function setState(title, subtitle) {
     document.getElementById('pageTitle').textContent = title;
     document.getElementById('pageSubtitle').textContent = subtitle;
+    document.title = title + ' — Qor AI';
+  }
+
+  function showMsg(text, kind) {
+    var el = document.getElementById('msgBox');
+    el.textContent = text;
+    el.className = 'verify-msg ' + (kind || 'error');
+  }
+
+  function showOpenApp() {
+    document.getElementById('openAppBtn').style.display = 'inline-flex';
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    setState(T.verifying, T.verifyingSub);
     var TOKEN = getQuery('token');
     var spinner = document.getElementById('spinner');
 
     if (!TOKEN) {
       spinner.style.display = 'none';
       setIcon('error');
-      setState('Geçersiz Bağlantı', 'Bu doğrulama bağlantısı geçersiz veya eksik.');
-      showMsg('Lütfen Qor AI uygulamasından yeni bir doğrulama maili gönderin.', 'error');
+      setState(T.invalid, T.invalidSub);
+      showMsg(T.invalidMsg, 'error');
       return;
     }
 
@@ -209,32 +410,32 @@
         spinner.style.display = 'none';
         if (result.ok || result.status === 204) {
           setIcon('success');
-          setState('E-posta Doğrulandı', 'Hesabınız başarıyla doğrulandı. Qor AI uygulamasına dönüp tüm AI özelliklerini kullanmaya başlayabilirsiniz.');
-          showMsg('Doğrulama tamamlandı. Uygulamada "Doğrulamayı kontrol et" butonuna basabilirsiniz.', 'success');
-          // Try to deep-link back to app (optional)
+          setState(T.success, T.successSub);
+          showMsg(T.successMsg, 'success');
+          showOpenApp();
           setTimeout(function () {
             try { window.location.href = 'qorai://email-verified'; } catch (e) {}
-          }, 800);
+          }, 1200);
+          return;
+        }
+        var msg = (result.body && (result.body.message || result.body.error)) || '';
+        var alreadyVerified = /already|verified|invalid token|failed to authenticate/i.test(msg);
+        if (alreadyVerified) {
+          setIcon('success');
+          setState(T.already, T.alreadySub);
+          showMsg(T.alreadyMsg, 'success');
+          showOpenApp();
         } else {
           setIcon('error');
-          var msg = (result.body && (result.body.message || result.body.error)) || '';
-          // PB returns 400 with "Failed to authenticate." if token already used / expired
-          var alreadyVerified = /already|verified|invalid token|failed/i.test(msg);
-          if (alreadyVerified) {
-            setIcon('success');
-            setState('Zaten Doğrulanmış', 'Bu e-posta adresi zaten doğrulanmış. Qor AI uygulamasına dönebilirsiniz.');
-            showMsg('Hesabınız aktif. Uygulamadan giriş yapabilirsiniz.', 'success');
-          } else {
-            setState('Doğrulama Başarısız', 'Bağlantı geçersiz veya süresi dolmuş olabilir.');
-            showMsg(msg || 'Lütfen Qor AI uygulamasından yeni bir doğrulama maili gönderin.', 'error');
-          }
+          setState(T.expired, T.expiredSub);
+          showMsg(msg || T.expiredMsg, 'error');
         }
       })
       .catch(function () {
         spinner.style.display = 'none';
         setIcon('error');
-        setState('Ağ Hatası', 'Sunucuya ulaşılamadı. Lütfen tekrar deneyin.');
-        showMsg('İnternet bağlantınızı kontrol edip sayfayı yenileyin.', 'error');
+        setState(T.network, T.networkSub);
+        showMsg(T.networkMsg, 'error');
       });
   });
 </script>

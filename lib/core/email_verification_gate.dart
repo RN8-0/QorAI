@@ -322,7 +322,7 @@ class _EmailVerificationDialogState
                       : Text(
                           _resendCooldown > 0
                               ? (l?.resendEmailCooldown(_resendCooldown) ??
-                                  'Resend (${_resendCooldown}s)')
+                                    'Resend (${_resendCooldown}s)')
                               : (l?.resendEmail ?? 'Resend email'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13.5,

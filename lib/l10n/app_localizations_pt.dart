@@ -3729,8 +3729,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get editedLabel => 'editado';
 
   @override
-  String get emailVerificationRequired =>
-      'Verificação de e-mail necessária';
+  String get emailVerificationRequired => 'Verificação de e-mail necessária';
 
   @override
   String get emailVerificationBody =>
