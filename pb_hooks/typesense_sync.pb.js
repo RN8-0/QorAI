@@ -49,22 +49,44 @@ function buildTsDoc(record) {
   var trendScore = parseFloat(record.get('trendScore')) || 0;
   var specsCount = parseInt(record.get('specsCount'), 10) || 0;
 
-  // Build a minimal _raw snapshot (same approach as the admin JS client)
+  // Parse the full spec/price fields so _raw contains everything the Flutter
+  // app needs for local filtering (FilterApplier checks specs + specSections).
+  var specs        = _parseJson(record.get('specs'))        || {};
+  var specSections = _parseJson(record.get('specSections')) || {};
+  var prices       = _parseJson(record.get('prices'))       || {};
+  var affiliateLinks = _parseJson(record.get('affiliateLinks')) || {};
+
+  // Full _raw snapshot — matches the shape stored by admin/js/ts_client.js
+  // and migration/ts_index.js so FilterApplier has specs/specSections to work with.
   var pbData = {
-    id:           record.id,
-    slug:         record.get('slug')         || '',
-    name:         record.get('name')         || '',
-    brand:        record.get('brand')        || '',
-    category:     record.get('category')     || '',
-    subcategory:  record.get('subcategory')  || '',
-    source:       record.get('source')       || '',
-    imageUrl:     record.get('imageUrl') || record.get('imageURL') || '',
-    techScore:    techScore,
-    trendScore:   trendScore,
+    id:            record.id,
+    slug:          record.get('slug')         || '',
+    name:          record.get('name')         || '',
+    brand:         record.get('brand')        || '',
+    category:      record.get('category')     || '',
+    subcategory:   record.get('subcategory')  || '',
+    source:        record.get('source')       || '',
+    imageUrl:      record.get('imageUrl') || record.get('imageURL') || '',
+    imageURL:      record.get('imageURL') || record.get('imageUrl') || '',
+    techScore:     techScore,
+    trendScore:    trendScore,
     price_segment: record.get('price_segment') || '',
-    specsCount:   specsCount,
-    keySpecs:     keySpecs,
-    tags:         tags,
+    specsCount:    specsCount,
+    keySpecs:      keySpecs,
+    tags:          tags,
+    specs:         specs,
+    specSections:  specSections,
+    prices:        prices,
+    affiliateLinks: affiliateLinks,
+    description:   record.get('description') || '',
+    variantGroup:  record.get('variantGroup') || '',
+    isActive:      record.get('isActive') !== false,
+    // PocketBase uses 'created'/'updated'; ProductModel.fromMap reads
+    // 'createdAt'/'lastUpdated' so add both so date fields work correctly.
+    created:       record.get('created') || '',
+    updated:       record.get('updated') || '',
+    createdAt:     record.get('created') || '',
+    lastUpdated:   record.get('updated') || '',
   };
 
   return {

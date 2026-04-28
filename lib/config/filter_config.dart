@@ -166,7 +166,22 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: 'ltpo', label: 'LTPO'),
       FilterOption(id: 'dynamic_amoled', label: 'Dynamic AMOLED'),
     ],
-    specKeys: ['Screen Technology', 'screen technology'],
+    // Real-world scraped data uses many variants — without these the
+    // local filter saw zero matches even when products clearly had IPS
+    // panels, because the only candidate spec key was "Screen Technology"
+    // but most products store it under "Display Type" or "Panel Type".
+    specKeys: [
+      'Screen Technology',
+      'screen technology',
+      'Display Type',
+      'display type',
+      'Panel Type',
+      'panel type',
+      'Display Technology',
+      'display technology',
+      'Display',
+      'Type',
+    ],
   ),
   FilterDefinition(
     id: 'refresh_rate',

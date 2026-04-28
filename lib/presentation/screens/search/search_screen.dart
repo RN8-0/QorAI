@@ -26,6 +26,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
   final _resultsScrollCtrl = ScrollController();
+  final _emptyStateScrollCtrl = ScrollController();
   List<ProductEntity> _results = [];
   bool _searching = false;
   bool _loadingMore = false;
@@ -34,6 +35,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   String _activeQuery = '';
   Timer? _debounce;
   Timer? _scrollDebounce;
+
+  // Paginated Top Rated state — lazy-loaded from Typesense by techScore desc.
+  // Replaces the static 20-item slice that was derived from homeFeed.
+  List<ProductEntity> _topRated = [];
+  bool _topRatedLoading = false;
+  bool _topRatedAllLoaded = false;
+  int _topRatedPage = 0;
+  Timer? _topRatedScrollDebounce;
+  DateTime _topRatedCooldownUntil = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get _isTurkish =>
       (Localizations.localeOf(context).languageCode).toLowerCase() == 'tr';
@@ -78,16 +88,85 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     super.initState();
     _focus.requestFocus();
     _resultsScrollCtrl.addListener(_handleResultsScroll);
+    _emptyStateScrollCtrl.addListener(_handleEmptyStateScroll);
+    // Kick off the first Top Rated page so the empty state never shows zero
+    // products — homeFeed cache may not yet contain enough techScore items.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTopRatedPage(1);
+    });
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _scrollDebounce?.cancel();
+    _topRatedScrollDebounce?.cancel();
     _resultsScrollCtrl.dispose();
+    _emptyStateScrollCtrl.dispose();
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  void _handleEmptyStateScroll() {
+    if (!_emptyStateScrollCtrl.hasClients ||
+        _topRatedLoading ||
+        _topRatedAllLoaded) {
+      return;
+    }
+    _topRatedScrollDebounce?.cancel();
+    _topRatedScrollDebounce = Timer(const Duration(milliseconds: 150), () {
+      if (!mounted ||
+          !_emptyStateScrollCtrl.hasClients ||
+          _topRatedLoading ||
+          _topRatedAllLoaded) {
+        return;
+      }
+      // Avoid the runaway race seen in category browse: a successful fetch
+      // grows the list, but until layout completes the listener is still in
+      // the trigger zone — cooldown blocks back-to-back fetches.
+      if (DateTime.now().isBefore(_topRatedCooldownUntil)) return;
+      final positions = _emptyStateScrollCtrl.positions;
+      if (positions.length != 1) return;
+      final pos = positions.first;
+      if (!pos.hasContentDimensions) return;
+      if (pos.maxScrollExtent <= 0) return;
+      if (pos.pixels >= pos.maxScrollExtent - 600) {
+        _topRatedCooldownUntil = DateTime.now().add(
+          const Duration(milliseconds: 600),
+        );
+        _loadTopRatedPage(_topRatedPage + 1);
+      }
+    });
+  }
+
+  Future<void> _loadTopRatedPage(int page) async {
+    if (_topRatedLoading || _topRatedAllLoaded || !mounted) return;
+    setState(() => _topRatedLoading = true);
+    try {
+      final ds = ref.read(pbDataSourceProvider);
+      final result = await ds.getTopRatedPageTs(limit: 20, page: page);
+      if (!mounted) return;
+      final existingIds = _topRated.map((p) => p.id).toSet();
+      final additions = result.products
+          .where((p) => !existingIds.contains(p.id))
+          .toList();
+      setState(() {
+        _topRated = page == 1
+            ? List<ProductEntity>.from(result.products)
+            : [..._topRated, ...additions];
+        _topRatedPage = page;
+        _topRatedAllLoaded = !result.hasMore;
+        _topRatedLoading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _topRatedLoading = false);
+        _topRatedCooldownUntil = DateTime.now().add(
+          const Duration(seconds: 3),
+        );
+      }
+    }
   }
 
   void _handleResultsScroll() {
@@ -248,6 +327,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             child: Row(
               children: [
+                // Back button — search screen is pushed via go_router, so
+                // there is always a previous route. Without this users were
+                // trapped here once the keyboard hid the system gesture bar.
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _focus.unfocus();
+                    if (context.canPop()) {
+                      context.pop();
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 10, left: 2),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 20,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Container(
                     height: 40,
@@ -358,6 +458,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget _buildEmptyState(double bottom) {
     final recents = ref.watch(recentSearchesProvider);
     return CustomScrollView(
+      controller: _emptyStateScrollCtrl,
       slivers: [
         // Recent searches
         if (recents.isNotEmpty)
@@ -585,8 +686,26 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ),
 
-        // Top rated products grid
-        _TopRatedGrid(onTap: _openProduct),
+        // Top rated products grid (paginated via Typesense, lazy-loaded).
+        _buildTopRatedSliver(),
+
+        // Footer spinner shown while next page is in flight.
+        if (_topRatedLoading && _topRated.isNotEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: AppTheme.neonCyan,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
         SliverPadding(
           padding: EdgeInsets.only(
@@ -594,6 +713,200 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTopRatedSliver() {
+    if (_topRated.isEmpty) {
+      if (_topRatedLoading) {
+        return const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(40),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.neonCyan,
+              ),
+            ),
+          ),
+        );
+      }
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: Text(
+              context.l10n?.couldNotLoadProducts ?? 'Could not load products',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final country = ref.watch(selectedCountryProvider);
+    final products = _topRated;
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.78,
+        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final p = products[i];
+          final price = p.getPriceForCountry(country);
+          final priceStr = price != null
+              ? '\$${price.toStringAsFixed(0)}'
+              : null;
+          return GestureDetector(
+            onTap: () => _openProduct(p),
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: context.dividerColor, width: 0.5),
+              ),
+              child: Column(
+                children: [
+                  // Image area — entire top half is white so the photo
+                  // never appears framed by the dark card surface.
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18),
+                      ),
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: ColoredBox(color: Colors.white),
+                          ),
+                          Positioned.fill(
+                            child: ProductImageBox(
+                              imageUrl: p.imageURL,
+                              fallbackUrls: p.images,
+                              borderRadius: BorderRadius.zero,
+                              padding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                          if (i < 3)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      i == 0
+                                          ? const Color(0xFFFFD700)
+                                          : i == 1
+                                          ? const Color(0xFFC0C0C0)
+                                          : const Color(0xFFCD7F32),
+                                      i == 0
+                                          ? const Color(0xFFF59E0B)
+                                          : i == 1
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFFB45309),
+                                    ],
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (p.techScore > 0)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _scoreColor(p.techScore),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  p.techScore.round().toString(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                p.brand ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: context.textSecondary,
+                                ),
+                              ),
+                            ),
+                            if (priceStr != null)
+                              Text(
+                                priceStr,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.neonCyan,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }, childCount: products.length),
+      ),
     );
   }
 
@@ -748,25 +1061,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             child: Row(
               children: [
+                // Always-white image cell — keeps product photos consistent
+                // with detail/similar/category cards regardless of theme.
                 Container(
                   width: 82,
                   height: 82,
                   decoration: BoxDecoration(
-                    color: context.backgroundColor,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: context.dividerColor.withValues(alpha: 0.4),
                     ),
                   ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: ProductImageBox(
-                        imageUrl: p.imageURL,
-                        fallbackUrls: p.images,
-                        height: 56,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: ProductImageBox(
+                      imageUrl: p.imageURL,
+                      fallbackUrls: p.images,
+                      width: 82,
+                      height: 82,
+                      borderRadius: BorderRadius.zero,
+                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                 ),
@@ -920,209 +1235,3 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-// ─── Top Rated Products Grid ─────────────────────────────────────────────────
-
-class _TopRatedGrid extends ConsumerWidget {
-  final ValueChanged<ProductEntity> onTap;
-  const _TopRatedGrid({required this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final trending = ref.watch(trendingProductsProvider);
-    final country = ref.watch(selectedCountryProvider);
-
-    return trending.when(
-      loading: () => const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppTheme.neonCyan,
-            ),
-          ),
-        ),
-      ),
-      error: (_, _) => SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            child: Text(
-              context.l10n?.couldNotLoadProducts ?? 'Could not load products',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                color: context.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
-      data: (products) {
-        // Sort by techScore descending, take top 20
-        final sorted = List<ProductEntity>.from(products)
-          ..sort((a, b) => b.techScore.compareTo(a.techScore));
-        final top = sorted.take(20).toList();
-
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 0.78,
-            ),
-            delegate: SliverChildBuilderDelegate((context, i) {
-              final p = top[i];
-              final price = p.getPriceForCountry(country);
-              final priceStr = price != null
-                  ? '\$${price.toStringAsFixed(0)}'
-                  : null;
-              return GestureDetector(
-                onTap: () => onTap(p),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: context.surfaceVariantColor,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: context.dividerColor, width: 0.5),
-                  ),
-                  child: Column(
-                    children: [
-                      // Image + score badge
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: ProductImageBox(
-                                  imageUrl: p.imageURL,
-                                  fallbackUrls: p.images,
-                                  height: 100,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                            // Rank badge
-                            if (i < 3)
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                child: Container(
-                                  width: 26,
-                                  height: 26,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        i == 0
-                                            ? const Color(0xFFFFD700)
-                                            : i == 1
-                                            ? const Color(0xFFC0C0C0)
-                                            : const Color(0xFFCD7F32),
-                                        i == 0
-                                            ? const Color(0xFFF59E0B)
-                                            : i == 1
-                                            ? const Color(0xFF94A3B8)
-                                            : const Color(0xFFB45309),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${i + 1}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            // Tech score
-                            if (p.techScore > 0)
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _scoreColor(p.techScore),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    p.techScore.round().toString(),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      // Info
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Text(
-                                  p.brand ?? '',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    color: context.textSecondary,
-                                  ),
-                                ),
-                                if (priceStr != null) ...[
-                                  const Spacer(),
-                                  Text(
-                                    priceStr,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.neonCyan,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }, childCount: top.length),
-          ),
-        );
-      },
-    );
-  }
-
-  Color _scoreColor(double score) {
-    if (score >= 80) return const Color(0xFF34C759);
-    if (score >= 60) return const Color(0xFFFF9500);
-    return const Color(0xFFFF3B30);
-  }
-}

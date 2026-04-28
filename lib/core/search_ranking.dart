@@ -37,6 +37,17 @@ String normalizeSearchText(String input) {
   replacements.forEach((from, to) {
     normalized = normalized.replaceAll(from, to);
   });
+  // Split at letter-digit and digit-letter boundaries so "note9" → "note 9",
+  // "redmi14pro" → "redmi 14 pro", "5g" → "5 g". This ensures numeric model
+  // numbers are separate tokens and match correctly ("note 9" in product name).
+  normalized = normalized.replaceAllMapped(
+    RegExp(r'([a-z])(\d)'),
+    (m) => '${m[1]} ${m[2]}',
+  );
+  normalized = normalized.replaceAllMapped(
+    RegExp(r'(\d)([a-z])'),
+    (m) => '${m[1]} ${m[2]}',
+  );
   normalized = normalized.replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
   normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
   return normalized;

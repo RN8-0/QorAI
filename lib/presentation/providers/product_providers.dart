@@ -2617,8 +2617,24 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
         : 0.0;
     scoreMap[p.id] = fit + alt + search + freshness;
   }
+  // Quiz/onboarding categories must lead the shelf — onboarding sets
+  // user.interestCategories, which propagates into priorityCats. Ordering
+  // products by their position in topCats first (then by scoreMap inside the
+  // same category) ensures the user sees their declared interests at the
+  // front of "For You" before the algorithm's broader matches.
+  final priorityIndex = <String, int>{};
+  for (var i = 0; i < topCats.length; i++) {
+    priorityIndex.putIfAbsent(topCats[i].toLowerCase().trim(), () => i);
+  }
   final sortedProducts = List<ProductEntity>.from(allProducts)
-    ..sort((a, b) => scoreMap[b.id]!.compareTo(scoreMap[a.id]!));
+    ..sort((a, b) {
+      final aIdx =
+          priorityIndex[a.category.toLowerCase().trim()] ?? priorityIndex.length;
+      final bIdx =
+          priorityIndex[b.category.toLowerCase().trim()] ?? priorityIndex.length;
+      if (aIdx != bIdx) return aIdx.compareTo(bIdx);
+      return scoreMap[b.id]!.compareTo(scoreMap[a.id]!);
+    });
 
   // Final diversity check: keep the shelf broad and non-repeating.
   final outputCatCount = <String, int>{};

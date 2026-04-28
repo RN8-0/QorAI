@@ -249,20 +249,30 @@ class FilterApplier {
 
     for (final key in keys) {
       final normalizedKey = _normalizeText(key);
+      final keyTokenCount = normalizedKey
+          .split(' ')
+          .where((t) => t.isNotEmpty)
+          .length;
+
       // Exact match first
       final exact = flatSpecs[key];
       if (exact != null && seen.add(exact)) {
         matches.add(exact);
       }
-      // Case-insensitive fallback
+      // Case-insensitive fallback. The previous threshold (tokenOverlap >= 2)
+      // failed for 2-token filter keys like "Screen Technology" against real
+      // spec keys like "Display Type" or "Panel Type" — they share zero or
+      // one token. Relax to >= 1 for short keys so the candidate values reach
+      // the value-substring check, which is the actual gate for IPS/OLED/etc.
       for (final entry in flatSpecs.entries) {
         final normalizedEntryKey = _normalizeText(entry.key);
         final tokenOverlap = _tokenOverlap(normalizedKey, normalizedEntryKey);
+        final overlapThreshold = keyTokenCount <= 2 ? 1 : 2;
         final isMatch =
             normalizedEntryKey == normalizedKey ||
             normalizedEntryKey.contains(normalizedKey) ||
             normalizedKey.contains(normalizedEntryKey) ||
-            tokenOverlap >= 2;
+            tokenOverlap >= overlapThreshold;
         if (isMatch && seen.add(entry.value)) {
           matches.add(entry.value);
         }

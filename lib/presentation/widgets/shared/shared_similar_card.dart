@@ -14,8 +14,10 @@ class SharedSimilarGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageBg = isDark ? Colors.white : const Color(0xFFF1F5F9);
+    // Product photos are shot on white. Always render the image cell on pure
+    // white in both themes so the product "floats" cleanly without a tinted
+    // halo (was Color(0xFFF1F5F9) slate in light mode → mismatched look).
+    const imageBg = Colors.white;
 
     return Container(
       decoration: BoxDecoration(
@@ -51,42 +53,69 @@ class SharedSimilarGridCard extends StatelessWidget {
             // Image section — fills remaining vertical space so button
             // always sits at the bottom regardless of name length.
             Expanded(
-              child: Stack(children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: imageBg,
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16))),
-                  child: ProductImageBox(
-                    imageUrl: product.imageUrl,
-                    fallbackUrls: product.images,
-                    borderRadius: BorderRadius.circular(10),
-                    padding: EdgeInsets.zero,
-                  ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
                 ),
-                if (product.techScore > 0)
-                  Positioned(top: 7, right: 7, child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentCyan.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.accentCyan.withValues(alpha: 0.3),
-                        width: 0.5)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.local_fire_department_rounded,
-                          size: 10, color: AppTheme.accentCyan),
-                      const SizedBox(width: 2),
-                      Text('${product.techScore.toInt()}',
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              color: AppTheme.accentCyan)),
-                    ]),
-                  )),
-              ]),
+                // StackFit.expand forces the white backdrop to cover the
+                // entire image slot. Without it, a non-positioned Container
+                // only grew to its child's intrinsic height and the leftover
+                // area exposed Material's dark surfaceVariantColor — that
+                // was the "transparent/dark image" bug in compare/similar.
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const ColoredBox(color: imageBg),
+                    Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: ProductImageBox(
+                        imageUrl: product.imageUrl,
+                        fallbackUrls: product.images,
+                        borderRadius: BorderRadius.circular(10),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                    if (product.techScore > 0)
+                      Positioned(
+                        top: 7,
+                        right: 7,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentCyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.accentCyan.withValues(alpha: 0.3),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.local_fire_department_rounded,
+                                size: 10,
+                                color: AppTheme.accentCyan,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${product.techScore.toInt()}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.accentCyan,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
             // Details section — tight layout, button directly under name
             Padding(

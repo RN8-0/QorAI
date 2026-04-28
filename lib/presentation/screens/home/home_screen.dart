@@ -34,7 +34,11 @@ const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // Viewport ~3 kart + cacheExtent → ~5 kart fiilen build edilir; kullanıcı
 // kaydırdığında ek kartlar `_HomeScreenState.didUpdateWidget` veya
 // section provider'ı ile gelir.
-const int _kHorizontalInitialItemLimit = 8;
+// 25 horizontal cards per shelf (was 8). Safe because ListView.builder with a
+// fixed itemExtent only inflates ~viewport + cacheExtent worth of children at
+// any time — a higher limit just lets the user keep scrolling further right
+// without affecting initial paint cost or memory of off-screen items.
+const int _kHorizontalInitialItemLimit = 25;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 // ignore: unused_element

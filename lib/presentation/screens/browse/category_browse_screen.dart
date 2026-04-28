@@ -100,6 +100,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   // Page counter for PocketBase pagination
   int _currentPage = 1;
 
+  // Runaway-pagination guards.
+  // _lastFetchPixels: scroll offset where the last successful fetch fired.
+  // _paginationCooldownUntil: blocks a new fetch until this moment passes,
+  //   even if the listener fires (next-page request races with rebuild).
+  double _lastFetchPixels = -1;
+  DateTime _paginationCooldownUntil = DateTime.fromMillisecondsSinceEpoch(0);
+
   // ── Filter cache — computed once per products change, not on every build ──
   List<FilterDefinition>? _cachedFilterDefs;
   int _cachedProductCount = -1;
@@ -205,13 +212,53 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   void _onScroll() {
-    if (!(_scrollController.hasClients) || _fetchingAll || _allLoaded) {
+    // Cheap pre-check to avoid scheduling timers when nothing can fire.
+    if (!mounted ||
+        !_scrollController.hasClients ||
+        _fetchingAll ||
+        _allLoaded) {
       return;
     }
     _scrollDebounce?.cancel();
-    _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
-      if (_scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 600) {
+    _scrollDebounce = Timer(const Duration(milliseconds: 150), () {
+      // All guards must be re-checked inside the debounce: state can change
+      // between scheduling and firing (route pop, dispose, fetch already started).
+      if (!mounted ||
+          !_scrollController.hasClients ||
+          _fetchingAll ||
+          _allLoaded) {
+        return;
+      }
+
+      // _scrollController.position throws Bad state: No element when there are
+      // zero attached positions and Bad state: Too many elements when there
+      // are multiple (e.g. nested CustomScrollViews briefly sharing the
+      // controller during transitions). Reading .positions sidesteps both.
+      final positions = _scrollController.positions;
+      if (positions.length != 1) return;
+      final position = positions.first;
+      if (!position.hasContentDimensions) return;
+
+      final pixels = position.pixels;
+      final maxExtent = position.maxScrollExtent;
+      if (maxExtent <= 0) return;
+
+      // Pagination cooldown: blocks back-to-back fetches even if the listener
+      // re-fires while the previously-fetched page is still being laid out
+      // (maxScrollExtent hasn't grown yet → user is still in the trigger zone).
+      if (DateTime.now().isBefore(_paginationCooldownUntil)) return;
+
+      // Require the user to actually scroll meaningfully since the last fetch,
+      // not just sit at the bottom while pages stream in.
+      if (_lastFetchPixels >= 0 && (pixels - _lastFetchPixels).abs() < 200) {
+        return;
+      }
+
+      if (pixels >= maxExtent - 400) {
+        _lastFetchPixels = pixels;
+        _paginationCooldownUntil = DateTime.now().add(
+          const Duration(milliseconds: 600),
+        );
         _fetchNextPage();
       }
     });
@@ -280,11 +327,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _allProducts = merged;
         _currentPage = page.nextPage;
         _allLoaded = !page.hasMore;
+        _fetchingAll = false;
         // Once all pages loaded, show true deduped count; otherwise Typesense total.
         _totalProductCount = !page.hasMore ? merged.length : page.totalFound;
       });
-    } catch (_) {}
-    if (mounted) setState(() => _fetchingAll = false);
+    } catch (e) {
+      // Network/timeout failures must not leave _fetchingAll stuck — that
+      // would silently freeze pagination forever. Extend cooldown to back off.
+      if (mounted) {
+        setState(() => _fetchingAll = false);
+        _paginationCooldownUntil = DateTime.now().add(
+          const Duration(seconds: 3),
+        );
+      }
+    }
   }
 
   /// Load first page quickly and defer the rest until scroll.
@@ -394,9 +450,20 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             ? firstPage.length
             : result.totalFound;
         _loading = false;
+        _error = null;
       });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      // Only surface an error if no products at all are visible — otherwise
+      // we already have stale/cached data and the user can still browse.
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (_allProducts.isEmpty) {
+          _error = _isTurkish
+              ? 'Bağlantı zaman aşımı. İnternetinizi kontrol edip tekrar deneyin.'
+              : 'Connection timed out. Check your internet and retry.';
+        }
+      });
     }
   }
 
@@ -1026,6 +1093,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return Column(
       children: [
         Expanded(
+          // viewPaddingOf returns the system safe-area independent of keyboard
+          // viewInsets. paddingOf would shrink to 0 when the IME opens (Android
+          // re-allocates the nav-bar inset to the keyboard), forcing a full
+          // ListView relayout for all 4000+ tiles. viewPadding stays constant,
+          // so the list never re-measures when the keyboard appears.
           child: ListView.builder(
             controller: _scrollController,
             cacheExtent: 600,
@@ -1034,7 +1106,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               12,
               8,
               12,
-              MediaQuery.paddingOf(context).bottom +
+              MediaQuery.viewPaddingOf(context).bottom +
                   AppTheme.navBarTotalClearance,
             ),
             itemCount: products.length + (_fetchingAll ? 1 : 0),

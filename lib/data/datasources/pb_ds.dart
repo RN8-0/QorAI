@@ -51,8 +51,13 @@ class PbDataSource {
       BaseOptions(
         baseUrl: kTypesenseUrl,
         headers: {'X-TYPESENSE-API-KEY': kTypesenseApiKey},
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
+        // Mobile networks routinely take >10s for cold connections (TLS
+        // handshake on slow LTE). Bumping to 25/35s eliminates the spurious
+        // [connection timeout] storm seen in profile logs while still
+        // failing fast enough to keep the UI responsive.
+        connectTimeout: const Duration(seconds: 25),
+        receiveTimeout: const Duration(seconds: 35),
+        sendTimeout: const Duration(seconds: 25),
       ),
     );
   }
@@ -1798,9 +1803,14 @@ class PbDataSource {
       return cached.results;
     }
 
+    // Normalize query: split alpha-digit boundaries so "note9" → "note 9",
+    // "redmi14" → "redmi 14". Keeps model numbers as separate tokens so
+    // Typesense can match them individually and rank exactly.
+    final normalizedQ = _normalizeSearchQuery(q);
+
     try {
       final params = <String, dynamic>{
-        'q': q,
+        'q': normalizedQ,
         'query_by': 'name,brand,subcategory,keySpecsText,tags',
         'query_by_weights': '8,5,4,2,3',
         'per_page': limit,
@@ -1808,7 +1818,17 @@ class PbDataSource {
         'sort_by': '_text_match:desc,techScore:desc',
         'prioritize_exact_match': true,
         'prioritize_token_position': true,
-        'prefix': 'true,true,true,false,false',
+        'prioritize_num_matching_fields': true,
+        'text_match_type': 'max_score',
+        // Only allow 1 typo for tokens with 4+ characters; short numeric
+        // tokens (e.g. "8", "9") must match exactly — prevents "Note 8"
+        // from matching "Note 9" or "Note 15" via typo expansion.
+        'num_typos': '1,0,1,1,1',
+        'min_len_1typo': 4,
+        'min_len_2typo': 8,
+        'drop_tokens_threshold': 0,
+        'typo_tokens_threshold': 0,
+        'prefix': 'true,false,true,false,false',
         'exclude_fields': 'keySpecsText',
         if (category != null) 'filter_by': 'category:=$category',
       };
@@ -2335,14 +2355,27 @@ class PbDataSource {
 
       final trimmedQuery = query.trim();
       final isSearch = trimmedQuery.isNotEmpty && trimmedQuery != '*';
+      // Normalize: split alpha-digit boundaries ("note9" → "note 9") so
+      // model numbers become separate Typesense tokens.
+      final tsQuery = isSearch ? _normalizeSearchQuery(trimmedQuery) : '*';
 
       final response = await _dio.get(
         '/collections/products/documents/search',
         queryParameters: {
-          'q': isSearch ? trimmedQuery : '*',
+          'q': tsQuery,
           if (isSearch) 'query_by': 'name,brand',
+          if (isSearch) 'query_by_weights': '8,4',
+          if (isSearch) 'prioritize_exact_match': true,
+          if (isSearch) 'prioritize_token_position': true,
+          if (isSearch) 'prioritize_num_matching_fields': true,
+          if (isSearch) 'text_match_type': 'max_score',
+          if (isSearch) 'num_typos': '1,0',
+          if (isSearch) 'min_len_1typo': 4,
+          if (isSearch) 'min_len_2typo': 8,
+          if (isSearch) 'drop_tokens_threshold': 0,
+          if (isSearch) 'typo_tokens_threshold': 0,
           'filter_by': filterBy,
-          'sort_by': sortBy,
+          'sort_by': isSearch ? '_text_match:desc,techScore:desc' : sortBy,
           'per_page': limit,
           'page': page,
           'exclude_fields': 'keySpecsText',
@@ -2380,6 +2413,67 @@ class PbDataSource {
         totalFound: fallback.products.length,
       );
     }
+  }
+
+  /// Paginated top-rated query across ALL categories, sorted by tech score.
+  /// Used by the search screen's Top Rated grid to lazy-load beyond the
+  /// homeFeed snapshot (which was capped at 20).
+  Future<
+    ({List<ProductModel> products, int nextPage, bool hasMore, int totalFound})
+  >
+  getTopRatedPageTs({int limit = 20, int page = 1}) async {
+    try {
+      final sw = Stopwatch()..start();
+      final response = await _dio.get(
+        '/collections/products/documents/search',
+        queryParameters: {
+          'q': '*',
+          'sort_by': 'techScore:desc,trendScore:desc',
+          'per_page': limit,
+          'page': page,
+          'exclude_fields': 'keySpecsText',
+        },
+      );
+      sw.stop();
+      final hits = (response.data['hits'] as List?) ?? [];
+      final products = hits
+          .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
+          .whereType<ProductModel>()
+          .toList();
+      final found = (response.data['found'] as int?) ?? 0;
+      final hasMore = (page * limit) < found;
+      debugPrint(
+        '=== QOR AI: TS getTopRated page=$page → ${products.length}/$found in ${sw.elapsedMilliseconds}ms ===',
+      );
+      return (
+        products: products,
+        nextPage: page + 1,
+        hasMore: hasMore,
+        totalFound: found,
+      );
+    } catch (e) {
+      debugPrint('=== QOR AI: TS getTopRated FAILED page=$page: $e ===');
+      return (
+        products: <ProductModel>[],
+        nextPage: page,
+        hasMore: false,
+        totalFound: 0,
+      );
+    }
+  }
+
+  /// Normalizes a search query for Typesense: splits alpha-digit boundaries
+  /// so compound tokens like "note9" become "note 9" and numeric model numbers
+  /// are separate tokens. This ensures "Redmi Note 9" ranks above "Redmi Note
+  /// 15 Pro+" when the user types "note9" or "redmi note9".
+  static String _normalizeSearchQuery(String query) {
+    var q = query.trim().toLowerCase();
+    // letter → digit boundary: "note9" → "note 9"
+    q = q.replaceAllMapped(RegExp(r'([a-z])(\d)'), (m) => '${m[1]} ${m[2]}');
+    // digit → letter boundary: "9pro" → "9 pro"
+    q = q.replaceAllMapped(RegExp(r'(\d)([a-z])'), (m) => '${m[1]} ${m[2]}');
+    // collapse extra whitespace
+    return q.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   /// Returns all plausible Typesense slug variants for a category name.
