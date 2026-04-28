@@ -3,7 +3,7 @@ const path = require('path');
 
 const APP_UUIDS = {
   admin: 'z1221ae58okr865xdquykps8',
-  website: 'qpq5eb1emz17386uh8jgj76q',
+  website: 'z12jcqfpvl0m7l3nv9t6l5jl',
 };
 
 function readEnvFile(filePath) {
