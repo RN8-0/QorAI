@@ -249,6 +249,7 @@ class FilterApplier {
 
     for (final key in keys) {
       final normalizedKey = _normalizeText(key);
+      final compactKey = normalizedKey.replaceAll(' ', '');
       final keyTokenCount = normalizedKey
           .split(' ')
           .where((t) => t.isNotEmpty)
@@ -266,12 +267,16 @@ class FilterApplier {
       // the value-substring check, which is the actual gate for IPS/OLED/etc.
       for (final entry in flatSpecs.entries) {
         final normalizedEntryKey = _normalizeText(entry.key);
+        final compactEntryKey = normalizedEntryKey.replaceAll(' ', '');
         final tokenOverlap = _tokenOverlap(normalizedKey, normalizedEntryKey);
         final overlapThreshold = keyTokenCount <= 2 ? 1 : 2;
         final isMatch =
             normalizedEntryKey == normalizedKey ||
+            compactEntryKey == compactKey ||
             normalizedEntryKey.contains(normalizedKey) ||
             normalizedKey.contains(normalizedEntryKey) ||
+            compactEntryKey.contains(compactKey) ||
+            compactKey.contains(compactEntryKey) ||
             tokenOverlap >= overlapThreshold;
         if (isMatch && seen.add(entry.value)) {
           matches.add(entry.value);

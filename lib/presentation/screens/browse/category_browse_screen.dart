@@ -576,7 +576,39 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       products: _allProducts,
     );
     if (result != null && mounted) {
+      if (result.isActive && !_allLoaded) {
+        await _ensureCompleteCatalogForFiltering();
+        if (!mounted) return;
+      }
       setState(() => _filterState = result);
+    }
+  }
+
+  Future<void> _ensureCompleteCatalogForFiltering() async {
+    if (_allLoaded || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      final ds = ref.read(pbDataSourceProvider);
+      final fullCatalog = await ds.getAllProductsInCategoryTs(
+        category: _activeCategoryId,
+        sortBy: _serverSortBy(),
+      );
+      if (!mounted) return;
+
+      final sanitized = _sanitizeCategoryProducts(fullCatalog);
+      setState(() {
+        _allProducts = sanitized;
+        _allLoaded = true;
+        _totalProductCount = sanitized.length;
+        _currentPage = 1;
+      });
+    } catch (_) {
+      // Keep the already loaded slice if the full fetch fails.
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 

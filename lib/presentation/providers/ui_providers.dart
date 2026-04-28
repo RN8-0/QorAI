@@ -17,6 +17,7 @@ final selectedCountryProvider = StateNotifierProvider<CountryNotifier, String>((
 class CountryNotifier extends StateNotifier<String> {
   final CacheService _cacheService;
   final Ref _ref;
+  bool _autoDetectionScheduled = false;
 
   CountryNotifier(this._cacheService, this._ref) : super('US') {
     _load();
@@ -35,7 +36,7 @@ class CountryNotifier extends StateNotifier<String> {
     // Always keep auto-detection active when country wasn't manually chosen.
     // This fixes stale "US" defaults that could persist forever.
     if (!manuallySet) {
-      _attachAutoDetectionListener();
+      _scheduleAutoDetection();
     }
   }
 
@@ -57,39 +58,36 @@ class CountryNotifier extends StateNotifier<String> {
     _cacheService.setCountryManuallySet(false);
     _cacheService.saveCountry('');
     state = 'US'; // temporary default until IP detection completes
+    _autoDetectionScheduled = false;
     // Force a fresh IP lookup by invalidating the cached provider result.
     // Without this the FutureProvider keeps its previous resolved value and
     // the listener in _load() never fires again for the new session.
     _ref.invalidate(detectedLocationProvider);
-    // Re-attach the listener so it picks up the fresh detection result.
-    _attachAutoDetectionListener();
+    _scheduleAutoDetection();
   }
 
-  void _attachAutoDetectionListener() {
-    // IP detection HomeScreen first data render'dan sonra calsin.
-    // Aksi halde:
-    //   1. CountryNotifier ctor → _load() → listener register → detectedLocationProvider start
-    //   2. ipapi.co network fetch (1-3s, hatta rate limit fail)
-    //   3. detection biter → state degisir → homeFeedProvider invalidate
-    //   4. homeFeedProvider yeniden tetiklenir (logta gorulen "joining existing fetch")
-    //   5. _homeFeedReadyCacheKey country'ye bagli → key degisir → ready cache miss
-    // 3.5s gecikme → HomeScreen tum stage reveal'i biter, sonra IP detection
-    // baslar. Detection sonrasi state degisirse background refresh tetiklenir.
-    Future<void>.delayed(const Duration(milliseconds: 3500), () {
-      if (!mounted) return;
-      _ref.listen(detectedLocationProvider, (_, next) {
-        next.whenData((location) {
-          if (_cacheService.isCountryManuallySet()) return;
-          final detectedCode = _resolveBestCountryCode(location.countryCode);
-          if (detectedCode.isEmpty) return;
-          if (state != detectedCode) {
-            state = detectedCode;
-          }
-          _cacheService.saveCountry(detectedCode);
-          final info = SupportedCountries.countries[detectedCode];
-          _cacheService.saveCurrency(info?.currency ?? location.currency);
-        });
-      });
+  void _scheduleAutoDetection() {
+    if (_autoDetectionScheduled) return;
+    _autoDetectionScheduled = true;
+
+    // App açılışındaki ilk render oturduktan sonra tek sefer IP tespiti yap.
+    Future<void>.delayed(const Duration(milliseconds: 2500), () async {
+      if (!mounted || _cacheService.isCountryManuallySet()) return;
+      try {
+        final location = await _ref.read(detectedLocationProvider.future);
+        if (!mounted || _cacheService.isCountryManuallySet()) return;
+
+        final detectedCode = _resolveBestCountryCode(location.countryCode);
+        if (detectedCode.isEmpty) return;
+        if (state != detectedCode) {
+          state = detectedCode;
+        }
+        _cacheService.saveCountry(detectedCode);
+        final info = SupportedCountries.countries[detectedCode];
+        _cacheService.saveCurrency(info?.currency ?? location.currency);
+      } catch (_) {
+        _autoDetectionScheduled = false;
+      }
     });
   }
 

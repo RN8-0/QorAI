@@ -6,7 +6,6 @@
 library;
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -213,7 +212,8 @@ class IpLocationService {
         final result = IpLocationResult(
           countryCode: code,
           currency: _currencyByCountry[code] ?? 'USD',
-          countryName: _nameByCountry[code] ?? (data['countryName'] as String? ?? code),
+          countryName:
+              _nameByCountry[code] ?? (data['countryName'] as String? ?? code),
         );
         await _saveToCache(result);
         debugPrint('=== QOR AI: Location from freeipapi.com: $code ===');

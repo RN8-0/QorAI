@@ -836,7 +836,8 @@ class GeminiService implements AIService {
     final sessionSeed = DateTime.now().millisecondsSinceEpoch % 9999;
 
     final response = await _jsonRequest(
-      system: '''
+      system:
+          '''
 You are Qor AI's Subscription Intelligence quiz engine.
 SESSION SEED: $sessionSeed  ← use this to vary phrasing and angles every time.
 

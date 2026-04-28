@@ -21,6 +21,8 @@ class QorAiApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(selectedCountryProvider);
+    ref.watch(countryInitProvider);
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeProvider);

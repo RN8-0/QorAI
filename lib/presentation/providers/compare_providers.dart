@@ -1519,12 +1519,22 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
     // ── Phase B: Quiz generation (quiz failure falls through to direct analysis)
     try {
-      final quiz = await _deepseek
-          .generateSubscriptionQuiz(
-            subscriptionNames: normalizedNames,
-            language: _appLang,
-          )
-          .timeout(const Duration(seconds: 25));
+      ProductQuiz quiz;
+      try {
+        quiz = await _gemini
+            .generateSubscriptionQuiz(
+              subscriptionNames: normalizedNames,
+              language: _appLang,
+            )
+            .timeout(const Duration(seconds: 25));
+      } catch (_) {
+        quiz = await _deepseek
+            .generateSubscriptionQuiz(
+              subscriptionNames: normalizedNames,
+              language: _appLang,
+            )
+            .timeout(const Duration(seconds: 25));
+      }
 
       if (quiz.questions.isEmpty) throw Exception('No questions generated');
 

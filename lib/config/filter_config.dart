@@ -195,7 +195,14 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: '165_hz', label: '165 Hz'),
       FilterOption(id: '240_hz', label: '240 Hz'),
     ],
-    specKeys: ['Screen Refresh Rate', 'refresh rate'],
+    specKeys: [
+      'Screen Refresh Rate',
+      'screen refresh rate',
+      'Refresh Rate',
+      'refresh rate',
+      'Display Refresh Rate',
+      'display refresh rate',
+    ],
   ),
   FilterDefinition(
     id: 'five_g',
