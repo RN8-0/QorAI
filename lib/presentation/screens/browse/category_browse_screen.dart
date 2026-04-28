@@ -601,6 +601,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
+      resizeToAvoidBottomInset: false,
       appBar: _buildAppBar(),
       body: Column(
         children: [

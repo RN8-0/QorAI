@@ -223,6 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     }
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: RefreshIndicator(
         color: AppTheme.primaryBlue,
         onRefresh: () async {

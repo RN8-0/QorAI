@@ -180,6 +180,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
     return Scaffold(
       backgroundColor: context.surfaceVariantColor,
+      resizeToAvoidBottomInset: false,
       body: Column(children: [
         _buildHeader(context),
         Expanded(child: _buildMessageList(chatState)),
@@ -393,13 +394,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildInputArea(double bottomPadding) {
     final hasText = _ctrl.text.trim().isNotEmpty;
-    // When keyboard is open, don't add navBar clearance (avoids overflow)
-    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    // resizeToAvoidBottomInset: false — keyboard height handled manually
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    final keyboardOpen = keyboardHeight > 0;
     final extraBottom = (widget.isOverlay || keyboardOpen) ? 0.0 : AppTheme.navBarHeight;
     return Container(
       padding: EdgeInsets.only(
           left: 12, right: 12, top: 8,
-          bottom: widget.isOverlay ? 10 : (bottomPadding + extraBottom + 12)),
+          bottom: widget.isOverlay
+              ? (10 + keyboardHeight)
+              : (bottomPadding + extraBottom + keyboardHeight + 12)),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         boxShadow: [
