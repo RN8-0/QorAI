@@ -36,9 +36,20 @@
 
   --shadow: rgba(0,0,0,0.55);
   --shadow-glow: 0 10px 40px rgba(0,229,255,.18);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.4);
   --radius: 14px;
   --radius-sm: 10px;
   --radius-lg: 22px;
+
+  /* Backward-compat aliases for older inner pages */
+  --text-primary: var(--text);
+  --text-secondary: var(--text2);
+  --text-muted: var(--text3);
+  --bg-card: var(--bg2);
+  --border-light: var(--border);
+  --primary: var(--brand-blue);
+  --primary-light: var(--brand-cyan);
+  --accent-gradient: var(--brand-grad);
 }
 
 [data-theme="light"] {
@@ -55,6 +66,9 @@
   --shadow: rgba(15,23,42,0.10);
   --shadow-glow: 0 10px 40px rgba(33,150,243,.20);
   --accent3: rgba(33,150,243,0.10);
+  --shadow-sm: 0 2px 6px rgba(15,23,42,.06);
+  --primary: var(--brand-blue);
+  --primary-light: var(--brand-deep);
 }
 
 /* ── Reset ──────────────────────────────────────────────────── */
