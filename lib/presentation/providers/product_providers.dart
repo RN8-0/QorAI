@@ -5,7 +5,9 @@ final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
 const int _homeFeedInitialCategoryCount = 14;
-const int _homeFeedInitialPerCategory = 50;
+// 50 → 15: UI'da sadece 8 kart görünüyor (_kHorizontalInitialItemLimit).
+// 15 item = 8 görünür + 7 buffer. Network ve heap maliyeti ~3.3x azalır.
+const int _homeFeedInitialPerCategory = 15;
 
 /// Clear PC Builder cache for a specific category (or all if null)
 void clearPcBuilderCache([String? category]) {

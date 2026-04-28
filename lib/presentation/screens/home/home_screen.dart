@@ -70,10 +70,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // 6 = + Discover
   int _renderStage = 0;
   static const int _kMaxRenderStage = 6;
-  // Stage'ler arası gecikme. 32ms ≈ 2 vsync (60Hz) — feed-aware guard
-  // shimmer→data dalga spike'ını zaten önlediği için reveal hızlandırılabilir.
-  // Toplam Stage 2→6 reveal: 5 × 32ms = 160ms (önceden 240ms).
-  static const Duration _kStageDelay = Duration(milliseconds: 32);
+  // Stage'ler arası gecikme. 60ms ≈ 3-4 vsync — zayıf cihazlarda (Xiaomi
+  // mid-range, eski tablet) her stage arasında frame budget açar. 32ms'de
+  // arka arkaya gelen rebuild'ler aynı vsync'e düşebilir → spike.
+  // Toplam Stage 2→6 reveal: 5 × 60ms = 300ms (fark kullanıcıya hissettirmez).
+  static const Duration _kStageDelay = Duration(milliseconds: 60);
   // Feed READY guard: feed AsyncValue.data state'e geçmeden Stage 2+
   // açılmaz. Aksi halde shimmer→gerçek geçiş tüm Consumer'ları aynı anda
   // rebuild eder → büyük spike. Feed hazır olunca kademeli olarak açılır.
@@ -85,6 +86,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ── Category chip cache: rebuilt only when locale changes ──
   List<Map<String, Object>>? _cachedFlatCategories;
   Locale? _cachedCategoriesLocale;
+
+  // ── CategoryMeta cache: 40+ girişli Map'i her çağrıda yeniden kurmaktan kaçın ──
+  Map<String, Map<String, dynamic>>? _cachedCategoryMetaMap;
+  Locale? _cachedCategoryMetaLocale;
 
   // ── BlockedIds cache: rebuilt only when feed instance changes ──
   HomeFeed? _cachedBlockedIdsFeed;
@@ -159,8 +164,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         _visibleCategoryCount < _kMaxVisibleCategories) {
       if (mounted) {
         setState(() {
-          _visibleCategoryCount = (_visibleCategoryCount + _kCategoryLoadIncrement)
-              .clamp(0, _kMaxVisibleCategories);
+          _visibleCategoryCount =
+              (_visibleCategoryCount + _kCategoryLoadIncrement).clamp(
+                0,
+                _kMaxVisibleCategories,
+              );
         });
       }
     }
@@ -245,21 +253,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 title: context.l10n?.categories ?? 'Categories',
               ),
             ),
-            SliverToBoxAdapter(child: RepaintBoundary(child: _buildCategoriesSection())),
+            SliverToBoxAdapter(
+              child: RepaintBoundary(child: _buildCategoriesSection()),
+            ),
 
             // ── STAGE 2: Real AppBar (üstte değişti) + For You + Trending ─
             if (_renderStage >= 2) ...[
               SliverToBoxAdapter(
-                child: Consumer(builder: (context, ref, _) {
-                  final userProfile = ref.watch(userProfileProvider);
-                  return _SectionHeader(
-                    title: context.l10n?.forYou ?? 'For You',
-                    icon: Icons.auto_awesome_rounded,
-                    iconColor: const Color(0xFFF59E0B),
-                    subtitle: _getPersonalizationSubtitle(userProfile),
-                    onSeeAll: () => context.push(AppRoutes.search),
-                  );
-                }),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final userProfile = ref.watch(userProfileProvider);
+                    return _SectionHeader(
+                      title: context.l10n?.forYou ?? 'For You',
+                      icon: Icons.auto_awesome_rounded,
+                      iconColor: const Color(0xFFF59E0B),
+                      subtitle: _getPersonalizationSubtitle(userProfile),
+                      onSeeAll: () => context.push(AppRoutes.search),
+                    );
+                  },
+                ),
               ),
               SliverToBoxAdapter(child: _buildPersonalizedSection()),
               SliverToBoxAdapter(
@@ -356,13 +368,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         // Part 1: Audience descriptor
         if (user.profession != null && user.profession != 'other') {
           final labels = {
-            'engineer': context.l10n?.engineers ?? _uiText(tr: 'Muhendisler', en: 'Engineers'),
-            'designer': context.l10n?.designers ?? _uiText(tr: 'Tasarimcilar', en: 'Designers'),
-            'student': context.l10n?.students ?? _uiText(tr: 'Ogrenciler', en: 'Students'),
-            'manager': context.l10n?.managers ?? _uiText(tr: 'Yoneticiler', en: 'Managers'),
-            'healthcare': context.l10n?.healthcarePros ?? _uiText(tr: 'Saglik profesyonelleri', en: 'Healthcare pros'),
-            'teacher': context.l10n?.teachers ?? _uiText(tr: 'Ogretmenler', en: 'Teachers'),
-            'finance': context.l10n?.financePros ?? _uiText(tr: 'Finans profesyonelleri', en: 'Finance pros'),
+            'engineer':
+                context.l10n?.engineers ??
+                _uiText(tr: 'Muhendisler', en: 'Engineers'),
+            'designer':
+                context.l10n?.designers ??
+                _uiText(tr: 'Tasarimcilar', en: 'Designers'),
+            'student':
+                context.l10n?.students ??
+                _uiText(tr: 'Ogrenciler', en: 'Students'),
+            'manager':
+                context.l10n?.managers ??
+                _uiText(tr: 'Yoneticiler', en: 'Managers'),
+            'healthcare':
+                context.l10n?.healthcarePros ??
+                _uiText(tr: 'Saglik profesyonelleri', en: 'Healthcare pros'),
+            'teacher':
+                context.l10n?.teachers ??
+                _uiText(tr: 'Ogretmenler', en: 'Teachers'),
+            'finance':
+                context.l10n?.financePros ??
+                _uiText(tr: 'Finans profesyonelleri', en: 'Finance pros'),
           };
           final label = labels[user.profession];
           final eco = user.ecosystem == 'apple'
@@ -379,10 +405,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             );
           } else {
             parts.add(
-              _uiText(
-                tr: 'Sana ozel secimler',
-                en: 'Personal picks for you',
-              ),
+              _uiText(tr: 'Sana ozel secimler', en: 'Personal picks for you'),
             );
           }
         } else {
@@ -400,10 +423,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             );
           } else {
             parts.add(
-              _uiText(
-                tr: 'Senin icin secildi',
-                en: 'Personalized for you',
-              ),
+              _uiText(tr: 'Senin icin secildi', en: 'Personalized for you'),
             );
           }
         }
@@ -415,9 +435,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         } else if (budget == 'low') {
           parts.add(_uiText(tr: 'uygun fiyat odakli', en: 'budget-friendly'));
         } else if (budget == 'mid') {
-          parts.add(_uiText(tr: 'orta segment oneriler', en: 'mid-range picks'));
+          parts.add(
+            _uiText(tr: 'orta segment oneriler', en: 'mid-range picks'),
+          );
         } else {
-          parts.add(_uiText(tr: 'etkinligine gore', en: 'based on your activity'));
+          parts.add(
+            _uiText(tr: 'etkinligine gore', en: 'based on your activity'),
+          );
         }
 
         return parts.join(' • ');
@@ -434,10 +458,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildAppBar(BuildContext context) {
     return SliverToBoxAdapter(
-      child: Consumer(builder: (context, ref, _) {
-        final userProfile = ref.watch(userProfileProvider);
-        return _buildAppBarContent(context, ref, userProfile);
-      }),
+      child: Consumer(
+        builder: (context, ref, _) {
+          final userProfile = ref.watch(userProfileProvider);
+          return _buildAppBarContent(context, ref, userProfile);
+        },
+      ),
     );
   }
 
@@ -452,17 +478,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final greetingEmoji = isNight
         ? '🌙'
         : hour < 12
-            ? '🌅'
-            : hour < 17
-                ? '☀️'
-                : '🌙';
+        ? '🌅'
+        : hour < 17
+        ? '☀️'
+        : '🌙';
     final greetingText = isNight
         ? (context.l10n?.goodEvening ?? 'Good evening')
         : hour < 12
-            ? (context.l10n?.goodMorning ?? 'Good morning')
-            : hour < 17
-                ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
-                : (context.l10n?.goodEvening ?? 'Good evening');
+        ? (context.l10n?.goodMorning ?? 'Good morning')
+        : hour < 17
+        ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
+        : (context.l10n?.goodEvening ?? 'Good evening');
     return SliverToBoxAdapter(
       child: RepaintBoundary(
         child: Container(
@@ -489,8 +515,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ShaderMask(
                           shaderCallback: (bounds) =>
                               AppTheme.primaryGradient.createShader(
-                            Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                          ),
+                                Rect.fromLTWH(
+                                  0,
+                                  0,
+                                  bounds.width,
+                                  bounds.height,
+                                ),
+                              ),
                           child: Text(
                             'Qor AI',
                             style: GoogleFonts.plusJakartaSans(
@@ -532,23 +563,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildAppBarContent(
-      BuildContext context, WidgetRef ref, AsyncValue userProfile) {
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue userProfile,
+  ) {
     final hour = DateTime.now().hour;
     final isNight = hour < 5 || hour >= 22;
     final greetingEmoji = isNight
-      ? '🌙'
-      : hour < 12
-      ? '🌅'
-      : hour < 17
-      ? '☀️'
-      : '🌙';
+        ? '🌙'
+        : hour < 12
+        ? '🌅'
+        : hour < 17
+        ? '☀️'
+        : '🌙';
     final greetingText = isNight
-      ? (context.l10n?.goodEvening ?? 'Good evening')
-      : hour < 12
-      ? (context.l10n?.goodMorning ?? 'Good morning')
-      : hour < 17
-      ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
-      : (context.l10n?.goodEvening ?? 'Good evening');
+        ? (context.l10n?.goodEvening ?? 'Good evening')
+        : hour < 12
+        ? (context.l10n?.goodMorning ?? 'Good morning')
+        : hour < 17
+        ? (context.l10n?.goodAfternoon ?? 'Good afternoon')
+        : (context.l10n?.goodEvening ?? 'Good evening');
     final greeting = '$greetingEmoji $greetingText';
 
     // Resolve first name: entity ÔåÆ authStore displayName ÔåÆ authStore name
@@ -596,98 +630,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 20, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    // App logo / title
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShaderMask(
-                            shaderCallback: (bounds) =>
-                                AppTheme.primaryGradient.createShader(
-                                  Rect.fromLTWH(
-                                    0,
-                                    0,
-                                    bounds.width,
-                                    bounds.height,
-                                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // App logo / title
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (bounds) =>
+                              AppTheme.primaryGradient.createShader(
+                                Rect.fromLTWH(
+                                  0,
+                                  0,
+                                  bounds.width,
+                                  bounds.height,
                                 ),
-                            child: Text(
-                              isPremium
-                                  ? 'Premium'
-                                  : 'Qor AI',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1.0,
-                                color: Colors.white,
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            userName != null
-                                ? '$greeting, $userName'
-                                : greeting,
+                          child: Text(
+                            isPremium ? 'Premium' : 'Qor AI',
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: context.textSecondary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.0,
+                              color: Colors.white,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    QorAmountBadge(
-                      amount: remainingCredits,
-                      unlimited: isPremium,
-                      color: AppTheme.brandBlue,
-                      fontSize: 12,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
-                    const SizedBox(width: 8),
-                    _NotificationButton(),
-                    if (!isPremium) ...[
-                      const SizedBox(width: 8),
-                      _AppBarButton(
-                        icon: Icons.diamond_rounded,
-                        tooltip: context.l10n?.premium ?? 'Premium',
-                        onTap: () => context.push(AppRoutes.premium),
-                        isPremium: true,
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                    // Profile avatar ÔÇö gradient ring border for premium look
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        context.push(AppRoutes.profile);
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        padding: const EdgeInsets.all(1.5),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(13),
-                          gradient: AppTheme.primaryGradient,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(11),
-                          child: _buildAvatarWidget(userProfile),
+                        const SizedBox(height: 3),
+                        Text(
+                          userName != null ? '$greeting, $userName' : greeting,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: context.textSecondary,
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                  QorAmountBadge(
+                    amount: remainingCredits,
+                    unlimited: isPremium,
+                    color: AppTheme.brandBlue,
+                    fontSize: 12,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _NotificationButton(),
+                  if (!isPremium) ...[
+                    const SizedBox(width: 8),
+                    _AppBarButton(
+                      icon: Icons.diamond_rounded,
+                      tooltip: context.l10n?.premium ?? 'Premium',
+                      onTap: () => context.push(AppRoutes.premium),
+                      isPremium: true,
                     ),
                   ],
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  // Profile avatar ÔÇö gradient ring border for premium look
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRoutes.profile);
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      padding: const EdgeInsets.all(1.5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(13),
+                        gradient: AppTheme.primaryGradient,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: _buildAvatarWidget(userProfile),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 
   /// Avatar widget that instantly shows Firebase Auth user's photo (sync)
@@ -766,8 +799,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildAvatarFallback({required String name}) {
-    final palette = _homeAvatarPalettes[
-        _homeAvatarSeed(name) % _homeAvatarPalettes.length];
+    final palette =
+        _homeAvatarPalettes[_homeAvatarSeed(name) % _homeAvatarPalettes.length];
     final initials = _homeAvatarInitials(name);
     return Container(
       width: 38,
@@ -825,25 +858,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildQuizReminder() {
     return SliverToBoxAdapter(
-      child: Consumer(builder: (context, ref, _) {
-        final userProfile = ref.watch(userProfileProvider);
-        final covers =
-            ref.watch(categoryCoversProvider).valueOrNull ??
-            const <String, String>{};
-        final heroImage =
-            covers['smartphones'] ?? covers['laptops'] ?? covers['headphones'];
-        return _buildQuizReminderBody(userProfile, heroImage);
-      }),
+      child: Consumer(
+        builder: (context, ref, _) {
+          final userProfile = ref.watch(userProfileProvider);
+          final covers =
+              ref.watch(categoryCoversProvider).valueOrNull ??
+              const <String, String>{};
+          final heroImage =
+              covers['smartphones'] ??
+              covers['laptops'] ??
+              covers['headphones'];
+          return _buildQuizReminderBody(userProfile, heroImage);
+        },
+      ),
     );
   }
 
   Widget _buildQuizReminderBody(AsyncValue userProfile, String? heroImage) {
-
     return userProfile.when(
       data: (user) {
         if (user != null && !user.quizCompleted) {
           return RepaintBoundary(
-              child: Padding(
+            child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: GestureDetector(
                 onTap: () => context.push(AppRoutes.quiz),
@@ -886,7 +922,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               memCacheWidth: 720,
                               maxWidthDiskCache: 720,
                               fadeInDuration: const Duration(milliseconds: 150),
-                                errorWidget: (context, url, error) =>
+                              errorWidget: (context, url, error) =>
                                   const SizedBox.shrink(),
                             ),
                           ),
@@ -1049,68 +1085,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildSearchBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return RepaintBoundary(
-      child: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          context.push(AppRoutes.search);
-        },
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.black.withValues(alpha: 0.06),
-              width: 1,
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Icon(
-                Icons.search_rounded,
-                size: 22,
-                color: context.textTertiaryColor,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n?.searchProducts ?? 'Search Products',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    color: context.textTertiaryColor,
+      child:
+          Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.push(AppRoutes.search);
+                  },
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : Colors.black.withValues(alpha: 0.06),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          size: 22,
+                          color: context.textTertiaryColor,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            context.l10n?.searchProducts ?? 'Search Products',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            context.push(AppRoutes.visualScanner);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.document_scanner_rounded,
+                              size: 20,
+                              color: AppTheme.brandBlue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.push(AppRoutes.visualScanner);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.document_scanner_rounded,
-                    size: 20,
-                    color: AppTheme.brandBlue,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, duration: 300.ms),
+              )
+              .animate()
+              .fadeIn(duration: 300.ms)
+              .slideY(begin: 0.05, duration: 300.ms),
     );
   }
 
@@ -1536,9 +1576,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === PERSONALIZED SECTION ==================================================
 
   Widget _buildPersonalizedSection() {
-    return Consumer(builder: (context, ref, _) {
-      return RepaintBoundary(child: _buildPersonalizedSectionBody(ref));
-    });
+    return Consumer(
+      builder: (context, ref, _) {
+        return RepaintBoundary(child: _buildPersonalizedSectionBody(ref));
+      },
+    );
   }
 
   Widget _buildPersonalizedSectionBody(WidgetRef ref) {
@@ -1582,7 +1624,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 );
               }
-              final display = products.take(_kHorizontalInitialItemLimit).toList();
+              final display = products
+                  .take(_kHorizontalInitialItemLimit)
+                  .toList();
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: _kHorizontalCardRowPadding,
@@ -1651,7 +1695,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       SliverToBoxAdapter(
         child: wide
             ? _buildWideProductCards(homeFeed, categoryId)
-            : RepaintBoundary(child: _buildCompactGridSection(homeFeed, categoryId)),
+            : RepaintBoundary(
+                child: _buildCompactGridSection(homeFeed, categoryId),
+              ),
       ),
     ];
   }
@@ -1664,38 +1710,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   ) {
     return RepaintBoundary(
       child: SizedBox(
-      height: _kHorizontalCardRowHeight,
-      child: homeFeed.when(
-        data: (feed) {
-          final products = _categorySectionProducts(feed, categoryId);
-          if (products.isEmpty) return const SizedBox.shrink();
+        height: _kHorizontalCardRowHeight,
+        child: homeFeed.when(
+          data: (feed) {
+            final products = _categorySectionProducts(feed, categoryId);
+            if (products.isEmpty) return const SizedBox.shrink();
 
-          return ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: _kHorizontalCardRowPadding,
-            physics: const BouncingScrollPhysics(),
-            itemExtent: _kCardItemExtent,
-            addAutomaticKeepAlives: false,
-            itemCount: min(_kHorizontalInitialItemLimit, products.length),
-            itemBuilder: (context, index) {
-              final p = products[index];
-              final price =
-                  p.getPriceForCountry(ref.read(selectedCountryProvider)) ?? 0;
-              return _WideProductCard(
-                product: p,
-                price: price,
-                onTap: () => context.push('/product/${p.id}'),
-              );
-            },
-          );
-        },
-        loading: () => _buildSkeletonRow(
-          height: _kHorizontalCardRowHeight,
-          cardWidth: 155,
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: _kHorizontalCardRowPadding,
+              physics: const BouncingScrollPhysics(),
+              itemExtent: _kCardItemExtent,
+              addAutomaticKeepAlives: false,
+              itemCount: min(_kHorizontalInitialItemLimit, products.length),
+              itemBuilder: (context, index) {
+                final p = products[index];
+                final price =
+                    p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
+                    0;
+                return _WideProductCard(
+                  product: p,
+                  price: price,
+                  onTap: () => context.push('/product/${p.id}'),
+                );
+              },
+            );
+          },
+          loading: () => _buildSkeletonRow(
+            height: _kHorizontalCardRowHeight,
+            cardWidth: 155,
+          ),
+          error: (error, stackTrace) => const SizedBox.shrink(),
         ),
-        error: (error, stackTrace) => const SizedBox.shrink(),
       ),
-    ),
     );
   }
 
@@ -1756,7 +1803,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return _cachedBlockedIds!;
   }
 
-  List<ProductEntity> _categorySectionProducts(HomeFeed feed, String categoryId) {
+  List<ProductEntity> _categorySectionProducts(
+    HomeFeed feed,
+    String categoryId,
+  ) {
     final products = feed.byCategory[categoryId] ?? const <ProductEntity>[];
     if (products.isEmpty) return products;
 
@@ -1784,10 +1834,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildTrendsSection() {
-    return Consumer(builder: (context, ref, _) {
-      final homeFeed = ref.watch(homeFeedProvider);
-      return RepaintBoundary(child: _buildTrendsSectionBody(homeFeed));
-    });
+    return Consumer(
+      builder: (context, ref, _) {
+        final homeFeed = ref.watch(homeFeedProvider);
+        return RepaintBoundary(child: _buildTrendsSectionBody(homeFeed));
+      },
+    );
   }
 
   Widget _buildTrendsSectionBody(AsyncValue<HomeFeed> homeFeed) {
@@ -1861,15 +1913,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === NEW ARRIVALS ==========================================================
 
   Widget _buildNewArrivalsSection() {
-    return Consumer(builder: (context, ref, _) {
-      return RepaintBoundary(child: _buildNewArrivalsBody(ref));
-    });
+    return Consumer(
+      builder: (context, ref, _) {
+        return RepaintBoundary(child: _buildNewArrivalsBody(ref));
+      },
+    );
   }
 
   Widget _buildNewArrivalsBody(WidgetRef ref) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
-      child: ref.watch(newArrivalsProvider).when(
+      child: ref
+          .watch(newArrivalsProvider)
+          .when(
             skipLoadingOnReload: true,
             skipLoadingOnRefresh: true,
             data: (products) {
@@ -1906,7 +1962,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   final p = products[index];
                   final price =
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                          0;
+                      0;
                   return _WideProductCard(
                     product: p,
                     price: price,
@@ -1920,8 +1976,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: _kHorizontalCardRowHeight,
               cardWidth: 155,
             ),
-            error: (error, stackTrace) =>
-                _buildRetryWidget(onRetry: () => ref.invalidate(newArrivalsProvider)),
+            error: (error, stackTrace) => _buildRetryWidget(
+              onRetry: () => ref.invalidate(newArrivalsProvider),
+            ),
           ),
     );
   }
@@ -1929,15 +1986,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // === DISCOVER (Hidden Gems) ================================================
 
   Widget _buildDiscoverSection() {
-    return Consumer(builder: (context, ref, _) {
-      return RepaintBoundary(child: _buildDiscoverSectionBody(ref));
-    });
+    return Consumer(
+      builder: (context, ref, _) {
+        return RepaintBoundary(child: _buildDiscoverSectionBody(ref));
+      },
+    );
   }
 
   Widget _buildDiscoverSectionBody(WidgetRef ref) {
     return SizedBox(
       height: _kHorizontalCardRowHeight,
-      child: ref.watch(discoverProductsProvider).when(
+      child: ref
+          .watch(discoverProductsProvider)
+          .when(
             skipLoadingOnReload: true,
             skipLoadingOnRefresh: true,
             data: (products) {
@@ -1974,7 +2035,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   final p = products[index];
                   final price =
                       p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                          0;
+                      0;
                   return _WideProductCard(
                     product: p,
                     price: price,
@@ -2000,24 +2061,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Widget> _buildTopInCategorySection() {
     return [
       SliverToBoxAdapter(
-        child: Consumer(builder: (context, ref, _) {
-          final slivers = _topInCategorySectionSlivers(ref);
-          if (slivers.isEmpty) return const SizedBox.shrink();
-          return RepaintBoundary(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: slivers
-                .whereType<SliverToBoxAdapter>()
-                .map((s) => s.child ?? const SizedBox.shrink())
-                .toList(),
-          ));
-        }),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final slivers = _topInCategorySectionSlivers(ref);
+            if (slivers.isEmpty) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: slivers
+                    .whereType<SliverToBoxAdapter>()
+                    .map((s) => s.child ?? const SizedBox.shrink())
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ),
     ];
   }
 
   List<Widget> _topInCategorySectionSlivers(WidgetRef ref) {
-    return ref.watch(topInCategoryProvider).when(
+    return ref
+        .watch(topInCategoryProvider)
+        .when(
           skipLoadingOnRefresh: true,
           skipLoadingOnReload: true,
           data: (data) {
@@ -2052,8 +2118,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     itemBuilder: (context, index) {
                       final p = data.products[index];
                       final price =
-                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                              0;
+                          p.getPriceForCountry(
+                            ref.read(selectedCountryProvider),
+                          ) ??
+                          0;
                       return _WideProductCard(
                         product: p,
                         price: price,
@@ -2075,24 +2143,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Widget> _buildRecentlyAnalyzedSection() {
     return [
       SliverToBoxAdapter(
-        child: Consumer(builder: (context, ref, _) {
-          final slivers = _recentlyAnalyzedSlivers(ref);
-          if (slivers.isEmpty) return const SizedBox.shrink();
-          return RepaintBoundary(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: slivers
-                .whereType<SliverToBoxAdapter>()
-                .map((s) => s.child ?? const SizedBox.shrink())
-                .toList(),
-          ));
-        }),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final slivers = _recentlyAnalyzedSlivers(ref);
+            if (slivers.isEmpty) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: slivers
+                    .whereType<SliverToBoxAdapter>()
+                    .map((s) => s.child ?? const SizedBox.shrink())
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ),
     ];
   }
 
   List<Widget> _recentlyAnalyzedSlivers(WidgetRef ref) {
-    return ref.watch(recentlyAnalyzedProvider).when(
+    return ref
+        .watch(recentlyAnalyzedProvider)
+        .when(
           data: (products) {
             if (products.isEmpty) return [];
             return [
@@ -2111,14 +2184,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: min(_kHorizontalInitialItemLimit, products.length),
+                    itemCount: min(
+                      _kHorizontalInitialItemLimit,
+                      products.length,
+                    ),
                     itemExtent: _kCardItemExtent,
                     addAutomaticKeepAlives: false,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
-                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                              0;
+                          p.getPriceForCountry(
+                            ref.read(selectedCountryProvider),
+                          ) ??
+                          0;
                       return _WideProductCard(
                         product: p,
                         price: price,
@@ -2140,24 +2218,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Widget> _buildValuePicksSection() {
     return [
       SliverToBoxAdapter(
-        child: Consumer(builder: (context, ref, _) {
-          final slivers = _valuePicksSlivers(ref);
-          if (slivers.isEmpty) return const SizedBox.shrink();
-          return RepaintBoundary(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: slivers
-                .whereType<SliverToBoxAdapter>()
-                .map((s) => s.child ?? const SizedBox.shrink())
-                .toList(),
-          ));
-        }),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final slivers = _valuePicksSlivers(ref);
+            if (slivers.isEmpty) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: slivers
+                    .whereType<SliverToBoxAdapter>()
+                    .map((s) => s.child ?? const SizedBox.shrink())
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ),
     ];
   }
 
   List<Widget> _valuePicksSlivers(WidgetRef ref) {
-    return ref.watch(valuePicsProvider).when(
+    return ref
+        .watch(valuePicsProvider)
+        .when(
           data: (products) {
             if (products.isEmpty) return [];
             return [
@@ -2177,14 +2260,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     scrollDirection: Axis.horizontal,
                     padding: _kHorizontalCardRowPadding,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: min(_kHorizontalInitialItemLimit, products.length),
+                    itemCount: min(
+                      _kHorizontalInitialItemLimit,
+                      products.length,
+                    ),
                     itemExtent: _kCardItemExtent,
                     addAutomaticKeepAlives: false,
                     itemBuilder: (context, index) {
                       final p = products[index];
                       final price =
-                          p.getPriceForCountry(ref.read(selectedCountryProvider)) ??
-                              0;
+                          p.getPriceForCountry(
+                            ref.read(selectedCountryProvider),
+                          ) ??
+                          0;
                       return _WideProductCard(
                         product: p,
                         price: price,
@@ -2207,18 +2295,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Widget> _buildRecentlyViewedSection() {
     return [
       SliverToBoxAdapter(
-        child: Consumer(builder: (context, ref, _) {
-          final slivers = _recentlyViewedSlivers(ref);
-          if (slivers.isEmpty) return const SizedBox.shrink();
-          return RepaintBoundary(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: slivers
-                .whereType<SliverToBoxAdapter>()
-                .map((s) => s.child ?? const SizedBox.shrink())
-                .toList(),
-          ));
-        }),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final slivers = _recentlyViewedSlivers(ref);
+            if (slivers.isEmpty) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: slivers
+                    .whereType<SliverToBoxAdapter>()
+                    .map((s) => s.child ?? const SizedBox.shrink())
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ),
     ];
   }
@@ -2270,26 +2361,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final visibleCount = _visibleCategoryCount;
     return [
       SliverToBoxAdapter(
-        child: Consumer(builder: (context, ref, _) {
-          final homeFeed = ref.watch(homeFeedProvider);
-          final sectionWidgets =
-              _buildPriorityCategorySectionsList(homeFeed, visibleCount);
-          if (sectionWidgets.isEmpty) return const SizedBox.shrink();
-          return RepaintBoundary(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: sectionWidgets
-                .whereType<SliverToBoxAdapter>()
-                .map((s) => s.child ?? const SizedBox.shrink())
-                .toList(),
-          ));
-        }),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final homeFeed = ref.watch(homeFeedProvider);
+            final sectionWidgets = _buildPriorityCategorySectionsList(
+              homeFeed,
+              visibleCount,
+            );
+            if (sectionWidgets.isEmpty) return const SizedBox.shrink();
+            return RepaintBoundary(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: sectionWidgets
+                    .whereType<SliverToBoxAdapter>()
+                    .map((s) => s.child ?? const SizedBox.shrink())
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ),
     ];
   }
 
   List<Widget> _buildPriorityCategorySectionsList(
-      AsyncValue<HomeFeed> homeFeed, int maxCategories) {
+    AsyncValue<HomeFeed> homeFeed,
+    int maxCategories,
+  ) {
     final sections = <Widget>[];
 
     final priorityCategories =
@@ -2338,8 +2436,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Map<String, dynamic> _categoryMeta(String cat) {
+    final locale = Localizations.localeOf(context);
+    if (_cachedCategoryMetaMap == null || _cachedCategoryMetaLocale != locale) {
+      _cachedCategoryMetaMap = _buildCategoryMetaMap();
+      _cachedCategoryMetaLocale = locale;
+    }
+    return _cachedCategoryMetaMap![cat] ??
+        {
+          'title': cat.replaceAll('-', ' ').replaceAll('_', ' '),
+          'icon': Icons.devices_rounded,
+          'color': AppTheme.categoryColor(cat),
+        };
+  }
+
+  Map<String, Map<String, dynamic>> _buildCategoryMetaMap() {
     final l = context.l10n;
-    final meta = <String, Map<String, dynamic>>{
       'smartphones': {
         'title': l?.smartphones ?? 'Smartphones',
         'icon': Icons.smartphone_rounded,
@@ -2449,13 +2560,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       'lenses': {'title': 'Lenses', 'icon': Icons.camera_rounded},
       'earphones': {'title': 'Earphones', 'icon': Icons.earbuds_rounded},
     };
-    final info =
-        meta[cat] ??
-        {
-          'title': cat.replaceAll('-', ' ').replaceAll('_', ' '),
-          'icon': Icons.devices_rounded,
-        };
-    return {...info, 'color': AppTheme.categoryColor(cat)};
+    // Her entry'e color ekle; _categoryMeta lookup'ında hazır olur.
+    return meta.map(
+      (key, value) => MapEntry(key, {...value, 'color': AppTheme.categoryColor(key)}),
+    );
   }
 
   // === SUBSCRIPTION INTELLIGENCE BANNER =======================================
@@ -2802,151 +2910,151 @@ class _WideProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
-          children: [
-            // Image section
-            Stack(
-              children: [
-                Container(
-                  height: 105,
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
+            children: [
+              // Image section
+              Stack(
+                children: [
+                  Container(
+                    height: 105,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                    ),
+                    child: ProductImageBox(
+                      imageUrl: product.imageURL.isNotEmpty
+                          ? product.imageURL
+                          : null,
+                      width: 139,
+                      height: 89,
+                      borderRadius: BorderRadius.circular(10),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                  child: ProductImageBox(
-                    imageUrl: product.imageURL.isNotEmpty
-                        ? product.imageURL
-                        : null,
-                    width: 139,
-                    height: 89,
-                    borderRadius: BorderRadius.circular(10),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                if (showNewBadge)
-                  Positioned(
-                    top: 7,
-                    left: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'NEW',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
+                  if (showNewBadge)
+                    Positioned(
+                      top: 7,
+                      left: 7,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'NEW',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                if (product.techScore > 0)
-                  Positioned(
-                    top: 7,
-                    right: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
+                  if (product.techScore > 0)
+                    Positioned(
+                      top: 7,
+                      right: 7,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.memory_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${product.techScore.toInt()}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.memory_rounded,
-                            size: 10,
-                            color: Colors.white,
+                    ),
+                ],
+              ),
+              // Details section ÔÇö tight, no gap
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      if (product.brand != null && product.brand!.isNotEmpty)
+                        Text(
+                          product.brand!.toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentCyan,
+                            letterSpacing: 0.6,
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.techScore.toInt()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _displayName(context),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                          height: 1.15,
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            context.l10n?.viewDetails ?? 'View Details',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-              ],
-            ),
-            // Details section ÔÇö tight, no gap
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    if (product.brand != null && product.brand!.isNotEmpty)
-                      Text(
-                        product.brand!.toUpperCase(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentCyan,
-                          letterSpacing: 0.6,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _displayName(context),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                        height: 1.15,
-                      ),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          context.l10n?.viewDetails ?? 'View Details',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -3006,157 +3114,157 @@ class _TrendingWideCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
             children: [
-            Stack(
-              children: [
-                Container(
-                  height: 105,
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                  ),
-                  child: ProductImageBox(
-                    imageUrl: product.imageURL.isNotEmpty
-                        ? product.imageURL
-                        : null,
-                    width: 139,
-                    height: 89,
-                    borderRadius: BorderRadius.circular(10),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                Positioned(
-                  top: 7,
-                  left: 7,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
+              Stack(
+                children: [
+                  Container(
+                    height: 105,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: rank <= 3
-                          ? _rankColor
-                          : context.surfaceElevatedColor,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: rank <= 3
-                          ? [
-                              BoxShadow(
-                                color: _rankColor.withValues(alpha: 0.4),
-                                blurRadius: 4,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Text(
-                      '#$rank',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: rank <= 3 ? Colors.white : context.textPrimary,
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
                       ),
                     ),
+                    child: ProductImageBox(
+                      imageUrl: product.imageURL.isNotEmpty
+                          ? product.imageURL
+                          : null,
+                      width: 139,
+                      height: 89,
+                      borderRadius: BorderRadius.circular(10),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
-                ),
-                if (product.techScore > 0)
                   Positioned(
                     top: 7,
-                    right: 7,
+                    left: 7,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
+                        color: rank <= 3
+                            ? _rankColor
+                            : context.surfaceElevatedColor,
                         borderRadius: BorderRadius.circular(8),
+                        boxShadow: rank <= 3
+                            ? [
+                                BoxShadow(
+                                  color: _rankColor.withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ]
+                            : null,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.memory_rounded,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.techScore.toInt()}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        '#$rank',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: rank <= 3 ? Colors.white : context.textPrimary,
+                        ),
                       ),
                     ),
                   ),
-              ],
-            ),
-            // Details section ÔÇö tight layout, no gaps
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    if (product.brand != null && product.brand!.isNotEmpty)
-                      Text(
-                        product.brand!.toUpperCase(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentCyan,
-                          letterSpacing: 0.6,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _displayName(context),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                        height: 1.15,
-                      ),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
+                  if (product.techScore > 0)
+                    Positioned(
+                      top: 7,
+                      right: 7,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'View Details',
-                          textAlign: TextAlign.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.memory_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${product.techScore.toInt()}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              // Details section ÔÇö tight layout, no gaps
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      if (product.brand != null && product.brand!.isNotEmpty)
+                        Text(
+                          product.brand!.toUpperCase(),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: AppTheme.accentCyan,
+                            letterSpacing: 0.6,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _displayName(context),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                          height: 1.15,
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'View Details',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -3164,4 +3272,3 @@ class _TrendingWideCard extends StatelessWidget {
 
 // _SkeletonCard retired ÔÇö see ProductRowSkeleton/ProductCardSkeleton in
 // lib/presentation/widgets/shimmer_skeleton.dart (shimmer-based premium loader).
-
