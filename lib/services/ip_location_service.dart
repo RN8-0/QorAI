@@ -13,6 +13,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 const _boxName = 'qor_ai_local_cache';
 const _cacheKey = 'ip_location_data';
+// v2: introduced after removing device-locale fallback which was caching "US"
+// for non-US users with English phones. Old v1 caches are considered stale.
+const _cacheVersion = 2;
 const _cacheTtlMs = 7 * 24 * 60 * 60 * 1000; // 7 gün
 
 /// Cloudflare Worker URL — scripts/cloudflare_location_worker.js dosyasını deploy et.
@@ -117,13 +120,19 @@ class IpLocationService {
   IpLocationService(this._dio);
 
   Future<IpLocationResult> detectLocation() async {
-    // 1) Hive cache kontrolü (7 günlük TTL) — cache varsa ağa istek atmaz.
+    // 1) Hive cache check (7-day TTL).
+    // Version check: v1 caches may have stored "US" from device locale detection
+    // (which was wrong for non-US users with English phones). Treat v1 as expired.
     try {
       final box = await Hive.openBox(_boxName);
       final raw = box.get(_cacheKey);
       if (raw is Map) {
+        final version = (raw['v'] as int?) ?? 1;
         final ts = (raw['ts'] as int?) ?? 0;
-        if (DateTime.now().millisecondsSinceEpoch - ts < _cacheTtlMs) {
+        final isCurrentVersion = version >= _cacheVersion;
+        final isFresh =
+            DateTime.now().millisecondsSinceEpoch - ts < _cacheTtlMs;
+        if (isCurrentVersion && isFresh) {
           return IpLocationResult(
             countryCode: (raw['country'] as String?) ?? 'US',
             currency: (raw['currency'] as String?) ?? 'USD',
@@ -133,29 +142,7 @@ class IpLocationService {
       }
     } catch (_) {}
 
-    // 2) Birincil: Cihaz locale'i — ANLIK, sıfır ağ gecikmesi.
-    // Cihaz dili/bölgesi desteklenen ülkelerdeyse hemen kullan ve cache'le.
-    try {
-      final locale = WidgetsBinding.instance.platformDispatcher.locale;
-      final deviceCountry = locale.countryCode?.toUpperCase() ?? '';
-      if (deviceCountry.isNotEmpty &&
-          _currencyByCountry.containsKey(deviceCountry)) {
-        final result = IpLocationResult(
-          countryCode: deviceCountry,
-          currency: _currencyByCountry[deviceCountry] ?? 'USD',
-          countryName: _nameByCountry[deviceCountry] ?? deviceCountry,
-        );
-        await _saveToCache(result);
-        debugPrint(
-          '=== QOR AI: Location from device locale: $deviceCountry ===',
-        );
-        return result;
-      }
-    } catch (e) {
-      debugPrint('=== QOR AI: Device locale detection failed: $e ===');
-    }
-
-    // 3) İkincil: Cloudflare Worker — günde 100.000 ücretsiz istek.
+    // 2) Cloudflare Worker — günde 100.000 ücretsiz istek.
     // scripts/cloudflare_location_worker.js'i deploy edip URL'i doldur.
     if (_cloudflareWorkerUrl.isNotEmpty) {
       try {
@@ -185,12 +172,12 @@ class IpLocationService {
       }
     }
 
-    // 4) Son çare: ipwho.is (ücretsiz, kayıt gerektirmez)
+    // 3) Primary IP API: ipwho.is (HTTPS, no auth, reliable)
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         'https://ipwho.is/',
         options: Options(
-          receiveTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 3),
         ),
       );
@@ -211,6 +198,56 @@ class IpLocationService {
       debugPrint('=== QOR AI: ipwho.is failed: $e ===');
     }
 
+    // 4) Fallback IP API: freeipapi.com (HTTPS, free)
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        'https://freeipapi.com/api/json',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 3),
+        ),
+      );
+      final data = res.data;
+      if (data != null && data['countryCode'] != null) {
+        final code = (data['countryCode'] as String).toUpperCase();
+        final result = IpLocationResult(
+          countryCode: code,
+          currency: _currencyByCountry[code] ?? 'USD',
+          countryName: _nameByCountry[code] ?? (data['countryName'] as String? ?? code),
+        );
+        await _saveToCache(result);
+        debugPrint('=== QOR AI: Location from freeipapi.com: $code ===');
+        return result;
+      }
+    } catch (e) {
+      debugPrint('=== QOR AI: freeipapi.com failed: $e ===');
+    }
+
+    // 5) Last resort: device locale — only used when all IP APIs fail.
+    // NOTE: intentionally kept as absolute last resort because non-US users
+    // using English phones often have locale.countryCode = null or "US" which
+    // would incorrectly cache "US" and block real IP detection for 7 days.
+    try {
+      final locale = WidgetsBinding.instance.platformDispatcher.locale;
+      final deviceCountry = locale.countryCode?.toUpperCase() ?? '';
+      if (deviceCountry.isNotEmpty &&
+          deviceCountry != 'US' &&
+          _currencyByCountry.containsKey(deviceCountry)) {
+        final result = IpLocationResult(
+          countryCode: deviceCountry,
+          currency: _currencyByCountry[deviceCountry] ?? 'USD',
+          countryName: _nameByCountry[deviceCountry] ?? deviceCountry,
+        );
+        // Do NOT cache device locale results — let the next app start retry IP APIs.
+        debugPrint(
+          '=== QOR AI: Location from device locale (fallback): $deviceCountry ===',
+        );
+        return result;
+      }
+    } catch (e) {
+      debugPrint('=== QOR AI: Device locale detection failed: $e ===');
+    }
+
     return const IpLocationResult();
   }
 
@@ -228,6 +265,7 @@ class IpLocationService {
         'currency': result.currency,
         'countryName': result.countryName,
         'ts': DateTime.now().millisecondsSinceEpoch,
+        'v': _cacheVersion, // version flag to bust stale locale-based caches
       });
     } catch (_) {}
   }

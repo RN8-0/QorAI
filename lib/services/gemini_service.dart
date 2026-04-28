@@ -828,56 +828,102 @@ class GeminiService implements AIService {
         ? '\n\nUNKNOWN SERVICES (use your knowledge to identify them):\n'
               '${unknownNames.map((n) => '- $n').join('\n')}\n'
               'For each unknown service: determine what type of service it is '
-              '(streaming, music, gaming, productivity, AI, cloud, fitness, news, etc.) '
-              'and generate questions appropriate for that service type. '
-              'If you cannot identify the service, generate questions about: '
-              'frequency of use, main use case, what features matter most, '
-              'and whether they use similar alternatives.'
+              'and generate scenario questions appropriate for that type.'
         : '';
 
+    // Unique seed per analysis session — prevents Gemini from repeating the
+    // same question patterns it generated in a previous invocation.
+    final sessionSeed = DateTime.now().millisecondsSinceEpoch % 9999;
+
     final response = await _jsonRequest(
-      system:
-          '''
-You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
-(4-5 questions) to understand the user's needs for: $names.
+      system: '''
+You are Qor AI's Subscription Intelligence quiz engine.
+SESSION SEED: $sessionSeed  ← use this to vary phrasing and angles every time.
 
-LANGUAGE: Generate ALL questions and options in $langName.
+TASK: Generate a DEEPLY PERSONALIZED, SCENARIO-DRIVEN quiz (5 questions) for: $names
+MODE: ${isCompare ? 'COMPARISON (user is deciding between these services)' : 'SINGLE ANALYSIS (user wants deep compatibility score)'}
+LANGUAGE: ALL text in $langName.
 
-${serviceDetails.isNotEmpty ? 'KNOWN SERVICE DETAILS:\n$serviceDetails' : ''}
+${serviceDetails.isNotEmpty ? 'SERVICE CONTEXT (use for question precision):\n$serviceDetails' : ''}
 $unknownSection
 
-The goal: understand how the user uses ${isCompare ? 'these services' : 'this service'},
-their specific habits, preferences, and expectations —
-so we can compute an accurate compatibility score.
+═══ WHAT MAKES A GREAT QUESTION ═══
+Each question must be a REAL SCENARIO from the user's daily life — not a generic preference poll.
+Think: "What would a journalist writing a profile of this user ACTUALLY want to know about how they use $names?"
 
-Rules:
-- Questions MUST be directly related to the specific services being compared
-- For streaming services (Netflix, Disney+, Amazon Prime etc.): ask about favorite genres, watching frequency, content preferences (movies vs series vs documentaries), whether they watch alone or with family, 4K/HDR importance
-- For music services (Spotify, Apple Music, YouTube Music etc.): ask about music genres, playlist habits, podcast listening, offline usage, audio quality preferences, discovery vs familiar music
-- For AI tools (ChatGPT, Claude, Gemini etc.): ask about use cases (coding, writing, research), frequency of use, output quality expectations, API usage needs
-- For gaming services (Xbox Game Pass, PS Plus, EA Play etc.): ask about game genres, play frequency, multiplayer vs single player, cloud gaming interest
-- For cloud storage (iCloud, Google One, Dropbox etc.): ask about storage needs, device ecosystem, sharing frequency, backup habits
-- For unknown services: identify the service category and ask relevant questions for that type
-- Each question has exactly 4 options
-- Options should cover the full spectrum of use-cases for THAT specific service type
-- Keep questions conversational with emoji
-- NEVER ask generic questions like "What do you do in the evening?" — questions must be SERVICE-SPECIFIC
-- NEVER ask about budget (we already know that)
-- NEVER ask about brand preference
-- Questions should feel fun, not like a survey
-- ALL text must be in $langName
+Bad (generic, boring, repetitive):
+  ❌ "How often do you watch TV?"
+  ❌ "What type of content do you prefer?"
+  ❌ "Do you use it on mobile?"
 
-Return valid JSON:
+Good (scenario-based, specific, revealing):
+  ✅ "It's Friday night and you have 2 hours free. What are you most likely opening on ${normalizedNames.first}? 🎬"
+  ✅ "Your friend asks which show/song/game to try first on ${isCompare ? names : normalizedNames.first}. What do you recommend? 🎯"
+  ✅ "You're traveling abroad for 3 weeks with no home WiFi. How important is offline mode on this service? ✈️"
+
+═══ PER-CATEGORY SCENARIO IDEAS ═══
+For VIDEO STREAMING (Netflix, Disney+, Amazon Prime, HBO Max, Apple TV+ etc.):
+  - Friday night scenario: what do they actually open first?
+  - Binge vs casual watching habits
+  - Solo vs shared family account scenarios
+  - Original content vs licensed library importance
+  - Specific genre scenarios (late-night thrillers, weekend family movies, etc.)
+
+For MUSIC (Spotify, Apple Music, YouTube Music, Tidal etc.):
+  - Workout / commute / work focus scenarios
+  - Artist discovery vs comfort playlist habits
+  - Party hosting / social sharing scenarios
+  - Audiophile quality vs convenience trade-offs
+  - Podcast integration scenarios
+
+For AI TOOLS (ChatGPT, Claude, Gemini, Copilot etc.):
+  - Specific task scenarios: "You need to write a difficult email at 11pm — do you use AI?" 
+  - Code debugging vs creative writing vs research
+  - How they handle AI mistakes / trust levels
+  - Integration in daily work flow scenarios
+
+For GAMING (Xbox Game Pass, PS Plus, EA Play, Nintendo Online etc.):
+  - Play session length (30 min casual vs 4-hour sessions)
+  - Genre commitment (one game for months vs variety)
+  - Multiplayer with friends scenarios
+  - New release vs backlog habits
+
+For CLOUD STORAGE (iCloud, Google One, Dropbox, OneDrive etc.):
+  - "Your phone dies and you lost all photos" scenario
+  - Collaboration / file sharing scenarios
+  - Multi-device ecosystem scenarios
+  - Storage anxiety vs organized management
+
+For PRODUCTIVITY (Microsoft 365, Google Workspace, Notion etc.):
+  - Real work scenario: how they actually use it in a typical day
+  - Collaboration vs personal use ratio
+  - Mobile vs desktop usage split
+
+═══ ANTI-REPETITION RULES ═══
+- NEVER generate two questions with the same underlying theme
+- NEVER start two questions with the same word
+- NEVER use options like "Rarely / Sometimes / Often / Always" — these are boring and useless
+- Each of the 4 options must represent a genuinely DIFFERENT user archetype or behavior pattern
+- Options must be concrete and specific, not vague gradients
+- At least 2 questions should directly reference ${isCompare ? 'the specific services being compared by name' : 'the service by name'}
+- One question should be a fun hypothetical scenario ("If you could only keep one subscription this year..." etc.)
+
+═══ FORMAT ═══
+Return ONLY valid JSON. No markdown, no explanation:
 {
   "questions": [
     {"question": "...", "options": ["...", "...", "...", "..."]},
-    ...
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    {"question": "...", "options": ["...", "...", "...", "..."]}
   ]
 }
 ''',
       user: jsonEncode({
         'subscriptions': normalizedNames,
         'mode': isCompare ? 'compare' : 'single',
+        'seed': sessionSeed,
       }),
       tier: AiTier.heavy,
     );
