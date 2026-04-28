@@ -9,7 +9,8 @@ class _CompareYouTubeSection extends ConsumerStatefulWidget {
       _CompareYouTubeSectionState();
 }
 
-class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> {
+class _CompareYouTubeSectionState
+    extends ConsumerState<_CompareYouTubeSection> {
   static final Map<String, List<YouTubeVideo>> _videoCache = {};
 
   List<YouTubeVideo>? _videos;
@@ -125,64 +126,68 @@ class _CompareYouTubeSectionState extends ConsumerState<_CompareYouTubeSection> 
                     3,
                     (index) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Container(
-                        height: 68,
-                        decoration: BoxDecoration(
-                          color: context.surfaceColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 120,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.08,
+                      child:
+                          Container(
+                                height: 68,
+                                decoration: BoxDecoration(
+                                  color: context.surfaceColor,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    height: 12,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary.withValues(
-                                        alpha: 0.08,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 120,
+                                      height: 68,
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary
+                                            .withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    height: 10,
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary.withValues(
-                                        alpha: 0.05,
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            height: 12,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary
+                                                  .withValues(alpha: 0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            height: 10,
+                                            width: 100,
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary
+                                                  .withValues(alpha: 0.05),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                              )
+                              .animate(
+                                onPlay: (controller) => controller.repeat(),
+                              )
+                              .shimmer(
+                                duration: 1200.ms,
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.06,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                          .animate(onPlay: (controller) => controller.repeat())
-                          .shimmer(
-                            duration: 1200.ms,
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.06,
-                            ),
-                          ),
                     ),
                   ),
                 )
@@ -525,9 +530,8 @@ class _CompareYouTubePlaybackSession {
     if (_disposed) return;
 
     final previousVideo = _videoController;
-    final currentPosition = resumeFrom ??
-        previousVideo?.value.position ??
-        Duration.zero;
+    final currentPosition =
+        resumeFrom ?? previousVideo?.value.position ?? Duration.zero;
     final shouldPlay = autoplay || (previousVideo?.value.isPlaying ?? false);
 
     if (_selectedQuality?.label == option.label && previousVideo != null) {
@@ -573,7 +577,10 @@ class _CompareYouTubePlaybackSession {
     _loadingTask = null;
     final videoController = _videoController;
     _videoController = null;
-    videoController?.dispose();
+    // Use unawaited to let the platform channel send the release command
+    // without blocking Dart; the actual codec teardown runs on ExoPlayer's
+    // internal thread and does not need to block the caller.
+    unawaited(videoController?.dispose() ?? Future<void>.value());
   }
 }
 
@@ -612,7 +619,12 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   void initState() {
     super.initState();
     _session = _CompareYouTubePlaybackSession(videoId: widget.videoId);
-    _initPlayer();
+    // Defer heavy MediaCodec init by 150ms so the widget's first frame
+    // (thumbnail + spinner) renders before ExoPlayer allocates codec buffers.
+    // This avoids a visible jank spike on the opening animation.
+    Future<void>.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) _initPlayer();
+    });
   }
 
   Future<void> _initPlayer() async {
@@ -671,21 +683,20 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
 
     if (!mounted) return;
     setState(() => _hidden = true);
-    final shouldResume = await Navigator.of(context, rootNavigator: true)
-        .push(
-          PageRouteBuilder(
-            fullscreenDialog: true,
-            transitionDuration: const Duration(milliseconds: 250),
-            reverseTransitionDuration: const Duration(milliseconds: 200),
-            pageBuilder: (_, _, _) => _CompareFullscreenPlayer(
-              title: widget.title,
-              session: _session,
-              playOnOpen: wasPlaying,
-            ),
-            transitionsBuilder: (_, anim, _, child) =>
-                FadeTransition(opacity: anim, child: child),
-          ),
-        );
+    final shouldResume = await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        fullscreenDialog: true,
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (_, _, _) => _CompareFullscreenPlayer(
+          title: widget.title,
+          session: _session,
+          playOnOpen: wasPlaying,
+        ),
+        transitionsBuilder: (_, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
 
     if (!mounted) return;
     if (shouldResume ?? false) {
@@ -748,7 +759,11 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
   @override
   void dispose() {
     _chewieCtrl?.dispose();
-    unawaited(_session.dispose());
+    // Defer ExoPlayer codec teardown by 200ms so it does not coincide with
+    // the route-pop animation frame pump, preventing the 37-43 frame skip
+    // seen in logs when the user closes the video.
+    final session = _session;
+    Future<void>.delayed(const Duration(milliseconds: 200), session.dispose);
     super.dispose();
   }
 
@@ -817,10 +832,14 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
                     behavior: HitTestBehavior.translucent,
                     onPanUpdate: (details) {
                       setState(() {
-                        _dx = (_dx + details.delta.dx)
-                            .clamp(0.0, size.width - _playerW);
-                        _dy = (_dy + details.delta.dy)
-                            .clamp(0.0, size.height - _playerH);
+                        _dx = (_dx + details.delta.dx).clamp(
+                          0.0,
+                          size.width - _playerW,
+                        );
+                        _dy = (_dy + details.delta.dy).clamp(
+                          0.0,
+                          size.height - _playerH,
+                        );
                       });
                     },
                     child: Container(
@@ -897,10 +916,7 @@ class _NativeCompareVideoPlayer extends StatelessWidget {
   final String videoId;
   final String title;
 
-  const _NativeCompareVideoPlayer({
-    required this.videoId,
-    required this.title,
-  });
+  const _NativeCompareVideoPlayer({required this.videoId, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -931,7 +947,8 @@ class _NativeComparePlayerScreen extends StatefulWidget {
       _NativeComparePlayerScreenState();
 }
 
-class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> {
+class _NativeComparePlayerScreenState
+    extends State<_NativeComparePlayerScreen> {
   ChewieController? _chewieCtrl;
   bool _loading = true;
   bool _hasError = false;
@@ -943,7 +960,7 @@ class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> 
     super.initState();
     _bindPlayer(playOnOpen: widget.playOnOpen);
   }
-  
+
   Future<void> _applySystemUiMode() async {
     await SystemChrome.setEnabledSystemUIMode(
       _isLandscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
@@ -1073,7 +1090,8 @@ class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> 
                     quality.label == widget.session.selectedQuality?.label
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_off_rounded,
-                    color: quality.label == widget.session.selectedQuality?.label
+                    color:
+                        quality.label == widget.session.selectedQuality?.label
                         ? AppTheme.primaryBlue
                         : Colors.white70,
                   ),
@@ -1155,7 +1173,7 @@ class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> 
   void _closePlayer() {
     Navigator.of(context).pop(widget.session.isPlaying);
   }
-  
+
   Widget _buildPlayerViewport() {
     final controller = widget.session.videoController;
     final rawAspectRatio = controller?.value.aspectRatio ?? 0;
@@ -1192,10 +1210,7 @@ class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> 
       right: 8,
       child: Row(
         children: [
-          _CmpIconBtn(
-            icon: Icons.arrow_back_rounded,
-            onTap: _closePlayer,
-          ),
+          _CmpIconBtn(icon: Icons.arrow_back_rounded, onTap: _closePlayer),
           const Spacer(),
           if (widget.session.qualityOptions.length > 1)
             GestureDetector(
@@ -1298,9 +1313,7 @@ class _NativeComparePlayerScreenState extends State<_NativeComparePlayerScreen> 
                 ],
               ),
         body: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.red),
-              )
+            ? const Center(child: CircularProgressIndicator(color: Colors.red))
             : _hasError || _chewieCtrl == null
             ? _buildErrorState(context)
             : Stack(
