@@ -5,55 +5,61 @@
 
 const { req } = require('./pb');
 
-async function run() {
-  // Find the review_replies collection
-  const collections = await req('GET', '/api/collections?perPage=200');
-  const col = collections.items.find((c) => c.name === 'review_replies');
-  if (!col) {
-    console.error('review_replies collection not found');
+(async () => {
+  console.log('=== Fix review_replies likes/dislikes ===\n');
+
+  // Directly fetch review_replies collection by name
+  const r = await req('GET', '/api/collections/review_replies');
+  if (r.status !== 200) {
+    console.error('Failed to get review_replies collection:', r.status, r.body);
     process.exit(1);
   }
 
+  const col = r.body;
   console.log('Found review_replies collection:', col.id);
   console.log('Current updateRule:', col.updateRule);
 
   // Check for likedBy / dislikedBy fields
-  const fieldNames = (col.fields || col.schema || []).map((f) => f.name);
+  const existingFields = col.fields || col.schema || [];
+  const fieldNames = existingFields.map((f) => f.name);
   console.log('Existing fields:', fieldNames.join(', '));
 
-  const newFields = [...(col.fields || col.schema || [])];
+  const newFields = [...existingFields];
 
   if (!fieldNames.includes('likedBy')) {
     newFields.push({ name: 'likedBy', type: 'json', maxSize: 2000000 });
-    console.log('Adding likedBy field');
+    console.log('  + Adding likedBy field');
+  } else {
+    console.log('  - likedBy already exists');
   }
   if (!fieldNames.includes('dislikedBy')) {
     newFields.push({ name: 'dislikedBy', type: 'json', maxSize: 2000000 });
-    console.log('Adding dislikedBy field');
+    console.log('  + Adding dislikedBy field');
+  } else {
+    console.log('  - dislikedBy already exists');
   }
 
-  // Allow any authenticated user to update (for likedBy/dislikedBy)
+  // Allow any authenticated user to update (for likedBy/dislikedBy toggles)
   const newUpdateRule = "@request.auth.id != ''";
 
-  const payload = {
-    ...col,
-    updateRule: newUpdateRule,
-  };
+  const payload = { ...col, updateRule: newUpdateRule };
 
-  // Use 'fields' or 'schema' depending on PocketBase version
   if (col.fields !== undefined) {
     payload.fields = newFields;
   } else {
     payload.schema = newFields;
   }
 
-  await req('PATCH', `/api/collections/${col.id}`, payload);
-  console.log('✅ review_replies collection updated:');
-  console.log('   - updateRule:', newUpdateRule);
-  console.log('   - likedBy/dislikedBy fields ensured');
-}
-
-run().catch((err) => {
+  const p = await req('PATCH', `/api/collections/${col.id}`, payload);
+  if (p.status === 200 || p.status === 201) {
+    console.log('\n[OK] review_replies collection updated:');
+    console.log('   - updateRule:', newUpdateRule);
+    console.log('   - likedBy/dislikedBy fields ensured');
+  } else {
+    console.error('\n[FAIL] Failed to update:', p.status, JSON.stringify(p.body, null, 2));
+    process.exit(1);
+  }
+})().catch((err) => {
   console.error('Error:', err);
   process.exit(1);
 });
