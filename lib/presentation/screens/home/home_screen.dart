@@ -2564,7 +2564,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     };
     // Her entry'e color ekle; _categoryMeta lookup'ında hazır olur.
     return meta.map(
-      (key, value) => MapEntry(key, {...value, 'color': AppTheme.categoryColor(key)}),
+      (key, value) =>
+          MapEntry(key, {...value, 'color': AppTheme.categoryColor(key)}),
     );
   }
 
@@ -2910,155 +2911,155 @@ class _WideProductCard extends StatelessWidget {
               ),
               boxShadow: context.cardShadow,
             ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              // Image section
-              Stack(
-                children: [
-                  Container(
-                    height: 105,
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                // Image section
+                Stack(
+                  children: [
+                    Container(
+                      height: 105,
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                      ),
+                      child: ProductImageBox(
+                        imageUrl: product.imageURL.isNotEmpty
+                            ? product.imageURL
+                            : null,
+                        width: 139,
+                        height: 89,
+                        borderRadius: BorderRadius.circular(10),
+                        padding: EdgeInsets.zero,
                       ),
                     ),
-                    child: ProductImageBox(
-                      imageUrl: product.imageURL.isNotEmpty
-                          ? product.imageURL
-                          : null,
-                      width: 139,
-                      height: 89,
-                      borderRadius: BorderRadius.circular(10),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                  if (showNewBadge)
-                    Positioned(
-                      top: 7,
-                      left: 7,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'NEW',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
+                    if (showNewBadge)
+                      Positioned(
+                        top: 7,
+                        left: 7,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'NEW',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (product.techScore > 0)
-                    Positioned(
-                      top: 7,
-                      right: 7,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
+                    if (product.techScore > 0)
+                      Positioned(
+                        top: 7,
+                        right: 7,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.memory_rounded,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${product.techScore.toInt()}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.memory_rounded,
-                              size: 10,
-                              color: Colors.white,
+                      ),
+                  ],
+                ),
+                // Details section ÔÇö tight, no gap
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        if (product.brand != null && product.brand!.isNotEmpty)
+                          Text(
+                            product.brand!.toUpperCase(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.accentCyan,
+                              letterSpacing: 0.6,
                             ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${product.techScore.toInt()}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _displayName(context),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                            height: 1.15,
+                          ),
+                        ),
+                        const Spacer(),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              context.l10n?.viewDetails ?? 'View Details',
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
-              // Details section ÔÇö tight, no gap
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      if (product.brand != null && product.brand!.isNotEmpty)
-                        Text(
-                          product.brand!.toUpperCase(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.accentCyan,
-                            letterSpacing: 0.6,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _displayName(context),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                          height: 1.15,
-                        ),
-                      ),
-                      const Spacer(),
-                      SizedBox(
-                        width: double.infinity,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            context.l10n?.viewDetails ?? 'View Details',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -3115,162 +3116,164 @@ class _TrendingWideCard extends StatelessWidget {
                 ),
               ],
             ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    height: 105,
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                    ),
-                    child: ProductImageBox(
-                      imageUrl: product.imageURL.isNotEmpty
-                          ? product.imageURL
-                          : null,
-                      width: 139,
-                      height: 89,
-                      borderRadius: BorderRadius.circular(10),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                  Positioned(
-                    top: 7,
-                    left: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      height: 105,
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: rank <= 3
-                            ? _rankColor
-                            : context.surfaceElevatedColor,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: rank <= 3
-                            ? [
-                                BoxShadow(
-                                  color: _rankColor.withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Text(
-                        '#$rank',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: rank <= 3 ? Colors.white : context.textPrimary,
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
                         ),
                       ),
+                      child: ProductImageBox(
+                        imageUrl: product.imageURL.isNotEmpty
+                            ? product.imageURL
+                            : null,
+                        width: 139,
+                        height: 89,
+                        borderRadius: BorderRadius.circular(10),
+                        padding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
-                  if (product.techScore > 0)
                     Positioned(
                       top: 7,
-                      right: 7,
+                      left: 7,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
+                          color: rank <= 3
+                              ? _rankColor
+                              : context.surfaceElevatedColor,
                           borderRadius: BorderRadius.circular(8),
+                          boxShadow: rank <= 3
+                              ? [
+                                  BoxShadow(
+                                    color: _rankColor.withValues(alpha: 0.4),
+                                    blurRadius: 4,
+                                  ),
+                                ]
+                              : null,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.memory_rounded,
-                              size: 10,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${product.techScore.toInt()}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '#$rank',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: rank <= 3
+                                ? Colors.white
+                                : context.textPrimary,
+                          ),
                         ),
                       ),
                     ),
-                ],
-              ),
-              // Details section ÔÇö tight layout, no gaps
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      if (product.brand != null && product.brand!.isNotEmpty)
-                        Text(
-                          product.brand!.toUpperCase(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.accentCyan,
-                            letterSpacing: 0.6,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _displayName(context),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                          height: 1.15,
-                        ),
-                      ),
-                      const Spacer(),
-                      SizedBox(
-                        width: double.infinity,
+                    if (product.techScore > 0)
+                      Positioned(
+                        top: 7,
+                        right: 7,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            'View Details',
-                            textAlign: TextAlign.center,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.memory_rounded,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${product.techScore.toInt()}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // Details section ÔÇö tight layout, no gaps
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        if (product.brand != null && product.brand!.isNotEmpty)
+                          Text(
+                            product.brand!.toUpperCase(),
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppTheme.accentCyan,
+                              letterSpacing: 0.6,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _displayName(context),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                            height: 1.15,
+                          ),
+                        ),
+                        const Spacer(),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'View Details',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 

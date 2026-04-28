@@ -207,7 +207,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _indexFromLocation(location);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final useDesktopLayout = context.isDesktop || context.isTablet;
+    final useDesktopLayout = context.isDesktop;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
