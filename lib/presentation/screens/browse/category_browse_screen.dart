@@ -93,6 +93,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _loading = true;
   bool _fetchingAll = false; // cursor pagination in progress
   bool _remoteSearching = false;
+  bool _hydratingFilterCatalog = false;
   String? _error;
   Timer? _scrollDebounce;
   int _totalProductCount = 0;
@@ -576,18 +577,23 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       products: _allProducts,
     );
     if (result != null && mounted) {
-      if (result.isActive && !_allLoaded) {
-        await _ensureCompleteCatalogForFiltering();
-        if (!mounted) return;
-      }
       setState(() => _filterState = result);
+      if (result.isActive && !_allLoaded) {
+        unawaited(_ensureCompleteCatalogForFiltering());
+      }
     }
   }
 
   Future<void> _ensureCompleteCatalogForFiltering() async {
-    if (_allLoaded || !mounted) return;
+    if (_allLoaded || _hydratingFilterCatalog || !mounted) return;
 
-    setState(() => _loading = true);
+    final hadProducts = _allProducts.isNotEmpty;
+    setState(() {
+      _hydratingFilterCatalog = true;
+      if (!hadProducts) {
+        _loading = true;
+      }
+    });
     try {
       final ds = ref.read(pbDataSourceProvider);
       final fullCatalog = await ds.getAllProductsInCategoryTs(
@@ -607,7 +613,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       // Keep the already loaded slice if the full fetch fails.
     } finally {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          _hydratingFilterCatalog = false;
+          if (!hadProducts) {
+            _loading = false;
+          }
+        });
       }
     }
   }
@@ -847,6 +858,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               ),
             ),
           ),
+          if (_hydratingFilterCatalog) ...[
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.brandCyan,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -948,7 +970,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   Widget _buildBody(List<ProductEntity> products) {
     // Show spinner: initial load OR fetching still running with no products yet
-    if (_loading || (_fetchingAll && _allProducts.isEmpty)) {
+    if ((_loading && _allProducts.isEmpty) || (_fetchingAll && _allProducts.isEmpty)) {
       return const Center(
         child: CircularProgressIndicator(
           color: AppTheme.primaryBlue,
@@ -1025,6 +1047,40 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           ),
         );
       }
+      if (_filterState.isActive && _hydratingFilterCatalog) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppTheme.brandCyan,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _fallbackText(
+                    en: 'Applying filters across all products...',
+                    tr: 'Filtreler tum urunlerde uygulaniyor...',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
       final isEmptyCategory =
           _allProducts.isEmpty &&
           !_loading &&
@@ -1177,6 +1233,7 @@ class _IsolatedSearchBar extends StatefulWidget {
   });
 
   final String categoryName;
+
   /// Called after 300ms debounce with the trimmed, lower-cased query.
   /// Called immediately with '' when cleared.
   final ValueChanged<String> onQueryChanged;
