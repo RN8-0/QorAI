@@ -1,7 +1,8 @@
-part of '../compare_screen.dart';
+﻿part of '../compare_screen.dart';
 
 // ─── Empty / Discover State ───────────────────────────────────────────────────
 
+// ignore: unused_element
 class _EmptyCompareState extends ConsumerWidget {
   final VoidCallback onTapSearch;
   final void Function(List<ProductEntity> products) onDirectCompare;
@@ -67,7 +68,7 @@ class _EmptyCompareState extends ConsumerWidget {
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
 
           // ── Son İncelenenler ──────────────────────────────────────────────
@@ -92,7 +93,7 @@ class _EmptyCompareState extends ConsumerWidget {
                       scrollDirection: Axis.horizontal,
                       padding: EdgeInsets.zero,
                       itemCount: top.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
                       itemBuilder: (ctx, i) =>
                           _RecentProductChip(
                                 product: top[i],
@@ -116,7 +117,7 @@ class _EmptyCompareState extends ConsumerWidget {
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
 
           // ── Popüler Karşılaştırmalar ─────────────────────────────────────
@@ -176,7 +177,7 @@ class _EmptyCompareState extends ConsumerWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -292,8 +293,9 @@ class _EmptyCompareState extends ConsumerWidget {
       }
       if (b == null) continue;
       // Skip if A and B have the same normalized name
-      if (normalizeProductName(a.name) == normalizeProductName(b.name))
+      if (normalizeProductName(a.name) == normalizeProductName(b.name)) {
         continue;
+      }
       comparisons.add({
         'a': a,
         'b': b,
@@ -398,14 +400,13 @@ class _PastComparisonCard extends ConsumerWidget {
 
     // Load products from the comparison
     final products = <ProductEntity>[];
-    bool loading = false;
     for (final id in ids) {
       final async = ref.watch(productDetailProvider(id));
       async.when(
         data: (result) =>
             result.when(success: (p) => products.add(p), failure: (_) {}),
-        loading: () => loading = true,
-        error: (_, __) {},
+        loading: () {},
+        error: (_, _) {},
       );
     }
 
@@ -460,7 +461,7 @@ class _PastComparisonCard extends ConsumerWidget {
                                 width: 40,
                                 height: 40,
                                 fit: BoxFit.contain,
-                                errorWidget: (_, __, ___) => Icon(
+                                errorWidget: (_, _, _) => Icon(
                                   Icons.devices,
                                   size: 18,
                                   color: context.textTertiaryColor,
@@ -598,7 +599,7 @@ class _RecentProductChip extends StatelessWidget {
                   width: 44,
                   height: 44,
                   fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => Icon(
+                  errorWidget: (_, _, _) => Icon(
                     Icons.devices,
                     size: 24,
                     color: context.textTertiaryColor,
@@ -768,7 +769,7 @@ class _ProductMini extends StatelessWidget {
                 width: 40,
                 height: 40,
                 fit: BoxFit.contain,
-                errorWidget: (_, __, ___) => Icon(
+                errorWidget: (_, _, _) => Icon(
                   Icons.devices,
                   size: 18,
                   color: context.textTertiaryColor,
@@ -817,7 +818,7 @@ class _TrendChip extends StatelessWidget {
                   width: 26,
                   height: 26,
                   fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => Icon(
+                  errorWidget: (_, _, _) => Icon(
                     Icons.devices,
                     size: 16,
                     color: context.textTertiaryColor,
@@ -942,8 +943,7 @@ class _ProductSearchList extends ConsumerWidget {
         },
         failure: (error) => Center(
           child: Text(
-            context.l10n?.errorPrefix(error.message ?? '') ??
-                'Error: ${error.message}',
+            'Error: ${error.message}',
             style: TextStyle(color: context.textPrimary),
           ),
         ),

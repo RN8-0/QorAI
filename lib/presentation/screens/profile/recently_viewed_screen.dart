@@ -42,7 +42,7 @@ class RecentlyViewedScreen extends ConsumerWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: viewed.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 return _ViewedProductCard(productId: viewed[index])
                     .animate()
@@ -104,7 +104,7 @@ class _ViewedProductCard extends ConsumerWidget {
         };
       },
       loading: () => _buildShimmer(context),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -142,13 +142,13 @@ class _ViewedProductCard extends ConsumerWidget {
                         memCacheWidth: 192,
                         maxWidthDiskCache: 192,
                         fadeInDuration: const Duration(milliseconds: 100),
-                        placeholder: (_, __) => Icon(
+                        placeholder: (_, _) => Icon(
                           Icons.devices_rounded,
                           color:
                               AppTheme.primaryBlue.withValues(alpha: 0.3),
                           size: 28,
                         ),
-                        errorWidget: (_, __, ___) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           Icons.devices_rounded,
                           color:
                               AppTheme.primaryBlue.withValues(alpha: 0.3),

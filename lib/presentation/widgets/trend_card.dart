@@ -1,5 +1,6 @@
 /// Qor AI - Trend Card Widget
 /// Blueprint Section 6.2
+library;
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -61,14 +62,14 @@ class TrendCard extends StatelessWidget {
                             memCacheWidth: 600,
                             maxWidthDiskCache: 600,
                             fadeInDuration: const Duration(milliseconds: 100),
-                            placeholder: (_, __) => Center(
+                            placeholder: (_, _) => Center(
                               child: Icon(
                                 Icons.image_outlined,
                                 size: 40,
                                 color: context.textTertiaryColor,
                               ),
                             ),
-                            errorWidget: (_, __, ___) => Icon(
+                            errorWidget: (_, _, _) => Icon(
                               Icons.broken_image_outlined,
                               size: 40,
                               color: context.textTertiaryColor,
@@ -106,7 +107,7 @@ class TrendCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              '${product.trendScore.toStringAsFixed(0)}',
+                              product.trendScore.toStringAsFixed(0),
                               style: TextStyle(
                                 color: context.surfaceVariantColor,
                                 fontSize: 10,

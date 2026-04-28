@@ -196,7 +196,7 @@ class _PcBuilderLandingScreenState extends ConsumerState<PcBuilderLandingScreen>
             // Floating particles
             AnimatedBuilder(
               animation: _particleCtrl,
-              builder: (_, __) => ClipRRect(
+              builder: (_, _) => ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Stack(
                   children: _particles.map((p) {

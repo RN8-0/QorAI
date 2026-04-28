@@ -31,7 +31,7 @@ class _LinkAnalysisImageState extends State<_LinkAnalysisImage> {
           height: 200,
           width: double.infinity,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) {
+          errorBuilder: (_, _, _) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) setState(() => _hidden = true);
             });

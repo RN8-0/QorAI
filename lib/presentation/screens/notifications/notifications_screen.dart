@@ -60,7 +60,7 @@ class NotificationsScreen extends ConsumerWidget {
       body: notifsAsync.when(
         skipLoadingOnReload: true,
         loading: _EmptyState.new,
-        error: (_, __) => _EmptyState(),
+        error: (_, _) => _EmptyState(),
         data: (items) {
           if (items.isEmpty) {
             return _EmptyState();
@@ -68,7 +68,7 @@ class NotificationsScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            separatorBuilder: (_, _) => const SizedBox(height: 6),
             itemBuilder: (context, index) {
               final notif = items[index];
               return _NotificationTile(notif: notif)

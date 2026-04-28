@@ -1,4 +1,4 @@
-/// Qor AI - Settings Screen (iOS-Style Redesign)
+﻿/// Qor AI - Settings Screen (iOS-Style Redesign)
 /// Full iOS Settings UI with CupertinoListSection, country flags, functional buttons
 library;
 
@@ -1310,6 +1310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _launchEmail() async {
     final emailErrorMessage =
         context.l10n?.couldNotOpenEmail ?? 'Could not open email app';

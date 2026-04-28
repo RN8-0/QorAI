@@ -1,5 +1,6 @@
 /// Qor AI - Product Entity (Domain Layer - Pure Dart)
 /// Blueprint Section 4.2
+library;
 
 import 'package:equatable/equatable.dart';
 

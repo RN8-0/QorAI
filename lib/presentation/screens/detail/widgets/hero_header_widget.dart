@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // HERO HEADER
@@ -231,8 +231,8 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                             memCacheWidth: thumbCacheWidth,
                                             maxWidthDiskCache: thumbCacheWidth,
                                             fadeInDuration: const Duration(milliseconds: 80),
-                                            placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
-                                            errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
+                                            placeholder: (_, _) => const ColoredBox(color: Color(0xFFF1F5F9)),
+                                            errorWidget: (_, _, _) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
                                           ),
                                         ),
                                       ),
@@ -285,8 +285,8 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                     memCacheWidth: heroCacheWidth,
                                     maxWidthDiskCache: heroCacheWidth,
                                     fadeInDuration: const Duration(milliseconds: 120),
-                                    placeholder: (_, __) => const ColoredBox(color: Colors.white),
-                                    errorWidget: (_, __, ___) =>
+                                    placeholder: (_, _) => const ColoredBox(color: Colors.white),
+                                    errorWidget: (_, _, _) =>
                                         _CategoryEmoji(cat: widget.product.categoryId),
                                   ),
                                 ),
@@ -374,6 +374,7 @@ class _HeroAiMatchTrigger extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _HeroScoreBadge extends StatelessWidget {
   final int score;
   const _HeroScoreBadge({required this.score});

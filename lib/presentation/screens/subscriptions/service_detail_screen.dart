@@ -1,4 +1,4 @@
-/// Qor AI - Service Detail Screen (iOS-style redesign)
+﻿/// Qor AI - Service Detail Screen (iOS-style redesign)
 /// Improved AI analysis, fixed Visit Website, better compare tab
 library;
 
@@ -344,7 +344,7 @@ class _PlansTabState extends State<_PlansTab> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: s.plans.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
                 final p = s.plans[i];
                 final isSel = _selected == i;
@@ -780,8 +780,9 @@ class _DetailsTab extends StatelessWidget {
 
   IconData _platformIcon(String p) {
     final lower = p.toLowerCase();
-    if (lower.contains('ios') || lower.contains('iphone'))
+    if (lower.contains('ios') || lower.contains('iphone')) {
       return Icons.phone_iphone_rounded;
+    }
     if (lower.contains('android')) return Icons.android_rounded;
     if (lower.contains('web')) return Icons.language_rounded;
     if (lower.contains('mac')) return Icons.laptop_mac_rounded;
@@ -826,7 +827,7 @@ class _SimilarServicesSection extends StatelessWidget {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: similar.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (ctx, i) {
                       final sim = similar[i];
                       final simAccent = sim.categoryColor();
@@ -901,13 +902,14 @@ class _SimilarServicesSection extends StatelessWidget {
             );
           },
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         );
   }
 }
 
 // ─── Shared Widgets ──────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -954,6 +956,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _MetricTile extends StatelessWidget {
   final String label;
   final String value;
@@ -1047,16 +1050,18 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
           'Write 2-3 sentences as a summary of what real users say. Be specific and honest. Plain text only.';
       final lang = Localizations.localeOf(context).languageCode;
       final result = await deepseek.freeTextQuery(prompt, language: lang);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _aiReview = result;
           _loading = false;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
         });
+      }
     }
     _generateFakeReviews();
   }
@@ -1102,7 +1107,6 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.service;
     final avgRating = _reviews.isEmpty
         ? 4.0
         : _reviews.map((r) => r.rating).reduce((a, b) => a + b) /
@@ -1451,9 +1455,11 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TableCell extends StatelessWidget {
   final String text;
   final bool isHeader;
+  // ignore: unused_element_parameter
   const _TableCell(this.text, {this.isHeader = false});
   @override
   Widget build(BuildContext context) {
@@ -1519,14 +1525,14 @@ class _LogoImageState extends State<_LogoImage> {
     final isLegacyStorageLogo =
         logoUrl.contains('storage.googleapis.com') ||
         logoUrl.contains('firebasestorage.googleapis.com');
-    _urls = [
+    _urls = {
       if (logoUrl.isNotEmpty && !isLegacyStorageLogo) logoUrl,
       if (domain.isNotEmpty) ...[
         'https://logo.clearbit.com/$domain',
         'https://cdn.brandfetch.io/$domain/w/400/h/400',
         'https://icons.duckduckgo.com/ip3/$domain.ico',
       ],
-    ].toSet().toList();
+    }.toList();
   }
 
   @override
@@ -1556,8 +1562,8 @@ class _LogoImageState extends State<_LogoImage> {
         width: widget.size,
         height: widget.size,
         fit: BoxFit.contain,
-        placeholder: (_, __) => _initial(),
-        errorWidget: (_, __, ___) {
+        placeholder: (_, _) => _initial(),
+        errorWidget: (_, _, _) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _idx < _urls.length - 1) setState(() => _idx++);
           });
@@ -1665,12 +1671,13 @@ Keep the rating concise, like "5 Qor" or "8.5 Qor".''';
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _loaded = true;
           _analysis = 'Analysis unavailable.';
         });
+      }
     }
   }
 

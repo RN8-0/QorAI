@@ -1,4 +1,4 @@
-part of '../link_paste_screen.dart';
+﻿part of '../link_paste_screen.dart';
 
 
 class _FactorRow extends StatefulWidget {
@@ -301,6 +301,7 @@ class _GaugePainter extends CustomPainter {
       oldDelegate.score != score || oldDelegate.color != color;
 }
 
+// ignore: unused_element
 class _StepRow extends StatelessWidget {
   final String step;
   final IconData icon;
@@ -360,6 +361,7 @@ class _StepRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _StepConnector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -384,6 +386,7 @@ class _StepConnector extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _MiniFeatureCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -458,6 +461,7 @@ class _PowerCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _CompactStep extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -500,6 +504,7 @@ class _CompactStep extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _StepArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -511,6 +516,7 @@ class _StepArrow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _FeatureTile extends StatelessWidget {
   final IconData icon;
   final Color color;

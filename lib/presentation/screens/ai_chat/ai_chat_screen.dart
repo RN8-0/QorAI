@@ -7,7 +7,6 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
-import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -605,7 +604,7 @@ class _BubbleWidget extends StatelessWidget {
                 width: 220,
                 height: 220,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   width: 220,
                   height: 220,
                   color: context.surfaceVariantColor,
@@ -648,7 +647,7 @@ class _AnimatedDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
-      builder: (_, __) {
+      builder: (_, _) {
         final phase = ((controller.value * 1500 + delay) % 1500) / 1500;
         final scale = 0.5 + 0.5 * (1 - (2 * phase - 1).abs());
         return Transform.scale(

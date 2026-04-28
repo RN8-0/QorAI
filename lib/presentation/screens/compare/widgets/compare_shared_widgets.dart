@@ -57,7 +57,7 @@ class _ShimmerBlockState extends State<_ShimmerBlock>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: widget.width,
         height: widget.height,
         margin: const EdgeInsets.only(bottom: 2),

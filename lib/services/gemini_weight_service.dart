@@ -150,8 +150,9 @@ Strict rules:
     final text =
         response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
             as String?;
-    if (text == null || text.isEmpty)
+    if (text == null || text.isEmpty) {
       return Map<String, double>.from(_kFallbackWeights);
+    }
 
     return _parseWeights(text.trim());
   }

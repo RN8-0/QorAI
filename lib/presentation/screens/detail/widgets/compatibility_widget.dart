@@ -1,9 +1,10 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // USER COMPATIBILITY CARD (new)
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _CompatibilityCard extends ConsumerWidget {
   final ProductEntity product;
   final bool isDark;

@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 class _OverviewContent extends ConsumerWidget {
   final ProductEntity product;
@@ -33,6 +33,7 @@ class _OverviewContent extends ConsumerWidget {
   }
 }
 
+// ignore: unused_element
 class _OverviewTab extends ConsumerWidget {
   final ProductEntity product;
   final String country;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
-import 'package:qor_ai/core/category_key_specs.dart' as keySpecs;
+import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/l10n/app_localizations.dart';
 
@@ -214,14 +214,14 @@ class SharedKeySpecsGrid extends StatelessWidget {
     ],
   };
 
-  static IconData iconForSpec(String key) => keySpecs.iconForSpecKey(key);
+  static IconData iconForSpec(String key) => key_specs.iconForSpecKey(key);
 
   String _resolveCategory() {
     final cat = product.category.toLowerCase().trim();
     // Check local _categoryKeys first (has extended 9-spec lists)
     if (_categoryKeys.containsKey(cat)) return cat;
     // Try centralized resolver, then map back to local key
-    final resolved = keySpecs.resolveCategory(cat);
+    final resolved = key_specs.resolveCategory(cat);
     if (_categoryKeys.containsKey(resolved)) return resolved;
     // Handle pluralization differences (ssd→ssds, etc.)
     if (_categoryKeys.containsKey('${resolved}s')) return '${resolved}s';

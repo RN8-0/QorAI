@@ -239,7 +239,7 @@ class _CompareVideoTile extends StatelessWidget {
                     width: 120,
                     height: 68,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       width: 120,
                       height: 68,
                       color: Colors.grey[800],
@@ -677,12 +677,12 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
             fullscreenDialog: true,
             transitionDuration: const Duration(milliseconds: 250),
             reverseTransitionDuration: const Duration(milliseconds: 200),
-            pageBuilder: (_, __, ___) => _CompareFullscreenPlayer(
+            pageBuilder: (_, _, _) => _CompareFullscreenPlayer(
               title: widget.title,
               session: _session,
               playOnOpen: wasPlaying,
             ),
-            transitionsBuilder: (_, anim, __, child) =>
+            transitionsBuilder: (_, anim, _, child) =>
                 FadeTransition(opacity: anim, child: child),
           ),
         );
@@ -707,7 +707,7 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
         Image.network(
           thumb,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const ColoredBox(color: Colors.black),
+          errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black),
         ),
         ColoredBox(color: Colors.black.withValues(alpha: 0.55)),
         Center(

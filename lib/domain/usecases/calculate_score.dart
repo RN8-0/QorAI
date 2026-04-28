@@ -3,6 +3,7 @@
 ///
 /// Score Formula:
 /// Total = Personal Fit × 0.40 + Community × 0.25 + Expert × 0.20 + P/P × 0.15
+library;
 
 import 'package:qor_ai/domain/entities/comparison_entity.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';

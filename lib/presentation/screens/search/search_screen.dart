@@ -932,7 +932,7 @@ class _TopRatedGrid extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, __) => SliverToBoxAdapter(
+      error: (_, _) => SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Center(

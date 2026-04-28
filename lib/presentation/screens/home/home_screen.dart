@@ -1,4 +1,4 @@
-/// Qor AI - Dynamic Home Screen (iOS-style redesign)
+﻿/// Qor AI - Dynamic Home Screen (iOS-style redesign)
 /// Rich, diverse layout with hero banners, category spotlights,
 /// parallax cards and spring animations.
 library;
@@ -37,6 +37,7 @@ const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 const int _kHorizontalInitialItemLimit = 8;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
+// ignore: unused_element
 const int _kInitialCategoryChipLimit = 18;
 // Progressive category rendering — start light, add on scroll
 const int _kInitialVisibleCategories = 5;
@@ -2451,6 +2452,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Map<String, Map<String, dynamic>> _buildCategoryMetaMap() {
     final l = context.l10n;
+    final meta = <String, Map<String, dynamic>>{
       'smartphones': {
         'title': l?.smartphones ?? 'Smartphones',
         'icon': Icons.smartphone_rounded,

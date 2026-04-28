@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // SIMILAR PRODUCTS TAB
@@ -164,6 +164,7 @@ class _SimilarGridCard extends StatelessWidget {
 }
 
 /// Quick compare ⚡ button that adds/removes a product from comparison.
+// ignore: unused_element
 class _QuickCompareButton extends ConsumerWidget {
   final String productId;
   final bool isSelected;
@@ -255,7 +256,7 @@ class _SimilarShimmerState extends State<_SimilarShimmer>
 
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) {
+      builder: (_, _) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -272,8 +273,8 @@ class _SimilarShimmerState extends State<_SimilarShimmer>
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: 4,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (_, __) => _shimmerBox(140, 200, base, highlight, radius: 16),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (_, _) => _shimmerBox(140, 200, base, highlight, radius: 16),
               ),
             ),
           ],

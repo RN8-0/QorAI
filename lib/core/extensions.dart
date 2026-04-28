@@ -1,4 +1,5 @@
 /// Qor AI - Dart Extension Methods
+library;
 
 import 'package:flutter/material.dart';
 import 'package:qor_ai/core/theme.dart';

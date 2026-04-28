@@ -1,4 +1,4 @@
-/// Qor AI – Subscription Intelligence Screen
+﻿/// Qor AI – Subscription Intelligence Screen
 /// Modeled after AI Link Analysis — phase-based state machine with
 /// AI quiz generation and grounded web analysis.
 library;
@@ -1202,6 +1202,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
   // ── Progress Steps (compact bar) ───────────────────────────────────────────
 
+  // ignore: unused_element
   Widget _buildProgressSteps(SubFlowPhase phase) {
     final steps = [
       context.l10n?.typeLabel ?? 'Type',
@@ -1322,6 +1323,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
   // ── Usage Badge ────────────────────────────────────────────────────────────
 
+  // ignore: unused_element
   Widget _buildUsageBadge() {
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();

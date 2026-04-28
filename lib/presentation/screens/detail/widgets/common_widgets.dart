@@ -1,9 +1,10 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // BOTTOM BAR (legacy — kept for reference)
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _BottomBar extends StatelessWidget {
   final ProductEntity product;
   final WidgetRef ref;
@@ -87,6 +88,7 @@ class _BottomBar extends StatelessWidget {
 // NEW BOTTOM BAR — View Deals
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _NewBottomBar extends ConsumerWidget {
   final ProductEntity product;
   const _NewBottomBar({required this.product});
@@ -281,6 +283,7 @@ class _CardHeader extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SectionLabel extends StatelessWidget {
   final String label;
   final Color color;
@@ -300,6 +303,7 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
@@ -346,6 +350,7 @@ class _CategoryEmoji extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
   @override

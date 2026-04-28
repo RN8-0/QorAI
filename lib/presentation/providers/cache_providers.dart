@@ -1589,7 +1589,9 @@ _HighlightsIsolateResult _computeHighlightsInIsolate(
       (t) =>
           normalized.contains(t.toLowerCase()) ||
           t.toLowerCase().contains(normalized),
-    )) continue;
+    )) {
+      continue;
+    }
     highlights.add(entry.text);
     if (highlights.length >= 6) break;
   }
@@ -1870,7 +1872,9 @@ _FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
       (t) =>
           normalized.contains(t.toLowerCase()) ||
           t.toLowerCase().contains(normalized),
-    )) continue;
+    )) {
+      continue;
+    }
     highlights.add(entry.text);
     if (highlights.length >= 6) break;
   }
@@ -2146,9 +2150,9 @@ class _GeminiMatchScoreNotifier
         'usageIntent': user.usageIntent,
         'profession': user.profession,
         'ageRange': user.ageRange,
-        if ((user.gender as String?)?.isNotEmpty == true) 'gender': user.gender,
-        if ((user.country as String).isNotEmpty) 'country': user.country,
-        if ((user.currency as String).isNotEmpty) 'currency': user.currency,
+        if ((user.gender)?.isNotEmpty == true) 'gender': user.gender,
+        if ((user.country).isNotEmpty) 'country': user.country,
+        if ((user.currency).isNotEmpty) 'currency': user.currency,
         if (user.ownedProducts.isNotEmpty)
           'ownedProducts': user.ownedProducts.take(8).toList(),
         if (user.subscriptions.isNotEmpty)

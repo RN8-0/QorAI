@@ -284,8 +284,9 @@ Map<String, dynamic> _serializeForCache(Map<String, dynamic> data) {
         return MapEntry(key, (value as dynamic).toDate().toIso8601String());
       } catch (_) {}
     }
-    if (value is Map<String, dynamic>)
+    if (value is Map<String, dynamic>) {
       return MapEntry(key, _serializeForCache(value));
+    }
     if (value is Map) {
       return MapEntry(
         key,

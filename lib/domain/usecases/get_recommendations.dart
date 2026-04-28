@@ -1,5 +1,6 @@
 /// Qor AI - Get Recommendations Use Case
 /// Blueprint Section 6.1, 7.2
+library;
 
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';

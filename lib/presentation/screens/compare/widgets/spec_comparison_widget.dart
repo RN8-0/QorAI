@@ -1,4 +1,4 @@
-part of '../compare_screen.dart';
+﻿part of '../compare_screen.dart';
 
 enum _AiPanelType { deepAnalysis, alternatives, advisor, prediction }
 
@@ -156,7 +156,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     return map[code] ?? 'English';
   }
 
-  String _localizedFeature(String feature) => '${feature}_${_appLang}';
+  String _localizedFeature(String feature) => '${feature}_$_appLang';
 
   String _detailCtaLabel() => _isTr ? 'Detay' : 'Detail';
 
@@ -312,21 +312,28 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     if (sessionIds.isNotEmpty &&
         sessionIds.difference(currentIds).isEmpty &&
         currentIds.difference(sessionIds).isEmpty) {
-      if (session.deepAnalysisResult != null)
+      if (session.deepAnalysisResult != null) {
         _deepAnalysisResult = session.deepAnalysisResult;
-      if (session.aiStructured != null)
+      }
+      if (session.aiStructured != null) {
         _deepAnalysisStructured = session.aiStructured;
-      if (session.alternativesResult != null)
+      }
+      if (session.alternativesResult != null) {
         _alternativesResult = session.alternativesResult;
-      if (session.alternativesStructured != null)
+      }
+      if (session.alternativesStructured != null) {
         _alternativesStructured = session.alternativesStructured;
+      }
       if (session.advisorResult != null) _advisorResult = session.advisorResult;
-      if (session.advisorStructured != null)
+      if (session.advisorStructured != null) {
         _advisorStructured = session.advisorStructured;
-      if (session.predictionResult != null)
+      }
+      if (session.predictionResult != null) {
         _predictionResult = session.predictionResult;
-      if (session.predictionStructured != null)
+      }
+      if (session.predictionStructured != null) {
         _predictionStructured = session.predictionStructured;
+      }
     }
   }
 
@@ -406,14 +413,15 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         continue;
       }
       if (!inString) {
-        if (c == '{')
+        if (c == '{') {
           stack.add('{');
-        else if (c == '[')
+        } else if (c == '[') {
           stack.add('[');
-        else if (c == '}' && stack.isNotEmpty && stack.last == '{')
+        } else if (c == '}' && stack.isNotEmpty && stack.last == '{') {
           stack.removeLast();
-        else if (c == ']' && stack.isNotEmpty && stack.last == '[')
+        } else if (c == ']' && stack.isNotEmpty && stack.last == '[') {
           stack.removeLast();
+        }
       }
     }
 
@@ -435,6 +443,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   }
 
   /// Parse JSON array from AI response
+  // ignore: unused_element
   List<dynamic>? _tryParseJsonArray(String raw) {
     try {
       var clean = raw.trim();
@@ -444,8 +453,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (codeBlockMatch != null) clean = codeBlockMatch.group(1)!.trim();
       final arrStart = clean.indexOf('[');
       final arrEnd = clean.lastIndexOf(']');
-      if (arrStart >= 0 && arrEnd > arrStart)
+      if (arrStart >= 0 && arrEnd > arrStart) {
         clean = clean.substring(arrStart, arrEnd + 1);
+      }
       final decoded = jsonDecode(clean);
       if (decoded is List) return decoded;
       return null;
@@ -1199,6 +1209,7 @@ Rules:
 
   /// Merge spec groups from all products into a unified structure.
   /// Returns: { groupName: { specKey: [val1, val2, ...] } }
+  // ignore: unused_element
   Map<String, Map<String, List<String>>> _buildGroupedSpecs() {
     final result = <String, Map<String, List<String>>>{};
     final productCount = widget.products.length;
@@ -1874,6 +1885,7 @@ Rules:
   /// Splits [value] at commas/semicolons, but:
   /// - skips commas inside parentheses depth > 0
   /// - skips commas between two digit characters (e.g. 2,000)
+  // ignore: unused_element
   List<String> _smartSplitSpecValue(String value) {
     final result = <String>[];
     final current = StringBuffer();
@@ -2611,7 +2623,7 @@ Rules:
                             tween: Tween(begin: 0, end: matchScore / 100),
                             duration: const Duration(milliseconds: 1000),
                             curve: Curves.easeOutCubic,
-                            builder: (_, value, __) => _buildMatchScoreRing(
+                            builder: (_, value, _) => _buildMatchScoreRing(
                               progress: value,
                               color: matchColor,
                               size: 80,
@@ -3727,8 +3739,9 @@ Rules:
                             reservedSize: 48,
                             getTitlesWidget: (value, meta) {
                               final idx = value.toInt();
-                              if (idx < 0 || idx >= categories.length)
+                              if (idx < 0 || idx >= categories.length) {
                                 return const SizedBox.shrink();
+                              }
                               final catName = categories.keys.elementAt(idx);
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8),
@@ -4673,12 +4686,12 @@ Rules:
     final pools = products.map(_buildSpecPool).toList();
 
     // Resolve category
-    final cat = keySpecs.resolveCategory(
+    final cat = key_specs.resolveCategory(
       products.first.category.isNotEmpty
           ? products.first.category
           : products.first.subcategory,
     );
-    final prioritySlots = keySpecs.categoryKeySpecAliases[cat];
+    final prioritySlots = key_specs.categoryKeySpecAliases[cat];
 
     final result = <_CompareSpecRow>[];
     final usedPerProduct = List.generate(products.length, (_) => <String>{});
@@ -4867,7 +4880,7 @@ Rules:
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                keySpecs.iconForSpecKey(spec.label),
+                key_specs.iconForSpecKey(spec.label),
                 size: 12,
                 color: theme.colorScheme.primary.withValues(alpha: 0.7),
               ),
@@ -4995,6 +5008,7 @@ Rules:
 
   // ─── Expert Scores Comparison ───
 
+  // ignore: unused_element
   Widget _buildExpertScoresComparison() {
     final scores = widget.products.map((p) => p.techScore).toList();
     final maxScore = scores.reduce((a, b) => a > b ? a : b);
@@ -5720,7 +5734,7 @@ Rules:
       children: [
         similarAsync.when(
           loading: () => _buildSimilarShimmer(),
-          error: (_, __) => _buildSimilarEmpty(),
+          error: (_, _) => _buildSimilarEmpty(),
           data: (products) {
             final filtered = _takeEvenCompareSimilarProducts(
               products.where((p) => !excludeIds.contains(p.id)),
@@ -5819,7 +5833,7 @@ Rules:
         childAspectRatio: 0.72,
       ),
       itemCount: 4,
-      itemBuilder: (_, __) => Container(
+      itemBuilder: (_, _) => Container(
         decoration: BoxDecoration(
           color: context.surfaceVariantColor,
           borderRadius: BorderRadius.circular(16),
@@ -6768,6 +6782,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   Widget _buildComparisonReviewItem(Map<String, dynamic> data, String docId) {
     // Preserved for backwards compat — now delegated to _CompareReviewCard
     return _CompareReviewCard(
@@ -6846,6 +6861,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   String _timeAgo(DateTime date) {
     final diff = DateTime.now().difference(date);
     if (diff.inDays > 30) return '${(diff.inDays / 30).floor()}mo ago';
@@ -6913,7 +6929,7 @@ Rules:
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: Text(
-                          context.l10n?.reviewSubmitted ?? 'Yorum gönderildi! ✨',
+                          ctx.l10n?.reviewSubmitted ?? 'Yorum gönderildi! ✨',
                           style: GoogleFonts.plusJakartaSans(fontSize: 13),
                         ),
                         behavior: SnackBarBehavior.floating,
@@ -6939,6 +6955,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,

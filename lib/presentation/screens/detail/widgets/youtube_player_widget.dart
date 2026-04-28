@@ -327,12 +327,12 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
             fullscreenDialog: true,
             transitionDuration: const Duration(milliseconds: 250),
             reverseTransitionDuration: const Duration(milliseconds: 200),
-            pageBuilder: (_, __, ___) => _FullscreenYouTubePlayer(
+            pageBuilder: (_, _, _) => _FullscreenYouTubePlayer(
               title: widget.title,
               session: _session,
               playOnOpen: wasPlaying,
             ),
-            transitionsBuilder: (_, anim, __, child) =>
+            transitionsBuilder: (_, anim, _, child) =>
                 FadeTransition(opacity: anim, child: child),
           ),
         );
@@ -357,7 +357,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
         CachedNetworkImage(
           imageUrl: thumb,
           fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => const ColoredBox(color: Colors.black),
+          errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
         ),
         ColoredBox(color: Colors.black.withValues(alpha: 0.55)),
         Center(

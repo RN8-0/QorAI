@@ -1,5 +1,6 @@
 /// Qor AI - AI Repository (including Link Analysis)
 /// Blueprint Section 7, 9
+library;
 
 import 'package:flutter/foundation.dart';
 import 'package:qor_ai/core/errors.dart';

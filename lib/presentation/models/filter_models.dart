@@ -81,7 +81,7 @@ class FilterApplier {
   // ── helpers ───────────────────────────────────────────────────────────────
 
   /// Merges specSections (nested Map) and specs (flat Map) into a single
-  /// Map<String, String> for easy lookup. Also adds price from product.prices.
+  /// `Map<String, String>` for easy lookup. Also adds price from product.prices.
   static Map<String, String> _flattenSpecs(ProductEntity product) {
     final flat = <String, String>{};
 

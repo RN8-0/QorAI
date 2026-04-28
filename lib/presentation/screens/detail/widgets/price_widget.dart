@@ -1,9 +1,10 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // PRICE CARD
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _PriceCard extends ConsumerWidget {
   final ProductEntity product;
   final String country;
@@ -103,7 +104,7 @@ class _PriceComparisonSheetState extends State<_PriceComparisonSheet> {
   double _currentPrice = 0;
   double _lowestPrice = 0;
   double _highestPrice = 0;
-  String _currency = '\$';
+  final String _currency = '\$';
 
   @override
   void initState() {

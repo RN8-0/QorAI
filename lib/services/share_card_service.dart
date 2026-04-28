@@ -111,6 +111,9 @@ class ShareCardService {
     required List<ProductEntity> products,
     String? headline,
   }) async {
+    // Capture overlay before the async gap.
+    final overlay = Overlay.of(context, rootOverlay: true);
+
     // 1. Pre-cache network images so they paint during the offscreen pass.
     await Future.wait(products.map((p) async {
       if (p.imageURL.isEmpty) return;
@@ -147,7 +150,6 @@ class ShareCardService {
 
     // Use a throwaway Overlay entry so the tree builds with the existing
     // pipeline (fonts/images cached on the root binding).
-    final overlay = Overlay.of(context, rootOverlay: true);
     final entry = OverlayEntry(
       builder: (_) => Opacity(
         opacity: 0.0,
@@ -389,7 +391,7 @@ class _ShareProductRow extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: product.imageURL,
                     fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const Icon(
+                    errorWidget: (_, _, _) => const Icon(
                       Icons.image_not_supported_rounded,
                       size: 64, color: Colors.black26,
                     ),

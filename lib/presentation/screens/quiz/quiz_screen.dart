@@ -2871,13 +2871,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       PageRouteBuilder<void>(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (_, __, ___) => _HomePreparationScreen(
+        pageBuilder: (_, _, _) => _HomePreparationScreen(
           isTurkish: _isTurkish,
           onDone: () {
             if (mounted) context.go(AppRoutes.home);
           },
         ),
-        transitionsBuilder: (_, anim, __, child) =>
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
     );
@@ -3570,7 +3570,7 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
                 // Circular progress indicator with percentage
                 AnimatedBuilder(
                   animation: _progress,
-                  builder: (_, __) {
+                  builder: (_, _) {
                     final percent = (_progress.value * 100).round();
                     return SizedBox(
                       width: 160,

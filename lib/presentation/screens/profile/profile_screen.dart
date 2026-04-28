@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:flutter/material.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
@@ -562,6 +562,7 @@ class _ProfileBody extends ConsumerWidget {
 // ─── My Subscriptions Section ───
 
 // Subscription Intelligence entry
+// ignore: unused_element
 class _SubscriptionsSection extends StatelessWidget {
   const _SubscriptionsSection();
 
@@ -586,7 +587,7 @@ class _SubscriptionsSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.brandDeepBlue.withOpacity(0.3),
+                color: AppTheme.brandDeepBlue.withValues(alpha: 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -599,7 +600,7 @@ class _SubscriptionsSection extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: ClipRRect(
@@ -632,7 +633,7 @@ class _SubscriptionsSection extends StatelessWidget {
                       context.l10n?.subscriptionIntelligenceSubtitle ??
                           'AI-powered analysis',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 11,
                       ),
                     ),
@@ -653,6 +654,7 @@ class _SubscriptionsSection extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _DatePickerRow extends StatelessWidget {
   final String label;
   final DateTime? date;
@@ -727,7 +729,7 @@ class _UserAvatarWidget extends StatelessWidget {
             memCacheWidth: (radius * 6).round(),
             maxWidthDiskCache: (radius * 6).round(),
             fadeInDuration: const Duration(milliseconds: 100),
-            errorWidget: (_, __, ___) =>
+            errorWidget: (_, _, _) =>
                 _EmailAvatar(name: effectiveName, radius: radius),
           ),
         ),
@@ -868,6 +870,7 @@ class _StatPill extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -1030,6 +1033,7 @@ String _humanizeProfileValue(BuildContext context, String value) {
       .join(' ');
 }
 
+// ignore: unused_element
 class _ProfileSignalsSection extends StatelessWidget {
   final UserEntity? user;
 
@@ -1502,7 +1506,7 @@ class _ProductListItem extends ConsumerWidget {
                             imageUrl: product.imageURL,
                             fit: BoxFit.contain,
                             memCacheWidth: 168,
-                            errorWidget: (_, __, ___) => Icon(
+                            errorWidget: (_, _, _) => Icon(
                               Icons.devices,
                               color: AppTheme.primaryBlue.withValues(alpha: 0.5),
                               size: 24,
@@ -1583,11 +1587,12 @@ class _ProductListItem extends ConsumerWidget {
           ),
         ],
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }
 
+// ignore: unused_element
 class _ModernStatItem extends StatelessWidget {
   final String value;
   final String label;
@@ -1632,6 +1637,7 @@ class _ModernStatItem extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SectionTitle extends StatelessWidget {
   final String title;
 
@@ -1650,6 +1656,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ModernMenuCard extends StatelessWidget {
   final List<Widget> items;
 
@@ -1685,6 +1692,7 @@ class _ModernMenuCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1699,12 +1707,17 @@ class _MenuItem extends StatelessWidget {
   const _MenuItem({
     required this.icon,
     required this.title,
-    this.subtitle,
     required this.color,
     required this.onTap,
+    // ignore: unused_element_parameter
+    this.subtitle,
+    // ignore: unused_element_parameter
     this.textColor,
-    this.showArrow = true,
+    // ignore: unused_element_parameter
+    this.showArrow = false,
+    // ignore: unused_element_parameter
     this.trailing,
+    // ignore: unused_element_parameter
     this.child,
   });
 
@@ -1761,7 +1774,7 @@ class _MenuItem extends StatelessWidget {
                     ),
                 ],
               ),
-              if (child != null) child!,
+              ?child,
             ],
           ),
         ),
@@ -1770,6 +1783,7 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PreferenceChip extends StatelessWidget {
   final String label;
 
@@ -2006,6 +2020,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
   }
 }
 
+// ignore: unused_element
 class _UsageRow extends StatelessWidget {
   final String label;
   final IconData icon;

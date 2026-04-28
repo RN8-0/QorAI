@@ -10,7 +10,6 @@ import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
-import 'package:qor_ai/presentation/widgets/glass_container.dart';
 
 class CollectionScreen extends ConsumerWidget {
   const CollectionScreen({super.key});
@@ -292,7 +291,7 @@ class _CollectionProductCard extends ConsumerWidget {
 
     return productAsync.when(
       loading: () => _ShimmerCard(),
-      error: (_, __) => _ErrorCard(),
+      error: (_, _) => _ErrorCard(),
       data: (result) {
         final product = result.when(success: (p) => p, failure: (_) => null);
         if (product == null) return _ErrorCard();
@@ -396,14 +395,14 @@ class _ProductCard extends ConsumerWidget {
                               memCacheWidth: 500,
                               maxWidthDiskCache: 500,
                               fadeInDuration: const Duration(milliseconds: 100),
-                              placeholder: (_, __) => Center(
+                              placeholder: (_, _) => Center(
                                 child: Icon(
                                   Icons.image_outlined,
                                   size: 32,
                                   color: context.textTertiaryColor,
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Center(
+                              errorWidget: (_, _, _) => Center(
                                 child: Icon(
                                   Icons.broken_image_outlined,
                                   size: 32,

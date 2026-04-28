@@ -51,11 +51,17 @@ class ProductModel extends ProductEntity {
       final currency = pr['currency'] as String?;
 
       if (current != null) {
-        if (currency == 'USD') prices['US'] = current;
-        else if (currency == 'EUR') prices['DE'] = current;
-        else if (currency == 'GBP') prices['UK'] = current;
-        else if (currency == 'TRY') prices['TR'] = current;
-        else if (currency == 'INR') prices['IN'] = current;
+        if (currency == 'USD') {
+          prices['US'] = current;
+        } else if (currency == 'EUR') {
+          prices['DE'] = current;
+        } else if (currency == 'GBP') {
+          prices['UK'] = current;
+        } else if (currency == 'TRY') {
+          prices['TR'] = current;
+        } else if (currency == 'INR') {
+          prices['IN'] = current;
+        }
       }
     }
 
@@ -283,8 +289,8 @@ class ProductModel extends ProductEntity {
   }
 }
 
-/// Recursively converts Firestore/Map data to Map<String, dynamic>.
-/// Firestore can return inner maps as Map<String, Object?> which breaks
+/// Recursively converts Firestore/Map data to `Map<String, dynamic>`.
+/// Firestore can return inner maps as `Map<String, Object?>` which breaks
 /// the `value is Map<String, dynamic>` check in spec rendering.
 Map<String, dynamic> _deepCastMap(dynamic raw) {
   if (raw == null) return {};
@@ -299,7 +305,7 @@ Map<String, dynamic> _deepCastMap(dynamic raw) {
   );
 }
 
-/// Converts a Firestore/Map to Map<String, String> (for keySpecs).
+/// Converts a Firestore/Map to `Map<String, String>` (for keySpecs).
 Map<String, String> _castStringMap(dynamic raw) {
   if (raw == null) return {};
   if (raw is! Map) return {};

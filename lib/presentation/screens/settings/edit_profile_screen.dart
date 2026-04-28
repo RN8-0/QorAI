@@ -502,7 +502,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         if (!_isOAuthUser) 'name': newName,
         'gender': _gender,
         if (_birthDate != null) 'birthDate': _birthDate!.toIso8601String(),
-        if (uploadedPhotoUrl != null) 'photoURL': uploadedPhotoUrl,
+        'photoURL': ?uploadedPhotoUrl,
       };
       await ref.read(pbDataSourceProvider).updateUser(uid, body);
       _syncAuthStore(body);
@@ -623,7 +623,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<String?> _uploadPhoto(String uid, File file) async {
     setState(() => _uploadingPhoto = true);
     try {
-      final uri = Uri.parse('${pb.baseUrl}/api/collections/users/records/$uid');
+      final uri = Uri.parse('${pb.baseURL}/api/collections/users/records/$uid');
       final request = http.MultipartRequest('PATCH', uri);
       request.headers['Authorization'] = pb.authStore.token;
       request.files.add(await http.MultipartFile.fromPath('avatar', file.path));
@@ -637,7 +637,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           (jsonDecode(body) as Map<String, dynamic>?) ?? {};
       final avatarField = json['avatar'] as String? ?? '';
       if (avatarField.isEmpty) return null;
-      return '${pb.baseUrl}/api/files/users/$uid/$avatarField';
+      return '${pb.baseURL}/api/files/users/$uid/$avatarField';
     } catch (e) {
       debugPrint('[editProfile] _uploadPhoto error: $e');
       return null;
@@ -671,7 +671,7 @@ class _AvatarPreview extends StatelessWidget {
             width: size,
             height: size,
             fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => _fallback(radius),
+            errorWidget: (_, _, _) => _fallback(radius),
           ),
         ),
       );

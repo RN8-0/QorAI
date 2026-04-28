@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 class _ReviewsTab extends ConsumerStatefulWidget {
   final ProductEntity product;
@@ -389,8 +389,8 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
                           ),
                           isLoading && stepMessage.isNotEmpty
                               ? stepMessage
-                              : (loaded && (result?.summary.isNotEmpty ?? false)
-                                    ? result!.summary
+                              : (loaded && result.summary.isNotEmpty
+                                    ? result.summary
                                     : (Localizations.localeOf(
                                                 context,
                                               ).languageCode ==
@@ -712,8 +712,9 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
             padding: const EdgeInsets.all(16),
             child: reviewsAsync.when(
               data: (reviews) {
-                if (reviews.isEmpty)
+                if (reviews.isEmpty) {
                   return _buildEmptyState(currentUser != null);
+                }
                 return _buildReviewsContent(reviews, currentUser);
               },
               loading: () => const Center(
@@ -1360,6 +1361,7 @@ class _LikeDislikeButton extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _DeleteReviewButton extends ConsumerWidget {
   final String reviewId;
   final String productId;
@@ -1604,7 +1606,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     fadeInDuration: const Duration(milliseconds: 100),
                     imageBuilder: (_, img) =>
                         CircleAvatar(radius: 22, backgroundImage: img),
-                    errorWidget: (_, __, ___) => ClipOval(
+                    errorWidget: (_, _, _) => ClipOval(
                       child: Image.asset(
                         'assets/images/default_avatar.jpeg',
                         width: 44,

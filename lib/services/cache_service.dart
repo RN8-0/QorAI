@@ -164,7 +164,7 @@ class CacheService {
   Future<({T? data, bool isStale})> getLocalStaleAsync<T>(String key) async {
     if (!_localBox.isOpen) return (data: null, isStale: true);
     final localData = _localBox.get(key);
-    if (localData == null || localData is! String) return (data: null, isStale: true);
+    if (localData == null) return (data: null, isStale: true);
     try {
       // Parse JSON off the main thread — prevents 200–400 ms jank on low-end
       // devices when the stored string is large (> 500 KB).
@@ -189,7 +189,7 @@ class CacheService {
   Future<({String? raw, bool isStale})> getLocalRawStaleAsync(String key) async {
     if (!_localBox.isOpen) return (raw: null, isStale: true);
     final localData = _localBox.get(key);
-    if (localData == null || localData is! String) {
+    if (localData == null) {
       return (raw: null, isStale: true);
     }
     // Quick stale check: scan only for the expiresAt field rather than

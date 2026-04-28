@@ -3,6 +3,7 @@
 ///
 /// Extended model for Profile Algorithm
 /// Age, interests, and profile vector support
+library;
 
 import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';

@@ -1982,7 +1982,7 @@ class PbDataSource {
       'timestamp':
           data['savedAt']?.toString() ??
           analysisData['timestamp']?.toString() ??
-          record.created,
+          record.get<String>('created'),
       if (analysisData['result'] != null) 'result': analysisData['result'],
       if (analysisData['results'] != null) 'results': analysisData['results'],
       if (analysisData['products'] != null)
@@ -2005,7 +2005,7 @@ class PbDataSource {
       'timestamp':
           data['savedAt']?.toString() ??
           analysisData['timestamp']?.toString() ??
-          record.created,
+          record.get<String>('created'),
       'services':
           (analysisData['services'] as List?)
               ?.map((e) => e.toString())
@@ -2204,7 +2204,7 @@ class PbDataSource {
   }
 
   /// Fetch products for MULTIPLE categories in a single Typesense multi_search request.
-  /// Returns a Map<category, List<ProductModel>>.
+  /// Returns a `Map<category, List<ProductModel>>`.
   /// This replaces 20 parallel PocketBase calls with 1 HTTP request (~50-100ms total).
   Future<Map<String, List<ProductModel>>> getProductsMultiCategoryTs({
     required List<String> categories,
@@ -2352,7 +2352,7 @@ class PbDataSource {
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-        '=== QOR AI: TS getProductsPage cat=$category filter=$filterBy page=$page → ${products.length}/${found} in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getProductsPage cat=$category filter=$filterBy page=$page → ${products.length}/$found in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
         products: products,

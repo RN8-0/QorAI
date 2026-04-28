@@ -3,6 +3,7 @@
 ///
 /// Extended user model for Profile Algorithm
 /// Age, interests, and profile vector added
+library;
 
 import 'package:equatable/equatable.dart';
 

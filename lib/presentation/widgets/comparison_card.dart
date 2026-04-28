@@ -4,6 +4,7 @@
 /// Comparison summary card
 /// VS mode view
 /// Quick score display
+library;
 
 import 'package:flutter/material.dart';
 import 'package:qor_ai/core/theme.dart';

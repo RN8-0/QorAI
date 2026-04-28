@@ -1,4 +1,4 @@
-/// Qor AI - Compare Screen
+﻿/// Qor AI - Compare Screen
 /// Direct spec-by-spec comparison of products in the same category.
 library;
 
@@ -31,7 +31,7 @@ import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/services/youtube_service.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
-import 'package:qor_ai/core/category_key_specs.dart' as keySpecs;
+import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/presentation/widgets/shared/expandable_text.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -77,10 +77,13 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   bool get _openedFromHistory => widget.initialComparison != null;
   List<String> get _selectedProductIds =>
       ref.read(compareSessionProvider).selectedProductIds;
+  // ignore: unused_element
   List<ProductEntity>? get _comparedProducts =>
       ref.read(compareSessionProvider).comparedProducts;
+  // ignore: unused_element
   String? get _lockedCategory =>
       ref.read(compareSessionProvider).lockedCategory;
+  // ignore: unused_element
   String? get _lockedSubcategory =>
       ref.read(compareSessionProvider).lockedSubcategory;
   final TextEditingController _searchController = TextEditingController();
@@ -336,6 +339,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   /// Directly start comparison with full ProductEntity objects (bypasses provider cache)
+  // ignore: unused_element
   void _directCompare(List<ProductEntity> products) {
     if (products.length < 2) return;
     final productIds = products.map((p) => p.id).toList(growable: false);
@@ -350,12 +354,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   Widget build(BuildContext context) {
     // Watch session state for reactivity
     final session = ref.watch(compareSessionProvider);
-    final _products = session.comparedProducts;
+    final products = session.comparedProducts;
 
     // Hide/show nav bar based on comparison state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final shouldHide = _products != null && _products.length >= 2;
+      final shouldHide = products != null && products.length >= 2;
       if (_hideNavBarNotifier.state != shouldHide) {
         _hideNavBarNotifier.state = shouldHide;
       }
@@ -368,7 +372,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
-        leading: _products != null
+        leading: products != null
             ? IconButton(
                 icon: Icon(
                   Icons.arrow_back_rounded,
@@ -399,9 +403,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         children: [
           // Content
           Expanded(
-            child: _products != null
+            child: products != null
                 ? _SpecComparisonView(
-                    products: _products,
+                    products: products,
                     onReset: _resetComparison,
                     onRemoveProduct: _removeProductFromComparison,
                   )
@@ -793,7 +797,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                   ),
                 ),
               ),
-              error: (_, __) => _buildPremiumEmptySlot(i + 1),
+              error: (_, _) => _buildPremiumEmptySlot(i + 1),
             ),
           ),
         );

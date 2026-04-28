@@ -1,5 +1,6 @@
 /// Qor AI - Category Chip Widget
 /// Blueprint Section 6.2
+library;
 
 import 'package:flutter/material.dart';
 import 'package:qor_ai/core/theme.dart';

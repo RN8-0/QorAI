@@ -1,5 +1,6 @@
 /// Qor AI - Compare Products Use Case
 /// Blueprint Section 7.2, 8.1
+library;
 
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';

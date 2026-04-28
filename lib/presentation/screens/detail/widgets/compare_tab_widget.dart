@@ -1,9 +1,10 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // COMPARE TAB CONTENT
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _CompareTabContent extends ConsumerWidget {
   final ProductEntity product;
   final bool isDark;

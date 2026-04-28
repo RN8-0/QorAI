@@ -1,4 +1,4 @@
-/// Qor AI - Link Paste Screen (AI Quiz-Enhanced Analysis)
+﻿/// Qor AI - Link Paste Screen (AI Quiz-Enhanced Analysis)
 ///
 /// Flow: Paste URL -> AI validates product -> Generates quiz -> User answers ->
 /// Enhanced compatibility score with detailed breakdown.
@@ -82,6 +82,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   List<EnhancedAnalysisResult> _multiLinkResults = [];
   int _currentMultiLinkIndex = 0;
   bool get _isMultiLinkFlow => _multiLinkUrls.length > 1;
+  // ignore: unused_element
   bool get _multiLinkComplete =>
       _isMultiLinkFlow && _multiLinkResults.length >= _multiLinkUrls.length;
 
@@ -89,6 +90,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   List<TextEditingController> get _urlControllers => [_singleUrlController];
   List<FocusNode> get _focusNodes => [_singleFocusNode];
   TextEditingController get _urlController => _singleUrlController;
+  // ignore: unused_element
   FocusNode get _focusNode => _singleFocusNode;
 
   late AnimationController _pulseController;
@@ -374,6 +376,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   /// Continue to next product in multi-link flow (sequential quiz per product)
+  // ignore: unused_element
   Future<void> _continueToNextProduct() async {
     final quizState = ref.read(linkQuizProvider);
     if (quizState.enhancedResult != null) {
@@ -1091,6 +1094,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildLinkUsageBadge() {
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
@@ -2164,6 +2168,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildMultiLinkProgress() {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -2636,6 +2641,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildProgressSteps(LinkFlowPhase phase) {
     final steps = [
       context.l10n?.scanStep ?? 'Scan',
@@ -2824,6 +2830,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildInputCard(bool isWorking) {
     final validCount = _urlControllers
         .where((c) => c.text.trim().isNotEmpty && _isValidUrl(c.text.trim()))
@@ -3236,6 +3243,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _storeChip(String name, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -4539,7 +4547,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           ),
           const SizedBox(width: 8),
           Text(
-            '${score.toStringAsFixed(0)}',
+            score.toStringAsFixed(0),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -4829,6 +4837,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _storePill(String name, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -4982,6 +4991,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // ignore: unused_element
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
     final now = DateTime.now();
@@ -4993,6 +5003,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
+  // ignore: unused_element
   Widget _moreStoresPill() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

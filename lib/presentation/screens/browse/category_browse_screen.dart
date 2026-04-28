@@ -215,7 +215,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   void _onScroll() {
     if (!(_scrollController.hasClients) ||
         _fetchingAll ||
-        _allLoaded) return;
+        _allLoaded) {
+      return;
+    }
     _scrollDebounce?.cancel();
     _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
       if (_scrollController.position.pixels >=

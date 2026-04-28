@@ -521,18 +521,19 @@ class ProfileAlgorithmService {
     if (releaseYear != null) {
       final currentYear = DateTime.now().year;
       final yearDiff = currentYear - releaseYear;
-      if (yearDiff <= 0)
+      if (yearDiff <= 0) {
         total += 8; // This year / upcoming → +8
-      else if (yearDiff == 1)
+      } else if (yearDiff == 1) {
         total += 4; // Last year → +4
-      else if (yearDiff == 2)
+      } else if (yearDiff == 2) {
         total += 0; // 2 years ago → neutral
-      else if (yearDiff == 3)
+      } else if (yearDiff == 3) {
         total -= 5; // 3 years ago → -5
-      else if (yearDiff == 4)
+      } else if (yearDiff == 4) {
         total -= 12; // 4 years ago → -12
-      else
+      } else {
         total -= 18; // 5+ years ago → -18
+      }
     }
 
     // Interest category boost: smaller to avoid uniform inflation
@@ -692,7 +693,9 @@ class ProfileAlgorithmService {
   ) {
     if (behavior.categoryViews.isEmpty &&
         behavior.productViews.isEmpty &&
-        behavior.favorites.isEmpty) return 0;
+        behavior.favorites.isEmpty) {
+      return 0;
+    }
 
     double boost = 0;
 
@@ -1088,12 +1091,15 @@ class ProfileAlgorithmService {
         }.contains(inferredEcosystem)) {
       return 0.9;
     }
-    if (user.ecosystem == 'windows' && inferredEcosystem == 'windows')
+    if (user.ecosystem == 'windows' && inferredEcosystem == 'windows') {
       return 0.96;
-    if (user.ecosystem == 'apple' && inferredEcosystem == 'windows')
+    }
+    if (user.ecosystem == 'apple' && inferredEcosystem == 'windows') {
       return 0.58;
-    if (user.ecosystem == 'windows' && inferredEcosystem == 'apple')
+    }
+    if (user.ecosystem == 'windows' && inferredEcosystem == 'apple') {
       return 0.52;
+    }
     if (user.ecosystem == 'apple' &&
         {
           'android',
@@ -1125,8 +1131,9 @@ class ProfileAlgorithmService {
     // Get price based on user's country
     final price = product.prices[user.country] ?? product.prices['US'] ?? 0.0;
 
-    if (user.budgetRange == 'any')
+    if (user.budgetRange == 'any') {
       return 0.75; // Don't give full score for unset budget
+    }
 
     final maxBudget = userBudgetRange['max'] ?? 999999;
     final minBudget = userBudgetRange['min'] ?? 0;
@@ -1344,42 +1351,43 @@ class ProfileAlgorithmService {
 
     // Smartphones
     if (category == 'smartphones') {
-      if (brand == 'apple' && hasApplePhone)
+      if (brand == 'apple' && hasApplePhone) {
         compatibility = 0.95;
-      else if (brand == 'apple' && user.ecosystem == 'apple')
+      } else if (brand == 'apple' && user.ecosystem == 'apple') {
         compatibility = 0.90;
-      else if (brand == 'samsung' &&
-          (hasAndroidPhone || user.ecosystem == 'samsung'))
+      } else if (brand == 'samsung' &&
+          (hasAndroidPhone || user.ecosystem == 'samsung')) {
         compatibility = 0.9;
-      else if (brand == 'google' &&
-          (hasAndroidPhone || user.ecosystem == 'google'))
+      } else if (brand == 'google' &&
+          (hasAndroidPhone || user.ecosystem == 'google')) {
         compatibility = 0.88;
-      else if ({'xiaomi', 'poco'}.contains(brand) &&
-          (hasAndroidPhone || user.ecosystem == 'xiaomi'))
+      } else if ({'xiaomi', 'poco'}.contains(brand) &&
+          (hasAndroidPhone || user.ecosystem == 'xiaomi')) {
         compatibility = 0.88;
-      else if ({'huawei', 'honor'}.contains(brand) &&
-          (hasAndroidPhone || user.ecosystem == 'huawei'))
+      } else if ({'huawei', 'honor'}.contains(brand) &&
+          (hasAndroidPhone || user.ecosystem == 'huawei')) {
         compatibility = 0.86;
-      else if (brand != 'apple' && hasAndroidPhone)
+      } else if (brand != 'apple' && hasAndroidPhone) {
         compatibility = 0.85;
-      else if ({
+      } else if ({
         'android',
         'samsung',
         'google',
         'xiaomi',
         'huawei',
-      }.contains(user.ecosystem))
+      }.contains(user.ecosystem)) {
         compatibility = 0.80;
-      else if (user.ecosystem == 'mixed')
+      } else if (user.ecosystem == 'mixed') {
         compatibility = 0.70;
-      else
+      } else {
         compatibility = 0.40;
+      }
     }
     // Laptops & Desktops
     else if (category == 'laptops' || category == 'desktops') {
-      if (brand == 'apple' && (hasMac || user.ecosystem == 'apple'))
+      if (brand == 'apple' && (hasMac || user.ecosystem == 'apple')) {
         compatibility = 0.95;
-      else if ({
+      } else if ({
             'microsoft',
             'dell',
             'hp',
@@ -1395,17 +1403,18 @@ class ProfileAlgorithmService {
         compatibility = 0.85;
       } else if (_hasAnyDevice(user, const ['laptops', 'desktops'])) {
         compatibility = 0.78;
-      } else if (user.ecosystem == 'mixed')
+      } else if (user.ecosystem == 'mixed') {
         compatibility = 0.70;
-      else
+      } else {
         compatibility = 0.45;
+      }
     }
     // Tablets
     else if (category == 'tablets') {
       if (brand == 'apple' &&
-          (ownedCategories.contains('tablets') || user.ecosystem == 'apple'))
+          (ownedCategories.contains('tablets') || user.ecosystem == 'apple')) {
         compatibility = 0.95;
-      else if (brand != 'apple' &&
+      } else if (brand != 'apple' &&
           (ownedCategories.contains('tablets') ||
               {
                 'android',
@@ -1415,43 +1424,46 @@ class ProfileAlgorithmService {
                 'huawei',
               }.contains(user.ecosystem))) {
         compatibility = 0.85;
-      } else if (user.ecosystem == 'mixed')
+      } else if (user.ecosystem == 'mixed') {
         compatibility = 0.70;
-      else
+      } else {
         compatibility = 0.45;
+      }
     }
     // Smartwatches
     else if (category == 'smartwatches') {
-      if (brand == 'apple' && hasApplePhone)
+      if (brand == 'apple' && hasApplePhone) {
         compatibility = 0.95;
-      else if (brand == 'samsung' && hasAndroidPhone)
+      } else if (brand == 'samsung' && hasAndroidPhone) {
         compatibility = 0.90;
-      else if (brand == 'google' && hasAndroidPhone)
+      } else if (brand == 'google' && hasAndroidPhone) {
         compatibility = 0.88;
-      else if ({'xiaomi', 'huawei', 'honor', 'amazfit'}.contains(brand) &&
-          hasAndroidPhone)
+      } else if ({'xiaomi', 'huawei', 'honor', 'amazfit'}.contains(brand) &&
+          hasAndroidPhone) {
         compatibility = 0.86;
-      else if ({'garmin', 'fitbit', 'amazfit'}.contains(brand))
+      } else if ({'garmin', 'fitbit', 'amazfit'}.contains(brand)) {
         compatibility = 0.75;
-      else if (user.ecosystem == 'mixed')
+      } else if (user.ecosystem == 'mixed') {
         compatibility = 0.70;
-      else
+      } else {
         compatibility = 0.45;
+      }
     }
     // Headphones, Speakers (universal)
     else if ({'headphones', 'speakers', 'earbuds'}.contains(category)) {
       compatibility = 0.75;
-      if (brand == 'apple' && user.ecosystem == 'apple')
+      if (brand == 'apple' && user.ecosystem == 'apple') {
         compatibility = 0.90;
-      else if (brand == 'samsung' &&
+      } else if (brand == 'samsung' &&
           {
             'android',
             'samsung',
             'google',
             'xiaomi',
             'huawei',
-          }.contains(user.ecosystem))
+          }.contains(user.ecosystem)) {
         compatibility = 0.85;
+      }
     }
     // PC Components (GPUs, CPUs, etc.)
     else if ({
@@ -1463,14 +1475,15 @@ class ProfileAlgorithmService {
       'webcams',
       'gamepads',
     }.contains(category)) {
-      if (hasWindows)
+      if (hasWindows) {
         compatibility = 0.85;
-      else if (hasMac)
+      } else if (hasMac) {
         compatibility = 0.60;
-      else if (hasTablet)
+      } else if (hasTablet) {
         compatibility = 0.55;
-      else
+      } else {
         compatibility = 0.50;
+      }
     }
     // Cameras, Drones, Dashcams (universal)
     else if ({'cameras', 'drones', 'dashcams'}.contains(category)) {
@@ -1490,12 +1503,13 @@ class ProfileAlgorithmService {
     }
     // Cases
     else if (category == 'cases') {
-      if (user.ecosystem == 'apple' && brand == 'apple')
+      if (user.ecosystem == 'apple' && brand == 'apple') {
         compatibility = 0.95;
-      else if (ownedCategories.contains('smartphones'))
+      } else if (ownedCategories.contains('smartphones')) {
         compatibility = 0.75;
-      else
+      } else {
         compatibility = 0.50;
+      }
     }
     // Subscription (existing logic)
     else if (category == 'subscription') {

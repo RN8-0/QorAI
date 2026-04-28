@@ -376,8 +376,9 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildDeepAnalysisVisual(DeepAnalysisResult r) {
-    if (r.rawFallback != null)
+    if (r.rawFallback != null) {
       return _buildRichContent(r.rawFallback!, AppTheme.premiumPurple);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -578,7 +579,7 @@ class SharedPremiumFeaturesSectionState
             tween: Tween(begin: 0, end: (attr.score / 100).clamp(0, 1)),
             duration: const Duration(milliseconds: 800),
             curve: Curves.easeOutCubic,
-            builder: (_, v, __) => ClipRRect(
+            builder: (_, v, _) => ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: SizedBox(
                 height: 6,
@@ -683,8 +684,9 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildAlternativesVisual(AlternativesResult r) {
-    if (r.rawFallback != null)
+    if (r.rawFallback != null) {
       return _buildRichContent(r.rawFallback!, AppTheme.warning);
+    }
     if (r.alternatives.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
@@ -692,7 +694,7 @@ class SharedPremiumFeaturesSectionState
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: r.alternatives.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, i) {
           final alt = r.alternatives[i];
           final priceColor = alt.priceComparison.toLowerCase().contains('cheap')
@@ -857,8 +859,9 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildAdvisorVisual(AdvisorResult r) {
-    if (r.rawFallback != null)
+    if (r.rawFallback != null) {
       return _buildRichContent(r.rawFallback!, const Color(0xFF3B82F6));
+    }
 
     final ratingColor = r.valueRating >= 7
         ? AppTheme.green500
@@ -877,7 +880,7 @@ class SharedPremiumFeaturesSectionState
                   tween: Tween(begin: 0, end: r.valueRating),
                   duration: const Duration(milliseconds: 1000),
                   curve: Curves.easeOutCubic,
-                  builder: (_, v, __) {
+                  builder: (_, v, _) {
                     final roundedValue = v == v.roundToDouble()
                         ? v.toStringAsFixed(0)
                         : v.toStringAsFixed(1);
@@ -1062,8 +1065,9 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildPredictionVisual(PredictionResult r) {
-    if (r.rawFallback != null)
+    if (r.rawFallback != null) {
       return _buildRichContent(r.rawFallback!, const Color(0xFF10B981));
+    }
 
     final trendLower = r.trend.toLowerCase();
     final trendColor = trendLower == 'down'
@@ -1329,8 +1333,9 @@ class SharedPremiumFeaturesSectionState
                       ? const ['Su an', '1A', '2A', '3A', '4A', '5A', '6A']
                       : const ['Now', '1M', '2M', '3M', '4M', '5M', '6M'];
                   final idx = val.toInt();
-                  if (idx < 0 || idx >= months.length)
+                  if (idx < 0 || idx >= months.length) {
                     return const SizedBox.shrink();
+                  }
                   return Text(
                     months[idx],
                     style: GoogleFonts.plusJakartaSans(

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -596,7 +595,7 @@ class _HeroSnapshotCardState extends State<_HeroSnapshotCard>
               borderRadius: BorderRadius.circular(24),
               child: AnimatedBuilder(
                 animation: _shimmer,
-                builder: (_, __) {
+                builder: (_, _) {
                   return CustomPaint(
                     painter: _SweepPainter(progress: _shimmer.value),
                   );
@@ -926,7 +925,7 @@ class _AnimatedRingCardState extends State<_AnimatedRingCard>
           const SizedBox(height: 14),
           AnimatedBuilder(
             animation: Listenable.merge([_progressAnim, _pulse]),
-            builder: (_, __) {
+            builder: (_, _) {
               final scale = 1 + _pulse.value * 0.02;
               return Transform.scale(
                 scale: scale,
@@ -1098,7 +1097,7 @@ class _PurchaseReadinessGaugeState extends State<_PurchaseReadinessGauge>
             height: 150,
             child: AnimatedBuilder(
               animation: _anim,
-              builder: (_, __) {
+              builder: (_, _) {
                 final v = _anim.value.clamp(0.0, 1.0);
                 return CustomPaint(
                   size: const Size(double.infinity, 150),
@@ -1130,7 +1129,7 @@ class _PurchaseReadinessGaugeState extends State<_PurchaseReadinessGauge>
           const SizedBox(height: 12),
           AnimatedBuilder(
             animation: _anim,
-            builder: (_, __) {
+            builder: (_, _) {
               final color = _zoneColor(_anim.value);
               return Container(
                 padding: const EdgeInsets.symmetric(
@@ -1376,7 +1375,7 @@ class _AnimatedCategoryCardState extends State<_AnimatedCategoryCard>
         children: [
           AnimatedBuilder(
             animation: _progressAnim,
-            builder: (_, __) => SizedBox(
+            builder: (_, _) => SizedBox(
               width: 64,
               height: 64,
               child: CustomPaint(
@@ -1546,7 +1545,7 @@ class _ActivityPulseStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (_, i) => _PulseChip(item: items[i], index: i),
       ),
     );
@@ -1719,7 +1718,7 @@ class _AnimatedScoreBarState extends State<_AnimatedScoreBar>
                 ),
                 AnimatedBuilder(
                   animation: _barAnim,
-                  builder: (_, __) => Container(
+                  builder: (_, _) => Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 3,
@@ -1743,7 +1742,7 @@ class _AnimatedScoreBarState extends State<_AnimatedScoreBar>
             const SizedBox(height: 10),
             AnimatedBuilder(
               animation: _barAnim,
-              builder: (_, __) => ClipRRect(
+              builder: (_, _) => ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Stack(
                   children: [

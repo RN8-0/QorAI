@@ -45,7 +45,7 @@ class _ProductMiniCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.shopping_bag_rounded,
                         color: AppTheme.primaryBlue,
                       ),

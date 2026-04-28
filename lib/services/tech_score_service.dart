@@ -832,12 +832,14 @@ class TechScoreService {
     if (rawScores.isEmpty) return [];
 
     final maxScore = rawScores.map((s) => s.rawScore).reduce(max);
-    if (maxScore <= 0) return rawScores.map((s) => NormalizedScore(
+    if (maxScore <= 0) {
+      return rawScores.map((s) => NormalizedScore(
       productId: s.productId,
       normalizedScore: 50,
       rawScore: s.rawScore,
       subscores: s.subscores,
     )).toList();
+    }
 
     return rawScores.map((s) {
       final normalized = (s.rawScore / maxScore * 100).roundToDouble();

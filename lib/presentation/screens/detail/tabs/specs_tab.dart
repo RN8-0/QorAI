@@ -1,4 +1,4 @@
-﻿part of '../product_detail_screen.dart';
+part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // SPECS CARD (grouped)
@@ -25,112 +25,148 @@ class _SpecsCardState extends State<_SpecsCard> {
   // Icons per spec group — matches Firestore group names from admin panel
   IconData _getGroupIcon(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
-    if (k.contains('general') || k.contains('information'))
+    if (k.contains('general') || k.contains('information')) {
       return Icons.info_outline;
-    if (k.contains('display') || k.contains('screen') || k.contains('ekran'))
+    }
+    if (k.contains('display') || k.contains('screen') || k.contains('ekran')) {
       return Icons.phone_android;
+    }
     if (k.contains('processor') ||
         k.contains('cpu') ||
-        k.contains('performance'))
+        k.contains('performance')) {
       return Icons.memory;
-    if (k.contains('graphic') || k.contains('gpu') || k.contains('video card'))
+    }
+    if (k.contains('graphic') || k.contains('gpu') || k.contains('video card')) {
       return Icons.videogame_asset_outlined;
+    }
     if (k.contains('memory') || k.contains('ram')) return Icons.memory_outlined;
     if (k.contains('storage') ||
         k.contains('disk') ||
         k.contains('optical') ||
         k.contains('ssd') ||
-        k.contains('hdd'))
+        k.contains('hdd')) {
       return Icons.storage_outlined;
-    if (k.contains('battery') || k.contains('power'))
+    }
+    if (k.contains('battery') || k.contains('power')) {
       return Icons.battery_charging_full_outlined;
-    if (k.contains('camera') || k.contains('photo'))
+    }
+    if (k.contains('camera') || k.contains('photo')) {
       return Icons.camera_alt_outlined;
+    }
     if (k.contains('connect') ||
         k.contains('network') ||
         k.contains('wifi') ||
-        k.contains('bluetooth'))
+        k.contains('bluetooth')) {
       return Icons.wifi;
+    }
     if (k.contains('port') ||
         k.contains('slot') ||
         k.contains('interface') ||
         k.contains('usb') ||
-        k.contains('expansion'))
+        k.contains('expansion')) {
       return Icons.usb_outlined;
-    if (k.contains('audio') || k.contains('sound') || k.contains('speaker'))
+    }
+    if (k.contains('audio') || k.contains('sound') || k.contains('speaker')) {
       return Icons.headphones_outlined;
+    }
     if (k.contains('design') ||
         k.contains('physical') ||
         k.contains('dimension') ||
         k.contains('build') ||
-        k.contains('chassis'))
+        k.contains('chassis')) {
       return Icons.design_services_outlined;
-    if (k.contains('software') || k.contains('os') || k.contains('operating'))
+    }
+    if (k.contains('software') || k.contains('os') || k.contains('operating')) {
       return Icons.apps_outlined;
-    if (k.contains('cooling') || k.contains('fan') || k.contains('thermal'))
+    }
+    if (k.contains('cooling') || k.contains('fan') || k.contains('thermal')) {
       return Icons.ac_unit_outlined;
-    if (k.contains('lighting') || k.contains('rgb') || k.contains('led'))
+    }
+    if (k.contains('lighting') || k.contains('rgb') || k.contains('led')) {
       return Icons.lightbulb_outlined;
+    }
     if (k.contains('document') ||
         k.contains('packaging') ||
         k.contains('warranty') ||
-        k.contains('box'))
+        k.contains('box')) {
       return Icons.description_outlined;
-    if (k.contains('function') || k.contains('feature'))
+    }
+    if (k.contains('function') || k.contains('feature')) {
       return Icons.build_outlined;
-    if (k.contains('security') || k.contains('sensor'))
+    }
+    if (k.contains('security') || k.contains('sensor')) {
       return Icons.security_outlined;
-    if (k.contains('weight') || k.contains('material'))
+    }
+    if (k.contains('weight') || k.contains('material')) {
       return Icons.fitness_center_outlined;
-    if (k.contains('input') || k.contains('keyboard'))
+    }
+    if (k.contains('input') || k.contains('keyboard')) {
       return Icons.keyboard_outlined;
+    }
     return Icons.tune;
   }
 
   Color _getGroupColor(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
-    if (k.contains('general') || k.contains('information'))
+    if (k.contains('general') || k.contains('information')) {
       return const Color(0xFF5C6BC0);
-    if (k.contains('display') || k.contains('screen'))
+    }
+    if (k.contains('display') || k.contains('screen')) {
       return const Color(0xFF2196F3);
+    }
     if (k.contains('processor') ||
         k.contains('cpu') ||
-        k.contains('performance'))
+        k.contains('performance')) {
       return const Color(0xFFFF5722);
-    if (k.contains('graphic') || k.contains('gpu'))
+    }
+    if (k.contains('graphic') || k.contains('gpu')) {
       return const Color(0xFFE91E63);
-    if (k.contains('memory') || k.contains('ram'))
+    }
+    if (k.contains('memory') || k.contains('ram')) {
       return const Color(0xFF3F51B5);
-    if (k.contains('storage') || k.contains('disk') || k.contains('optical'))
+    }
+    if (k.contains('storage') || k.contains('disk') || k.contains('optical')) {
       return const Color(0xFF607D8B);
-    if (k.contains('battery') || k.contains('power'))
+    }
+    if (k.contains('battery') || k.contains('power')) {
       return const Color(0xFF4CAF50);
+    }
     if (k.contains('camera')) return const Color(0xFF9C27B0);
-    if (k.contains('connect') || k.contains('network'))
+    if (k.contains('connect') || k.contains('network')) {
       return const Color(0xFF00BCD4);
-    if (k.contains('port') || k.contains('slot') || k.contains('expansion'))
+    }
+    if (k.contains('port') || k.contains('slot') || k.contains('expansion')) {
       return const Color(0xFF42A5F5);
-    if (k.contains('audio') || k.contains('sound'))
+    }
+    if (k.contains('audio') || k.contains('sound')) {
       return const Color(0xFFE91E63);
+    }
     if (k.contains('design') ||
         k.contains('physical') ||
         k.contains('dimension') ||
-        k.contains('chassis'))
+        k.contains('chassis')) {
       return const Color(0xFF795548);
-    if (k.contains('software') || k.contains('os'))
+    }
+    if (k.contains('software') || k.contains('os')) {
       return const Color(0xFF7E57C2);
-    if (k.contains('cooling') || k.contains('fan'))
+    }
+    if (k.contains('cooling') || k.contains('fan')) {
       return const Color(0xFF29B6F6);
-    if (k.contains('lighting') || k.contains('rgb'))
+    }
+    if (k.contains('lighting') || k.contains('rgb')) {
       return const Color(0xFFFFC107);
+    }
     if (k.contains('document') ||
         k.contains('packaging') ||
-        k.contains('warranty'))
+        k.contains('warranty')) {
       return const Color(0xFF78909C);
-    if (k.contains('function') || k.contains('feature'))
+    }
+    if (k.contains('function') || k.contains('feature')) {
       return const Color(0xFFAB47BC);
-    if (k.contains('security') || k.contains('sensor'))
+    }
+    if (k.contains('security') || k.contains('sensor')) {
       return const Color(0xFFEC407A);
+    }
     return const Color(0xFF9E9E9E);
   }
 
@@ -280,7 +316,6 @@ class _SpecsCardState extends State<_SpecsCard> {
       'shooting': l.specGroupExposureShooting,
       'flash': l.specGroupFlash,
       'other information': l.specGroupOtherInfo,
-      'other': l.specGroupOther,
       'information': l.specGroupOtherInfo,
       'recording': l.specGroupRecording,
       'focus': l.specGroupFocus,
@@ -301,13 +336,10 @@ class _SpecsCardState extends State<_SpecsCard> {
       'energy and design': l.specGroupEnergyDesign,
       'dimensions & weight': l.specGroupDimensionsWeight,
       'documentation/software': l.specGroupSoftware,
-      'general features': l.specGroupGeneral,
       'memory features': l.specGroupMemory,
       'memory (ram) features': l.specGroupMemory,
-      'gpu': l.specGroupGpu,
       'technological infrastructure': l.specGroupTechInfra,
       'power and connections': l.specGroupPowerConnections,
-      'network connections': l.specGroupNetwork,
       'wireless connections': l.specGroupWireless,
       'other connections': l.specGroupOtherConnections,
       'operating system': l.specGroupSoftware,
@@ -501,189 +533,6 @@ class _SpecsCardState extends State<_SpecsCard> {
     return _formatKey(canonicalKey);
   }
 
-  /// Translate a multi-word spec name word-by-word using a dictionary.
-  static String _translateWords(String input, Map<String, String> dict) {
-    final parts = input.split(RegExp(r'(\s+)'));
-    final translated = <String>[];
-    bool anyTranslated = false;
-    for (final part in parts) {
-      final clean = part.trim().toLowerCase();
-      if (clean.isEmpty || clean == '&' || clean == '/' || clean == '-') {
-        if (clean == '&')
-          translated.add('ve');
-        else if (clean == '/')
-          translated.add('/');
-        else if (clean.isNotEmpty)
-          translated.add(part);
-        continue;
-      }
-      final tr = dict[clean];
-      if (tr != null) {
-        if (tr.isNotEmpty)
-          translated.add(tr); // skip empty translations (stop words)
-        anyTranslated = true;
-      } else {
-        // Keep original preserving acronyms via _formatKey single-word logic
-        translated.add(_formatKey(part));
-      }
-    }
-    if (!anyTranslated) {
-      return _formatKey(input);
-    }
-    // Clean up any double spaces after dropping stop words
-    return translated.join(' ').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
-  }
-
-  /// Word-level dictionary for translating individual technical terms.
-  static Map<String, String> _specWordDict(String locale) {
-    switch (locale) {
-      case 'tr':
-        return _trWordDict;
-      default:
-        return const {};
-    }
-  }
-
-  static const _trWordDict = <String, String>{
-    // Core hardware
-    'processor': 'İşlemci', 'cpu': 'İşlemci', 'chipset': 'Yonga Seti',
-    'core': 'Çekirdek',
-    'cores': 'Çekirdek',
-    'thread': 'İş Parçacığı',
-    'threads': 'İş Parçacığı',
-    'clock': 'Saat', 'frequency': 'Frekans', 'speed': 'Hız',
-    'boost': 'Boost', 'turbo': 'Turbo', 'base': 'Temel',
-    'efficiency': 'Verimlilik', 'performance': 'Performans',
-    'transistor': 'Transistör', 'distance': 'Mesafe',
-    'architecture': 'Mimari', 'process': 'Üretim Süreci',
-    'cache': 'Önbellek', 'generation': 'Nesil',
-    // Memory & Storage
-    'memory': 'Bellek', 'ram': 'RAM', 'vram': 'VRAM',
-    'storage': 'Depolama', 'internal': 'Dahili', 'external': 'Harici',
-    'expandable': 'Genişletilebilir', 'capacity': 'Kapasite',
-    'optical': 'Optik', 'drive': 'Sürücü', 'slot': 'Yuva', 'slots': 'Yuva',
-    'bus': 'Veri Yolu', 'bandwidth': 'Bant Genişliği',
-    'type': 'Türü', 'size': 'Boyut',
-    // Display
-    'display': 'Ekran', 'screen': 'Ekran', 'panel': 'Panel',
-    'resolution': 'Çözünürlük', 'refresh': 'Yenileme', 'rate': 'Hızı',
-    'brightness': 'Parlaklık', 'contrast': 'Kontrast', 'ratio': 'Oranı',
-    'hdr': 'HDR', 'touchscreen': 'Dokunmatik Ekran',
-    'color': 'Renk', 'colors': 'Renkler', 'gamut': 'Gamut',
-    'response': 'Tepki', 'time': 'Süresi', 'nit': 'Nit', 'nits': 'Nit',
-    'pixel': 'Piksel', 'density': 'Yoğunluk',
-    'technology': 'Teknoloji',
-    // Battery & Power
-    'battery': 'Batarya', 'charging': 'Şarj', 'charger': 'Şarj Cihazı',
-    'power': 'Güç', 'supply': 'Kaynağı', 'consumption': 'Tüketimi',
-    'voltage': 'Gerilim', 'current': 'Akım', 'watt': 'Watt',
-    'adapter': 'Adaptör', 'wireless': 'Kablosuz', 'wired': 'Kablolu',
-    'fast': 'Hızlı', 'life': 'Ömrü',
-    // Camera
-    'camera': 'Kamera', 'lens': 'Lens', 'aperture': 'Diyafram',
-    'zoom': 'Yakınlaştırma', 'optical zoom': 'Optik Yakınlaştırma',
-    'digital': 'Dijital', 'flash': 'Flaş', 'autofocus': 'Otomatik Odaklama',
-    'stabilization': 'Sabitleme', 'megapixel': 'Megapiksel',
-    'front': 'Ön', 'rear': 'Arka', 'main': 'Ana',
-    'video': 'Video', 'recording': 'Kayıt', 'photo': 'Fotoğraf',
-    'image': 'Görüntü', 'sensor': 'Sensör', 'sensors': 'Sensörler',
-    // Network & Connectivity
-    'network': 'Ağ', 'connection': 'Bağlantı', 'connections': 'Bağlantılar',
-    'connectivity': 'Bağlantı',
-    'interface': 'Arayüz',
-    'interfaces': 'Arayüzler',
-    'bluetooth': 'Bluetooth', 'wifi': 'Wi-Fi', 'wi-fi': 'Wi-Fi',
-    'nfc': 'NFC', 'gps': 'GPS', 'lte': 'LTE', '5g': '5G', '4g': '4G',
-    'band': 'Bant', 'bands': 'Bantlar',
-    'signal': 'Sinyal', 'range': 'Menzil', 'antenna': 'Anten',
-    'sim': 'SIM', 'dual': 'Çift', 'single': 'Tekli',
-    'port': 'Port', 'ports': 'Portlar', 'usb': 'USB',
-    'hdmi': 'HDMI', 'jack': 'Jak', 'headphone': 'Kulaklık',
-    'input': 'Giriş', 'output': 'Çıkış',
-    // Audio
-    'audio': 'Ses',
-    'sound': 'Ses',
-    'speaker': 'Hoparlör',
-    'speakers': 'Hoparlörler',
-    'microphone': 'Mikrofon', 'stereo': 'Stereo', 'mono': 'Mono',
-    'noise': 'Gürültü', 'cancellation': 'Önleme',
-    'active': 'Aktif', 'passive': 'Pasif',
-    'driver': 'Sürücü', 'impedance': 'Empedans',
-    // GPU
-    'graphics': 'Grafik', 'gpu': 'GPU', 'cuda': 'CUDA',
-    'stream': 'Akış', 'processors': 'İşlemciler',
-    'shader': 'Gölgelendirici', 'render': 'İşleme',
-    // Design & Physical
-    'design': 'Tasarım', 'body': 'Gövde', 'material': 'Malzeme',
-    'weight': 'Ağırlık', 'height': 'Yükseklik', 'width': 'Genişlik',
-    'depth': 'Derinlik', 'thickness': 'Kalınlık', 'length': 'Uzunluk',
-    'dimensions': 'Boyutlar', 'form': 'Form', 'factor': 'Faktör',
-    // Security & Sensors
-    'security': 'Güvenlik', 'fingerprint': 'Parmak İzi',
-    'face': 'Yüz', 'recognition': 'Tanıma',
-    'gyroscope': 'Jiroskop', 'accelerometer': 'İvmeölçer',
-    'proximity': 'Yakınlık', 'compass': 'Pusula', 'barometer': 'Barometre',
-    // Software
-    'operating': 'İşletim', 'system': 'Sistemi', 'software': 'Yazılım',
-    'version': 'Sürüm', 'update': 'Güncelleme',
-    // General descriptors
-    'brand': 'Marka', 'model': 'Model', 'series': 'Seri',
-    'name': 'Adı', 'number': 'Sayısı', 'count': 'Sayısı',
-    'total': 'Toplam', 'max': 'Maksimum', 'maximum': 'Maksimum',
-    'min': 'Minimum', 'minimum': 'Minimum',
-    'standard': 'Standart', 'premium': 'Premium', 'pro': 'Pro',
-    'advanced': 'Gelişmiş', 'basic': 'Temel',
-    'high': 'Yüksek', 'low': 'Düşük', 'medium': 'Orta',
-    'ultra': 'Ultra', 'super': 'Süper', 'mega': 'Mega',
-    'smart': 'Akıllı', 'assistant': 'Asistan',
-    'enabled': 'Etkin', 'disabled': 'Devre Dışı',
-    'support': 'Destek', 'supported': 'Destekleniyor',
-    'compatible': 'Uyumlu', 'compatibility': 'Uyumluluk',
-    'protection': 'Koruma', 'resistance': 'Dayanıklılık',
-    'water': 'Su', 'dust': 'Toz', 'ip': 'IP', 'rating': 'Derece',
-    'warranty': 'Garanti', 'certification': 'Sertifika',
-    'year': 'Yıl', 'date': 'Tarih', 'release': 'Çıkış',
-    'details': 'Detayları', 'detail': 'Detay',
-    'feature': 'Özellik', 'features': 'Özellikler',
-    'other': 'Diğer', 'integrated': 'Dahili',
-    'level': 'Seviye', 'mode': 'Mod', 'channel': 'Kanal',
-    'module': 'Modül', 'chip': 'Çip', 'card': 'Kart',
-    'format': 'Format', 'protocol': 'Protokol',
-    'multi': 'Çoklu', 'triple': 'Üçlü', 'quad': 'Dörtlü',
-    'angle': 'Açı', 'wide': 'Geniş', 'narrow': 'Dar',
-    'top': 'Üst', 'bottom': 'Alt', 'side': 'Yan',
-    'left': 'Sol', 'right': 'Sağ', 'under': 'Alt',
-    'back': 'Arka',
-    // Connector words that appear in mixed spec names
-    'to': 'Karşı', 'for': 'İçin', 'with': 'ile', 'of': '',
-    'and': 'Ve', 'in': 'İçinde', 'the': '', 'a': '',
-    'against': 'Karşı',
-    // Missing hardware terms
-    'impacts': 'Darbeler', 'impact': 'Darbe',
-    'shock': 'Şok', 'drop': 'Düşme', 'vibration': 'Titreşim',
-    'delivery': 'Teslimatı', 'data': 'Veri',
-    'transfer': 'Aktarım',
-    'expansion': 'Genişletme',
-    'reader': 'Okuyucu', 'writer': 'Yazıcı',
-    'hub': 'Hub', 'dock': 'Dock',
-    'scanner': 'Tarayıcı', 'lock': 'Kilit',
-    'keyboard': 'Klavye', 'backlit': 'Aydınlatmalı',
-    'backlight': 'Arka Işık', 'illumination': 'Aydınlatma',
-    'trackpad': 'İzleme Paneli', 'touchpad': 'Dokunmatik Yüzey',
-    'pointer': 'İşaretçi', 'stylus': 'Kalem',
-    'pen': 'Kalem', 'touch': 'Dokunmatik',
-    'multi-touch': 'Çok Dokunuşlu',
-    'fan': 'Fan', 'cooling': 'Soğutma', 'heat': 'Isı',
-    'pipe': 'Boru', 'thermal': 'Termal',
-    'silent': 'Sessiz',
-    'virtual': 'Sanal',
-    'built-in': 'Dahili',
-    'frame': 'Çerçeve',
-    'lid': 'Kapak', 'hinge': 'Menteşe',
-    'surface': 'Yüzey', 'coating': 'Kaplama',
-    'texture': 'Doku', 'finish': 'Yüzey',
-  };
-
   int _sectionPriority(String key) {
     final k = key.toLowerCase().replaceAll('_', ' ');
 
@@ -693,8 +542,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('information') ||
         k.contains('release') ||
         k.contains('general') ||
-        k.contains('overview'))
+        k.contains('overview')) {
       return 1;
+    }
 
     // 2. DESIGN — First visual impression; what the user feels when seeing the product
     if (k.contains('design') ||
@@ -704,15 +554,17 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('chassis') ||
         k.contains('weight') ||
         k.contains('material') ||
-        k.contains('color'))
+        k.contains('color')) {
       return 2;
+    }
 
     // 3. DISPLAY — The surface the user interacts with the most
     if (k.contains('display') ||
         k.contains('screen') ||
         k.contains('monitor') ||
-        k.contains('panel'))
+        k.contains('panel')) {
       return 3;
+    }
 
     // 4. PERFORMANCE / PROCESSOR — "How fast is it?" — Most frequently asked
     if (k.contains('basic hard') ||
@@ -720,8 +572,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('cpu') ||
         k.contains('chipset') ||
         k.contains('performance') ||
-        k.contains('computing'))
+        k.contains('computing')) {
       return 4;
+    }
 
     // 5. MEMORY / RAM — Extension of performance
     if (k.contains('memory') || k.contains('ram')) return 5;
@@ -732,29 +585,33 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('ssd') ||
         k.contains('hdd') ||
         k.contains('optical') ||
-        k.contains('flash'))
+        k.contains('flash')) {
       return 6;
+    }
 
     // 7. CAMERA — Strongest purchase motivator in 2024
     if (k.contains('camera') ||
         k.contains('photo') ||
         k.contains('imaging') ||
-        k.contains('optic'))
+        k.contains('optic')) {
       return 7;
+    }
 
     // 8. BATTERY — A constant concern in daily use
     if (k.contains('battery') ||
         k.contains('power') ||
         k.contains('charging') ||
-        k.contains('endurance'))
+        k.contains('endurance')) {
       return 8;
+    }
 
     // 9. GPU / GRAPHICS — Gaming and visual performance
     if (k.contains('graphic') ||
         k.contains('gpu') ||
         k.contains('video card') ||
-        k.contains('vga'))
+        k.contains('vga')) {
       return 9;
+    }
 
     // 10. NETWORK / CELLULAR — Connectivity (4G/5G matters)
     if (k.contains('network') ||
@@ -762,8 +619,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('sim') ||
         k.contains('lte') ||
         k.contains('5g') ||
-        k.contains('connect') && !k.contains('wireless'))
+        k.contains('connect') && !k.contains('wireless')) {
       return 10;
+    }
 
     // 11. WIRELESS — WiFi, BT, NFC
     if (k.contains('wireless') ||
@@ -771,23 +629,26 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('bluetooth') ||
         k.contains('nfc') ||
         k.contains('gps') ||
-        k.contains('navigation'))
+        k.contains('navigation')) {
       return 11;
+    }
 
     // 12. OS / SOFTWARE — Ecosystem and platform
     if (k.contains('operating') ||
         k.contains('software') ||
         k.contains(' os') ||
-        k.contains('system'))
+        k.contains('system')) {
       return 12;
+    }
 
     // 13. AUDIO / MULTIMEDIA — Media consumption
     if (k.contains('audio') ||
         k.contains('sound') ||
         k.contains('speaker') ||
         k.contains('multimedia') ||
-        k.contains('music'))
+        k.contains('music')) {
       return 13;
+    }
 
     // 14. FEATURES / SECURITY / SENSORS — Additional features
     if (k.contains('feature') ||
@@ -795,8 +656,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('security') ||
         k.contains('sensor') ||
         k.contains('biometric') ||
-        k.contains('fingerprint'))
+        k.contains('fingerprint')) {
       return 14;
+    }
 
     // 15. PORTS / CONNECTIONS — Physical connections
     if (k.contains('port') ||
@@ -805,22 +667,25 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('interface') ||
         k.contains('expansion') ||
         k.contains('other connection') ||
-        k.contains('connector'))
+        k.contains('connector')) {
       return 15;
+    }
 
     // 16. COOLING — Desktop/Laptop specific
     if (k.contains('cooling') ||
         k.contains('fan') ||
         k.contains('thermal') ||
-        k.contains('heat'))
+        k.contains('heat')) {
       return 16;
+    }
 
     // 17. INPUT — Keyboard, mouse
     if (k.contains('input') ||
         k.contains('keyboard') ||
         k.contains('mouse') ||
-        k.contains('touchpad'))
+        k.contains('touchpad')) {
       return 17;
+    }
 
     // 18. PACKAGING / WARRANTY — Box contents, warranty
     if (k.contains('document') ||
@@ -830,8 +695,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('contents') ||
         k.contains('lighting') ||
         k.contains('rgb') ||
-        k.contains('led'))
+        k.contains('led')) {
       return 18;
+    }
 
     return 99;
   }
@@ -2045,54 +1911,6 @@ class _KeySpecsHighlight extends StatelessWidget {
                 );
               }).toList(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SpecChip extends StatelessWidget {
-  final String label;
-  final String value;
-  const _SpecChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final display = value.length > 18
-        ? '${value.substring(0, 16)}\u2026'
-        : value;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              color: context.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            display,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: context.textPrimary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

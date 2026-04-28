@@ -25,9 +25,11 @@ class ProductImageBox extends StatefulWidget {
   });
 
   final String? imageUrl;
+
   /// Additional URLs to try if [imageUrl] fails (e.g. product.images list).
   final List<String> fallbackUrls;
   final double? width;
+
   /// If null, fills parent vertical space (caller must provide constraints).
   final double? height;
   final BorderRadius? borderRadius;
@@ -99,7 +101,7 @@ class _ProductImageBoxState extends State<ProductImageBox> {
         maxWidthDiskCache: cacheW,
         fadeInDuration: const Duration(milliseconds: 120),
         fadeOutDuration: Duration.zero,
-        placeholder: (_, __) => const ColoredBox(color: Color(0xFFF1F5F9)),
+        placeholder: (_, _) => const ColoredBox(color: Color(0xFFF1F5F9)),
         errorWidget: (context, url, error) {
           _onError(url);
           return const Icon(

@@ -4,6 +4,7 @@
 /// Score display: Total + 4 component breakdown
 /// Color coded (green: 80+, orange: 50-79, red: <50)
 /// Animated progress bar
+library;
 
 import 'package:flutter/material.dart';
 import 'package:qor_ai/core/theme.dart';

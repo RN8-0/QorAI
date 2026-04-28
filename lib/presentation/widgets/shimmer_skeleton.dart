@@ -200,7 +200,7 @@ class ProductRowSkeleton extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           itemCount: itemCount,
           itemExtent: cardWidth + 12,
-          itemBuilder: (_, __) => Align(
+          itemBuilder: (_, _) => Align(
             alignment: Alignment.topCenter,
             child: ProductCardSkeleton._bare(
               width: cardWidth,

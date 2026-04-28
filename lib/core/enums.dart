@@ -1,4 +1,5 @@
 /// Qor AI - Enums
+library;
 
 /// User ecosystem - Section 5.2 Question 1
 enum Ecosystem {

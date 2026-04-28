@@ -38,7 +38,7 @@ class _VariantsSection extends ConsumerWidget {
     final variantsAsync = ref.watch(productVariantsProvider(product));
     return variantsAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (variants) {
         if (variants.isEmpty) return const SizedBox.shrink();
         final all = [product, ...variants]..sort((a, b) => a.name.compareTo(b.name));
@@ -85,7 +85,7 @@ class _VariantsSection extends ConsumerWidget {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: unique.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, i) => _VariantChip(
                     product: unique[i],
                     isSelected: unique[i].id == product.id,

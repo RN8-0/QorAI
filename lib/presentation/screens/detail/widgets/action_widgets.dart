@@ -1,4 +1,4 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 // ── Compare Tooltip Button (replaces SnackBar with positioned bubble) ──
 class _CompareTooltipButton extends ConsumerStatefulWidget {
@@ -225,6 +225,7 @@ class _TrianglePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+// ignore: unused_element
 class _QuickActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -238,9 +239,13 @@ class _QuickActionBtn extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    // ignore: unused_element_parameter
     this.isActive = false,
+    // ignore: unused_element_parameter
     this.gradient,
+    // ignore: unused_element_parameter
     this.borderColor,
+    // ignore: unused_element_parameter
     this.textColor,
   });
 
@@ -345,10 +350,11 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
               try {
                 final wasFav = isFavorite(ref, widget.productId);
                 final result = await toggleFavorite(ref, widget.productId);
-                if (!mounted) return;
+                if (!context.mounted) return;
+                final messenger = ScaffoldMessenger.of(context);
                 if (!wasFav && !result) {
                   // Adding was rejected → collection limit reached.
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(
                         'Collection limit reached: ${AppConstants.freeCollectionLimit} items. Go Premium!',
@@ -360,7 +366,7 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       duration: const Duration(milliseconds: 1200),
                       backgroundColor: result
@@ -385,7 +391,7 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
                   );
                 }
               } catch (e) {
-                if (!mounted) return;
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: Colors.redAccent,

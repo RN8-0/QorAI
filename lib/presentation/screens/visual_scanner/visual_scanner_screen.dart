@@ -1186,7 +1186,7 @@ Instructions:
                   width: 220,
                   height: 220,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     width: 220,
                     height: 220,
                     color: context.surfaceVariantColor,

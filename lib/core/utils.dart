@@ -1,5 +1,6 @@
 /// Qor AI - Utility Functions
 /// Blueprint Section 7.4, 8.1, 11.2
+library;
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';

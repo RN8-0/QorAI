@@ -310,12 +310,12 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
                           width: 120,
                           height: 68,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(
+                          placeholder: (_, _) => Container(
                             width: 120, height: 68,
                             color: widget.isDark ? AppTheme.slate800 : context.textTertiaryColor,
                             child: const Icon(Icons.play_circle_outline, color: AppTheme.error),
                           ),
-                          errorWidget: (_, __, ___) => Container(
+                          errorWidget: (_, _, _) => Container(
                             width: 120, height: 68,
                             color: widget.isDark ? AppTheme.slate800 : context.textTertiaryColor,
                             child: const Icon(Icons.play_circle_outline, color: AppTheme.error),

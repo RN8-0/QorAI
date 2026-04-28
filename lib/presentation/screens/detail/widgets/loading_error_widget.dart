@@ -112,10 +112,10 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                       child: CachedNetworkImage(
                         imageUrl: widget.images[index],
                         fit: BoxFit.contain,
-                        placeholder: (_, __) => Center(
+                        placeholder: (_, _) => Center(
                           child: CircularProgressIndicator(
                             color: context.surfaceVariantColor, strokeWidth: 2)),
-                        errorWidget: (_, __, ___) =>
+                        errorWidget: (_, _, _) =>
                             Icon(Icons.broken_image, color: context.textPrimary.withValues(alpha: 0.54), size: 64),
                       ),
                     ),

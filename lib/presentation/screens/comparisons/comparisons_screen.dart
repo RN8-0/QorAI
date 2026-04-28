@@ -641,7 +641,7 @@ class _ProductThumb extends StatelessWidget {
           memCacheWidth: 168,
           maxWidthDiskCache: 168,
           fadeInDuration: const Duration(milliseconds: 100),
-          placeholder: (_, __) => const ColoredBox(color: Colors.white),
+          placeholder: (_, _) => const ColoredBox(color: Colors.white),
           errorWidget: (context, url, error) => Icon(
             Icons.image_outlined,
             size: 20,

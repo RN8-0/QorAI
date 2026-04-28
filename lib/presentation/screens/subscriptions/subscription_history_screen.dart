@@ -941,8 +941,11 @@ class _SubscriptionResultDetailScreen extends StatelessWidget {
     required this.services,
     required this.scores,
     required this.analysisResult,
+    // ignore: unused_element_parameter
     this.structured,
+    // ignore: unused_element_parameter
     this.winner,
+    // ignore: unused_element_parameter
     this.date = '',
   });
 

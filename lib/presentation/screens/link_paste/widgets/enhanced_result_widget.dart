@@ -1,4 +1,4 @@
-part of '../link_paste_screen.dart';
+﻿part of '../link_paste_screen.dart';
 
 class _EnhancedResultView extends ConsumerStatefulWidget {
   final EnhancedAnalysisResult result;
@@ -72,8 +72,9 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
   }
 
   String _getLabel(double score) {
-    if (score >= 90)
+    if (score >= 90) {
       return context.l10n?.perfectMatch ?? 'Perfect Match! \u{1F3AF}';
+    }
     if (score >= 75) return context.l10n?.greatMatch ?? 'Great Match \u{1F44D}';
     if (score >= 60) return context.l10n?.goodMatch ?? 'Good Match';
     if (score >= 40) return context.l10n?.averageMatch ?? 'Average Match';
@@ -384,7 +385,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                             ),
                           ),
                           Text(
-                            '${databaseMatch.techScore.toStringAsFixed(0)}',
+                            databaseMatch.techScore.toStringAsFixed(0),
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
@@ -608,7 +609,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                             duration: const Duration(milliseconds: 900),
                             curve: Curves.easeOutCubic,
                             tween: Tween(begin: 0.0, end: pScore / 100),
-                            builder: (_, v, __) => LinearProgressIndicator(
+                            builder: (_, v, _) => LinearProgressIndicator(
                               value: v,
                               minHeight: 8,
                               backgroundColor: AppTheme.slate700.withValues(alpha: 0.4),
@@ -768,7 +769,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                             duration: const Duration(milliseconds: 900),
                             curve: Curves.easeOutCubic,
                             tween: Tween(begin: 0.0, end: cScore / 100),
-                            builder: (_, v, __) => LinearProgressIndicator(
+                            builder: (_, v, _) => LinearProgressIndicator(
                               value: v,
                               minHeight: 8,
                               backgroundColor: AppTheme.slate700.withValues(alpha: 0.4),
@@ -1015,7 +1016,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: similarProducts.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (context, index) {
                           final product = similarProducts[index];
                           return Container(
@@ -1043,7 +1044,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                                           width: 32,
                                           height: 32,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
+                                          errorBuilder: (_, _, _) =>
                                               Container(
                                                 width: 32,
                                                 height: 32,
@@ -1169,6 +1170,7 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
     );
   }
 
+  // ignore: unused_element
   Widget _buildImagePlaceholder() {
     return Center(
       child: Column(

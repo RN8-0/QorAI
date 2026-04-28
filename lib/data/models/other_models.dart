@@ -1,5 +1,6 @@
 /// Qor AI - Other Firestore Models
 /// Blueprint Section 4.4 - categories, affiliate_clicks, user_links, trends, reviews
+library;
 
 import 'package:flutter/material.dart';
 import 'package:pocketbase/pocketbase.dart';

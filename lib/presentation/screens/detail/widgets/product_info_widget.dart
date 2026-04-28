@@ -1,6 +1,7 @@
-part of '../product_detail_screen.dart';
+﻿part of '../product_detail_screen.dart';
 
 /// Product name card — shown below the hero header
+// ignore: unused_element
 class _ProductNameCard extends StatelessWidget {
   final ProductEntity product;
   final bool isDark;

@@ -1,6 +1,7 @@
 /// Qor AI - Unit Tests
 ///
 /// Tests for core entities, services and business logic.
+library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';

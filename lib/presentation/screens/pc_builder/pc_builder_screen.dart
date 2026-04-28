@@ -1,4 +1,4 @@
-/// Qor AI - PC Builder (PCPartPicker-style with compatibility)
+﻿/// Qor AI - PC Builder (PCPartPicker-style with compatibility)
 library;
 
 import 'dart:async';
@@ -158,8 +158,9 @@ class _Compat {
   static String? _specValue(ProductEntity p, List<String> keys) {
     for (final key in keys) {
       final v = p.specs[key];
-      if (v != null && v.toString().trim().isNotEmpty)
+      if (v != null && v.toString().trim().isNotEmpty) {
         return v.toString().trim();
+      }
     }
     return null;
   }
@@ -191,8 +192,9 @@ class _Compat {
       'Soket',
     ]) {
       final v = p.specs[key];
-      if (v != null && v.toString().trim().isNotEmpty)
+      if (v != null && v.toString().trim().isNotEmpty) {
         return v.toString().trim().toUpperCase();
+      }
     }
     // Try extracting from product name (for products missing spec data)
     final name = p.name.toUpperCase();
@@ -423,10 +425,12 @@ class _Compat {
     ]) {
       final v = p.specs[key]?.toString().toLowerCase();
       if (v != null && v.isNotEmpty) {
-        if (v.contains('16') || v.contains('12vhpwr') || v.contains('600'))
+        if (v.contains('16') || v.contains('12vhpwr') || v.contains('600')) {
           return '16-pin (12VHPWR)';
-        if (v.contains('2x8') || v.contains('8+8') || v.contains('two 8'))
+        }
+        if (v.contains('2x8') || v.contains('8+8') || v.contains('two 8')) {
           return '2×8-pin';
+        }
         if (v.contains('8+6') || v.contains('8-pin + 6')) return '8+6-pin';
         if (v.contains('8')) return '8-pin';
         if (v.contains('6')) return '6-pin';
@@ -465,28 +469,33 @@ class _Compat {
     ]) {
       final v = p.specs[key]?.toString().toUpperCase();
       if (v != null && v.isNotEmpty) {
-        if (v.contains('E-ATX') || v.contains('EATX') || v.contains('XL-ATX'))
+        if (v.contains('E-ATX') || v.contains('EATX') || v.contains('XL-ATX')) {
           return 'E-ATX';
+        }
         if (v.contains('MATX') ||
             v.contains('MICRO-ATX') ||
             v.contains('MICRO ATX') ||
-            v.contains('M-ATX'))
+            v.contains('M-ATX')) {
           return 'mATX';
+        }
         if (v.contains('MINI-ITX') ||
             v.contains('MINI ITX') ||
             v.contains('MITX') ||
-            v.contains('ITX'))
+            v.contains('ITX')) {
           return 'mITX';
+        }
         if (v.contains('ATX')) return 'ATX';
         return v;
       }
     }
     // Infer from name
     final n = p.name.toUpperCase();
-    if (n.contains('MINI-ITX') || n.contains('MINI ITX') || n.contains('ITX'))
+    if (n.contains('MINI-ITX') || n.contains('MINI ITX') || n.contains('ITX')) {
       return 'mITX';
-    if (n.contains('MATX') || n.contains('MICRO ATX') || n.contains('M-ATX'))
+    }
+    if (n.contains('MATX') || n.contains('MICRO ATX') || n.contains('M-ATX')) {
       return 'mATX';
+    }
     if (n.contains('E-ATX') || n.contains('EATX')) return 'E-ATX';
     return null;
   }
@@ -572,6 +581,7 @@ class _Compat {
   }
 
   /// PSU form factor for case
+  // ignore: unused_element
   static String? psuFormFactor(ProductEntity p) {
     for (final key in ['Form Factor', 'PSU Form Factor']) {
       final v = p.specs[key]?.toString().toUpperCase();
@@ -585,6 +595,7 @@ class _Compat {
   }
 
   /// PCIe version from GPU or MB
+  // ignore: unused_element
   static String? pcieVersion(ProductEntity p) {
     for (final key in ['PCI Express', 'PCIe', 'Interface', 'PCI-E']) {
       final v = p.specs[key]?.toString();
@@ -600,6 +611,7 @@ class _Compat {
   }
 
   /// Max memory speed supported (for MB or CPU)
+  // ignore: unused_element
   static int? maxMemSpeed(ProductEntity p) {
     for (final key in [
       'Memory Speed',
@@ -824,14 +836,18 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         if (sock.contains('SWRX8') || sock.contains('WRX8')) return 'DDR4';
         if (sock.contains('TRX50') || sock.contains('WRX90')) return 'DDR5';
         // Intel sockets
-        if (sock.contains('1851'))
+        if (sock.contains('1851')) {
           return 'DDR5'; // LGA1851 = Arrow Lake, DDR5 only
-        if (sock.contains('1700'))
+        }
+        if (sock.contains('1700')) {
           return null; // LGA1700 supports DDR4 or DDR5 — let motherboard decide
-        if (sock.contains('1200'))
+        }
+        if (sock.contains('1200')) {
           return 'DDR4'; // LGA1200 = Comet Lake, DDR4 only
-        if (sock.contains('1151'))
+        }
+        if (sock.contains('1151')) {
           return 'DDR4'; // LGA1151 = Coffee Lake, DDR4 only
+        }
         // LGA1700 supports both DDR4/DDR5 → null (let MB decide)
       }
     }
@@ -863,6 +879,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     return w - _estimatedPower;
   }
 
+  // ignore: unused_element
   String? get _selectedFormFactor {
     final mb = _selected[PcComponent.motherboard];
     if (mb != null) return _Compat.formFactor(mb);
@@ -1559,6 +1576,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     }
   }
 
+  // ignore: unused_element
   void _showUpgradeSnackbar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2344,20 +2362,23 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     return components.map((c) {
       final p = _selected[c];
       String? note;
-      if (c == PcComponent.motherboard && _selectedSocket != null)
+      if (c == PcComponent.motherboard && _selectedSocket != null) {
         note = _pcText(
           context,
           en: 'Socket: $_selectedSocket',
           tr: 'Soket: $_selectedSocket',
         );
-      if (c == PcComponent.ram && _selectedMemType != null)
+      }
+      if (c == PcComponent.ram && _selectedMemType != null) {
         note = _selectedMemType;
-      if (c == PcComponent.cooler && _selectedSocket != null)
+      }
+      if (c == PcComponent.cooler && _selectedSocket != null) {
         note = _pcText(
           context,
           en: 'Socket: $_selectedSocket',
           tr: 'Soket: $_selectedSocket',
         );
+      }
       return _ComponentRow(
         component: c,
         selectedProduct: p,
@@ -2994,7 +3015,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     ).firstMatch(analysis);
     if (strengthsMatch != null) {
       final items = parseBullets(strengthsMatch.group(1)!);
-      if (items.isNotEmpty)
+      if (items.isNotEmpty) {
         sections.add(
           _bulletSection(
             context,
@@ -3003,6 +3024,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             AppTheme.success,
           ),
         );
+      }
     }
 
     // ── Weaknesses ────────────────────────────────────────────────────────────
@@ -3013,7 +3035,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     ).firstMatch(analysis);
     if (weaknessMatch != null) {
       final items = parseBullets(weaknessMatch.group(1)!);
-      if (items.isNotEmpty)
+      if (items.isNotEmpty) {
         sections.add(
           _bulletSection(
             context,
@@ -3022,6 +3044,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             AppTheme.amber500,
           ),
         );
+      }
     }
 
     // ── Upgrade Priority ──────────────────────────────────────────────────────
@@ -4077,7 +4100,7 @@ class _FpsTabWidgetState extends State<_FpsTabWidget>
             animation: _anim,
             builder: (context, _) {
               final rows = _current;
-              if (rows.isEmpty)
+              if (rows.isEmpty) {
                 return Text(
                   'No data',
                   style: GoogleFonts.plusJakartaSans(
@@ -4085,6 +4108,7 @@ class _FpsTabWidgetState extends State<_FpsTabWidget>
                     color: context.textTertiaryColor,
                   ),
                 );
+              }
               return Column(
                 children: rows.map((entry) {
                   final gameName = entry.$1;
@@ -4356,7 +4380,7 @@ class _ComponentRow extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: p.imageUrl!,
                     fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => Icon(
+                    errorWidget: (_, _, _) => Icon(
                       component.icon,
                       size: 18,
                       color: context.textTertiaryColor,
@@ -4959,8 +4983,9 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             ..sort((a, b) => b.value.compareTo(a.value));
       list = scored.map((entry) => entry.key).toList();
     }
-    if (_brands.isNotEmpty)
+    if (_brands.isNotEmpty) {
       list = list.where((p) => _brands.contains(p.brand)).toList();
+    }
     switch (_sort) {
       case 'score':
         list.sort((a, b) => b.techScore.compareTo(a.techScore));
@@ -5530,10 +5555,11 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
               final sel = _brands.contains(b);
               return GestureDetector(
                 onTap: () => setState(() {
-                  if (sel)
+                  if (sel) {
                     _brands.remove(b);
-                  else
+                  } else {
                     _brands.add(b);
+                  }
                 }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -5691,7 +5717,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         builder: (builderCtx, sc) {
           final bottomPad = MediaQuery.of(builderCtx).padding.bottom;
           return Consumer(
-            builder: (_, ref, __) {
+            builder: (_, ref, _) {
               final detailAsync = ref.watch(productDetailProvider(p.id));
               final detailProduct = switch (detailAsync.valueOrNull) {
                 Success<ProductEntity>(data: final product) => product,
@@ -6166,7 +6192,7 @@ class _ProductCard extends StatelessWidget {
                             ? CachedNetworkImage(
                                 imageUrl: product.imageUrl!,
                                 fit: BoxFit.contain,
-                                errorWidget: (_, __, ___) => Icon(
+                                errorWidget: (_, _, _) => Icon(
                                   component.icon,
                                   size: 22,
                                   color: context.textTertiaryColor,

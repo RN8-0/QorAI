@@ -1,4 +1,4 @@
-﻿/// Qor AI - Main Shell (Modern Navigation)
+/// Qor AI - Main Shell (Modern Navigation)
 /// Mobile: 3-tab floating pill nav + hamburger drawer
 /// Desktop/Tablet: Side rail navigation
 library;
@@ -129,14 +129,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     return widget.navigationShell.currentIndex.clamp(0, 4);
   }
 
-  static const _navRoutes = [
-    AppRoutes.pcBuilder,
-    AppRoutes.compare,
-    AppRoutes.home,
-    AppRoutes.linkPaste,
-    AppRoutes.subscriptions,
-  ];
-
   void _onNavTap(int index) {
     if (!kIsWeb) HapticFeedback.lightImpact();
     // Close any open modals/bottom sheets before navigating
@@ -204,7 +196,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             return const SizedBox.shrink();
           },
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         );
       },
     );
@@ -921,20 +913,21 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
   Map<String, dynamic> _buildContext() {
     final route = widget.currentRoute;
     String pageDesc = 'home page';
-    if (route.contains('browse'))
+    if (route.contains('browse')) {
       pageDesc = 'product browse/category page';
-    else if (route.contains('compare'))
+    } else if (route.contains('compare')) {
       pageDesc = 'product comparison page';
-    else if (route.contains('product'))
+    } else if (route.contains('product')) {
       pageDesc = 'product detail page';
-    else if (route.contains('pc-builder'))
+    } else if (route.contains('pc-builder')) {
       pageDesc = 'PC Builder wizard';
-    else if (route.contains('link-paste'))
+    } else if (route.contains('link-paste')) {
       pageDesc = 'Link Analysis page';
-    else if (route.contains('subscriptions'))
+    } else if (route.contains('subscriptions')) {
       pageDesc = 'subscriptions page';
-    else if (route.contains('collection'))
+    } else if (route.contains('collection')) {
       pageDesc = 'saved collection page';
+    }
     final pageCtx = ref.read(aiPageContextProvider);
     return {'page': pageDesc, 'route': route, if (pageCtx != null) ...pageCtx};
   }

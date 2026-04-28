@@ -260,7 +260,7 @@ class _SubscriptionLogoWidgetState extends State<SubscriptionLogoWidget> {
     _isSvgLogo = logoUrl.toLowerCase().endsWith('.svg');
     final isHttpLogo = logoUrl.startsWith('http') && !_isSvgLogo;
 
-    _urls = <String>[
+    _urls = <String>{
       if (isHttpLogo && !isLegacyStorageLogo) logoUrl,
       if (domain != null) ...[
         'https://logo.clearbit.com/$domain',
@@ -271,7 +271,7 @@ class _SubscriptionLogoWidgetState extends State<SubscriptionLogoWidget> {
         'https://icons.duckduckgo.com/ip3/$guessedDomain.ico',
       ],
       if (_isSvgLogo) logoUrl,
-    ].toSet().toList();
+    }.toList();
   }
 
   void _advance(String failedUrl) {
@@ -312,8 +312,8 @@ class _SubscriptionLogoWidgetState extends State<SubscriptionLogoWidget> {
                 width: widget.size - 8,
                 height: widget.size - 8,
                 fit: BoxFit.contain,
-                placeholder: (_, __) => _fallback(),
-                errorWidget: (_, __, ___) {
+                placeholder: (_, _) => _fallback(),
+                errorWidget: (_, _, _) {
                   _advance(url);
                   return _fallback();
                 },

@@ -9,7 +9,6 @@
 // Typography : Plus Jakarta Sans (Google Fonts)
 // Material 3 · Clean premium aesthetic on pure OLED black.
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -234,9 +233,9 @@ class AppTheme {
   static const Color deepSpace = backgroundDark;
   static const Color glassCard = Color(0x1AFFFFFF);
 
-  static const Color backgroundLight_old = backgroundDark;
-  static const Color surfaceLight_old = surfaceDark;
-  static const Color textPrimaryLight_old = textPrimaryDark;
+  static const Color backgroundLightOld = backgroundDark;
+  static const Color surfaceLightOld = surfaceDark;
+  static const Color textPrimaryLightOld = textPrimaryDark;
 
   // ─────────────────────────────────────────────────────────────────────────
   // GRADIENTS — Blue → Cyan on OLED black (logo-matching)

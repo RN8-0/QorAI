@@ -72,7 +72,7 @@ class MetadataService {
       );
 
       return metadata;
-    } on DioException catch (e) {
+    } on DioException {
       // Return empty metadata on error
       return OgMetadata(
         title: _extractDomainName(url),
