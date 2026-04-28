@@ -96,6 +96,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _hydratingFilterCatalog = false;
   String? _error;
   Timer? _scrollDebounce;
+  Timer? _filterHydrationDebounce;
   int _totalProductCount = 0;
 
   // Page counter for PocketBase pagination
@@ -162,8 +163,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   @override
   void dispose() {
     _scrollDebounce?.cancel();
+    _filterHydrationDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _applyFilterState(FilterState result) {
+    setState(() => _filterState = result);
+    _filterHydrationDebounce?.cancel();
+    if (!result.isActive || _allLoaded) return;
+    _filterHydrationDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted || !result.isActive) return;
+      unawaited(_ensureCompleteCatalogForFiltering());
+    });
   }
 
   void _onSearchQueryChanged(String q) {
@@ -579,10 +591,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       products: _allProducts,
     );
     if (result != null && mounted) {
-      setState(() => _filterState = result);
-      if (result.isActive && !_allLoaded) {
-        unawaited(_ensureCompleteCatalogForFiltering());
-      }
+      _applyFilterState(result);
     }
   }
 
@@ -1212,6 +1221,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             controller: _scrollController,
             cacheExtent: 600,
             addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            addSemanticIndexes: false,
             padding: EdgeInsets.fromLTRB(
               12,
               8,
@@ -1229,12 +1240,14 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   ),
                 );
               }
-              return _ProductListTile(
-                product: products[index],
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.push('/product/${products[index].id}');
-                },
+              return RepaintBoundary(
+                child: _ProductListTile(
+                  product: products[index],
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push('/product/${products[index].id}');
+                  },
+                ),
               );
             },
           ),

@@ -19,6 +19,26 @@ import 'package:qor_ai/data/models/comparison_model.dart';
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
 
+List<ProductModel> _parseTypesenseHitsToProducts(
+  List<Map<String, dynamic>> hits,
+) {
+  final products = <ProductModel>[];
+  for (final hit in hits) {
+    try {
+      final doc = hit['document'] as Map<String, dynamic>?;
+      if (doc == null) continue;
+      final rawStr = doc['_raw'] as String?;
+      if (rawStr == null || rawStr.isEmpty) {
+        products.add(ProductModel.fromMap(doc));
+        continue;
+      }
+      final raw = jsonDecode(rawStr) as Map<String, dynamic>;
+      products.add(ProductModel.fromMap(raw));
+    } catch (_) {}
+  }
+  return products;
+}
+
 class PbDataSource {
   static const bool _verboseTypesenseLogs = false;
   final PocketBase _pb;
@@ -2183,6 +2203,17 @@ class PbDataSource {
     }
   }
 
+  Future<List<ProductModel>> _parseTypesenseProductsOffMainThread(
+    List<dynamic> rawHits,
+  ) async {
+    final hitMaps = rawHits
+        .whereType<Map>()
+        .map((hit) => Map<String, dynamic>.from(hit))
+        .toList(growable: false);
+    if (hitMaps.isEmpty) return const <ProductModel>[];
+    return compute(_parseTypesenseHitsToProducts, hitMaps);
+  }
+
   /// Fetch products for a single category from Typesense.
   /// Much faster than PocketBase pagination (10-50ms vs 1-2s).
   Future<List<ProductModel>> getProductsByCategoryTs({
@@ -2205,10 +2236,7 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = hits
-          .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
-          .whereType<ProductModel>()
-          .toList();
+        final products = await _parseTypesenseProductsOffMainThread(hits);
       if (_verboseTypesenseLogs) {
         debugPrint(
           '=== QOR AI: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
@@ -2259,10 +2287,7 @@ class PbDataSource {
       for (var i = 0; i < resultsList.length && i < categories.length; i++) {
         final catResult = resultsList[i] as Map<String, dynamic>;
         final hits = (catResult['hits'] as List?) ?? [];
-        final products = hits
-            .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
-            .whereType<ProductModel>()
-            .toList();
+        final products = await _parseTypesenseProductsOffMainThread(hits);
         results[categories[i]] = products;
       }
 
@@ -2311,9 +2336,9 @@ class PbDataSource {
         );
         final hits = (response.data['hits'] as List?) ?? [];
         if (hits.isEmpty) break;
-        for (final h in hits) {
-          final p = _tsHitToProduct(h as Map<String, dynamic>);
-          if (p != null && seenIds.add(p.id)) all.add(p);
+        final products = await _parseTypesenseProductsOffMainThread(hits);
+        for (final p in products) {
+          if (seenIds.add(p.id)) all.add(p);
         }
         final found = (response.data['found'] as int?) ?? 0;
         if (page * perPage >= found) break;
@@ -2363,18 +2388,19 @@ class PbDataSource {
         '/collections/products/documents/search',
         queryParameters: {
           'q': tsQuery,
-            if (isSearch) 'query_by': 'name,brand,subcategory,keySpecsText,tags',
-            if (isSearch) 'query_by_weights': '8,5,4,2,3',
+          if (isSearch) 'query_by': 'name,brand,subcategory,keySpecsText,tags',
+          if (isSearch) 'query_by_weights': '8,5,4,2,3',
           if (isSearch) 'prioritize_exact_match': true,
           if (isSearch) 'prioritize_token_position': true,
           if (isSearch) 'prioritize_num_matching_fields': true,
           if (isSearch) 'text_match_type': 'max_score',
-            if (isSearch) 'num_typos': '1,0,1,1,1',
+          if (isSearch) 'num_typos': '1,0,1,1,1',
           if (isSearch) 'min_len_1typo': 4,
           if (isSearch) 'min_len_2typo': 8,
           if (isSearch) 'drop_tokens_threshold': 0,
           if (isSearch) 'typo_tokens_threshold': 0,
-            if (isSearch) 'prefix': 'true,false,true,false,false',
+          if (isSearch) 'prefix': 'true,false,true,false,false',
+          'search_cutoff_ms': isSearch ? 2200 : 1500,
           'filter_by': filterBy,
           'sort_by': isSearch ? '_text_match:desc,techScore:desc' : sortBy,
           'per_page': limit,
@@ -2384,10 +2410,7 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = hits
-          .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
-          .whereType<ProductModel>()
-          .toList();
+      final products = await _parseTypesenseProductsOffMainThread(hits);
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(

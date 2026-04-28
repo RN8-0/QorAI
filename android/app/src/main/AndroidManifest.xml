@@ -16,13 +16,9 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:networkSecurityConfig="@xml/network_security_config">
-        <!-- Impeller/Vulkan GPU format probing causes gralloc4 errors on
-             Xiaomi MediaTek devices (formats 56/59 not supported). Disabling
-             Impeller falls back to Skia+OpenGL which is more compatible.
-             Re-enable with "true" once Impeller matures on MediaTek GPUs. -->
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
-            android:value="false" />
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
