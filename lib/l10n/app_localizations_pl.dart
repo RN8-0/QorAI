@@ -3720,4 +3720,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count odpowiedzi';
   }
+
+  @override
+  String get editedLabel => 'edytowano';
 }

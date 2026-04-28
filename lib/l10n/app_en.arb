@@ -1488,5 +1488,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "editedLabel": "edited"
 }

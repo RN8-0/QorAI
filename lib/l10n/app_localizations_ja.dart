@@ -3658,4 +3658,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count件の返信';
   }
+
+  @override
+  String get editedLabel => '編集済み';
 }

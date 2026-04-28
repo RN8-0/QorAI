@@ -3732,4 +3732,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count yanıt';
   }
+
+  @override
+  String get editedLabel => 'düzenlendi';
 }

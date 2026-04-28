@@ -3717,4 +3717,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count replies';
   }
+
+  @override
+  String get editedLabel => 'edited';
 }

@@ -3726,4 +3726,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count antwoorden';
   }
+
+  @override
+  String get editedLabel => 'bewerkt';
 }

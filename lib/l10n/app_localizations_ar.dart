@@ -3695,4 +3695,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String viewRepliesCount(int count) {
     return '$count ردود';
   }
+
+  @override
+  String get editedLabel => 'تم التعديل';
 }

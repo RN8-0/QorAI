@@ -7203,6 +7203,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} replies'**
   String viewRepliesCount(int count);
+
+  /// No description provided for @editedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get editedLabel;
 }
 
 class _AppLocalizationsDelegate

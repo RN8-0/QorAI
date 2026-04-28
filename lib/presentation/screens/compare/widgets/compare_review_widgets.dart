@@ -22,6 +22,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
   bool _textExpanded = false;
   bool _isEditing = false;
   bool _savingEdit = false;
+  bool _isEdited = false;
   final TextEditingController _replyCtrl = TextEditingController();
   late TextEditingController _editCtrl;
   late String _localText;
@@ -66,21 +67,20 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     }
     setState(() => _savingEdit = true);
     try {
-      await ref.read(pbDataSourceProvider).updateComparisonReview(
-            widget.docId,
-            text,
-          );
+      await ref
+          .read(pbDataSourceProvider)
+          .updateComparisonReview(widget.docId, text);
       if (!mounted) return;
       setState(() {
         _localText = text;
         _isEditing = false;
         _savingEdit = false;
+        _isEdited = true;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _savingEdit = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -176,7 +176,17 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                               color: context.textTertiaryColor,
                             ),
                           ),
-
+                          if (_isEdited) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '· ${context.l10n?.editedLabel ?? 'edited'}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: context.textTertiaryColor,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -256,7 +266,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                             ? null
                             : () => setState(() => _isEditing = false),
                         child: Text(
-                          'İptal',
+                          context.l10n?.cancel ?? 'İptal',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             color: context.textTertiaryColor,
@@ -274,7 +284,9 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
                         child: _savingEdit
                             ? const SizedBox(
@@ -286,7 +298,7 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                                 ),
                               )
                             : Text(
-                                'Kaydet',
+                                context.l10n?.save ?? 'Kaydet',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -343,80 +355,89 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
             ),
 
           // ── Action bar: Like / Dislike / Reply ──
-          if (!_isEditing) Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            child: Row(
-              children: [
-                // Like button
-                _LikeDislikeButton(
-                  icon: Icons.thumb_up_rounded,
-                  count: _likedBy.length,
-                  active: currentUserId != null && _likedBy.contains(currentUserId),
-                  loading: _likeLoading,
-                  onTap: currentUserId == null ? null : () => _toggleLike(currentUserId),
-                ),
-                const SizedBox(width: 8),
-                // Dislike button
-                _LikeDislikeButton(
-                  icon: Icons.thumb_down_rounded,
-                  count: _dislikedBy.length,
-                  active: currentUserId != null && _dislikedBy.contains(currentUserId),
-                  loading: _dislikeLoading,
-                  isDislike: true,
-                  onTap: currentUserId == null ? null : () => _toggleDislike(currentUserId),
-                ),
-                const Spacer(),
-                if (currentUserId != null)
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _replyInputVisible = !_replyInputVisible;
-                      if (_replyInputVisible) _repliesExpanded = true;
-                    }),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _replyInputVisible
-                            ? AppTheme.brandBlue.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _replyInputVisible
-                              ? AppTheme.brandBlue.withValues(alpha: 0.4)
-                              : context.dividerColor,
+          if (!_isEditing)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Row(
+                children: [
+                  // Like button
+                  _LikeDislikeButton(
+                    icon: Icons.thumb_up_rounded,
+                    count: _likedBy.length,
+                    active:
+                        currentUserId != null &&
+                        _likedBy.contains(currentUserId),
+                    loading: _likeLoading,
+                    onTap: currentUserId == null
+                        ? null
+                        : () => _toggleLike(currentUserId),
+                  ),
+                  const SizedBox(width: 8),
+                  // Dislike button
+                  _LikeDislikeButton(
+                    icon: Icons.thumb_down_rounded,
+                    count: _dislikedBy.length,
+                    active:
+                        currentUserId != null &&
+                        _dislikedBy.contains(currentUserId),
+                    loading: _dislikeLoading,
+                    isDislike: true,
+                    onTap: currentUserId == null
+                        ? null
+                        : () => _toggleDislike(currentUserId),
+                  ),
+                  const Spacer(),
+                  if (currentUserId != null)
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _replyInputVisible = !_replyInputVisible;
+                        if (_replyInputVisible) _repliesExpanded = true;
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.reply_rounded,
-                            size: 15,
+                        decoration: BoxDecoration(
+                          color: _replyInputVisible
+                              ? AppTheme.brandBlue.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
                             color: _replyInputVisible
-                                ? AppTheme.brandBlue
-                                : context.textTertiaryColor,
+                                ? AppTheme.brandBlue.withValues(alpha: 0.4)
+                                : context.dividerColor,
                           ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Yanıtla',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.reply_rounded,
+                              size: 15,
                               color: _replyInputVisible
                                   ? AppTheme.brandBlue
                                   : context.textTertiaryColor,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 5),
+                            Text(
+                              'Yanıtla',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _replyInputVisible
+                                    ? AppTheme.brandBlue
+                                    : context.textTertiaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // ── Replies ──
           _CompareRepliesSection(
@@ -463,15 +484,17 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
       if (reviewOwnerId.isNotEmpty &&
           reviewOwnerId != uid &&
           reviewOwnerId != 'anonymous') {
-        ref.read(pbDataSourceProvider).createNotification(
-          recipientId: reviewOwnerId,
-          senderId: uid,
-          senderName: displayName,
-          type: 'compare_reply',
-          title: 'Yorumunuza yanıt geldi',
-          body: text.length > 100 ? '${text.substring(0, 100)}...' : text,
-          referenceId: widget.docId,
-        );
+        ref
+            .read(pbDataSourceProvider)
+            .createNotification(
+              recipientId: reviewOwnerId,
+              senderId: uid,
+              senderName: displayName,
+              type: 'compare_reply',
+              title: 'Yorumunuza yanıt geldi',
+              body: text.length > 100 ? '${text.substring(0, 100)}...' : text,
+              referenceId: widget.docId,
+            );
       }
       _replyCtrl.clear();
       setState(() {
@@ -733,15 +756,15 @@ class _CompareRepliesSectionState
                     Expanded(
                       child: TextField(
                         controller: widget.replyController,
-                        maxLines: 3,
-                        minLines: 1,
+                        maxLines: 5,
+                        minLines: 2,
                         autofocus: true,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           color: context.textPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Cevabınızı yazın...',
+                          hintText: context.l10n?.replyHint ?? 'Cevabınızı yazın...',
                           hintStyle: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             color: context.textTertiaryColor,
@@ -871,6 +894,7 @@ class _CompareReplyItem extends ConsumerStatefulWidget {
 class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
   bool _isEditing = false;
   bool _saving = false;
+  bool _isEdited = false;
   late TextEditingController _editCtrl;
   late List<String> _likedBy;
   late List<String> _dislikedBy;
@@ -884,6 +908,18 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
     _editCtrl = TextEditingController(text: _localText);
     _likedBy = List<String>.from(widget.reply['likedBy'] as List? ?? []);
     _dislikedBy = List<String>.from(widget.reply['dislikedBy'] as List? ?? []);
+    // Daha önce düzenlenmiş mi kontrol et
+    final created = widget.reply['created']?.toString() ?? '';
+    final updated = widget.reply['updated']?.toString() ?? '';
+    if (created.isNotEmpty && updated.isNotEmpty && created != updated) {
+      final createdDt = DateTime.tryParse(created);
+      final updatedDt = DateTime.tryParse(updated);
+      if (createdDt != null &&
+          updatedDt != null &&
+          updatedDt.difference(createdDt).inSeconds > 30) {
+        _isEdited = true;
+      }
+    }
   }
 
   @override
@@ -925,7 +961,7 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
       await ref
           .read(pbDataSourceProvider)
           .toggleReplyLike(widget.reply['id'] as String, uid);
-      _reactionLockUntil = DateTime.now();
+      _reactionLockUntil = DateTime.now().add(const Duration(milliseconds: 1200));
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -955,7 +991,9 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
       await ref
           .read(pbDataSourceProvider)
           .toggleReplyDislike(widget.reply['id'] as String, uid);
-      _reactionLockUntil = DateTime.now();
+      _reactionLockUntil = DateTime.now().add(
+        const Duration(milliseconds: 1200),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -976,21 +1014,20 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(pbDataSourceProvider).updateReviewReply(
-            replyId: widget.reply['id'] as String,
-            text: text,
-          );
+      await ref
+          .read(pbDataSourceProvider)
+          .updateReviewReply(replyId: widget.reply['id'] as String, text: text);
       if (!mounted) return;
       setState(() {
         _localText = text;
         _isEditing = false;
         _saving = false;
+        _isEdited = true;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -1003,7 +1040,9 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
         title: Text(
           'Yanıtı Sil',
           style: GoogleFonts.plusJakartaSans(
-              fontSize: 16, fontWeight: FontWeight.w700),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Text(
           'Bu yanıtı silmek istediğinizden emin misiniz?',
@@ -1028,7 +1067,9 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(pbDataSourceProvider).deleteReviewReply(
+    await ref
+        .read(pbDataSourceProvider)
+        .deleteReviewReply(
           collection: 'comparison_reviews',
           reviewId: widget.reviewId,
           replyId: widget.reply['id'] as String,
@@ -1039,15 +1080,15 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
   Widget build(BuildContext context) {
     final replyUserId = widget.reply['userId'] as String? ?? '';
     final replyName = widget.reply['displayName'] as String? ?? 'User';
-    final replyTs = DateTime.tryParse(
-            widget.reply['createdAt']?.toString() ?? '') ??
+    final replyTs =
+        DateTime.tryParse(widget.reply['createdAt']?.toString() ?? '') ??
         DateTime.now();
     final diff = DateTime.now().difference(replyTs);
     final timeStr = diff.inDays > 0
         ? '${diff.inDays}g'
         : diff.inHours > 0
-            ? '${diff.inHours}s'
-            : '${diff.inMinutes}d';
+        ? '${diff.inHours}s'
+        : '${diff.inMinutes}d';
     final isOwner =
         widget.currentUserId != null && widget.currentUserId == replyUserId;
 
@@ -1057,9 +1098,7 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppTheme.brandBlue.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.08)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1108,6 +1147,17 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                         color: context.textTertiaryColor,
                       ),
                     ),
+                    if (_isEdited) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        '· ${context.l10n?.editedLabel ?? 'edited'}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          color: context.textTertiaryColor,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     if (isOwner && !_isEditing) ...[
                       const SizedBox(width: 8),
                       GestureDetector(
@@ -1179,9 +1229,11 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                                 : () => setState(() => _isEditing = false),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               child: Text(
-                                'İptal',
+                                context.l10n?.cancel ?? 'İptal',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   color: context.textTertiaryColor,
@@ -1194,7 +1246,9 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                             onTap: _saving ? null : _saveEdit,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppTheme.brandBlue,
                                 borderRadius: BorderRadius.circular(8),
@@ -1209,7 +1263,7 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                                       ),
                                     )
                                   : Text(
-                                      'Kaydet',
+                                      context.l10n?.save ?? 'Kaydet',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -1237,21 +1291,26 @@ class _CompareReplyItemState extends ConsumerState<_CompareReplyItem> {
                       _LikeDislikeButton(
                         icon: Icons.thumb_up_rounded,
                         count: _likedBy.length,
-                        active: widget.currentUserId != null &&
+                        active:
+                            widget.currentUserId != null &&
                             _likedBy.contains(widget.currentUserId),
                         loading: false,
-                        onTap: widget.currentUserId == null ? null : _toggleLike,
+                        onTap: widget.currentUserId == null
+                            ? null
+                            : _toggleLike,
                       ),
                       const SizedBox(width: 6),
                       _LikeDislikeButton(
                         icon: Icons.thumb_down_rounded,
                         count: _dislikedBy.length,
-                        active: widget.currentUserId != null &&
+                        active:
+                            widget.currentUserId != null &&
                             _dislikedBy.contains(widget.currentUserId),
                         loading: false,
                         isDislike: true,
-                        onTap:
-                            widget.currentUserId == null ? null : _toggleDislike,
+                        onTap: widget.currentUserId == null
+                            ? null
+                            : _toggleDislike,
                       ),
                     ],
                   ),
@@ -1358,8 +1417,8 @@ class _CompareTranslateButtonState
               Text(
                 _translated != null
                     ? (_showOriginal
-                        ? (isTr ? 'Çeviriyi Gör' : 'See Translation')
-                        : (isTr ? 'Orijinali Gör' : 'See Original'))
+                          ? (isTr ? 'Çeviriyi Gör' : 'See Translation')
+                          : (isTr ? 'Orijinali Gör' : 'See Original'))
                     : (isTr ? 'Çeviriyi Gör' : 'See Translation'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
@@ -1433,7 +1492,9 @@ class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
           const SizedBox(height: 6),
           // Subtitle — product names
           Text(
-            widget.products.map((p) => (p as dynamic).name as String).join(' vs '),
+            widget.products
+                .map((p) => (p as dynamic).name as String)
+                .join(' vs '),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1544,4 +1605,3 @@ class _WriteReviewDialogContentState extends State<_WriteReviewDialogContent> {
     );
   }
 }
-

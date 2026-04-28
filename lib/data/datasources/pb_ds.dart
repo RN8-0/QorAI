@@ -81,7 +81,9 @@ class PbDataSource {
 
   static bool _isMissingSortFieldError(Object error) {
     final text = error.toString().toLowerCase();
-    return text.contains('something went wrong while processing your request') ||
+    return text.contains(
+          'something went wrong while processing your request',
+        ) ||
         text.contains('statuscode: 400');
   }
 
@@ -179,9 +181,12 @@ class PbDataSource {
         final user = await getUser(uid);
         // Admin (or anyone) deleted this user record on the server →
         // immediately invalidate local auth so the app routes to login.
-        if (user == null && _pb.authStore.isValid &&
+        if (user == null &&
+            _pb.authStore.isValid &&
             _pb.authStore.record?.id == uid) {
-          debugPrint('[PbDs] user $uid not found on server, clearing authStore');
+          debugPrint(
+            '[PbDs] user $uid not found on server, clearing authStore',
+          );
           _pb.authStore.clear();
         }
         return user;
@@ -750,13 +755,12 @@ class PbDataSource {
 
       try {
         final result = await _getListWithSortFallback(
-              collection: AppConstants.comparisonsCollection,
-              page: page,
-              perPage: limit,
-              filter: 'userId = "$userId"',
-              sort: '-updated',
-            )
-            .timeout(const Duration(seconds: 15));
+          collection: AppConstants.comparisonsCollection,
+          page: page,
+          perPage: limit,
+          filter: 'userId = "$userId"',
+          sort: '-updated',
+        ).timeout(const Duration(seconds: 15));
         for (final record in result.items) {
           final comparison = _safeComparisonFromPb(record);
           if (comparison != null && _isValidComparison(comparison)) {
@@ -1068,14 +1072,16 @@ class PbDataSource {
   }) async {
     try {
       final result = await _getListWithSortFallback(
-            collection: AppConstants.reviewsCollection,
-            page: 1,
-            perPage: limit,
-            filter: 'productId = "$productId"',
-            sort: '-created',
-          )
-          .timeout(const Duration(seconds: 10));
-      return result.items.map(_safeReviewFromPb).whereType<ReviewModel>().toList();
+        collection: AppConstants.reviewsCollection,
+        page: 1,
+        perPage: limit,
+        filter: 'productId = "$productId"',
+        sort: '-created',
+      ).timeout(const Duration(seconds: 10));
+      return result.items
+          .map(_safeReviewFromPb)
+          .whereType<ReviewModel>()
+          .toList();
     } catch (e) {
       throw ServerException(message: 'Reviews could not be retrieved: $e');
     }
@@ -1125,11 +1131,7 @@ class PbDataSource {
     try {
       final replies = await _pb
           .collection('review_replies')
-          .getList(
-            page: 1,
-            perPage: 200,
-            filter: 'reviewId = "$reviewId"',
-          );
+          .getList(page: 1, perPage: 200, filter: 'reviewId = "$reviewId"');
       for (final reply in replies.items) {
         await _pb.collection('review_replies').delete(reply.id);
       }
@@ -1177,9 +1179,7 @@ class PbDataSource {
     String reviewId,
     String userId,
   ) async {
-    final record = await _pb
-        .collection('comparison_reviews')
-        .getOne(reviewId);
+    final record = await _pb.collection('comparison_reviews').getOne(reviewId);
     final liked = List<String>.from(record.data['likedBy'] as List? ?? []);
     final disliked = List<String>.from(
       record.data['dislikedBy'] as List? ?? [],
@@ -1190,19 +1190,16 @@ class PbDataSource {
       liked.add(userId);
       disliked.remove(userId);
     }
-    await _pb.collection('comparison_reviews').update(
-      reviewId,
-      body: {'likedBy': liked, 'dislikedBy': disliked},
-    );
+    await _pb
+        .collection('comparison_reviews')
+        .update(reviewId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
   Future<void> toggleComparisonReviewDislike(
     String reviewId,
     String userId,
   ) async {
-    final record = await _pb
-        .collection('comparison_reviews')
-        .getOne(reviewId);
+    final record = await _pb.collection('comparison_reviews').getOne(reviewId);
     final liked = List<String>.from(record.data['likedBy'] as List? ?? []);
     final disliked = List<String>.from(
       record.data['dislikedBy'] as List? ?? [],
@@ -1213,10 +1210,9 @@ class PbDataSource {
       disliked.add(userId);
       liked.remove(userId);
     }
-    await _pb.collection('comparison_reviews').update(
-      reviewId,
-      body: {'likedBy': liked, 'dislikedBy': disliked},
-    );
+    await _pb
+        .collection('comparison_reviews')
+        .update(reviewId, body: {'likedBy': liked, 'dislikedBy': disliked});
   }
 
   Stream<List<ReviewModel>> watchProductReviews(
@@ -1291,7 +1287,16 @@ class PbDataSource {
           filter: 'reviewId = "$reviewId"',
           sort: 'created',
         );
-    return result.items.map((r) => {'id': r.id, ...r.data}).toList();
+    return result.items
+        .map(
+          (r) => {
+            'id': r.id,
+            ...r.data,
+            'created': r.get<String>('created'),
+            'updated': r.get<String>('updated'),
+          },
+        )
+        .toList();
   }
 
   Future<void> addReviewReply({
@@ -1308,7 +1313,9 @@ class PbDataSource {
             'reviewId': reviewId,
             'userId': userId,
             'displayName': displayName,
-            'text': text, 'likedBy': [], 'dislikedBy': [],
+            'text': text,
+            'likedBy': [],
+            'dislikedBy': [],
           },
         );
   }
@@ -1457,14 +1464,15 @@ class PbDataSource {
           return <String, dynamic>{
             'id': 'support_${record.id}',
             'read': true,
-            'title':
-                status == 'admin_message'
-                    ? 'Qor AI Destek\'ten yeni mesaj'
-                    : 'Mesajınıza yanıt geldi',
+            'title': status == 'admin_message'
+                ? 'Qor AI Destek\'ten yeni mesaj'
+                : 'Mesajınıza yanıt geldi',
             'body': body,
             'senderName': 'Qor AI Destek',
             'referenceId': record.id,
-            'type': status == 'admin_message' ? 'admin_message' : 'support_reply',
+            'type': status == 'admin_message'
+                ? 'admin_message'
+                : 'support_reply',
             'created': repliedAt.isNotEmpty ? repliedAt : createdAt,
             '_source': 'support_messages',
           };
@@ -1527,7 +1535,9 @@ class PbDataSource {
           sort: '-created',
         );
         notifications.addAll(
-          notificationsResult.items.map((record) => {'id': record.id, ...record.data}),
+          notificationsResult.items.map(
+            (record) => {'id': record.id, ...record.data},
+          ),
         );
       } catch (e) {
         debugPrint('[PbDs] notifications fetch error: $e');
@@ -1575,7 +1585,9 @@ class PbDataSource {
           if (!controller.isClosed) controller.add(data);
         });
         try {
-          await _pb.collection('support_messages').subscribe('*', (event) async {
+          await _pb.collection('support_messages').subscribe('*', (
+            event,
+          ) async {
             if (event.record?.data['userId']?.toString() != userId) return;
             final data = await fetch();
             if (!controller.isClosed) controller.add(data);
@@ -1687,14 +1699,14 @@ class PbDataSource {
     final trimmedEmail = email.trim();
     final trimmedMessage = message.trim();
     final trimmedUserId = userId?.trim() ?? '';
-    final authUserId = _pb.authStore.isValid ? _pb.authStore.record?.id.trim() : null;
+    final authUserId = _pb.authStore.isValid
+        ? _pb.authStore.record?.id.trim()
+        : null;
     final resolvedUserId = trimmedUserId.isNotEmpty
         ? trimmedUserId
         : (authUserId ?? '');
 
-    if (trimmedName.isEmpty ||
-        trimmedEmail.isEmpty ||
-        trimmedMessage.isEmpty) {
+    if (trimmedName.isEmpty || trimmedEmail.isEmpty || trimmedMessage.isEmpty) {
       throw ServerException(message: 'Support message fields are required.');
     }
 
@@ -1828,7 +1840,11 @@ class PbDataSource {
 
     // Fallback: homeFeed products
     if (_homeFeedProducts != null && _homeFeedProducts!.isNotEmpty) {
-      final ranked = _scoreAndRankProducts(_homeFeedProducts!, q, limit * safePage);
+      final ranked = _scoreAndRankProducts(
+        _homeFeedProducts!,
+        q,
+        limit * safePage,
+      );
       final start = (safePage - 1) * limit;
       if (start >= ranked.length) return [];
       return ranked.skip(start).take(limit).toList();
@@ -2345,9 +2361,7 @@ class PbDataSource {
         totalFound: found,
       );
     } catch (e) {
-      debugPrint(
-        '=== QOR AI: TS getProductsPage FAILED cat=$category: $e ===',
-      );
+      debugPrint('=== QOR AI: TS getProductsPage FAILED cat=$category: $e ===');
       // Fallback to PocketBase
       final fallback = await getProductsPage(
         category: category,

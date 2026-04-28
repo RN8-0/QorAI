@@ -1357,5 +1357,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "editedLabel": "bearbeitet"
 }
