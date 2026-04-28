@@ -1111,7 +1111,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               12,
               8,
               12,
-              MediaQuery.of(context).padding.bottom +
+              MediaQuery.paddingOf(context).bottom +
                   AppTheme.navBarTotalClearance,
             ),
             itemCount: products.length + (_fetchingAll ? 1 : 0),
@@ -1510,7 +1510,7 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
           // Scrollable content
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.65,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.65,
             ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1658,7 +1658,7 @@ class _SortFilterSheetState extends State<_SortFilterSheet> {
               20,
               8,
               20,
-              MediaQuery.of(context).viewInsets.bottom + 20,
+              MediaQuery.viewInsetsOf(context).bottom + 20,
             ),
             child: ElevatedButton(
               onPressed: () {

@@ -758,19 +758,27 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
   }
 
   Future<void> _preloadAllCategories() async {
-    for (final component in PcComponent.values) {
+    // 3'lü batch'ler halinde fetch et:
+    // Tüm 12 kategoriyi aynı anda başlatmak flutter_cache_manager'ın
+    // SQLite'ına eş zamanlı 12 yazma işlemi yaptırıyor → "database has been
+    // locked for 0:00:10.000000" hatası + Riverpod state flood → 100+ frame drop.
+    // Batch(3) → max 3 eşzamanlı network + SQLite write → lock yok.
+    final components = PcComponent.values.toList();
+    for (int i = 0; i < components.length; i += 3) {
       if (!mounted) return;
-      try {
-        // Fire-and-forget: read the future to warm up the provider & in-memory cache.
-        unawaited(
-          ref.read(pcBuilderProductsProvider(component.categoryId).future),
-        );
-        // Stagger 120ms → 350ms: ardı ardına gelen JSON decode'lar
-        // arasında UI thread'in nefes almasına izin ver. 12 kategori için
-        // toplam preload süresi ~1.5s → ~4.2s'ye çıkar ama kullanıcı
-        // picker'a tıklarken cache'in çoğu hazır olur.
-        await Future<void>.delayed(const Duration(milliseconds: 350));
-      } catch (_) {}
+      final batch = components.skip(i).take(3).toList();
+      await Future.wait(
+        batch.map(
+          (c) => ref
+              .read(pcBuilderProductsProvider(c.categoryId).future)
+              .then((_) {})
+              .catchError((_) {}),
+        ),
+      );
+      // Batch'ler arası 250ms: SQLite flush + UI thread nefes
+      if (i + 3 < components.length) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
     }
   }
 
@@ -1676,8 +1684,12 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A), // Fallback dark if not available
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                color: const Color(
+                  0xFF1A1A1A,
+                ), // Fallback dark if not available
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 border: Border(
                   top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                 ),
@@ -1772,29 +1784,51 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           ? const <_UpgradeSuggestion>[]
           : await _loadUpgradeSuggestions(focus);
       final buf = StringBuffer();
-      buf.writeln('You are a world-class PC hardware expert. Respond ONLY in the exact format below.');
+      buf.writeln(
+        'You are a world-class PC hardware expert. Respond ONLY in the exact format below.',
+      );
       buf.writeln('Language for explanations: ${_analysisLanguageName()}.');
       buf.writeln('RULES:');
-      buf.writeln('1. Keep ALL section labels exactly as written (uppercase). Do NOT add extra text outside sections.');
-      buf.writeln('2. FPS numbers must be REALISTIC integers based on real-world GPU/CPU benchmarks (not theoretical maximums). Use conservative estimates.');
-      buf.writeln('3. If any incompatibility exists (socket mismatch, DDR4/DDR5 conflict, PSU too weak, case size mismatch), you MUST flag it in WEAKNESSES and RECOMMENDATIONS as a critical error.');
-      buf.writeln('4. Write detailed but efficient analysis. Each bullet can use up to 28 words and may include one short supporting clause.');
-      buf.writeln('5. OVERVIEW, THERMALS, and POWER_ANALYSIS may each contain up to 2 short sentences.');
-      buf.writeln('6. Mention exact component names when a recommendation depends on a specific bottleneck or incompatibility.');
+      buf.writeln(
+        '1. Keep ALL section labels exactly as written (uppercase). Do NOT add extra text outside sections.',
+      );
+      buf.writeln(
+        '2. FPS numbers must be REALISTIC integers based on real-world GPU/CPU benchmarks (not theoretical maximums). Use conservative estimates.',
+      );
+      buf.writeln(
+        '3. If any incompatibility exists (socket mismatch, DDR4/DDR5 conflict, PSU too weak, case size mismatch), you MUST flag it in WEAKNESSES and RECOMMENDATIONS as a critical error.',
+      );
+      buf.writeln(
+        '4. Write detailed but efficient analysis. Each bullet can use up to 28 words and may include one short supporting clause.',
+      );
+      buf.writeln(
+        '5. OVERVIEW, THERMALS, and POWER_ANALYSIS may each contain up to 2 short sentences.',
+      );
+      buf.writeln(
+        '6. Mention exact component names when a recommendation depends on a specific bottleneck or incompatibility.',
+      );
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
       for (final c in PcComponent.values) {
         final p = _selected[c];
         if (p != null) {
-          buf.writeln('${c.name.toUpperCase()}: ${p.name} (Score: ${p.techScore.round()}/100)');
-          final specs = p.specs.entries.take(8).map((e) => '  ${e.key}: ${e.value}').join('\n');
+          buf.writeln(
+            '${c.name.toUpperCase()}: ${p.name} (Score: ${p.techScore.round()}/100)',
+          );
+          final specs = p.specs.entries
+              .take(8)
+              .map((e) => '  ${e.key}: ${e.value}')
+              .join('\n');
           if (specs.isNotEmpty) buf.writeln(specs);
         }
       }
       buf.writeln();
       buf.writeln('=== SYSTEM METRICS ===');
       buf.writeln('Total power draw: ${_estimatedPower.round()}W');
-      if (_psuWattage != null) buf.writeln('PSU: ${_psuWattage!.round()}W (headroom: ${_psuHeadroom!.round()}W)');
+      if (_psuWattage != null)
+        buf.writeln(
+          'PSU: ${_psuWattage!.round()}W (headroom: ${_psuHeadroom!.round()}W)',
+        );
       if (_selectedSocket != null) buf.writeln('Socket: $_selectedSocket');
       if (_selectedMemType != null) buf.writeln('Memory: $_selectedMemType');
       final gpuConn = _selected[PcComponent.gpu] != null
@@ -1802,7 +1836,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           : null;
       if (gpuConn != null) buf.writeln('GPU connector: $gpuConn');
       buf.writeln('Build score: ${_totalScore.round()}/100');
-      buf.writeln('Compatibility issues: ${_compatIssues.isEmpty ? "None" : _compatIssues.map((i) => i.title).join(", ")}');
+      buf.writeln(
+        'Compatibility issues: ${_compatIssues.isEmpty ? "None" : _compatIssues.map((i) => i.title).join(", ")}',
+      );
       buf.writeln();
       if (_localDiagnosis != null) {
         buf.writeln('=== LOCAL DIAGNOSIS ===');
@@ -1817,16 +1853,22 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       if (suggestions.isNotEmpty) {
         buf.writeln('=== COMPATIBLE UPGRADE CANDIDATES ===');
         for (final s in suggestions) {
-          buf.writeln('- ${s.component.name.toUpperCase()}: ${s.product.name} (${s.product.techScore.round()}/100) — ${s.reason}');
+          buf.writeln(
+            '- ${s.component.name.toUpperCase()}: ${s.product.name} (${s.product.techScore.round()}/100) — ${s.reason}',
+          );
         }
         buf.writeln();
       }
       buf.writeln('Respond in this EXACT format:');
       buf.writeln();
-      buf.writeln('OVERVIEW: [2 short sentences summarizing what this build is good at and where it struggles]');
+      buf.writeln(
+        'OVERVIEW: [2 short sentences summarizing what this build is good at and where it struggles]',
+      );
       buf.writeln();
       buf.writeln('BOTTLENECK: [0-100]% - [component]: [one short sentence]');
-      buf.writeln('PERFORMANCE_TIER: [Budget/Mid-Range/High-End/Enthusiast/Ultra]');
+      buf.writeln(
+        'PERFORMANCE_TIER: [Budget/Mid-Range/High-End/Enthusiast/Ultra]',
+      );
       buf.writeln();
       buf.writeln('IDEAL_USE:');
       buf.writeln('- [best use case 1 with context]');
@@ -1834,17 +1876,44 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       buf.writeln('- [best use case 3 with context]');
       buf.writeln();
       buf.writeln('FPS_1080P:');
-      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+      for (final g in [
+        'Fortnite',
+        'CS2',
+        'Valorant',
+        'GTA V',
+        'Cyberpunk 2077',
+        'Elden Ring',
+        'Apex Legends',
+        'COD Warzone',
+      ]) {
         buf.writeln('- $g: [fps] FPS');
       }
       buf.writeln();
       buf.writeln('FPS_1440P:');
-      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+      for (final g in [
+        'Fortnite',
+        'CS2',
+        'Valorant',
+        'GTA V',
+        'Cyberpunk 2077',
+        'Elden Ring',
+        'Apex Legends',
+        'COD Warzone',
+      ]) {
         buf.writeln('- $g: [fps] FPS');
       }
       buf.writeln();
       buf.writeln('FPS_4K:');
-      for (final g in ['Fortnite', 'CS2', 'Valorant', 'GTA V', 'Cyberpunk 2077', 'Elden Ring', 'Apex Legends', 'COD Warzone']) {
+      for (final g in [
+        'Fortnite',
+        'CS2',
+        'Valorant',
+        'GTA V',
+        'Cyberpunk 2077',
+        'Elden Ring',
+        'Apex Legends',
+        'COD Warzone',
+      ]) {
         buf.writeln('- $g: [fps] FPS');
       }
       buf.writeln();
@@ -1866,15 +1935,21 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         for (final s in suggestions) {
           final cur = _selected[s.component];
           if (cur == null) continue;
-          buf.writeln('- Replace ${cur.name} with ${s.product.name} — [detailed reason]');
+          buf.writeln(
+            '- Replace ${cur.name} with ${s.product.name} — [detailed reason]',
+          );
         }
       } else {
         buf.writeln('- [Best upgrade direction for this build with reason]');
       }
       buf.writeln();
-      buf.writeln('THERMALS: [1-2 short sentences about cooling balance, airflow, and likely thermal pressure]');
+      buf.writeln(
+        'THERMALS: [1-2 short sentences about cooling balance, airflow, and likely thermal pressure]',
+      );
       buf.writeln();
-      buf.writeln('POWER_ANALYSIS: [1-2 short sentences about PSU adequacy, headroom, and GPU connector requirements]');
+      buf.writeln(
+        'POWER_ANALYSIS: [1-2 short sentences about PSU adequacy, headroom, and GPU connector requirements]',
+      );
 
       final deepseekService = ref.read(deepSeekServiceProvider);
       final response = await deepseekService.freeTextQuery(buf.toString());
@@ -1987,10 +2062,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
             ),
             actions: [
               IconButton(
-                icon: Icon(
-                  Icons.history_rounded,
-                  color: AppTheme.brandBlue,
-                ),
+                icon: Icon(Icons.history_rounded, color: AppTheme.brandBlue),
                 tooltip: _pcText(context, tr: 'Geçmiş', en: 'History'),
                 onPressed: () => context.push('/pc-builder-history'),
               ),
@@ -2499,19 +2571,31 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                           if (!ref.watch(premiumProvider)) ...[
                             const SizedBox(width: 8),
                             QorAmountBadge(
-                              amount: ref.read(subscriptionServiceProvider).creditCostForFeature('pc_builder_ai'),
+                              amount: ref
+                                  .read(subscriptionServiceProvider)
+                                  .creditCostForFeature('pc_builder_ai'),
                               color: Colors.white,
                               fontSize: 10,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             QorBalanceBadge(
-                              remaining: ref.read(subscriptionServiceProvider).remainingDailyCredits,
-                              total: ref.read(subscriptionServiceProvider).totalDailyCredits,
+                              remaining: ref
+                                  .read(subscriptionServiceProvider)
+                                  .remainingDailyCredits,
+                              total: ref
+                                  .read(subscriptionServiceProvider)
+                                  .totalDailyCredits,
                               unlimited: false,
                               color: Colors.white,
                               fontSize: 9,
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
                             ),
                           ],
                         ],
@@ -3744,21 +3828,34 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                   if (_compatIssues.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.rose500.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.rose500.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: AppTheme.rose500.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.warning_amber_rounded, size: 14, color: AppTheme.rose500),
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 14,
+                                color: AppTheme.rose500,
+                              ),
                               const SizedBox(width: 6),
                               Text(
-                                _pcText(context, en: 'Compatibility Issues', tr: 'Uyumsuzluk Sorunları'),
+                                _pcText(
+                                  context,
+                                  en: 'Compatibility Issues',
+                                  tr: 'Uyumsuzluk Sorunları',
+                                ),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -3768,30 +3865,32 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                             ],
                           ),
                           const SizedBox(height: 6),
-                          ..._compatIssues.map((issue) => Padding(
-                            padding: const EdgeInsets.only(bottom: 3),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  issue.icon,
-                                  size: 12,
-                                  color: issue.color,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    issue.title,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 10,
-                                      color: context.textSecondary,
-                                      height: 1.4,
+                          ..._compatIssues.map(
+                            (issue) => Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    issue.icon,
+                                    size: 12,
+                                    color: issue.color,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      issue.title,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        color: context.textSecondary,
+                                        height: 1.4,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          )),
+                          ),
                         ],
                       ),
                     ),
@@ -5257,7 +5356,9 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                                   final selected = _quickFilter == filter.key;
                                   return GestureDetector(
                                     onTap: () => setState(() {
-                                      _quickFilter = selected ? null : filter.key;
+                                      _quickFilter = selected
+                                          ? null
+                                          : filter.key;
                                     }),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -5327,9 +5428,14 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                         ),
                         const Spacer(),
                         GestureDetector(
-                          onTap: () => _clearManualFilters(hasCompat: hasCompat),
+                          onTap: () =>
+                              _clearManualFilters(hasCompat: hasCompat),
                           child: Text(
-                            _pcText(context, en: 'Clear all', tr: 'Tümünü temizle'),
+                            _pcText(
+                              context,
+                              en: 'Clear all',
+                              tr: 'Tümünü temizle',
+                            ),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -5562,7 +5668,10 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   }
                 }),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: sel
                         ? widget.component.accentColor.withValues(alpha: 0.15)
