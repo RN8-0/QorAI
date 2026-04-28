@@ -44,6 +44,20 @@ const int _kInitialVisibleCategories = 5;
 const int _kCategoryLoadIncrement = 4;
 const int _kMaxVisibleCategories = 30;
 
+// ── Card widget BorderRadius constants — avoids per-build allocation ─────────
+const BorderRadius _kRadius16 = BorderRadius.all(Radius.circular(16));
+const BorderRadius _kRadius12 = BorderRadius.all(Radius.circular(12));
+const BorderRadius _kRadius10 = BorderRadius.all(Radius.circular(10));
+const BorderRadius _kRadius8 = BorderRadius.all(Radius.circular(8));
+// Pre-computed border colors — withValues() cannot be const but static final
+// ensures only ONE Color instance is created for the entire app lifetime.
+final Color _kCardBorderColor = AppTheme.brandCyan.withValues(alpha: 0.15);
+final Color _kTrendingBorderColor = AppTheme.brandCyan.withValues(alpha: 0.12);
+const BoxDecoration _kCardImageContainerDecoration = BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+);
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -2904,11 +2918,8 @@ class _WideProductCard extends StatelessWidget {
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isDark ? context.surfaceVariantColor : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.brandCyan.withValues(alpha: 0.15),
-                width: 0.8,
-              ),
+              borderRadius: _kRadius16,
+              border: Border.all(color: _kCardBorderColor, width: 0.8),
               boxShadow: context.cardShadow,
             ),
             child: Column(
@@ -2922,19 +2933,14 @@ class _WideProductCard extends StatelessWidget {
                       height: 105,
                       width: double.infinity,
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
+                      decoration: _kCardImageContainerDecoration,
                       child: ProductImageBox(
                         imageUrl: product.imageURL.isNotEmpty
                             ? product.imageURL
                             : null,
                         width: 139,
                         height: 89,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: _kRadius10,
                         padding: EdgeInsets.zero,
                       ),
                     ),
@@ -2947,9 +2953,9 @@ class _WideProductCard extends StatelessWidget {
                             horizontal: 6,
                             vertical: 2,
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            borderRadius: BorderRadius.circular(6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            borderRadius: _kRadius8,
                           ),
                           child: Text(
                             'NEW',
@@ -3035,9 +3041,9 @@ class _WideProductCard extends StatelessWidget {
                           width: double.infinity,
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               gradient: AppTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: _kRadius12,
                             ),
                             child: Text(
                               context.l10n?.viewDetails ?? 'View Details',
@@ -3103,11 +3109,8 @@ class _TrendingWideCard extends StatelessWidget {
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isDark ? context.surfaceVariantColor : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.brandCyan.withValues(alpha: 0.12),
-                width: 0.8,
-              ),
+              borderRadius: _kRadius16,
+              border: Border.all(color: _kTrendingBorderColor, width: 0.8),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x0F00D4FF), // brandCyan @ 0.06 alpha
@@ -3126,19 +3129,14 @@ class _TrendingWideCard extends StatelessWidget {
                       height: 105,
                       width: double.infinity,
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
+                      decoration: _kCardImageContainerDecoration,
                       child: ProductImageBox(
                         imageUrl: product.imageURL.isNotEmpty
                             ? product.imageURL
                             : null,
                         width: 139,
                         height: 89,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: _kRadius10,
                         padding: EdgeInsets.zero,
                       ),
                     ),
@@ -3154,7 +3152,7 @@ class _TrendingWideCard extends StatelessWidget {
                           color: rank <= 3
                               ? _rankColor
                               : context.surfaceElevatedColor,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: _kRadius8,
                           boxShadow: rank <= 3
                               ? [
                                   BoxShadow(
@@ -3185,9 +3183,9 @@ class _TrendingWideCard extends StatelessWidget {
                             horizontal: 6,
                             vertical: 3,
                           ),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: _kRadius8,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -3212,7 +3210,7 @@ class _TrendingWideCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                // Details section ÔÇö tight layout, no gaps
+                // Details section — tight layout, no gaps
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
@@ -3249,9 +3247,9 @@ class _TrendingWideCard extends StatelessWidget {
                           width: double.infinity,
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               gradient: AppTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: _kRadius12,
                             ),
                             child: Text(
                               'View Details',

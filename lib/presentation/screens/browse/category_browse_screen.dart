@@ -213,9 +213,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   void _onScroll() {
-    if (!(_scrollController.hasClients) ||
-        _fetchingAll ||
-        _allLoaded) {
+    if (!(_scrollController.hasClients) || _fetchingAll || _allLoaded) {
       return;
     }
     _scrollDebounce?.cancel();
@@ -861,10 +859,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                 ? '${r.start.toStringAsFixed(1)}–${r.end.toStringAsFixed(1)}$unit'
                 : '${r.start.round()}–${r.end.round()}$unit';
             chips.add(
-              _activeChip(
-                '${_localizedFilterLabel(def.label)}: $fmt',
-                def.id,
-              ),
+              _activeChip('${_localizedFilterLabel(def.label)}: $fmt', def.id),
             );
           }
         case FilterType.toggle:
@@ -1141,7 +1136,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       ],
     );
   }
-
 }
 // ---------------------------------------------------------------------------
 // Product List Tile (horizontal card for list view)

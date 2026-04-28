@@ -393,7 +393,7 @@ class AppTheme {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Subtle: minimal edge glow
-  static List<BoxShadow> get subtleShadow => [
+  static final List<BoxShadow> subtleShadow = [
     BoxShadow(
       color: neonCyan.withValues(alpha: 0.05),
       blurRadius: 4,
@@ -430,7 +430,7 @@ class AppTheme {
   ];
 
   /// Elevated: stronger glow for modals
-  static List<BoxShadow> get elevatedShadow => [
+  static final List<BoxShadow> elevatedShadow = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.50),
       blurRadius: 16,
@@ -444,7 +444,7 @@ class AppTheme {
   ];
 
   /// Neon cyan glow
-  static List<BoxShadow> get primaryGlow => [
+  static final List<BoxShadow> primaryGlow = [
     BoxShadow(
       color: neonCyan.withValues(alpha: 0.30),
       blurRadius: 20,
@@ -458,7 +458,7 @@ class AppTheme {
   ];
 
   /// Cyan glow for AI elements
-  static List<BoxShadow> get cyanGlow => [
+  static final List<BoxShadow> cyanGlow = [
     BoxShadow(
       color: neonCyan.withValues(alpha: 0.35),
       blurRadius: 20,
@@ -471,7 +471,7 @@ class AppTheme {
     ),
   ];
 
-  static List<BoxShadow> get primaryGlowMedium => [
+  static final List<BoxShadow> primaryGlowMedium = [
     BoxShadow(
       color: neonCyan.withValues(alpha: 0.35),
       blurRadius: 24,
@@ -480,7 +480,7 @@ class AppTheme {
   ];
 
   /// Violet glow for premium elements
-  static List<BoxShadow> get premiumGlow => [
+  static final List<BoxShadow> premiumGlow = [
     BoxShadow(
       color: premiumBase.withValues(alpha: 0.28),
       blurRadius: 20,
@@ -489,7 +489,7 @@ class AppTheme {
   ];
 
   /// Sky blue glow for highlights
-  static List<BoxShadow> get pinkGlow => [
+  static final List<BoxShadow> pinkGlow = [
     BoxShadow(
       color: brandSkyBlue.withValues(alpha: 0.30),
       blurRadius: 20,
