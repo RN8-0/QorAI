@@ -1,30 +1,36 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Qor AI — Ürün Karşılaştırma</title>
-  <meta name="description" content="Teknoloji ürünlerini yapay zeka destekli analizle karşılaştırın. En iyi akıllı telefonları, dizüstü bilgisayarları, GPU'ları ve daha fazlasını bulun.">
+  <title>Qor AI — AI-Powered Tech Product Advisor</title>
+  <meta name="description" content="Discover, compare and decide on tech products with AI. Smartphones, laptops, GPUs, headphones and more — analyzed by Qor AI.">
+  <meta property="og:title" content="Qor AI — AI Product Advisor">
+  <meta property="og:description" content="Get expert product recommendations powered by AI. Compare products, read smart reviews, build your perfect setup.">
+  <meta property="og:image" content="https://qorai.net/assets/logo.png">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
   <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 
-<!-- SITE HEADER -->
+<!-- HEADER -->
 <header class="site-header">
   <a href="/" class="logo-link">
     <img src="/assets/logo.png" alt="Qor AI" class="logo-img">
     <span class="logo-text">Qor AI</span>
   </a>
-  <div class="header-search">
-    <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="search-input" placeholder="Ürün, marka veya kategori ara..." autocomplete="off" spellcheck="false">
-    <button class="search-clear" id="search-clear" style="display:none" aria-label="Aramayı temizle">✕</button>
-  </div>
+  <nav class="header-nav" style="display:flex;gap:6px;margin-left:18px;">
+    <a href="/catalog.html" class="nav-link">Catalog</a>
+    <a href="/compare.html" class="nav-link">Compare</a>
+    <a href="/ai-chat.html" class="nav-link">AI Chat</a>
+    <a href="/pc-builder.html" class="nav-link">PC Builder</a>
+    <a href="/faq.html" class="nav-link">FAQ</a>
+  </nav>
+  <div style="flex:1"></div>
   <div class="header-actions">
-    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Tema değiştir" onclick="toggleTheme()">🌙</button>
-    <a href="/compare.html" class="icon-btn compare-link" title="Karşılaştır" aria-label="Karşılaştır">
+    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">🌙</button>
+    <a href="/compare.html" class="icon-btn compare-link" title="Compare" aria-label="Compare">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span class="compare-badge" id="compare-badge" style="display:none">0</span>
     </a>
@@ -32,122 +38,233 @@
   </div>
 </header>
 
-<!-- CATEGORY NAV -->
-<nav class="cat-nav" id="cat-nav" aria-label="Kategori navigasyonu">
-  <div class="cat-nav-inner">
-    <button class="cat-tab active" data-cat="all">📦 Tümü</button>
-    <button class="cat-tab" data-cat="smartphones">📱 Telefonlar</button>
-    <button class="cat-tab" data-cat="laptops">💻 Laptoplar</button>
-    <button class="cat-tab" data-cat="tablets">📟 Tabletler</button>
-    <button class="cat-tab" data-cat="headphones">🎧 Kulaklık</button>
-    <button class="cat-tab" data-cat="gpus">⚙️ GPU</button>
-    <button class="cat-tab" data-cat="monitors">🖥️ Monitör</button>
-    <button class="cat-tab" data-cat="tvs">📺 TV</button>
-    <button class="cat-tab" data-cat="smartwatches">⌚ Akıllı Saat</button>
-    <button class="cat-tab" data-cat="cameras">📷 Kamera</button>
-    <button class="cat-tab" data-cat="speakers">🔊 Hoparlör</button>
-    <button class="cat-tab" data-cat="keyboards">⌨️ Klavye</button>
-    <button class="cat-tab" data-cat="mice">🖱️ Fare</button>
+<style>
+  .nav-link {
+    padding: 7px 12px; font-size: 14px; font-weight: 600;
+    color: var(--text2); border-radius: 8px; transition: color .15s, background .15s;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg3); }
+  @media (max-width: 880px) { .header-nav { display: none !important; } }
+</style>
+
+<!-- HERO -->
+<section class="hero-wrap">
+  <div class="hero-inner">
+    <div class="hero-pill">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 17l-6.4 4.2L8 14.2 2 9.4h7.6L12 2z"/></svg>
+      Powered by Gemini & DeepSeek
+    </div>
+    <h1 class="hero-title">
+      Find the <span class="grad">perfect tech</span><br>
+      with your AI advisor
+    </h1>
+    <p class="hero-sub">
+      Smartphones, laptops, GPUs, headphones and more — analyzed, scored and compared by AI.
+      Tell Qor AI what you need; get expert recommendations in seconds.
+    </p>
+    <div class="hero-cta">
+      <a href="#ai-demo" class="btn-primary">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        Ask Qor AI
+      </a>
+      <a href="/catalog.html" class="btn-ghost">
+        Browse Catalog
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+
+    <div class="stat-bar">
+      <div class="stat-card"><div class="stat-num">500K+</div><div class="stat-lbl">Products analyzed</div></div>
+      <div class="stat-card"><div class="stat-num">12</div><div class="stat-lbl">Languages</div></div>
+      <div class="stat-card"><div class="stat-num">98%</div><div class="stat-lbl">Match accuracy</div></div>
+      <div class="stat-card"><div class="stat-num">4.9★</div><div class="stat-lbl">App rating</div></div>
+    </div>
   </div>
-</nav>
+</section>
 
-<!-- PAGE BODY -->
-<div class="page-body">
+<!-- AI DEMO -->
+<section class="section" id="ai-demo">
+  <div class="section-head">
+    <div class="section-eyebrow">Try it live</div>
+    <h2 class="section-title">Ask anything about tech</h2>
+    <p class="section-sub">No sign-up needed. Get instant AI recommendations right here.</p>
+  </div>
 
-  <!-- FILTER SIDEBAR -->
-  <aside class="filters-sidebar" id="filters-sidebar" aria-label="Filtreler">
-    <div class="filter-header">
-      <span>Filtreler</span>
-      <button class="filter-clear-btn" onclick="clearFilters()">Temizle</button>
+  <div class="ai-demo-card">
+    <div class="ai-demo-prompts">
+      <button class="ai-prompt-pill" data-q="Best smartphone under $800 with great camera">📷 Best phone under $800</button>
+      <button class="ai-prompt-pill" data-q="Compare RTX 4070 vs RTX 4070 Ti for 1440p gaming">🎮 RTX 4070 vs 4070 Ti</button>
+      <button class="ai-prompt-pill" data-q="Quietest noise-cancelling headphones for travel">🎧 Best ANC headphones</button>
+      <button class="ai-prompt-pill" data-q="Light laptop for video editing under $1500">💻 Editing laptop $1500</button>
     </div>
-
-    <div class="filter-section">
-      <h4 class="filter-title">Kategori</h4>
-      <div class="filter-options" id="filter-categories"></div>
+    <div class="ai-input-row">
+      <input type="text" id="demo-input" class="ai-input" placeholder="What are you looking for? e.g. 'best ultrabook for college'">
+      <button class="ai-send" id="demo-send">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        Ask
+      </button>
     </div>
-
-    <div class="filter-section">
-      <h4 class="filter-title">Fiyat Aralığı</h4>
-      <label class="filter-label"><input type="checkbox" class="price-filter" value="budget"> Bütçe Dostu</label>
-      <label class="filter-label"><input type="checkbox" class="price-filter" value="mid_range"> Orta Segment</label>
-      <label class="filter-label"><input type="checkbox" class="price-filter" value="premium"> Premium</label>
+    <div class="ai-response empty" id="demo-response">
+      Try one of the prompts above or type your own — Qor AI will analyze and respond.
     </div>
-
-    <div class="filter-section">
-      <h4 class="filter-title">Skor</h4>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="80"> 80+ Mükemmel</label>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="60"> 60–80 İyi</label>
-      <label class="filter-label"><input type="checkbox" class="score-filter" value="0"> 60 Altı</label>
+    <div style="margin-top:14px;font-size:12px;color:var(--text3);text-align:center;">
+      For full chat history, file uploads and personalized comparisons → <a href="/ai-chat.html" style="color:var(--accent);font-weight:600;">Open AI Chat</a>
     </div>
-  </aside>
+  </div>
+</section>
 
-  <!-- MAIN AREA -->
-  <div class="main-area">
-    <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileFilters()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-      Filtreler
-    </button>
+<!-- FEATURES -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">What you can do</div>
+    <h2 class="section-title">Everything you need to decide</h2>
+    <p class="section-sub">From quick AI answers to deep side-by-side comparisons.</p>
+  </div>
 
-    <div class="sort-bar">
-      <span class="product-count" id="product-count">Yükleniyor...</span>
-      <div class="sort-options">
-        <button class="sort-btn active" data-sort="score" onclick="sortBy('score')">⚡ Puana Göre</button>
-        <button class="sort-btn" data-sort="price-asc" onclick="sortBy('price-asc')">₺↑ Ucuzdan</button>
-        <button class="sort-btn" data-sort="price-desc" onclick="sortBy('price-desc')">₺↓ Pahalıdan</button>
-        <button class="sort-btn" data-sort="name" onclick="sortBy('name')">A–Z İsme Göre</button>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+      <div class="feature-title">AI Chat Advisor</div>
+      <div class="feature-desc">Ask in your own language. Get clear, expert-level recommendations with reasoning.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <div class="feature-title">Side-by-side Compare</div>
+      <div class="feature-desc">Pick up to 4 products and compare specs, scores and price-to-performance instantly.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div class="feature-title">Smart Scoring</div>
+      <div class="feature-desc">Every product gets a 0–100 score based on specs, real reviews and value.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="feature-title">Link Analysis</div>
+      <div class="feature-desc">Paste any product URL — Qor AI extracts specs, summarizes pros & cons.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+      <div class="feature-title">PC Builder</div>
+      <div class="feature-desc">Build a balanced PC for your budget — AI checks compatibility & bottlenecks.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 17l-6.4 4.2L8 14.2 2 9.4h7.6L12 2z"/></svg></div>
+      <div class="feature-title">Community Reviews</div>
+      <div class="feature-desc">Real owners share verdicts. AI summaries highlight what matters most.</div>
+    </div>
+  </div>
+</section>
+
+<!-- APP CTA -->
+<section class="section" style="padding-top:30px;">
+  <div class="app-cta">
+    <div>
+      <h3>Take Qor AI everywhere</h3>
+      <p>Same account, same data — on iOS and Android. Scan barcodes, snap photos, and get AI advice on the go.</p>
+      <div class="store-row">
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+          <div><small>Download on the</small><b>App Store</b></div>
+        </a>
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.71-3.71l2.366 1.37c.79.456.79 1.59 0 2.046l-2.367 1.37-2.515-2.515 2.516-2.27zM5.864 2.658L16.802 8.99l-2.302 2.302L5.864 2.658z"/></svg>
+          <div><small>Get it on</small><b>Google Play</b></div>
+        </a>
       </div>
     </div>
-
-    <div class="product-grid" id="product-grid">
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-      <div class="skeleton-card"><div class="skeleton" style="height:160px;border-radius:var(--radius-sm) var(--radius-sm) 0 0"></div><div style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:11px;width:60%;border-radius:99px"></div><div class="skeleton" style="height:14px;width:85%;border-radius:4px"></div><div class="skeleton" style="height:14px;width:70%;border-radius:4px"></div><div class="skeleton" style="height:18px;width:50%;border-radius:99px"></div><div class="skeleton" style="height:30px;border-radius:var(--radius-sm)"></div></div></div>
-    </div>
-
-    <div class="load-more-wrap">
-      <button id="load-more" class="load-more-btn" onclick="loadMore()" style="display:none">Daha Fazla Göster</button>
+    <div style="text-align:center;">
+      <img src="/assets/logo.png" alt="Qor AI" style="width:140px;height:140px;border-radius:32px;box-shadow:0 30px 80px rgba(0,229,255,.25);">
     </div>
   </div>
-</div>
+</section>
 
-<!-- PRODUCT DETAIL MODAL -->
-<div class="product-modal-overlay" id="product-modal-overlay" onclick="closeModal()"></div>
-<div class="product-modal" id="product-modal" role="dialog" aria-modal="true" aria-label="Ürün Detayı">
-  <button class="modal-close" onclick="closeModal()" aria-label="Kapat">✕</button>
-  <div id="modal-content"></div>
-</div>
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <img src="/assets/logo.png" alt="Qor AI">
+          <b>Qor AI</b>
+        </div>
+        <p class="footer-tag">AI-powered product advisor for tech enthusiasts. Smarter shopping, faster decisions.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <a href="/catalog.html">Catalog</a>
+        <a href="/compare.html">Compare</a>
+        <a href="/ai-chat.html">AI Chat</a>
+        <a href="/pc-builder.html">PC Builder</a>
+        <a href="/link-analysis.html">Link Analysis</a>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <a href="/services.html">Services</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="mailto:contact@arain.digital">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/terms.html">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Qor AI. All rights reserved.</span>
+      <span>Made with care for tech lovers.</span>
+    </div>
+  </div>
+</footer>
 
-<!-- MOBILE FILTER DRAWER OVERLAY -->
-<div class="filter-drawer-overlay" id="filter-drawer-overlay" onclick="toggleMobileFilters()"></div>
-
-<!-- MOBILE BOTTOM NAV -->
-<nav class="mobile-nav" aria-label="Mobil navigasyon">
-  <a href="/" class="mobile-nav-item active">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-    <span>Ana Sayfa</span>
-  </a>
-  <a href="/compare.html" class="mobile-nav-item">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-    <span>Karşılaştır</span>
-  </a>
-  <a href="/ai-chat.html" class="mobile-nav-item">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>
-    <span>AI Chat</span>
-  </a>
-  <a href="/pc-builder.html" class="mobile-nav-item">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-    <span>PC Builder</span>
-  </a>
-</nav>
-
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
 <script src="/js/pb_client.js"></script>
-<script src="/js/app.js"></script>
 <script src="/js/auth.js"></script>
+<script>
+  function toggleTheme() {
+    var c = document.documentElement.getAttribute('data-theme') || 'dark';
+    var n = c === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', n);
+    try { localStorage.setItem('qorai-theme', n); } catch(e) {}
+    document.getElementById('theme-toggle').textContent = n === 'dark' ? '🌙' : '☀️';
+  }
+  document.getElementById('theme-toggle').textContent =
+    (document.documentElement.getAttribute('data-theme') === 'light') ? '☀️' : '🌙';
+
+  // AI demo
+  const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+  const $resp = document.getElementById('demo-response');
+  const $input = document.getElementById('demo-input');
+  const $send = document.getElementById('demo-send');
+
+  document.querySelectorAll('.ai-prompt-pill').forEach(p => {
+    p.addEventListener('click', () => { $input.value = p.dataset.q; askDemo(); });
+  });
+  $send.addEventListener('click', askDemo);
+  $input.addEventListener('keydown', e => { if (e.key === 'Enter') askDemo(); });
+
+  async function askDemo() {
+    const q = $input.value.trim();
+    if (!q) return;
+    $resp.classList.remove('empty');
+    $resp.innerHTML = 'Qor AI is thinking<span class="ai-typing"></span>';
+    $send.disabled = true;
+    try {
+      // Lightweight public AI endpoint (no auth) — falls back to a friendly message
+      const res = await fetch(PB_URL + '/api/qor/ai-public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: q, locale: navigator.language || 'en' }),
+      });
+      if (!res.ok) throw new Error('upstream');
+      const data = await res.json();
+      $resp.textContent = data.answer || data.text || 'No answer.';
+    } catch (e) {
+      // Graceful fallback — still useful demo
+      $resp.innerHTML = `Demo mode: For full AI responses with deep product knowledge, please <a href="/ai-chat.html" style="color:var(--accent);font-weight:700;">open AI Chat</a> or download the app.<br><br><em>Your question:</em> "${q.replace(/[<>]/g,'')}"`;
+    } finally {
+      $send.disabled = false;
+    }
+  }
+</script>
+
 </body>
 </html>
