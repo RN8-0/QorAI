@@ -2319,6 +2319,7 @@ class PbDataSource {
     int limit = 200,
     int page = 1,
     String sortBy = 'techScore:desc',
+    String query = '*',
   }) async {
     try {
       final sw = Stopwatch()..start();
@@ -2332,10 +2333,14 @@ class PbDataSource {
           ? 'category:=${variants.first}'
           : 'category:[${variants.join(',')}]';
 
+      final trimmedQuery = query.trim();
+      final isSearch = trimmedQuery.isNotEmpty && trimmedQuery != '*';
+
       final response = await _dio.get(
         '/collections/products/documents/search',
         queryParameters: {
-          'q': '*',
+          'q': isSearch ? trimmedQuery : '*',
+          if (isSearch) 'query_by': 'name,brand',
           'filter_by': filterBy,
           'sort_by': sortBy,
           'per_page': limit,

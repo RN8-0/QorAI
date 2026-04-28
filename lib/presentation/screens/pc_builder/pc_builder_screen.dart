@@ -744,42 +744,6 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     );
     // Restore state from session provider
     _restoreFromSession();
-    // Preload all PC component categories in the background so picker opens
-    // instantly — no spinner when the user taps "Seç" for any component.
-    // Önce ilk frame'in temiz çizilmesini bekle, sonra arka planda
-    // stagger'lı şekilde kategorileri ısıt. Aksi halde 12 kategori (~24K
-    // ürün) JSON decode'u UI thread'inde 100+ frame skip yaratıyor.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // İlk paint + animasyonlar bitsin (bottom nav transition vs).
-      Future<void>.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) _preloadAllCategories();
-      });
-    });
-  }
-
-  Future<void> _preloadAllCategories() async {
-    // 3'lü batch'ler halinde fetch et:
-    // Tüm 12 kategoriyi aynı anda başlatmak flutter_cache_manager'ın
-    // SQLite'ına eş zamanlı 12 yazma işlemi yaptırıyor → "database has been
-    // locked for 0:00:10.000000" hatası + Riverpod state flood → 100+ frame drop.
-    // Batch(3) → max 3 eşzamanlı network + SQLite write → lock yok.
-    final components = PcComponent.values.toList();
-    for (int i = 0; i < components.length; i += 3) {
-      if (!mounted) return;
-      final batch = components.skip(i).take(3).toList();
-      await Future.wait(
-        batch.map(
-          (c) => ref
-              .read(pcBuilderProductsProvider(c.categoryId).future)
-              .then((_) {})
-              .catchError((_) {}),
-        ),
-      );
-      // Batch'ler arası 250ms: SQLite flush + UI thread nefes
-      if (i + 3 < components.length) {
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-      }
-    }
   }
 
   void _restoreFromSession() {
@@ -4582,9 +4546,16 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
   String? _quickFilter;
   bool _showFilters = false;
   bool _compatOnly = true;
+  Timer? _debounceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -4874,6 +4845,10 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
       _showFilters = false;
       _compatOnly = hasCompat;
     });
+    // Reset server-side search query
+    ref
+        .read(pcPickerProvider(widget.component.categoryId).notifier)
+        .search('*');
   }
 
   List<MapEntry<String, String>> _detailEntries(ProductEntity product) {
@@ -5072,16 +5047,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     if (_quickFilter != null) {
       list = list.where(_matchesQuickFilter).toList();
     }
-    // Search: score name/brand/spec matches together instead of dropping spec-only hits
-    if (_search.isNotEmpty) {
-      final scored =
-          list
-              .map((p) => MapEntry(p, _Compat.searchScore(p, _search)))
-              .where((entry) => entry.value > 0)
-              .toList()
-            ..sort((a, b) => b.value.compareTo(a.value));
-      list = scored.map((entry) => entry.key).toList();
-    }
+    // Text search is server-side (pcPickerProvider.search()). No client-side text filter here.
     if (_brands.isNotEmpty) {
       list = list.where((p) => _brands.contains(p.brand)).toList();
     }
@@ -5120,9 +5086,10 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         widget.memTypeFilter != null ||
         widget.formFactorFilter != null ||
         _hasAdditionalCompatFilters;
-    // pcBuilderProductsProvider: cache-first, no deduplication → all variants shown, instant after preload
-    final productsAsync = ref.watch(
-      pcBuilderProductsProvider(widget.component.categoryId),
+    // pcPickerProvider: paginated, server-side search — only 30 items at a time.
+    // No eager preloading of 4000+ items. Opens instantly, loads more on scroll.
+    final pickerState = ref.watch(
+      pcPickerProvider(widget.component.categoryId),
     );
 
     return Scaffold(
@@ -5176,8 +5143,20 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      onChanged: (v) =>
-                          setState(() => _search = v.trim().toLowerCase()),
+                      onChanged: (v) {
+                        setState(() => _search = v);
+                        _debounceTimer?.cancel();
+                        _debounceTimer = Timer(
+                          const Duration(milliseconds: 400),
+                          () => ref
+                              .read(
+                                pcPickerProvider(
+                                  widget.component.categoryId,
+                                ).notifier,
+                              )
+                              .search(v),
+                        );
+                      },
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: context.textPrimary,
@@ -5324,8 +5303,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
           if (_showFilters)
             Builder(
               builder: (_) {
-                final products = productsAsync.valueOrNull;
-                if (products == null) return const SizedBox.shrink();
+                final products = pickerState.items;
+                if (products.isEmpty) return const SizedBox.shrink();
                 final quickFilters = _quickFilterOptions(products);
                 return Column(
                   children: [
@@ -5482,28 +5461,25 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             child: Row(
               children: [
-                Builder(
-                  builder: (_) {
-                    final products = productsAsync.valueOrNull;
-                    if (products == null) return const SizedBox.shrink();
-                    return Text(
-                      '${_applyFilters(products).length} ${context.l10n?.productsLabel ?? "products"}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: context.textTertiaryColor,
-                      ),
-                    );
-                  },
-                ),
+                if (!pickerState.isLoading)
+                  Text(
+                    pickerState.totalFound > 0
+                        ? '${pickerState.totalFound} ${context.l10n?.productsLabel ?? "products"}'
+                        : '',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: context.textTertiaryColor,
+                    ),
+                  ),
                 const Spacer(),
               ],
             ),
           ),
           // List
           Expanded(
-            child: productsAsync.when(
-              loading: () => Center(
-                child: Column(
+            child: pickerState.isLoading
+                ? Center(
+                    child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
@@ -5524,106 +5500,50 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                     ),
                   ],
                 ),
-              ),
-              error: (err, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 40,
-                      color: AppTheme.rose500,
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        err.toString(),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: context.textSecondary,
+              )
+            : pickerState.items.isEmpty && !pickerState.isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 40,
+                          color: context.textTertiaryColor,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        clearPcBuilderCache(widget.component.categoryId);
-                        ref.invalidate(
-                          pcBuilderProductsProvider(
-                            widget.component.categoryId,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.refresh_rounded, size: 16),
-                      label: Text(context.l10n?.retry ?? 'Retry'),
-                    ),
-                  ],
-                ),
-              ),
-              data: (products) => products.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 40,
-                            color: context.textTertiaryColor,
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Text(
-                              context.l10n?.noProductsFound ??
-                                  'No products found',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: context.textPrimary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            context.l10n?.noProductsFound ?? 'No products found',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: context.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              _pcText(
-                                context,
-                                en: 'Try refreshing or use the search bar above',
-                                tr: 'Yenilemeyi deneyin veya yukarıdaki aramayı kullanın',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: context.textSecondary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              clearPcBuilderCache(widget.component.categoryId);
-                              ref.invalidate(
-                                pcBuilderProductsProvider(
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => ref
+                              .read(
+                                pcPickerProvider(
                                   widget.component.categoryId,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: Text(context.l10n?.retry ?? 'Retry'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: widget.component.accentColor,
-                              foregroundColor: Colors.white,
-                            ),
+                                ).notifier,
+                              )
+                              .search('*'),
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(context.l10n?.retry ?? 'Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.component.accentColor,
+                            foregroundColor: Colors.white,
                           ),
-                        ],
-                      ),
-                    )
-                  : _list(context, products),
-            ),
+                        ),
+                      ],
+                    ),
+                  )
+                : _list(context, pickerState.items, pickerState),
           ),
         ],
       ),
@@ -5702,7 +5622,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     );
   }
 
-  Widget _list(BuildContext context, List<ProductEntity> allProducts) {
+  Widget _list(BuildContext context, List<ProductEntity> allProducts, PcPickerState pickerState) {
     final f = _applyFilters(allProducts);
     if (f.isEmpty) {
       // Check if compat filter is hiding everything
@@ -5763,11 +5683,21 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   _quickFilter != null) ...[
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => setState(() {
-                    _search = '';
-                    _brands.clear();
-                    _quickFilter = null;
-                  }),
+                  onPressed: () {
+                    setState(() {
+                      _search = '';
+                      _searchController.clear();
+                      _brands.clear();
+                      _quickFilter = null;
+                    });
+                    ref
+                        .read(
+                          pcPickerProvider(
+                            widget.component.categoryId,
+                          ).notifier,
+                        )
+                        .search('*');
+                  },
                   child: Text(
                     context.l10n?.clearFilters ?? 'Clear Filters',
                     style: GoogleFonts.plusJakartaSans(
@@ -5790,24 +5720,58 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
             .toList()
           ..sort();
     final medianPrice = prices.isNotEmpty ? prices[prices.length ~/ 2] : 0.0;
+    // +1 for "load more" sentinel when more pages exist or loading more
+    final hasLoadMore = pickerState.hasMore || pickerState.isLoadingMore;
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 80),
-      itemCount: f.length,
-      itemBuilder: (_, i) {
-        final p = f[i];
-        final isSel = widget.currentSelection?.id == p.id;
-        return _ProductCard(
-          product: p,
-          component: widget.component,
-          isSelected: isSel,
-          onTap: () => Navigator.pop(context, p),
-          onInfo: () => _showProductDetail(context, p),
-          medianPrice: medianPrice,
-          socketFilter: widget.socketFilter,
-          memTypeFilter: widget.memTypeFilter,
-        );
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - 400) {
+          ref
+              .read(
+                pcPickerProvider(widget.component.categoryId).notifier,
+              )
+              .loadMore();
+        }
+        return false;
       },
+      child: ListView.builder(
+        controller: widget.scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 80),
+        itemCount: f.length + (hasLoadMore ? 1 : 0),
+        itemBuilder: (_, i) {
+          if (i == f.length) {
+            // Load-more sentinel / spinner
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: pickerState.isLoadingMore
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: widget.component.accentColor,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            );
+          }
+          final p = f[i];
+          final isSel = widget.currentSelection?.id == p.id;
+          return _ProductCard(
+            product: p,
+            component: widget.component,
+            isSelected: isSel,
+            onTap: () => Navigator.pop(context, p),
+            onInfo: () => _showProductDetail(context, p),
+            medianPrice: medianPrice,
+            socketFilter: widget.socketFilter,
+            memTypeFilter: widget.memTypeFilter,
+          );
+        },
+      ),
     );
   }
 

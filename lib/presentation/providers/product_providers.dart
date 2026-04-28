@@ -1,6 +1,124 @@
 part of 'providers.dart';
 
-// ── In-memory cache for PC builder ──
+// ── PC Picker paginated state (lazy load + server-side search) ──
+class PcPickerState {
+  final List<ProductEntity> items;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final int totalFound;
+  final int page;
+  final String query;
+
+  const PcPickerState({
+    this.items = const [],
+    this.isLoading = true,
+    this.isLoadingMore = false,
+    this.hasMore = false,
+    this.totalFound = 0,
+    this.page = 0,
+    this.query = '*',
+  });
+
+  PcPickerState copyWith({
+    List<ProductEntity>? items,
+    bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
+    int? totalFound,
+    int? page,
+    String? query,
+  }) => PcPickerState(
+    items: items ?? this.items,
+    isLoading: isLoading ?? this.isLoading,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    hasMore: hasMore ?? this.hasMore,
+    totalFound: totalFound ?? this.totalFound,
+    page: page ?? this.page,
+    query: query ?? this.query,
+  );
+}
+
+class PcPickerNotifier extends StateNotifier<PcPickerState> {
+  final PbDataSource _ds;
+  final String _categoryId;
+  static const int _pageSize = 30;
+
+  PcPickerNotifier(this._ds, this._categoryId) : super(const PcPickerState()) {
+    _loadFirstPage();
+  }
+
+  Future<void> _loadFirstPage({String query = '*'}) async {
+    if (!mounted) return;
+    state = PcPickerState(query: query);
+    await _loadPage(page: 1, reset: true);
+  }
+
+  Future<void> loadMore() async {
+    if (!mounted) return;
+    if (state.isLoadingMore || !state.hasMore || state.isLoading) return;
+    state = state.copyWith(isLoadingMore: true);
+    await _loadPage(page: state.page + 1, reset: false);
+  }
+
+  Future<void> search(String query) async {
+    if (!mounted) return;
+    final q = query.trim().isEmpty ? '*' : query.trim();
+    if (q == state.query) return;
+    await _loadFirstPage(query: q);
+  }
+
+  Future<void> _loadPage({required int page, required bool reset}) async {
+    if (!mounted) return;
+    final aliases = pcCategoryAliases[_categoryId] ?? [_categoryId];
+    try {
+      for (final alias in aliases) {
+        final result = await _ds.getProductsPageTs(
+          category: alias,
+          limit: _pageSize,
+          page: page,
+          query: state.query,
+        );
+        if (!mounted) return;
+        if (result.products.isNotEmpty || page == 1) {
+          final newItems = result.products.cast<ProductEntity>();
+          state = state.copyWith(
+            items: reset ? newItems : [...state.items, ...newItems],
+            isLoading: false,
+            isLoadingMore: false,
+            hasMore: result.hasMore,
+            totalFound: result.totalFound,
+            page: page,
+          );
+          return;
+        }
+      }
+      if (!mounted) return;
+      // All aliases returned empty
+      state = state.copyWith(
+        items: reset ? const [] : state.items,
+        isLoading: false,
+        isLoadingMore: false,
+        hasMore: false,
+        totalFound: reset ? 0 : state.totalFound,
+        page: page,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      state = state.copyWith(isLoading: false, isLoadingMore: false);
+    }
+  }
+}
+
+/// PC Picker provider — fast paginated picker (30 items at a time, server-side search).
+/// Does NOT preload all products. Opens instantly, loads more on scroll.
+final pcPickerProvider = StateNotifierProvider.autoDispose
+    .family<PcPickerNotifier, PcPickerState, String>((ref, categoryId) {
+      final ds = ref.read(pbDataSourceProvider);
+      return PcPickerNotifier(ds, categoryId.toLowerCase().trim());
+    });
+
+// ── In-memory cache for PC builder (upgrade suggestions only) ──
 final _pcBuilderCacheMap = <String, List<ProductEntity>>{};
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
