@@ -428,19 +428,17 @@ final searchResultsProvider = FutureProvider.autoDispose
             final behavior =
                 ref.read(behaviorSignalsProvider).valueOrNull ??
                 BehaviorSignals.empty;
-            products.sort((a, b) {
-              final scoreA = algo.calculateTotalFitScore(
-                user: user,
-                product: a,
-                behavior: behavior,
-              );
-              final scoreB = algo.calculateTotalFitScore(
-                user: user,
-                product: b,
-                behavior: behavior,
-              );
-              return scoreB.compareTo(scoreA);
-            });
+            final fitScores = {
+              for (final p in products)
+                p.id: algo.calculateTotalFitScore(
+                  user: user,
+                  product: p,
+                  behavior: behavior,
+                ),
+            };
+            products.sort(
+              (a, b) => fitScores[b.id]!.compareTo(fitScores[a.id]!),
+            );
           }
 
           // Dedup before returning — homeFeed pool can have storage/color variants
@@ -495,39 +493,27 @@ final searchResultsProvider = FutureProvider.autoDispose
           final behavior =
               ref.read(behaviorSignalsProvider).valueOrNull ??
               BehaviorSignals.empty;
-          // Blend relevance + personalization
-          deduped.sort((a, b) {
-            final nameA = a.name.toLowerCase();
-            final nameB = b.name.toLowerCase();
-            double relA = 0, relB = 0;
-            // Relevance scoring
-            if (nameA.contains(normalizedQuery)) relA += 100;
-            if (nameB.contains(normalizedQuery)) relB += 100;
-            if (nameA.startsWith(normalizedQuery)) relA += 30;
-            if (nameB.startsWith(normalizedQuery)) relB += 30;
-            if ((a.brand ?? '').toLowerCase().contains(normalizedQuery)) {
-              relA += 50;
+          // Pre-compute combined score O(n) to avoid O(n log n) function calls.
+          final blendedScores = <String, double>{};
+          for (final p in deduped) {
+            final name = p.name.toLowerCase();
+            double rel = 0;
+            if (name.contains(normalizedQuery)) rel += 100;
+            if (name.startsWith(normalizedQuery)) rel += 30;
+            if ((p.brand ?? '').toLowerCase().contains(normalizedQuery)) {
+              rel += 50;
             }
-            if ((b.brand ?? '').toLowerCase().contains(normalizedQuery)) {
-              relB += 50;
-            }
-            relA += a.trendScore * 5;
-            relB += b.trendScore * 5;
-            // Personalization scoring (0-100 scale, blended at 40%)
-            final matchA = algo.calculateTotalFitScore(
+            rel += p.trendScore * 5;
+            final fit = algo.calculateTotalFitScore(
               user: user,
-              product: a,
+              product: p,
               behavior: behavior,
             );
-            final matchB = algo.calculateTotalFitScore(
-              user: user,
-              product: b,
-              behavior: behavior,
-            );
-            final finalA = relA * 0.6 + matchA * 0.4;
-            final finalB = relB * 0.6 + matchB * 0.4;
-            return finalB.compareTo(finalA);
-          });
+            blendedScores[p.id] = rel * 0.6 + fit * 0.4;
+          }
+          deduped.sort(
+            (a, b) => blendedScores[b.id]!.compareTo(blendedScores[a.id]!),
+          );
         } else {
           // No user profile — sort by relevance only
           deduped.sort((a, b) {
@@ -2612,38 +2598,26 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
     }
   }
 
-  // Sort with profile fit + segment alternatives + recent search intent.
+  // Pre-compute scores O(n) before sorting — avoids O(n log n) repeated heavy
+  // calls to calculateTotalFitScore / DateTime.now() inside the comparator.
+  final now = DateTime.now();
+  final scoreMap = <String, double>{};
+  for (final p in allProducts) {
+    final fit = algorithmService.calculateTotalFitScore(
+      user: user,
+      product: p,
+      behavior: behavior,
+    );
+    final alt = _homeFeedAlternativeBoost(p, viewedSeeds, country);
+    final search = _homeFeedSearchBoost(p, recentSearchTerms);
+    final freshness =
+        p.createdAt != null && now.difference(p.createdAt!).inDays < 180
+        ? 2.5
+        : 0.0;
+    scoreMap[p.id] = fit + alt + search + freshness;
+  }
   final sortedProducts = List<ProductEntity>.from(allProducts)
-    ..sort((a, b) {
-      final fitA = algorithmService.calculateTotalFitScore(
-        user: user,
-        product: a,
-        behavior: behavior,
-      );
-      final fitB = algorithmService.calculateTotalFitScore(
-        user: user,
-        product: b,
-        behavior: behavior,
-      );
-      final altA = _homeFeedAlternativeBoost(a, viewedSeeds, country);
-      final altB = _homeFeedAlternativeBoost(b, viewedSeeds, country);
-      final searchA = _homeFeedSearchBoost(a, recentSearchTerms);
-      final searchB = _homeFeedSearchBoost(b, recentSearchTerms);
-      final freshnessA =
-          a.createdAt != null &&
-              DateTime.now().difference(a.createdAt!).inDays < 180
-          ? 2.5
-          : 0.0;
-      final freshnessB =
-          b.createdAt != null &&
-              DateTime.now().difference(b.createdAt!).inDays < 180
-          ? 2.5
-          : 0.0;
-
-      final scoreA = fitA + altA + searchA + freshnessA;
-      final scoreB = fitB + altB + searchB + freshnessB;
-      return scoreB.compareTo(scoreA);
-    });
+    ..sort((a, b) => scoreMap[b.id]!.compareTo(scoreMap[a.id]!));
 
   // Final diversity check: keep the shelf broad and non-repeating.
   final outputCatCount = <String, int>{};
