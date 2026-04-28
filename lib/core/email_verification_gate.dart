@@ -89,7 +89,8 @@ class _EmailVerificationDialogState
       _resending = false;
       result.when(
         success: (_) {
-          _statusMessage = 'Doğrulama maili gönderildi. Gelen kutunu kontrol et.';
+          _statusMessage =
+              'Doğrulama maili gönderildi. Gelen kutunu kontrol et.';
           _statusIsError = false;
           _startCooldown();
         },
@@ -113,7 +114,17 @@ class _EmailVerificationDialogState
       await ref.read(authRepositoryProvider).refreshSession();
     } catch (_) {}
     if (!mounted) return;
-    final user = ref.read(userProfileProvider).valueOrNull;
+    // userProfileProvider eski değeri cache'liyor olabilir → invalidate edip
+    // yeni record'u beklemeden read'lersek `verified=false` görünür ve dialog
+    // kapanmaz. Provider'ı invalidate edip future'ını await ediyoruz.
+    ref.invalidate(userProfileProvider);
+    UserEntity? user;
+    try {
+      user = await ref.read(userProfileProvider.future);
+    } catch (_) {
+      user = ref.read(userProfileProvider).valueOrNull;
+    }
+    if (!mounted) return;
     if (user != null && !user.requiresEmailVerification) {
       Navigator.of(context).pop();
       return;
@@ -130,8 +141,9 @@ class _EmailVerificationDialogState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF101820) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F1722);
-    final textSecondary =
-        isDark ? Colors.white.withValues(alpha: 0.72) : const Color(0xFF4A5568);
+    final textSecondary = isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : const Color(0xFF4A5568);
 
     return Dialog(
       backgroundColor: surface,
@@ -288,8 +300,9 @@ class _EmailVerificationDialogState
               SizedBox(
                 height: 42,
                 child: TextButton(
-                  onPressed:
-                      (_resending || _resendCooldown > 0) ? null : _resend,
+                  onPressed: (_resending || _resendCooldown > 0)
+                      ? null
+                      : _resend,
                   style: TextButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
