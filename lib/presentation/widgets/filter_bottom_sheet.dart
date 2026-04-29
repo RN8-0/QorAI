@@ -57,7 +57,6 @@ class _FilterBottomSheet extends StatefulWidget {
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late FilterState _state;
   late final List<FilterDefinition> _definitions;
-  final Map<String, String> _sectionQueries = {};
   late final Set<String> _expandedSections;
 
   bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
@@ -189,7 +188,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   List<FilterOption> _visibleOptions(FilterDefinition def) {
-    final query = (_sectionQueries[def.id] ?? '').trim().toLowerCase();
     final selected = _selectedFor(def.id);
     final options = [...(def.options ?? const <FilterOption>[])];
     options.sort((a, b) {
@@ -201,12 +199,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       ).compareTo(_displayOptionLabel(b.label));
     });
 
-    if (query.isEmpty) return options;
-
-    return options.where((opt) {
-      final label = _displayOptionLabel(opt.label).toLowerCase();
-      return label.contains(query) || opt.label.toLowerCase().contains(query);
-    }).toList();
+    return options;
   }
 
   String _activeSectionSummary(FilterDefinition def) {
@@ -353,14 +346,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? context.surfaceColor : AppTheme.surfaceLight;
     final activeCount = _state.activeCount;
-    final orderedDefinitions = [..._definitions]
-      ..sort((a, b) {
-        final activeCompare = _sectionActiveCount(
-          b,
-        ).compareTo(_sectionActiveCount(a));
-        if (activeCompare != 0) return activeCompare;
-        return _displayLabel(a.label).compareTo(_displayLabel(b.label));
-      });
 
     return Container(
       constraints: BoxConstraints(
@@ -534,10 +519,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Flexible(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-              itemCount: orderedDefinitions.length,
+              itemCount: _definitions.length,
               shrinkWrap: true,
               itemBuilder: (context, i) {
-                final def = orderedDefinitions[i];
+                final def = _definitions[i];
                 return _buildSection(def, isDark);
               },
             ),
@@ -794,51 +779,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (options.length >= 8) ...[
-          TextField(
-            onChanged: (value) {
-              setState(() {
-                final trimmed = value.trim();
-                if (trimmed.isEmpty) {
-                  _sectionQueries.remove(def.id);
-                } else {
-                  _sectionQueries[def.id] = trimmed;
-                }
-              });
-            },
-            decoration: InputDecoration(
-              hintText: _fallbackText(
-                en: 'Search in ${_displayLabel(def.label).toLowerCase()}',
-                tr: '${_displayLabel(def.label)} içinde ara',
-              ),
-              prefixIcon: const Icon(Icons.search_rounded, size: 18),
-              isDense: true,
-              filled: true,
-              fillColor: isDark
-                  ? context.surfaceColor.withValues(alpha: 0.62)
-                  : context.surfaceVariantColor.withValues(alpha: 0.75),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: context.dividerColor.withValues(alpha: 0.24),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: context.dividerColor.withValues(alpha: 0.24),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: AppTheme.brandCyan.withValues(alpha: 0.45),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
         if (visibleOptions.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -856,8 +796,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           )
         else
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: visibleOptions.map((opt) {
               final isSelected = selected.contains(opt.id);
               return GestureDetector(
@@ -867,8 +807,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
+                    horizontal: 10,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     gradient: isSelected ? AppTheme.primaryGradient : null,
@@ -912,7 +852,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w600,
@@ -1001,52 +941,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               ),
             ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSingleSlider({
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required bool isDark,
-    required ValueChanged<double> onChanged,
-  }) {
-    final safeMax = max <= min ? min + 0.1 : max;
-    final safeValue = value.clamp(min, safeMax);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: context.textSecondary,
-          ),
-        ),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppTheme.brandCyan,
-            inactiveTrackColor: context.dividerColor.withValues(alpha: 0.25),
-            thumbColor: Colors.white,
-            overlayColor: AppTheme.brandCyan.withValues(alpha: 0.14),
-            trackHeight: 4,
-            thumbShape: _GradientSliderThumbShape(
-              enabledThumbRadius: 10,
-              borderColor: AppTheme.brandCyan,
-            ),
-            overlayShape: SliderComponentShape.noOverlay,
-          ),
-          child: Slider(
-            value: safeValue,
-            min: min,
-            max: safeMax,
-            onChanged: onChanged,
-          ),
         ),
       ],
     );
@@ -1175,57 +1069,5 @@ class _ToggleButton extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Custom range-slider thumb: white center + brand-cyan border + soft shadow.
-// ---------------------------------------------------------------------------
-
-class _GradientSliderThumbShape extends SliderComponentShape {
-  const _GradientSliderThumbShape({
-    this.enabledThumbRadius = 10,
-    required this.borderColor,
-  });
-
-  final double enabledThumbRadius;
-  final Color borderColor;
-
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
-      Size.fromRadius(enabledThumbRadius);
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final canvas = context.canvas;
-
-    // Shadow
-    final shadowPaint = Paint()
-      ..color = borderColor.withValues(alpha: 0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawCircle(center.translate(0, 2), enabledThumbRadius, shadowPaint);
-
-    // Border
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, enabledThumbRadius, borderPaint);
-
-    // Inner fill
-    final innerPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(center, enabledThumbRadius - 3, innerPaint);
   }
 }

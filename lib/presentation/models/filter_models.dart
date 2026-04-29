@@ -270,14 +270,14 @@ class FilterApplier {
         final compactEntryKey = normalizedEntryKey.replaceAll(' ', '');
         final tokenOverlap = _tokenOverlap(normalizedKey, normalizedEntryKey);
         final overlapThreshold = keyTokenCount <= 2 ? 1 : 2;
+        // Stricter matching to avoid false positives like "ilte" containing "lte"
         final isMatch =
             normalizedEntryKey == normalizedKey ||
             compactEntryKey == compactKey ||
-            normalizedEntryKey.contains(normalizedKey) ||
-            normalizedKey.contains(normalizedEntryKey) ||
-            compactEntryKey.contains(compactKey) ||
-            compactKey.contains(compactEntryKey) ||
-            tokenOverlap >= overlapThreshold;
+            (normalizedKey.length > 4 && normalizedEntryKey.contains(normalizedKey)) ||
+            (normalizedEntryKey.length > 4 && normalizedKey.contains(normalizedEntryKey)) ||
+            (keyTokenCount > 1 && tokenOverlap >= overlapThreshold) ||
+            (keyTokenCount == 1 && tokenOverlap == 1);
         if (isMatch && seen.add(entry.value)) {
           matches.add(entry.value);
         }

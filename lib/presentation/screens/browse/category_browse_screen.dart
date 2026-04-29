@@ -298,11 +298,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _hydratingFilterCatalog = false;
   bool _warmingFullFilterCatalog = false;
 
-  // Brand facets — loaded from Typesense facets API (single fast query)
+  // Facets — loaded from Typesense API (single fast query)
   // instead of fetching all products. Used for smartphone category.
-  List<FilterOption> _brandFacetOptions = [];
-  bool _brandFacetsLoaded = false;
-  bool _cachedBrandFacetsLoaded = false;
+  Map<String, List<FilterOption>> _typesenseFacets = {};
+  bool _facetsLoaded = false;
+  bool _cachedFacetsLoaded = false;
+  bool _filterCatalogProductsLoaded = false;
   String? _error;
   Timer? _scrollDebounce;
   Timer? _filterHydrationDebounce;
@@ -348,17 +349,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (_cachedFilterDefs == null ||
         filterDefinitionProducts.length != _cachedProductCount ||
         _activeCategoryId != _cachedCategoryId ||
-        _brandFacetsLoaded != _cachedBrandFacetsLoaded) {
+        _facetsLoaded != _cachedFacetsLoaded) {
       var defs = FilterConfig.getFiltersWithProducts(
         _activeCategoryId,
         filterDefinitionProducts,
       );
-      // Inject brand options from Typesense facets when available —
-      // avoids fetching all products just for the brand list.
-      if (_brandFacetOptions.isNotEmpty) {
+      // Inject options from Typesense facets when available.
+      if (_typesenseFacets.isNotEmpty) {
         defs = defs
             .map<FilterDefinition>((def) {
-              if (def.id == 'brand') return def.withOptions(_brandFacetOptions);
+              if (_typesenseFacets.containsKey(def.id)) {
+                return def.withOptions(_typesenseFacets[def.id]!);
+              }
               return def;
             })
             .toList(growable: false);
@@ -366,7 +368,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       _cachedFilterDefs = defs;
       _cachedProductCount = filterDefinitionProducts.length;
       _cachedCategoryId = _activeCategoryId;
-      _cachedBrandFacetsLoaded = _brandFacetsLoaded;
+      _cachedFacetsLoaded = _facetsLoaded;
     }
     return _cachedFilterDefs!;
   }
@@ -434,6 +436,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       'processor_brand': 'processor_brand',
       'gpu_type': 'gpu_type',
       'connectivity': 'connectivity',
+      'usb_type': 'usb_type',
+      'usb_version': 'usb_version',
+      'bluetooth_version': 'bluetooth_version',
     };
     const supportedRangeFields = {
       'screen_size': 'screenSizeValue',
@@ -447,6 +452,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       'fast_charging': 'fast_charging:true',
       'fingerprint': 'fingerprint:true',
       'water_resistance': 'water_resistance:true',
+      'four_half_g': 'four_half_g:true',
     };
 
     final clauses = <String>[];
@@ -488,8 +494,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final field = supportedRangeFields[entry.key];
       if (field == null) return null;
       final range = entry.value;
-      clauses.add('$field:>=${range.start}');
-      clauses.add('$field:<=${range.end}');
+
+      // Typesense 'int32' fields strictly reject string values ending in '.0'.
+      // For integers, remove the trailing .0 before sending to the search engine.
+      final startStr = range.start == range.start.toInt()
+          ? range.start.toInt().toString()
+          : range.start.toString();
+      final endStr = range.end == range.end.toInt()
+          ? range.end.toInt().toString()
+          : range.end.toString();
+
+      clauses.add('$field:>=$startStr');
+      clauses.add('$field:<=$endStr');
     }
 
     for (final entry in state.toggles.entries) {
@@ -811,36 +827,37 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   /// Loads brand facets from Typesense for the current category.
   /// Single lightweight request (per_page=0, facet_by=brand) — replaces the
   /// old approach of fetching all 4115+ products which caused ANR/crashes.
-  Future<void> _loadBrandFacets() async {
-    if (_brandFacetsLoaded && _filterCatalogCategoryId == _activeCategoryId) {
+  Future<void> _loadFacets() async {
+    if (_facetsLoaded && _filterCatalogCategoryId == _activeCategoryId) {
       return;
     }
     try {
       final ds = ref.read(pbDataSourceProvider);
-      final options = await ds.getTypesenseBrandFacets(
+      final facets = await ds.getTypesenseFacets(
         category: _activeCategoryId,
+        facets: ['brand', 'filterTokens'],
+        maxFacetValues: 600,
       );
-      if (!mounted || options.isEmpty) return;
+      if (!mounted || facets.isEmpty) return;
       setState(() {
-        _brandFacetOptions = options;
-        _brandFacetsLoaded = true;
+        _typesenseFacets = facets;
+        _facetsLoaded = true;
         _filterCatalogCategoryId = _activeCategoryId;
-        // Invalidate filter def cache so brand options are updated.
         _cachedFilterDefs = null;
       });
     } catch (e) {
-      debugPrint('=== QOR AI: _loadBrandFacets FAILED: $e ===');
+      debugPrint('=== QOR AI: _loadFacets FAILED: $e ===');
     }
   }
 
   Future<void> _warmFullFilterCatalogIfNeeded({
     bool showIndicator = true,
   }) async {
-    if (!_isSmartphoneCategory || !mounted) return;
+    if (!mounted) return;
 
-    // ── Smartphone path: use Typesense facets instead of fetching all products.
-    // This avoids the 17-second + crash from getAllProductsInCategoryTs(6000).
-    if (_brandFacetsLoaded && _filterCatalogCategoryId == _activeCategoryId) {
+    if (_facetsLoaded &&
+        _filterCatalogProductsLoaded &&
+        _filterCatalogCategoryId == _activeCategoryId) {
       return;
     }
     if (_warmingFullFilterCatalog) return;
@@ -852,7 +869,24 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
 
     try {
-      await _loadBrandFacets();
+      await _loadFacets();
+      if (!mounted ||
+          (_filterCatalogProductsLoaded &&
+              _filterCatalogCategoryId == _activeCategoryId)) {
+        return;
+      }
+
+      final ds = ref.read(pbDataSourceProvider);
+      final catalogProducts = await ds.getFilterCatalogProductsInCategoryTs(
+        category: _activeCategoryId,
+      );
+      if (!mounted || catalogProducts.isEmpty) return;
+      setState(() {
+        _filterCatalogProducts = _sanitizeCategoryProducts(catalogProducts);
+        _filterCatalogProductsLoaded = true;
+        _filterCatalogCategoryId = _activeCategoryId;
+        _cachedFilterDefs = null;
+      });
     } finally {
       if (mounted) {
         setState(() => _warmingFullFilterCatalog = false);
@@ -927,8 +961,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       if (_filterCatalogCategoryId != _activeCategoryId) {
         _filterCatalogProducts = [];
         _filterCatalogCategoryId = null;
-        _brandFacetOptions = [];
-        _brandFacetsLoaded = false;
+        _typesenseFacets = {};
+        _facetsLoaded = false;
+        _filterCatalogProductsLoaded = false;
       }
     });
     final catKey = _activeCategoryId.toLowerCase().trim();
@@ -1038,10 +1073,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _loading = false;
         _error = null;
       });
-      // Preload brand facets in the background for smartphones so the filter
-      // panel opens instantly without fetching all 4000+ products.
-      if (_isSmartphoneCategory && !_brandFacetsLoaded) {
-        unawaited(_loadBrandFacets());
+      // Preload lightweight Typesense facets so filter options come from the
+      // same indexed values that server-side filtering uses.
+      if (!_facetsLoaded) {
+        unawaited(_loadFacets());
       }
       if (_searchQuery.isNotEmpty ||
           (_filterState.isActive && serverFilterBy == null)) {
@@ -1063,7 +1098,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Future<void> _openFilters() async {
-    if (_isSmartphoneCategory) {
+    if (!_facetsLoaded || _filterCatalogCategoryId != _activeCategoryId) {
       await _warmFullFilterCatalogIfNeeded(showIndicator: true);
       if (!mounted) return;
     }
@@ -1191,6 +1226,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   _allProducts = [];
                   _filterCatalogProducts = [];
                   _filterCatalogCategoryId = null;
+                  _typesenseFacets = {};
+                  _facetsLoaded = false;
+                  _filterCatalogProductsLoaded = false;
                   _visibleProducts = [];
                   _searchBarKey.currentState?.clear();
                   _searchQuery = '';
@@ -1313,8 +1351,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // Count chip removed per UX decision
-          const SizedBox.shrink(),
+          // Product count
+          Text(
+            _fetchingAll || _loading
+                ? '...'
+                : '${_totalProductCount > 0 ? _totalProductCount : _visibleProducts.length} ${_fallbackText(en: 'Products', tr: 'Ürün')}',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: context.textSecondary,
+            ),
+          ),
           if (_searchQuery.isNotEmpty) ...[
             const SizedBox(width: 8),
             Expanded(

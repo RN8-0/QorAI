@@ -56,6 +56,9 @@ class PbDataSource {
   _searchResultCache = {};
   static const _searchResultCacheTtl = Duration(minutes: 5);
   static const _searchResultCacheMaxSize = 30;
+  static final Map<String, ({List<ProductModel> products, DateTime time})>
+  _filterCatalogCache = {};
+  static const _filterCatalogCacheTtl = Duration(hours: 6);
 
   // Lean field projection for product list queries (feed/grid cards).
   // Excludes heavy fields (specs, specSections, keySpecs, description,
@@ -2356,12 +2359,39 @@ class PbDataSource {
     }
   }
 
-  /// Fetches brand facets from Typesense for a category using a single
+  Future<List<ProductModel>> getFilterCatalogProductsInCategoryTs({
+    required String category,
+    int perPage = 250,
+    int maxTotal = 7000,
+  }) async {
+    final cacheKey = category.toLowerCase().trim();
+    final cached = _filterCatalogCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.time) < _filterCatalogCacheTtl) {
+      return cached.products;
+    }
+
+    final products = await getAllProductsInCategoryTs(
+      category: category,
+      perPage: perPage,
+      maxTotal: maxTotal,
+      sortBy: 'techScore:desc,trendScore:desc',
+    );
+    if (products.isNotEmpty) {
+      _filterCatalogCache[cacheKey] = (
+        products: products,
+        time: DateTime.now(),
+      );
+    }
+    return products;
+  }
+
+  /// Fetches multiple facets from Typesense for a category using a single
   /// lightweight query (per_page=0). Much faster than loading all products.
-  /// Returns a list of [FilterOption] sorted by product count descending.
-  Future<List<FilterOption>> getTypesenseBrandFacets({
+  Future<Map<String, List<FilterOption>>> getTypesenseFacets({
     required String category,
     int maxFacetValues = 300,
+    List<String> facets = const ['brand', 'filterTokens'],
   }) async {
     try {
       final sw = Stopwatch()..start();
@@ -2375,32 +2405,115 @@ class PbDataSource {
           'q': '*',
           'filter_by': filterBy,
           'per_page': 0,
-          'facet_by': 'brand',
+          'facet_by': _sanitizeTypesenseFacetFields(facets).join(','),
           'max_facet_values': maxFacetValues,
         },
       );
       sw.stop();
-      final facetCounts = (response.data['facet_counts'] as List?) ?? [];
-      if (facetCounts.isEmpty) return [];
-      final counts = (facetCounts.first['counts'] as List?) ?? [];
-      final options = counts
-          .map((c) {
+      final Map<String, List<FilterOption>> results = {};
+      final facetCounts = response.data['facet_counts'] as List?;
+      if (facetCounts != null) {
+        for (final fc in facetCounts) {
+          final fieldName = fc['field_name'] as String;
+          final counts = fc['counts'] as List? ?? [];
+          final options = <FilterOption>[];
+          for (final c in counts) {
             final value = ((c['value'] as String?) ?? '').trim();
-            return FilterOption(
-              id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
-              label: value,
-            );
-          })
-          .where((opt) => opt.label.isNotEmpty)
-          .toList();
+            if (value.isEmpty) continue;
+
+            if (fieldName == 'filterTokens') {
+              final parsed = _filterOptionFromToken(value);
+              if (parsed != null) {
+                results.putIfAbsent(parsed.filterId, () => <FilterOption>[]);
+                final existingIds = results[parsed.filterId]!
+                    .map((option) => option.id)
+                    .toSet();
+                if (existingIds.add(parsed.option.id)) {
+                  results[parsed.filterId]!.add(parsed.option);
+                }
+              }
+            } else {
+              options.add(
+                FilterOption(
+                  id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+                  label: value,
+                ),
+              );
+            }
+          }
+          if (fieldName != 'filterTokens') {
+            results[fieldName] = options;
+          }
+        }
+      }
       debugPrint(
-        '=== QOR AI: TS brandFacets cat=$category → ${options.length} brands in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getTypesenseFacets cat=$category → ${results.keys.length} fields evaluated in ${sw.elapsedMilliseconds}ms ===',
       );
-      return options;
+      return results;
     } catch (e) {
-      debugPrint('=== QOR AI: TS brandFacets cat=$category FAILED: $e ===');
-      return [];
+      debugPrint(
+        '=== QOR AI: TS getTypesenseFacets cat=$category FAILED: $e ===',
+      );
+      return {};
     }
+  }
+
+  List<String> _sanitizeTypesenseFacetFields(List<String> facets) {
+    const supportedFields = {
+      'brand',
+      'category',
+      'subcategory',
+      'tags',
+      'filterTokens',
+    };
+    final sanitized = facets
+        .where((field) => supportedFields.contains(field.trim()))
+        .toSet()
+        .toList(growable: false);
+    return sanitized.isEmpty ? const ['brand', 'filterTokens'] : sanitized;
+  }
+
+  ({String filterId, FilterOption option})? _filterOptionFromToken(
+    String token,
+  ) {
+    final separator = token.indexOf(':');
+    if (separator <= 0 || separator == token.length - 1) return null;
+
+    final filterId = token.substring(0, separator).trim();
+    final optionId = token.substring(separator + 1).trim();
+    if (filterId.isEmpty || optionId.isEmpty || optionId == 'true') {
+      return null;
+    }
+
+    return (
+      filterId: filterId,
+      option: FilterOption(id: optionId, label: _labelForFacetOption(optionId)),
+    );
+  }
+
+  String _labelForFacetOption(String optionId) {
+    final normalized = optionId.trim();
+    final storageMatch = RegExp(r'^(\d+)_(gb|tb)$').firstMatch(normalized);
+    if (storageMatch != null) {
+      return '${storageMatch.group(1)} ${storageMatch.group(2)!.toUpperCase()}';
+    }
+
+    final refreshMatch = RegExp(r'^(\d+)_hz$').firstMatch(normalized);
+    if (refreshMatch != null) return '${refreshMatch.group(1)} Hz';
+
+    if (normalized == 'type_c') return 'USB Type-C';
+    if (normalized == 'micro_usb') return 'Micro-USB';
+    if (normalized == 'mini_usb') return 'Mini-USB';
+    if (normalized == 'wi-fi') return 'Wi-Fi';
+
+    return normalized
+        .split('_')
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+          if (part.length <= 3) return part.toUpperCase();
+          return part[0].toUpperCase() + part.substring(1);
+        })
+        .join(' ');
   }
 
   /// Paginated Typesense query matching getProductsPage signature for drop-in replacement.
@@ -2476,7 +2589,15 @@ class PbDataSource {
         totalFound: found,
       );
     } catch (e) {
-      debugPrint('=== QOR AI: TS getProductsPage FAILED cat=$category: $e ===');
+      if (e is DioException) {
+        debugPrint(
+          '=== QOR AI: TS getProductsPage FAILED cat=$category req: ${e.requestOptions.queryParameters} res: ${e.response?.data} ===',
+        );
+      } else {
+        debugPrint(
+          '=== QOR AI: TS getProductsPage FAILED cat=$category: $e ===',
+        );
+      }
       // Fallback to PocketBase
       final fallback = await getProductsPage(
         category: category,

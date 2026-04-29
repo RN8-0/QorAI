@@ -2223,37 +2223,119 @@ class FilterConfig {
     return _mergeDefinitions(categoryFilters, _genericFilters);
   }
 
+  static List<FilterDefinition> _discoverEpeySpecFilters(
+    List<FilterDefinition> existingDefs,
+    List<dynamic> products,
+  ) {
+    final existingIds = existingDefs.map((def) => def.id).toSet();
+    final coveredKeys = <String>{};
+    for (final def in existingDefs) {
+      coveredKeys.add(_normalizeDynamicOptionLabel(def.label));
+      for (final key in def.specKeys) {
+        coveredKeys.add(_normalizeDynamicOptionLabel(key));
+      }
+    }
+
+    final discovered = <String, _DiscoveredSpecField>{};
+    var order = 0;
+    for (final product in products) {
+      final flatSpecs = _flattenDynamicProductSpecs(product);
+      for (final entry in flatSpecs.entries) {
+        final rawKey = entry.key.trim();
+        final normalizedKey = _normalizeDynamicOptionLabel(rawKey);
+        if (_shouldSkipDiscoveredSpecKey(normalizedKey) ||
+            coveredKeys.contains(normalizedKey)) {
+          continue;
+        }
+
+        final values = _extractDynamicOptionValues(entry.value).toList();
+        if (values.isEmpty) continue;
+
+        final field = discovered.putIfAbsent(
+          normalizedKey,
+          () => _DiscoveredSpecField(rawKey, order++),
+        );
+        field.addKey(rawKey);
+        field.addProductValues(values);
+      }
+    }
+
+    final result = <FilterDefinition>[];
+    final candidates = discovered.values.toList()
+      ..sort((a, b) {
+        final countCompare = b.productCount.compareTo(a.productCount);
+        if (countCompare != 0) return countCompare;
+        return a.order.compareTo(b.order);
+      });
+
+    for (final field in candidates) {
+      if (result.length >= 80) break;
+      if (field.productCount < 2 || field.values.length < 2) continue;
+
+      final id = _safeDynamicFilterId(field.primaryKey);
+      if (id.isEmpty || existingIds.contains(id)) continue;
+
+      final specKeys = field.keys.toList(growable: false);
+      if (field.isBooleanLike) {
+        result.add(
+          _toggleFilter(id: id, label: field.primaryKey, specKeys: specKeys),
+        );
+        existingIds.add(id);
+        continue;
+      }
+
+      if (field.isRangeLike) {
+        final unit = _guessDynamicRangeUnit(field.values.values);
+        result.add(
+          _dynamicRangeFilter(
+            id: id,
+            label: field.primaryKey,
+            specKeys: specKeys,
+            unit: unit,
+            minValue: field.minNumber ?? 0,
+            maxValue: field.maxNumber ?? 100,
+          ),
+        );
+        existingIds.add(id);
+        continue;
+      }
+
+      if (field.values.length <= 120) {
+        result.add(
+          _dynamicMultiFilter(
+            id: id,
+            label: field.primaryKey,
+            specKeys: specKeys,
+          ),
+        );
+        existingIds.add(id);
+      }
+    }
+
+    return result;
+  }
+
   /// Get filter definitions with dynamic options populated from products.
   /// Call this when you have the loaded product list available.
   static List<FilterDefinition> getFiltersWithProducts(
     String categoryId,
     List<dynamic> products,
   ) {
-    final defs = getFilters(categoryId);
-    if (products.isEmpty) return defs;
+    final baseDefs = getFilters(categoryId);
+    if (products.isEmpty) return baseDefs;
+    final defs = _mergeDefinitions(
+      baseDefs,
+      _discoverEpeySpecFilters(baseDefs, products),
+    );
 
     return defs
         .map<FilterDefinition?>((def) {
           if (def.type == FilterType.rangeSlider && def.isDynamic) {
             final values = <double>[];
             for (final p in products) {
-              final specs = (p.specs as Map<String, dynamic>?) ?? {};
-              final keySpecs = (p.keySpecs as Map<String, dynamic>?) ?? {};
-              final specSections =
-                  (p.specSections as Map<String, dynamic>?) ?? {};
-
-              for (final key in def.specKeys) {
-                for (final candidate in [specs[key], keySpecs[key]]) {
-                  final number = _extractDynamicRangeNumber(candidate);
-                  if (number != null) values.add(number);
-                }
-
-                for (final section in specSections.values) {
-                  if (section is Map) {
-                    final number = _extractDynamicRangeNumber(section[key]);
-                    if (number != null) values.add(number);
-                  }
-                }
+              for (final candidate in _findDynamicSpecValues(def.specKeys, p)) {
+                final number = _extractDynamicRangeNumber(candidate);
+                if (number != null) values.add(number);
               }
             }
 
@@ -2347,33 +2429,13 @@ class FilterConfig {
           // Generic dynamic: extract unique values from product specs
           final optionLabels = <String, String>{};
           for (final p in products) {
-            for (final key in def.specKeys) {
-              final specs = (p.specs as Map<String, dynamic>?) ?? {};
-              final keySpecs = (p.keySpecs as Map<String, dynamic>?) ?? {};
-              final specSections =
-                  (p.specSections as Map<String, dynamic>?) ?? {};
-              for (final candidate in [specs[key], keySpecs[key]]) {
-                for (final value in _extractDynamicOptionValues(candidate)) {
-                  final normalized = _normalizeDynamicOptionLabel(value);
-                  if (normalized.isEmpty) continue;
-                  final existing = optionLabels[normalized];
-                  if (existing == null || value.length > existing.length) {
-                    optionLabels[normalized] = value;
-                  }
-                }
-              }
-              for (final section in specSections.values) {
-                if (section is Map) {
-                  for (final value in _extractDynamicOptionValues(
-                    section[key],
-                  )) {
-                    final normalized = _normalizeDynamicOptionLabel(value);
-                    if (normalized.isEmpty) continue;
-                    final existing = optionLabels[normalized];
-                    if (existing == null || value.length > existing.length) {
-                      optionLabels[normalized] = value;
-                    }
-                  }
+            for (final candidate in _findDynamicSpecValues(def.specKeys, p)) {
+              for (final value in _extractDynamicOptionValues(candidate)) {
+                final normalized = _normalizeDynamicOptionLabel(value);
+                if (normalized.isEmpty) continue;
+                final existing = optionLabels[normalized];
+                if (existing == null || value.length > existing.length) {
+                  optionLabels[normalized] = value;
                 }
               }
             }
@@ -2395,6 +2457,192 @@ class FilterConfig {
         .whereType<FilterDefinition>()
         .toList();
   }
+}
+
+class _DiscoveredSpecField {
+  _DiscoveredSpecField(this.primaryKey, this.order);
+
+  final String primaryKey;
+  final int order;
+  final Set<String> keys = {};
+  final Map<String, String> values = {};
+  int productCount = 0;
+
+  void addKey(String key) => keys.add(key);
+
+  void addProductValues(List<String> rawValues) {
+    var addedForProduct = false;
+    for (final value in rawValues) {
+      final cleaned = _cleanDynamicOptionValue(value);
+      final normalized = _normalizeDynamicOptionLabel(cleaned);
+      if (normalized.isEmpty || cleaned.length > 90) continue;
+      values.putIfAbsent(normalized, () => cleaned);
+      addedForProduct = true;
+    }
+    if (addedForProduct) productCount++;
+  }
+
+  bool get isBooleanLike {
+    if (values.length > 4) return false;
+    return values.keys.every(_isBooleanDynamicValue);
+  }
+
+  List<double> get numbers => values.values
+      .map(_extractDynamicRangeNumber)
+      .whereType<double>()
+      .toList(growable: false);
+
+  bool get isRangeLike {
+    if (values.length < 4) return false;
+    final nums = numbers;
+    if (nums.length < 4) return false;
+    return nums.length / values.length >= 0.8 &&
+        (maxNumber ?? 0) > (minNumber ?? 0);
+  }
+
+  double? get minNumber {
+    final nums = numbers;
+    if (nums.isEmpty) return null;
+    return nums.reduce((a, b) => a < b ? a : b);
+  }
+
+  double? get maxNumber {
+    final nums = numbers;
+    if (nums.isEmpty) return null;
+    return nums.reduce((a, b) => a > b ? a : b);
+  }
+}
+
+Map<String, Object?> _flattenDynamicProductSpecs(dynamic product) {
+  final flat = <String, Object?>{};
+
+  void addMap(Object? value) {
+    if (value is! Map) return;
+    for (final entry in value.entries) {
+      if (entry.value != null) {
+        flat[entry.key.toString()] = entry.value;
+      }
+    }
+  }
+
+  try {
+    addMap(product.specs);
+  } catch (_) {}
+  try {
+    addMap(product.keySpecs);
+  } catch (_) {}
+  try {
+    final sections = product.specSections;
+    if (sections is Map) {
+      for (final section in sections.values) {
+        addMap(section);
+      }
+    }
+  } catch (_) {}
+
+  return flat;
+}
+
+List<Object?> _findDynamicSpecValues(List<String> keys, dynamic product) {
+  final flatSpecs = _flattenDynamicProductSpecs(product);
+  final matches = <Object?>[];
+  final seen = <String>{};
+
+  for (final key in keys) {
+    final normalizedKey = _normalizeDynamicOptionLabel(key);
+    final compactKey = normalizedKey.replaceAll(' ', '');
+    for (final entry in flatSpecs.entries) {
+      final normalizedEntryKey = _normalizeDynamicOptionLabel(entry.key);
+      final compactEntryKey = normalizedEntryKey.replaceAll(' ', '');
+      final matchesKey =
+          normalizedEntryKey == normalizedKey ||
+          compactEntryKey == compactKey ||
+          (normalizedKey.length > 4 &&
+              normalizedEntryKey.contains(normalizedKey)) ||
+          (normalizedEntryKey.length > 4 &&
+              normalizedKey.contains(normalizedEntryKey));
+      if (!matchesKey) continue;
+      final identity = '${entry.key}:${entry.value}';
+      if (seen.add(identity)) matches.add(entry.value);
+    }
+  }
+
+  return matches;
+}
+
+bool _shouldSkipDiscoveredSpecKey(String normalizedKey) {
+  if (normalizedKey.length < 2) return true;
+  const blockedExact = {
+    'id',
+    'slug',
+    'name',
+    'brand',
+    'category',
+    'subcategory',
+    'description',
+    'price',
+    'prices',
+    'techscore',
+    'trendscore',
+  };
+  if (blockedExact.contains(normalizedKey.replaceAll(' ', ''))) return true;
+  const blockedParts = [
+    'url',
+    'link',
+    'image',
+    'photo',
+    'affiliate',
+    'rating',
+    'review',
+    'score',
+    'pros',
+    'cons',
+  ];
+  return blockedParts.any(normalizedKey.contains);
+}
+
+String _safeDynamicFilterId(String label) {
+  return _normalizeDynamicOptionLabel(label)
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+}
+
+bool _isBooleanDynamicValue(String normalizedValue) {
+  const booleanValues = {
+    'yes',
+    'no',
+    'true',
+    'false',
+    'evet',
+    'hayir',
+    'var',
+    'yok',
+    'destekliyor',
+    'desteklemiyor',
+  };
+  return booleanValues.contains(normalizedValue);
+}
+
+String _guessDynamicRangeUnit(Iterable<String> values) {
+  final joined = values.join(' ').toLowerCase();
+  if (joined.contains('mah')) return 'mAh';
+  if (joined.contains('ghz')) return 'GHz';
+  if (joined.contains('mhz')) return 'MHz';
+  if (joined.contains('hz')) return 'Hz';
+  if (joined.contains('mp')) return 'MP';
+  if (joined.contains('mm')) return 'mm';
+  if (joined.contains('kg')) return 'kg';
+  if (joined.contains('ppi')) return 'ppi';
+  if (joined.contains('w/kg')) return 'W/kg';
+  if (joined.contains('w')) return 'W';
+  if (joined.contains('%')) return '%';
+  if (joined.contains('inch') ||
+      joined.contains('inç') ||
+      joined.contains('"')) {
+    return 'in';
+  }
+  return '';
 }
 
 double? _extractDynamicRangeNumber(Object? value) {
