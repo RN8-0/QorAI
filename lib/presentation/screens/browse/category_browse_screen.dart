@@ -497,9 +497,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     },
     'cpus': {
       'processor_brand': ['processor_brand'],
+      'socket': ['socket'],
     },
     'processors': {
       'processor_brand': ['processor_brand'],
+      'socket': ['socket'],
     },
     'tvs': {
       'panel_type': ['screen_tech'],
@@ -554,8 +556,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     },
     'tvs': {'ram', 'storage', 'os', 'screen_tech', 'refresh_rate'},
     'media-players': {'ram', 'storage', 'os', 'processor_brand', 'gpu_type'},
-    'cpus': {'processor_brand'},
-    'processors': {'processor_brand'},
+    'cpus': {'processor_brand', 'socket'},
+    'processors': {'processor_brand', 'socket'},
+    'motherboards': {'socket'},
+    'motherboard': {'socket'},
     'ssd': {'storage'},
     'ram': {'ram'},
     'desktops': {'ram', 'storage', 'processor_brand', 'gpu_type', 'os'},
@@ -614,6 +618,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     'screen_tech': 'Screen Technology',
     'refresh_rate': 'Refresh Rate',
     'processor_brand': 'Processor Brand',
+    'socket': 'Socket',
     'gpu_type': 'GPU Type',
     'connectivity': 'Connectivity',
     'usb_type': 'USB Type',

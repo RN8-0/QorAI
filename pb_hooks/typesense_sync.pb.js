@@ -313,6 +313,36 @@ function _extractWeightKg(value) {
   return number;
 }
 
+function _normalizeSocketToken(value) {
+  var socket = String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/SOCKET/g, '')
+    .replace(/FCLGA/g, 'LGA')
+    .replace(/[^A-Z0-9]/g, '');
+  if (/^STR\d+$/.test(socket)) socket = socket.slice(1);
+  return socket;
+}
+
+function _socketAliases(socket) {
+  var normalized = _normalizeSocketToken(socket);
+  if (!normalized) return [];
+  var aliases = [normalized];
+  if (normalized === 'TRX50' || normalized === 'WRX90') aliases.push('TR5');
+  if (normalized === 'TRX40' || normalized === 'WRX80') aliases.push('TR4');
+  return aliases;
+}
+
+function _extractSocketTokensFromText(value) {
+  var text = String(value || '').toUpperCase();
+  var matches = text.match(/(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STR\d+|TR\d+|WRX\d+|STRP\d+/g) || [];
+  var tokens = [];
+  matches.forEach(function(match) {
+    _socketAliases(match).forEach(function(alias) { tokens.push(alias); });
+  });
+  return tokens;
+}
+
 function _extractBrowseFilters(pbData) {
 
   var flatSpecs = _flattenBrowseSpecs(pbData);
@@ -385,6 +415,18 @@ function _extractBrowseFilters(pbData) {
   if (processorBrandToken !== null) {
     addToken('processor_brand:' + processorBrandToken);
   }
+
+  var socketTexts = [
+    pbData.name,
+    firstValue(['Socket', 'socket', 'CPU Socket', 'Processor Socket']),
+    firstValue(['Compatible Sockets', 'Socket Support', 'Supported Socket']),
+  ];
+  Object.keys(flatSpecs).forEach(function(key) { socketTexts.push(flatSpecs[key]); });
+  socketTexts.forEach(function(value) {
+    _extractSocketTokensFromText(value).forEach(function(token) {
+      addToken('socket:' + token.toLowerCase());
+    });
+  });
 
   var gpuTypeToken = _extractGpuTypeToken(
     firstValue([

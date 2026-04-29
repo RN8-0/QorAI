@@ -46,6 +46,47 @@ function _flattenKeySpecs(ks) {
   return String(ks);
 }
 
+function _normalizeSocketToken(value) {
+  let socket = String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/SOCKET/g, '')
+    .replace(/FCLGA/g, 'LGA')
+    .replace(/[^A-Z0-9]/g, '');
+  if (/^STR\d+$/.test(socket)) socket = socket.slice(1);
+  return socket;
+}
+
+function _socketAliases(socket) {
+  const normalized = _normalizeSocketToken(socket);
+  if (!normalized) return [];
+  const aliases = new Set([normalized]);
+  if (normalized === 'TRX50' || normalized === 'WRX90') aliases.add('TR5');
+  if (normalized === 'TRX40' || normalized === 'WRX80') aliases.add('TR4');
+  return Array.from(aliases);
+}
+
+function _extractSocketTokens(pb) {
+  const texts = [pb?.name || ''];
+  const pushMapValues = (value) => {
+    if (!value || typeof value !== 'object') return;
+    Object.values(value).forEach(v => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) pushMapValues(v);
+      else if (v !== null && v !== undefined) texts.push(String(v));
+    });
+  };
+  pushMapValues(pb?.specs || {});
+  pushMapValues(pb?.keySpecs || {});
+  pushMapValues(pb?.specSections || {});
+
+  const tokens = new Set();
+  texts.forEach(text => {
+    const matches = String(text || '').toUpperCase().match(/(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STR\d+|TR\d+|WRX\d+|STRP\d+/g) || [];
+    matches.flatMap(_socketAliases).forEach(token => tokens.add(`socket:${token.toLowerCase()}`));
+  });
+  return Array.from(tokens);
+}
+
 function tsBuildDoc(pb) {
   const raw = JSON.stringify(pb);
   return {
@@ -63,6 +104,7 @@ function tsBuildDoc(pb) {
     specsCount: pb.specsCount || 0,
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
+    filterTokens: _extractSocketTokens(pb),
     _raw: raw,
   };
 }

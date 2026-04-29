@@ -287,10 +287,28 @@ class _Compat {
     if (target.isEmpty) return false;
     final tokens = socketTokens(p);
     if (tokens.isEmpty) return false;
-    return tokens.any(
-      (token) =>
-          token == target || token.contains(target) || target.contains(token),
-    );
+    return tokens.any((token) => _socketTokenMatches(token, target));
+  }
+
+  static bool _socketTokenMatches(String rawToken, String rawTarget) {
+    final token = _normalizeSocket(rawToken);
+    final target = _normalizeSocket(rawTarget);
+    if (token.isEmpty || target.isEmpty) return false;
+    if (token == target || token.contains(target) || target.contains(token)) {
+      return true;
+    }
+    return _socketPlatformAliases[token] == target ||
+        _socketPlatformAliases[target] == token;
+  }
+
+  static bool socketSetsOverlap(Set<String> left, Set<String> right) {
+    if (left.isEmpty || right.isEmpty) return false;
+    for (final l in left) {
+      for (final r in right) {
+        if (_socketTokenMatches(l, r)) return true;
+      }
+    }
+    return false;
   }
 
   static String? memoryType(ProductEntity p) {
@@ -398,36 +416,6 @@ class _Compat {
     return false;
   }
 
-  static int searchScore(ProductEntity p, String query) {
-    final normalized = query.trim().toLowerCase();
-    if (normalized.isEmpty) return 1;
-
-    final tokens = normalized
-        .split(RegExp(r'\s+'))
-        .where((t) => t.trim().isNotEmpty)
-        .toList();
-    final name = p.name.toLowerCase();
-    final brand = (p.brand ?? '').toLowerCase();
-    final specText = _allTexts(p).join(' ').toLowerCase();
-
-    var score = 0;
-    if (name == normalized) score += 160;
-    if (name.startsWith(normalized)) score += 120;
-    if (name.contains(normalized)) score += 90;
-    if (brand == normalized) score += 80;
-    if (brand.contains(normalized)) score += 45;
-    if (specText.contains(normalized)) score += 25;
-
-    for (final token in tokens) {
-      if (name.startsWith(token)) score += 32;
-      if (name.contains(token)) score += 22;
-      if (brand.contains(token)) score += 14;
-      if (specText.contains(token)) score += 8;
-    }
-
-    return score;
-  }
-
   /// GPU power connector — returns '6-pin','8-pin','12-pin','16-pin' or null
   static String? gpuPowerConnector(ProductEntity p) {
     for (final key in [
@@ -483,6 +471,12 @@ class _Compat {
     ]) {
       final v = p.specs[key]?.toString().toUpperCase();
       if (v != null && v.isNotEmpty) {
+        if (v.contains('SSI-EEB') ||
+            v.contains('SSI EEB') ||
+            RegExp(r'\bEEB\b').hasMatch(v)) {
+          return 'SSI-EEB';
+        }
+        if (v.contains('CEB')) return 'CEB';
         if (v.contains('E-ATX') || v.contains('EATX') || v.contains('XL-ATX')) {
           return 'E-ATX';
         }
@@ -507,6 +501,12 @@ class _Compat {
     if (n.contains('MINI-ITX') || n.contains('MINI ITX') || n.contains('ITX')) {
       return 'mITX';
     }
+    if (n.contains('SSI-EEB') ||
+        n.contains('SSI EEB') ||
+        RegExp(r'\bEEB\b').hasMatch(n)) {
+      return 'SSI-EEB';
+    }
+    if (n.contains('CEB')) return 'CEB';
     if (n.contains('MATX') || n.contains('MICRO ATX') || n.contains('M-ATX')) {
       return 'mATX';
     }
@@ -587,10 +587,18 @@ class _Compat {
   /// Checks if two form factors are compatible (MB fits in Case)
   static bool formFactorCompatible(String? mbFf, String? caseFf) {
     if (mbFf == null || caseFf == null) return true; // unknown = assume ok
-    // Ordering: mITX < mATX < ATX < E-ATX
-    const order = {'mITX': 0, 'mATX': 1, 'ATX': 2, 'E-ATX': 3};
-    final mb = order[mbFf] ?? 2;
-    final cs = order[caseFf] ?? 2;
+    // Ordering is conservative: workstation SSI-EEB boards need explicit case support.
+    const order = {
+      'mITX': 0,
+      'mATX': 1,
+      'ATX': 2,
+      'E-ATX': 3,
+      'CEB': 4,
+      'SSI-EEB': 5,
+    };
+    final mb = order[mbFf];
+    final cs = order[caseFf];
+    if (mb == null || cs == null) return true;
     return mb <= cs; // MB must be <= case capacity
   }
 
@@ -995,14 +1003,14 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         final cpuTokens = _Compat.socketTokens(candidate);
         if (cpuTokens.isEmpty) return true; // no data → allow
         return cpuTokens.any(
-          (t) => t.contains(socketTarget) || socketTarget.contains(t),
+          (t) => _Compat._socketTokenMatches(t, socketTarget),
         );
       case PcComponent.motherboard:
         if (socketTarget != null) {
           final mbTokens = _Compat.socketTokens(candidate);
           if (mbTokens.isNotEmpty &&
               !mbTokens.any(
-                (t) => t.contains(socketTarget) || socketTarget.contains(t),
+                (t) => _Compat._socketTokenMatches(t, socketTarget),
               )) {
             return false;
           }
@@ -1189,11 +1197,16 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     if (cpu != null && mb != null) {
       final cpuSock = _Compat.socket(cpu);
       final mbSock = _Compat.socket(mb);
-      if (cpuSock != null &&
-          mbSock != null &&
-          cpuSock != mbSock &&
-          !cpuSock.contains(mbSock) &&
-          !mbSock.contains(cpuSock)) {
+      final cpuTokens = _Compat.socketTokens(cpu);
+      final mbTokens = _Compat.socketTokens(mb);
+      final hasStructuredSocketData =
+          cpuTokens.isNotEmpty && mbTokens.isNotEmpty;
+      final socketMismatch = hasStructuredSocketData
+          ? !_Compat.socketSetsOverlap(cpuTokens, mbTokens)
+          : cpuSock != null &&
+                mbSock != null &&
+                !_Compat._socketTokenMatches(cpuSock, mbSock);
+      if (socketMismatch) {
         issues.add(
           _CompatIssue(
             severity: _IssueSeverity.error,
@@ -1507,16 +1520,17 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         if (oldSocket != null && newSocket != null && oldSocket != newSocket) {
           final mb = _selected[PcComponent.motherboard];
           if (mb != null) {
-            final mbSocket = _Compat.socket(mb);
-            if (mbSocket != null && mbSocket != newSocket) {
+            final mbTokens = _Compat.socketTokens(mb);
+            if (mbTokens.isNotEmpty && !_Compat.supportsSocket(mb, newSocket)) {
               _selected.remove(PcComponent.motherboard);
               removed.add(_pcText(context, tr: 'Anakart', en: 'Motherboard'));
             }
           }
           final cooler = _selected[PcComponent.cooler];
           if (cooler != null) {
-            final coolerSocket = _Compat.socket(cooler);
-            if (coolerSocket != null && coolerSocket != newSocket) {
+            final coolerTokens = _Compat.socketTokens(cooler);
+            if (coolerTokens.isNotEmpty &&
+                !_Compat.supportsSocket(cooler, newSocket)) {
               _selected.remove(PcComponent.cooler);
               removed.add(_pcText(context, tr: 'Soğutucu', en: 'Cooler'));
             }
@@ -1816,10 +1830,11 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       buf.writeln();
       buf.writeln('=== SYSTEM METRICS ===');
       buf.writeln('Total power draw: ${_estimatedPower.round()}W');
-      if (_psuWattage != null)
+      if (_psuWattage != null) {
         buf.writeln(
           'PSU: ${_psuWattage!.round()}W (headroom: ${_psuHeadroom!.round()}W)',
         );
+      }
       if (_selectedSocket != null) buf.writeln('Socket: $_selectedSocket');
       if (_selectedMemType != null) buf.writeln('Memory: $_selectedMemType');
       final gpuConn = _selected[PcComponent.gpu] != null
@@ -4982,9 +4997,7 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
         // No socket info in the product data → be lenient, include it.
         if (tokens.isEmpty) return true;
         // Check normalized token set for any overlap with the target socket.
-        return tokens.any(
-          (tok) => tok == t || tok.contains(t) || t.contains(tok),
-        );
+        return tokens.any((tok) => _Compat._socketTokenMatches(tok, t));
       }).toList();
     }
     // Compat — memory type filter for RAM (strict: exclude wrong DDR gen)
@@ -5665,6 +5678,14 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
           widget.formFactorFilter != null ||
           _hasAdditionalCompatFilters;
       final isCompatCause = hasCompat && _compatOnly;
+      if (isCompatCause && pickerState.hasMore && !pickerState.isLoadingMore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ref
+              .read(pcPickerProvider(widget.component.categoryId).notifier)
+              .loadMore();
+        });
+      }
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -5695,6 +5716,30 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
               ),
               if (isCompatCause) ...[
                 const SizedBox(height: 12),
+                if (pickerState.hasMore || pickerState.isLoadingMore) ...[
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: widget.component.accentColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _pcText(
+                      context,
+                      en: 'Searching more products...',
+                      tr: 'Daha fazla ürün aranıyor...',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: context.textTertiaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 ElevatedButton.icon(
                   onPressed: () => setState(() => _compatOnly = false),
                   icon: const Icon(Icons.visibility_rounded, size: 16),
@@ -6234,7 +6279,7 @@ class _ProductCard extends StatelessWidget {
         final t = socketFilter!.toUpperCase();
         final isCompat = component == PcComponent.cooler
             ? _Compat.supportsSocket(product, t)
-            : (sock.contains(t) || t.contains(sock));
+            : _Compat.supportsSocket(product, t);
         if (!isCompat) {
           return '⚠️ Socket mismatch: $sock ≠ $socketFilter';
         }

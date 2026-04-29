@@ -267,6 +267,32 @@ function extractWeightKg(value) {
   return number;
 }
 
+function normalizeSocketToken(value) {
+  let socket = String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/SOCKET/g, '')
+    .replace(/FCLGA/g, 'LGA')
+    .replace(/[^A-Z0-9]/g, '');
+  if (/^STR\d+$/.test(socket)) socket = socket.slice(1);
+  return socket;
+}
+
+function socketAliases(socket) {
+  const normalized = normalizeSocketToken(socket);
+  if (!normalized) return [];
+  const aliases = new Set([normalized]);
+  if (normalized === 'TRX50' || normalized === 'WRX90') aliases.add('TR5');
+  if (normalized === 'TRX40' || normalized === 'WRX80') aliases.add('TR4');
+  return Array.from(aliases);
+}
+
+function extractSocketTokensFromText(value) {
+  const text = String(value || '').toUpperCase();
+  const matches = text.match(/(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STR\d+|TR\d+|WRX\d+|STRP\d+/g) || [];
+  return matches.flatMap(socketAliases);
+}
+
 function extractBrowseFilters(pb) {
   const flatSpecs = flattenBrowseSpecs(pb);
   const tokens = [];
@@ -336,6 +362,16 @@ function extractBrowseFilters(pb) {
   if (processorBrandToken != null) {
     addToken(`processor_brand:${processorBrandToken}`);
   }
+
+  const socketTexts = [
+    pb.name,
+    firstValue(['Socket', 'socket', 'CPU Socket', 'Processor Socket']),
+    firstValue(['Compatible Sockets', 'Socket Support', 'Supported Socket']),
+  ];
+  Object.values(flatSpecs).forEach((value) => socketTexts.push(value));
+  socketTexts
+    .flatMap(extractSocketTokensFromText)
+    .forEach((token) => addToken(`socket:${token.toLowerCase()}`));
 
   const gpuTypeToken = extractGpuTypeToken(
     firstValue([
@@ -490,8 +526,28 @@ async function importBatch(docs) {
   return { ok, fail };
 }
 
+async function withRetries(label, fn, attempts = 5) {
+  let lastError;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const retryableCodes = new Set(['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND']);
+      if (!retryableCodes.has(error?.code) || i === attempts) break;
+      const delayMs = Math.min(1000 * 2 ** (i - 1), 10000);
+      console.warn(`\n[retry] ${label} failed (${error.code}); retry ${i}/${attempts - 1} in ${delayMs}ms`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 async function pbPage(page) {
-  const r = await pbReq('GET', `/api/collections/products/records?perPage=${BATCH}&page=${page}`);
+  const r = await withRetries(
+    `pb page ${page}`,
+    () => pbReq('GET', `/api/collections/products/records?perPage=${BATCH}&page=${page}`),
+  );
   if (r.status !== 200) throw new Error('pb list: ' + JSON.stringify(r.body));
   return r.body;
 }
