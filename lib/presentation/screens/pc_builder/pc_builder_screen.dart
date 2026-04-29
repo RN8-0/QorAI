@@ -136,6 +136,15 @@ String _pcText(BuildContext context, {required String en, required String tr}) {
 // Compatibility Helper
 
 class _Compat {
+  // Platform-to-socket aliases: TRX50/WRX90 chipset platforms use sTR5 socket,
+  // TRX40/WRX80 use sTR4 socket. Normalize so they compare equal.
+  static const Map<String, String> _socketPlatformAliases = {
+    'TRX50': 'TR5', // AMD Threadripper 7000 platform → sTR5 socket
+    'TRX40': 'TR4', // AMD Threadripper 3000 platform → sTR4 socket
+    'WRX90': 'TR5', // Threadripper PRO 7000 platform → sTR5 socket
+    'WRX80': 'TR4', // Threadripper PRO 3000 platform → sTR4 socket
+  };
+
   static String _normalizeSocket(String raw) {
     var s = raw
         .trim()
@@ -220,7 +229,12 @@ class _Compat {
 
     void addToken(String raw) {
       final normalized = _normalizeSocket(raw);
-      if (normalized.isNotEmpty) found.add(normalized);
+      if (normalized.isNotEmpty) {
+        found.add(normalized);
+        // Also add platform alias so TRX50 ↔ TR5 comparisons succeed
+        final alias = _socketPlatformAliases[normalized];
+        if (alias != null) found.add(alias);
+      }
     }
 
     for (final value in _allTexts(p)) {
@@ -978,16 +992,21 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     switch (component) {
       case PcComponent.cpu:
         if (socketTarget == null) return true;
-        final sock = _Compat.socket(candidate);
-        return sock != null &&
-            (sock.contains(socketTarget) || socketTarget.contains(sock));
+        final cpuTokens = _Compat.socketTokens(candidate);
+        if (cpuTokens.isEmpty) return true; // no data → allow
+        return cpuTokens.any(
+          (t) => t.contains(socketTarget) || socketTarget.contains(t),
+        );
       case PcComponent.motherboard:
         if (socketTarget != null) {
-          final sock = _Compat.socket(candidate);
-          if (sock == null ||
-              (!sock.contains(socketTarget) && !socketTarget.contains(sock))) {
+          final mbTokens = _Compat.socketTokens(candidate);
+          if (mbTokens.isNotEmpty &&
+              !mbTokens.any(
+                (t) => t.contains(socketTarget) || socketTarget.contains(t),
+              )) {
             return false;
           }
+          // If mbTokens is empty → no socket data, let through
         }
         if (selectedCase != null &&
             !_Compat.formFactorCompatible(
