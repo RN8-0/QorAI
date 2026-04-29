@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
+import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
 
 class FloatingAiAssistantOverlay extends ConsumerStatefulWidget {
   const FloatingAiAssistantOverlay({super.key});
@@ -19,11 +20,14 @@ class FloatingAiAssistantOverlay extends ConsumerStatefulWidget {
 class _FloatingAiAssistantOverlayState
     extends ConsumerState<FloatingAiAssistantOverlay>
     with TickerProviderStateMixin {
-  static const _fabSize = 68.0;
+  static const _fabSize = 58.0;
   static const _edge = 14.0;
 
   bool _isOpen = false;
+  bool _showHistory = false;
   Offset? _fabOffset;
+  double _dragDistance = 0;
+  bool _dragging = false;
   late final AnimationController _panelCtrl;
   late final AnimationController _fabCtrl;
   late final Animation<double> _panelScale;
@@ -64,12 +68,25 @@ class _FloatingAiAssistantOverlayState
   void _toggle() {
     HapticFeedback.selectionClick();
     _fabCtrl.forward(from: 0);
-    setState(() => _isOpen = !_isOpen);
+    setState(() {
+      _isOpen = !_isOpen;
+      if (!_isOpen) {
+        _showHistory = false;
+      }
+    });
     if (_isOpen) {
       _panelCtrl.forward();
     } else {
       _panelCtrl.reverse();
     }
+  }
+
+  double _bottomLimit(Size size, EdgeInsets padding) {
+    return size.height -
+        _fabSize -
+        padding.bottom -
+        AppTheme.navBarHeight -
+        _edge;
   }
 
   String _routePath(BuildContext context) {
@@ -136,11 +153,46 @@ class _FloatingAiAssistantOverlayState
     final minX = _edge;
     final maxX = math.max(minX, size.width - _fabSize - _edge);
     final minY = padding.top + _edge;
-    final maxY = math.max(
-      minY,
-      size.height - _fabSize - padding.bottom - _edge,
-    );
+    final maxY = math.max(minY, _bottomLimit(size, padding));
     return Offset(raw.dx.clamp(minX, maxX), raw.dy.clamp(minY, maxY));
+  }
+
+  Offset _snapOffset(Offset raw, Size size, EdgeInsets padding) {
+    final clamped = _clampOffset(raw, size, padding);
+    final left = _edge;
+    final right = size.width - _fabSize - _edge;
+    final top = padding.top + _edge;
+    final bottom = _bottomLimit(size, padding);
+
+    final distances = <String, double>{
+      'left': (clamped.dx - left).abs(),
+      'right': (right - clamped.dx).abs(),
+      'top': (clamped.dy - top).abs(),
+      'bottom': (bottom - clamped.dy).abs(),
+    };
+
+    final nearest = distances.entries
+        .reduce((a, b) => a.value <= b.value ? a : b)
+        .key;
+
+    switch (nearest) {
+      case 'left':
+        return Offset(left, clamped.dy);
+      case 'right':
+        return Offset(right, clamped.dy);
+      case 'top':
+        return Offset(clamped.dx, top);
+      default:
+        return Offset(clamped.dx, bottom);
+    }
+  }
+
+  void _openHistory() {
+    setState(() => _showHistory = true);
+  }
+
+  void _closeHistory() {
+    setState(() => _showHistory = false);
   }
 
   @override
@@ -223,11 +275,18 @@ class _FloatingAiAssistantOverlayState
                       ),
                       child: Material(
                         type: MaterialType.transparency,
-                        child: AIChatScreen(
-                          isOverlay: true,
-                          onClose: _toggle,
-                          pageContext: _buildContext(route),
-                        ),
+                        child: _showHistory
+                            ? ChatHistoryScreen(
+                                isOverlay: true,
+                                onBack: _closeHistory,
+                                onClose: _toggle,
+                              )
+                            : AIChatScreen(
+                                isOverlay: true,
+                                onClose: _toggle,
+                                onHistoryPressed: _openHistory,
+                                pageContext: _buildContext(route),
+                              ),
                       ),
                     ),
                   ),
@@ -243,8 +302,19 @@ class _FloatingAiAssistantOverlayState
               height: _fabSize,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: _toggle,
+                onTap: () {
+                  if (_dragging) return;
+                  _toggle();
+                },
+                onPanStart: (_) {
+                  _dragDistance = 0;
+                  _dragging = false;
+                },
                 onPanUpdate: (details) {
+                  _dragDistance += details.delta.distance;
+                  if (_dragDistance > 6) {
+                    _dragging = true;
+                  }
                   setState(() {
                     _fabOffset = _clampOffset(
                       (_fabOffset ?? current) + details.delta,
@@ -252,6 +322,14 @@ class _FloatingAiAssistantOverlayState
                       padding,
                     );
                   });
+                },
+                onPanEnd: (_) {
+                  if (_fabOffset == null) return;
+                  setState(() {
+                    _fabOffset = _snapOffset(_fabOffset!, size, padding);
+                  });
+                  _dragDistance = 0;
+                  _dragging = false;
                 },
                 child: ScaleTransition(
                   scale: _fabScale,
@@ -294,13 +372,13 @@ class _FloatingAiAssistantOverlayState
                                 color: isDark
                                     ? Colors.white
                                     : AppTheme.brandCyan,
-                                size: 22,
+                                size: 18,
                               )
                             : Image.asset(
                                 key: const ValueKey('logo'),
                                 'assets/logo/qor_ai_logo.png',
-                                width: 38,
-                                height: 38,
+                                width: 32,
+                                height: 32,
                                 fit: BoxFit.contain,
                               ),
                       ),

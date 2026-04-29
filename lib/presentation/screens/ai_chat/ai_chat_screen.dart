@@ -22,12 +22,14 @@ class AIChatScreen extends ConsumerStatefulWidget {
   final String? initialQuery;
   final bool isOverlay;
   final VoidCallback? onClose;
+  final VoidCallback? onHistoryPressed;
   final Map<String, dynamic>? pageContext;
   const AIChatScreen({
     super.key,
     this.initialQuery,
     this.isOverlay = false,
     this.onClose,
+    this.onHistoryPressed,
     this.pageContext,
   });
   @override
@@ -39,6 +41,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
+  final ValueNotifier<bool> _hasText = ValueNotifier(false);
   late AnimationController _pulseCtrl;
 
   // Voice chat
@@ -53,12 +56,27 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
+    _ctrl.addListener(_handleTextChanged);
+    _focusNode.addListener(_handleFocusChanged);
     _initSpeech();
     // Auto-send initial query if provided
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _send(widget.initialQuery!);
       });
+    }
+  }
+
+  void _handleTextChanged() {
+    final nextHasText = _ctrl.text.trim().isNotEmpty;
+    if (_hasText.value != nextHasText) {
+      _hasText.value = nextHasText;
+    }
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -85,9 +103,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       setState(() => _isListening = true);
       await _speech.listen(
         onResult: (result) {
-          setState(() {
-            _ctrl.text = result.recognizedWords;
-          });
+          _ctrl.value = TextEditingValue(
+            text: result.recognizedWords,
+            selection: TextSelection.collapsed(
+              offset: result.recognizedWords.length,
+            ),
+          );
           if (result.finalResult && result.recognizedWords.isNotEmpty) {
             _send(result.recognizedWords);
             setState(() => _isListening = false);
@@ -113,9 +134,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   @override
   void dispose() {
     _speech.stop();
+    _ctrl.removeListener(_handleTextChanged);
+    _focusNode.removeListener(_handleFocusChanged);
     _ctrl.dispose();
     _scroll.dispose();
     _focusNode.dispose();
+    _hasText.dispose();
     _pulseCtrl.dispose();
     super.dispose();
   }
@@ -162,6 +186,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);
 
     _ctrl.clear();
+    _hasText.value = false;
 
     await ref
         .read(chatSessionProvider.notifier)
@@ -330,9 +355,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ChatHistoryScreen()),
-              );
+              final action = widget.onHistoryPressed;
+              if (action != null) {
+                action();
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ChatHistoryScreen()),
+                );
+              }
             },
             child: Container(
               width: 36,
@@ -465,7 +495,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   // ─── Input Area ───────────────────────────────────────────────────────────
 
   Widget _buildInputArea(double bottomPadding) {
-    final hasText = _ctrl.text.trim().isNotEmpty;
     // resizeToAvoidBottomInset: false — keyboard height handled manually
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardOpen = keyboardHeight > 0;
@@ -499,121 +528,126 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Pill-shaped text field
-              Expanded(
-                child: Container(
-                  constraints: const BoxConstraints(
-                    minHeight: 40,
-                    maxHeight: 120,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.surfaceColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _focusNode.hasFocus
-                          ? AppTheme.accentCyan.withValues(alpha: 0.45)
-                          : context.dividerColor.withValues(alpha: 0.5),
-                      width: _focusNode.hasFocus ? 1.5 : 1,
-                    ),
-                    boxShadow: _focusNode.hasFocus
-                        ? [
-                            BoxShadow(
-                              color: AppTheme.accentCyan.withValues(
-                                alpha: 0.07,
-                              ),
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: TextField(
-                    controller: _ctrl,
-                    focusNode: _focusNode,
-                    maxLines: null,
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) {
-                      if (hasText) _send(_ctrl.text);
-                    },
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: context.textPrimary,
-                    ),
-                    decoration: InputDecoration(
-                      hintText:
-                          context.l10n?.askMeAnything ?? 'Ask me anything...',
-                      hintStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: context.textTertiaryColor,
+          ValueListenableBuilder<bool>(
+            valueListenable: _hasText,
+            builder: (context, hasText, _) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minHeight: 40,
+                        maxHeight: 120,
                       ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Voice / Send button
-              hasText
-                  ? GestureDetector(
-                      onTap: () => _send(_ctrl.text),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: AppTheme.primaryGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                      decoration: BoxDecoration(
+                        color: context.surfaceColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _focusNode.hasFocus
+                              ? AppTheme.accentCyan.withValues(alpha: 0.45)
+                              : context.dividerColor.withValues(alpha: 0.5),
+                          width: _focusNode.hasFocus ? 1.5 : 1,
                         ),
-                        child: Icon(
-                          Icons.arrow_upward_rounded,
-                          size: 22,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: _toggleListening,
-                      child: AnimatedContainer(
-                        duration: 200.ms,
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _isListening
-                              ? AppTheme.rose500
-                              : context.surfaceColor,
-                          border: _isListening
-                              ? null
-                              : Border.all(
-                                  color: context.dividerColor.withValues(
-                                    alpha: 0.5,
+                        boxShadow: _focusNode.hasFocus
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.accentCyan.withValues(
+                                    alpha: 0.07,
                                   ),
+                                  blurRadius: 8,
                                 ),
+                              ]
+                            : [],
+                      ),
+                      child: TextField(
+                        controller: _ctrl,
+                        focusNode: _focusNode,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: context.textPrimary,
                         ),
-                        child: Icon(
-                          _isListening ? Icons.stop_rounded : Icons.mic_rounded,
-                          size: 20,
-                          color: _isListening
-                              ? Colors.white
-                              : AppTheme.neonCyan,
+                        decoration: InputDecoration(
+                          hintText:
+                              context.l10n?.askMeAnything ??
+                              'Ask me anything...',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            color: context.textTertiaryColor,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ),
-            ],
+                  ),
+                  const SizedBox(width: 8),
+                  hasText
+                      ? GestureDetector(
+                          onTap: () => _send(_ctrl.text),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.primaryGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_upward_rounded,
+                              size: 22,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: _toggleListening,
+                          child: AnimatedContainer(
+                            duration: 200.ms,
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _isListening
+                                  ? AppTheme.rose500
+                                  : context.surfaceColor,
+                              border: _isListening
+                                  ? null
+                                  : Border.all(
+                                      color: context.dividerColor.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                            ),
+                            child: Icon(
+                              _isListening
+                                  ? Icons.stop_rounded
+                                  : Icons.mic_rounded,
+                              size: 20,
+                              color: _isListening
+                                  ? Colors.white
+                                  : AppTheme.neonCyan,
+                            ),
+                          ),
+                        ),
+                ],
+              );
+            },
           ),
 
           // Listening indicator
