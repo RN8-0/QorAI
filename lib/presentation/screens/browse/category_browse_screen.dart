@@ -303,7 +303,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   Map<String, List<FilterOption>> _typesenseFacets = {};
   bool _facetsLoaded = false;
   bool _cachedFacetsLoaded = false;
-  bool _filterCatalogProductsLoaded = false;
   String? _error;
   Timer? _scrollDebounce;
   Timer? _filterHydrationDebounce;
@@ -426,20 +425,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   String? _buildServerSideFilterBy(FilterState state) {
     if (!state.isActive) return null;
 
-    const supportedMultiTokens = {
-      'brand': null,
-      'ram': 'ram',
-      'storage': 'storage',
-      'os': 'os',
-      'screen_tech': 'screen_tech',
-      'refresh_rate': 'refresh_rate',
-      'processor_brand': 'processor_brand',
-      'gpu_type': 'gpu_type',
-      'connectivity': 'connectivity',
-      'usb_type': 'usb_type',
-      'usb_version': 'usb_version',
-      'bluetooth_version': 'bluetooth_version',
-    };
     const supportedRangeFields = {
       'screen_size': 'screenSizeValue',
       'battery': 'batteryCapacityValue',
@@ -461,13 +446,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final selected = entry.value;
       if (selected.isEmpty) continue;
 
-      if (!supportedMultiTokens.containsKey(entry.key)) {
-        return null;
-      }
-
       if (entry.key == 'brand') {
         final brandOptions =
-            _filterDefinitions.firstWhere((def) => def.id == 'brand').options ??
+            _filterDefinitions
+                .firstWhere(
+                  (def) => def.id == 'brand',
+                  orElse: () => const FilterDefinition(
+                    id: 'brand',
+                    label: 'Brand',
+                    type: FilterType.multiSelect,
+                    specKeys: [],
+                  ),
+                )
+                .options ??
             const <FilterOption>[];
         final selectedLabels = brandOptions
             .where((option) => selected.contains(option.id))
@@ -480,14 +471,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         continue;
       }
 
-      final tokenPrefix = supportedMultiTokens[entry.key];
-      if (tokenPrefix == null) return null;
+      // All other multiSelect filters are filterToken-based.
+      // Token format: key:value (e.g. ram:8_gb, screen_tech:amoled, illumination:true)
       final clause = _buildAnyOfClause(
         'filterTokens',
-        selected.map((id) => '$tokenPrefix:$id'),
+        selected.map((id) => '${entry.key}:$id'),
       );
-      if (clause.isEmpty) return null;
-      clauses.add(clause);
+      if (clause.isNotEmpty) clauses.add(clause);
     }
 
     for (final entry in state.ranges.entries) {
@@ -854,12 +844,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     bool showIndicator = true,
   }) async {
     if (!mounted) return;
-
-    if (_facetsLoaded &&
-        _filterCatalogProductsLoaded &&
-        _filterCatalogCategoryId == _activeCategoryId) {
-      return;
-    }
+    // Only load facets (single lightweight per_page=0 query).
+    // Full product catalog loading caused ANR on large categories (6000+ products).
+    if (_facetsLoaded && _filterCatalogCategoryId == _activeCategoryId) return;
     if (_warmingFullFilterCatalog) return;
 
     if (mounted && showIndicator) {
@@ -870,23 +857,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     try {
       await _loadFacets();
-      if (!mounted ||
-          (_filterCatalogProductsLoaded &&
-              _filterCatalogCategoryId == _activeCategoryId)) {
-        return;
-      }
-
-      final ds = ref.read(pbDataSourceProvider);
-      final catalogProducts = await ds.getFilterCatalogProductsInCategoryTs(
-        category: _activeCategoryId,
-      );
-      if (!mounted || catalogProducts.isEmpty) return;
-      setState(() {
-        _filterCatalogProducts = _sanitizeCategoryProducts(catalogProducts);
-        _filterCatalogProductsLoaded = true;
-        _filterCatalogCategoryId = _activeCategoryId;
-        _cachedFilterDefs = null;
-      });
     } finally {
       if (mounted) {
         setState(() => _warmingFullFilterCatalog = false);
@@ -963,7 +933,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _filterCatalogCategoryId = null;
         _typesenseFacets = {};
         _facetsLoaded = false;
-        _filterCatalogProductsLoaded = false;
       }
     });
     final catKey = _activeCategoryId.toLowerCase().trim();
@@ -1125,63 +1094,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
       return;
     }
-    if (_allLoaded || _hydratingFilterCatalog || !mounted) return;
-
-    final hadProducts = _allProducts.isNotEmpty;
-    setState(() {
-      _hydratingFilterCatalog = true;
-      if (!hadProducts) {
-        _loading = true;
-      }
-    });
-    try {
-      final ds = ref.read(pbDataSourceProvider);
-      while (mounted && _filterState.isActive && !_allLoaded) {
-        final nextPageToFetch = _currentPage;
-        final result = await ds.getProductsPageTs(
-          category: _activeCategoryId,
-          limit: 40,
-          page: nextPageToFetch,
-          sortBy: _serverSortBy(),
-        );
-        if (!mounted) return;
-
-        final existingIds = _allProducts.map((p) => p.id).toSet();
-        final newProducts = _sanitizeCategoryProducts(
-          result.products,
-        ).where((p) => !existingIds.contains(p.id)).toList();
-
-        setState(() {
-          if (newProducts.isNotEmpty) {
-            _allProducts = [..._allProducts, ...newProducts];
-          }
-          _currentPage = result.nextPage;
-          _allLoaded = !result.hasMore;
-          _totalProductCount = result.totalFound;
-        });
-        _scheduleVisibleProductsRebuild(
-          debounce: const Duration(milliseconds: 32),
-        );
-
-        if (!result.hasMore) {
-          break;
-        }
-
-        // Yield a frame between page fetches so UI stays responsive while
-        // filters progressively cover the full category.
-        await Future<void>.delayed(const Duration(milliseconds: 16));
-      }
-    } catch (_) {
-      // Keep the already loaded slice if the full fetch fails.
-    } finally {
-      if (mounted) {
-        setState(() {
-          _hydratingFilterCatalog = false;
-          if (!hadProducts) {
-            _loading = false;
-          }
-        });
-      }
+    // For non-smartphone categories, server-side filtering via Typesense handles
+    // all filterToken-based multiSelect filters. No need to load the full catalog.
+    // Just ensure facets are loaded so filter options are populated.
+    if (!_facetsLoaded) {
+      await _warmFullFilterCatalogIfNeeded(showIndicator: false);
     }
   }
 
@@ -1228,7 +1145,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   _filterCatalogCategoryId = null;
                   _typesenseFacets = {};
                   _facetsLoaded = false;
-                  _filterCatalogProductsLoaded = false;
                   _visibleProducts = [];
                   _searchBarKey.currentState?.clear();
                   _searchQuery = '';

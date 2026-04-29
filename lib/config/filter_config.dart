@@ -2094,41 +2094,111 @@ class FilterConfig {
   FilterConfig._();
 
   static const Map<String, String> _trLabelMap = {
+    // General
     'Brand': 'Marka',
     'Price Range': 'Fiyat Aralığı',
     'Score Range': 'Skor Aralığı',
-    'Wireless': 'Kablosuz',
-    'Platform': 'Platform',
-    'Connection Type': 'Bağlantı Tipi',
+    'Weight': 'Ağırlık',
+    'Type': 'Tip',
+    'Series': 'Seri',
+    'Technology': 'Teknoloji',
+    'Compatible OS': 'Uyumlu İşletim Sistemi',
+    'Speed': 'Hız',
+    'Capacity': 'Kapasite',
+    'Form Factor': 'Form Faktörü',
+    // Display
+    'Screen Size': 'Ekran Boyutu',
+    'Screen Technology': 'Ekran Teknolojisi',
+    'Display Resolution': 'Ekran Çözünürlüğü',
+    'Resolution': 'Çözünürlük',
+    'Refresh Rate': 'Yenileme Hızı',
+    'Panel Type': 'Panel Tipi',
+    'Brightness': 'Parlaklık',
+    'Response Time': 'Tepki Süresi',
+    // Memory & Storage
+    'RAM': 'RAM',
+    'Storage': 'Depolama',
+    'Memory Type': 'Bellek Tipi',
+    'VRAM': 'VRAM',
+    'Read Speed': 'Okuma Hızı',
+    // Processor & GPU
+    'Processor Brand': 'İşlemci Markası',
+    'Processor': 'İşlemci',
+    'Chipset': 'Yonga Seti',
+    'Core Count': 'Çekirdek Sayısı',
+    'Integrated Graphics': 'Entegre Grafik',
+    'GPU Type': 'GPU Tipi',
+    'TDP': 'TDP',
+    'Socket': 'Soket',
+    // Battery & Charging
+    'Battery Capacity': 'Pil Kapasitesi',
     'Battery Life': 'Pil Ömrü',
+    // Connectivity
+    'Operating System': 'İşletim Sistemi',
+    'Connectivity': 'Bağlantı',
+    'Wi-Fi Standard': 'Wi-Fi Standardı',
+    'Mesh Support': 'Mesh Desteği',
+    'Bluetooth': 'Bluetooth',
+    'Connection Type': 'Bağlantı Tipi',
+    // Camera
+    'Camera': 'Kamera',
+    'Camera Type': 'Kamera Tipi',
+    'Sensor Size': 'Sensör Boyutu',
+    'Megapixels': 'Megapiksel',
+    'Autofocus': 'Otofokus',
+    'Image Stabilization': 'Görüntü Sabitleyici',
+    'Video Resolution': 'Video Çözünürlüğü',
+    // Health & Sensors
+    'Health Features': 'Sağlık Özellikleri',
+    'Heart Rate': 'Nabız',
+    'GPS': 'GPS',
+    // Water & Dust
+    'Water Resistance': 'Su Direnci',
+    'Waterproof': 'Su Geçirmezlik',
+    // Smart TV
+    'Smart TV': 'Akıllı TV',
+    // Keyboard / Mouse
+    'Switch Type': 'Switch Türü',
+    'Layout': 'Dizilim',
+    'DPI': 'DPI',
+    // PSU
+    'Wattage': 'Watt',
+    'Modular': 'Modüler',
+    // Audio
+    'Wireless': 'Kablosuz',
+    'Active Noise Cancelling': 'Aktif Gürültü Engelleme',
+    'Microphone': 'Mikrofon',
+    'Channels': 'Kanal Sayısı',
+    'Subwoofer Included': 'Subwoofer Dahil',
+    'Polar Pattern': 'Kutup Deseni',
+    // Gamepad
+    'Platform': 'Platform',
     'Vibration': 'Titreşim',
     'Gyro Controls': 'Jiroskop Kontrolü',
     'Back Buttons': 'Arka Tuşlar',
     'Hall Effect': 'Hall Effect',
-    'Storage': 'Depolama',
-    'Screen Size': 'Ekran Boyutu',
-    'Operating System': 'İşletim Sistemi',
-    'Processor Brand': 'İşlemci Markası',
-    'Processor': 'İşlemci',
-    'Resolution': 'Çözünürlük',
-    'Refresh Rate': 'Yenileme Hızı',
-    'Panel Type': 'Panel Tipi',
-    'Camera Type': 'Kamera Tipi',
-    'Sensor Size': 'Sensör Boyutu',
-    'Video Resolution': 'Video Çözünürlüğü',
-    'Smart TV': 'Akıllı TV',
-    'Switch Type': 'Switch Türü',
-    'Layout': 'Dizilim',
-    'DPI': 'DPI',
-    'Socket': 'Soket',
-    'Form Factor': 'Form Faktörü',
-    'Chipset': 'Yonga Seti',
-    'Wi-Fi Standard': 'Wi-Fi Standardı',
-    'Mesh Support': 'Mesh Desteği',
-    'Capacity': 'Kapasite',
-    'Display Resolution': 'Ekran Çözünürlüğü',
-    'Type': 'Tip',
-    'Polar Pattern': 'Kutup Deseni',
+    // Cooling
+    'Radiator Size': 'Radyatör Boyutu',
+    // Drone
+    'Flight Time': 'Uçuş Süresi',
+    'Obstacle Avoidance': 'Engel Algılama',
+    // Robot Vacuum
+    'Mopping': 'Paspas',
+    'Suction Power': 'Emme Gücü',
+    'Self-Emptying': 'Otomatik Boşaltma',
+    'Tank System': 'Tank Sistemi',
+    // VR
+    'Standalone': 'Bağımsız Kullanım',
+    // GPU specific
+    'Memory Speed (Effective)': 'Bellek Hızı (Efektif)',
+    'Multi-GPU (SLI/CrossFire)': 'Çoklu GPU (SLI/CrossFire)',
+    'PCIe Interface': 'PCIe Arayüzü',
+    'Power Connection': 'Güç Bağlantısı',
+    'Processor Technologies': 'İşlemci Teknolojileri',
+    'Ray Tracing Core': 'Ray Tracing Çekirdeği',
+    'Illumination': 'Aydınlatma',
+    'Cooling Type': 'Soğutma Tipi',
+    'Power Consumption': 'Güç Tüketimi',
   };
 
   static const Map<String, String> _trOptionMap = {
@@ -2136,6 +2206,13 @@ class FilterConfig {
     '40–60 (Average)': '40–60 (Orta)',
     '60–80 (Good)': '60–80 (İyi)',
     '80–100 (Excellent)': '80–100 (Mükemmel)',
+    'Yes': 'Evet',
+    'No': 'Hayır',
+    'True': 'Evet',
+    'False': 'Hayır',
+    'true': 'Evet',
+    'false': 'Hayır',
+    'Both': 'İkisi de',
   };
 
   static String localizeLabel(String label, {required String languageCode}) {
