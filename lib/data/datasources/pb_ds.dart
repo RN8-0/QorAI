@@ -2481,7 +2481,7 @@ class PbDataSource {
 
     final filterId = token.substring(0, separator).trim();
     final optionId = token.substring(separator + 1).trim();
-    if (filterId.isEmpty || optionId.isEmpty || optionId == 'true') {
+    if (filterId.isEmpty || optionId.isEmpty) {
       return null;
     }
 

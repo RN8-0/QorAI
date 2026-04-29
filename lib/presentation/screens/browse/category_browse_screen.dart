@@ -353,16 +353,39 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _activeCategoryId,
         filterDefinitionProducts,
       );
-      // Inject options from Typesense facets when available.
       if (_typesenseFacets.isNotEmpty) {
+        final coveredFacetKeys = <String>{};
         defs = defs
-            .map<FilterDefinition>((def) {
-              if (_typesenseFacets.containsKey(def.id)) {
-                return def.withOptions(_typesenseFacets[def.id]!);
-              }
+            .map(_definitionWithFacetOptions)
+            .where(_hasServerSideDefinitionSupport)
+            .map((def) {
+              final key = def.id == 'brand'
+                  ? 'brand'
+                  : _facetKeyForFilterId(def.id);
+              if (key.isNotEmpty) coveredFacetKeys.add(key);
               return def;
             })
-            .toList(growable: false);
+            .toList(growable: true);
+
+        for (final entry in _typesenseFacets.entries) {
+          if (entry.key == 'brand' || coveredFacetKeys.contains(entry.key)) {
+            continue;
+          }
+          final options = entry.value;
+          if (options.isEmpty) continue;
+          defs.add(
+            FilterDefinition(
+              id: entry.key,
+              label: _labelForFacetKey(entry.key),
+              type: _isBooleanFacet(options)
+                  ? FilterType.toggle
+                  : FilterType.multiSelect,
+              options: options,
+              isDynamic: true,
+              specKeys: [entry.key],
+            ),
+          );
+        }
       }
       _cachedFilterDefs = defs;
       _cachedProductCount = filterDefinitionProducts.length;
@@ -388,22 +411,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool get _isTurkish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
+  String get _languageCode =>
+      Localizations.localeOf(context).languageCode.toLowerCase();
+
   String _fallbackText({required String en, required String tr}) {
     return _isTurkish ? tr : en;
   }
 
   String _localizedFilterLabel(String label) {
-    return FilterConfig.localizeLabel(
-      label,
-      languageCode: _isTurkish ? 'tr' : 'en',
-    );
+    return FilterConfig.localizeLabel(label, languageCode: _languageCode);
   }
 
   String _localizedFilterOption(String label) {
-    return FilterConfig.localizeOptionLabel(
-      label,
-      languageCode: _isTurkish ? 'tr' : 'en',
-    );
+    return FilterConfig.localizeOptionLabel(label, languageCode: _languageCode);
   }
 
   String _quoteTypesenseValue(String value) {
@@ -422,23 +442,108 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return '(${uniqueValues.map((value) => '$field:=${_quoteTypesenseValue(value)}').join(' || ')})';
   }
 
+  static const Map<String, String> _serverRangeFields = {
+    'screen_size': 'screenSizeValue',
+    'battery': 'batteryCapacityValue',
+    'weight': 'weightValueKg',
+  };
+
+  static const Map<String, List<String>> _facetKeyAliases = {
+    'operating_system': ['os'],
+    'os_version': ['os'],
+    'screen_technology': ['screen_tech'],
+    'panel_type': ['screen_tech'],
+    'display': ['screen_tech'],
+    'screen_type': ['screen_tech'],
+    'processor': ['processor_brand'],
+    'cpu': ['processor_brand'],
+    'graphics': ['gpu_type'],
+    'connection_type': ['connectivity'],
+    'wireless': ['connectivity'],
+    'bluetooth': ['bluetooth_version'],
+    'usb': ['usb_type'],
+    'waterproof': ['water_resistance'],
+  };
+
+  static const Map<String, String> _facetLabelOverrides = {
+    'brand': 'Brand',
+    'ram': 'RAM',
+    'storage': 'Storage',
+    'os': 'Operating System',
+    'screen_tech': 'Screen Technology',
+    'refresh_rate': 'Refresh Rate',
+    'processor_brand': 'Processor Brand',
+    'gpu_type': 'GPU Type',
+    'connectivity': 'Connectivity',
+    'usb_type': 'USB Type',
+    'usb_version': 'USB Version',
+    'bluetooth_version': 'Bluetooth Version',
+    'five_g': '5G',
+    'four_half_g': '4.5G Support',
+    'nfc': 'NFC',
+    'wireless_charging': 'Wireless Charging',
+    'fast_charging': 'Fast Charging',
+    'fingerprint': 'Fingerprint Reader',
+    'water_resistance': 'Water Resistance',
+  };
+
+  String _facetKeyForFilterId(String filterId) {
+    if (_typesenseFacets.containsKey(filterId)) return filterId;
+    for (final alias in _facetKeyAliases[filterId] ?? const <String>[]) {
+      if (_typesenseFacets.containsKey(alias)) return alias;
+    }
+    return '';
+  }
+
+  String _labelForFacetKey(String key) {
+    final override = _facetLabelOverrides[key];
+    if (override != null) return override;
+    return key
+        .split('_')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) => part.length <= 3
+              ? part.toUpperCase()
+              : part[0].toUpperCase() + part.substring(1),
+        )
+        .join(' ');
+  }
+
+  bool _isBooleanFacet(List<FilterOption> options) {
+    if (options.isEmpty) return false;
+    return options.every(
+      (option) => option.id == 'true' || option.id == 'false',
+    );
+  }
+
+  bool _hasServerSideDefinitionSupport(FilterDefinition def) {
+    if (def.id == 'brand') return true;
+    switch (def.type) {
+      case FilterType.multiSelect:
+        final key = _facetKeyForFilterId(def.id);
+        return key.isNotEmpty && (_typesenseFacets[key]?.isNotEmpty ?? false);
+      case FilterType.toggle:
+        final key = _facetKeyForFilterId(def.id);
+        return key.isNotEmpty &&
+            (_typesenseFacets[key]?.any((option) => option.id == 'true') ??
+                false);
+      case FilterType.rangeSlider:
+        return _serverRangeFields.containsKey(def.id);
+    }
+  }
+
+  FilterDefinition _definitionWithFacetOptions(FilterDefinition def) {
+    if (def.id == 'brand') {
+      return def.withOptions(_typesenseFacets['brand'] ?? def.options ?? []);
+    }
+    final key = _facetKeyForFilterId(def.id);
+    final options = key.isEmpty ? null : _typesenseFacets[key];
+    if (options == null || options.isEmpty) return def;
+    return def.withOptions(options);
+  }
+
   String? _buildServerSideFilterBy(FilterState state) {
     if (!state.isActive) return null;
-
-    const supportedRangeFields = {
-      'screen_size': 'screenSizeValue',
-      'battery': 'batteryCapacityValue',
-      'weight': 'weightValueKg',
-    };
-    const supportedToggleTokens = {
-      'five_g': 'five_g:true',
-      'nfc': 'nfc:true',
-      'wireless_charging': 'wireless_charging:true',
-      'fast_charging': 'fast_charging:true',
-      'fingerprint': 'fingerprint:true',
-      'water_resistance': 'water_resistance:true',
-      'four_half_g': 'four_half_g:true',
-    };
 
     final clauses = <String>[];
 
@@ -460,17 +565,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         continue;
       }
 
-      // All other multiSelect filters are filterToken-based.
-      // Token format: key:value (e.g. ram:8_gb, screen_tech:amoled, illumination:true)
+      final tokenKey = _facetKeyForFilterId(entry.key);
+      if (tokenKey.isEmpty) return null;
       final clause = _buildAnyOfClause(
         'filterTokens',
-        selected.map((id) => '${entry.key}:$id'),
+        selected.map((id) => '$tokenKey:$id'),
       );
       if (clause.isNotEmpty) clauses.add(clause);
     }
 
     for (final entry in state.ranges.entries) {
-      final field = supportedRangeFields[entry.key];
+      final field = _serverRangeFields[entry.key];
       if (field == null) return null;
       final range = entry.value;
 
@@ -490,10 +595,21 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     for (final entry in state.toggles.entries) {
       final value = entry.value;
       if (value == null) continue;
-      if (value != true) return null;
-      final token = supportedToggleTokens[entry.key];
-      if (token == null) return null;
-      clauses.add('filterTokens:=${_quoteTypesenseValue(token)}');
+      final tokenKey = _facetKeyForFilterId(entry.key);
+      if (tokenKey.isEmpty) return null;
+      final optionId = value ? 'true' : 'false';
+      final hasOption =
+          _typesenseFacets[tokenKey]?.any((option) => option.id == optionId) ??
+          false;
+      if (hasOption) {
+        final token = '$tokenKey:$optionId';
+        clauses.add('filterTokens:=${_quoteTypesenseValue(token)}');
+      } else if (!value) {
+        final trueToken = '$tokenKey:true';
+        clauses.add('filterTokens:!=${_quoteTypesenseValue(trueToken)}');
+      } else {
+        return null;
+      }
     }
 
     return clauses.isEmpty ? null : clauses.join(' && ');
@@ -815,7 +931,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final facets = await ds.getTypesenseFacets(
         category: _activeCategoryId,
         facets: ['brand', 'filterTokens'],
-        maxFacetValues: 220,
+        maxFacetValues: 1000,
       );
       if (!mounted || facets.isEmpty) return;
       setState(() {

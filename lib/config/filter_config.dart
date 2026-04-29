@@ -1,6 +1,8 @@
 /// Filter configuration per product category (epey.com-style filtering).
 library;
 
+import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+
 enum FilterType { multiSelect, rangeSlider, toggle }
 
 class FilterOption {
@@ -2216,16 +2218,24 @@ class FilterConfig {
   };
 
   static String localizeLabel(String label, {required String languageCode}) {
-    if (!languageCode.toLowerCase().startsWith('tr')) return label;
-    return _trLabelMap[label] ?? label;
+    final locale = languageCode.toLowerCase();
+    if (locale == 'en') return label;
+    if (locale.startsWith('tr') && _trLabelMap.containsKey(label)) {
+      return _trLabelMap[label]!;
+    }
+    return spec_dict.translateSpec(label, locale);
   }
 
   static String localizeOptionLabel(
     String label, {
     required String languageCode,
   }) {
-    if (!languageCode.toLowerCase().startsWith('tr')) return label;
-    return _trOptionMap[label] ?? label;
+    final locale = languageCode.toLowerCase();
+    if (locale == 'en') return label;
+    if (locale.startsWith('tr') && _trOptionMap.containsKey(label)) {
+      return _trOptionMap[label]!;
+    }
+    return spec_dict.translateSpecValue(label, locale);
   }
 
   static List<FilterDefinition> _mergeDefinitions(

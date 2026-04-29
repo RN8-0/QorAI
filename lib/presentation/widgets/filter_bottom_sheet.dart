@@ -68,11 +68,123 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   bool get _isTurkish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
 
+  String get _localeCode =>
+      Localizations.localeOf(context).languageCode.toLowerCase();
+
   String _fallbackText({required String en, required String tr}) {
     return _isTurkish ? tr : en;
   }
 
-  String get _languageCode => _isTurkish ? 'tr' : 'en';
+  String get _languageCode => _localeCode;
+
+  String _uiText(String key) {
+    final l10n = context.l10n;
+    switch (key) {
+      case 'filters':
+        return l10n?.filters ?? _localizedUiText(key);
+      case 'reset':
+        return l10n?.reset ?? _localizedUiText(key);
+      case 'applyFilters':
+        return l10n?.applyFilters ?? _localizedUiText(key);
+      case 'applyFiltersCount':
+        return l10n?.applyFiltersCount(_state.activeCount) ??
+            _localizedUiText(key, count: _state.activeCount);
+      case 'any':
+        return l10n?.any ?? _localizedUiText(key);
+      case 'yes':
+        return l10n?.yes ?? _localizedUiText(key);
+      case 'no':
+        return l10n?.no ?? _localizedUiText(key);
+      default:
+        return _localizedUiText(key);
+    }
+  }
+
+  String _localizedUiText(String key, {int? count}) {
+    final values = _filterUiTranslations[key];
+    final text = values?[_localeCode] ?? values?['en'] ?? key;
+    return count == null ? text : text.replaceAll('{count}', '$count');
+  }
+
+  static const Map<String, Map<String, String>> _filterUiTranslations = {
+    'selectedFilters': {
+      'en': 'Selected filters',
+      'tr': 'Seçili filtreler',
+      'de': 'Ausgewählte Filter',
+      'es': 'Filtros seleccionados',
+      'fr': 'Filtres sélectionnés',
+      'it': 'Filtri selezionati',
+      'ja': '選択中のフィルター',
+      'nl': 'Geselecteerde filters',
+      'pl': 'Wybrane filtry',
+      'pt': 'Filtros selecionados',
+      'sv': 'Valda filter',
+      'ar': 'الفلاتر المحددة',
+    },
+    'refine': {
+      'en': 'Refine by brand and specs',
+      'tr': 'Marka ve özelliklere göre daralt',
+      'de': 'Nach Marke und Daten verfeinern',
+      'es': 'Refinar por marca y especificaciones',
+      'fr': 'Affiner par marque et caractéristiques',
+      'it': 'Filtra per marca e specifiche',
+      'ja': 'ブランドと仕様で絞り込み',
+      'nl': 'Verfijn op merk en specificaties',
+      'pl': 'Zawęź według marki i parametrów',
+      'pt': 'Refinar por marca e especificações',
+      'sv': 'Filtrera efter märke och specifikationer',
+      'ar': 'تصفية حسب العلامة والمواصفات',
+    },
+    'refinePrice': {
+      'en': 'Refine by brand, specs and price',
+      'tr': 'Marka, özellik ve fiyata göre daralt',
+      'de': 'Nach Marke, Daten und Preis verfeinern',
+      'es': 'Refinar por marca, especificaciones y precio',
+      'fr': 'Affiner par marque, caractéristiques et prix',
+      'it': 'Filtra per marca, specifiche e prezzo',
+      'ja': 'ブランド、仕様、価格で絞り込み',
+      'nl': 'Verfijn op merk, specificaties en prijs',
+      'pl': 'Zawęź według marki, parametrów i ceny',
+      'pt': 'Refinar por marca, especificações e preço',
+      'sv': 'Filtrera efter märke, specifikationer och pris',
+      'ar': 'تصفية حسب العلامة والمواصفات والسعر',
+    },
+    'noOptions': {
+      'en': 'No matching options found',
+      'tr': 'Eşleşen seçenek bulunamadı',
+      'de': 'Keine passenden Optionen gefunden',
+      'es': 'No se encontraron opciones coincidentes',
+      'fr': 'Aucune option correspondante',
+      'it': 'Nessuna opzione corrispondente',
+      'ja': '一致する項目がありません',
+      'nl': 'Geen overeenkomende opties gevonden',
+      'pl': 'Nie znaleziono pasujących opcji',
+      'pt': 'Nenhuma opção correspondente',
+      'sv': 'Inga matchande alternativ hittades',
+      'ar': 'لم يتم العثور على خيارات مطابقة',
+    },
+    'showMore': {
+      'en': 'Show more ({count})',
+      'tr': 'Daha fazla göster ({count})',
+      'de': 'Mehr anzeigen ({count})',
+      'es': 'Mostrar más ({count})',
+      'fr': 'Afficher plus ({count})',
+      'it': 'Mostra altro ({count})',
+      'ja': 'さらに表示 ({count})',
+      'nl': 'Meer tonen ({count})',
+      'pl': 'Pokaż więcej ({count})',
+      'pt': 'Mostrar mais ({count})',
+      'sv': 'Visa fler ({count})',
+      'ar': 'عرض المزيد ({count})',
+    },
+    'filters': {'en': 'Filters', 'tr': 'Filtreler'},
+    'reset': {'en': 'Reset', 'tr': 'Sıfırla'},
+    'applyFilters': {'en': 'Apply Filters', 'tr': 'Filtreleri Uygula'},
+    'applyFiltersCount': {'en': 'Apply ({count})', 'tr': 'Uygula ({count})'},
+    'any': {'en': 'Any', 'tr': 'Fark etmez'},
+    'yes': {'en': 'Yes', 'tr': 'Evet'},
+    'no': {'en': 'No', 'tr': 'Hayır'},
+  };
 
   String _displayLabel(String label) {
     return FilterConfig.localizeLabel(label, languageCode: _languageCode);
@@ -234,9 +346,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       case FilterType.toggle:
         final toggle = _toggleFor(def.id);
         if (toggle == null) return '';
-        return toggle
-            ? _fallbackText(en: 'Yes', tr: 'Evet')
-            : _fallbackText(en: 'No', tr: 'Hayır');
+        return toggle ? _uiText('yes') : _uiText('no');
     }
   }
 
@@ -292,7 +402,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _fallbackText(en: 'Selected filters', tr: 'Seçili filtreler'),
+            _uiText('selectedFilters'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -417,7 +527,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       Row(
                         children: [
                           Text(
-                            _fallbackText(en: 'Filters', tr: 'Filtreler'),
+                            _uiText('filters'),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
@@ -450,14 +560,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _fallbackText(
-                          en: _hasPriceFilter
-                              ? 'Refine by brand, specs and price'
-                              : 'Refine by brand and specs',
-                          tr: _hasPriceFilter
-                              ? 'Marka, özellik ve fiyata göre daralt'
-                              : 'Marka ve özelliklere göre daralt',
-                        ),
+                        _uiText(_hasPriceFilter ? 'refinePrice' : 'refine'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -477,7 +580,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       color: AppTheme.brandCyan,
                     ),
                     label: Text(
-                      _fallbackText(en: 'Reset', tr: 'Sıfırla'),
+                      _uiText('reset'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -586,14 +689,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         const SizedBox(width: 8),
                         Text(
                           activeCount > 0
-                              ? _fallbackText(
-                                  en: 'Apply ($activeCount)',
-                                  tr: 'Uygula ($activeCount)',
-                                )
-                              : _fallbackText(
-                                  en: 'Apply Filters',
-                                  tr: 'Filtreleri Uygula',
-                                ),
+                              ? _uiText('applyFiltersCount')
+                              : _uiText('applyFilters'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -792,10 +889,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text(
-              _fallbackText(
-                en: 'No matching options found',
-                tr: 'Eşleşen seçenek bulunamadı',
-              ),
+              _fallbackText(en: _uiText('noOptions'), tr: _uiText('noOptions')),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -887,9 +981,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               },
               icon: const Icon(Icons.expand_more_rounded, size: 18),
               label: Text(
-                _fallbackText(
-                  en: 'Show more (${visibleOptions.length - renderedOptions.length})',
-                  tr: 'Daha fazla göster (${visibleOptions.length - renderedOptions.length})',
+                _localizedUiText(
+                  'showMore',
+                  count: visibleOptions.length - renderedOptions.length,
                 ),
               ),
             ),
@@ -992,21 +1086,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         children: [
           Expanded(
             child: _ToggleButton(
-              label: _fallbackText(en: 'Any', tr: 'Fark etmez'),
+              label: _uiText('any'),
               selected: selectedIndex == 0,
               onTap: () => _setToggle(def.id, null),
             ),
           ),
           Expanded(
             child: _ToggleButton(
-              label: _fallbackText(en: 'Yes', tr: 'Evet'),
+              label: _uiText('yes'),
               selected: selectedIndex == 1,
               onTap: () => _setToggle(def.id, true),
             ),
           ),
           Expanded(
             child: _ToggleButton(
-              label: _fallbackText(en: 'No', tr: 'Hayır'),
+              label: _uiText('no'),
               selected: selectedIndex == 2,
               onTap: () => _setToggle(def.id, false),
             ),
