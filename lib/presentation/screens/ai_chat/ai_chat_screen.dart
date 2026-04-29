@@ -185,7 +185,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     HapticFeedback.lightImpact();
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);
 
-    _ctrl.clear();
+    _ctrl.value = const TextEditingValue(
+      text: '',
+      selection: TextSelection.collapsed(offset: 0),
+      composing: TextRange.empty,
+    );
+    _ctrl.clearComposing();
     _hasText.value = false;
 
     await ref
@@ -570,6 +575,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                         maxLines: null,
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.newline,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        smartDashesType: SmartDashesType.disabled,
+                        smartQuotesType: SmartQuotesType.disabled,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           color: context.textPrimary,

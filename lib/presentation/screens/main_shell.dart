@@ -942,6 +942,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
         ? Colors.black.withValues(alpha: 0.55)
         : Colors.black.withValues(alpha: 0.18);
 
+    final openFabLift = _isOpen ? 112.0 : 0.0;
     final panelBottomOffset = bottomPadding + fabBottomBase + fabSize + 6;
 
     return LayoutBuilder(
@@ -1029,7 +1030,7 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
               // hissi çok daha düşük maliyetle verir.
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
-              bottom: bottomPadding + fabBottomBase,
+              bottom: bottomPadding + fabBottomBase + openFabLift,
               right: fabRight,
               child: GestureDetector(
                 onTap: _toggle,

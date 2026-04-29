@@ -358,11 +358,13 @@ class _CompareYouTubeQualityOption {
   final String label;
   final String url;
   final int rank;
+  final bool isHls;
 
   const _CompareYouTubeQualityOption({
     required this.label,
     required this.url,
     required this.rank,
+    this.isHls = false,
   });
 }
 
@@ -379,8 +381,8 @@ Future<yt_explode.StreamManifest> _loadCompareYouTubeManifest(
   }
   final yte = yt_explode.YoutubeExplode();
   try {
-    // safari client provides high-quality HLS streams (720p–1080p+).
-    // android client is added as fallback for muxed streams.
+    // android muxed streams are more reliable in video_player/ExoPlayer;
+    // safari is kept for HLS fallback when muxed streams are unavailable.
     final manifest = await yte.videos.streamsClient.getManifest(
       videoId,
       ytClients: [
@@ -398,34 +400,48 @@ Future<yt_explode.StreamManifest> _loadCompareYouTubeManifest(
 List<_CompareYouTubeQualityOption> _buildCompareQualityOptions(
   yt_explode.StreamManifest manifest,
 ) {
-  final hlsStreams = manifest.hls
-      .whereType<yt_explode.HlsMuxedStreamInfo>()
-      .toList(growable: false);
-  final Iterable<yt_explode.VideoStreamInfo> playableStreams =
-      hlsStreams.isNotEmpty ? hlsStreams : manifest.muxed.sortByBitrate();
+  final options = <_CompareYouTubeQualityOption>[];
+  final usedLabels = <String>{};
 
-  final byLabel = <String, yt_explode.VideoStreamInfo>{};
-  for (final stream in playableStreams) {
+  void addOption(yt_explode.VideoStreamInfo stream, {required bool isHls}) {
     final label = stream.qualityLabel.trim().isNotEmpty
         ? stream.qualityLabel.trim()
         : 'Best';
-    byLabel[label] = stream;
+    var visibleLabel = label;
+    if (usedLabels.contains(visibleLabel)) {
+      visibleLabel = '$label HLS';
+    }
+    var suffix = 2;
+    while (usedLabels.contains(visibleLabel)) {
+      visibleLabel = '$label HLS $suffix';
+      suffix++;
+    }
+    usedLabels.add(visibleLabel);
+    options.add(
+      _CompareYouTubeQualityOption(
+        label: visibleLabel,
+        url: stream.url.toString(),
+        rank: _qualityRank(label),
+        isHls: isHls,
+      ),
+    );
   }
 
-  return byLabel.entries
-      .map(
-        (entry) => _CompareYouTubeQualityOption(
-          label: entry.key,
-          url: entry.value.url.toString(),
-          rank: _qualityRank(entry.key),
-        ),
-      )
-      .toList()
-    ..sort((a, b) {
-      final rankCompare = b.rank.compareTo(a.rank);
-      if (rankCompare != 0) return rankCompare;
-      return b.label.compareTo(a.label);
-    });
+  for (final stream in manifest.muxed.sortByBitrate()) {
+    addOption(stream, isHls: false);
+  }
+  for (final stream
+      in manifest.hls.whereType<yt_explode.HlsMuxedStreamInfo>()) {
+    addOption(stream, isHls: true);
+  }
+
+  return options..sort((a, b) {
+    final hlsCompare = (a.isHls ? 1 : 0).compareTo(b.isHls ? 1 : 0);
+    if (hlsCompare != 0) return hlsCompare;
+    final rankCompare = b.rank.compareTo(a.rank);
+    if (rankCompare != 0) return rankCompare;
+    return b.label.compareTo(a.label);
+  });
 }
 
 int _qualityRank(String label) {
@@ -440,9 +456,12 @@ _CompareYouTubeQualityOption _preferredCompareQuality(
     throw StateError('No playable YouTube streams found');
   }
   for (final option in options) {
-    if (option.rank >= 1080) return option;
+    if (!option.isHls && option.rank >= 720) return option;
   }
-  return options.first;
+  return options.firstWhere(
+    (option) => !option.isHls,
+    orElse: () => options.first,
+  );
 }
 
 String _compareQualitySheetTitle(BuildContext context) {
@@ -505,12 +524,25 @@ class _CompareYouTubePlaybackSession {
     final manifest = await _loadCompareYouTubeManifest(videoId);
     final options = _buildCompareQualityOptions(manifest);
     final initial = _preferredCompareQuality(options);
-    await switchQuality(
+    Object? lastError;
+    final ordered = [
       initial,
-      options: options,
-      resumeFrom: Duration.zero,
-      autoplay: false,
-    );
+      ...options.where((option) => option.label != initial.label),
+    ];
+    for (final option in ordered) {
+      try {
+        await switchQuality(
+          option,
+          options: options,
+          resumeFrom: Duration.zero,
+          autoplay: false,
+        );
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw StateError('No playable YouTube streams initialized: $lastError');
   }
 
   Future<void> play() async {
@@ -546,16 +578,13 @@ class _CompareYouTubePlaybackSession {
       return;
     }
 
-    final nextVideo = VideoPlayerController.networkUrl(
-      Uri.parse(option.url),
-      httpHeaders: const {
-        'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)',
-        'Referer': 'https://www.youtube.com',
-        'Origin': 'https://www.youtube.com',
-      },
-    );
-    await nextVideo.initialize();
+    final nextVideo = VideoPlayerController.networkUrl(Uri.parse(option.url));
+    try {
+      await nextVideo.initialize();
+    } catch (_) {
+      await nextVideo.dispose();
+      rethrow;
+    }
     if (currentPosition > Duration.zero) {
       final duration = nextVideo.value.duration;
       final target = currentPosition > duration ? duration : currentPosition;

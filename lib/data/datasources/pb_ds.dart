@@ -2232,15 +2232,21 @@ class PbDataSource {
     return _createRealtimeStream<List<ChatConversation>>(
       collection: 'chat_conversations',
       load: () async {
-        final result = await _pb
-            .collection('chat_conversations')
-            .getList(
-              page: 1,
-              perPage: 50,
-              filter: 'userId = "$userId"',
-              sort: '-updated',
-            );
-        return result.items.map(ChatConversation.fromPb).toList();
+        try {
+          final result = await _pb
+              .collection('chat_conversations')
+              .getList(
+                page: 1,
+                perPage: 50,
+                filter: 'userId = "$userId"',
+                sort: '-updated',
+              )
+              .timeout(const Duration(seconds: 12));
+          return result.items.map(ChatConversation.fromPb).toList();
+        } catch (error) {
+          debugPrint('[PbDs] chat history load failed: $error');
+          return <ChatConversation>[];
+        }
       },
       shouldReload: (event) => event.record?.data['userId'] == userId,
     );

@@ -92,6 +92,21 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     return '${diff.inMinutes}m ago';
   }
 
+  bool _isGeneratedAvatarUrl(String? photoUrl) {
+    final value = (photoUrl ?? '').trim().toLowerCase();
+    if (value.isEmpty) return false;
+    return value.contains('ui-avatars.com') ||
+        value.contains('/assets/images/robot') ||
+        value.contains('/assets/images/bot') ||
+        value.contains('default_avatar');
+  }
+
+  String? _realPhotoUrl(String? photoUrl) {
+    final value = (photoUrl ?? '').trim();
+    if (value.isEmpty || _isGeneratedAvatarUrl(value)) return null;
+    return value;
+  }
+
   @override
   Widget build(BuildContext context) {
     final userId = widget.data['userId'] as String? ?? 'anonymous';
@@ -117,12 +132,13 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     final currentUser = ref.read(userProfileProvider).valueOrNull;
     final currentUserId = currentUser?.uid;
     final isOwner = currentUser != null && currentUser.uid == userId;
-    final authorPhotoUrl =
-        (isOwner
-                ? currentUser.photoURL
-                : widget.data['authorPhotoURL'] ?? widget.data['photoURL'])
-            ?.toString()
-            .trim();
+    final authPhoto = pb.authStore.record?.getStringValue('photoURL');
+    final authorPhotoUrl = isOwner
+        ? (_realPhotoUrl(currentUser.photoURL) ?? _realPhotoUrl(authPhoto))
+        : _realPhotoUrl(
+            (widget.data['authorPhotoURL'] ?? widget.data['photoURL'])
+                ?.toString(),
+          );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),

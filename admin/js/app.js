@@ -160,6 +160,7 @@ function showView(name){
   if(name==='users')loadUsers();
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
+  if(name==='prompts')loadAiPromptManager();
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
@@ -2547,30 +2548,126 @@ const RC_KEYS = [
   { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
 ];
 
-const AI_PROMPT_KEYS = [
-  { id: 'prompt_gemini_chat_system', key: 'gemini_chat_system' },
-  { id: 'prompt_gemini_quiz_single_system', key: 'gemini_quiz_single_system' },
-  { id: 'prompt_gemini_quiz_compare_system', key: 'gemini_quiz_compare_system' },
+const AI_PROMPT_DEFS = [
+  {key:'gemini_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Sistem Promptu',desc:'Sayfa/ürün bağlamını bilen, web araştırması yapabilen ana chat davranışı.',def:`You are Qor AI, a premium AI product advisor inside a Flutter shopping app. Use the active page context, product context, comparison context, user profile, country, currency, and current year. Answer in the user's language. Be concise, specific, and practical. When the user asks about the current screen, identify the screen from route/page context. When product facts may be current or uncertain, use Google Search grounding and state uncertainty clearly. Never invent prices, availability, or specifications.`},
+  {key:'deepseek_chat_system',group:'Qor AI Chat',title:'DeepSeek Chat Sistem Promptu',desc:'Text-only fallback/primary chat modeli için sistem promptu.',def:`You are Qor AI, a concise product advisor. Use the user profile, language, country, priorities, and current app context. Give direct, helpful answers with concrete product reasoning. If data is missing, say what is missing and suggest the next best action.`},
+  {key:'gemini_link_research',group:'Link Analysis',title:'Link Research Promptu',desc:'URL/ASIN/ISBN veya metadata eksik olduğunda Google Search araştırması.',def:`Research the provided product URL using Google Search. Identify the exact product, matched URL, product title, identifier match, price if visible, and short evidence. Prefer official/store result and identifier confirmation. Return compact evidence that can be parsed by the app.`},
+  {key:'deepseek_link_analysis_system',group:'Link Analysis',title:'Link Analysis Promptu',desc:'Linkten ürün metadata, kategori, skor ve kısa analiz çıkaran ana prompt.',def:`You are Qor AI's product link analysis engine. Analyze the URL and supplied metadata against the user's profile. Return only valid JSON with title, image_url, price, site_name, score, analysis, category, and is_product. Be strict: if it is not a purchasable product, mark is_product false. Write analysis in the user's language and make it specific to the product and profile.`},
+  {key:'gemini_link_analysis_system',group:'Link Analysis',title:'Gemini Link Analysis Promptu',desc:'Gemini tabanlı link analizi fallback/supplemental promptu.',def:`You are Qor AI's web-grounded link analysis engine. Use URL metadata and research evidence to identify the exact product, category, price hints, compatibility score, and personalized analysis. Return only valid JSON. Do not fabricate data; use uncertainty when evidence is weak.`},
+  {key:'gemini_quiz_single_system',group:'Link Quiz',title:'Tekil Link Quiz Promptu',desc:'Tekil ürün link analizinde üretilen kişisel quiz.',def:`Generate a complex personalized product quiz for one product. Ask 6-8 high-signal questions that reveal usage intent, performance expectations, lifestyle constraints, owned-device context, risk tolerance, and must-have features. Each question must have exactly 4 options. Never ask generic brand or budget-only questions. Return only valid JSON with questions.`},
+  {key:'gemini_quiz_compare_system',group:'Link Quiz',title:'Karşılaştırma Quiz Promptu',desc:'Birden fazla link/ürün karşılaştırması için quiz promptu.',def:`Generate a complex comparison quiz for multiple products. Ask 6-8 questions that expose decision criteria, trade-off tolerance, usage scenarios, feature priorities, ecosystem constraints, and upgrade intent. Each question must have exactly 4 options. The questions must help choose between the listed products. Return only valid JSON with questions.`},
+  {key:'deepseek_quiz_generation_system',group:'Link Quiz',title:'DeepSeek Link Quiz Promptu',desc:'DeepSeek tarafındaki link quiz üretimi.',def:`You are Qor AI's quiz generation engine. Generate a personalized product quiz for the given category, product title, and URL. Ask practical, category-specific questions with exactly 4 options each. Return valid JSON only.`},
+  {key:'gemini_enhanced_link_research',group:'Product Deep Analysis',title:'Ürün İnceleme Research Promptu',desc:'Link analizi sonrası review/forum/expert research fazı.',def:`Research the product using current web knowledge. Find user reviews, Reddit/forum opinions, expert reviews, common pros/cons, known issues, and current pricing signals. Keep it concise, factual, and product-specific.`},
+  {key:'gemini_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Enhanced Link Deep Analysis Promptu',desc:'Quiz + profil + web research ile gelişmiş uyumluluk analizi.',def:`You are Qor AI's enhanced product compatibility analyst. Combine base product analysis, quiz answers, user profile, and web research. Return only valid JSON with enhancedScore, factors, verdict, prosForUser, consForUser, and alternatives. Be specific, personalized, and honest about trade-offs.`},
+  {key:'deepseek_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'DeepSeek Enhanced Link Analysis Promptu',desc:'DeepSeek tabanlı gelişmiş ürün link analizi.',def:`You are Qor AI's detailed product compatibility analyst. Use product metadata, quiz answers, and user profile to produce a personalized compatibility report. Return only valid JSON with score, factors, verdict, pros, cons, and alternatives. Avoid generic statements.`},
+  {key:'gemini_subscription_research',group:'Subscription Analysis',title:'Subscription Research Promptu',desc:'Abonelik servisleri için Reddit/forum/review araştırması.',def:`Research each listed subscription service individually. Identify category, recent community opinions, Trustpilot/forum sentiment, key features, strengths, limitations, and recent updates. Do not include pricing or billing details. Output a labeled per-service summary.`},
+  {key:'gemini_subscription_analysis',group:'Subscription Analysis',title:'Subs Analysis Promptu',desc:'Abonelik uyumluluk skorları ve öneri JSON promptu.',def:`You are Qor AI's subscription intelligence analyst. Analyze the listed subscription services using user profile, quiz answers, and research data. Return only valid JSON matching the app schema. All text must be in the selected language. Never mention price, cost, monthly fees, yearly fees, discounts, or billing.`},
+  {key:'deepseek_subscription_quiz_system',group:'Subscription Analysis',title:'Subscription Quiz Promptu',desc:'Abonelik analizi öncesi kısa kişisel quiz.',def:`You are Qor AI's subscription quiz engine. Generate 4-5 personalized questions to understand service usage habits, content preferences, lifestyle expectations, and feature priorities. Never ask about budget. Return valid JSON only.`},
+  {key:'product_review_analysis',group:'Product Detail Premium',title:'Ürün İnceleme Promptu',desc:'Ürün detayındaki kullanıcı yorumları / community sentiment analizi.',def:`You are a senior technology product analyst. Analyze public user reviews, forums, professional review sites, YouTube long-term reviews, and community feedback for the product. Return only valid JSON with summary, satisfaction, praised, and criticized. Be specific, cite real-world observations, and write in the selected language.`},
+  {key:'product_deep_analysis',group:'Product Detail Premium',title:'Ürün Deep Analiz Promptu',desc:'Tekil ürün teknik güçlü/zayıf yön ve verdict analizi.',def:`You are a senior tech product analyst. Analyze the exact product and return only valid JSON with overallScore, strengths, weaknesses, pros, cons, and verdict. Use concrete technical/category evidence, realistic varied scores, and language matching the selected app language.`},
+  {key:'product_smart_alternatives',group:'Product Detail Premium',title:'Akıllı Alternatif Promptu',desc:'Tekil ürün için gerçekçi alternatif ürünler.',def:`Return only valid JSON with exactly 5 realistic alternative products. Each alternative must include full product name, advantage, tradeoff, priceComparison, bestFor, and whyBetter. Use concrete differences such as performance, battery, camera, software, build quality, or price band.`},
+  {key:'product_buying_advisor',group:'Product Detail Premium',title:'Satın Alma Danışmanı Promptu',desc:'Kim almalı/kim kaçınmalı ve satın alma tavsiyeleri.',def:`Return only valid JSON with whoShouldBuy, whoShouldAvoid, reasonsToBuy, reasonsToSkip, proTips, valueRating, and ratingExplanation. Be specific, honest, and product-focused. Write all user-facing text in the selected app language.`},
+  {key:'product_price_prediction',group:'Product Detail Premium',title:'Fiyat Tahmini Promptu',desc:'Tekil ürün için fiyat trendi ve al/bekle kararı.',def:`Predict price trend for the specific product using current year, category replacement cycles, price tier, release timing, brand cadence, and visible product context. Return only valid JSON with trend, trendPercentage, bestTimeToBuy, expectedDrop, buyOrWait, and reasoning.`},
+  {key:'product_match_score',group:'Product Detail Premium',title:'Kişisel Eşleşme Promptu',desc:'Profil/quiz/sinyal ağırlıkları ile ürün eşleşme skoru.',def:`Perform a detailed user-product compatibility analysis. Score the product 40-100 for this specific user profile. Return only valid JSON with matchScore, reason, topMatchFactors, and missingFactors. Use profile signals, quizSignals, product specs, techScore, price, country/currency, and behavioral signals. Be specific and honest.`},
+  {key:'compare_deep_analysis',group:'Compare Premium',title:'Compare Deep Analysis Promptu',desc:'Karşılaştırma ekranındaki detaylı AI analizi.',def:`Compare all listed products as a senior tech analyst. Return only valid JSON with winner, products, categories, verdict, and recommendation. Include every product in every section. Use concrete specs and avoid invented gaps.`},
+  {key:'compare_smart_alternatives',group:'Compare Premium',title:'Compare Smart Alternatives Promptu',desc:'Karşılaştırılan ürünlere yakın alternatif önerileri.',def:`Suggest 3-5 realistic alternatives compatible with the same buying intent, segment, and category. Return only valid JSON. Explain concrete trade-offs, price band, and where each alternative beats the compared set.`},
+  {key:'compare_buying_advisor',group:'Compare Premium',title:'Compare Buying Advisor Promptu',desc:'Karşılaştırma için kişisel satın alma tavsiyesi.',def:`Act as a personal tech shopping advisor. Return only valid JSON with recommended product, best_for, match_points, caution_points, per_product, and final_verdict. Address the user directly and tie advice to concrete product context.`},
+  {key:'compare_price_prediction',group:'Compare Premium',title:'Compare Fiyat Tahmini Promptu',desc:'Karşılaştırılan ürünlerin fiyat trend tahmini.',def:`Predict price trends for all listed products using release cadence, segment competition, historical depreciation, specs, and availability uncertainty. Return only valid JSON with one item per product. Differentiate similar products only when evidence supports it.`},
 ];
 
-function loadPromptEditors(configMap){
-  const prompts=safeMap(configMap.ai_prompts);
-  for(const def of AI_PROMPT_KEYS){
-    const el=document.getElementById(def.id);
-    if(!el)continue;
-    el.value=String(prompts[def.key]||'');
+let _aiPromptConfig = {};
+
+function _promptEditorId(key){return 'prompt_editor_'+key.replace(/[^a-zA-Z0-9_]/g,'_')}
+
+function _populatePromptGroupFilter(){
+  const sel=document.getElementById('promptGroupFilter');
+  if(!sel||sel.dataset.ready==='1')return;
+  const groups=[...new Set(AI_PROMPT_DEFS.map(def=>def.group))].sort();
+  sel.innerHTML='<option value="">Tüm Kategoriler</option>'+groups.map(group=>`<option value="${escHtml(group)}">${escHtml(group)}</option>`).join('');
+  sel.dataset.ready='1';
+}
+
+function renderAiPromptManager(){
+  _populatePromptGroupFilter();
+  const list=document.getElementById('aiPromptList');
+  if(!list)return;
+  list.innerHTML=AI_PROMPT_DEFS.map(def=>{
+    const saved=String(_aiPromptConfig[def.key]||'');
+    const value=saved||def.def;
+    const dirty=!!saved;
+    return `<div class="card prompt-editor-card" data-prompt-card="1" data-group="${escHtml(def.group)}" data-search="${escHtml((def.group+' '+def.title+' '+def.key+' '+def.desc).toLowerCase())}">
+      <div class="prompt-editor-head">
+        <div><div class="prompt-group">${escHtml(def.group)}</div><h3>${escHtml(def.title)}</h3><p>${escHtml(def.desc)}</p></div>
+        <div class="prompt-editor-actions"><span class="badge ${dirty?'badge-green':'badge-muted'}">${dirty?'Sunucu override':'Kod varsayılanı'}</span><button class="btn btn-sm btn-ghost" onclick="resetPromptEditorToDefault('${def.key}')">Varsayılan</button></div>
+      </div>
+      <div class="prompt-key">${escHtml(def.key)}</div>
+      <textarea class="input prompt-textarea" id="${_promptEditorId(def.key)}" rows="10" data-key="${escHtml(def.key)}">${escHtml(value)}</textarea>
+    </div>`;
+  }).join('');
+  filterAiPromptCards();
+  const status=document.getElementById('aiPromptStatus');
+  if(status){
+    const overrideCount=Object.keys(_aiPromptConfig).filter(key=>String(_aiPromptConfig[key]||'').trim()).length;
+    status.textContent=`${AI_PROMPT_DEFS.length} prompt başlığı listeleniyor · ${overrideCount} sunucu override aktif`;
   }
 }
 
-function collectPromptEditors(){
+function filterAiPromptCards(){
+  const q=String(document.getElementById('promptSearchInput')?.value||'').trim().toLowerCase();
+  const group=String(document.getElementById('promptGroupFilter')?.value||'').trim();
+  document.querySelectorAll('[data-prompt-card="1"]').forEach(card=>{
+    const matchesText=!q||String(card.dataset.search||'').includes(q);
+    const matchesGroup=!group||card.dataset.group===group;
+    card.style.display=matchesText&&matchesGroup?'':'none';
+  });
+}
+
+async function loadAiPromptManager(){
+  const list=document.getElementById('aiPromptList');
+  if(list)list.innerHTML='<div class="placeholder">Promptlar yükleniyor...</div>';
+  try{
+    const configMap=await getPublicConfigMap();
+    _aiPromptConfig=safeMap(configMap.ai_prompts);
+    renderAiPromptManager();
+  }catch(e){
+    if(list)list.innerHTML=`<div class="placeholder" style="color:var(--red)">Promptlar yüklenemedi: ${escHtml(e.message||e)}</div>`;
+    toast('Promptlar yüklenemedi: '+(e.message||e),'e');
+  }
+}
+
+function collectAiPromptEditors(){
   const prompts={};
-  for(const def of AI_PROMPT_KEYS){
-    const el=document.getElementById(def.id);
+  for(const def of AI_PROMPT_DEFS){
+    const el=document.getElementById(_promptEditorId(def.key));
     if(!el)continue;
     const value=String(el.value||'').trim();
-    if(value)prompts[def.key]=value;
+    if(value&&value!==String(def.def||'').trim())prompts[def.key]=value;
   }
   return prompts;
+}
+
+async function saveAiPromptManager(){
+  try{
+    const prompts=collectAiPromptEditors();
+    await syncPublicConfigValue('ai_prompts',prompts);
+    _aiPromptConfig=prompts;
+    renderAiPromptManager();
+    logActivity('ai_prompts_update',`AI promptları güncellendi (${Object.keys(prompts).length} override)`);
+    toast('AI promptları sunucuya kaydedildi','s');
+  }catch(e){
+    toast('Prompt kaydetme hatası: '+(e.message||e),'e');
+  }
+}
+
+function resetPromptEditorToDefault(key){
+  const def=AI_PROMPT_DEFS.find(item=>item.key===key);
+  const el=def?document.getElementById(_promptEditorId(key)):null;
+  if(el&&def)el.value=def.def;
+}
+
+function resetAllPromptEditorsToDefaults(){
+  AI_PROMPT_DEFS.forEach(def=>resetPromptEditorToDefault(def.key));
+  toast('Kod varsayılanları editörlere yüklendi. Sunucuya yazmak için kaydet.','i');
 }
 
 async function loadRemoteConfig() {
@@ -2583,7 +2680,6 @@ async function loadRemoteConfig() {
       const val = configMap[def.key] !== undefined ? configMap[def.key] : def.def;
       el.value = String(val);
     }
-    loadPromptEditors(configMap);
   } catch(e) {
     console.error('loadRemoteConfig error:', e);
     toast('Config yüklenemedi: ' + e.message, 'e');
@@ -2602,7 +2698,6 @@ async function saveRemoteConfig() {
       else                           val = el.value;
       promises.push(syncPublicConfigValue(def.key, val));
     }
-    promises.push(syncPublicConfigValue('ai_prompts', collectPromptEditors()));
     await Promise.all(promises);
     await loadQCoinConfig();
     if (allUsers.length) {

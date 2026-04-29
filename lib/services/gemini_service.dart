@@ -56,7 +56,10 @@ class GeminiService implements AIService {
 
     final lang = req.userProfile['language'] as String? ?? 'en';
     final response = await _jsonRequest(
-      system: _comparisonSystemPrompt(lang),
+      system: await adminPrompt(
+        'gemini_compare_system',
+        _comparisonSystemPrompt(lang),
+      ),
       user: jsonEncode({
         'products': req.productIds,
         'userProfile': req.userProfile,
@@ -177,13 +180,16 @@ class GeminiService implements AIService {
               {
                 'parts': [
                   {
-                    'text': _buildLinkResearchPrompt(
-                      url: url,
-                      resolvedTitle: resolvedTitle,
-                      productId: amazonProductId,
-                      productIdType: amazonProductIdType,
-                      storeDomain: storeDomain,
-                      metadata: metadata,
+                    'text': await adminPrompt(
+                      'gemini_link_research',
+                      _buildLinkResearchPrompt(
+                        url: url,
+                        resolvedTitle: resolvedTitle,
+                        productId: amazonProductId,
+                        productIdType: amazonProductIdType,
+                        storeDomain: storeDomain,
+                        metadata: metadata,
+                      ),
                     ),
                   },
                 ],
@@ -238,7 +244,10 @@ class GeminiService implements AIService {
     if (webResearch.isNotEmpty) userInput['webResearch'] = webResearch;
 
     final response = await _jsonRequest(
-      system: _linkAnalysisSystemPrompt(profile.language),
+      system: await adminPrompt(
+        'gemini_link_analysis_system',
+        _linkAnalysisSystemPrompt(profile.language),
+      ),
       user: jsonEncode(userInput),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 60),
@@ -580,7 +589,7 @@ class GeminiService implements AIService {
   Future<String> askQuestion(String question, UserEntity profile) async {
     final currentYear = DateTime.now().year;
     final response = await _jsonRequest(
-      system: await _adminPrompt(
+      system: await adminPrompt(
         'gemini_chat_system',
         _chatSystemPrompt(profile, currentYear),
       ),
@@ -614,7 +623,7 @@ class GeminiService implements AIService {
       'systemInstruction': {
         'parts': [
           {
-            'text': await _adminPrompt(
+            'text': await adminPrompt(
               'gemini_chat_system',
               _chatSystemPrompt(profile, currentYear),
             ),
@@ -654,7 +663,7 @@ class GeminiService implements AIService {
       'systemInstruction': {
         'parts': [
           {
-            'text': await _adminPrompt(
+            'text': await adminPrompt(
               'gemini_chat_system',
               _chatSystemPrompt(profile, currentYear),
             ),
@@ -1154,6 +1163,10 @@ IMPORTANT: You MUST cover ALL ${normalizedNames.length} services. Do not skip an
 Do NOT include pricing, monthly fees, yearly fees, discounts, or any cost details.
 Output a clear per-service research summary, labeled with each service name.
 ''';
+    final effectiveResearchPrompt = await adminPrompt(
+      'gemini_subscription_research',
+      researchPrompt,
+    );
 
     String researchData = '';
     try {
@@ -1162,7 +1175,7 @@ Output a clear per-service research summary, labeled with each service name.
           'contents': [
             {
               'parts': [
-                {'text': researchPrompt},
+                {'text': effectiveResearchPrompt},
               ],
             },
           ],
@@ -1282,17 +1295,17 @@ $jsonSchema
     Future<String> runStructuredAnalysis({
       required bool includeResearchData,
       required int maxTokens,
-    }) {
+    }) async {
+      final analysisPrompt = await adminPrompt(
+        'gemini_subscription_analysis',
+        buildAnalysisPrompt(includeResearchData: includeResearchData),
+      );
       return _rawRequest(
         {
           'contents': [
             {
               'parts': [
-                {
-                  'text': buildAnalysisPrompt(
-                    includeResearchData: includeResearchData,
-                  ),
-                },
+                {'text': analysisPrompt},
               ],
             },
           ],
@@ -1449,7 +1462,7 @@ $jsonSchema
         ? _compareQuizGenerationPrompt(language)
         : _quizGenerationPrompt(language);
     final response = await _jsonRequest(
-      system: await _adminPrompt(promptKey, fallbackPrompt),
+      system: await adminPrompt(promptKey, fallbackPrompt),
       user: jsonEncode(
         isCompare
             ? {
@@ -1499,7 +1512,7 @@ $jsonSchema
     );
   }
 
-  Future<String> _adminPrompt(String key, String fallback) async {
+  Future<String> adminPrompt(String key, String fallback) async {
     final ds = _pbDataSource;
     if (ds == null) return fallback;
     try {
@@ -1547,18 +1560,19 @@ $jsonSchema
     String researchData = '';
     try {
       final productName = baseResult.metadata.title ?? 'unknown';
+      final researchPrompt = await adminPrompt(
+        'gemini_enhanced_link_research',
+        'Research "$productName" (${baseResult.category ?? "product"}).\n'
+            'Find: user reviews, Reddit/forum opinions, expert reviews, '
+            'common pros/cons, known issues, and current price in ${profile.country}.\n'
+            'Be concise — max 300 words.',
+      );
       researchData = await _rawRequest(
         {
           'contents': [
             {
               'parts': [
-                {
-                  'text':
-                      'Research "$productName" (${baseResult.category ?? "product"}).\n'
-                      'Find: user reviews, Reddit/forum opinions, expert reviews, '
-                      'common pros/cons, known issues, and current price in ${profile.country}.\n'
-                      'Be concise — max 300 words.',
-                },
+                {'text': researchPrompt},
               ],
             },
           ],
@@ -1579,7 +1593,10 @@ $jsonSchema
 
     // Step 2: Structured JSON analysis
     final response = await _jsonRequest(
-      system: _enhancedAnalysisPrompt(profile.language),
+      system: await adminPrompt(
+        'gemini_enhanced_link_analysis_system',
+        _enhancedAnalysisPrompt(profile.language),
+      ),
       user: jsonEncode({
         'product': {
           'url': baseResult.url,

@@ -1,5 +1,9 @@
 part of 'providers.dart';
 
+Future<String> _geminiAdminPrompt(Ref ref, String key, String fallback) {
+  return ref.read(geminiServiceProvider).adminPrompt(key, fallback);
+}
+
 // ════════════════════════════════════════════════════
 // ─── GEMINI CACHE NOTIFIER MIXIN (DRY base) ───
 // ════════════════════════════════════════════════════
@@ -213,9 +217,10 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final langName = _getLanguageName(_languageCode);
-      final response = await gemini
-          .jsonFreeTextQuery(
-            'You are a senior technology product analyst with expertise in consumer electronics. '
+      final prompt = await _geminiAdminPrompt(
+        _ref,
+        'product_review_analysis',
+        'You are a senior technology product analyst with expertise in consumer electronics. '
             'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
             'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
             'YouTube teardowns and long-term reviews, and tech community feedback for "$productName", '
@@ -231,6 +236,10 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
             'Be precise (e.g., "Exceptional battery life — 6+ days reported by users" not just "battery").\n'
             '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
             'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
+      );
+      final response = await gemini
+          .jsonFreeTextQuery(
+            '$prompt\n\nRuntime context: productName="$productName", language="$langName".',
             language: _languageCode,
             maxTokens: 1400,
           )
@@ -695,27 +704,34 @@ class _DeepAnalysisNotifier
       final yearInfo = (year != null && year > 0)
           ? ', released around $year'
           : '';
+      final defaultPrompt =
+          'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
+          'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
+          'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+          'If the selected language is Turkish, do not write explanatory text in English anywhere except official product or model names.\n\n'
+          'Return a JSON object with this EXACT structure:\n'
+          '{\n'
+          '  "overallScore": <number 0-100>,\n'
+          '  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+          '  "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+          '  "pros": ["<pro1>", "<pro2>", "<pro3>"],\n'
+          '  "cons": ["<con1>", "<con2>", "<con3>"],\n'
+          '  "verdict": "<2-3 sentence final verdict>"\n'
+          '}\n\n'
+          'Rules:\n'
+          '- Provide 3-5 strengths and 2-4 weaknesses\n'
+          '- Scores should be realistic and varied (not all 80-90)\n'
+          '- Pros/cons should be specific and informative (8-18 words each)\n'
+          '- Verdict must include concrete technical or category-specific evidence\n'
+          '- Be honest and specific, not generic praise';
+      final prompt = await _geminiAdminPrompt(
+        _ref,
+        'product_deep_analysis',
+        defaultPrompt,
+      );
       final result = await gemini
           .jsonFreeTextQuery(
-            'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
-            'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
-            'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-            'If the selected language is Turkish, do not write explanatory text in English anywhere except official product or model names.\n\n'
-            'Return a JSON object with this EXACT structure:\n'
-            '{\n'
-            '  "overallScore": <number 0-100>,\n'
-            '  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
-            '  "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
-            '  "pros": ["<pro1>", "<pro2>", "<pro3>"],\n'
-            '  "cons": ["<con1>", "<con2>", "<con3>"],\n'
-            '  "verdict": "<2-3 sentence final verdict>"\n'
-            '}\n\n'
-            'Rules:\n'
-            '- Provide 3-5 strengths and 2-4 weaknesses\n'
-            '- Scores should be realistic and varied (not all 80-90)\n'
-            '- Pros/cons should be specific and informative (8-18 words each)\n'
-            '- Verdict must include concrete technical or category-specific evidence\n'
-            '- Be honest and specific, not generic praise',
+            '$prompt\n\nRuntime context: productName="$productName", brand="$brand", category="$category", releaseYear="$year".',
             language: _languageCode,
             maxTokens: 1800,
           )
@@ -852,25 +868,32 @@ class _AlternativesCacheNotifier
     _emitStep('Alternatif ürünler aranıyor…', 'Searching for alternatives…');
     try {
       final gemini = _ref.read(geminiServiceProvider);
+      final defaultPrompt =
+          'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+          'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
+          'Return a JSON object with this EXACT structure:\n'
+          '{\n'
+          '  "alternatives": [\n'
+          '    {\n'
+          '      "name": "<full product name>",\n'
+          '      "advantage": "<one clear advantage over $productName>",\n'
+          '      "tradeoff": "<one disadvantage or compromise>",\n'
+          '      "priceComparison": "<cheaper/similar/pricier>",\n'
+          '      "bestFor": "<target user profile, 1 sentence>",\n'
+          '      "whyBetter": "<brief reason this might be preferred>"\n'
+          '    }\n'
+          '  ]\n'
+          '}\n\n'
+          'Provide exactly 5 real alternative products. '
+          'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).';
+      final prompt = await _geminiAdminPrompt(
+        _ref,
+        'product_smart_alternatives',
+        defaultPrompt,
+      );
       final result = await gemini
           .jsonFreeTextQuery(
-            'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-            'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
-            'Return a JSON object with this EXACT structure:\n'
-            '{\n'
-            '  "alternatives": [\n'
-            '    {\n'
-            '      "name": "<full product name>",\n'
-            '      "advantage": "<one clear advantage over $productName>",\n'
-            '      "tradeoff": "<one disadvantage or compromise>",\n'
-            '      "priceComparison": "<cheaper/similar/pricier>",\n'
-            '      "bestFor": "<target user profile, 1 sentence>",\n'
-            '      "whyBetter": "<brief reason this might be preferred>"\n'
-            '    }\n'
-            '  ]\n'
-            '}\n\n'
-            'Provide exactly 5 real alternative products. '
-            'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).',
+            '$prompt\n\nRuntime context: referenceProduct="$productName".',
             language: _languageCode,
             maxTokens: 900,
           )
@@ -993,21 +1016,28 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
     );
     try {
       final gemini = _ref.read(geminiServiceProvider);
+      final defaultPrompt =
+          'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+          'If the selected language is Turkish, do not use English in the advice text.\n\n'
+          'Return a JSON object with this EXACT structure:\n'
+          '{\n'
+          '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
+          '  "whoShouldAvoid": "<2 sentence description of who should skip this>",\n'
+          '  "reasonsToBuy": ["<reason1>", "<reason2>", "<reason3>"],\n'
+          '  "reasonsToSkip": ["<reason1>", "<reason2>", "<reason3>"],\n'
+          '  "proTips": ["<tip1>", "<tip2>"],\n'
+          '  "valueRating": <number 1-10>,\n'
+          '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
+          '}\n\n'
+          'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.';
+      final prompt = await _geminiAdminPrompt(
+        _ref,
+        'product_buying_advisor',
+        defaultPrompt,
+      );
       final result = await gemini
           .jsonFreeTextQuery(
-            'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-            'If the selected language is Turkish, do not use English in the advice text.\n\n'
-            'Return a JSON object with this EXACT structure:\n'
-            '{\n'
-            '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
-            '  "whoShouldAvoid": "<2 sentence description of who should skip this>",\n'
-            '  "reasonsToBuy": ["<reason1>", "<reason2>", "<reason3>"],\n'
-            '  "reasonsToSkip": ["<reason1>", "<reason2>", "<reason3>"],\n'
-            '  "proTips": ["<tip1>", "<tip2>"],\n'
-            '  "valueRating": <number 1-10>,\n'
-            '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
-            '}\n\n'
-            'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.',
+            '$prompt\n\nRuntime context: productName="$productName".',
             language: _languageCode,
             maxTokens: 1100,
           )
@@ -1138,32 +1168,39 @@ class _PredictionCacheNotifier
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final cat = category.isEmpty ? 'tech product' : category;
+      final defaultPrompt =
+          'Current year: ${DateTime.now().year}.\n'
+          'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+          'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
+          'The buyOrWait field must still be exactly either "buy" or "wait".\n\n'
+          'Return a JSON object with this EXACT structure:\n'
+          '{\n'
+          '  "trend": "<up/down/stable>",\n'
+          '  "trendPercentage": <number 0-100>,\n'
+          '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
+          '  "expectedDrop": "<expected price change description>",\n'
+          '  "buyOrWait": "<buy/wait>",\n'
+          '  "reasoning": "<4-6 sentence explanation of the prediction with product-specific triggers>"\n'
+          '}\n\n'
+          'Analyze this specific product:\n'
+          '- Product name: $productName\n'
+          '- Category: $cat\n'
+          '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
+          '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}'
+          'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
+          'Use release timing and category replacement cycles to decide whether the product is more likely to drop soon or stay stable. '
+          'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
+          'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
+          'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
+          'trendPercentage is the expected price change amount in percent.';
+      final prompt = await _geminiAdminPrompt(
+        _ref,
+        'product_price_prediction',
+        defaultPrompt,
+      );
       final result = await gemini
           .jsonFreeTextQuery(
-            'Current year: ${DateTime.now().year}.\n'
-            'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-            'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
-            'The buyOrWait field must still be exactly either "buy" or "wait".\n\n'
-            'Return a JSON object with this EXACT structure:\n'
-            '{\n'
-            '  "trend": "<up/down/stable>",\n'
-            '  "trendPercentage": <number 0-100>,\n'
-            '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
-            '  "expectedDrop": "<expected price change description>",\n'
-            '  "buyOrWait": "<buy/wait>",\n'
-            '  "reasoning": "<4-6 sentence explanation of the prediction with product-specific triggers>"\n'
-            '}\n\n'
-            'Analyze this specific product:\n'
-            '- Product name: $productName\n'
-            '- Category: $cat\n'
-            '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
-            '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}\n'
-            'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
-            'Use release timing and category replacement cycles to decide whether the product is more likely to drop soon or stay stable. '
-            'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
-            'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
-            'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
-            'trendPercentage is the expected price change amount in percent.',
+            '$prompt\n\nRuntime context: productName="$productName", category="$cat", price="${price.isEmpty ? 'unknown' : price}".',
             language: _languageCode,
             maxTokens: 1200,
           )
@@ -2284,7 +2321,7 @@ class _GeminiMatchScoreNotifier
     // underwhelming (most scores landed 55-70). New mapping rewards genuine
     // quality while preserving separation for poor fits.
     final langDisplay = _languageDisplayName(langCode);
-    final prompt =
+    final defaultPrompt =
         'You are a senior tech analyst performing a detailed user-product compatibility analysis. '
         'Score this product 40-100 for this specific user profile (never below 40).\n'
         'Return ONLY valid JSON — no markdown, no extra text.\n'
@@ -2315,6 +2352,11 @@ class _GeminiMatchScoreNotifier
         'Signals to weigh: focusAreas/weightVector priorities, usageIntent, profession, ageRange, '
         'budgetRange vs priceRange, country/currency context, ownedProducts for upgrade context, '
         'techScore, specs (all 15 fields), pros/cons, behavioral signals (recentCategoryViews/favoritedProductCount), and quizSignals.\n\n';
+    final prompt = await _geminiAdminPrompt(
+      _ref,
+      'product_match_score',
+      defaultPrompt,
+    );
     final encodedProfileJson = await compute(_encodeJsonString, profileJson);
     final encodedProductJson = await compute(_encodeJsonString, productJson);
     if (!mounted) return;

@@ -223,6 +223,15 @@ class _FloatingAiAssistantOverlayState
         );
         final panelBg = context.surfaceVariantColor;
         final bubbleBg = isDark ? Colors.black : Colors.white;
+        final visibleFabTop = _isOpen
+            ? math.max(
+                padding.top + 12,
+                math.min(
+                  current.dy,
+                  size.height - padding.bottom - _fabSize - 132,
+                ),
+              )
+            : current.dy;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -297,7 +306,7 @@ class _FloatingAiAssistantOverlayState
               duration: const Duration(milliseconds: 90),
               curve: Curves.easeOutCubic,
               left: current.dx,
-              top: current.dy,
+              top: visibleFabTop,
               width: _fabSize,
               height: _fabSize,
               child: GestureDetector(

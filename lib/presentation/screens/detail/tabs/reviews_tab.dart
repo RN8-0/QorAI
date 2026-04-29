@@ -1005,7 +1005,9 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
       return _resolveCurrentUserPhotoUrl(currentUserId);
     }
     final snapshot = review.authorPhotoURL.trim();
-    return snapshot.isEmpty ? null : snapshot;
+    return snapshot.isEmpty || _isGeneratedAvatarUrl(snapshot)
+        ? null
+        : snapshot;
   }
 
   /// Resolves current user's photo URL for avatar display.
@@ -1013,13 +1015,24 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
     if (currentUserId == null) return null;
     final user = ref.read(userProfileProvider).valueOrNull;
     final photo = (user?.photoURL ?? '').trim();
-    if (photo.isNotEmpty) return photo;
+    if (photo.isNotEmpty && !_isGeneratedAvatarUrl(photo)) return photo;
     final r = pb.authStore.record;
     if (r != null) {
       final authPhoto = r.getStringValue('photoURL').trim();
-      if (authPhoto.isNotEmpty) return authPhoto;
+      if (authPhoto.isNotEmpty && !_isGeneratedAvatarUrl(authPhoto)) {
+        return authPhoto;
+      }
     }
     return null;
+  }
+
+  bool _isGeneratedAvatarUrl(String? photoUrl) {
+    final value = (photoUrl ?? '').trim().toLowerCase();
+    if (value.isEmpty) return false;
+    return value.contains('ui-avatars.com') ||
+        value.contains('/assets/images/robot') ||
+        value.contains('/assets/images/bot') ||
+        value.contains('default_avatar');
   }
 
   Widget _buildEmptyState(bool isLoggedIn) {
@@ -1239,9 +1252,14 @@ class _UserReviewsCardState extends ConsumerState<_UserReviewsCard> {
           (authUser?.email ?? authRecord?.getStringValue('email') ?? '').trim();
       if (email.contains('@')) snapshotName = email.split('@').first;
     }
-    final snapshotPhoto = (authUser?.photoURL ?? '').trim().isNotEmpty
-        ? (authUser!.photoURL ?? '').trim()
-        : (authRecord?.getStringValue('photoURL').trim() ?? '');
+    final userPhoto = (authUser?.photoURL ?? '').trim();
+    final authPhoto = (authRecord?.getStringValue('photoURL').trim() ?? '');
+    final snapshotPhoto =
+        userPhoto.isNotEmpty && !_isGeneratedAvatarUrl(userPhoto)
+        ? userPhoto
+        : (authPhoto.isNotEmpty && !_isGeneratedAvatarUrl(authPhoto)
+              ? authPhoto
+              : '');
 
     final review = ReviewModel(
       id: '',

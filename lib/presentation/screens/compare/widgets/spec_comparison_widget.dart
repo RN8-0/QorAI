@@ -965,8 +965,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
           );
         });
       }
-      final result = await _fetchWithRetry(
+      final effectivePrompt = await _resolveAdminPanelPrompt(
+        debugLabel,
         prompt,
+      );
+      final result = await _fetchWithRetry(
+        effectivePrompt,
         debugLabel,
         lang,
         maxTokens: maxTokens,
@@ -1004,6 +1008,25 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         _applyAiPanelFailure(panel, e.toString());
       }
     }
+  }
+
+  Future<String> _resolveAdminPanelPrompt(String label, String fallback) async {
+    final normalized = label.toLowerCase();
+    final key = normalized.contains('deep')
+        ? 'compare_deep_analysis'
+        : normalized.contains('alternative')
+        ? 'compare_smart_alternatives'
+        : normalized.contains('advisor')
+        ? 'compare_buying_advisor'
+        : normalized.contains('prediction')
+        ? 'compare_price_prediction'
+        : null;
+    if (key == null) return fallback;
+    final base = await ref
+        .read(geminiServiceProvider)
+        .adminPrompt(key, fallback);
+    if (base == fallback) return fallback;
+    return '$base\n\nRuntime comparison context follows; preserve the requested JSON schema and use the listed products/specs:\n$fallback';
   }
 
   Future<void> _toggleDeepAnalysis() async {
@@ -7032,7 +7055,24 @@ Rules:
     } else {
       resolvedDisplayName = 'Anonymous';
     }
-    final authorPhotoUrl = (user?.photoURL ?? '').trim();
+    bool isGeneratedAvatarUrl(String photoUrl) {
+      final value = photoUrl.trim().toLowerCase();
+      return value.contains('ui-avatars.com') ||
+          value.contains('/assets/images/robot') ||
+          value.contains('/assets/images/bot') ||
+          value.contains('default_avatar');
+    }
+
+    final rawAuthorPhotoUrl = (user?.photoURL ?? '').trim();
+    final authAuthorPhotoUrl =
+        pb.authStore.record?.getStringValue('photoURL').trim() ?? '';
+    final authorPhotoUrl =
+        rawAuthorPhotoUrl.isNotEmpty && !isGeneratedAvatarUrl(rawAuthorPhotoUrl)
+        ? rawAuthorPhotoUrl
+        : (authAuthorPhotoUrl.isNotEmpty &&
+                  !isGeneratedAvatarUrl(authAuthorPhotoUrl)
+              ? authAuthorPhotoUrl
+              : '');
     final textController = TextEditingController();
 
     showDialog(

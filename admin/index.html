@@ -79,6 +79,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
           <span>Algorithm</span>
         </a>
+        <a class="nav-link" data-view="prompts" onclick="showView('prompts')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0110 10c0 3.31-1.61 6.24-4.09 8.05"/><path d="M12 2A10 10 0 002 12c0 3.31 1.61 6.24 4.09 8.05"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          <span>AI Prompts</span>
+        </a>
         <a class="nav-link" data-view="scraper" onclick="showView('scraper')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
           <span>Scraper</span>
@@ -671,6 +675,40 @@
         </div>
       </section>
 
+      <!-- ===== AI PROMPTS ===== -->
+      <section id="promptsView" class="view">
+        <div class="view-header">
+          <div>
+            <h1>AI Prompts</h1>
+            <p class="text-muted" style="margin:6px 0 0;font-size:13px">Uygulamada kullanılan canlı promptları başlık bazlı düzenle. Kaydedilen değerler public_config.ai_prompts üzerinden uygulamaya redeploy olmadan yansır.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-ghost" onclick="loadAiPromptManager()">Yenile</button>
+            <button class="btn btn-primary" onclick="saveAiPromptManager()">Promptları Kaydet</button>
+          </div>
+        </div>
+        <div class="prompt-toolbar">
+          <div class="search-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="promptSearchInput" placeholder="Prompt başlığı, anahtar veya kategori ara..." oninput="filterAiPromptCards()">
+          </div>
+          <select id="promptGroupFilter" class="field-select" onchange="filterAiPromptCards()">
+            <option value="">Tüm Kategoriler</option>
+          </select>
+          <button class="btn btn-ghost" onclick="resetAllPromptEditorsToDefaults()">Varsayılanları Göster</button>
+        </div>
+        <div class="card prompt-info-card">
+          <div class="card-title">Çalışma Mantığı</div>
+          <div class="insight-stack">
+            <div class="insight-item"><div class="insight-label">SERVER</div>Kaydet butonu promptları PocketBase public_config koleksiyonundaki ai_prompts map alanına yazar.</div>
+            <div class="insight-item"><div class="insight-label">APP</div>Flutter tarafı ilgili AI çağrısından önce bu map'i okur; boş bırakılan promptlarda kod içindeki güvenli varsayılan kullanılır.</div>
+            <div class="insight-item"><div class="insight-label">DEFAULT</div>Kutularda önce kodda kullanılan mevcut promptlar görünür; düzenlenmiş promptlar ayrı badge ile işaretlenir.</div>
+          </div>
+        </div>
+        <div id="aiPromptStatus" class="text-muted" style="font-size:12px;margin:12px 0"></div>
+        <div id="aiPromptList" class="prompt-editor-list"><div class="placeholder">Promptlar yükleniyor...</div></div>
+      </section>
+
       <!-- ===== NOTIFICATIONS ===== -->
       <section id="notificationsView" class="view">
         <div class="view-header">
@@ -870,26 +908,6 @@
             <div class="form-field">
               <label>Premium Fiyat Gösterim Metni</label>
               <input class="input" type="text" id="rc_premium_price_display" placeholder="₺199.99 / year">
-            </div>
-          </div>
-        </div>
-
-        <!-- AI Prompts -->
-        <div class="card">
-          <div class="card-title">🤖 AI Prompt Yönetimi</div>
-          <p class="text-muted" style="font-size:12px;margin-top:0">Boş bırakılan promptlarda uygulama içindeki güvenli varsayılan prompt kullanılır. Değişiklikler public_config üzerinden uygulamaya redeploy gerektirmeden yansır.</p>
-          <div class="form-grid" style="grid-template-columns:1fr">
-            <div class="form-field">
-              <label>Qor AI Chat Sistem Promptu</label>
-              <textarea class="input" id="prompt_gemini_chat_system" rows="8" placeholder="Qor AI chat sistem promptu..."></textarea>
-            </div>
-            <div class="form-field">
-              <label>Tekil Link Quiz Promptu</label>
-              <textarea class="input" id="prompt_gemini_quiz_single_system" rows="7" placeholder="Tekil ürün link quiz promptu..."></textarea>
-            </div>
-            <div class="form-field">
-              <label>Karşılaştırma Quiz Promptu</label>
-              <textarea class="input" id="prompt_gemini_quiz_compare_system" rows="7" placeholder="Karşılaştırma quiz promptu..."></textarea>
             </div>
           </div>
         </div>

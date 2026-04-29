@@ -155,6 +155,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
   return DeepSeekService(
     dio: ref.read(dioProvider),
     cacheService: ref.read(cacheServiceProvider),
+    pbDataSource: ref.read(pbDataSourceProvider),
   );
 });
 

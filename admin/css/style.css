@@ -257,6 +257,22 @@ textarea.input{resize:vertical}
 .badge-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .badge-premium{background:linear-gradient(135deg,var(--amber),#f97316);color:#fff}
 .badge-green{background:rgba(34,197,94,.12);color:var(--green)}
+.badge-muted{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+
+/* ── AI PROMPTS ── */
+.prompt-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.prompt-toolbar .search-field{min-width:280px;flex:1}
+.prompt-info-card{margin-bottom:16px}
+.prompt-editor-list{display:flex;flex-direction:column;gap:14px}
+.prompt-editor-card{padding:18px}
+.prompt-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px}
+.prompt-editor-head h3{margin:3px 0 5px;font-size:16px;color:var(--text);letter-spacing:0}
+.prompt-editor-head p{margin:0;color:var(--text2);font-size:12px;line-height:1.5;max-width:760px}
+.prompt-group{font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+.prompt-editor-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.prompt-key{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-bottom:10px;display:inline-block}
+.prompt-textarea{width:100%;min-height:210px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.55;resize:vertical;white-space:pre-wrap}
+@media(max-width:780px){.prompt-editor-head{flex-direction:column}.prompt-editor-actions{width:100%;justify-content:space-between}.prompt-toolbar .search-field{min-width:100%}}
 
 /* ── NOTIFICATION HISTORY ── */
 .notif-item{padding:10px 0;border-bottom:1px solid var(--border)}

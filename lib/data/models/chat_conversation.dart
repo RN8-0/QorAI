@@ -1,6 +1,7 @@
 import 'package:pocketbase/pocketbase.dart';
 
 enum PersistedMsgRole { user, ai, system }
+
 enum PersistedMsgStatus { sent, error }
 
 class PersistedChatMsg {
@@ -20,20 +21,38 @@ class PersistedChatMsg {
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
-  factory PersistedChatMsg.fromMap(Map<String, dynamic> m) => PersistedChatMsg(
-    id: m['id'] as String? ??
-        DateTime.now().millisecondsSinceEpoch.toString(),
-    role: PersistedMsgRole.values.byName(m['role'] as String? ?? 'ai'),
-    text: m['text'] as String? ?? '',
-    imagePath: (m['imagePath'] as String?)?.trim().isNotEmpty == true
-      ? (m['imagePath'] as String).trim()
-      : null,
-    status: PersistedMsgStatus.values
-        .byName(m['status'] as String? ?? 'sent'),
-    timestamp: m['timestamp'] is String
-        ? DateTime.tryParse(m['timestamp'] as String) ?? DateTime.now()
-        : DateTime.now(),
-  );
+  factory PersistedChatMsg.fromMap(Map<String, dynamic> m) {
+    PersistedMsgRole parseRole(dynamic value) {
+      final name = value?.toString() ?? 'ai';
+      for (final role in PersistedMsgRole.values) {
+        if (role.name == name) return role;
+      }
+      return PersistedMsgRole.ai;
+    }
+
+    PersistedMsgStatus parseStatus(dynamic value) {
+      final name = value?.toString() ?? 'sent';
+      for (final status in PersistedMsgStatus.values) {
+        if (status.name == name) return status;
+      }
+      return PersistedMsgStatus.sent;
+    }
+
+    return PersistedChatMsg(
+      id:
+          m['id'] as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
+      role: parseRole(m['role']),
+      text: m['text'] as String? ?? '',
+      imagePath: (m['imagePath'] as String?)?.trim().isNotEmpty == true
+          ? (m['imagePath'] as String).trim()
+          : null,
+      status: parseStatus(m['status']),
+      timestamp: m['timestamp'] is String
+          ? DateTime.tryParse(m['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -73,10 +92,13 @@ class ChatConversation {
       userId: d['userId'] as String? ?? '',
       title: d['title'] as String? ?? 'Chat',
       messages: (d['messages'] as List<dynamic>? ?? [])
-          .map((m) => PersistedChatMsg.fromMap(m as Map<String, dynamic>))
+          .whereType<Map>()
+          .map((m) => PersistedChatMsg.fromMap(Map<String, dynamic>.from(m)))
           .toList(),
-      createdAt: DateTime.tryParse(d['created'] as String? ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(d['updated'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(d['created'] as String? ?? '') ?? DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(d['updated'] as String? ?? '') ?? DateTime.now(),
       storedMessageCount: d['messageCount'] as int?,
     );
   }

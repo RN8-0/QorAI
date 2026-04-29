@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/ai_service.dart';
@@ -28,6 +29,7 @@ import 'package:qor_ai/services/gemini_service.dart';
 class DeepSeekService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
+  final PbDataSource? _pbDataSource;
 
   static const _proxyUrl = '$kPbBaseUrl/api/ai/deepseek';
   static const _model = 'deepseek-chat';
@@ -35,8 +37,24 @@ class DeepSeekService implements AIService {
   DeepSeekService({
     required Dio dio,
     required CacheService cacheService,
-  })  : _dio = dio,
-        _cacheService = cacheService;
+    PbDataSource? pbDataSource,
+  }) : _dio = dio,
+       _cacheService = cacheService,
+       _pbDataSource = pbDataSource;
+
+  Future<String> adminPrompt(String key, String fallback) async {
+    final ds = _pbDataSource;
+    if (ds == null) return fallback;
+    try {
+      final config = await ds.getPublicConfig();
+      final prompts = config['ai_prompts'];
+      if (prompts is Map) {
+        final value = prompts[key]?.toString().trim();
+        if (value != null && value.length >= 40) return value;
+      }
+    } catch (_) {}
+    return fallback;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   //  PUBLIC API
@@ -60,8 +78,11 @@ class DeepSeekService implements AIService {
       }),
     );
 
-    await _cacheService.set(cacheKey, response,
-        duration: AppConstants.productCacheDuration);
+    await _cacheService.set(
+      cacheKey,
+      response,
+      duration: AppConstants.productCacheDuration,
+    );
     return _parseComparisonResult(response);
   }
 
@@ -88,8 +109,11 @@ class DeepSeekService implements AIService {
       }),
     );
 
-    await _cacheService.set(cacheKey, response,
-        duration: AppConstants.trendCacheDuration);
+    await _cacheService.set(
+      cacheKey,
+      response,
+      duration: AppConstants.trendCacheDuration,
+    );
     return _parseRecommendationResult(response);
   }
 
@@ -128,20 +152,26 @@ class DeepSeekService implements AIService {
         ? scrapedTitle
         : slugTitle;
     if (resolvedTitle?.isNotEmpty ?? false) meta['title'] = resolvedTitle;
-    if (metadata?.description != null) meta['description'] = metadata!.description;
+    if (metadata?.description != null) {
+      meta['description'] = metadata!.description;
+    }
     if (metadata?.price != null) meta['price'] = metadata!.price;
     if (metadata?.siteName != null) meta['siteName'] = metadata!.siteName;
     if (meta.isNotEmpty) input['productMetadata'] = meta;
 
     final response = await _jsonRequest(
-      system: _linkAnalysisSystemPrompt(profile.language),
+      system: await adminPrompt(
+        'deepseek_link_analysis_system',
+        _linkAnalysisSystemPrompt(profile.language),
+      ),
       user: jsonEncode(input),
       timeout: const Duration(seconds: 60),
     );
 
     // Use resolved title as fallback if AI returned an error/empty title
     final aiTitle = response['title'] as String?;
-    final finalTitle = (aiTitle == null ||
+    final finalTitle =
+        (aiTitle == null ||
             aiTitle.isEmpty ||
             aiTitle.toLowerCase().contains('erişim') ||
             aiTitle.toLowerCase().contains('hata') ||
@@ -163,8 +193,7 @@ class DeepSeekService implements AIService {
       aiAnalysis: response['analysis'] as String? ?? '',
       category: response['category'] as String?,
       analyzedAt: DateTime.now(),
-      isProduct: response['is_product'] as bool? ??
-          _isEcommerceDomain(url),
+      isProduct: response['is_product'] as bool? ?? _isEcommerceDomain(url),
     );
   }
 
@@ -189,7 +218,10 @@ class DeepSeekService implements AIService {
   Future<String> askQuestion(String question, UserEntity profile) async {
     final currentYear = DateTime.now().year;
     final response = await _jsonRequest(
-      system: _chatSystemPrompt(profile, currentYear),
+      system: await adminPrompt(
+        'deepseek_chat_system',
+        _chatSystemPrompt(profile, currentYear),
+      ),
       user: question,
     );
     return jsonEncode(response);
@@ -203,11 +235,17 @@ class DeepSeekService implements AIService {
     final currentYear = DateTime.now().year;
 
     final apiMessages = <Map<String, String>>[
-      {'role': 'system', 'content': _chatSystemPrompt(profile, currentYear)},
+      {
+        'role': 'system',
+        'content': await adminPrompt(
+          'deepseek_chat_system',
+          _chatSystemPrompt(profile, currentYear),
+        ),
+      },
       ...messages.map((m) {
-            final role = m['role'] == 'user' ? 'user' : 'assistant';
-            return {'role': role, 'content': m['text'] ?? ''};
-          }),
+        final role = m['role'] == 'user' ? 'user' : 'assistant';
+        return {'role': role, 'content': m['text'] ?? ''};
+      }),
     ];
 
     return _rawRequest(apiMessages);
@@ -222,11 +260,17 @@ class DeepSeekService implements AIService {
     final currentYear = DateTime.now().year;
 
     final apiMessages = <Map<String, String>>[
-      {'role': 'system', 'content': _chatSystemPrompt(profile, currentYear)},
+      {
+        'role': 'system',
+        'content': await adminPrompt(
+          'deepseek_chat_system',
+          _chatSystemPrompt(profile, currentYear),
+        ),
+      },
       ...messages.map((m) {
-            final role = m['role'] == 'user' ? 'user' : 'assistant';
-            return {'role': role, 'content': m['text'] ?? ''};
-          }),
+        final role = m['role'] == 'user' ? 'user' : 'assistant';
+        return {'role': role, 'content': m['text'] ?? ''};
+      }),
     ];
 
     // PB proxy doesn't support SSE passthrough, so fall back to single-shot
@@ -242,10 +286,7 @@ class DeepSeekService implements AIService {
   }
 
   /// Simple text-in / text-out query.
-  Future<String> freeTextQuery(
-    String prompt, {
-    String? language,
-  }) async {
+  Future<String> freeTextQuery(String prompt, {String? language}) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
     final systemMsg = langCode != 'en'
@@ -290,7 +331,10 @@ class DeepSeekService implements AIService {
   }) async {
     debugPrint('[DeepSeek] generateQuiz for: $productTitle ($category)');
     final response = await _jsonRequest(
-      system: _quizGenerationPrompt(language),
+      system: await adminPrompt(
+        'deepseek_quiz_generation_system',
+        _quizGenerationPrompt(language),
+      ),
       user: jsonEncode({
         'category': category,
         'productTitle': productTitle,
@@ -335,11 +379,13 @@ class DeepSeekService implements AIService {
         final questions = (cached['questions'] as List<dynamic>? ?? [])
             .asMap()
             .entries
-            .map((e) => QuizQuestion(
-                  id: 'sq${e.key}',
-                  text: e.value['question'] as String? ?? '',
-                  options: List<String>.from(e.value['options'] ?? []),
-                ))
+            .map(
+              (e) => QuizQuestion(
+                id: 'sq${e.key}',
+                text: e.value['question'] as String? ?? '',
+                options: List<String>.from(e.value['options'] ?? []),
+              ),
+            )
             .where((q) => q.text.isNotEmpty && q.options.length >= 2)
             .toList();
         if (questions.isNotEmpty) {
@@ -358,8 +404,8 @@ class DeepSeekService implements AIService {
     final names = subscriptionNames.join(', ');
     final isCompare = subscriptionNames.length > 1;
 
-    final response = await _jsonRequest(
-      system: '''
+    final subscriptionQuizPrompt =
+        '''
 You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
 (4-5 questions) to understand the user's needs for: $names.
 
@@ -383,15 +429,24 @@ Return valid JSON:
     ...
   ]
 }
-''',
+''';
+
+    final response = await _jsonRequest(
+      system: await adminPrompt(
+        'deepseek_subscription_quiz_system',
+        subscriptionQuizPrompt,
+      ),
       user: jsonEncode({
         'subscriptions': subscriptionNames,
         'mode': isCompare ? 'compare' : 'single',
       }),
     );
 
-    await _cacheService.set(cacheKey, response,
-        duration: const Duration(hours: 24));
+    await _cacheService.set(
+      cacheKey,
+      response,
+      duration: const Duration(hours: 24),
+    );
 
     final questions = (response['questions'] as List<dynamic>? ?? [])
         .asMap()
@@ -428,7 +483,10 @@ Return valid JSON:
         .toList();
 
     final response = await _jsonRequest(
-      system: _enhancedAnalysisPrompt(profile.language),
+      system: await adminPrompt(
+        'deepseek_enhanced_link_analysis_system',
+        _enhancedAnalysisPrompt(profile.language),
+      ),
       user: jsonEncode({
         'product': {
           'url': baseResult.url,
@@ -451,11 +509,12 @@ Return valid JSON:
           'usageIntent': profile.usageIntent,
           'primaryCategory': profile.primaryCategory,
           'currentDevices': profile.currentDevices,
-          'profileVector': (profile.profileVector.entries.toList()
-              ..sort((a, b) => b.value.compareTo(a.value)))
-              .take(5)
-              .map((e) => e.key)
-              .toList(),
+          'profileVector':
+              (profile.profileVector.entries.toList()
+                    ..sort((a, b) => b.value.compareTo(a.value)))
+                  .take(5)
+                  .map((e) => e.key)
+                  .toList(),
         },
       }),
       timeout: const Duration(seconds: 90),
@@ -510,9 +569,15 @@ Return valid JSON:
             [],
       ),
       alternatives: List<String>.from(response['alternatives'] ?? []),
-      personaScore: () { final v = parseScore(response['personaScore']); return v > 0 ? v : null; }(),
+      personaScore: () {
+        final v = parseScore(response['personaScore']);
+        return v > 0 ? v : null;
+      }(),
       personaAnalysis: response['personaAnalysis'] as String?,
-      communityScore: () { final v = parseScore(response['communityScore']); return v > 0 ? v : null; }(),
+      communityScore: () {
+        final v = parseScore(response['communityScore']);
+        return v > 0 ? v : null;
+      }(),
       communityAnalysis: response['communityAnalysis'] as String?,
       overallVerdict: response['overallVerdict'] as String?,
     );
@@ -542,7 +607,9 @@ Return valid JSON:
     try {
       return jsonDecode(text) as Map<String, dynamic>;
     } catch (e) {
-      debugPrint('[DeepSeek] JSON parse error: $e — raw: ${text.length > 500 ? text.substring(0, 500) : text}');
+      debugPrint(
+        '[DeepSeek] JSON parse error: $e — raw: ${text.length > 500 ? text.substring(0, 500) : text}',
+      );
       final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
       if (match != null) {
         try {
@@ -601,19 +668,22 @@ Return valid JSON:
         // Parse OpenAI-compatible response
         final choices = response.data['choices'] as List?;
         if (choices == null || choices.isEmpty) {
-          debugPrint('[DeepSeek] Empty choices. Full response: ${response.data}');
+          debugPrint(
+            '[DeepSeek] Empty choices. Full response: ${response.data}',
+          );
           throw const AIServiceException(
             message: 'AI returned an empty response.',
           );
         }
 
-        final content =
-            choices[0]['message']?['content'] as String? ?? '';
+        final content = choices[0]['message']?['content'] as String? ?? '';
         if (content.isEmpty) {
           throw const AIServiceException(message: 'AI returned no content.');
         }
 
-        debugPrint('[DeepSeek] ✅ Request succeeded. Content length: ${content.length}');
+        debugPrint(
+          '[DeepSeek] ✅ Request succeeded. Content length: ${content.length}',
+        );
         return content;
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
@@ -632,8 +702,7 @@ Return valid JSON:
         if (statusCode == 400 || statusCode == 403 || statusCode == 404) {
           String detail = 'AI request failed (HTTP $statusCode).';
           if (e.response?.data is Map) {
-            final errorMsg =
-                e.response?.data['error']?['message'] as String?;
+            final errorMsg = e.response?.data['error']?['message'] as String?;
             if (errorMsg != null) detail = errorMsg;
           }
           throw AIServiceException(message: detail);
@@ -646,7 +715,9 @@ Return valid JSON:
       } on AIServiceException {
         rethrow;
       } catch (e) {
-        debugPrint('[DeepSeek] Unexpected error (attempt ${retryCount + 1}/$maxRetries): $e');
+        debugPrint(
+          '[DeepSeek] Unexpected error (attempt ${retryCount + 1}/$maxRetries): $e',
+        );
         retryCount++;
         if (retryCount < maxRetries) {
           await Future.delayed(AppConstants.retryDelays[retryCount - 1]);
@@ -692,11 +763,13 @@ Return valid JSON:
 
   RecommendationResult _parseRecommendationResult(Map<String, dynamic> data) {
     final items = (data['recommendations'] as List<dynamic>? ?? [])
-        .map((e) => RecommendedProduct(
-              productId: e['productId'] ?? '',
-              score: (e['score'] as num?)?.toDouble() ?? 0.0,
-              reason: e['reason'] ?? '',
-            ))
+        .map(
+          (e) => RecommendedProduct(
+            productId: e['productId'] ?? '',
+            score: (e['score'] as num?)?.toDouble() ?? 0.0,
+            reason: e['reason'] ?? '',
+          ),
+        )
         .toList();
 
     return RecommendationResult(
@@ -741,9 +814,22 @@ Return valid JSON:
     try {
       final host = Uri.parse(url).host.toLowerCase();
       const domains = [
-        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
-        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'kitapyurdu',
-        'idefix', 'bkmkitap', 'ebay', 'aliexpress', 'bestbuy', 'walmart',
+        'amazon',
+        'trendyol',
+        'hepsiburada',
+        'n11',
+        'gittigidiyor',
+        'mediamarkt',
+        'teknosa',
+        'vatan',
+        'ciceksepeti',
+        'kitapyurdu',
+        'idefix',
+        'bkmkitap',
+        'ebay',
+        'aliexpress',
+        'bestbuy',
+        'walmart',
       ];
       return domains.any((d) => host.contains(d));
     } catch (_) {
@@ -798,7 +884,8 @@ Return valid JSON:
 ''';
   }
 
-  static String _chatSystemPrompt(UserEntity profile, int currentYear) => '''
+  static String _chatSystemPrompt(UserEntity profile, int currentYear) =>
+      '''
 You are Qor AI — a knowledgeable, friendly shopping and product advisor for ALL product categories.
 
 ## YOUR PERSONALITY
@@ -931,11 +1018,22 @@ Return valid JSON (all text in $langName):
 
   static String _languageName(String code) {
     const map = {
-      'en': 'English', 'tr': 'Turkish', 'de': 'German',
-      'fr': 'French', 'es': 'Spanish', 'pt': 'Portuguese',
-      'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
-      'zh': 'Chinese', 'ar': 'Arabic', 'ru': 'Russian',
-      'hi': 'Hindi', 'nl': 'Dutch', 'pl': 'Polish', 'sv': 'Swedish',
+      'en': 'English',
+      'tr': 'Turkish',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+      'pt': 'Portuguese',
+      'it': 'Italian',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+      'zh': 'Chinese',
+      'ar': 'Arabic',
+      'ru': 'Russian',
+      'hi': 'Hindi',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'sv': 'Swedish',
     };
     return map[code] ?? 'English';
   }

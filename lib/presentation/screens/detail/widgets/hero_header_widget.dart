@@ -101,7 +101,7 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     final imageBg = isDark ? Colors.white : Colors.white;
 
     final hasOverflowImages = allImages.length > 4;
-    final heroBaseHeight = hasOverflowImages ? 260.0 : 238.0;
+    const heroBaseHeight = 260.0;
 
     return SliverToBoxAdapter(
       child: Container(
@@ -329,6 +329,48 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 92,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0),
+                        Colors.white.withValues(alpha: 0.72),
+                        Colors.white,
+                      ],
+                      stops: const [0, 0.68, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: allImages.length > 1 ? 88 : 28,
+              right: 28,
+              bottom: 18,
+              height: 34,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 28,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
