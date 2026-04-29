@@ -5778,6 +5778,8 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     }
     if (f.isEmpty) {
       // Check if compat filter is hiding everything
+      final isStillScanning =
+          isCompatCause && (pickerState.hasMore || pickerState.isLoadingMore);
       if (isCompatCause && pickerState.hasMore && !pickerState.isLoadingMore) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -5800,20 +5802,21 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                 color: context.textTertiaryColor,
               ),
               const SizedBox(height: 8),
-              Text(
-                isCompatCause
-                    ? _pcText(
-                        context,
-                        en: 'No compatible products found.\nTurn off the compatibility filter to see all products.',
-                        tr: 'Uyumlu ürün bulunamadı.\nTüm ürünleri görmek için uyumluluk filtresini kapatın.',
-                      )
-                    : (context.l10n?.noProductsFound ?? 'No products found'),
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  color: context.textSecondary,
-                  height: 1.4,
+              if (!isStillScanning)
+                Text(
+                  isCompatCause
+                      ? _pcText(
+                          context,
+                          en: 'No compatible products found.\nTurn off the compatibility filter to see all products.',
+                          tr: 'Uyumlu ürün bulunamadı.\nTüm ürünleri görmek için uyumluluk filtresini kapatın.',
+                        )
+                      : (context.l10n?.noProductsFound ?? 'No products found'),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: context.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
-              ),
               if (isCompatCause) ...[
                 const SizedBox(height: 12),
                 if (pickerState.hasMore || pickerState.isLoadingMore) ...[
@@ -5840,21 +5843,22 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                ElevatedButton.icon(
-                  onPressed: () => setState(() => _compatOnly = false),
-                  icon: const Icon(Icons.visibility_rounded, size: 16),
-                  label: Text(
-                    _pcText(
-                      context,
-                      en: 'Show All ${allProducts.length} Products',
-                      tr: 'Tüm ${allProducts.length} Ürünü Göster',
+                if (!isStillScanning)
+                  ElevatedButton.icon(
+                    onPressed: () => setState(() => _compatOnly = false),
+                    icon: const Icon(Icons.visibility_rounded, size: 16),
+                    label: Text(
+                      _pcText(
+                        context,
+                        en: 'Show All ${allProducts.length} Products',
+                        tr: 'Tüm ${allProducts.length} Ürünü Göster',
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.component.accentColor,
+                      foregroundColor: Colors.white,
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.component.accentColor,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
               ],
               if (_search.isNotEmpty ||
                   _brands.isNotEmpty ||

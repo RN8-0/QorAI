@@ -39,19 +39,27 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final locale = _ref.read(localeProvider);
     final langCode = locale?.languageCode ?? 'en';
     const greetings = <String, String>{
-      'tr': 'Merhaba! Ben Qor AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
-      'de': 'Hallo! Ich bin dein Qor AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
-      'fr': 'Salut! Je suis votre assistant Qor AI. Posez-moi des questions sur les produits et achats! 🚀',
-      'es': '¡Hola! Soy tu asistente Qor AI. ¡Pregúntame sobre productos y compras! 🚀',
+      'tr':
+          'Merhaba! Ben Qor AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
+      'de':
+          'Hallo! Ich bin dein Qor AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
+      'fr':
+          'Salut! Je suis votre assistant Qor AI. Posez-moi des questions sur les produits et achats! 🚀',
+      'es':
+          '¡Hola! Soy tu asistente Qor AI. ¡Pregúntame sobre productos y compras! 🚀',
       'ar': 'مرحباً! أنا مساعدك Qor AI. اسألني عن المنتجات والتسوق! 🚀',
-      'ru': 'Привет! Я ваш ассистент Qor AI. Спрашивайте меня о продуктах и покупках! 🚀',
+      'ru':
+          'Привет! Я ваш ассистент Qor AI. Спрашивайте меня о продуктах и покупках! 🚀',
       'zh': '你好！我是您的Qor AI助手。询问关于产品和购物的任何问题！🚀',
       'ja': 'こんにちは！Qor AIアシスタントです。製品やお買い物について何でも聞いてください！🚀',
       'ko': '안녕하세요! Qor AI 어시스턴트입니다. 제품과 쇼핑에 대해 무엇이든 물어보세요! 🚀',
-      'pt': 'Olá! Sou seu assistente Qor AI. Pergunte-me sobre produtos e compras! 🚀',
-      'it': 'Ciao! Sono il tuo assistente Qor AI. Chiedimi di prodotti e acquisti! 🚀',
+      'pt':
+          'Olá! Sou seu assistente Qor AI. Pergunte-me sobre produtos e compras! 🚀',
+      'it':
+          'Ciao! Sono il tuo assistente Qor AI. Chiedimi di prodotti e acquisti! 🚀',
     };
-    final text = greetings[langCode] ??
+    final text =
+        greetings[langCode] ??
         'Hey! I\'m your Qor AI assistant. Ask me anything about products and shopping! 🚀';
     final welcome = PersistedChatMsg(
       id: 'welcome',
@@ -66,21 +74,20 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     return t.length > 45 ? '${t.substring(0, 45)}...' : t;
   }
 
-  Future<void> send(
-    String text, {
-    Map<String, dynamic>? pageContext,
-  }) async {
+  Future<void> send(String text, {Map<String, dynamic>? pageContext}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
     final user = _ref.read(userProfileProvider).valueOrNull;
     if (user == null) {
-      _addMsg(PersistedChatMsg(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        role: PersistedMsgRole.system,
-        text: 'Please sign in to use AI Chat.',
-        status: PersistedMsgStatus.error,
-      ));
+      _addMsg(
+        PersistedChatMsg(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: PersistedMsgRole.system,
+          text: 'Please sign in to use AI Chat.',
+          status: PersistedMsgStatus.error,
+        ),
+      );
       return;
     }
 
@@ -88,12 +95,14 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final quota = sub.recordAIQuestion();
     if (quota.isFailure) {
       final locale = _ref.read(localeProvider);
-      _addMsg(PersistedChatMsg(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        role: PersistedMsgRole.system,
-        text: buildDailyQLimitMessage(locale?.languageCode),
-        status: PersistedMsgStatus.error,
-      ));
+      _addMsg(
+        PersistedChatMsg(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: PersistedMsgRole.system,
+          text: buildDailyQLimitMessage(locale?.languageCode),
+          status: PersistedMsgStatus.error,
+        ),
+      );
       return;
     }
 
@@ -106,8 +115,9 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     state = state.copyWith(isLoading: true);
 
     // Auto-title from first user message
-    final userMsgCount =
-        state.messages.where((m) => m.role == PersistedMsgRole.user).length;
+    final userMsgCount = state.messages
+        .where((m) => m.role == PersistedMsgRole.user)
+        .length;
     final isFirstUserMsg = userMsgCount == 1;
     final title = isFirstUserMsg ? _autoTitle(trimmed) : state.title;
     if (isFirstUserMsg) state = state.copyWith(title: title);
@@ -157,16 +167,20 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       // Persist to Firestore in background (fire-and-forget)
       final ds = _ref.read(pbDataSourceProvider);
       final allMsgs = List<PersistedChatMsg>.from(state.messages.reversed);
-      ds
-          .updateChatConversation(user.uid, convId, allMsgs, title)
-          .catchError((_) {/* silent fail */});
+      ds.updateChatConversation(user.uid, convId, allMsgs, title).catchError((
+        _,
+      ) {
+        /* silent fail */
+      });
     } catch (e) {
-      _addMsg(PersistedChatMsg(
-        id: '${DateTime.now().millisecondsSinceEpoch}_err',
-        role: PersistedMsgRole.ai,
-        text: 'Sorry, I couldn\'t process that. Please try again.',
-        status: PersistedMsgStatus.error,
-      ));
+      _addMsg(
+        PersistedChatMsg(
+          id: '${DateTime.now().millisecondsSinceEpoch}_err',
+          role: PersistedMsgRole.ai,
+          text: 'Sorry, I couldn\'t process that. Please try again.',
+          status: PersistedMsgStatus.error,
+        ),
+      );
     } finally {
       state = state.copyWith(isLoading: false);
     }
@@ -183,9 +197,12 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       }
     } catch (_) {
       // Partial JSON during streaming — try to extract message field
-      final match = RegExp(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)').firstMatch(trimmed);
+      final match = RegExp(
+        r'"message"\s*:\s*"((?:[^"\\]|\\.)*)',
+      ).firstMatch(trimmed);
       if (match != null) {
-        return match.group(1)?.replaceAll(r'\"', '"').replaceAll(r'\n', '\n') ?? trimmed;
+        return match.group(1)?.replaceAll(r'\"', '"').replaceAll(r'\n', '\n') ??
+            trimmed;
       }
     }
     return trimmed;
@@ -219,13 +236,22 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       createdAt: now,
       updatedAt: now,
     );
-    ds.createChatConversation(conv).then((newId) {
-      if (newId != localId) state = state.copyWith(conversationId: newId);
-    }).catchError((_) {/* keep localId */});
+    ds
+        .createChatConversation(conv)
+        .then((newId) {
+          if (newId != localId) state = state.copyWith(conversationId: newId);
+        })
+        .catchError((_) {
+          /* keep localId */
+        });
     return localId;
   }
 
-  List<Map<String, String>> _buildTurns(String newMsg, dynamic user, {Map<String, dynamic>? pageContext}) {
+  List<Map<String, String>> _buildTurns(
+    String newMsg,
+    dynamic user, {
+    Map<String, dynamic>? pageContext,
+  }) {
     // Keep last 5 messages to reduce token cost (~40% savings per call)
     final recent = state.messages
         .where((m) => m.role != PersistedMsgRole.system)
@@ -267,19 +293,61 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     // Add page context so AI knows what the user is looking at
     final pageCtxStr = <String>[];
     if (pageContext != null) {
-      if (pageContext['page'] != null) pageCtxStr.add('Currently viewing: ${pageContext['page']}');
-      if (pageContext['route'] != null) pageCtxStr.add('Route: ${pageContext['route']}');
-      if (pageContext['productName'] != null) pageCtxStr.add('Product: ${pageContext['productName']}');
-      if (pageContext['productBrand'] != null) pageCtxStr.add('Brand: ${pageContext['productBrand']}');
-      if (pageContext['productCategory'] != null) pageCtxStr.add('Category: ${pageContext['productCategory']}');
-      if (pageContext['techScore'] != null) pageCtxStr.add('Tech Score: ${pageContext['techScore']}');
-      if (pageContext['matchScore'] != null) pageCtxStr.add('Match Score: ${pageContext['matchScore']}');
+      if (pageContext['page'] != null) {
+        pageCtxStr.add('Currently viewing: ${pageContext['page']}');
+      }
+      if (pageContext['route'] != null) {
+        pageCtxStr.add('Route: ${pageContext['route']}');
+      }
+      if (pageContext['productName'] != null) {
+        pageCtxStr.add('Product: ${pageContext['productName']}');
+      }
+      if (pageContext['productBrand'] != null) {
+        pageCtxStr.add('Brand: ${pageContext['productBrand']}');
+      }
+      if (pageContext['productCategory'] != null) {
+        pageCtxStr.add('Category: ${pageContext['productCategory']}');
+      }
+      if (pageContext['techScore'] != null) {
+        pageCtxStr.add('Tech Score: ${pageContext['techScore']}');
+      }
+      if (pageContext['matchScore'] != null) {
+        pageCtxStr.add('Match Score: ${pageContext['matchScore']}');
+      }
+      if (pageContext['compareProducts'] != null) {
+        pageCtxStr.add('Compared products: ${pageContext['compareProducts']}');
+      }
+      if (pageContext['pcBuilderParts'] != null) {
+        pageCtxStr.add('PC build parts: ${pageContext['pcBuilderParts']}');
+      }
+      if (pageContext['recentChatMessages'] != null &&
+          pageContext['recentChatMessages'].toString().trim().isNotEmpty) {
+        pageCtxStr.add(
+          'Recent chat context: ${pageContext['recentChatMessages']}',
+        );
+      }
     }
 
-    final ctx =
-        parts.isEmpty ? '' : '\n[User Profile: ${parts.join(' | ')}]';
-    final pageInfo =
-        pageCtxStr.isEmpty ? '' : '\n[Page Context: ${pageCtxStr.join(' | ')}]';
+    try {
+      final compare = _ref.read(compareSessionProvider);
+      final compared = compare.comparedProducts;
+      if (compared != null && compared.isNotEmpty) {
+        pageCtxStr.add(
+          'Active comparison: ${compared.map((p) => '${p.name} (${p.techScore.round()}/100)').take(4).join(' vs ')}',
+        );
+      }
+      final pcBuild = _ref.read(pcBuilderSessionProvider);
+      if (pcBuild.isNotEmpty) {
+        pageCtxStr.add(
+          'Current PC build: ${pcBuild.entries.map((e) => '${e.key}: ${e.value.name}').take(8).join(' | ')}',
+        );
+      }
+    } catch (_) {}
+
+    final ctx = parts.isEmpty ? '' : '\n[User Profile: ${parts.join(' | ')}]';
+    final pageInfo = pageCtxStr.isEmpty
+        ? ''
+        : '\n[Page Context: ${pageCtxStr.join(' | ')}]';
     turns.add({'role': 'user', 'text': '$newMsg$ctx$pageInfo'});
     return turns;
   }
@@ -316,16 +384,10 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
 
 final chatSessionProvider =
     StateNotifierProvider<ChatSessionNotifier, ChatSessionState>((ref) {
-  return ChatSessionNotifier(ref);
-});
+      return ChatSessionNotifier(ref);
+    });
 
-final chatHistoryProvider =
-    StreamProvider.autoDispose.family<List<ChatConversation>, String>(
-  (ref, userId) {
-    return ref
-        .read(pbDataSourceProvider)
-        .streamChatConversations(userId);
-  },
-);
-
-
+final chatHistoryProvider = StreamProvider.autoDispose
+    .family<List<ChatConversation>, String>((ref, userId) {
+      return ref.read(pbDataSourceProvider).streamChatConversations(userId);
+    });

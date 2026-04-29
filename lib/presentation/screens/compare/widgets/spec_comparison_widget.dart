@@ -508,9 +508,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     if (allowGeminiFallback) {
       try {
         onProgress?.call(
-          _isTr
-              ? 'Alternatif model deneniyor…'
-              : 'Trying alternative model…',
+          _isTr ? 'Alternatif model deneniyor…' : 'Trying alternative model…',
         );
         final deepseek = ref.read(deepSeekServiceProvider);
         final result = await deepseek.jsonFreeTextQuery(
@@ -728,16 +726,28 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         .toList();
     if (words.length < 6) return false;
     final capCount = words
-        .where((w) =>
-            RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(w) && !_isSpecConnector(w))
+        .where(
+          (w) => RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(w) && !_isSpecConnector(w),
+        )
         .length;
     return capCount >= 4;
   }
 
   static bool _isSpecConnector(String word) {
     const connectors = {
-      'and', 'or', 'with', 'for', 'to', 've', 'ile', 'veya',
-      'the', 'a', 'an', 'of', '&',
+      'and',
+      'or',
+      'with',
+      'for',
+      'to',
+      've',
+      'ile',
+      'veya',
+      'the',
+      'a',
+      'an',
+      'of',
+      '&',
     };
     return connectors.contains(word.toLowerCase());
   }
@@ -755,7 +765,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     var currentLength = 0;
 
     for (final word in words) {
-      final startsFeature = current.isNotEmpty &&
+      final startsFeature =
+          current.isNotEmpty &&
           current.length >= 2 &&
           RegExp(r'^[A-Z0-9ÇĞİÖŞÜ]').hasMatch(word) &&
           !_isSpecConnector(word) &&
@@ -1029,6 +1040,9 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
           'Quality constraints:\n'
           '- Write evidence-based analysis, not generic claims.\n'
           '- Every product must include at least one concrete technical reason tied to specs/positioning.\n'
+          '- If products are near-identical variants, say so clearly; do not invent large performance gaps.\n'
+          '- Category scores must stay within 3 points when the listed specs are effectively the same.\n'
+          '- Prefer practical buyer guidance over hype; mention uncertainty when price/spec data is missing.\n'
           '- verdict and recommendation should each be 4-6 sentences and should differ in focus.',
       lang: lang,
       maxTokens: 8192,
@@ -1048,9 +1062,19 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
         .join(' vs ');
     final category = widget.products.first.category;
 
+    final comparedSummary = widget.products
+        .map(
+          (p) =>
+              '- ${p.name}: score ${p.techScore.round()}/100, brand ${p.brand ?? "unknown"}',
+        )
+        .join('\n');
+
     final prompt =
         '''You are a tech expert. The user is comparing: $productNames in category "$category".
-Suggest 3-5 alternative products they should also consider. Address the user directly using "you/your". ALL text in $langName.
+  Suggest 3-5 alternative product CLASSES or well-known market options they should also consider. Address the user directly using "you/your". ALL text in $langName.
+
+  Compared products:
+  $comparedSummary
 
 Return ONLY valid JSON:
 {
@@ -1075,6 +1099,9 @@ Return ONLY valid JSON:
           '$prompt\n'
           'Quality constraints:\n'
           '- why_better must be 2-3 sentences with category-specific detail.\n'
+          '- Do not claim a specific model is available in the app unless it is already in the compared product names.\n'
+          '- If you name a market alternative, phrase it as "look for" or "consider the class" rather than pretending it is in stock.\n'
+          '- Do not recommend absurd tier jumps; alternatives should stay close to the compared product segment unless you explain the trade-off.\n'
           '- Avoid repeating the same sentence structure across alternatives.\n'
           '- Include realistic and differentiated price band commentary.',
       lang: lang,
@@ -1132,6 +1159,8 @@ Return ONLY valid JSON, no markdown, no explanation:
           '$prompt\n'
           'Quality constraints:\n'
           '- final_verdict should be 4-6 sentences with explicit trade-offs.\n'
+          '- If products are very similar, recommend based on price, cooling/noise, warranty, size, or availability instead of fake performance differences.\n'
+          '- Do not overstate certainty when price/spec fields are missing.\n'
           '- Avoid generic advice; tie recommendation to concrete product context.\n'
           '- Use varied wording across products and points.',
       lang: lang,
@@ -1686,7 +1715,9 @@ Rules:
       isScrollControlled: true,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final bgColor = isDark ? const Color(0xFF121826) : const Color(0xFFFDFEFF);
+        final bgColor = isDark
+            ? const Color(0xFF121826)
+            : const Color(0xFFFDFEFF);
         final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
         final formattedValue = _formatSpecValueForSheet(fullValue);
         return SafeArea(
@@ -1705,11 +1736,15 @@ Rules:
                       color: bgColor,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.10),
+                        color: AppTheme.brandBlue.withValues(
+                          alpha: isDark ? 0.22 : 0.10,
+                        ),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.10),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.32 : 0.10,
+                          ),
                           blurRadius: 22,
                           offset: const Offset(0, 10),
                         ),
@@ -1738,7 +1773,9 @@ Rules:
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.08),
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: isDark ? 0.18 : 0.08,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -1753,11 +1790,15 @@ Rules:
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _isTr ? 'Ozellik degeri' : 'Specification value',
+                                      _isTr
+                                          ? 'Ozellik degeri'
+                                          : 'Specification value',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: textColor.withValues(alpha: 0.55),
+                                        color: textColor.withValues(
+                                          alpha: 0.55,
+                                        ),
                                         letterSpacing: 0.2,
                                       ),
                                     ),
@@ -1784,7 +1825,10 @@ Rules:
                                 ),
                                 onPressed: () => Navigator.of(ctx).pop(),
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
                               ),
                             ],
                           ),
@@ -1798,7 +1842,9 @@ Rules:
                                   : const Color(0xFFF5F9FD),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.16 : 0.08),
+                                color: AppTheme.brandBlue.withValues(
+                                  alpha: isDark ? 0.16 : 0.08,
+                                ),
                               ),
                             ),
                             child: SelectableText(
@@ -1824,7 +1870,9 @@ Rules:
                                   SnackBar(
                                     content: Text(
                                       _isTr ? 'Kopyalandi' : 'Copied',
-                                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     duration: const Duration(seconds: 1),
                                     behavior: SnackBarBehavior.floating,
@@ -1845,8 +1893,13 @@ Rules:
                               ),
                               style: TextButton.styleFrom(
                                 foregroundColor: AppTheme.brandBlue,
-                                backgroundColor: AppTheme.brandBlue.withValues(alpha: isDark ? 0.18 : 0.08),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                backgroundColor: AppTheme.brandBlue.withValues(
+                                  alpha: isDark ? 0.18 : 0.08,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1902,7 +1955,8 @@ Rules:
       } else if ((ch == ',' || ch == ';') && parenDepth == 0) {
         final before = i > 0 ? value[i - 1] : '';
         final after = i + 1 < value.length ? value[i + 1] : '';
-        final isNumericComma = ch == ',' &&
+        final isNumericComma =
+            ch == ',' &&
             before.isNotEmpty &&
             after.isNotEmpty &&
             before.codeUnitAt(0) >= 48 &&
@@ -2096,144 +2150,147 @@ Rules:
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: List.generate(productCount, (i) {
                 final pName = productNames[i];
-              // Find matching product data
-              Map<String, dynamic> pData = {};
-              for (final e in products.entries) {
-                if (e.key.toLowerCase().contains(
-                      pName.toLowerCase().split(' ').take(3).join(' '),
-                    ) ||
-                    pName.toLowerCase().contains(
-                      e.key.toLowerCase().split(' ').take(3).join(' '),
-                    )) {
-                  pData = e.value as Map<String, dynamic>? ?? {};
-                  break;
+                // Find matching product data
+                Map<String, dynamic> pData = {};
+                for (final e in products.entries) {
+                  if (e.key.toLowerCase().contains(
+                        pName.toLowerCase().split(' ').take(3).join(' '),
+                      ) ||
+                      pName.toLowerCase().contains(
+                        e.key.toLowerCase().split(' ').take(3).join(' '),
+                      )) {
+                    pData = e.value as Map<String, dynamic>? ?? {};
+                    break;
+                  }
                 }
-              }
-              if (pData.isEmpty && i < products.length) {
-                pData =
-                    products.values.elementAt(i) as Map<String, dynamic>? ?? {};
-              }
-              final score = (pData['score'] as num?)?.toDouble() ?? 0;
-              final strengths = List<String>.from(pData['strengths'] ?? []);
-              final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
-              final bestFor = pData['best_for'] as String? ?? '';
-              final color = barColors[i % barColors.length];
+                if (pData.isEmpty && i < products.length) {
+                  pData =
+                      products.values.elementAt(i) as Map<String, dynamic>? ??
+                      {};
+                }
+                final score = (pData['score'] as num?)?.toDouble() ?? 0;
+                final strengths = List<String>.from(pData['strengths'] ?? []);
+                final weaknesses = List<String>.from(pData['weaknesses'] ?? []);
+                final bestFor = pData['best_for'] as String? ?? '';
+                final color = barColors[i % barColors.length];
 
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _showProductDetailOverlay(
-                    productName: pName,
-                    score: score,
-                    strengths: strengths,
-                    weaknesses: weaknesses,
-                    bestFor: bestFor,
-                    color: color,
-                  ),
-                  child: Container(
-                    margin: EdgeInsets.only(
-                      left: i == 0 ? 0 : 3,
-                      right: i == productCount - 1 ? 0 : 3,
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => _showProductDetailOverlay(
+                      productName: pName,
+                      score: score,
+                      strengths: strengths,
+                      weaknesses: weaknesses,
+                      bestFor: bestFor,
+                      color: color,
                     ),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: context.surfaceElevatedColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: color.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Score circle
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _aiScoreColor(score).withValues(alpha: 0.7),
-                                    _aiScoreColor(score),
-                                  ],
+                    child: Container(
+                      margin: EdgeInsets.only(
+                        left: i == 0 ? 0 : 3,
+                        right: i == productCount - 1 ? 0 : 3,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: context.surfaceElevatedColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: color.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Score circle
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _aiScoreColor(
+                                        score,
+                                      ).withValues(alpha: 0.7),
+                                      _aiScoreColor(score),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${score.toInt()}',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
+                                child: Center(
+                                  child: Text(
+                                    '${score.toInt()}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            // Product name — short
-                            Text(
-                              pName.length > (productCount > 2 ? 20 : 30)
-                                  ? '${pName.substring(0, productCount > 2 ? 18 : 28)}…'
-                                  : pName,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: productCount > 3
-                                    ? 8
-                                    : (productCount > 2 ? 9 : 10),
-                                fontWeight: FontWeight.w700,
-                                color: context.textPrimary,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 6),
-                            // Quick info
-                            if (strengths.isNotEmpty)
+                              const SizedBox(height: 6),
+                              // Product name — short
                               Text(
-                                '✅ ${strengths.first}',
+                                pName.length > (productCount > 2 ? 20 : 30)
+                                    ? '${pName.substring(0, productCount > 2 ? 18 : 28)}…'
+                                    : pName,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 8,
-                                  color: context.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
-                            const SizedBox(height: 6),
-                            // Detail button
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _isTr ? 'Detay' : 'Detail',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9,
+                                  fontSize: productCount > 3
+                                      ? 8
+                                      : (productCount > 2 ? 9 : 10),
                                   fontWeight: FontWeight.w700,
-                                  color: color,
+                                  color: context.textPrimary,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 6),
+                              // Quick info
+                              if (strengths.isNotEmpty)
+                                Text(
+                                  '✅ ${strengths.first}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 8,
+                                    color: context.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              const SizedBox(height: 6),
+                              // Detail button
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _isTr ? 'Detay' : 'Detail',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: color,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
-          ),
+                );
+              }),
+            ),
           ),
         ],
 
@@ -4224,118 +4281,118 @@ Rules:
               children: List.generate(perProduct.length.clamp(0, productCount), (
                 i,
               ) {
-              final p = perProduct[i];
-              final rating = (p['rating'] as num?)?.toInt() ?? 3;
-              final name = p['name'] as String? ?? '';
-              final idealUser = p['ideal_user'] as String? ?? '';
-              final color = barColors[i % barColors.length];
+                final p = perProduct[i];
+                final rating = (p['rating'] as num?)?.toInt() ?? 3;
+                final name = p['name'] as String? ?? '';
+                final idealUser = p['ideal_user'] as String? ?? '';
+                final color = barColors[i % barColors.length];
 
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _showAdvisorDetailOverlay(
-                    productName: name,
-                    rating: rating,
-                    idealUser: idealUser,
-                    matchPoints: matchPoints,
-                    cautionPoints: cautionPoints,
-                    color: color,
-                  ),
-                  child: Container(
-                    margin: EdgeInsets.only(
-                      left: i == 0 ? 0 : 3,
-                      right: i == perProduct.length - 1 ? 0 : 3,
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => _showAdvisorDetailOverlay(
+                      productName: name,
+                      rating: rating,
+                      idealUser: idealUser,
+                      matchPoints: matchPoints,
+                      cautionPoints: cautionPoints,
+                      color: color,
                     ),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: context.surfaceElevatedColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: color.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Star rating
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                5,
-                                (s) => Icon(
-                                  s < rating
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  size: productCount > 3 ? 10 : 13,
-                                  color: s < rating
-                                      ? const Color(0xFFFFD700)
-                                      : context.textTertiaryColor,
+                    child: Container(
+                      margin: EdgeInsets.only(
+                        left: i == 0 ? 0 : 3,
+                        right: i == perProduct.length - 1 ? 0 : 3,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: context.surfaceElevatedColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: color.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Star rating
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  5,
+                                  (s) => Icon(
+                                    s < rating
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    size: productCount > 3 ? 10 : 13,
+                                    color: s < rating
+                                        ? const Color(0xFFFFD700)
+                                        : context.textTertiaryColor,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            // Product name
-                            Text(
-                              name.length > (productCount > 2 ? 20 : 30)
-                                  ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
-                                  : name,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: productCount > 3
-                                    ? 8
-                                    : (productCount > 2 ? 9 : 10),
-                                fontWeight: FontWeight.w700,
-                                color: context.textPrimary,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (idealUser.isNotEmpty) ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
+                              // Product name
                               Text(
-                                idealUser,
+                                name.length > (productCount > 2 ? 20 : 30)
+                                    ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                    : name,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 8,
-                                  color: context.textSecondary,
+                                  fontSize: productCount > 3
+                                      ? 8
+                                      : (productCount > 2 ? 9 : 10),
+                                  fontWeight: FontWeight.w700,
+                                  color: context.textPrimary,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _isTr ? 'Detay' : 'Detail',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: color,
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (idealUser.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  idealUser,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 8,
+                                    color: context.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _isTr ? 'Detay' : 'Detail',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: color,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
-          ),
+                );
+              }),
+            ),
           ),
         ],
 
@@ -4414,214 +4471,214 @@ Rules:
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: List.generate(productCount, (i) {
               final wProduct = widget.products[i];
-            // Find matching AI product by name (first 3 words, then any word overlap)
-            Map<String, dynamic>? p;
-            final wWords = wProduct.name.toLowerCase().split(' ');
-            final wKey3 = wWords.take(3).join(' ');
-            for (final ap in products) {
-              final aName = (ap['name'] as String? ?? '').toLowerCase();
-              if (aName.contains(wKey3) ||
-                  wKey3.contains(aName.split(' ').take(3).join(' '))) {
-                p = ap;
-                break;
-              }
-            }
-            // Secondary: any 2-word overlap
-            if (p == null) {
+              // Find matching AI product by name (first 3 words, then any word overlap)
+              Map<String, dynamic>? p;
+              final wWords = wProduct.name.toLowerCase().split(' ');
+              final wKey3 = wWords.take(3).join(' ');
               for (final ap in products) {
-                final aWords = (ap['name'] as String? ?? '')
-                    .toLowerCase()
-                    .split(' ');
-                final overlap = wWords
-                    .where((w) => w.length > 3 && aWords.contains(w))
-                    .length;
-                if (overlap >= 2) {
+                final aName = (ap['name'] as String? ?? '').toLowerCase();
+                if (aName.contains(wKey3) ||
+                    wKey3.contains(aName.split(' ').take(3).join(' '))) {
                   p = ap;
                   break;
                 }
               }
-            }
-            // Always positional fallback — ensures no placeholder if AI returned all products
-            if (p == null && i < products.length) p = products[i];
+              // Secondary: any 2-word overlap
+              if (p == null) {
+                for (final ap in products) {
+                  final aWords = (ap['name'] as String? ?? '')
+                      .toLowerCase()
+                      .split(' ');
+                  final overlap = wWords
+                      .where((w) => w.length > 3 && aWords.contains(w))
+                      .length;
+                  if (overlap >= 2) {
+                    p = ap;
+                    break;
+                  }
+                }
+              }
+              // Always positional fallback — ensures no placeholder if AI returned all products
+              if (p == null && i < products.length) p = products[i];
 
-            if (p == null) {
-              // No prediction data — show placeholder
-              final color = barColors[i % barColors.length];
-              return Expanded(
-                child: Container(
-                  margin: EdgeInsets.only(
-                    left: i == 0 ? 0 : 3,
-                    right: i == productCount - 1 ? 0 : 3,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: context.surfaceElevatedColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: color.withValues(alpha: 0.15)),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.trending_flat_rounded,
-                        color: color.withValues(alpha: 0.4),
-                        size: productCount > 3 ? 20 : 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '—',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
+              if (p == null) {
+                // No prediction data — show placeholder
+                final color = barColors[i % barColors.length];
+                return Expanded(
+                  child: Container(
+                    margin: EdgeInsets.only(
+                      left: i == 0 ? 0 : 3,
+                      right: i == productCount - 1 ? 0 : 3,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.surfaceElevatedColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: color.withValues(alpha: 0.15)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.trending_flat_rounded,
                           color: color.withValues(alpha: 0.4),
+                          size: productCount > 3 ? 20 : 24,
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        wProduct.name.length > (productCount > 2 ? 20 : 30)
-                            ? '${wProduct.name.substring(0, productCount > 2 ? 18 : 28)}…'
-                            : wProduct.name,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: productCount > 3
-                              ? 8
-                              : (productCount > 2 ? 9 : 10),
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
+                        const SizedBox(height: 4),
+                        Text(
+                          '—',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: color.withValues(alpha: 0.4),
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
+                        Text(
+                          wProduct.name.length > (productCount > 2 ? 20 : 30)
+                              ? '${wProduct.name.substring(0, productCount > 2 ? 18 : 28)}…'
+                              : wProduct.name,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: productCount > 3
+                                ? 8
+                                : (productCount > 2 ? 9 : 10),
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
+              final changePercent =
+                  (p['change_percent'] as num?)?.toDouble() ?? 0;
+              final name = p['name'] as String? ?? wProduct.name;
+              final bestTime =
+                  p['best_time_to_buy'] as String? ??
+                  p['best_time'] as String? ??
+                  '';
+              final buyNow =
+                  p['buy_now'] as bool? ??
+                  (bestTime == 'now' || trend == 'dropping');
+              final reason = p['reason'] as String? ?? '';
+              final confidence = (p['confidence'] as num?)?.toDouble() ?? 0;
+
+              final isDropping = trend == 'dropping' || trend == 'down';
+              final isRising = trend == 'rising' || trend == 'up';
+              final trendIcon = isDropping
+                  ? Icons.trending_down_rounded
+                  : isRising
+                  ? Icons.trending_up_rounded
+                  : Icons.trending_flat_rounded;
+              final trendColor = isDropping
+                  ? AppTheme.scoreExcellent
+                  : isRising
+                  ? AppTheme.error
+                  : AppTheme.warning;
+              final color = barColors[i % barColors.length];
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _showPredictionDetailOverlay(
+                    productName: name,
+                    trend: trend,
+                    changePercent: changePercent,
+                    bestTime: bestTime,
+                    buyNow: buyNow,
+                    reason: reason,
+                    confidence: confidence,
+                    color: color,
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.only(
+                      left: i == 0 ? 0 : 3,
+                      right: i == productCount - 1 ? 0 : 3,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.surfaceElevatedColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: trendColor.withValues(alpha: 0.2),
                       ),
-                    ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Trend icon
+                            Icon(
+                              trendIcon,
+                              color: trendColor,
+                              size: productCount > 3 ? 20 : 24,
+                            ),
+                            const SizedBox(height: 4),
+                            // Change percent
+                            Text(
+                              '${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: productCount > 3 ? 13 : 15,
+                                fontWeight: FontWeight.w900,
+                                color: trendColor,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // Product name
+                            Text(
+                              name.length > (productCount > 2 ? 20 : 30)
+                                  ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                  : name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: productCount > 3
+                                    ? 8
+                                    : (productCount > 2 ? 9 : 10),
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _isTr ? 'Detay' : 'Detail',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
-            }
-
-            final trend = (p['trend'] as String? ?? 'stable').toLowerCase();
-            final changePercent =
-                (p['change_percent'] as num?)?.toDouble() ?? 0;
-            final name = p['name'] as String? ?? wProduct.name;
-            final bestTime =
-                p['best_time_to_buy'] as String? ??
-                p['best_time'] as String? ??
-                '';
-            final buyNow =
-                p['buy_now'] as bool? ??
-                (bestTime == 'now' || trend == 'dropping');
-            final reason = p['reason'] as String? ?? '';
-            final confidence = (p['confidence'] as num?)?.toDouble() ?? 0;
-
-            final isDropping = trend == 'dropping' || trend == 'down';
-            final isRising = trend == 'rising' || trend == 'up';
-            final trendIcon = isDropping
-                ? Icons.trending_down_rounded
-                : isRising
-                ? Icons.trending_up_rounded
-                : Icons.trending_flat_rounded;
-            final trendColor = isDropping
-                ? AppTheme.scoreExcellent
-                : isRising
-                ? AppTheme.error
-                : AppTheme.warning;
-            final color = barColors[i % barColors.length];
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => _showPredictionDetailOverlay(
-                  productName: name,
-                  trend: trend,
-                  changePercent: changePercent,
-                  bestTime: bestTime,
-                  buyNow: buyNow,
-                  reason: reason,
-                  confidence: confidence,
-                  color: color,
-                ),
-                child: Container(
-                  margin: EdgeInsets.only(
-                    left: i == 0 ? 0 : 3,
-                    right: i == productCount - 1 ? 0 : 3,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: context.surfaceElevatedColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: trendColor.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Trend icon
-                          Icon(
-                            trendIcon,
-                            color: trendColor,
-                            size: productCount > 3 ? 20 : 24,
-                          ),
-                          const SizedBox(height: 4),
-                          // Change percent
-                          Text(
-                            '${changePercent > 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: productCount > 3 ? 13 : 15,
-                              fontWeight: FontWeight.w900,
-                              color: trendColor,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          // Product name
-                          Text(
-                            name.length > (productCount > 2 ? 20 : 30)
-                                ? '${name.substring(0, productCount > 2 ? 18 : 28)}…'
-                                : name,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: productCount > 3
-                                  ? 8
-                                  : (productCount > 2 ? 9 : 10),
-                              fontWeight: FontWeight.w700,
-                              color: context.textPrimary,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _isTr ? 'Detay' : 'Detail',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: color,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
+            }),
+          ),
         ),
       ],
     );
@@ -4808,7 +4865,8 @@ Rules:
   }
 
   Widget _buildKeySpecsSummary() {
-    final specs = _cachedKeySpecs; // pre-computed in initState, not called every build
+    final specs =
+        _cachedKeySpecs; // pre-computed in initState, not called every build
     if (specs.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
@@ -5586,12 +5644,14 @@ Rules:
                                       child: Material(
                                         color: Colors.transparent,
                                         child: InkWell(
-                                          onTap: () => _showSpecValueDetailSheet(
-                                            context,
-                                            val,
+                                          onTap: () =>
+                                              _showSpecValueDetailSheet(
+                                                context,
+                                                val,
+                                              ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
                                           child: Container(
                                             margin: const EdgeInsets.symmetric(
                                               horizontal: 3,
@@ -5603,9 +5663,7 @@ Rules:
                                             decoration: BoxDecoration(
                                               color: isBetter
                                                   ? AppTheme.scoreExcellent
-                                                        .withValues(
-                                                          alpha: 0.12,
-                                                        )
+                                                        .withValues(alpha: 0.12)
                                                   : isWorse
                                                   ? AppTheme.error.withValues(
                                                       alpha: 0.06,
@@ -5624,30 +5682,29 @@ Rules:
                                                   : null,
                                             ),
                                             child: Text(
-                                              _localizedSpecValue(
-                                                context,
-                                                val,
-                                              ),
-                                              style: GoogleFonts
-                                                  .plusJakartaSans(
-                                                fontSize: 10,
-                                                fontWeight: isBetter
-                                                    ? FontWeight.w700
-                                                    : (isMissing
-                                                          ? FontWeight.w400
-                                                          : FontWeight.w500),
-                                                color: isBetter
-                                                    ? AppTheme.scoreExcellent
-                                                    : isWorse
-                                                    ? AppTheme.error
-                                                        .withValues(
-                                                          alpha: 0.7,
-                                                        )
-                                                    : isMissing
-                                                    ? context
-                                                        .textTertiaryColor
-                                                    : context.textSecondary,
-                                              ),
+                                              _localizedSpecValue(context, val),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 10,
+                                                    fontWeight: isBetter
+                                                        ? FontWeight.w700
+                                                        : (isMissing
+                                                              ? FontWeight.w400
+                                                              : FontWeight
+                                                                    .w500),
+                                                    color: isBetter
+                                                        ? AppTheme
+                                                              .scoreExcellent
+                                                        : isWorse
+                                                        ? AppTheme.error
+                                                              .withValues(
+                                                                alpha: 0.7,
+                                                              )
+                                                        : isMissing
+                                                        ? context
+                                                              .textTertiaryColor
+                                                        : context.textSecondary,
+                                                  ),
                                               textAlign: TextAlign.center,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -5859,7 +5916,9 @@ Rules:
     final isPremium = ref.watch(premiumProvider);
     final aiCreditCost = isPremium
         ? null
-        : ref.read(subscriptionServiceProvider).creditCostForFeature('compare_ai');
+        : ref
+              .read(subscriptionServiceProvider)
+              .creditCostForFeature('compare_ai');
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -6031,7 +6090,8 @@ Rules:
 
     // Combined loading state: spinner goes in header row (like other AI sections).
     // Guard EVERYTHING with _matchScoreExpanded so no spinner appears before user taps.
-    final isMatchLoading = _matchScoreExpanded &&
+    final isMatchLoading =
+        _matchScoreExpanded &&
         (isUserProfileLoading || (_matchScoreFetched && anyProductLoading));
 
     return Container(
@@ -6114,7 +6174,8 @@ Rules:
                         children: [
                           Expanded(
                             child: Text(
-                              context.l10n?.personalizedMatch ?? 'Personalized Match',
+                              context.l10n?.personalizedMatch ??
+                                  'Personalized Match',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -6127,11 +6188,16 @@ Rules:
                           if (!ref.watch(premiumProvider)) ...[
                             const SizedBox(width: 8),
                             QorAmountBadge(
-                              amount: ref.read(subscriptionServiceProvider).creditCostForFeature('compare_ai'),
+                              amount: ref
+                                  .read(subscriptionServiceProvider)
+                                  .creditCostForFeature('compare_ai'),
                               unlimited: false,
                               color: AppTheme.brandBlue,
                               fontSize: 10,
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                             ),
                           ],
                         ],
@@ -6235,171 +6301,184 @@ Rules:
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: List.generate(productCount, (i) {
                           final product = widget.products[i];
-                        final matchAsync = ref.watch(
-                          geminiMatchScoreProvider(
-                            LocalizedProductKey(
-                              productId: product.id,
-                              languageCode: Localizations.localeOf(
-                                context,
-                              ).languageCode,
+                          final matchAsync = ref.watch(
+                            geminiMatchScoreProvider(
+                              LocalizedProductKey(
+                                productId: product.id,
+                                languageCode: Localizations.localeOf(
+                                  context,
+                                ).languageCode,
+                              ),
                             ),
-                          ),
-                        );
-                        final matchResult = matchAsync.valueOrNull;
-                        final matchScore = matchResult?.matchScore;
-                        final reason = matchResult?.reason ?? '';
-                        final topFactors = matchResult?.topMatchFactors ?? [];
-                        final missingFactors =
-                            matchResult?.missingFactors ?? [];
-                        final isLoading = matchAsync is AsyncLoading;
-                        final color = barColors[i % barColors.length];
-                        final stepText = isLoading
-                            ? ref.watch(aiMatchStepProvider(product.id))
-                            : '';
+                          );
+                          final matchResult = matchAsync.valueOrNull;
+                          final matchScore = matchResult?.matchScore;
+                          final reason = matchResult?.reason ?? '';
+                          final topFactors = matchResult?.topMatchFactors ?? [];
+                          final missingFactors =
+                              matchResult?.missingFactors ?? [];
+                          final isLoading = matchAsync is AsyncLoading;
+                          final color = barColors[i % barColors.length];
+                          final stepText = isLoading
+                              ? ref.watch(aiMatchStepProvider(product.id))
+                              : '';
 
-                        final matchColor = matchScore == null
-                            ? AppTheme.brandDeepBlue
-                            : matchScore >= 80
-                            ? AppTheme.scoreExcellent
-                            : matchScore >= 60
-                            ? AppTheme.scoreAverage
-                            : AppTheme.error;
+                          final matchColor = matchScore == null
+                              ? AppTheme.brandDeepBlue
+                              : matchScore >= 80
+                              ? AppTheme.scoreExcellent
+                              : matchScore >= 60
+                              ? AppTheme.scoreAverage
+                              : AppTheme.error;
 
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: matchScore != null
-                                ? () => _showMatchDetailOverlay(
-                                    productName: product.name,
-                                    matchScore: matchScore.toDouble(),
-                                    reason: reason,
-                                    color: color,
-                                    topMatchFactors: topFactors,
-                                    missingFactors: missingFactors,
-                                  )
-                                : null,
-                            child: Container(
-                              margin: EdgeInsets.only(
-                                left: i == 0 ? 0 : 4,
-                                right: i == productCount - 1 ? 0 : 4,
-                              ),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: matchColor.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: matchColor.withValues(alpha: 0.15),
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: matchScore != null
+                                  ? () => _showMatchDetailOverlay(
+                                      productName: product.name,
+                                      matchScore: matchScore.toDouble(),
+                                      reason: reason,
+                                      color: color,
+                                      topMatchFactors: topFactors,
+                                      missingFactors: missingFactors,
+                                    )
+                                  : null,
+                              child: Container(
+                                margin: EdgeInsets.only(
+                                  left: i == 0 ? 0 : 4,
+                                  right: i == productCount - 1 ? 0 : 4,
                                 ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Score circle or loading
-                                      if (isLoading) ...[
-                                        SizedBox(
-                                          width: 44,
-                                          height: 44,
-                                          child: Center(
-                                            child: SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.5,
-                                                color: matchColor,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        if (stepText.isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 4),
-                                            child: Text(
-                                              stepText,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 8,
-                                                color: matchColor.withValues(alpha: 0.8),
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                      ] else
-                                        TweenAnimationBuilder<double>(
-                                          tween: Tween(
-                                            begin: 0,
-                                            end: (matchScore ?? 0) / 100,
-                                          ),
-                                          duration: const Duration(
-                                            milliseconds: 1200,
-                                          ),
-                                          curve: Curves.easeOutCubic,
-                                          builder: (context, value, _) =>
-                                              _buildMatchScoreRing(
-                                                progress: value,
-                                                color: matchColor,
-                                                size: 46,
-                                                strokeWidth: 4,
-                                                fontSize: 11,
-                                              ),
-                                        ),
-                                      const SizedBox(height: 8),
-                                      // Product name
-                                      Text(
-                                        product.name.length >
-                                                (productCount > 2 ? 20 : 30)
-                                            ? '${product.name.substring(0, productCount > 2 ? 18 : 28)}…'
-                                            : product.name,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: productCount > 3
-                                              ? 8
-                                              : (productCount > 2 ? 9 : 10),
-                                          fontWeight: FontWeight.w700,
-                                          color: context.textPrimary,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: matchColor.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: matchColor.withValues(alpha: 0.15),
                                   ),
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Detail button
-                                      if (matchScore != null) ...[
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: color.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            _detailCtaLabel(),
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
-                                              color: color,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Score circle or loading
+                                        if (isLoading) ...[
+                                          SizedBox(
+                                            width: 44,
+                                            height: 44,
+                                            child: Center(
+                                              child: SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2.5,
+                                                      color: matchColor,
+                                                    ),
+                                              ),
                                             ),
                                           ),
+                                          if (stepText.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 4,
+                                              ),
+                                              child: Text(
+                                                stepText,
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      fontSize: 8,
+                                                      color: matchColor
+                                                          .withValues(
+                                                            alpha: 0.8,
+                                                          ),
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                        ] else
+                                          TweenAnimationBuilder<double>(
+                                            tween: Tween(
+                                              begin: 0,
+                                              end: (matchScore ?? 0) / 100,
+                                            ),
+                                            duration: const Duration(
+                                              milliseconds: 1200,
+                                            ),
+                                            curve: Curves.easeOutCubic,
+                                            builder: (context, value, _) =>
+                                                _buildMatchScoreRing(
+                                                  progress: value,
+                                                  color: matchColor,
+                                                  size: 46,
+                                                  strokeWidth: 4,
+                                                  fontSize: 11,
+                                                ),
+                                          ),
+                                        const SizedBox(height: 8),
+                                        // Product name
+                                        Text(
+                                          product.name.length >
+                                                  (productCount > 2 ? 20 : 30)
+                                              ? '${product.name.substring(0, productCount > 2 ? 18 : 28)}…'
+                                              : product.name,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: productCount > 3
+                                                ? 8
+                                                : (productCount > 2 ? 9 : 10),
+                                            fontWeight: FontWeight.w700,
+                                            color: context.textPrimary,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Detail button
+                                        if (matchScore != null) ...[
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: color.withValues(
+                                                alpha: 0.12,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              _detailCtaLabel(),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: color,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
-                    ),
+                          );
+                        }),
+                      ),
                     ),
                   ],
                 ],
@@ -6487,7 +6566,10 @@ Rules:
                               unlimited: false,
                               color: gradient[0],
                               fontSize: 10,
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                             ),
                           ],
                         ],
@@ -6497,7 +6579,10 @@ Rules:
                       // After load: show normal subtitle
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 250),
-                        child: isLoading && loadingStatusText != null && loadingStatusText.trim().isNotEmpty
+                        child:
+                            isLoading &&
+                                loadingStatusText != null &&
+                                loadingStatusText.trim().isNotEmpty
                             ? Text(
                                 loadingStatusText,
                                 key: ValueKey(loadingStatusText),
@@ -6718,8 +6803,10 @@ Rules:
                                 )) /
                         (1 + z * z / total);
                   }
-                  final hoursSince =
-                      DateTime.now().difference(ts).inHours.toDouble();
+                  final hoursSince = DateTime.now()
+                      .difference(ts)
+                      .inHours
+                      .toDouble();
                   // Recency bonus decays over 72 hours
                   final recency = exp(-hoursSince / 72.0);
                   return wilson * 100 + replies * 0.8 + recency * 5;
@@ -6907,21 +6994,23 @@ Rules:
                 HapticFeedback.mediumImpact();
                 try {
                   final docKey = _comparisonReviewDocKey();
-                  final productIds =
-                      widget.products.map((p) => p.id).toList()..sort();
-                  await pb.collection('comparison_reviews').create(
-                    body: {
-                      'docKey': docKey,
-                      'userId': userId,
-                      'displayName': resolvedDisplayName,
-                      'reviewText': textController.text.trim(),
-                      'timestamp': DateTime.now().toUtc().toIso8601String(),
-                      'productIds': productIds,
-                      'rating': rating,
-                      'likedBy': <String>[],
-                      'dislikedBy': <String>[],
-                    },
-                  );
+                  final productIds = widget.products.map((p) => p.id).toList()
+                    ..sort();
+                  await pb
+                      .collection('comparison_reviews')
+                      .create(
+                        body: {
+                          'docKey': docKey,
+                          'userId': userId,
+                          'displayName': resolvedDisplayName,
+                          'reviewText': textController.text.trim(),
+                          'timestamp': DateTime.now().toUtc().toIso8601String(),
+                          'productIds': productIds,
+                          'rating': rating,
+                          'likedBy': <String>[],
+                          'dislikedBy': <String>[],
+                        },
+                      );
                   if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
                   // Refresh reviews list
                   setState(() => _reviewsFuture = null);
@@ -7031,10 +7120,24 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
 
   // Sort groups by priority (matching epey.com spec ordering)
   const specGroupPriority = [
-    'basic information', 'design', 'display', 'basic hardware', 'processor',
-    'hardware', 'memory', 'storage', 'camera', 'battery',
-    'network connections', 'wireless connections', 'operating system',
-    'multimedia', 'features', 'sensors', 'other connections', 'other',
+    'basic information',
+    'design',
+    'display',
+    'basic hardware',
+    'processor',
+    'hardware',
+    'memory',
+    'storage',
+    'camera',
+    'battery',
+    'network connections',
+    'wireless connections',
+    'operating system',
+    'multimedia',
+    'features',
+    'sensors',
+    'other connections',
+    'other',
   ];
   final sortedGroupNames = allGroupNames.toList()
     ..sort((a, b) {
@@ -7114,10 +7217,7 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
   for (final p in productsData) {
     for (final entry in displaySpecs(p).entries) {
       if (entry.value is! Map) {
-        flatSpecs.putIfAbsent(
-          entry.key,
-          () => List.filled(productCount, '—'),
-        );
+        flatSpecs.putIfAbsent(entry.key, () => List.filled(productCount, '—'));
       }
     }
   }
@@ -7126,9 +7226,7 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
       if (entry.value is! Map && flatSpecs.containsKey(entry.key)) {
         final v = entry.value;
         flatSpecs[entry.key]![i] =
-            (v != null &&
-                v.toString().isNotEmpty &&
-                v.toString() != 'null')
+            (v != null && v.toString().isNotEmpty && v.toString() != 'null')
             ? v.toString()
             : '—';
       }
@@ -7140,4 +7238,3 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
 
   return result;
 }
-

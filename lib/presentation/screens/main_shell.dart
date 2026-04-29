@@ -279,19 +279,12 @@ class _MainShellState extends ConsumerState<MainShell> {
             },
           ),
         ),
-        // Floating AI chat bubble (top of stack, above nav bar)
-        Positioned.fill(
-          child: RepaintBoundary(
-            child: _FloatingAiOverlay(currentRoute: location),
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildDesktopLayout(int currentIndex) {
     final isWide = context.screenWidth >= Breakpoints.desktop;
-    final location = GoRouterState.of(context).matchedLocation;
     return Stack(
       children: [
         Row(
@@ -318,12 +311,6 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
             ),
           ],
-        ),
-        // Tablet/Desktop'ta da AI chat balonu görünsün
-        Positioned.fill(
-          child: RepaintBoundary(
-            child: _FloatingAiOverlay(currentRoute: location),
-          ),
         ),
       ],
     );

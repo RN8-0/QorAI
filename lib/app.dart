@@ -14,6 +14,7 @@ import 'package:qor_ai/l10n/app_localizations.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/floating_ai_assistant_overlay.dart';
 import 'package:qor_ai/services/notification_service.dart';
 
 class QorAiApp extends ConsumerWidget {
@@ -58,7 +59,17 @@ class QorAiApp extends ConsumerWidget {
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(clamped)),
-          child: _NotificationOverlay(child: child ?? const SizedBox.shrink()),
+          child: Stack(
+            children: [
+              _NotificationOverlay(child: child ?? const SizedBox.shrink()),
+              const Positioned.fill(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: FloatingAiAssistantOverlay(),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
