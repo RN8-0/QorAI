@@ -16,6 +16,7 @@ Future<FilterState?> showFilterBottomSheet({
   required String categoryId,
   required FilterState initialState,
   List<dynamic> products = const [],
+  List<FilterDefinition>? definitions,
 }) {
   return showModalBottomSheet<FilterState>(
     context: context,
@@ -27,6 +28,7 @@ Future<FilterState?> showFilterBottomSheet({
       categoryId: categoryId,
       initialState: initialState,
       products: products,
+      definitions: definitions,
     ),
   );
 }
@@ -40,11 +42,13 @@ class _FilterBottomSheet extends StatefulWidget {
     required this.categoryId,
     required this.initialState,
     this.products = const [],
+    this.definitions,
   });
 
   final String categoryId;
   final FilterState initialState;
   final List<dynamic> products;
+  final List<FilterDefinition>? definitions;
 
   @override
   State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
@@ -54,6 +58,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late FilterState _state;
   late final List<FilterDefinition> _definitions;
   final Map<String, String> _sectionQueries = {};
+  late final Set<String> _expandedSections;
 
   bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
 
@@ -78,10 +83,23 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   void initState() {
     super.initState();
     _state = widget.initialState;
-    _definitions = FilterConfig.getFiltersWithProducts(
-      widget.categoryId,
-      widget.products,
-    );
+    // Use pre-built definitions if provided (e.g. with brand facets from TS)
+    // to avoid re-computing from an incomplete product list.
+    _definitions = widget.definitions ??
+        FilterConfig.getFiltersWithProducts(
+          widget.categoryId,
+          widget.products,
+        );
+    _expandedSections = {
+      ..._definitions.take(5).map((def) => def.id),
+      ..._state.multiSelect.entries
+          .where((entry) => entry.value.isNotEmpty)
+          .map((entry) => entry.key),
+      ..._state.ranges.keys,
+      ..._state.toggles.entries
+          .where((entry) => entry.value != null)
+          .map((entry) => entry.key),
+    };
   }
 
   void _reset() => setState(() => _state = const FilterState());
@@ -177,10 +195,12 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final selected = _selectedFor(def.id);
     final options = [...(def.options ?? const <FilterOption>[])];
     options.sort((a, b) {
-      final selectedCompare = (selected.contains(b.id) ? 1 : 0) -
-          (selected.contains(a.id) ? 1 : 0);
+      final selectedCompare =
+          (selected.contains(b.id) ? 1 : 0) - (selected.contains(a.id) ? 1 : 0);
       if (selectedCompare != 0) return selectedCompare;
-      return _displayOptionLabel(a.label).compareTo(_displayOptionLabel(b.label));
+      return _displayOptionLabel(
+        a.label,
+      ).compareTo(_displayOptionLabel(b.label));
     });
 
     if (query.isEmpty) return options;
@@ -226,49 +246,48 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget _buildActiveSummary() {
     if (!_state.isActive) return const SizedBox.shrink();
 
-    final chips = _definitions
-        .where((def) => _sectionActiveCount(def) > 0)
-        .map((def) {
-          final summary = _activeSectionSummary(def);
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.brandCyan.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: AppTheme.brandCyan.withValues(alpha: 0.18),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _displayLabel(def.label),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                  if (summary.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      summary,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: context.textSecondary,
-                      ),
-                    ),
-                  ],
-                ],
+    final chips = _definitions.where((def) => _sectionActiveCount(def) > 0).map(
+      (def) {
+        final summary = _activeSectionSummary(def);
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.brandCyan.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: AppTheme.brandCyan.withValues(alpha: 0.18),
               ),
             ),
-          );
-        })
-        .toList();
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _displayLabel(def.label),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                if (summary.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    summary,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    ).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
@@ -276,10 +295,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _fallbackText(
-              en: 'Selected filters',
-              tr: 'Seçili filtreler',
-            ),
+            _fallbackText(en: 'Selected filters', tr: 'Seçili filtreler'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -289,10 +305,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           const SizedBox(height: 8),
           SizedBox(
             height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: chips,
-            ),
+            child: ListView(scrollDirection: Axis.horizontal, children: chips),
           ),
         ],
       ),
@@ -344,9 +357,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final activeCount = _state.activeCount;
     final orderedDefinitions = [..._definitions]
       ..sort((a, b) {
-        final activeCompare = _sectionActiveCount(b).compareTo(
-          _sectionActiveCount(a),
-        );
+        final activeCompare = _sectionActiveCount(
+          b,
+        ).compareTo(_sectionActiveCount(a));
         if (activeCompare != 0) return activeCompare;
         return _displayLabel(a.label).compareTo(_displayLabel(b.label));
       });
@@ -614,6 +627,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget _buildSection(FilterDefinition def, bool isDark) {
     final activeInSection = _sectionActiveCount(def);
     final hasActive = activeInSection > 0;
+    final isExpanded = _expandedSections.contains(def.id);
+    final summary = _activeSectionSummary(def);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -644,79 +659,125 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: hasActive
-                        ? AppTheme.brandCyan.withValues(alpha: 0.14)
-                        : context.surfaceVariantColor.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    _iconForSection(def),
-                    size: 17,
-                    color: hasActive
-                        ? AppTheme.brandCyan
-                        : context.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _displayLabel(def.label),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-                if (hasActive && def.type == FilterType.multiSelect)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.brandCyan.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$activeInSection',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.brandCyan,
+            InkWell(
+              onTap: () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedSections.remove(def.id);
+                  } else {
+                    _expandedSections.add(def.id);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: hasActive
+                            ? AppTheme.brandCyan.withValues(alpha: 0.14)
+                            : context.surfaceVariantColor.withValues(
+                                alpha: 0.6,
+                              ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _iconForSection(def),
+                        size: 17,
+                        color: hasActive
+                            ? AppTheme.brandCyan
+                            : context.textSecondary,
                       ),
                     ),
-                  ),
-                if (hasActive) ...[
-                  const SizedBox(width: 4),
-                  InkWell(
-                    onTap: () => _clearSection(def),
-                    borderRadius: BorderRadius.circular(999),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _displayLabel(def.label),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          if (!isExpanded && summary.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              summary,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.brandCyan,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (hasActive)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.brandCyan.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$activeInSection',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.brandCyan,
+                          ),
+                        ),
+                      ),
+                    if (hasActive)
+                      InkWell(
+                        onTap: () => _clearSection(def),
+                        borderRadius: BorderRadius.circular(999),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 2),
+                    AnimatedRotation(
+                      duration: const Duration(milliseconds: 180),
+                      turns: isExpanded ? 0.5 : 0,
                       child: Icon(
-                        Icons.close_rounded,
-                        size: 14,
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 20,
                         color: context.textSecondary,
                       ),
                     ),
-                  ),
-                ],
-              ],
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-            switch (def.type) {
-              FilterType.multiSelect => _buildMultiSelect(def, isDark),
-              FilterType.rangeSlider => _buildRangeSlider(def, isDark),
-              FilterType.toggle => _buildToggle(def, isDark),
-            },
+            if (isExpanded) ...[
+              const SizedBox(height: 12),
+              switch (def.type) {
+                FilterType.multiSelect => _buildMultiSelect(def, isDark),
+                FilterType.rangeSlider => _buildRangeSlider(def, isDark),
+                FilterType.toggle => _buildToggle(def, isDark),
+              },
+            ],
           ],
         ),
       ),
@@ -857,7 +918,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w600,
-                          color: isSelected ? Colors.white : context.textPrimary,
+                          color: isSelected
+                              ? Colors.white
+                              : context.textPrimary,
                           letterSpacing: -0.1,
                         ),
                       ),
@@ -897,26 +960,25 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             _RangeValuePill(text: '${fmt(current.end)}$unit'),
           ],
         ),
-        const SizedBox(height: 4),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppTheme.brandCyan,
-            inactiveTrackColor: context.dividerColor.withValues(alpha: 0.25),
-            thumbColor: Colors.white,
-            overlayColor: AppTheme.brandCyan.withValues(alpha: 0.14),
-            trackHeight: 4,
-            rangeThumbShape: _GradientRangeThumbShape(
-              enabledThumbRadius: 10,
-              borderColor: AppTheme.brandCyan,
-            ),
-            showValueIndicator: ShowValueIndicator.never,
-          ),
-          child: RangeSlider(
-            values: current,
-            min: min,
-            max: max,
-            onChanged: (v) => _updateRange(def.id, v, def),
-          ),
+        const SizedBox(height: 10),
+        _buildSingleSlider(
+          label: _fallbackText(en: 'Minimum', tr: 'Minimum'),
+          value: current.start.clamp(min, current.end),
+          min: min,
+          max: current.end,
+          isDark: isDark,
+          onChanged: (value) =>
+              _updateRange(def.id, RangeValues(value, current.end), def),
+        ),
+        const SizedBox(height: 8),
+        _buildSingleSlider(
+          label: _fallbackText(en: 'Maximum', tr: 'Maksimum'),
+          value: current.end.clamp(current.start, max),
+          min: current.start,
+          max: max,
+          isDark: isDark,
+          onChanged: (value) =>
+              _updateRange(def.id, RangeValues(current.start, value), def),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -943,6 +1005,52 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
+  Widget _buildSingleSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required bool isDark,
+    required ValueChanged<double> onChanged,
+  }) {
+    final safeMax = max <= min ? min + 0.1 : max;
+    final safeValue = value.clamp(min, safeMax);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: context.textSecondary,
+          ),
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppTheme.brandCyan,
+            inactiveTrackColor: context.dividerColor.withValues(alpha: 0.25),
+            thumbColor: Colors.white,
+            overlayColor: AppTheme.brandCyan.withValues(alpha: 0.14),
+            trackHeight: 4,
+            thumbShape: _GradientSliderThumbShape(
+              enabledThumbRadius: 10,
+              borderColor: AppTheme.brandCyan,
+            ),
+            overlayShape: SliderComponentShape.noOverlay,
+          ),
+          child: Slider(
+            value: safeValue,
+            min: min,
+            max: safeMax,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── toggle ────────────────────────────────────────────────────────────────
 
   Widget _buildToggle(FilterDefinition def, bool isDark) {
@@ -956,9 +1064,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ? context.surfaceColor.withValues(alpha: 0.6)
             : context.surfaceVariantColor.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: context.dividerColor.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -1009,9 +1115,7 @@ class _RangeValuePill extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppTheme.brandCyan.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: AppTheme.brandCyan.withValues(alpha: 0.28)),
       ),
       child: Text(
         text,
@@ -1077,8 +1181,8 @@ class _ToggleButton extends StatelessWidget {
 // Custom range-slider thumb: white center + brand-cyan border + soft shadow.
 // ---------------------------------------------------------------------------
 
-class _GradientRangeThumbShape extends RangeSliderThumbShape {
-  const _GradientRangeThumbShape({
+class _GradientSliderThumbShape extends SliderComponentShape {
+  const _GradientSliderThumbShape({
     this.enabledThumbRadius = 10,
     required this.borderColor,
   });
@@ -1096,13 +1200,14 @@ class _GradientRangeThumbShape extends RangeSliderThumbShape {
     Offset center, {
     required Animation<double> activationAnimation,
     required Animation<double> enableAnimation,
-    bool isDiscrete = false,
-    bool isEnabled = false,
-    bool isOnTop = false,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
     required SliderThemeData sliderTheme,
-    TextDirection textDirection = TextDirection.ltr,
-    Thumb thumb = Thumb.start,
-    bool isPressed = false,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
   }) {
     final canvas = context.canvas;
 
@@ -1110,11 +1215,7 @@ class _GradientRangeThumbShape extends RangeSliderThumbShape {
     final shadowPaint = Paint()
       ..color = borderColor.withValues(alpha: 0.35)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawCircle(
-      center.translate(0, 2),
-      enabledThumbRadius,
-      shadowPaint,
-    );
+    canvas.drawCircle(center.translate(0, 2), enabledThumbRadius, shadowPaint);
 
     // Border
     final borderPaint = Paint()

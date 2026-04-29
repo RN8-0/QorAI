@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,204 @@ import 'package:qor_ai/data/models/product_model.dart';
 // ---------------------------------------------------------------------------
 
 enum _SortOption { techScore, relevance, newest }
+
+int _releaseYearForBrowseProduct(ProductEntity product) {
+  return ProductFilter.getExactReleaseYear(product) ??
+      (product.createdAt ?? product.lastUpdated).year;
+}
+
+int _sortTimestampForBrowseProduct(ProductEntity product) {
+  return (product.createdAt ?? product.lastUpdated).millisecondsSinceEpoch;
+}
+
+int _compareBrowseProducts(ProductEntity a, ProductEntity b, String sortKey) {
+  switch (sortKey) {
+    case 'newest':
+      final yearCmp = _releaseYearForBrowseProduct(
+        b,
+      ).compareTo(_releaseYearForBrowseProduct(a));
+      if (yearCmp != 0) return yearCmp;
+      final dateCmp = _sortTimestampForBrowseProduct(
+        b,
+      ).compareTo(_sortTimestampForBrowseProduct(a));
+      if (dateCmp != 0) return dateCmp;
+      return b.techScore.compareTo(a.techScore);
+    case 'relevance':
+      final trendCompare = b.trendScore.compareTo(a.trendScore);
+      if (trendCompare != 0) return trendCompare;
+      final yearCmp = _releaseYearForBrowseProduct(
+        b,
+      ).compareTo(_releaseYearForBrowseProduct(a));
+      if (yearCmp != 0) return yearCmp;
+      return _sortTimestampForBrowseProduct(
+        b,
+      ).compareTo(_sortTimestampForBrowseProduct(a));
+    default:
+      final techCompare = b.techScore.compareTo(a.techScore);
+      if (techCompare != 0) return techCompare;
+      final trendCompare = b.trendScore.compareTo(a.trendScore);
+      if (trendCompare != 0) return trendCompare;
+      return _releaseYearForBrowseProduct(
+        b,
+      ).compareTo(_releaseYearForBrowseProduct(a));
+  }
+}
+
+Map<String, dynamic> _serializeFilterStateForBrowse(FilterState state) {
+  return {
+    'multiSelect': state.multiSelect.map(
+      (key, value) => MapEntry(key, value.toList(growable: false)),
+    ),
+    'ranges': state.ranges.map(
+      (key, value) => MapEntry(key, {'start': value.start, 'end': value.end}),
+    ),
+    'toggles': state.toggles,
+  };
+}
+
+FilterState _deserializeFilterStateForBrowse(Map<String, dynamic> raw) {
+  final multiSelect = <String, Set<String>>{};
+  final rawMulti = raw['multiSelect'] as Map<String, dynamic>? ?? const {};
+  for (final entry in rawMulti.entries) {
+    multiSelect[entry.key] = Set<String>.from(entry.value as List? ?? const []);
+  }
+
+  final ranges = <String, RangeValues>{};
+  final rawRanges = raw['ranges'] as Map<String, dynamic>? ?? const {};
+  for (final entry in rawRanges.entries) {
+    final value = entry.value as Map<String, dynamic>? ?? const {};
+    ranges[entry.key] = RangeValues(
+      (value['start'] as num?)?.toDouble() ?? 0,
+      (value['end'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  final toggles = <String, bool?>{};
+  final rawToggles = raw['toggles'] as Map<String, dynamic>? ?? const {};
+  for (final entry in rawToggles.entries) {
+    toggles[entry.key] = entry.value as bool?;
+  }
+
+  return FilterState(
+    multiSelect: multiSelect,
+    ranges: ranges,
+    toggles: toggles,
+  );
+}
+
+Map<String, dynamic> _serializeFilterDefinitionForBrowse(FilterDefinition def) {
+  return {
+    'id': def.id,
+    'label': def.label,
+    'type': def.type.name,
+    'minValue': def.minValue,
+    'maxValue': def.maxValue,
+    'unit': def.unit,
+    'isDynamic': def.isDynamic,
+    'specKeys': def.specKeys,
+    'options': [
+      for (final option in def.options ?? const <FilterOption>[])
+        {'id': option.id, 'label': option.label},
+    ],
+  };
+}
+
+List<FilterDefinition> _deserializeFilterDefinitionsForBrowse(
+  List<dynamic> raw,
+) {
+  return raw
+      .map((item) {
+        final data = Map<String, dynamic>.from(item as Map);
+        final typeName = data['type'] as String? ?? FilterType.multiSelect.name;
+        final type = FilterType.values.firstWhere(
+          (value) => value.name == typeName,
+          orElse: () => FilterType.multiSelect,
+        );
+        final options = (data['options'] as List<dynamic>? ?? const [])
+            .map((opt) {
+              final optionData = Map<String, dynamic>.from(opt as Map);
+              return FilterOption(
+                id: optionData['id'] as String? ?? '',
+                label: optionData['label'] as String? ?? '',
+              );
+            })
+            .toList(growable: false);
+
+        return FilterDefinition(
+          id: data['id'] as String? ?? '',
+          label: data['label'] as String? ?? '',
+          type: type,
+          options: options,
+          minValue: (data['minValue'] as num?)?.toDouble(),
+          maxValue: (data['maxValue'] as num?)?.toDouble(),
+          unit: data['unit'] as String?,
+          isDynamic: data['isDynamic'] as bool? ?? false,
+          specKeys: List<String>.from(data['specKeys'] ?? const []),
+        );
+      })
+      .toList(growable: false);
+}
+
+List<String> _computeVisibleBrowseProductIds(Map<String, dynamic> args) {
+  final products = (args['products'] as List<dynamic>? ?? const [])
+      .map(
+        (item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
+      )
+      .cast<ProductEntity>()
+      .toList(growable: false);
+  final remoteProducts = (args['remoteProducts'] as List<dynamic>? ?? const [])
+      .map(
+        (item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
+      )
+      .cast<ProductEntity>()
+      .toList(growable: false);
+  final filterState = _deserializeFilterStateForBrowse(
+    Map<String, dynamic>.from(args['filterState'] as Map),
+  );
+  final definitions = _deserializeFilterDefinitionsForBrowse(
+    args['definitions'] as List<dynamic>? ?? const [],
+  );
+  final query = args['query'] as String? ?? '';
+  final sortKey = args['sortKey'] as String? ?? 'techScore';
+
+  List<ProductEntity> candidates;
+  if (query.isNotEmpty) {
+    final localMatches = products.where((product) {
+      final rank = rankProductForQuery(product, query);
+      return rank.score > 0;
+    }).toList();
+    final seenIds = localMatches.map((product) => product.id).toSet();
+    for (final product in remoteProducts) {
+      if (seenIds.add(product.id)) {
+        localMatches.add(product);
+      }
+    }
+    candidates = localMatches;
+  } else {
+    candidates = products;
+  }
+
+  final filtered = FilterApplier.apply(candidates, filterState, definitions);
+  final copy = List<ProductEntity>.from(filtered);
+
+  if (query.isNotEmpty) {
+    final rankMap = {
+      for (final product in copy)
+        product.id: rankProductForQuery(product, query),
+    };
+    copy.sort((a, b) {
+      final rankCompare = (rankMap[b.id]?.score ?? 0).compareTo(
+        rankMap[a.id]?.score ?? 0,
+      );
+      if (rankCompare != 0) return rankCompare;
+      return _compareBrowseProducts(a, b, sortKey);
+    });
+  } else {
+    copy.sort((a, b) => _compareBrowseProducts(a, b, sortKey));
+  }
+
+  return copy.map((product) => product.id).toList(growable: false);
+}
 
 extension _SortOptionLabel on _SortOption {
   String label(BuildContext context) {
@@ -89,15 +288,27 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   late String _activeCategoryName;
 
   List<ProductEntity> _allProducts = [];
+  List<ProductEntity> _filterCatalogProducts = [];
+  String? _filterCatalogCategoryId;
+  List<ProductEntity> _visibleProducts = [];
   List<ProductEntity>? _remoteSearchResults;
   bool _loading = true;
   bool _fetchingAll = false; // cursor pagination in progress
   bool _remoteSearching = false;
   bool _hydratingFilterCatalog = false;
+  bool _warmingFullFilterCatalog = false;
+
+  // Brand facets — loaded from Typesense facets API (single fast query)
+  // instead of fetching all products. Used for smartphone category.
+  List<FilterOption> _brandFacetOptions = [];
+  bool _brandFacetsLoaded = false;
+  bool _cachedBrandFacetsLoaded = false;
   String? _error;
   Timer? _scrollDebounce;
   Timer? _filterHydrationDebounce;
+  Timer? _visibleProductsDebounce;
   int _totalProductCount = 0;
+  int _visibleProductsRequestId = 0;
 
   // Page counter for PocketBase pagination
   int _currentPage = 1;
@@ -109,26 +320,67 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   double _lastFetchPixels = -1;
   DateTime _paginationCooldownUntil = DateTime.fromMillisecondsSinceEpoch(0);
 
+  void _resetPaginationState({bool jumpToTop = true}) {
+    _scrollDebounce?.cancel();
+    _lastFetchPixels = -1;
+    _paginationCooldownUntil = DateTime.fromMillisecondsSinceEpoch(0);
+
+    if (!jumpToTop || !_scrollController.hasClients) return;
+
+    final positions = _scrollController.positions;
+    if (positions.length != 1) return;
+
+    final position = positions.first;
+    if (!position.hasPixels) return;
+
+    try {
+      position.jumpTo(0);
+    } catch (_) {}
+  }
+
   // ── Filter cache — computed once per products change, not on every build ──
   List<FilterDefinition>? _cachedFilterDefs;
   int _cachedProductCount = -1;
   String _cachedCategoryId = '';
 
   List<FilterDefinition> get _filterDefinitions {
+    final filterDefinitionProducts = _filterDefinitionProducts;
     if (_cachedFilterDefs == null ||
-        _allProducts.length != _cachedProductCount ||
-        _activeCategoryId != _cachedCategoryId) {
-      _cachedFilterDefs = FilterConfig.getFiltersWithProducts(
+        filterDefinitionProducts.length != _cachedProductCount ||
+        _activeCategoryId != _cachedCategoryId ||
+        _brandFacetsLoaded != _cachedBrandFacetsLoaded) {
+      var defs = FilterConfig.getFiltersWithProducts(
         _activeCategoryId,
-        _allProducts,
+        filterDefinitionProducts,
       );
-      _cachedProductCount = _allProducts.length;
+      // Inject brand options from Typesense facets when available —
+      // avoids fetching all products just for the brand list.
+      if (_brandFacetOptions.isNotEmpty) {
+        defs = defs.map<FilterDefinition>((def) {
+          if (def.id == 'brand') return def.withOptions(_brandFacetOptions);
+          return def;
+        }).toList(growable: false);
+      }
+      _cachedFilterDefs = defs;
+      _cachedProductCount = filterDefinitionProducts.length;
       _cachedCategoryId = _activeCategoryId;
+      _cachedBrandFacetsLoaded = _brandFacetsLoaded;
     }
     return _cachedFilterDefs!;
   }
 
   bool _allLoaded = false;
+
+  bool get _isSmartphoneCategory {
+    final normalized = _activeCategoryId.toLowerCase().trim();
+    return normalized == 'smartphones' || normalized == 'smartphone';
+  }
+
+  List<ProductEntity> get _filterDefinitionProducts =>
+      _filterCatalogCategoryId == _activeCategoryId &&
+          _filterCatalogProducts.length > _allProducts.length
+      ? _filterCatalogProducts
+      : _allProducts;
 
   bool get _isTurkish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
@@ -151,6 +403,111 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     );
   }
 
+  String _quoteTypesenseValue(String value) {
+    return '`${value.replaceAll('`', '')}`';
+  }
+
+  String _buildAnyOfClause(String field, Iterable<String> values) {
+    final uniqueValues = values
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList();
+    if (uniqueValues.isEmpty) return '';
+    if (uniqueValues.length == 1) {
+      return '$field:=${_quoteTypesenseValue(uniqueValues.first)}';
+    }
+    return '(${uniqueValues.map((value) => '$field:=${_quoteTypesenseValue(value)}').join(' || ')})';
+  }
+
+  String? _buildServerSideFilterBy(FilterState state) {
+    if (!state.isActive) return null;
+
+    const supportedMultiTokens = {
+      'brand': null,
+      'ram': 'ram',
+      'storage': 'storage',
+      'os': 'os',
+      'screen_tech': 'screen_tech',
+      'refresh_rate': 'refresh_rate',
+      'processor_brand': 'processor_brand',
+      'gpu_type': 'gpu_type',
+      'connectivity': 'connectivity',
+    };
+    const supportedRangeFields = {
+      'screen_size': 'screenSizeValue',
+      'battery': 'batteryCapacityValue',
+      'weight': 'weightValueKg',
+    };
+    const supportedToggleTokens = {
+      'five_g': 'five_g:true',
+      'nfc': 'nfc:true',
+      'wireless_charging': 'wireless_charging:true',
+      'fast_charging': 'fast_charging:true',
+      'fingerprint': 'fingerprint:true',
+      'water_resistance': 'water_resistance:true',
+    };
+
+    final clauses = <String>[];
+
+    for (final entry in state.multiSelect.entries) {
+      final selected = entry.value;
+      if (selected.isEmpty) continue;
+
+      if (!supportedMultiTokens.containsKey(entry.key)) {
+        return null;
+      }
+
+      if (entry.key == 'brand') {
+        final brandOptions =
+            _filterDefinitions.firstWhere((def) => def.id == 'brand').options ??
+            const <FilterOption>[];
+        final selectedLabels = brandOptions
+            .where((option) => selected.contains(option.id))
+            .map((option) => option.label.trim())
+            .where((label) => label.isNotEmpty)
+            .toList(growable: false);
+        final clause = _buildAnyOfClause('brand', selectedLabels);
+        if (clause.isEmpty) return null;
+        clauses.add(clause);
+        continue;
+      }
+
+      final tokenPrefix = supportedMultiTokens[entry.key];
+      if (tokenPrefix == null) return null;
+      final clause = _buildAnyOfClause(
+        'filterTokens',
+        selected.map((id) => '$tokenPrefix:$id'),
+      );
+      if (clause.isEmpty) return null;
+      clauses.add(clause);
+    }
+
+    for (final entry in state.ranges.entries) {
+      final field = supportedRangeFields[entry.key];
+      if (field == null) return null;
+      final range = entry.value;
+      clauses.add('$field:>=${range.start}');
+      clauses.add('$field:<=${range.end}');
+    }
+
+    for (final entry in state.toggles.entries) {
+      final value = entry.value;
+      if (value == null) continue;
+      if (value != true) return null;
+      final token = supportedToggleTokens[entry.key];
+      if (token == null) return null;
+      clauses.add('filterTokens:=${_quoteTypesenseValue(token)}');
+    }
+
+    return clauses.isEmpty ? null : clauses.join(' && ');
+  }
+
+  bool _usesServerSideFiltering({FilterState? state, String? query}) {
+    final effectiveQuery = query ?? _searchQuery;
+    if (effectiveQuery.isNotEmpty) return false;
+    return _buildServerSideFilterBy(state ?? _filterState) != null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -164,12 +521,130 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   void dispose() {
     _scrollDebounce?.cancel();
     _filterHydrationDebounce?.cancel();
+    _visibleProductsDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
+  Map<String, dynamic> _serializeProductForBrowse(ProductEntity product) {
+    if (product is ProductModel) {
+      return product.toMap();
+    }
+    return {
+      'id': product.id,
+      'name': product.name,
+      'brand': product.brand,
+      'category': product.category,
+      'subcategory': product.subcategory,
+      'description': product.description,
+      'imageURL': product.imageURL,
+      'prices': product.prices,
+      'affiliateLinks': product.affiliateLinks,
+      'specs': product.specs,
+      'specSections': product.specSections,
+      'keySpecs': product.keySpecs,
+      'ratings': {
+        'expert': product.ratings.expert,
+        'community': product.ratings.community,
+        'count': product.ratings.count,
+      },
+      'pros': product.pros,
+      'cons': product.cons,
+      'tags': product.tags,
+      'trendScore': product.trendScore,
+      'techScore': product.techScore,
+      'techSubscores': product.techSubscores,
+      'images': product.images,
+      'lastUpdated': product.lastUpdated.toIso8601String(),
+      if (product.createdAt != null)
+        'createdAt': product.createdAt!.toIso8601String(),
+      'isActive': product.isActive,
+      'variantGroup': product.variantGroup,
+    };
+  }
+
+  void _setVisibleProductsFromLoaded() {
+    _visibleProductsDebounce?.cancel();
+    _visibleProductsRequestId++;
+    _visibleProducts = List<ProductEntity>.from(_allProducts);
+  }
+
+  void _scheduleVisibleProductsRebuild({Duration debounce = Duration.zero}) {
+    _visibleProductsDebounce?.cancel();
+
+    if (_searchQuery.isEmpty && !_filterState.isActive) {
+      if (!mounted) return;
+      setState(() {
+        _setVisibleProductsFromLoaded();
+      });
+      return;
+    }
+
+    final requestId = ++_visibleProductsRequestId;
+    void runner() {
+      unawaited(_rebuildVisibleProducts(requestId));
+    }
+
+    if (debounce == Duration.zero) {
+      runner();
+    } else {
+      _visibleProductsDebounce = Timer(debounce, runner);
+    }
+  }
+
+  Future<void> _rebuildVisibleProducts(int requestId) async {
+    final allProducts = List<ProductEntity>.from(
+      _filterState.isActive && !_usesServerSideFiltering()
+          ? _filterDefinitionProducts
+          : _allProducts,
+    );
+    final remoteProducts = List<ProductEntity>.from(
+      _remoteSearchResults ?? const <ProductEntity>[],
+    );
+    final definitions = _filterDefinitions;
+    final sourceById = <String, ProductEntity>{
+      for (final product in [...allProducts, ...remoteProducts])
+        product.id: product,
+    };
+
+    final orderedIds = await compute(_computeVisibleBrowseProductIds, {
+      'products': allProducts
+          .map(_serializeProductForBrowse)
+          .toList(growable: false),
+      'remoteProducts': remoteProducts
+          .map(_serializeProductForBrowse)
+          .toList(growable: false),
+      'filterState': _serializeFilterStateForBrowse(_filterState),
+      'definitions': definitions
+          .map(_serializeFilterDefinitionForBrowse)
+          .toList(growable: false),
+      'query': _searchQuery,
+      'sortKey': _sortOption.name,
+    });
+
+    if (!mounted || requestId != _visibleProductsRequestId) return;
+
+    final visibleProducts = orderedIds
+        .map((id) => sourceById[id])
+        .whereType<ProductEntity>()
+        .toList(growable: false);
+
+    setState(() {
+      _visibleProducts = visibleProducts;
+    });
+  }
+
   void _applyFilterState(FilterState result) {
+    final shouldReload =
+        _usesServerSideFiltering() || _usesServerSideFiltering(state: result);
     setState(() => _filterState = result);
+    if (shouldReload) {
+      _filterHydrationDebounce?.cancel();
+      _remoteSearchResults = null;
+      unawaited(_loadProducts());
+      return;
+    }
+    _scheduleVisibleProductsRebuild();
     _filterHydrationDebounce?.cancel();
     if (!result.isActive || _allLoaded) return;
     _filterHydrationDebounce = Timer(const Duration(milliseconds: 300), () {
@@ -183,6 +658,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       _searchQuery = q;
       if (q.isEmpty) _remoteSearchResults = null;
     });
+    if (_usesServerSideFiltering(query: q)) {
+      unawaited(_loadProducts());
+      return;
+    }
+    _scheduleVisibleProductsRebuild();
     if (q.length >= 2) _doRemoteSearch(q);
   }
 
@@ -218,6 +698,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           _remoteSearchResults = rankProductsForQuery(categoryResults, query);
           _remoteSearching = false;
         });
+        _scheduleVisibleProductsRebuild();
       }
     } catch (e) {
       if (mounted) setState(() => _remoteSearching = false);
@@ -301,7 +782,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   int _displayProductCount(int filteredCount) {
-    if (_searchQuery.isNotEmpty || _filterState.isActive) return filteredCount;
+    if (_searchQuery.isNotEmpty) return filteredCount;
+    if (_usesServerSideFiltering() && _totalProductCount > 0) {
+      return _totalProductCount;
+    }
+    if (_filterState.isActive) return filteredCount;
     // Return real total only — local list snapshot during cache/feed warmup
     // would otherwise show e.g. 50 then jump to 4186.
     return _totalProductCount;
@@ -315,9 +800,64 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       _allLoaded = false;
       _currentPage = 1;
       _allProducts = [];
+      _visibleProducts = [];
       _remoteSearchResults = null;
     });
     await _loadProducts();
+  }
+
+  /// Loads brand facets from Typesense for the current category.
+  /// Single lightweight request (per_page=0, facet_by=brand) — replaces the
+  /// old approach of fetching all 4115+ products which caused ANR/crashes.
+  Future<void> _loadBrandFacets() async {
+    if (_brandFacetsLoaded && _filterCatalogCategoryId == _activeCategoryId) {
+      return;
+    }
+    try {
+      final ds = ref.read(pbDataSourceProvider);
+      final options = await ds.getTypesenseBrandFacets(
+        category: _activeCategoryId,
+      );
+      if (!mounted || options.isEmpty) return;
+      setState(() {
+        _brandFacetOptions = options;
+        _brandFacetsLoaded = true;
+        _filterCatalogCategoryId = _activeCategoryId;
+        // Invalidate filter def cache so brand options are updated.
+        _cachedFilterDefs = null;
+      });
+    } catch (e) {
+      debugPrint('=== QOR AI: _loadBrandFacets FAILED: $e ===');
+    }
+  }
+
+  Future<void> _warmFullFilterCatalogIfNeeded({
+    bool showIndicator = true,
+  }) async {
+    if (!_isSmartphoneCategory || !mounted) return;
+
+    // ── Smartphone path: use Typesense facets instead of fetching all products.
+    // This avoids the 17-second + crash from getAllProductsInCategoryTs(6000).
+    if (_brandFacetsLoaded && _filterCatalogCategoryId == _activeCategoryId) {
+      return;
+    }
+    if (_warmingFullFilterCatalog) return;
+
+    if (mounted && showIndicator) {
+      setState(() => _warmingFullFilterCatalog = true);
+    } else {
+      _warmingFullFilterCatalog = showIndicator;
+    }
+
+    try {
+      await _loadBrandFacets();
+    } finally {
+      if (mounted) {
+        setState(() => _warmingFullFilterCatalog = false);
+      } else {
+        _warmingFullFilterCatalog = false;
+      }
+    }
   }
 
   /// Fetch next page via Typesense pagination only when the user scrolls.
@@ -326,11 +866,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     setState(() => _fetchingAll = true);
     try {
       final ds = ref.read(pbDataSourceProvider);
+      final serverFilterBy = _buildServerSideFilterBy(_filterState);
       final page = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 40,
         page: _currentPage,
         sortBy: _serverSortBy(),
+        extraFilterBy: _searchQuery.isEmpty ? serverFilterBy : null,
       );
       if (!mounted) return;
       final existingIds = _allProducts.map((p) => p.id).toSet();
@@ -345,7 +887,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _fetchingAll = false;
         // Once all pages loaded, show true deduped count; otherwise Typesense total.
         _totalProductCount = !page.hasMore ? merged.length : page.totalFound;
+        if (_searchQuery.isEmpty &&
+            (!_filterState.isActive || serverFilterBy != null)) {
+          _visibleProducts = merged;
+        }
       });
+      if (_searchQuery.isNotEmpty ||
+          (_filterState.isActive && serverFilterBy == null)) {
+        _scheduleVisibleProductsRebuild(
+          debounce: const Duration(milliseconds: 32),
+        );
+      }
     } catch (e) {
       // Network/timeout failures must not leave _fetchingAll stuck — that
       // would silently freeze pagination forever. Extend cooldown to back off.
@@ -360,13 +912,22 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   /// Load first page quickly and defer the rest until scroll.
   Future<void> _loadProducts() async {
+    _resetPaginationState();
     setState(() {
       _loading = true;
       _error = null;
       _allLoaded = false;
+      _fetchingAll = false;
       _currentPage = 1;
       _allProducts = [];
+      _visibleProducts = [];
       _totalProductCount = 0;
+      if (_filterCatalogCategoryId != _activeCategoryId) {
+        _filterCatalogProducts = [];
+        _filterCatalogCategoryId = null;
+        _brandFacetOptions = [];
+        _brandFacetsLoaded = false;
+      }
     });
     final catKey = _activeCategoryId.toLowerCase().trim();
     final hiveCacheKey = 'cat_products_${catKey}_v2';
@@ -388,6 +949,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         if (products.isNotEmpty && mounted) {
           setState(() {
             _allProducts = products;
+            _visibleProducts = products;
             _loading = false;
           });
         }
@@ -411,6 +973,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           if (_allProducts.isEmpty) {
             setState(() {
               _allProducts = catProducts;
+              _visibleProducts = catProducts;
               _loading = false;
             });
           } else {
@@ -421,6 +984,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
             if (extras.isNotEmpty) {
               setState(() {
                 _allProducts = [..._allProducts, ...extras];
+                if (_searchQuery.isEmpty && !_filterState.isActive) {
+                  _visibleProducts = [..._allProducts, ...extras];
+                }
                 _loading = false;
               });
             }
@@ -431,11 +997,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     try {
       final ds = ref.read(pbDataSourceProvider);
+      final serverFilterBy = _buildServerSideFilterBy(_filterState);
       final result = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 40,
         page: 1,
         sortBy: _serverSortBy(),
+        extraFilterBy: _searchQuery.isEmpty ? serverFilterBy : null,
       );
       if (!mounted) return;
       final firstPage = _sanitizeCategoryProducts(result.products);
@@ -457,6 +1025,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
       setState(() {
         _allProducts = firstPage;
+        _visibleProducts = firstPage;
         _currentPage = result.nextPage;
         _allLoaded = !result.hasMore;
         // Use actual deduped count when all pages are loaded; otherwise
@@ -467,6 +1036,15 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _loading = false;
         _error = null;
       });
+      // Preload brand facets in the background for smartphones so the filter
+      // panel opens instantly without fetching all 4000+ products.
+      if (_isSmartphoneCategory && !_brandFacetsLoaded) {
+        unawaited(_loadBrandFacets());
+      }
+      if (_searchQuery.isNotEmpty ||
+          (_filterState.isActive && serverFilterBy == null)) {
+        _scheduleVisibleProductsRebuild();
+      }
     } catch (e) {
       // Only surface an error if no products at all are visible — otherwise
       // we already have stale/cached data and the user can still browse.
@@ -482,113 +1060,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
-  List<ProductEntity> get _filteredProducts {
-    if (_searchQuery.isNotEmpty) {
-      final localMatches = _allProducts.where((p) {
-        final rank = rankProductForQuery(p, _searchQuery);
-        return rank.score > 0;
-      }).toList();
-
-      // Merge ALL remote search results (dedup by id)
-      if (_remoteSearchResults != null && _remoteSearchResults!.isNotEmpty) {
-        final seenIds = localMatches.map((p) => p.id).toSet();
-        for (final p in _remoteSearchResults!) {
-          if (!seenIds.contains(p.id)) {
-            localMatches.add(p);
-            seenIds.add(p.id);
-          }
-        }
-      }
-
-      final filtered = FilterApplier.apply(
-        localMatches,
-        _filterState,
-        _filterDefinitions,
-      );
-      return _sortProducts(filtered);
-    }
-
-    // No search — show all loaded products
-    final filtered = FilterApplier.apply(
-      _allProducts,
-      _filterState,
-      _filterDefinitions,
-    );
-    return _sortProducts(filtered);
-  }
-
-  List<ProductEntity> _sortProducts(List<ProductEntity> products) {
-    final copy = List<ProductEntity>.from(products);
-    if (_searchQuery.isNotEmpty) {
-      final rankMap = {
-        for (final product in copy)
-          product.id: rankProductForQuery(product, _searchQuery),
-      };
-      copy.sort((a, b) {
-        final rankCompare = (rankMap[b.id]?.score ?? 0).compareTo(
-          rankMap[a.id]?.score ?? 0,
-        );
-        if (rankCompare != 0) return rankCompare;
-        return _compareBySelectedSort(a, b);
-      });
-      return copy;
-    }
-
-    switch (_sortOption) {
-      case _SortOption.techScore:
-        copy.sort(_compareBySelectedSort);
-        break;
-      case _SortOption.newest:
-        copy.sort(_compareBySelectedSort);
-        break;
-      case _SortOption.relevance:
-        copy.sort(_compareBySelectedSort);
-        break;
-    }
-    return copy;
-  }
-
-  /// Returns release year for a product: spec > createdAt > lastUpdated.
-  int _releaseYear(ProductEntity p) {
-    return ProductFilter.getExactReleaseYear(p) ??
-        (p.createdAt ?? p.lastUpdated).year;
-  }
-
-  int _sortTimestamp(ProductEntity p) {
-    return (p.createdAt ?? p.lastUpdated).millisecondsSinceEpoch;
-  }
-
-  int _compareBySelectedSort(ProductEntity a, ProductEntity b) {
-    switch (_sortOption) {
-      case _SortOption.techScore:
-        final techCompare = b.techScore.compareTo(a.techScore);
-        if (techCompare != 0) return techCompare;
-        final trendCompare = b.trendScore.compareTo(a.trendScore);
-        if (trendCompare != 0) return trendCompare;
-        return _releaseYear(b).compareTo(_releaseYear(a));
-      case _SortOption.newest:
-        // Sort by actual release year extracted from specs.
-        final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
-        if (yearCmp != 0) return yearCmp;
-        final dateCmp = _sortTimestamp(b).compareTo(_sortTimestamp(a));
-        if (dateCmp != 0) return dateCmp;
-        return b.techScore.compareTo(a.techScore);
-      case _SortOption.relevance:
-        // Popular: trendScore first, then newest models first among ties.
-        final trendCompare = b.trendScore.compareTo(a.trendScore);
-        if (trendCompare != 0) return trendCompare;
-        final yearCmp = _releaseYear(b).compareTo(_releaseYear(a));
-        if (yearCmp != 0) return yearCmp;
-        return _sortTimestamp(b).compareTo(_sortTimestamp(a));
-    }
-  }
-
   Future<void> _openFilters() async {
+    if (_isSmartphoneCategory) {
+      await _warmFullFilterCatalogIfNeeded(showIndicator: true);
+      if (!mounted) return;
+    }
     final result = await showFilterBottomSheet(
       context: context,
       categoryId: _activeCategoryId,
       initialState: _filterState,
-      products: _allProducts,
+      products: _filterDefinitionProducts,
+      // Pass pre-built definitions with brand facets already injected.
+      definitions: _filterDefinitions,
     );
     if (result != null && mounted) {
       _applyFilterState(result);
@@ -596,6 +1079,15 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Future<void> _ensureCompleteCatalogForFiltering() async {
+    if (_isSmartphoneCategory) {
+      await _warmFullFilterCatalogIfNeeded(showIndicator: true);
+      if (mounted && _filterState.isActive && !_usesServerSideFiltering()) {
+        _scheduleVisibleProductsRebuild(
+          debounce: const Duration(milliseconds: 16),
+        );
+      }
+      return;
+    }
     if (_allLoaded || _hydratingFilterCatalog || !mounted) return;
 
     final hadProducts = _allProducts.isNotEmpty;
@@ -630,6 +1122,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           _allLoaded = !result.hasMore;
           _totalProductCount = result.totalFound;
         });
+        _scheduleVisibleProductsRebuild(
+          debounce: const Duration(milliseconds: 32),
+        );
 
         if (!result.hasMore) {
           break;
@@ -661,13 +1156,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       ..remove(filterId);
     final newToggles = Map<String, bool?>.from(_filterState.toggles)
       ..remove(filterId);
-    setState(() {
-      _filterState = FilterState(
+    _applyFilterState(
+      FilterState(
         multiSelect: newMultiSelect,
         ranges: newRanges,
         toggles: newToggles,
-      );
-    });
+      ),
+    );
   }
 
   // ── build ─────────────────────────────────────────────────────────────────
@@ -692,6 +1187,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   _activeCategoryId = id;
                   _activeCategoryName = itemName;
                   _allProducts = [];
+                  _filterCatalogProducts = [];
+                  _filterCatalogCategoryId = null;
+                  _visibleProducts = [];
                   _searchBarKey.currentState?.clear();
                   _searchQuery = '';
                   _filterState = const FilterState();
@@ -729,7 +1227,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredProducts;
+    final filtered = _visibleProducts;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -831,6 +1329,28 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           ] else
             const Spacer(),
           _SortDropdown(value: _sortOption, onChanged: _changeSortOption),
+          if (hasFilters) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.backgroundColor,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: context.dividerColor),
+              ),
+              child: Text(
+                _fallbackText(
+                  en: '$productCount matches',
+                  tr: '$productCount ürün',
+                ),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(width: 8),
           // Filter button
           GestureDetector(
@@ -888,7 +1408,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               ),
             ),
           ),
-          if (_hydratingFilterCatalog) ...[
+          if (_hydratingFilterCatalog || _warmingFullFilterCatalog) ...[
             const SizedBox(width: 8),
             const SizedBox(
               width: 16,
@@ -1190,8 +1710,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () =>
-                          setState(() => _filterState = const FilterState()),
+                      onPressed: () {
+                        _applyFilterState(const FilterState());
+                      },
                       child: Text(
                         context.l10n?.clearFilters ?? 'Clear Filters',
                         style: GoogleFonts.plusJakartaSans(

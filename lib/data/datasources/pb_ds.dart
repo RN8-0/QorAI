@@ -17,6 +17,8 @@ import 'package:qor_ai/data/models/user_model.dart';
 import 'package:qor_ai/data/models/product_model.dart';
 import 'package:qor_ai/data/models/comparison_model.dart';
 import 'package:qor_ai/data/models/other_models.dart';
+import 'package:qor_ai/config/filter_config.dart'
+    show FilterOption;
 import 'package:qor_ai/data/models/chat_conversation.dart';
 
 List<ProductModel> _parseTypesenseHitsToProducts(
@@ -2236,7 +2238,7 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-        final products = await _parseTypesenseProductsOffMainThread(hits);
+      final products = await _parseTypesenseProductsOffMainThread(hits);
       if (_verboseTypesenseLogs) {
         debugPrint(
           '=== QOR AI: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
@@ -2355,6 +2357,50 @@ class PbDataSource {
     }
   }
 
+  /// Fetches brand facets from Typesense for a category using a single
+  /// lightweight query (per_page=0). Much faster than loading all products.
+  /// Returns a list of [FilterOption] sorted by product count descending.
+  Future<List<FilterOption>> getTypesenseBrandFacets({
+    required String category,
+    int maxFacetValues = 300,
+  }) async {
+    try {
+      final sw = Stopwatch()..start();
+      final variants = _categoryVariants(category);
+      final filterBy = variants.length == 1
+          ? 'category:=${variants.first}'
+          : 'category:[${variants.join(',')}]';
+      final response = await _dio.get(
+        '/collections/products/documents/search',
+        queryParameters: {
+          'q': '*',
+          'filter_by': filterBy,
+          'per_page': 0,
+          'facet_by': 'brand',
+          'max_facet_values': maxFacetValues,
+        },
+      );
+      sw.stop();
+      final facetCounts = (response.data['facet_counts'] as List?) ?? [];
+      if (facetCounts.isEmpty) return [];
+      final counts = (facetCounts.first['counts'] as List?) ?? [];
+      final options = counts.map((c) {
+        final value = ((c['value'] as String?) ?? '').trim();
+        return FilterOption(
+          id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+          label: value,
+        );
+      }).where((opt) => opt.label.isNotEmpty).toList();
+      debugPrint(
+        '=== QOR AI: TS brandFacets cat=$category → ${options.length} brands in ${sw.elapsedMilliseconds}ms ===',
+      );
+      return options;
+    } catch (e) {
+      debugPrint('=== QOR AI: TS brandFacets cat=$category FAILED: $e ===');
+      return [];
+    }
+  }
+
   /// Paginated Typesense query matching getProductsPage signature for drop-in replacement.
   Future<
     ({List<ProductModel> products, int nextPage, bool hasMore, int totalFound})
@@ -2365,6 +2411,7 @@ class PbDataSource {
     int page = 1,
     String sortBy = 'techScore:desc',
     String query = '*',
+    String? extraFilterBy,
   }) async {
     try {
       final sw = Stopwatch()..start();
@@ -2374,9 +2421,13 @@ class PbDataSource {
       // Typesense exact-match filter only finds records that match the stored
       // field value exactly, so we probe all plausible variants in one query.
       final variants = _categoryVariants(category);
-      final filterBy = variants.length == 1
+      final categoryFilterBy = variants.length == 1
           ? 'category:=${variants.first}'
           : 'category:[${variants.join(',')}]';
+      final filterBy =
+          (extraFilterBy != null && extraFilterBy.trim().isNotEmpty)
+          ? '$categoryFilterBy && ${extraFilterBy.trim()}'
+          : categoryFilterBy;
 
       final trimmedQuery = query.trim();
       final isSearch = trimmedQuery.isNotEmpty && trimmedQuery != '*';
