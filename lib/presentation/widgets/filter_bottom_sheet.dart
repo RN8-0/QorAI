@@ -1,6 +1,8 @@
 /// Modern filter bottom sheet widget.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/config/filter_config.dart';
@@ -59,9 +61,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late final List<FilterDefinition> _definitions;
   late final Set<String> _expandedSections;
   final Map<String, int> _optionLimits = {};
+  Timer? _definitionRevealTimer;
+  late int _visibleDefinitionCount;
 
-  static const int _initialOptionLimit = 24;
-  static const int _optionLimitStep = 24;
+  static const int _initialSectionLimit = 8;
+  static const int _sectionRevealStep = 8;
+  static const int _initialOptionLimit = 16;
+  static const int _optionLimitStep = 16;
 
   bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
 
@@ -212,6 +218,33 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           .where((entry) => entry.value != null)
           .map((entry) => entry.key),
     };
+    _visibleDefinitionCount = _definitions.length < _initialSectionLimit
+        ? _definitions.length
+        : _initialSectionLimit;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _revealMoreSections();
+    });
+  }
+
+  @override
+  void dispose() {
+    _definitionRevealTimer?.cancel();
+    super.dispose();
+  }
+
+  void _revealMoreSections() {
+    if (!mounted || _visibleDefinitionCount >= _definitions.length) return;
+    _definitionRevealTimer?.cancel();
+    _definitionRevealTimer = Timer(const Duration(milliseconds: 32), () {
+      if (!mounted) return;
+      setState(() {
+        final next = _visibleDefinitionCount + _sectionRevealStep;
+        _visibleDefinitionCount = next > _definitions.length
+            ? _definitions.length
+            : next;
+      });
+      _revealMoreSections();
+    });
   }
 
   void _reset() => setState(() => _state = const FilterState());
@@ -628,7 +661,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Flexible(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-              itemCount: _definitions.length,
+              itemCount: _visibleDefinitionCount,
               itemBuilder: (context, i) {
                 final def = _definitions[i];
                 return RepaintBoundary(child: _buildSection(def, isDark));

@@ -344,15 +344,25 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   String _cachedCategoryId = '';
 
   List<FilterDefinition> get _filterDefinitions {
-    final filterDefinitionProducts = _filterDefinitionProducts;
+    // When server facets are available, avoid scanning product specs here.
+    // Large categories can have very wide spec maps, and doing dynamic Epey
+    // discovery while opening the sheet can block Android input long enough to
+    // trigger an ANR. Static category definitions plus live TS facets are enough
+    // for the server-backed filter UI.
+    final useServerFacetDefinitions = _typesenseFacets.isNotEmpty;
+    final filterDefinitionProducts = useServerFacetDefinitions
+        ? const <ProductEntity>[]
+        : _filterDefinitionProducts;
     if (_cachedFilterDefs == null ||
         filterDefinitionProducts.length != _cachedProductCount ||
         _activeCategoryId != _cachedCategoryId ||
         _facetsLoaded != _cachedFacetsLoaded) {
-      var defs = FilterConfig.getFiltersWithProducts(
-        _activeCategoryId,
-        filterDefinitionProducts,
-      );
+      var defs = useServerFacetDefinitions
+          ? FilterConfig.getFilters(_activeCategoryId)
+          : FilterConfig.getFiltersWithProducts(
+              _activeCategoryId,
+              filterDefinitionProducts,
+            );
       if (_typesenseFacets.isNotEmpty) {
         final coveredFacetKeys = <String>{};
         defs = defs
@@ -639,6 +649,25 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return allowed.contains(key);
   }
 
+  bool get _supportsLocalOnlyEpeyFilters {
+    return _facetCategoryKey == 'cpus' || _facetCategoryKey == 'processors';
+  }
+
+  bool _isLocalOnlyEpeyDefinition(FilterDefinition def) {
+    if (!_supportsLocalOnlyEpeyFilters) return false;
+    const localProcessorFilters = {
+      'processor_family',
+      'series',
+      'generation',
+      'architecture',
+      'cores',
+      'socket',
+      'tdp',
+      'integrated_gpu',
+    };
+    return localProcessorFilters.contains(def.id);
+  }
+
   String _facetKeyForFilterId(String filterId) {
     for (final candidate in _facetCandidatesForFilterId(filterId)) {
       if (_typesenseFacets.containsKey(candidate) &&
@@ -684,16 +713,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     switch (def.type) {
       case FilterType.multiSelect:
         final key = _facetKeyForFilterId(def.id);
-        return key.isNotEmpty && _facetOptionsForKey(key).isNotEmpty;
+        return (key.isNotEmpty && _facetOptionsForKey(key).isNotEmpty) ||
+            _isLocalOnlyEpeyDefinition(def);
       case FilterType.toggle:
         final key = _facetKeyForFilterId(def.id);
-        return key.isNotEmpty &&
-            (_typesenseFacets[key]?.any((option) => option.id == 'true') ??
-                false);
+        return (key.isNotEmpty &&
+                (_typesenseFacets[key]?.any((option) => option.id == 'true') ??
+                    false)) ||
+            _isLocalOnlyEpeyDefinition(def);
       case FilterType.rangeSlider:
-        return _serverRangeFields.containsKey(def.id) &&
-            (_categoryRangeAllowList[_facetCategoryKey]?.contains(def.id) ??
-                false);
+        return (_serverRangeFields.containsKey(def.id) &&
+                (_categoryRangeAllowList[_facetCategoryKey]?.contains(def.id) ??
+                    false)) ||
+            _isLocalOnlyEpeyDefinition(def);
     }
   }
 
@@ -731,6 +763,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
 
       final tokenKey = _facetKeyForFilterId(entry.key);
+      if (tokenKey.isEmpty && _supportsLocalOnlyEpeyFilters) return null;
       if (tokenKey.isEmpty) return null;
       final allowedOptionIds = _facetOptionsForKey(
         tokenKey,
@@ -745,6 +778,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     for (final entry in state.ranges.entries) {
       final field = _serverRangeFields[entry.key];
+      if (field == null && _supportsLocalOnlyEpeyFilters) return null;
       if (field == null) return null;
       final range = entry.value;
 
@@ -765,6 +799,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final value = entry.value;
       if (value == null) continue;
       final tokenKey = _facetKeyForFilterId(entry.key);
+      if (tokenKey.isEmpty && _supportsLocalOnlyEpeyFilters) return null;
       if (tokenKey.isEmpty) return null;
       final optionId = value ? 'true' : 'false';
       final hasOption = _facetOptionsForKey(
@@ -1100,7 +1135,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final facets = await ds.getTypesenseFacets(
         category: _activeCategoryId,
         facets: ['brand', 'filterTokens'],
-        maxFacetValues: 120,
+        maxFacetValues: 80,
       );
       if (!mounted || facets.isEmpty) return;
       setState(() {
@@ -1363,11 +1398,59 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
       return;
     }
+    if (_supportsLocalOnlyEpeyFilters &&
+        _filterState.isActive &&
+        !_usesServerSideFiltering()) {
+      await _loadAllProductsForLocalFiltering();
+      return;
+    }
     // For non-smartphone categories, server-side filtering via Typesense handles
     // all filterToken-based multiSelect filters. No need to load the full catalog.
     // Just ensure facets are loaded so filter options are populated.
     if (!_facetsLoaded) {
       await _warmFullFilterCatalogIfNeeded(showIndicator: false);
+    }
+  }
+
+  Future<void> _loadAllProductsForLocalFiltering() async {
+    if (_fetchingAll || _allLoaded || !mounted) return;
+    setState(() => _fetchingAll = true);
+    try {
+      final ds = ref.read(pbDataSourceProvider);
+      var pageNumber = _currentPage;
+      var hasMore = true;
+      final byId = {for (final product in _allProducts) product.id: product};
+
+      while (mounted && hasMore) {
+        final page = await ds.getProductsPageTs(
+          category: _activeCategoryId,
+          limit: 100,
+          page: pageNumber,
+          sortBy: _serverSortBy(),
+        );
+        for (final product in _sanitizeCategoryProducts(page.products)) {
+          byId.putIfAbsent(product.id, () => product);
+        }
+        pageNumber = page.nextPage;
+        hasMore = page.hasMore;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _allProducts = byId.values.toList(growable: false);
+        _filterCatalogProducts = _allProducts;
+        _filterCatalogCategoryId = _activeCategoryId;
+        _currentPage = pageNumber;
+        _allLoaded = true;
+        _fetchingAll = false;
+        _totalProductCount = _allProducts.length;
+        _cachedFilterDefs = null;
+      });
+      _scheduleVisibleProductsRebuild(
+        debounce: const Duration(milliseconds: 16),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _fetchingAll = false);
     }
   }
 
