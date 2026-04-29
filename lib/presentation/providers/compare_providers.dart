@@ -16,6 +16,7 @@ final comparisonStateProvider =
 /// Comparison state
 class ComparisonState {
   final List<String> selectedProductIds;
+
   /// Product category of the first item in the pool; all picks must match.
   final String? poolCategory;
   final ComparisonResult? result;
@@ -65,10 +66,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
        super(const ComparisonState());
 
   /// Add/remove a product in the global compare pool (max 4, same [productCategory]).
-  void toggleProduct(
-    String productId, {
-    String? productCategory,
-  }) {
+  void toggleProduct(String productId, {String? productCategory}) {
     var current = List<String>.from(state.selectedProductIds);
     var pool = state.poolCategory;
 
@@ -1407,8 +1405,9 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
     // Same-category enforcement
     if (chipCategoryMap.isNotEmpty) {
-      final existingCategories =
-          chipCategoryMap.values.where((k) => k.isNotEmpty).toSet();
+      final existingCategories = chipCategoryMap.values
+          .where((k) => k.isNotEmpty)
+          .toSet();
       if (existingCategories.isNotEmpty &&
           !existingCategories.contains(categoryKey)) {
         return ChipAddResult(
@@ -1457,64 +1456,64 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       // Chips were pre-validated at chip-add time — trust them directly.
       normalizedNames = pendingNames;
     } else {
-    try {
-      final resolution = await _gemini.resolveSubscriptionSelection(
-        rawNames: pendingNames,
-        language: _appLang,
-      );
-      if (resolution.invalidNames.isNotEmpty) {
-        state = state.copyWith(
-          phase: SubFlowPhase.idle,
-          error: buildInvalidSubscriptionInputMessage(_appLang),
+      try {
+        final resolution = await _gemini.resolveSubscriptionSelection(
+          rawNames: pendingNames,
+          language: _appLang,
         );
-        return;
-      }
-      if (resolution.mixedCategories) {
-        state = state.copyWith(
-          phase: SubFlowPhase.idle,
-          error: buildMixedSubscriptionCategoriesMessage(
-            _appLang,
-            names: resolution.normalizedNames,
-          ),
-        );
-        return;
-      }
-      if (resolution.normalizedNames.isEmpty) {
-        state = state.copyWith(
-          phase: SubFlowPhase.idle,
-          error: buildInvalidSubscriptionInputMessage(_appLang),
-        );
-        return;
-      }
-      // Deduplicate by normalised name (same service entered twice)
-      final seen = <String>{};
-      final deduped = resolution.normalizedNames
-          .where((name) => seen.add(name.toLowerCase()))
-          .toList();
-      if (deduped.length < resolution.normalizedNames.length) {
-        // At least one duplicate was found — continue with deduplicated list
-      }
-      if (deduped.length == 1 && pendingNames.length > 1) {
-        // All names resolved to the same service
+        if (resolution.invalidNames.isNotEmpty) {
+          state = state.copyWith(
+            phase: SubFlowPhase.idle,
+            error: buildInvalidSubscriptionInputMessage(_appLang),
+          );
+          return;
+        }
+        if (resolution.mixedCategories) {
+          state = state.copyWith(
+            phase: SubFlowPhase.idle,
+            error: buildMixedSubscriptionCategoriesMessage(
+              _appLang,
+              names: resolution.normalizedNames,
+            ),
+          );
+          return;
+        }
+        if (resolution.normalizedNames.isEmpty) {
+          state = state.copyWith(
+            phase: SubFlowPhase.idle,
+            error: buildInvalidSubscriptionInputMessage(_appLang),
+          );
+          return;
+        }
+        // Deduplicate by normalised name (same service entered twice)
+        final seen = <String>{};
+        final deduped = resolution.normalizedNames
+            .where((name) => seen.add(name.toLowerCase()))
+            .toList();
+        if (deduped.length < resolution.normalizedNames.length) {
+          // At least one duplicate was found — continue with deduplicated list
+        }
+        if (deduped.length == 1 && pendingNames.length > 1) {
+          // All names resolved to the same service
+          state = state.copyWith(
+            phase: SubFlowPhase.idle,
+            error: _isTurkishLanguage(_appLang)
+                ? 'Aynı aboneliği birden fazla kez girdiniz.'
+                : 'You entered the same subscription more than once.',
+          );
+          return;
+        }
+        normalizedNames = deduped;
+      } catch (e) {
+        debugPrint('=== QOR AI: resolveSubscriptionSelection failed: $e ===');
         state = state.copyWith(
           phase: SubFlowPhase.idle,
           error: _isTurkishLanguage(_appLang)
-              ? 'Aynı aboneliği birden fazla kez girdiniz.'
-              : 'You entered the same subscription more than once.',
+              ? 'Abonelik doğrulanırken bir hata oluştu. Lütfen tekrar deneyin.'
+              : 'An error occurred while validating subscriptions. Please try again.',
         );
         return;
       }
-      normalizedNames = deduped;
-    } catch (e) {
-      debugPrint('=== QOR AI: resolveSubscriptionSelection failed: $e ===');
-      state = state.copyWith(
-        phase: SubFlowPhase.idle,
-        error: _isTurkishLanguage(_appLang)
-            ? 'Abonelik doğrulanırken bir hata oluştu. Lütfen tekrar deneyin.'
-            : 'An error occurred while validating subscriptions. Please try again.',
-      );
-      return;
-    }
     } // end !skipResolution
 
     // ── Phase B: Quiz generation (quiz failure falls through to direct analysis)
@@ -1906,9 +1905,7 @@ final userComparisonsProvider =
     FutureProvider.autoDispose<Result<List<ComparisonEntity>>>((ref) async {
       // Sadece uid değişimini dinle (record içi alan değişikliklerinde tekrar
       // tetiklenmemek için authStateProvider'dan select ile sadece uid çekiyoruz).
-      final authUid = ref.watch(
-        authStateProvider.select((a) => a.valueOrNull),
-      );
+      final authUid = ref.watch(authStateProvider.select((a) => a.valueOrNull));
       final userId = authUid ?? pb.authStore.record?.id;
       if (userId == null || userId.isEmpty) {
         return const Success([]);
@@ -1933,11 +1930,10 @@ final predefinedComparisonsProvider = FutureProvider<List<ComparisonEntity>>((
 });
 
 /// Reviews for a product (single load to keep detail startup quiet and stable)
-final productReviewsProvider = FutureProvider.autoDispose.family<List<ReviewModel>, String>(
-  (ref, productId) {
-    return ref.read(pbDataSourceProvider).getProductReviews(productId);
-  },
-);
+final productReviewsProvider = FutureProvider.autoDispose
+    .family<List<ReviewModel>, String>((ref, productId) {
+      return ref.read(pbDataSourceProvider).getProductReviews(productId);
+    });
 
 /// Current user's reviews
 final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
@@ -1949,18 +1945,15 @@ final myReviewsProvider = StreamProvider<List<ReviewModel>>((ref) {
 });
 
 /// Fetches this user's comparison reviews from the comparison_reviews collection.
-final myComparisonReviewsProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final myComparisonReviewsProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final uid = ref.watch(authStateProvider.select((v) => v.valueOrNull));
   if (uid == null) return [];
   try {
     final result = await pb
         .collection('comparison_reviews')
-        .getList(
-          filter: 'userId = "$uid"',
-          sort: '-timestamp',
-          perPage: 10,
-        )
+        .getList(filter: 'userId = "$uid"', sort: '-timestamp', perPage: 10)
         .timeout(const Duration(seconds: 10));
     return result.items.map((r) {
       final data = Map<String, dynamic>.from(r.data);
@@ -2005,4 +1998,3 @@ bool isFavorite(WidgetRef ref, String productId) {
   if (user == null) return false;
   return user.favorites.contains(productId);
 }
-

@@ -63,6 +63,48 @@ class FilterDefinition {
       );
 }
 
+FilterDefinition _dynamicMultiFilter({
+  required String id,
+  required String label,
+  required List<String> specKeys,
+}) => FilterDefinition(
+  id: id,
+  label: label,
+  type: FilterType.multiSelect,
+  options: const [],
+  isDynamic: true,
+  specKeys: specKeys,
+);
+
+FilterDefinition _dynamicRangeFilter({
+  required String id,
+  required String label,
+  required List<String> specKeys,
+  required String unit,
+  double minValue = 0,
+  double maxValue = 100,
+}) => FilterDefinition(
+  id: id,
+  label: label,
+  type: FilterType.rangeSlider,
+  minValue: minValue,
+  maxValue: maxValue,
+  unit: unit,
+  isDynamic: true,
+  specKeys: specKeys,
+);
+
+FilterDefinition _toggleFilter({
+  required String id,
+  required String label,
+  required List<String> specKeys,
+}) => FilterDefinition(
+  id: id,
+  label: label,
+  type: FilterType.toggle,
+  specKeys: specKeys,
+);
+
 // ---------------------------------------------------------------------------
 // Shared dynamic brand filter – options populated at runtime from products
 // ---------------------------------------------------------------------------
@@ -85,11 +127,53 @@ const _operatingSystemSpecKeys = [
   'İşletim Sistemi',
 ];
 
+const _screenSizeSpecKeys = ['Screen Size', 'screen size', 'Display Size'];
+const _batteryCapacitySpecKeys = [
+  'Battery Capacity',
+  'battery capacity',
+  'Battery Capacity (Typical)',
+  'Batarya Kapasitesi (Tipik)',
+];
+const _screenTechnologySpecKeys = [
+  'Screen Technology',
+  'screen technology',
+  'Display Type',
+  'display type',
+  'Panel Type',
+  'panel type',
+  'Display Technology',
+  'display technology',
+  'Display',
+  'Type',
+  'Ekran Teknolojisi',
+];
+const _refreshRateSpecKeys = [
+  'Screen Refresh Rate',
+  'screen refresh rate',
+  'Refresh Rate',
+  'refresh rate',
+  'Display Refresh Rate',
+  'display refresh rate',
+  'Ekran Yenileme Hızı',
+];
+const _processorBrandSpecKeys = [
+  'Processor Brand',
+  'processor brand',
+  'Processor',
+  'CPU',
+  'Chip',
+  'Chipset',
+  'Processor Model',
+  'Processor Type',
+  'İşlemci (SOC) Markası',
+  'SoC Brand',
+];
+
 // ---------------------------------------------------------------------------
 // Per-category filter definitions
 // ---------------------------------------------------------------------------
 
-const List<FilterDefinition> _smartphoneFilters = [
+final List<FilterDefinition> _smartphoneFilters = [
   _dynamicBrandFilter,
   FilterDefinition(
     id: 'ram',
@@ -103,6 +187,7 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: '8_gb', label: '8 GB'),
       FilterOption(id: '12_gb', label: '12 GB'),
       FilterOption(id: '16_gb', label: '16 GB'),
+      FilterOption(id: '24_gb', label: '24 GB'),
     ],
     specKeys: ['Memory (RAM)', 'RAM', 'memory ram'],
   ),
@@ -118,8 +203,16 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: '256_gb', label: '256 GB'),
       FilterOption(id: '512_gb', label: '512 GB'),
       FilterOption(id: '1_tb', label: '1 TB'),
+      FilterOption(id: '2_tb', label: '2 TB'),
     ],
-    specKeys: ['Internal Storage', 'storage', 'internal storage'],
+    specKeys: [
+      'Internal Storage',
+      'storage',
+      'internal storage',
+      'Hard Disk (SSD) Size',
+      'Storage Capacity',
+      'Dahili Depolama',
+    ],
   ),
   FilterDefinition(
     id: 'screen_size',
@@ -128,7 +221,7 @@ const List<FilterDefinition> _smartphoneFilters = [
     minValue: 3.5,
     maxValue: 7.5,
     unit: 'in',
-    specKeys: ['Screen Size', 'screen size'],
+    specKeys: _screenSizeSpecKeys,
   ),
   FilterDefinition(
     id: 'battery',
@@ -137,11 +230,7 @@ const List<FilterDefinition> _smartphoneFilters = [
     minValue: 1500,
     maxValue: 7000,
     unit: 'mAh',
-    specKeys: [
-      'Battery Capacity',
-      'battery capacity',
-      'Battery Capacity (Typical)',
-    ],
+    specKeys: _batteryCapacitySpecKeys,
   ),
   FilterDefinition(
     id: 'os',
@@ -150,6 +239,7 @@ const List<FilterDefinition> _smartphoneFilters = [
     options: [
       FilterOption(id: 'android', label: 'Android'),
       FilterOption(id: 'ios', label: 'iOS'),
+      FilterOption(id: 'harmonyos', label: 'HarmonyOS'),
     ],
     specKeys: _operatingSystemSpecKeys,
   ),
@@ -165,23 +255,9 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: 'lcd', label: 'LCD'),
       FilterOption(id: 'ltpo', label: 'LTPO'),
       FilterOption(id: 'dynamic_amoled', label: 'Dynamic AMOLED'),
+      FilterOption(id: 'retina', label: 'Retina'),
     ],
-    // Real-world scraped data uses many variants — without these the
-    // local filter saw zero matches even when products clearly had IPS
-    // panels, because the only candidate spec key was "Screen Technology"
-    // but most products store it under "Display Type" or "Panel Type".
-    specKeys: [
-      'Screen Technology',
-      'screen technology',
-      'Display Type',
-      'display type',
-      'Panel Type',
-      'panel type',
-      'Display Technology',
-      'display technology',
-      'Display',
-      'Type',
-    ],
+    specKeys: _screenTechnologySpecKeys,
   ),
   FilterDefinition(
     id: 'refresh_rate',
@@ -195,50 +271,493 @@ const List<FilterDefinition> _smartphoneFilters = [
       FilterOption(id: '165_hz', label: '165 Hz'),
       FilterOption(id: '240_hz', label: '240 Hz'),
     ],
+    specKeys: _refreshRateSpecKeys,
+  ),
+  _dynamicMultiFilter(
+    id: 'release_year',
+    label: 'Çıkış Yılı',
     specKeys: [
-      'Screen Refresh Rate',
-      'screen refresh rate',
-      'Refresh Rate',
-      'refresh rate',
-      'Display Refresh Rate',
-      'display refresh rate',
+      'Release Year',
+      'Announcement Year',
+      'Launch Year',
+      'Product Year',
+      'Year',
+      'Çıkış Yılı',
     ],
   ),
-  FilterDefinition(
-    id: 'five_g',
-    label: '5G',
-    type: FilterType.toggle,
-    specKeys: ['5G'],
+  _dynamicMultiFilter(
+    id: 'chipset',
+    label: 'Yonga Seti (Chipset)',
+    specKeys: [
+      'Chipset',
+      'SoC',
+      'Yonga Seti',
+      'System on Chip (SoC)',
+      'Processor Model',
+      'Processor',
+      'İşlemci Modeli',
+    ],
   ),
-  FilterDefinition(
-    id: 'nfc',
-    label: 'NFC',
-    type: FilterType.toggle,
-    specKeys: ['NFC'],
+  _dynamicRangeFilter(
+    id: 'camera_resolution',
+    label: 'Kamera Çözünürlüğü',
+    unit: 'MP',
+    minValue: 2,
+    maxValue: 200,
+    specKeys: [
+      'Camera Resolution',
+      'Main Camera Resolution',
+      'Rear Camera Resolution',
+      'Primary Camera Resolution',
+      'Kamera Çözünürlüğü',
+      'Ana Kamera Çözünürlüğü',
+    ],
   ),
-  FilterDefinition(
-    id: 'wireless_charging',
-    label: 'Wireless Charging',
-    type: FilterType.toggle,
-    specKeys: ['Wireless Charging'],
+  _dynamicRangeFilter(
+    id: 'front_camera_resolution',
+    label: 'Ön Kamera Çözünürlüğü',
+    unit: 'MP',
+    minValue: 1,
+    maxValue: 64,
+    specKeys: [
+      'Front Camera Resolution',
+      'Selfie Camera Resolution',
+      'Ön Kamera Çözünürlüğü',
+      'Front Camera',
+    ],
   ),
-  FilterDefinition(
+  _dynamicRangeFilter(
+    id: 'height',
+    label: 'Boy',
+    unit: 'mm',
+    minValue: 55,
+    maxValue: 189,
+    specKeys: ['Height', 'Boy', 'Length'],
+  ),
+  _dynamicRangeFilter(
+    id: 'screen_body_ratio',
+    label: 'Ekran / Gövde Oranı',
+    unit: '%',
+    minValue: 27,
+    maxValue: 181,
+    specKeys: [
+      'Screen / Body Ratio',
+      'Screen-to-Body Ratio',
+      'Ekran / Gövde Oranı',
+    ],
+  ),
+  _toggleFilter(id: 'five_g', label: '5G', specKeys: ['5G']),
+  _dynamicMultiFilter(
+    id: 'sim_line',
+    label: 'Hat Sayısı',
+    specKeys: ['Line Count', 'SIM Count', 'Hat Sayısı', 'SIM'],
+  ),
+  _toggleFilter(
     id: 'fast_charging',
-    label: 'Fast Charging',
-    type: FilterType.toggle,
-    specKeys: ['Fast Charging'],
+    label: 'Hızlı Şarj',
+    specKeys: ['Fast Charging', 'Fast Charging Feature', 'Hızlı Şarj'],
   ),
-  FilterDefinition(
+  _toggleFilter(
+    id: 'ois',
+    label: 'Optik Görüntü Sabitleyici (OIS)',
+    specKeys: [
+      'Optical Image Stabilization (OIS)',
+      'OIS',
+      'Optik Görüntü Sabitleyici (OIS)',
+    ],
+  ),
+  _dynamicRangeFilter(
+    id: 'sar_head',
+    label: 'SAR Değeri 10g (Baş)',
+    unit: 'W/kg',
+    minValue: 0.1,
+    maxValue: 2.0,
+    specKeys: ['SAR Value 10g (Head)', 'SAR Head', 'SAR Değeri 10g (Baş)'],
+  ),
+  _dynamicRangeFilter(
+    id: 'sar_body',
+    label: 'SAR Değeri 10g (Vücut)',
+    unit: 'W/kg',
+    minValue: 0.1,
+    maxValue: 2.0,
+    specKeys: ['SAR Value 10g (Body)', 'SAR Body', 'SAR Değeri 10g (Vücut)'],
+  ),
+  _toggleFilter(
     id: 'fingerprint',
-    label: 'Fingerprint Reader',
-    type: FilterType.toggle,
-    specKeys: ['Fingerprint Reader', 'fingerprint'],
+    label: 'Parmak izi Okuyucu',
+    specKeys: ['Fingerprint Reader', 'fingerprint', 'Parmak izi Okuyucu'],
+  ),
+  _toggleFilter(
+    id: 'water_resistance',
+    label: 'Suya Dayanıklılık',
+    specKeys: ['Water Resistance', 'Waterproof', 'Suya Dayanıklılık'],
+  ),
+  _dynamicMultiFilter(
+    id: 'warranty',
+    label: 'Garanti',
+    specKeys: ['Warranty', 'Garanti'],
+  ),
+  _dynamicMultiFilter(
+    id: 'color',
+    label: 'Renk Seçenekleri',
+    specKeys: ['Color Options', 'Color', 'Renk Seçenekleri', 'Renk'],
+  ),
+  _dynamicMultiFilter(
+    id: 'os_version',
+    label: 'İşletim Sistemi Versiyonu',
+    specKeys: [
+      'Operating System Version',
+      'OS Version',
+      'Android Version',
+      'İşletim Sistemi Versiyonu',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'cpu_core',
+    label: 'CPU Çekirdeği',
+    specKeys: ['CPU Core', 'Core Count', 'CPU Çekirdeği', 'Number of Cores'],
+  ),
+  _dynamicMultiFilter(
+    id: 'screen_resolution',
+    label: 'Ekran Çözünürlüğü',
+    specKeys: ['Screen Resolution', 'Display Resolution', 'Ekran Çözünürlüğü'],
+  ),
+  _toggleFilter(
+    id: 'four_half_g',
+    label: '4.5G Desteği',
+    specKeys: ['4.5G', '4G LTE', 'LTE', '4.5G Desteği'],
+  ),
+  _dynamicMultiFilter(
+    id: 'screen_resolution_format',
+    label: 'Ekran Çözünürlüğü Standardı',
+    specKeys: [
+      'Screen Resolution Format',
+      'Resolution Standard',
+      'Ekran Çözünürlüğü Standardı',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'charging',
+    label: 'Şarj',
+    specKeys: ['Charging', 'Charge', 'Şarj'],
+  ),
+  _dynamicRangeFilter(
+    id: 'fast_charging_power',
+    label: 'Hızlı Şarj Gücü (Maks.)',
+    unit: 'W',
+    minValue: 5,
+    maxValue: 240,
+    specKeys: [
+      'Fast Charging Power (Max.)',
+      'Fast Charging Power',
+      'Hızlı Şarj Gücü (Maks.)',
+    ],
+  ),
+  _toggleFilter(
+    id: 'wireless_charging',
+    label: 'Kablosuz Şarj',
+    specKeys: ['Wireless Charging', 'Kablosuz Şarj'],
+  ),
+  _toggleFilter(
+    id: 'memory_card_support',
+    label: 'Hafıza Kartı Desteği',
+    specKeys: ['Memory Card Support', 'microSD', 'Hafıza Kartı Desteği'],
+  ),
+  _dynamicMultiFilter(
+    id: 'water_resistance_level',
+    label: 'Suya Dayanıklılık Seviyesi',
+    specKeys: [
+      'Water Resistance Level',
+      'IP Rating',
+      'Suya Dayanıklılık Seviyesi',
+    ],
+  ),
+  _dynamicRangeFilter(
+    id: 'aperture',
+    label: 'Diyafram Açıklığı',
+    unit: 'f',
+    minValue: 1,
+    maxValue: 4,
+    specKeys: ['Aperture', 'Main Camera Aperture', 'Diyafram Açıklığı'],
+  ),
+  _dynamicMultiFilter(
+    id: 'front_camera_video_resolution',
+    label: 'Ön Kamera Video Çözünürlüğü',
+    specKeys: [
+      'Front Camera Video Resolution',
+      'Selfie Video Resolution',
+      'Ön Kamera Video Çözünürlüğü',
+    ],
+  ),
+  _dynamicRangeFilter(
+    id: 'front_camera_aperture',
+    label: 'Ön Kamera Diyafram Açıklığı',
+    unit: 'f',
+    minValue: 1,
+    maxValue: 4,
+    specKeys: ['Front Camera Aperture', 'Ön Kamera Diyafram Açıklığı'],
+  ),
+  _dynamicMultiFilter(
+    id: 'video_fps',
+    label: 'Video FPS Değeri',
+    specKeys: ['Video FPS', 'FPS', 'Video FPS Değeri'],
+  ),
+  _dynamicMultiFilter(
+    id: 'sensor_size',
+    label: 'Kamera Sensör Boyutu',
+    specKeys: ['Camera Sensor Size', 'Sensor Size', 'Kamera Sensör Boyutu'],
+  ),
+  _toggleFilter(id: 'nfc', label: 'NFC', specKeys: ['NFC']),
+  _dynamicRangeFilter(
+    id: 'width',
+    label: 'En',
+    unit: 'mm',
+    minValue: 50,
+    maxValue: 100,
+    specKeys: ['Width', 'En'],
+  ),
+  _dynamicRangeFilter(
+    id: 'thickness',
+    label: 'Kalınlık',
+    unit: 'mm',
+    minValue: 4,
+    maxValue: 20,
+    specKeys: ['Thickness', 'Kalınlık'],
+  ),
+  _dynamicRangeFilter(
+    id: 'weight',
+    label: 'Ağırlık',
+    unit: 'g',
+    minValue: 60,
+    maxValue: 400,
+    specKeys: ['Weight', 'Ağırlık'],
+  ),
+  _dynamicMultiFilter(
+    id: 'battery_features',
+    label: 'Batarya Özellikleri',
+    specKeys: ['Battery Features', 'Batarya Özellikleri'],
+  ),
+  _dynamicMultiFilter(
+    id: 'storage_format',
+    label: 'Dahili Depolama Biçimi',
+    specKeys: [
+      'Internal Storage Type',
+      'Storage Type',
+      'Dahili Depolama Biçimi',
+    ],
+  ),
+  _toggleFilter(
+    id: 'notification_led',
+    label: 'Bildirim Işığı (LED)',
+    specKeys: [
+      'Notification Light (LED)',
+      'Notification LED',
+      'Bildirim Işığı (LED)',
+    ],
+  ),
+  _toggleFilter(
+    id: 'radio',
+    label: 'Radyo',
+    specKeys: ['Radio', 'FM Radio', 'Radyo'],
   ),
   FilterDefinition(
-    id: 'water_resistance',
-    label: 'Water Resistance',
-    type: FilterType.toggle,
-    specKeys: ['Water Resistance'],
+    id: 'bluetooth_version',
+    label: 'Bluetooth Versiyonu',
+    type: FilterType.multiSelect,
+    options: [
+      FilterOption(id: '5_4', label: '5.4'),
+      FilterOption(id: '5_3', label: '5.3'),
+      FilterOption(id: '5_2', label: '5.2'),
+      FilterOption(id: '5_1', label: '5.1'),
+      FilterOption(id: '5_0', label: '5.0'),
+      FilterOption(id: '4_2', label: '4.2'),
+      FilterOption(id: '4_1', label: '4.1'),
+      FilterOption(id: '4_0', label: '4.0'),
+    ],
+    specKeys: [
+      'Bluetooth Version',
+      'Bluetooth Features',
+      'Bluetooth Versiyonu',
+    ],
+  ),
+  _toggleFilter(
+    id: 'infrared',
+    label: 'Kızılötesi',
+    specKeys: ['Infrared', 'IR Blaster', 'Kızılötesi'],
+  ),
+  _dynamicRangeFilter(
+    id: 'pixel_density',
+    label: 'Piksel Yoğunluğu',
+    unit: 'ppi',
+    minValue: 100,
+    maxValue: 800,
+    specKeys: ['Pixel Density', 'PPI', 'Piksel Yoğunluğu'],
+  ),
+  _dynamicMultiFilter(
+    id: 'processor_brand',
+    label: 'İşlemci (SOC) Markası',
+    specKeys: _processorBrandSpecKeys,
+  ),
+  _dynamicRangeFilter(
+    id: 'cpu_process',
+    label: 'CPU Üretim Teknolojisi',
+    unit: 'nm',
+    minValue: 1,
+    maxValue: 28,
+    specKeys: [
+      'CPU Production Technology',
+      'CPU Üretim Teknolojisi',
+      'Transistor Distance',
+    ],
+  ),
+  _dynamicRangeFilter(
+    id: 'cpu_frequency',
+    label: 'CPU Frekansı',
+    unit: 'GHz',
+    minValue: 0.5,
+    maxValue: 5,
+    specKeys: ['CPU Frequency', 'Processor Base Frequency', 'CPU Frekansı'],
+  ),
+  _toggleFilter(
+    id: 'dust_resistance',
+    label: 'Toza Dayanıklılık',
+    specKeys: ['Dust Resistance', 'Toza Dayanıklılık'],
+  ),
+  _dynamicMultiFilter(
+    id: 'display_features',
+    label: 'Ekran Özellikleri',
+    specKeys: [
+      'Display Features',
+      'Screen Other Features',
+      'Ekran Özellikleri',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'screen_durability',
+    label: 'Ekran Dayanıklılığı',
+    specKeys: [
+      'Screen Durability',
+      'Display Protection',
+      'Ekran Dayanıklılığı',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'aspect_ratio',
+    label: 'Ekran Oranı (Aspect Ratio)',
+    specKeys: [
+      'Screen Aspect Ratio',
+      'Aspect Ratio',
+      'Ekran Oranı (Aspect Ratio)',
+    ],
+  ),
+  _dynamicRangeFilter(
+    id: 'screen_area',
+    label: 'Ekran Alanı',
+    unit: 'cm²',
+    minValue: 10,
+    maxValue: 140,
+    specKeys: ['Screen Area', 'Display Area', 'Ekran Alanı'],
+  ),
+  _dynamicMultiFilter(
+    id: 'gpu',
+    label: 'Grafik İşlemcisi (GPU)',
+    specKeys: ['GPU', 'Graphics Processor', 'Grafik İşlemcisi (GPU)'],
+  ),
+  _dynamicMultiFilter(
+    id: 'frame_material',
+    label: 'Gövde Malzemesi (Çerçeve)',
+    specKeys: [
+      'Body Material (Frame)',
+      'Frame Material',
+      'Gövde Malzemesi (Çerçeve)',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'back_material',
+    label: 'Gövde Malzemesi (Kapak)',
+    specKeys: [
+      'Body Material (Back)',
+      'Back Material',
+      'Gövde Malzemesi (Kapak)',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'speaker_features',
+    label: 'Hoparlör Özellikleri',
+    specKeys: ['Speaker Features', 'Hoparlör Özellikleri', 'Audio Features'],
+  ),
+  _dynamicMultiFilter(
+    id: 'sensors',
+    label: 'Sensörler',
+    specKeys: ['Sensors', 'Sensörler'],
+  ),
+  _dynamicMultiFilter(
+    id: 'wifi_channels',
+    label: 'Wi-Fi Kanalları',
+    specKeys: ['Wi-Fi Channels', 'Wi-Fi Features', 'Wi-Fi Kanalları'],
+  ),
+  FilterDefinition(
+    id: 'usb_type',
+    label: 'USB Bağlantı Tipi',
+    type: FilterType.multiSelect,
+    options: [
+      FilterOption(id: 'type_c', label: 'USB Type-C'),
+      FilterOption(id: 'micro_usb', label: 'Micro-USB'),
+      FilterOption(id: 'lightning', label: 'Lightning'),
+      FilterOption(id: 'mini_usb', label: 'Mini-USB'),
+    ],
+    specKeys: ['USB Connection Type', 'USB Type', 'USB Bağlantı Tipi'],
+  ),
+  FilterDefinition(
+    id: 'usb_version',
+    label: 'USB Versiyonu',
+    type: FilterType.multiSelect,
+    options: [
+      FilterOption(id: '3_2_gen_2', label: '3.2 Gen 2'),
+      FilterOption(id: '3_2_gen_1', label: '3.2 Gen 1'),
+      FilterOption(id: '3_1_gen_1', label: '3.1 Gen 1'),
+      FilterOption(id: '3_0', label: '3.0'),
+      FilterOption(id: '2_0', label: '2.0'),
+    ],
+    specKeys: ['USB Version', 'USB Versiyonu'],
+  ),
+  _dynamicMultiFilter(
+    id: 'audio_output',
+    label: 'Ses Çıkışı',
+    specKeys: ['Audio Output', 'Headphone Jack', 'Ses Çıkışı'],
+  ),
+  _toggleFilter(
+    id: 'removable_battery',
+    label: 'Değişir Batarya',
+    specKeys: ['Removable Battery', 'Değişir Batarya'],
+  ),
+  _dynamicMultiFilter(
+    id: 'video_record_resolution',
+    label: 'Video Kayıt Çözünürlüğü',
+    specKeys: [
+      'Video Recording Resolution',
+      'Video Record Resolution',
+      'Video Kayıt Çözünürlüğü',
+    ],
+  ),
+  _toggleFilter(
+    id: 'secondary_rear_camera',
+    label: 'İkinci Arka Kamera',
+    specKeys: [
+      'Second Rear Camera',
+      'Secondary Rear Camera',
+      'İkinci Arka Kamera',
+    ],
+  ),
+  _dynamicMultiFilter(
+    id: 'navigation',
+    label: 'Navigasyon Özellikleri',
+    specKeys: ['Navigation Features', 'GPS Features', 'Navigasyon Özellikleri'],
+  ),
+  _dynamicMultiFilter(
+    id: 'sim',
+    label: 'SIM',
+    specKeys: ['SIM', 'SIM Type', 'SIM Card Type'],
   ),
 ];
 
@@ -1648,7 +2167,7 @@ class FilterConfig {
     return merged;
   }
 
-  static const Map<String, List<FilterDefinition>> _categoryFilters = {
+  static final Map<String, List<FilterDefinition>> _categoryFilters = {
     'smartphones': _smartphoneFilters,
     'laptops': _laptopFilters,
     'tablets': _tabletFilters,
@@ -1698,7 +2217,9 @@ class FilterConfig {
   /// Get static filter definitions for a category.
   static List<FilterDefinition> getFilters(String categoryId) {
     final categoryFilters = _categoryFilters[categoryId.toLowerCase()];
-    if (categoryFilters == null) return List<FilterDefinition>.from(_genericFilters);
+    if (categoryFilters == null) {
+      return List<FilterDefinition>.from(_genericFilters);
+    }
     return _mergeDefinitions(categoryFilters, _genericFilters);
   }
 
@@ -1711,103 +2232,270 @@ class FilterConfig {
     final defs = getFilters(categoryId);
     if (products.isEmpty) return defs;
 
-    return defs.map<FilterDefinition?>((def) {
-      if (def.id == 'price' && def.type == FilterType.rangeSlider) {
-        final prices = <double>[];
-        for (final p in products) {
-          try {
-            final productPrices = p.prices;
-            if (productPrices is Map) {
-              for (final value in productPrices.values) {
-                if (value is num && value > 0) {
-                  prices.add(value.toDouble());
+    return defs
+        .map<FilterDefinition?>((def) {
+          if (def.type == FilterType.rangeSlider && def.isDynamic) {
+            final values = <double>[];
+            for (final p in products) {
+              final specs = (p.specs as Map<String, dynamic>?) ?? {};
+              final keySpecs = (p.keySpecs as Map<String, dynamic>?) ?? {};
+              final specSections =
+                  (p.specSections as Map<String, dynamic>?) ?? {};
+
+              for (final key in def.specKeys) {
+                for (final candidate in [specs[key], keySpecs[key]]) {
+                  final number = _extractDynamicRangeNumber(candidate);
+                  if (number != null) values.add(number);
+                }
+
+                for (final section in specSections.values) {
+                  if (section is Map) {
+                    final number = _extractDynamicRangeNumber(section[key]);
+                    if (number != null) values.add(number);
+                  }
                 }
               }
             }
-          } catch (_) {}
-        }
 
-        if (prices.isNotEmpty) {
-          final minPrice = prices.reduce((a, b) => a < b ? a : b);
-          final maxPrice = prices.reduce((a, b) => a > b ? a : b);
-          final roundedMin = minPrice < 100
-              ? 0.0
-              : ((minPrice / 100).floor() * 100).toDouble();
-          var roundedMax = ((maxPrice / 100).ceil() * 100).toDouble();
-          if (roundedMax <= roundedMin) {
-            roundedMax = roundedMin + 100;
-          }
-          return def.withRange(minValue: roundedMin, maxValue: roundedMax);
-        }
-
-        // Hide the price filter entirely when the category has no real price
-        // data; otherwise the sheet claims price support that the app cannot
-        // actually apply.
-        return null;
-      }
-
-      if (!def.isDynamic) return def;
-
-      if (def.id == 'brand') {
-        final brandCount = <String, int>{};
-        final brandLabels = <String, String>{};
-        for (final p in products) {
-          final brand = ((p.brand as String?) ?? '').trim();
-          if (brand.isNotEmpty) {
-            final normalizedBrand = brand.toLowerCase();
-            brandCount[normalizedBrand] = (brandCount[normalizedBrand] ?? 0) + 1;
-            final currentLabel = brandLabels[normalizedBrand];
-            if (currentLabel == null || brand.length > currentLabel.length) {
-              brandLabels[normalizedBrand] = brand;
+            if (values.isNotEmpty) {
+              final minValue = values.reduce((a, b) => a < b ? a : b);
+              final maxValue = values.reduce((a, b) => a > b ? a : b);
+              final hasDecimal = values.any((value) => value % 1 != 0);
+              final roundedMin = hasDecimal
+                  ? (minValue * 10).floor() / 10
+                  : minValue.floorToDouble();
+              var roundedMax = hasDecimal
+                  ? (maxValue * 10).ceil() / 10
+                  : maxValue.ceilToDouble();
+              if (roundedMax <= roundedMin) {
+                roundedMax = roundedMin + (hasDecimal ? 0.1 : 1.0);
+              }
+              return def.withRange(minValue: roundedMin, maxValue: roundedMax);
             }
           }
-        }
-        final sorted = brandCount.keys.toList()
-          ..sort((a, b) {
-            final cmp = brandCount[b]!.compareTo(brandCount[a]!);
-            if (cmp != 0) return cmp;
-            return (brandLabels[a] ?? a).compareTo(brandLabels[b] ?? b);
-          });
-        return def.withOptions(
-          sorted
-              .map(
-                (b) => FilterOption(
-                  id: b.replaceAll(RegExp(r'[^a-z0-9]'), '_'),
-                  label: brandLabels[b] ?? b,
-                ),
-              )
-              .toList(),
-        );
-      }
 
-      // Generic dynamic: extract unique values from product specs
-      final valueSet = <String>{};
-      for (final p in products) {
-        for (final key in def.specKeys) {
-          final specs = (p.specs as Map<String, dynamic>?) ?? {};
-          final specSections = (p.specSections as Map<String, dynamic>?) ?? {};
-          final v = specs[key]?.toString();
-          if (v != null && v.isNotEmpty) valueSet.add(v);
-          for (final section in specSections.values) {
-            if (section is Map) {
-              final sv = section[key]?.toString();
-              if (sv != null && sv.isNotEmpty) valueSet.add(sv);
+          if (def.id == 'price' && def.type == FilterType.rangeSlider) {
+            final prices = <double>[];
+            for (final p in products) {
+              try {
+                final productPrices = p.prices;
+                if (productPrices is Map) {
+                  for (final value in productPrices.values) {
+                    if (value is num && value > 0) {
+                      prices.add(value.toDouble());
+                    }
+                  }
+                }
+              } catch (_) {}
+            }
+
+            if (prices.isNotEmpty) {
+              final minPrice = prices.reduce((a, b) => a < b ? a : b);
+              final maxPrice = prices.reduce((a, b) => a > b ? a : b);
+              final roundedMin = minPrice < 100
+                  ? 0.0
+                  : ((minPrice / 100).floor() * 100).toDouble();
+              var roundedMax = ((maxPrice / 100).ceil() * 100).toDouble();
+              if (roundedMax <= roundedMin) {
+                roundedMax = roundedMin + 100;
+              }
+              return def.withRange(minValue: roundedMin, maxValue: roundedMax);
+            }
+
+            // Hide the price filter entirely when the category has no real price
+            // data; otherwise the sheet claims price support that the app cannot
+            // actually apply.
+            return null;
+          }
+
+          if (!def.isDynamic) return def;
+
+          if (def.id == 'brand') {
+            final brandCount = <String, int>{};
+            final brandLabels = <String, String>{};
+            for (final p in products) {
+              final brand = ((p.brand as String?) ?? '').trim();
+              if (brand.isNotEmpty) {
+                final normalizedBrand = brand.toLowerCase();
+                brandCount[normalizedBrand] =
+                    (brandCount[normalizedBrand] ?? 0) + 1;
+                final currentLabel = brandLabels[normalizedBrand];
+                if (currentLabel == null ||
+                    brand.length > currentLabel.length) {
+                  brandLabels[normalizedBrand] = brand;
+                }
+              }
+            }
+            final sorted = brandCount.keys.toList()
+              ..sort((a, b) {
+                final cmp = brandCount[b]!.compareTo(brandCount[a]!);
+                if (cmp != 0) return cmp;
+                return (brandLabels[a] ?? a).compareTo(brandLabels[b] ?? b);
+              });
+            return def.withOptions(
+              sorted
+                  .map(
+                    (b) => FilterOption(
+                      id: b.replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+                      label: brandLabels[b] ?? b,
+                    ),
+                  )
+                  .toList(),
+            );
+          }
+
+          // Generic dynamic: extract unique values from product specs
+          final optionLabels = <String, String>{};
+          for (final p in products) {
+            for (final key in def.specKeys) {
+              final specs = (p.specs as Map<String, dynamic>?) ?? {};
+              final keySpecs = (p.keySpecs as Map<String, dynamic>?) ?? {};
+              final specSections =
+                  (p.specSections as Map<String, dynamic>?) ?? {};
+              for (final candidate in [specs[key], keySpecs[key]]) {
+                for (final value in _extractDynamicOptionValues(candidate)) {
+                  final normalized = _normalizeDynamicOptionLabel(value);
+                  if (normalized.isEmpty) continue;
+                  final existing = optionLabels[normalized];
+                  if (existing == null || value.length > existing.length) {
+                    optionLabels[normalized] = value;
+                  }
+                }
+              }
+              for (final section in specSections.values) {
+                if (section is Map) {
+                  for (final value in _extractDynamicOptionValues(
+                    section[key],
+                  )) {
+                    final normalized = _normalizeDynamicOptionLabel(value);
+                    if (normalized.isEmpty) continue;
+                    final existing = optionLabels[normalized];
+                    if (existing == null || value.length > existing.length) {
+                      optionLabels[normalized] = value;
+                    }
+                  }
+                }
+              }
             }
           }
-        }
-      }
-      if (valueSet.isEmpty) return def;
-      final sorted = valueSet.toList()..sort();
-      return def.withOptions(
-        sorted
-            .map(
-              (v) => FilterOption(
-                id: v.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
-                label: v,
-              ),
-            )
-            .toList(),
-      );
-    }).whereType<FilterDefinition>().toList();
+          if (optionLabels.isEmpty) return def;
+          final sorted = optionLabels.values.toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+          return def.withOptions(
+            sorted
+                .map(
+                  (v) => FilterOption(
+                    id: v.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+                    label: v,
+                  ),
+                )
+                .toList(),
+          );
+        })
+        .whereType<FilterDefinition>()
+        .toList();
   }
+}
+
+double? _extractDynamicRangeNumber(Object? value) {
+  if (value == null) return null;
+  final normalized = value
+      .toString()
+      .replaceAll(',', '.')
+      .replaceAllMapped(
+        RegExp(r'(\d)\.(\d{3})(?!\d)'),
+        (m) => '${m[1]}${m[2]}',
+      );
+  final match = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(normalized);
+  if (match == null) return null;
+  return double.tryParse(match.group(1)!);
+}
+
+Iterable<String> _extractDynamicOptionValues(Object? value) sync* {
+  if (value == null) return;
+
+  for (final part in _splitDynamicOptionValue(value.toString())) {
+    final cleaned = _cleanDynamicOptionValue(part);
+    if (cleaned.isNotEmpty) {
+      yield cleaned;
+    }
+  }
+}
+
+List<String> _splitDynamicOptionValue(String value) {
+  final normalized = value
+      .replaceAll('\r', '\n')
+      .replaceAll('•', '\n')
+      .replaceAll('·', '\n');
+  final result = <String>[];
+  final current = StringBuffer();
+  int parenDepth = 0;
+
+  for (int i = 0; i < normalized.length; i++) {
+    final ch = normalized[i];
+    if (ch == '(') {
+      parenDepth++;
+      current.write(ch);
+      continue;
+    }
+    if (ch == ')') {
+      if (parenDepth > 0) parenDepth--;
+      current.write(ch);
+      continue;
+    }
+
+    final isDelimiter =
+        ch == '\n' || ch == ';' || (ch == ',' && parenDepth == 0);
+    if (!isDelimiter) {
+      current.write(ch);
+      continue;
+    }
+
+    final before = i > 0 ? normalized[i - 1] : '';
+    final after = i + 1 < normalized.length ? normalized[i + 1] : '';
+    final isNumericComma =
+        ch == ',' &&
+        RegExp(r'\d').hasMatch(before) &&
+        RegExp(r'\d').hasMatch(after);
+    if (isNumericComma) {
+      current.write(ch);
+      continue;
+    }
+
+    final candidate = current.toString().trim();
+    if (candidate.isNotEmpty) {
+      result.add(candidate);
+    }
+    current.clear();
+  }
+
+  final last = current.toString().trim();
+  if (last.isNotEmpty) {
+    result.add(last);
+  }
+
+  return result.isEmpty ? [value] : result;
+}
+
+String _cleanDynamicOptionValue(String value) {
+  return value
+      .replaceAll('\u00A0', ' ')
+      .replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '')
+      .replaceAll(RegExp(r'^[-•·\s]+'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+String _normalizeDynamicOptionLabel(String value) {
+  return _cleanDynamicOptionValue(value)
+      .toLowerCase()
+      .replaceAll('ı', 'i')
+      .replaceAll('ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('ş', 's')
+      .replaceAll('ö', 'o')
+      .replaceAll('ç', 'c')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }

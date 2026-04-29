@@ -17,8 +17,7 @@ import 'package:qor_ai/data/models/user_model.dart';
 import 'package:qor_ai/data/models/product_model.dart';
 import 'package:qor_ai/data/models/comparison_model.dart';
 import 'package:qor_ai/data/models/other_models.dart';
-import 'package:qor_ai/config/filter_config.dart'
-    show FilterOption;
+import 'package:qor_ai/config/filter_config.dart' show FilterOption;
 import 'package:qor_ai/data/models/chat_conversation.dart';
 
 List<ProductModel> _parseTypesenseHitsToProducts(
@@ -2384,13 +2383,16 @@ class PbDataSource {
       final facetCounts = (response.data['facet_counts'] as List?) ?? [];
       if (facetCounts.isEmpty) return [];
       final counts = (facetCounts.first['counts'] as List?) ?? [];
-      final options = counts.map((c) {
-        final value = ((c['value'] as String?) ?? '').trim();
-        return FilterOption(
-          id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
-          label: value,
-        );
-      }).where((opt) => opt.label.isNotEmpty).toList();
+      final options = counts
+          .map((c) {
+            final value = ((c['value'] as String?) ?? '').trim();
+            return FilterOption(
+              id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+              label: value,
+            );
+          })
+          .where((opt) => opt.label.isNotEmpty)
+          .toList();
       debugPrint(
         '=== QOR AI: TS brandFacets cat=$category → ${options.length} brands in ${sw.elapsedMilliseconds}ms ===',
       );

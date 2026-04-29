@@ -24,6 +24,10 @@ const schema = {
     { name: 'specsCount', type: 'int32', optional: true },
     { name: 'keySpecsText', type: 'string', optional: true },
     { name: 'tags', type: 'string[]', optional: true, facet: true },
+    { name: 'filterTokens', type: 'string[]', optional: true, facet: true },
+    { name: 'screenSizeValue', type: 'float', optional: true },
+    { name: 'batteryCapacityValue', type: 'int32', optional: true },
+    { name: 'weightValueKg', type: 'float', optional: true },
     // Full product data as JSON string — not indexed, just stored for hydration
     { name: '_raw', type: 'string', index: false, optional: true },
   ],
@@ -50,6 +54,7 @@ function flattenKeySpecs(ks) {
 }
 
 function toTsDoc(pb) {
+  const browseFilters = extractBrowseFilters(pb);
   // Build _raw: full PB record for client-side hydration
   const raw = JSON.stringify(pb);
   return {
@@ -67,7 +72,403 @@ function toTsDoc(pb) {
     specsCount: pb.specsCount || 0,
     keySpecsText: flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
+    filterTokens: browseFilters.tokens,
+    screenSizeValue: browseFilters.screenSizeValue,
+    batteryCapacityValue: browseFilters.batteryCapacityValue,
+    weightValueKg: browseFilters.weightValueKg,
     _raw: raw,
+  };
+}
+
+function normalizeBrowseText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function flattenBrowseSpecs(pb) {
+  const flat = {};
+  const specs = pb.specs || {};
+  Object.entries(specs).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) flat[String(key)] = String(value);
+  });
+
+  const keySpecs = pb.keySpecs || {};
+  Object.entries(keySpecs).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && String(value).trim()) {
+      flat[String(key)] = String(value);
+    }
+  });
+
+  const specSections = pb.specSections || {};
+  Object.values(specSections).forEach((section) => {
+    if (!section || typeof section !== 'object') return;
+    Object.entries(section).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) flat[String(key)] = String(value);
+    });
+  });
+
+  return flat;
+}
+
+function findBrowseSpecValues(keys, flatSpecs) {
+  const matches = [];
+  const seen = new Set();
+  keys.forEach((key) => {
+    if (flatSpecs[key] && !seen.has(flatSpecs[key])) {
+      seen.add(flatSpecs[key]);
+      matches.push(flatSpecs[key]);
+    }
+    const normalizedKey = normalizeBrowseText(key);
+    const compactKey = normalizedKey.replace(/\s+/g, '');
+    Object.entries(flatSpecs).forEach(([specKey, value]) => {
+      const normalizedSpecKey = normalizeBrowseText(specKey);
+      const compactSpecKey = normalizedSpecKey.replace(/\s+/g, '');
+      if (
+        normalizedSpecKey === normalizedKey ||
+        normalizedSpecKey.includes(normalizedKey) ||
+        normalizedKey.includes(normalizedSpecKey) ||
+        compactSpecKey === compactKey ||
+        compactSpecKey.includes(compactKey) ||
+        compactKey.includes(compactSpecKey)
+      ) {
+        if (value && !seen.has(value)) {
+          seen.add(value);
+          matches.push(value);
+        }
+      }
+    });
+  });
+  return matches;
+}
+
+function extractFirstBrowseNumber(value) {
+  const match = String(value || '').match(/(\d+(?:[.,]\d+)?)/);
+  if (!match) return null;
+  return parseFloat(match[1].replace(',', '.'));
+}
+
+function extractBooleanBrowseValue(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (
+    normalized === 'no' ||
+    normalized === 'false' ||
+    normalized === 'hayir' ||
+    normalized === 'yok' ||
+    normalized === 'n a' ||
+    normalized === '-'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function extractStorageToken(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.includes('2 tb') || normalized.includes('2tb')) return '2_tb';
+  if (normalized.includes('1 tb') || normalized.includes('1tb')) return '1_tb';
+  const number = extractFirstBrowseNumber(value);
+  if (number === null) return null;
+  return `${Math.round(number)}_gb`;
+}
+
+function extractOsToken(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.includes('chrome os') || normalized.includes('chromeos')) {
+    return 'chromeos';
+  }
+  if (normalized.includes('ipad os') || normalized.includes('ipados')) {
+    return 'ipados';
+  }
+  if (
+    normalized.includes('mac os') ||
+    normalized.includes('macos') ||
+    normalized.includes('os x')
+  ) {
+    return 'macos';
+  }
+  if (normalized.includes('windows')) return 'windows';
+  if (normalized.includes('android')) return 'android';
+  if (normalized.includes('linux')) return 'linux';
+  if (normalized.includes('ios') || normalized.includes('iphone os')) {
+    return 'ios';
+  }
+  return null;
+}
+
+function extractProcessorBrandToken(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.includes('intel')) return 'intel';
+  if (normalized.includes('amd')) return 'amd';
+  if (normalized.includes('apple')) return 'apple';
+  if (normalized.includes('qualcomm') || normalized.includes('snapdragon')) {
+    return 'qualcomm';
+  }
+  return null;
+}
+
+function extractGpuTypeToken(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (
+    normalized.includes('rtx') ||
+    normalized.includes('gtx') ||
+    normalized.includes('geforce') ||
+    normalized.includes('radeon') ||
+    normalized.includes('arc') ||
+    normalized.includes('dedicated') ||
+    normalized.includes('discrete')
+  ) {
+    return 'dedicated';
+  }
+  if (
+    normalized.includes('integrated') ||
+    normalized.includes('shared') ||
+    normalized.includes('iris') ||
+    normalized.includes('uhd') ||
+    normalized.includes('intel hd') ||
+    normalized.includes('apple gpu')
+  ) {
+    return 'integrated';
+  }
+  return null;
+}
+
+function extractConnectivityTokens(value) {
+  const normalized = normalizeBrowseText(value);
+  if (!normalized) return [];
+  const tokens = [];
+  if (normalized.includes('wi fi') || normalized.includes('wifi')) {
+    tokens.push('wi-fi');
+  }
+  if (normalized.includes('5g')) tokens.push('5g');
+  if (
+    normalized.includes('4g') ||
+    normalized.includes('cellular') ||
+    normalized.includes('lte')
+  ) {
+    tokens.push('4g');
+  }
+  return tokens;
+}
+
+function extractWeightKg(value) {
+  const normalized = normalizeBrowseText(value);
+  const number = extractFirstBrowseNumber(value);
+  if (number === null) return null;
+  if (normalized.includes('kg')) return number;
+  if (normalized.includes('g')) return number / 1000;
+  return number;
+}
+
+function extractBrowseFilters(pb) {
+  const flatSpecs = flattenBrowseSpecs(pb);
+  const tokens = [];
+  const seen = new Set();
+
+  const addToken = (token) => {
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    tokens.push(token);
+  };
+
+  const firstValue = (keys) => {
+    const values = findBrowseSpecValues(keys, flatSpecs);
+    return values.length ? String(values[0]) : '';
+  };
+
+  const matchBucket = (rawValue, orderedPairs) => {
+    const normalized = normalizeBrowseText(rawValue);
+    for (const [needle, bucket] of orderedPairs) {
+      if (normalized.includes(needle)) return bucket;
+    }
+    return null;
+  };
+
+  const ramValue = firstValue(['Memory (RAM)', 'RAM', 'memory ram']);
+  const ramNumber = extractFirstBrowseNumber(ramValue);
+  if (ramNumber !== null) addToken(`ram:${Math.round(ramNumber)}_gb`);
+
+  const storageValue = firstValue([
+    'Hard Disk (SSD) Size',
+    'SSD Size',
+    'Internal Storage',
+    'internal storage',
+    'Storage Size',
+    'Storage Capacity',
+    'storage',
+    'Storage',
+    'Capacity',
+  ]);
+  const storageToken = extractStorageToken(storageValue);
+  if (storageToken != null) addToken(`storage:${storageToken}`);
+
+  const osValue = firstValue([
+    'Operating System',
+    'OPERATING SYSTEM',
+    'OS',
+    'Platform',
+    'Device Operating System',
+    'Cihaz Isletim Sistemi',
+    'Isletim Sistemi',
+  ]);
+  const osToken = extractOsToken(osValue);
+  if (osToken != null) addToken(`os:${osToken}`);
+
+  const processorBrandToken = extractProcessorBrandToken(
+    firstValue([
+      'Processor Brand',
+      'processor brand',
+      'Processor',
+      'CPU',
+      'Chip',
+      'Chipset',
+      'Processor Model',
+      'Processor Type',
+    ]),
+  );
+  if (processorBrandToken != null) {
+    addToken(`processor_brand:${processorBrandToken}`);
+  }
+
+  const gpuTypeToken = extractGpuTypeToken(
+    firstValue([
+      'GPU Model',
+      'Graphics Card',
+      'Graphics Card Type',
+      'External Graphics Processor (GPU)',
+      'Integrated Graphics Model',
+      'Graphics Card Type',
+      'Video Card',
+    ]),
+  );
+  if (gpuTypeToken != null) addToken(`gpu_type:${gpuTypeToken}`);
+
+  const screenTechValue = firstValue([
+    'Screen Technology',
+    'screen technology',
+    'Display Type',
+    'display type',
+    'Panel Type',
+    'panel type',
+    'Display Technology',
+    'display technology',
+    'Display',
+    'Type',
+  ]);
+  const screenTechBucket = matchBucket(screenTechValue, [
+    ['dynamic amoled', 'dynamic_amoled'],
+    ['super amoled', 'super_amoled'],
+    ['amoled', 'amoled'],
+    ['ltpo', 'ltpo'],
+    ['oled', 'oled'],
+    ['ips', 'ips'],
+    ['lcd', 'lcd'],
+  ]);
+  if (screenTechBucket) addToken(`screen_tech:${screenTechBucket}`);
+
+  const refreshRateValue = firstValue([
+    'Screen Refresh Rate',
+    'screen refresh rate',
+    'Refresh Rate',
+    'refresh rate',
+    'Display Refresh Rate',
+    'display refresh rate',
+  ]);
+  const refreshRateNumber = extractFirstBrowseNumber(refreshRateValue);
+  if (refreshRateNumber !== null) {
+    const hz = Math.round(refreshRateNumber);
+    if ([60, 90, 120, 144, 165, 240].includes(hz)) {
+      addToken(`refresh_rate:${hz}_hz`);
+    }
+  }
+
+  extractConnectivityTokens(
+    firstValue(['Connectivity', 'Connection Type', '4G', '5G', 'Wi-Fi']),
+  ).forEach((token) => addToken(`connectivity:${token}`));
+
+  const usbTypeValue = firstValue([
+    'USB Connection Type',
+    'USB Type',
+    'USB Bağlantı Tipi',
+  ]);
+  const usbTypeBucket = matchBucket(usbTypeValue, [
+    ['type c', 'type_c'],
+    ['type-c', 'type_c'],
+    ['micro usb', 'micro_usb'],
+    ['micro-usb', 'micro_usb'],
+    ['lightning', 'lightning'],
+    ['mini usb', 'mini_usb'],
+    ['mini-usb', 'mini_usb'],
+  ]);
+  if (usbTypeBucket) addToken(`usb_type:${usbTypeBucket}`);
+
+  const usbVersionValue = firstValue(['USB Version', 'USB Versiyonu']);
+  const usbVersionBucket = matchBucket(usbVersionValue, [
+    ['3.2 gen 2', '3_2_gen_2'],
+    ['3.2 gen 1', '3_2_gen_1'],
+    ['3.1 gen 1', '3_1_gen_1'],
+    ['3.0', '3_0'],
+    ['2.0', '2_0'],
+  ]);
+  if (usbVersionBucket) addToken(`usb_version:${usbVersionBucket}`);
+
+  const btVersionValue = firstValue([
+    'Bluetooth Version',
+    'Bluetooth Features',
+    'Bluetooth Versiyonu',
+  ]);
+  const btVersionBucket = matchBucket(btVersionValue, [
+    ['5.4', '5_4'],
+    ['5.3', '5_3'],
+    ['5.2', '5_2'],
+    ['5.1', '5_1'],
+    ['5.0', '5_0'],
+    ['4.2', '4_2'],
+    ['4.1', '4_1'],
+    ['4.0', '4_0'],
+  ]);
+  if (btVersionBucket) addToken(`bluetooth_version:${btVersionBucket}`);
+
+  [
+    ['five_g', ['5G']],
+    ['nfc', ['NFC']],
+    ['wireless_charging', ['Wireless Charging']],
+    ['fast_charging', ['Fast Charging']],
+    ['fingerprint', ['Fingerprint Reader', 'fingerprint']],
+    ['water_resistance', ['Water Resistance']],
+  ].forEach(([token, keys]) => {
+    const toggleValue = firstValue(keys);
+    if (extractBooleanBrowseValue(toggleValue) === true) {
+      addToken(`${token}:true`);
+    }
+  });
+
+  const screenSizeValue = firstValue(['Screen Size', 'screen size']);
+  const displaySizeValue = firstValue(['Display Size', 'display size']);
+  const batteryValue = firstValue([
+    'Battery Capacity',
+    'battery capacity',
+    'Battery Capacity (Typical)',
+  ]);
+  const weightValue = firstValue(['Weight']);
+
+  return {
+    tokens,
+    screenSizeValue:
+      extractFirstBrowseNumber(screenSizeValue) ??
+      extractFirstBrowseNumber(displaySizeValue),
+    batteryCapacityValue: (() => {
+      const number = extractFirstBrowseNumber(batteryValue);
+      return number === null ? undefined : Math.round(number);
+    })(),
+    weightValueKg: extractWeightKg(weightValue),
   };
 }
 

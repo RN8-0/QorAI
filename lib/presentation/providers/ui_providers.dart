@@ -110,11 +110,7 @@ class CountryNotifier extends StateNotifier<String> {
   String _deviceLocaleCountryFallback() {
     try {
       final deviceCountry =
-          WidgetsBinding
-              .instance
-              .platformDispatcher
-              .locale
-              .countryCode
+          WidgetsBinding.instance.platformDispatcher.locale.countryCode
               ?.toUpperCase() ??
           '';
       if (SupportedCountries.countries.containsKey(deviceCountry)) {
@@ -266,11 +262,8 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 /// Product detail - Section 3.3 FutureProvider
 /// Always fetches the full product record (with specs, images, description etc.)
 /// from PocketBase. List/feed caches use lean field projection and lack detail fields.
-final productDetailProvider =
-    FutureProvider.autoDispose.family<Result<ProductEntity>, String>((
-      ref,
-      productId,
-    ) async {
+final productDetailProvider = FutureProvider.autoDispose
+    .family<Result<ProductEntity>, String>((ref, productId) async {
       try {
         final result = await ref
             .read(productRepositoryProvider)
@@ -446,4 +439,3 @@ final _categoryCacheMap = <String, List<ProductEntity>>{};
 
 /// Son aramalar (local state)
 final recentSearchesProvider = StateProvider<List<String>>((ref) => []);
-

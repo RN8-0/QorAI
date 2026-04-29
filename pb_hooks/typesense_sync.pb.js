@@ -89,6 +89,8 @@ function buildTsDoc(record) {
     lastUpdated:   record.get('updated') || '',
   };
 
+  var browseFilters = _extractBrowseFilters(pbData);
+
   return {
     id:            record.id,
     slug:          pbData.slug,
@@ -104,7 +106,377 @@ function buildTsDoc(record) {
     specsCount:    specsCount,
     keySpecsText:  _flattenKeySpecs(keySpecs),
     tags:          tags,
+    filterTokens:  browseFilters.tokens,
+    screenSizeValue: browseFilters.screenSizeValue,
+    batteryCapacityValue: browseFilters.batteryCapacityValue,
+    weightValueKg: browseFilters.weightValueKg,
     _raw:          JSON.stringify(pbData),
+  };
+}
+
+function _normalizeBrowseText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _flattenBrowseSpecs(pbData) {
+  var flat = {};
+  var specs = pbData.specs || {};
+  Object.keys(specs).forEach(function(key) {
+    var value = specs[key];
+    if (value !== null && value !== undefined) flat[String(key)] = String(value);
+  });
+
+  var keySpecs = pbData.keySpecs || {};
+  Object.keys(keySpecs).forEach(function(key) {
+    var value = keySpecs[key];
+    if (value !== null && value !== undefined && String(value).trim()) {
+      flat[String(key)] = String(value);
+    }
+  });
+
+  var specSections = pbData.specSections || {};
+  Object.keys(specSections).forEach(function(sectionKey) {
+    var section = specSections[sectionKey];
+    if (!section || typeof section !== 'object') return;
+    Object.keys(section).forEach(function(key) {
+      var value = section[key];
+      if (value !== null && value !== undefined) flat[String(key)] = String(value);
+    });
+  });
+
+  return flat;
+}
+
+function _findBrowseSpecValues(keys, flatSpecs) {
+  var matches = [];
+  var seen = {};
+  keys.forEach(function(key) {
+    if (flatSpecs[key] && !seen[flatSpecs[key]]) {
+      seen[flatSpecs[key]] = true;
+      matches.push(flatSpecs[key]);
+    }
+    var normalizedKey = _normalizeBrowseText(key);
+    var compactKey = normalizedKey.replace(/\s+/g, '');
+    Object.keys(flatSpecs).forEach(function(specKey) {
+      var normalizedSpecKey = _normalizeBrowseText(specKey);
+      var compactSpecKey = normalizedSpecKey.replace(/\s+/g, '');
+      if (
+        normalizedSpecKey === normalizedKey ||
+        normalizedSpecKey.indexOf(normalizedKey) !== -1 ||
+        normalizedKey.indexOf(normalizedSpecKey) !== -1 ||
+        compactSpecKey === compactKey ||
+        compactSpecKey.indexOf(compactKey) !== -1 ||
+        compactKey.indexOf(compactSpecKey) !== -1
+      ) {
+        var value = flatSpecs[specKey];
+        if (value && !seen[value]) {
+          seen[value] = true;
+          matches.push(value);
+        }
+      }
+    });
+  });
+  return matches;
+}
+
+function _extractFirstBrowseNumber(value) {
+  var match = String(value || '').match(/(\d+(?:[.,]\d+)?)/);
+  if (!match) return null;
+  return parseFloat(match[1].replace(',', '.'));
+}
+
+function _extractBooleanBrowseValue(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (
+    normalized === 'no' ||
+    normalized === 'false' ||
+    normalized === 'hayir' ||
+    normalized === 'yok' ||
+    normalized === 'n a' ||
+    normalized === '-'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function _extractStorageToken(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.indexOf('2 tb') !== -1 || normalized.indexOf('2tb') !== -1) {
+    return '2_tb';
+  }
+  if (normalized.indexOf('1 tb') !== -1 || normalized.indexOf('1tb') !== -1) {
+    return '1_tb';
+  }
+  var number = _extractFirstBrowseNumber(value);
+  if (number === null) return null;
+  return Math.round(number) + '_gb';
+}
+
+function _extractOsToken(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.indexOf('chrome os') !== -1 || normalized.indexOf('chromeos') !== -1) {
+    return 'chromeos';
+  }
+  if (normalized.indexOf('ipad os') !== -1 || normalized.indexOf('ipados') !== -1) {
+    return 'ipados';
+  }
+  if (
+    normalized.indexOf('mac os') !== -1 ||
+    normalized.indexOf('macos') !== -1 ||
+    normalized.indexOf('os x') !== -1
+  ) {
+    return 'macos';
+  }
+  if (normalized.indexOf('windows') !== -1) return 'windows';
+  if (normalized.indexOf('android') !== -1) return 'android';
+  if (normalized.indexOf('linux') !== -1) return 'linux';
+  if (normalized.indexOf('ios') !== -1 || normalized.indexOf('iphone os') !== -1) {
+    return 'ios';
+  }
+  return null;
+}
+
+function _extractProcessorBrandToken(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (normalized.indexOf('intel') !== -1) return 'intel';
+  if (normalized.indexOf('amd') !== -1) return 'amd';
+  if (normalized.indexOf('apple') !== -1) return 'apple';
+  if (
+    normalized.indexOf('qualcomm') !== -1 ||
+    normalized.indexOf('snapdragon') !== -1
+  ) {
+    return 'qualcomm';
+  }
+  return null;
+}
+
+function _extractGpuTypeToken(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  if (
+    normalized.indexOf('rtx') !== -1 ||
+    normalized.indexOf('gtx') !== -1 ||
+    normalized.indexOf('geforce') !== -1 ||
+    normalized.indexOf('radeon') !== -1 ||
+    normalized.indexOf('arc') !== -1 ||
+    normalized.indexOf('dedicated') !== -1 ||
+    normalized.indexOf('discrete') !== -1
+  ) {
+    return 'dedicated';
+  }
+  if (
+    normalized.indexOf('integrated') !== -1 ||
+    normalized.indexOf('shared') !== -1 ||
+    normalized.indexOf('iris') !== -1 ||
+    normalized.indexOf('uhd') !== -1 ||
+    normalized.indexOf('intel hd') !== -1 ||
+    normalized.indexOf('apple gpu') !== -1
+  ) {
+    return 'integrated';
+  }
+  return null;
+}
+
+function _extractConnectivityTokens(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return [];
+  var tokens = [];
+  if (normalized.indexOf('wi fi') !== -1 || normalized.indexOf('wifi') !== -1) {
+    tokens.push('wi-fi');
+  }
+  if (normalized.indexOf('5g') !== -1) tokens.push('5g');
+  if (
+    normalized.indexOf('4g') !== -1 ||
+    normalized.indexOf('cellular') !== -1 ||
+    normalized.indexOf('lte') !== -1
+  ) {
+    tokens.push('4g');
+  }
+  return tokens;
+}
+
+function _extractWeightKg(value) {
+  var normalized = _normalizeBrowseText(value);
+  var number = _extractFirstBrowseNumber(value);
+  if (number === null) return null;
+  if (normalized.indexOf('kg') !== -1) return number;
+  if (normalized.indexOf('g') !== -1) return number / 1000;
+  return number;
+}
+
+function _extractBrowseFilters(pbData) {
+
+  var flatSpecs = _flattenBrowseSpecs(pbData);
+  var tokens = [];
+  var seen = {};
+
+  function addToken(token) {
+    if (!token || seen[token]) return;
+    seen[token] = true;
+    tokens.push(token);
+  }
+
+  function firstValue(keys) {
+    var values = _findBrowseSpecValues(keys, flatSpecs);
+    return values.length ? String(values[0]) : '';
+  }
+
+  function matchBucket(rawValue, orderedPairs) {
+    var normalized = _normalizeBrowseText(rawValue);
+    for (var i = 0; i < orderedPairs.length; i++) {
+      if (normalized.indexOf(orderedPairs[i][0]) !== -1) {
+        return orderedPairs[i][1];
+      }
+    }
+    return null;
+  }
+
+  var ramValue = firstValue(['Memory (RAM)', 'RAM', 'memory ram']);
+  var ramNumber = _extractFirstBrowseNumber(ramValue);
+  if (ramNumber !== null) addToken('ram:' + Math.round(ramNumber) + '_gb');
+
+  var storageValue = firstValue([
+    'Hard Disk (SSD) Size',
+    'SSD Size',
+    'Internal Storage',
+    'internal storage',
+    'Storage Size',
+    'Storage Capacity',
+    'storage',
+    'Storage',
+    'Capacity',
+  ]);
+  var storageToken = _extractStorageToken(storageValue);
+  if (storageToken !== null) addToken('storage:' + storageToken);
+
+  var osValue = firstValue([
+    'Operating System',
+    'OPERATING SYSTEM',
+    'OS',
+    'Platform',
+    'Device Operating System',
+    'Cihaz Isletim Sistemi',
+    'Isletim Sistemi',
+  ]);
+  var osToken = _extractOsToken(osValue);
+  if (osToken !== null) addToken('os:' + osToken);
+
+  var processorBrandToken = _extractProcessorBrandToken(
+    firstValue([
+      'Processor Brand',
+      'processor brand',
+      'Processor',
+      'CPU',
+      'Chip',
+      'Chipset',
+      'Processor Model',
+      'Processor Type',
+    ]),
+  );
+  if (processorBrandToken !== null) {
+    addToken('processor_brand:' + processorBrandToken);
+  }
+
+  var gpuTypeToken = _extractGpuTypeToken(
+    firstValue([
+      'GPU Model',
+      'Graphics Card',
+      'Graphics Card Type',
+      'External Graphics Processor (GPU)',
+      'Integrated Graphics Model',
+      'Graphics Card Type',
+      'Video Card',
+    ]),
+  );
+  if (gpuTypeToken !== null) addToken('gpu_type:' + gpuTypeToken);
+
+  var screenTechValue = firstValue([
+    'Screen Technology',
+    'screen technology',
+    'Display Type',
+    'display type',
+    'Panel Type',
+    'panel type',
+    'Display Technology',
+    'display technology',
+    'Display',
+    'Type',
+  ]);
+  var screenTechBucket = matchBucket(screenTechValue, [
+    ['dynamic amoled', 'dynamic_amoled'],
+    ['super amoled', 'super_amoled'],
+    ['amoled', 'amoled'],
+    ['ltpo', 'ltpo'],
+    ['oled', 'oled'],
+    ['ips', 'ips'],
+    ['lcd', 'lcd'],
+  ]);
+  if (screenTechBucket) addToken('screen_tech:' + screenTechBucket);
+
+  var refreshRateValue = firstValue([
+    'Screen Refresh Rate',
+    'screen refresh rate',
+    'Refresh Rate',
+    'refresh rate',
+    'Display Refresh Rate',
+    'display refresh rate',
+  ]);
+  var refreshRateNumber = _extractFirstBrowseNumber(refreshRateValue);
+  if (refreshRateNumber !== null) {
+    var hz = Math.round(refreshRateNumber);
+    if ([60, 90, 120, 144, 165, 240].indexOf(hz) !== -1) {
+      addToken('refresh_rate:' + hz + '_hz');
+    }
+  }
+
+  _extractConnectivityTokens(
+    firstValue(['Connectivity', 'Connection Type', '4G', '5G', 'Wi-Fi']),
+  ).forEach(function(token) {
+    addToken('connectivity:' + token);
+  });
+
+  [
+    ['five_g', ['5G']],
+    ['nfc', ['NFC']],
+    ['wireless_charging', ['Wireless Charging']],
+    ['fast_charging', ['Fast Charging']],
+    ['fingerprint', ['Fingerprint Reader', 'fingerprint']],
+    ['water_resistance', ['Water Resistance']],
+  ].forEach(function(entry) {
+    var toggleValue = firstValue(entry[1]);
+    if (_extractBooleanBrowseValue(toggleValue) === true) {
+      addToken(entry[0] + ':true');
+    }
+  });
+
+  var screenSizeValue = firstValue(['Screen Size', 'screen size']);
+  var displaySizeValue = firstValue(['Display Size', 'display size']);
+  var batteryValue = firstValue([
+    'Battery Capacity',
+    'battery capacity',
+    'Battery Capacity (Typical)',
+  ]);
+  var weightValue = firstValue(['Weight']);
+
+  return {
+    tokens: tokens,
+    screenSizeValue:
+      _extractFirstBrowseNumber(screenSizeValue) ||
+      _extractFirstBrowseNumber(displaySizeValue),
+    batteryCapacityValue: (function() {
+      var number = _extractFirstBrowseNumber(batteryValue);
+      return number === null ? undefined : Math.round(number);
+    })(),
+    weightValueKg: _extractWeightKg(weightValue),
   };
 }
 

@@ -85,11 +85,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _state = widget.initialState;
     // Use pre-built definitions if provided (e.g. with brand facets from TS)
     // to avoid re-computing from an incomplete product list.
-    _definitions = widget.definitions ??
-        FilterConfig.getFiltersWithProducts(
-          widget.categoryId,
-          widget.products,
-        );
+    _definitions =
+        widget.definitions ??
+        FilterConfig.getFiltersWithProducts(widget.categoryId, widget.products);
     _expandedSections = {
       ..._definitions.take(5).map((def) => def.id),
       ..._state.multiSelect.entries
@@ -960,25 +958,28 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             _RangeValuePill(text: '${fmt(current.end)}$unit'),
           ],
         ),
-        const SizedBox(height: 10),
-        _buildSingleSlider(
-          label: _fallbackText(en: 'Minimum', tr: 'Minimum'),
-          value: current.start.clamp(min, current.end),
-          min: min,
-          max: current.end,
-          isDark: isDark,
-          onChanged: (value) =>
-              _updateRange(def.id, RangeValues(value, current.end), def),
-        ),
-        const SizedBox(height: 8),
-        _buildSingleSlider(
-          label: _fallbackText(en: 'Maximum', tr: 'Maksimum'),
-          value: current.end.clamp(current.start, max),
-          min: current.start,
-          max: max,
-          isDark: isDark,
-          onChanged: (value) =>
-              _updateRange(def.id, RangeValues(current.start, value), def),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppTheme.brandCyan,
+            inactiveTrackColor: context.dividerColor.withValues(alpha: 0.25),
+            thumbColor: Colors.white,
+            overlayColor: AppTheme.brandCyan.withValues(alpha: 0.14),
+            trackHeight: 4,
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 10,
+              pressedElevation: 6,
+            ),
+            overlayShape: SliderComponentShape.noOverlay,
+          ),
+          child: RangeSlider(
+            values: RangeValues(
+              current.start.clamp(min, max),
+              current.end.clamp(min, max),
+            ),
+            min: min,
+            max: max,
+            onChanged: (values) => _updateRange(def.id, values, def),
+          ),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

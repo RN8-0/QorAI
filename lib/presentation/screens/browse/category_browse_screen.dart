@@ -356,10 +356,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       // Inject brand options from Typesense facets when available —
       // avoids fetching all products just for the brand list.
       if (_brandFacetOptions.isNotEmpty) {
-        defs = defs.map<FilterDefinition>((def) {
-          if (def.id == 'brand') return def.withOptions(_brandFacetOptions);
-          return def;
-        }).toList(growable: false);
+        defs = defs
+            .map<FilterDefinition>((def) {
+              if (def.id == 'brand') return def.withOptions(_brandFacetOptions);
+              return def;
+            })
+            .toList(growable: false);
       }
       _cachedFilterDefs = defs;
       _cachedProductCount = filterDefinitionProducts.length;
@@ -1329,29 +1331,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           ] else
             const Spacer(),
           _SortDropdown(value: _sortOption, onChanged: _changeSortOption),
-          if (hasFilters) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: context.backgroundColor,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: context.dividerColor),
-              ),
-              child: Text(
-                _fallbackText(
-                  en: '$productCount matches',
-                  tr: '$productCount ürün',
-                ),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: context.textSecondary,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Filter button
           GestureDetector(
             onTap: _openFilters,

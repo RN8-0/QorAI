@@ -55,9 +55,9 @@ class QorAiApp extends ConsumerWidget {
         // overflow on nav bar, chips, and cards. 0.9x..1.25x covers a11y needs.
         final clamped = textScale.clamp(0.9, 1.25);
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(clamped),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(clamped)),
           child: _NotificationOverlay(child: child ?? const SizedBox.shrink()),
         );
       },
