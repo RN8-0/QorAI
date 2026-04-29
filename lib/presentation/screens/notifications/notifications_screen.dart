@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/notifications/support_chat_screen.dart';

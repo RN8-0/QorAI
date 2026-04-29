@@ -206,31 +206,34 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
       }
     } catch (_) {}
 
-    _emitStep('Kullanıcı yorumları analiz ediliyor…', 'Analyzing user reviews…');
+    _emitStep(
+      'Kullanıcı yorumları analiz ediliyor…',
+      'Analyzing user reviews…',
+    );
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final langName = _getLanguageName(_languageCode);
       final response = await gemini
           .jsonFreeTextQuery(
-        'You are a senior technology product analyst with expertise in consumer electronics. '
-        'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
-        'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
-        'YouTube teardowns and long-term reviews, and tech community feedback for "$productName", '
-        'provide a thorough and professional consumer sentiment analysis.\n\n'
-        'Be specific, cite real-world performance observations, and use professional tech-review language. '
-        'Avoid generic statements — reference actual experiences, benchmarks, or community-noted issues.\n\n'
-        'IMPORTANT: ALL text must be written in $langName language. Return ONLY valid JSON.\n\n'
-        'JSON fields (all text in $langName):\n'
-        '"summary": A comprehensive 4-5 sentence professional overview of community sentiment. '
-        'Cover overall reception, standout strengths, notable weaknesses, and long-term ownership insights.\n'
-        '"satisfaction": Integer 0-100 representing aggregated user satisfaction across all sources.\n'
-        '"praised": Array of 4-5 specific, concrete features/aspects users consistently praise. '
-        'Be precise (e.g., "Exceptional battery life — 6+ days reported by users" not just "battery").\n'
-        '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
-        'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
-        language: _languageCode,
-        maxTokens: 1400,
-      )
+            'You are a senior technology product analyst with expertise in consumer electronics. '
+            'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
+            'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
+            'YouTube teardowns and long-term reviews, and tech community feedback for "$productName", '
+            'provide a thorough and professional consumer sentiment analysis.\n\n'
+            'Be specific, cite real-world performance observations, and use professional tech-review language. '
+            'Avoid generic statements — reference actual experiences, benchmarks, or community-noted issues.\n\n'
+            'IMPORTANT: ALL text must be written in $langName language. Return ONLY valid JSON.\n\n'
+            'JSON fields (all text in $langName):\n'
+            '"summary": A comprehensive 4-5 sentence professional overview of community sentiment. '
+            'Cover overall reception, standout strengths, notable weaknesses, and long-term ownership insights.\n'
+            '"satisfaction": Integer 0-100 representing aggregated user satisfaction across all sources.\n'
+            '"praised": Array of 4-5 specific, concrete features/aspects users consistently praise. '
+            'Be precise (e.g., "Exceptional battery life — 6+ days reported by users" not just "battery").\n'
+            '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
+            'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
+            language: _languageCode,
+            maxTokens: 1400,
+          )
           .timeout(
             _premiumAiRequestTimeout,
             onTimeout: () => throw Exception('ai review timeout'),
@@ -666,7 +669,7 @@ class _DeepAnalysisNotifier
 
     // Disk cache check
     final cacheKey =
-      'deep_analysis_v${_cacheVersion}_${_languageCode}_$_productId';
+        'deep_analysis_v${_cacheVersion}_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
@@ -681,7 +684,10 @@ class _DeepAnalysisNotifier
       }
     } catch (_) {}
 
-    _emitStep('Teknik özellikler değerlendiriliyor…', 'Evaluating technical specs…');
+    _emitStep(
+      'Teknik özellikler değerlendiriliyor…',
+      'Evaluating technical specs…',
+    );
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final catInfo = category.isNotEmpty ? ' (Category: $category)' : '';
@@ -691,28 +697,28 @@ class _DeepAnalysisNotifier
           : '';
       final result = await gemini
           .jsonFreeTextQuery(
-        'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
-        'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
-        'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-        'If the selected language is Turkish, do not write explanatory text in English anywhere except official product or model names.\n\n'
-        'Return a JSON object with this EXACT structure:\n'
-        '{\n'
-        '  "overallScore": <number 0-100>,\n'
-        '  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
-        '  "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
-        '  "pros": ["<pro1>", "<pro2>", "<pro3>"],\n'
-        '  "cons": ["<con1>", "<con2>", "<con3>"],\n'
-        '  "verdict": "<2-3 sentence final verdict>"\n'
-        '}\n\n'
-        'Rules:\n'
-        '- Provide 3-5 strengths and 2-4 weaknesses\n'
-        '- Scores should be realistic and varied (not all 80-90)\n'
-        '- Pros/cons should be specific and informative (8-18 words each)\n'
-        '- Verdict must include concrete technical or category-specific evidence\n'
-        '- Be honest and specific, not generic praise',
-        language: _languageCode,
-        maxTokens: 1800,
-      )
+            'You are a senior tech product analyst. The product name is exactly "$productName"$brandInfo$catInfo$yearInfo. '
+            'Do NOT assume any typo in the product name — use it exactly as given.\n\n'
+            'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+            'If the selected language is Turkish, do not write explanatory text in English anywhere except official product or model names.\n\n'
+            'Return a JSON object with this EXACT structure:\n'
+            '{\n'
+            '  "overallScore": <number 0-100>,\n'
+            '  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+            '  "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n'
+            '  "pros": ["<pro1>", "<pro2>", "<pro3>"],\n'
+            '  "cons": ["<con1>", "<con2>", "<con3>"],\n'
+            '  "verdict": "<2-3 sentence final verdict>"\n'
+            '}\n\n'
+            'Rules:\n'
+            '- Provide 3-5 strengths and 2-4 weaknesses\n'
+            '- Scores should be realistic and varied (not all 80-90)\n'
+            '- Pros/cons should be specific and informative (8-18 words each)\n'
+            '- Verdict must include concrete technical or category-specific evidence\n'
+            '- Be honest and specific, not generic praise',
+            language: _languageCode,
+            maxTokens: 1800,
+          )
           .timeout(
             _premiumAiRequestTimeout,
             onTimeout: () => throw Exception('deep analysis timeout'),
@@ -828,7 +834,7 @@ class _AlternativesCacheNotifier
 
     // Disk cache check
     final cacheKey =
-      'alternatives_v${_cacheVersion}_${_languageCode}_$_productId';
+        'alternatives_v${_cacheVersion}_${_languageCode}_$_productId';
     final cache = _ref.read(cacheServiceProvider);
     _emitStep('Önbellek kontrol ediliyor…', 'Checking cache…');
     try {
@@ -848,26 +854,26 @@ class _AlternativesCacheNotifier
       final gemini = _ref.read(geminiServiceProvider);
       final result = await gemini
           .jsonFreeTextQuery(
-        'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-        'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
-        'Return a JSON object with this EXACT structure:\n'
-        '{\n'
-        '  "alternatives": [\n'
-        '    {\n'
-        '      "name": "<full product name>",\n'
-        '      "advantage": "<one clear advantage over $productName>",\n'
-        '      "tradeoff": "<one disadvantage or compromise>",\n'
-        '      "priceComparison": "<cheaper/similar/pricier>",\n'
-        '      "bestFor": "<target user profile, 1 sentence>",\n'
-        '      "whyBetter": "<brief reason this might be preferred>"\n'
-        '    }\n'
-        '  ]\n'
-        '}\n\n'
-        'Provide exactly 5 real alternative products. '
-        'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).',
-        language: _languageCode,
-        maxTokens: 900,
-      )
+            'IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and short explanations MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+            'If the selected language is Turkish, do not use English in the explanation fields.\n\n'
+            'Return a JSON object with this EXACT structure:\n'
+            '{\n'
+            '  "alternatives": [\n'
+            '    {\n'
+            '      "name": "<full product name>",\n'
+            '      "advantage": "<one clear advantage over $productName>",\n'
+            '      "tradeoff": "<one disadvantage or compromise>",\n'
+            '      "priceComparison": "<cheaper/similar/pricier>",\n'
+            '      "bestFor": "<target user profile, 1 sentence>",\n'
+            '      "whyBetter": "<brief reason this might be preferred>"\n'
+            '    }\n'
+            '  ]\n'
+            '}\n\n'
+            'Provide exactly 5 real alternative products. '
+            'Use complete model names and include concrete differences (performance, battery, camera, software, build quality, price band).',
+            language: _languageCode,
+            maxTokens: 900,
+          )
           .timeout(
             _premiumAiRequestTimeout,
             onTimeout: () => throw Exception('alternatives timeout'),
@@ -981,27 +987,30 @@ class _AdvisorCacheNotifier extends StateNotifier<AsyncValue<AdvisorResult?>> {
       }
     } catch (_) {}
 
-    _emitStep('Satın alma tavsiyeleri hazırlanıyor…', 'Preparing buying advice…');
+    _emitStep(
+      'Satın alma tavsiyeleri hazırlanıyor…',
+      'Preparing buying advice…',
+    );
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final result = await gemini
           .jsonFreeTextQuery(
-        'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-        'If the selected language is Turkish, do not use English in the advice text.\n\n'
-        'Return a JSON object with this EXACT structure:\n'
-        '{\n'
-        '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
-        '  "whoShouldAvoid": "<2 sentence description of who should skip this>",\n'
-        '  "reasonsToBuy": ["<reason1>", "<reason2>", "<reason3>"],\n'
-        '  "reasonsToSkip": ["<reason1>", "<reason2>", "<reason3>"],\n'
-        '  "proTips": ["<tip1>", "<tip2>"],\n'
-        '  "valueRating": <number 1-10>,\n'
-        '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
-        '}\n\n'
-        'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.',
-        language: _languageCode,
-        maxTokens: 1100,
-      )
+            'IMPORTANT: Return ONLY valid JSON. ALL text fields and list items MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+            'If the selected language is Turkish, do not use English in the advice text.\n\n'
+            'Return a JSON object with this EXACT structure:\n'
+            '{\n'
+            '  "whoShouldBuy": "<2 sentence description of the ideal buyer>",\n'
+            '  "whoShouldAvoid": "<2 sentence description of who should skip this>",\n'
+            '  "reasonsToBuy": ["<reason1>", "<reason2>", "<reason3>"],\n'
+            '  "reasonsToSkip": ["<reason1>", "<reason2>", "<reason3>"],\n'
+            '  "proTips": ["<tip1>", "<tip2>"],\n'
+            '  "valueRating": <number 1-10>,\n'
+            '  "ratingExplanation": "<1 sentence explaining the rating>"\n'
+            '}\n\n'
+            'Be specific and honest. Reasons should be detailed (12-24 words each) with concrete user impact.',
+            language: _languageCode,
+            maxTokens: 1100,
+          )
           .timeout(
             _premiumAiRequestTimeout,
             onTimeout: () => throw Exception('advisor timeout'),
@@ -1131,33 +1140,33 @@ class _PredictionCacheNotifier
       final cat = category.isEmpty ? 'tech product' : category;
       final result = await gemini
           .jsonFreeTextQuery(
-        'Current year: ${DateTime.now().year}.\n'
-        'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
-        'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
-        'The buyOrWait field must still be exactly either "buy" or "wait".\n\n'
-        'Return a JSON object with this EXACT structure:\n'
-        '{\n'
-        '  "trend": "<up/down/stable>",\n'
-        '  "trendPercentage": <number 0-100>,\n'
-        '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
-        '  "expectedDrop": "<expected price change description>",\n'
-        '  "buyOrWait": "<buy/wait>",\n'
-        '  "reasoning": "<4-6 sentence explanation of the prediction with product-specific triggers>"\n'
-        '}\n\n'
-        'Analyze this specific product:\n'
-        '- Product name: $productName\n'
-        '- Category: $cat\n'
-        '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
-        '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}\n'
-        'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
-        'Use release timing and category replacement cycles to decide whether the product is more likely to drop soon or stay stable. '
-        'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
-        'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
-        'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
-        'trendPercentage is the expected price change amount in percent.',
-        language: _languageCode,
-        maxTokens: 1200,
-      )
+            'Current year: ${DateTime.now().year}.\n'
+            'IMPORTANT: Return ONLY valid JSON. ALL explanatory text fields MUST be fully written in ${_AIReviewNotifier._getLanguageName(_languageCode)}. '
+            'If the selected language is Turkish, do not write English analysis text anywhere except official product/model names. '
+            'The buyOrWait field must still be exactly either "buy" or "wait".\n\n'
+            'Return a JSON object with this EXACT structure:\n'
+            '{\n'
+            '  "trend": "<up/down/stable>",\n'
+            '  "trendPercentage": <number 0-100>,\n'
+            '  "bestTimeToBuy": "<when to buy, 1-2 sentences>",\n'
+            '  "expectedDrop": "<expected price change description>",\n'
+            '  "buyOrWait": "<buy/wait>",\n'
+            '  "reasoning": "<4-6 sentence explanation of the prediction with product-specific triggers>"\n'
+            '}\n\n'
+            'Analyze this specific product:\n'
+            '- Product name: $productName\n'
+            '- Category: $cat\n'
+            '- Current observed price: ${price.isEmpty ? 'unknown' : price}\n'
+            '${productContext.isEmpty ? '' : '- Product context: $productContext\n'}\n'
+            'Base analysis on this specific product\'s category, brand, price tier, likely release timing, and notable specs. '
+            'Use release timing and category replacement cycles to decide whether the product is more likely to drop soon or stay stable. '
+            'If the product appears premium, mid-range, budget, new, or aging, reflect that difference in the answer. '
+            'Different products must not receive the same percentage, buy/wait decision, or reasoning by default. '
+            'Avoid stock phrases and explain the product-specific trigger behind the prediction. '
+            'trendPercentage is the expected price change amount in percent.',
+            language: _languageCode,
+            maxTokens: 1200,
+          )
           .timeout(
             _premiumAiRequestTimeout,
             onTimeout: () => throw Exception('prediction timeout'),
@@ -1505,7 +1514,8 @@ class _HighlightsIsolateResult {
 /// Executed in a background isolate — builds focusAreas, productHighlights,
 /// tradeOffs, and a local fallback reason without touching the main thread.
 _HighlightsIsolateResult _computeHighlightsInIsolate(
-    _HighlightsIsolateParams p) {
+  _HighlightsIsolateParams p,
+) {
   // 1. Build focus areas
   final scores = <String, double>{};
   void addScore(String rawKey, double score) {
@@ -1514,6 +1524,7 @@ _HighlightsIsolateResult _computeHighlightsInIsolate(
     final current = scores[key] ?? 0;
     if (score > current) scores[key] = score;
   }
+
   for (var i = 0; i < p.user.priorities.length; i++) {
     addScore(p.user.priorities[i], 1.0 - (i * 0.08));
   }
@@ -1530,8 +1541,7 @@ _HighlightsIsolateResult _computeHighlightsInIsolate(
         (ecosystem.first.value >= 0.8 || nonEcosystem.length < 2))
       ecosystem.first,
   ];
-  final focusAreas =
-      ordered.take(4).map((e) => _focusLabelFn(e.key)).toList();
+  final focusAreas = ordered.take(4).map((e) => _focusLabelFn(e.key)).toList();
 
   // 2. Build product highlights
   final focusKeywords = focusAreas.map(_focusKeywordsForLabelFn).toList();
@@ -1798,6 +1808,7 @@ _FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
     final current = scores[key] ?? 0;
     if (score > current) scores[key] = score;
   }
+
   for (var i = 0; i < p.user.priorities.length; i++) {
     addScore(p.user.priorities[i], 1.0 - (i * 0.08));
   }
@@ -1833,10 +1844,7 @@ _FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
           RegExp(r'\bTech score\b', caseSensitive: false),
           'Teknik puan',
         )
-        .replaceAll(
-          RegExp(r'\bSupport\b', caseSensitive: false),
-          'Desteği',
-        )
+        .replaceAll(RegExp(r'\bSupport\b', caseSensitive: false), 'Desteği')
         .replaceAll(RegExp(r':\s*Yes\b', caseSensitive: false), ': Var')
         .replaceAll(RegExp(r':\s*No\b', caseSensitive: false), ': Yok')
         .replaceAll(RegExp(r'\binch\b', caseSensitive: false), 'inç');
@@ -1930,7 +1938,8 @@ _FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
           ? '$base $topIssue is the main trade-off to keep in mind.'
           : base;
     } else if (first.isNotEmpty && topIssue.isNotEmpty) {
-      reason = '$first is the main standout. $topIssue is the clearest limitation.';
+      reason =
+          '$first is the main standout. $topIssue is the clearest limitation.';
     } else if (first.isNotEmpty) {
       reason = '$first is the clearest standout.';
     } else if (topIssue.isNotEmpty) {
@@ -1966,7 +1975,8 @@ final geminiMatchScoreProvider =
 
 class _GeminiMatchScoreNotifier
     extends StateNotifier<AsyncValue<GeminiMatchResult?>> {
-  static const int _detailMatchCacheVersion = 8; // v8: enhanced user profile analysis
+  static const int _detailMatchCacheVersion =
+      9; // v9: quiz history + human-readable factors
   final Ref _ref;
   final String _productId;
   final String _languageCode;
@@ -1979,6 +1989,7 @@ class _GeminiMatchScoreNotifier
 
   Future<void> fetchMatchScore({
     required ProductEntity product,
+
     /// Karşılaştır ekranındaki toplu eşleşme: kotayı `recordCompareAi` karşılar;
     /// ürün detay `detailMatchAi` tüketimi yapılmaz.
     bool forCompareBatch = false,
@@ -2043,15 +2054,18 @@ class _GeminiMatchScoreNotifier
       }
     }
   }
+
   String _stepMsg(String langCode, String tr, String en) =>
       langCode == 'tr' ? tr : en;
 
   void _emitStep(String productId, String langCode, String tr, String en) {
     if (!mounted) return;
     try {
-      _ref
-          .read(aiMatchStepProvider(productId).notifier)
-          .state = _stepMsg(langCode, tr, en);
+      _ref.read(aiMatchStepProvider(productId).notifier).state = _stepMsg(
+        langCode,
+        tr,
+        en,
+      );
     } catch (_) {}
   }
 
@@ -2062,253 +2076,332 @@ class _GeminiMatchScoreNotifier
     } catch (_) {}
   }
 
+  List<Map<String, dynamic>> _extractQuizSignals(
+    Map<String, dynamic>? userRecordData,
+    ProductEntity product,
+  ) {
+    if (userRecordData == null) return const [];
+    List<dynamic> asList(dynamic value) => value is List ? value : const [];
+    final rawEntries = <dynamic>[
+      ...asList(userRecordData['quizHistory']),
+      ...asList(userRecordData['quizAnswerHistory']),
+    ];
+    if (rawEntries.isEmpty) return const [];
+
+    final productNeedles = <String>{
+      product.id.toLowerCase(),
+      product.name.toLowerCase(),
+      product.category.toLowerCase(),
+      product.subcategory.toLowerCase(),
+      if ((product.brand ?? '').isNotEmpty) product.brand!.toLowerCase(),
+    }..removeWhere((value) => value.trim().isEmpty);
+
+    bool related(String text) {
+      final lower = text.toLowerCase();
+      return productNeedles.any((needle) => lower.contains(needle));
+    }
+
+    return rawEntries.reversed
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .where((entry) => related(entry.toString()))
+        .take(8)
+        .map((entry) {
+          final compact = <String, dynamic>{};
+          for (final key in [
+            'category',
+            'productName',
+            'productId',
+            'answers',
+            'questions',
+            'quizType',
+            'matchScore',
+            'createdAt',
+            'timestamp',
+          ]) {
+            final value = entry[key];
+            if (value != null && value.toString().trim().isNotEmpty) {
+              compact[key] = value;
+            }
+          }
+          return compact.isNotEmpty ? compact : entry;
+        })
+        .toList(growable: false);
+  }
+
   Future<void> _doFetchMatchScore({
     required ProductEntity product,
     required dynamic user,
     bool forCompareBatch = false,
   }) async {
     final profileLangCode = (user.language as String).trim().toLowerCase();
-      final langCode = _languageCode.isNotEmpty
-          ? _languageCode
-          : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
+    final langCode = _languageCode.isNotEmpty
+        ? _languageCode
+        : (profileLangCode.isNotEmpty ? profileLangCode : 'en');
 
-      // ── Step 1: Load user record & check cache ─────────────────────────────
-      _emitStep(product.id, langCode,
-          'Kullanıcı profili yükleniyor…', 'Loading user profile…');
+    // ── Step 1: Load user record & check cache ─────────────────────────────
+    _emitStep(
+      product.id,
+      langCode,
+      'Kullanıcı profili yükleniyor…',
+      'Loading user profile…',
+    );
 
-      // 1. Fetch user record ONCE — extracts match_cache AND weightVector together.
-      //    Using fields projection to reduce data transfer. Cap at 2s so a slow
-      //    PB connection never blocks the UI longer than that.
-      Map<String, dynamic>? userRecordData;
-      try {
-        final rec = await pb
-            .collection('users')
-            .getOne(user.uid, fields: 'match_cache,weightVector')
-            .timeout(
-              const Duration(seconds: 2),
-              onTimeout: () => throw Exception('PB timeout'),
-            );
-        userRecordData = rec.data;
-      } catch (_) {
-        userRecordData = null;
-      }
-
-      // Check match cache from the single fetched record.
-      final cached = userRecordData != null
-          ? _parseMatchCacheFromData(userRecordData, langCode)
-          : null;
-      if (cached != null) {
-        _clearStep(product.id);
-        state = AsyncValue.data(cached);
-        return;
-      }
-
-      // ── Step 2: Build profile & product context ────────────────────────────
-      _emitStep(product.id, langCode,
-          'Ürün analizi hazırlanıyor…', 'Preparing product analysis…');
-
-      // 3. Call Gemini Flash (faster + cheaper than DeepSeek for short JSON tasks)
-      final gemini = _ref.read(geminiServiceProvider);
-      final behaviorAsync = _ref.read(behaviorSignalsProvider);
-      final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-      // weightVector already fetched — parse from in-memory data (no extra PB call).
-      final weightVector = _parseWeightVectorFromData(userRecordData?['weightVector']);
-
-      // Yield before isolate dispatch — keeps first UI frame smooth while
-      // widgets are mounting (postFrameCallback fires before route anim done).
-      await Future<void>.delayed(Duration.zero);
-      if (!mounted) return;
-
-      // Build focusAreas / highlights / tradeOffs in a background isolate so
-      // the main thread is completely free during this preparation phase.
-      final hResult = await compute(
-        _computeHighlightsInIsolate,
-        _HighlightsIsolateParams(
-          user: user as UserEntity,
-          product: product,
-          weightVector: weightVector,
-          langCode: langCode,
-        ),
-      );
-      if (!mounted) return;
-
-      final focusAreas = hResult.focusAreas;
-      final productHighlights = hResult.highlights;
-      final tradeOffs = hResult.tradeOffs;
-      final fallbackReason = hResult.fallbackReason;
-
-      final profileJson = {
-        'ecosystem': user.ecosystem,
-        'budgetRange': user.budgetRange,
-        'priorities': user.priorities,
-        if (focusAreas.isNotEmpty) 'focusAreas': focusAreas,
-        if (weightVector.isNotEmpty)
-          'topWeights': _topWeightedTraits(weightVector),
-        'currentDevices': user.currentDevices,
-        'interestCategories': user.interestCategories,
-        'primaryCategory': user.primaryCategory,
-        'usageIntent': user.usageIntent,
-        'profession': user.profession,
-        'ageRange': user.ageRange,
-        if ((user.gender)?.isNotEmpty == true) 'gender': user.gender,
-        if ((user.country).isNotEmpty) 'country': user.country,
-        if ((user.currency).isNotEmpty) 'currency': user.currency,
-        if (user.ownedProducts.isNotEmpty)
-          'ownedProducts': user.ownedProducts.take(8).toList(),
-        if (user.subscriptions.isNotEmpty)
-          'subscriptions': user.subscriptions,
-        if (behavior.categoryViews.isNotEmpty)
-          'recentCategoryViews': behavior.categoryViews,
-        if (behavior.favorites.isNotEmpty)
-          'favoritedProductCount': behavior.favorites.length,
-      };
-
-      // Build concise product JSON (cap to 15 specs for richer analysis)
-      final topSpecs = <String, dynamic>{};
-      var specCount = 0;
-      for (final e in product.specs.entries) {
-        if (specCount >= 15) break;
-        final v = e.value?.toString() ?? '';
-        if (v.isNotEmpty && v != 'null' && v != '?' && v != '{}') {
-          topSpecs[e.key] = v;
-          specCount++;
-        }
-      }
-
-      final productJson = {
-        'name': product.name,
-        'brand': product.brand ?? '',
-        'category': product.category,
-        if ((product.subcategory as String?)?.isNotEmpty == true)
-          'subcategory': product.subcategory,
-        'techScore': product.techScore,
-        'highlights': productHighlights,
-        if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
-        'specs': topSpecs,
-        if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
-        if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
-        if (product.prices.isNotEmpty)
-          'priceRange': product.prices.values.first,
-      };
-
-      // ── Step 3: Call AI ────────────────────────────────────────────────────
-      _emitStep(product.id, langCode,
-          'AI eşleşme skoru hesaplanıyor…', 'Calculating AI match score…');
-
-      // Calibrated bands: higher floor (40), more generous mid-tier.
-      // User feedback: prior 25-100 with 90+ exceptional felt consistently
-      // underwhelming (most scores landed 55-70). New mapping rewards genuine
-      // quality while preserving separation for poor fits.
-      final langDisplay = _languageDisplayName(langCode);
-      final prompt =
-          'You are a senior tech analyst performing a detailed user-product compatibility analysis. '
-          'Score this product 40-100 for this specific user profile (never below 40).\n'
-          'Return ONLY valid JSON — no markdown, no extra text.\n'
-          '⚠️ CRITICAL: ALL text fields in the JSON MUST be written in $langDisplay ($langCode). '
-          'Using any other language is a critical error.\n\n'
-          'reason: Write 4-6 professional, product-focused sentences (100-160 words) in $langDisplay. '
-          'Structure it as: (1) Start with the product\'s strongest technical merit that aligns with this user\'s specific needs (profession, usageIntent, priorities). '
-          '(2) Elaborate on 2-3 specific performance advantages backed by actual specs/numbers. '
-          '(3) Assess budget fit using the user\'s budgetRange and currency/country context. '
-          '(4) Mention 1-2 real trade-offs or limitations honest to this user\'s profile. '
-          '(5) End with a clear, personalized verdict for this user. '
-          'Use professional tech-review language. Be specific — cite specs, numbers, real use cases. '
-          'Do NOT use "you/your" or first-person references. '
-          'In Turkish: never use "kullanıcı" — use impersonal phrasing (e.g., "bu ürün ... sunar"). '
-          'Never mention ecosystem/profile/devices/platform compatibility.\n\n'
-          'Score bands: 88-100 exceptional match / 75-87 strong fit / 62-74 solid with minor trade-offs / '
-          '50-61 adequate but compromised / 40-49 poor fit.\n'
-          'Rules:\n'
-          '- If techScore >= 85 and no major spec mismatch → score >= 75.\n'
-          '- If product category matches user\'s primaryCategory or interestCategories → +5 bonus.\n'
-          '- If product price exceeds user\'s budgetRange significantly → penalty -8 to -15.\n'
-          '- If user owns similar devices (ownedProducts) → consider upgrade value.\n'
-          'Signals to weigh: focusAreas/weightVector priorities, usageIntent, profession, ageRange, '
-          'budgetRange vs priceRange, country/currency context, ownedProducts for upgrade context, '
-          'techScore, specs (all 15 fields), pros/cons, behavioral signals (recentCategoryViews/favoritedProductCount).\n\n';
-      final encodedProfileJson = await compute(_encodeJsonString, profileJson);
-      final encodedProductJson = await compute(_encodeJsonString, productJson);
-      if (!mounted) return;
-
-      final promptWithPayload =
-          '$prompt'
-          'USER:$encodedProfileJson\n'
-          'PRODUCT:$encodedProductJson\n\n'
-          'JSON: {"matchScore":<int>,"reason":"<4-6 sentences in $langDisplay>",'
-          '"topMatchFactors":["specific_strength_1","specific_strength_2","specific_strength_3"],'
-          '"missingFactors":["specific_gap_1","specific_gap_2"]}';
-
-      final result = await gemini
-          .jsonFreeTextQuery(
-            promptWithPayload,
-            language: langCode,
-            maxTokens: 2500, // increased for longer, more detailed responses
-            tier: AiTier.heavy, // always use gemini-2.5-flash for match scoring
+    // 1. Fetch user record ONCE — extracts match_cache AND weightVector together.
+    //    Using fields projection to reduce data transfer. Cap at 2s so a slow
+    //    PB connection never blocks the UI longer than that.
+    Map<String, dynamic>? userRecordData;
+    try {
+      final rec = await pb
+          .collection('users')
+          .getOne(
+            user.uid,
+            fields: 'match_cache,weightVector,quizHistory,quizAnswerHistory',
           )
           .timeout(
-            const Duration(seconds: 25),
-            onTimeout: () =>
-                throw Exception('Gemini match score timeout (25s)'),
+            const Duration(seconds: 2),
+            onTimeout: () => throw Exception('PB timeout'),
           );
-      final map = _decodeJsonMap(result);
+      userRecordData = rec.data;
+    } catch (_) {
+      userRecordData = null;
+    }
 
-      // Calibrated clamp: minimum 40 matches prompt bands.
-      var score = _safeInt(map['matchScore'], 60).clamp(40, 100);
-      // Safety net: if techScore is strong (>=85) and Gemini returned a low
-      // score without a compelling mismatch, nudge up by up to 8 points.
-      if (product.techScore >= 85 && score < 70) {
-        score = (score + 8).clamp(40, 100);
-      }
-      final reason = _sanitizeMatchReason(
-        rawReason: ((map['reason'] as String?) ?? '').trim(),
-        fallbackReason: fallbackReason,
-      );
-      final factors =
-          (map['topMatchFactors'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
-      final missing =
-          (map['missingFactors'] as List?)?.map((e) => e.toString()).toList() ??
-          [];
-
-      final matchResult = GeminiMatchResult(
-        matchScore: score,
-        reason: reason,
-        topMatchFactors: factors,
-        missingFactors: missing,
-        isFromGemini: true,
-      );
-
-      // ── Step 4: Done — emit result ─────────────────────────────────────────
-      _emitStep(product.id, langCode,
-          'Sonuçlar hazır!', 'Results ready!');
-
-      // Emit result FIRST so the UI updates immediately. Cache write +
-      // quota recording happen fire-and-forget afterwards — they should
-      // never delay the visible state transition.
-      // Small delay so the "Results ready" step message is briefly visible.
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+    // Check match cache from the single fetched record.
+    final cached = userRecordData != null
+        ? _parseMatchCacheFromData(userRecordData, langCode)
+        : null;
+    if (cached != null) {
       _clearStep(product.id);
-      if (!mounted) return; // orphaned future safety (45s outer timeout may have already returned)
-      state = AsyncValue.data(matchResult);
+      state = AsyncValue.data(cached);
+      return;
+    }
 
-      final subForQuota = _ref.read(subscriptionServiceProvider);
-      if (!subForQuota.isPremium && !forCompareBatch) {
-        subForQuota.recordDetailMatchAi();
+    // ── Step 2: Build profile & product context ────────────────────────────
+    _emitStep(
+      product.id,
+      langCode,
+      'Ürün analizi hazırlanıyor…',
+      'Preparing product analysis…',
+    );
+
+    // 3. Call Gemini Flash (faster + cheaper than DeepSeek for short JSON tasks)
+    final gemini = _ref.read(geminiServiceProvider);
+    final behaviorAsync = _ref.read(behaviorSignalsProvider);
+    final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
+    // weightVector already fetched — parse from in-memory data (no extra PB call).
+    final weightVector = _parseWeightVectorFromData(
+      userRecordData?['weightVector'],
+    );
+    final quizSignals = _extractQuizSignals(userRecordData, product);
+
+    // Yield before isolate dispatch — keeps first UI frame smooth while
+    // widgets are mounting (postFrameCallback fires before route anim done).
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+
+    // Build focusAreas / highlights / tradeOffs in a background isolate so
+    // the main thread is completely free during this preparation phase.
+    final hResult = await compute(
+      _computeHighlightsInIsolate,
+      _HighlightsIsolateParams(
+        user: user as UserEntity,
+        product: product,
+        weightVector: weightVector,
+        langCode: langCode,
+      ),
+    );
+    if (!mounted) return;
+
+    final focusAreas = hResult.focusAreas;
+    final productHighlights = hResult.highlights;
+    final tradeOffs = hResult.tradeOffs;
+    final fallbackReason = hResult.fallbackReason;
+
+    final profileJson = {
+      'ecosystem': user.ecosystem,
+      'budgetRange': user.budgetRange,
+      'priorities': user.priorities,
+      if (focusAreas.isNotEmpty) 'focusAreas': focusAreas,
+      if (weightVector.isNotEmpty)
+        'topWeights': _topWeightedTraits(weightVector),
+      'currentDevices': user.currentDevices,
+      'interestCategories': user.interestCategories,
+      'primaryCategory': user.primaryCategory,
+      'usageIntent': user.usageIntent,
+      'profession': user.profession,
+      'ageRange': user.ageRange,
+      if ((user.gender)?.isNotEmpty == true) 'gender': user.gender,
+      if ((user.country).isNotEmpty) 'country': user.country,
+      if ((user.currency).isNotEmpty) 'currency': user.currency,
+      if (user.ownedProducts.isNotEmpty)
+        'ownedProducts': user.ownedProducts.take(8).toList(),
+      if (user.subscriptions.isNotEmpty) 'subscriptions': user.subscriptions,
+      if (behavior.categoryViews.isNotEmpty)
+        'recentCategoryViews': behavior.categoryViews,
+      if (behavior.favorites.isNotEmpty)
+        'favoritedProductCount': behavior.favorites.length,
+      if (quizSignals.isNotEmpty) 'quizSignals': quizSignals,
+    };
+
+    // Build concise product JSON (cap to 15 specs for richer analysis)
+    final topSpecs = <String, dynamic>{};
+    var specCount = 0;
+    for (final e in product.specs.entries) {
+      if (specCount >= 15) break;
+      final v = e.value?.toString() ?? '';
+      if (v.isNotEmpty && v != 'null' && v != '?' && v != '{}') {
+        topSpecs[e.key] = v;
+        specCount++;
       }
+    }
 
-      unawaited(
-        Future<void>(() async {
-          try {
-            await _saveToFirestoreCache(user.uid, matchResult, langCode);
-          } catch (_) {}
-        }),
-      );
+    final productJson = {
+      'name': product.name,
+      'brand': product.brand ?? '',
+      'category': product.category,
+      if ((product.subcategory as String?)?.isNotEmpty == true)
+        'subcategory': product.subcategory,
+      'techScore': product.techScore,
+      'highlights': productHighlights,
+      if (tradeOffs.isNotEmpty) 'tradeOffs': tradeOffs,
+      'specs': topSpecs,
+      if (product.pros.isNotEmpty) 'pros': product.pros.take(5).toList(),
+      if (product.cons.isNotEmpty) 'cons': product.cons.take(5).toList(),
+      if (product.prices.isNotEmpty) 'priceRange': product.prices.values.first,
+    };
 
-      debugPrint(
-        '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',
-      );
+    // ── Step 3: Call AI ────────────────────────────────────────────────────
+    _emitStep(
+      product.id,
+      langCode,
+      'AI eşleşme skoru hesaplanıyor…',
+      'Calculating AI match score…',
+    );
+
+    // Calibrated bands: higher floor (40), more generous mid-tier.
+    // User feedback: prior 25-100 with 90+ exceptional felt consistently
+    // underwhelming (most scores landed 55-70). New mapping rewards genuine
+    // quality while preserving separation for poor fits.
+    final langDisplay = _languageDisplayName(langCode);
+    final prompt =
+        'You are a senior tech analyst performing a detailed user-product compatibility analysis. '
+        'Score this product 40-100 for this specific user profile (never below 40).\n'
+        'Return ONLY valid JSON — no markdown, no extra text.\n'
+        '⚠️ CRITICAL: ALL text fields in the JSON MUST be written in $langDisplay ($langCode). '
+        'Using any other language is a critical error.\n\n'
+        'reason: Write 4-6 professional, product-focused sentences (100-160 words) in $langDisplay. '
+        'Structure it as: (1) Start with the product\'s strongest technical merit that aligns with this user\'s specific needs (profession, usageIntent, priorities). '
+        '(2) Elaborate on 2-3 specific performance advantages backed by actual specs/numbers. '
+        '(3) Assess budget fit using the user\'s budgetRange and currency/country context. '
+        '(4) Mention 1-2 real trade-offs or limitations honest to this user\'s profile. '
+        '(5) End with a clear, personalized verdict for this user. '
+        'Use professional tech-review language. Be specific — cite specs, numbers, real use cases. '
+        'Do NOT use "you/your" or first-person references. '
+        'In Turkish: never use "kullanıcı" — use impersonal phrasing (e.g., "bu ürün ... sunar"). '
+        'Never mention ecosystem/profile/devices/platform compatibility.\n\n'
+        'topMatchFactors and missingFactors rules:\n'
+        '- Return complete human-readable phrases, never snake_case, never raw tags.\n'
+        '- Each item must be one polished sentence fragment in $langDisplay.\n'
+        '- Use quizSignals when they relate to this product/category; otherwise do not invent quiz evidence.\n'
+        '- Mention concrete specs or preference links, not generic labels.\n\n'
+        'Score bands: 88-100 exceptional match / 75-87 strong fit / 62-74 solid with minor trade-offs / '
+        '50-61 adequate but compromised / 40-49 poor fit.\n'
+        'Rules:\n'
+        '- If techScore >= 85 and no major spec mismatch → score >= 75.\n'
+        '- If product category matches user\'s primaryCategory or interestCategories → +5 bonus.\n'
+        '- If product price exceeds user\'s budgetRange significantly → penalty -8 to -15.\n'
+        '- If user owns similar devices (ownedProducts) → consider upgrade value.\n'
+        'Signals to weigh: focusAreas/weightVector priorities, usageIntent, profession, ageRange, '
+        'budgetRange vs priceRange, country/currency context, ownedProducts for upgrade context, '
+        'techScore, specs (all 15 fields), pros/cons, behavioral signals (recentCategoryViews/favoritedProductCount), and quizSignals.\n\n';
+    final encodedProfileJson = await compute(_encodeJsonString, profileJson);
+    final encodedProductJson = await compute(_encodeJsonString, productJson);
+    if (!mounted) return;
+
+    final promptWithPayload =
+        '$prompt'
+        'USER:$encodedProfileJson\n'
+        'PRODUCT:$encodedProductJson\n\n'
+        'JSON: {"matchScore":<int>,"reason":"<4-6 sentences in $langDisplay>",'
+        '"topMatchFactors":["<human-readable strength>","<human-readable strength>","<human-readable strength>"],'
+        '"missingFactors":["<human-readable caution>","<human-readable caution>"]}';
+
+    final result = await gemini
+        .jsonFreeTextQuery(
+          promptWithPayload,
+          language: langCode,
+          maxTokens: 2500, // increased for longer, more detailed responses
+          tier: AiTier.heavy, // always use gemini-2.5-flash for match scoring
+        )
+        .timeout(
+          const Duration(seconds: 25),
+          onTimeout: () => throw Exception('Gemini match score timeout (25s)'),
+        );
+    final map = _decodeJsonMap(result);
+
+    // Calibrated clamp: minimum 40 matches prompt bands.
+    var score = _safeInt(map['matchScore'], 60).clamp(40, 100);
+    // Safety net: if techScore is strong (>=85) and Gemini returned a low
+    // score without a compelling mismatch, nudge up by up to 8 points.
+    if (product.techScore >= 85 && score < 70) {
+      score = (score + 8).clamp(40, 100);
+    }
+    final reason = _sanitizeMatchReason(
+      rawReason: ((map['reason'] as String?) ?? '').trim(),
+      fallbackReason: fallbackReason,
+    );
+    final factors =
+        (map['topMatchFactors'] as List?)?.map((e) => e.toString()).toList() ??
+        [];
+    final missing =
+        (map['missingFactors'] as List?)?.map((e) => e.toString()).toList() ??
+        [];
+
+    final matchResult = GeminiMatchResult(
+      matchScore: score,
+      reason: reason,
+      topMatchFactors: _sanitizeMatchFactorList(
+        factors.isNotEmpty ? factors : productHighlights,
+        langCode,
+      ).take(3).toList(),
+      missingFactors: _sanitizeMatchFactorList(
+        missing.isNotEmpty ? missing : tradeOffs,
+        langCode,
+      ).take(2).toList(),
+      isFromGemini: true,
+    );
+
+    // ── Step 4: Done — emit result ─────────────────────────────────────────
+    _emitStep(product.id, langCode, 'Sonuçlar hazır!', 'Results ready!');
+
+    // Emit result FIRST so the UI updates immediately. Cache write +
+    // quota recording happen fire-and-forget afterwards — they should
+    // never delay the visible state transition.
+    // Small delay so the "Results ready" step message is briefly visible.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    _clearStep(product.id);
+    if (!mounted) {
+      return; // orphaned future safety (45s outer timeout may have already returned)
+    }
+    state = AsyncValue.data(matchResult);
+
+    final subForQuota = _ref.read(subscriptionServiceProvider);
+    if (!subForQuota.isPremium && !forCompareBatch) {
+      subForQuota.recordDetailMatchAi();
+    }
+
+    unawaited(
+      Future<void>(() async {
+        try {
+          await _saveToFirestoreCache(user.uid, matchResult, langCode);
+        } catch (_) {}
+      }),
+    );
+
+    debugPrint(
+      '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',
+    );
     // Note: errors propagate up to fetchMatchScore for unified timeout/fallback handling.
   }
 
@@ -2323,8 +2416,8 @@ class _GeminiMatchScoreNotifier
     }
     final behaviorAsync = _ref.read(behaviorSignalsProvider);
     final behavior = behaviorAsync.valueOrNull ?? BehaviorSignals.empty;
-    final langCode =
-        (_ref.read(localeProvider)?.languageCode ?? 'en').toLowerCase();
+    final langCode = (_ref.read(localeProvider)?.languageCode ?? 'en')
+        .toLowerCase();
 
     // All heavy computation happens in a background isolate.
     final result = await compute(
@@ -2364,11 +2457,12 @@ class _GeminiMatchScoreNotifier
       if (ts == null) return null;
       final age = DateTime.now().difference(ts);
       if (age.inHours >= 24) return null;
-      final cachedLanguage =
-          (cached['language'] as String?)?.trim().toLowerCase();
+      final cachedLanguage = (cached['language'] as String?)
+          ?.trim()
+          .toLowerCase();
       if (cachedLanguage == null || cachedLanguage != langCode) return null;
-      final cachedVersion =
-          (cached['detailMatchCacheVersion'] as num?)?.toInt();
+      final cachedVersion = (cached['detailMatchCacheVersion'] as num?)
+          ?.toInt();
       if (cachedVersion != _detailMatchCacheVersion) return null;
       final fallbackReason = langCode == 'tr'
           ? 'Teknik seviye, genel denge ve kategori içindeki konumuyla dikkat çeken bir profil sunuyor.'
@@ -2520,6 +2614,78 @@ class _GeminiMatchScoreNotifier
     return '${joined.substring(0, 547).trimRight()}...';
   }
 
+  List<String> _sanitizeMatchFactorList(List<String> items, String langCode) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final item in items) {
+      final cleaned = _humanizeMatchFactor(item, langCode);
+      if (cleaned.isEmpty) continue;
+      final key = cleaned.toLowerCase();
+      if (seen.add(key)) result.add(cleaned);
+    }
+    return result;
+  }
+
+  String _humanizeMatchFactor(String value, String langCode) {
+    var text = value.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    text = text.replaceAll(RegExp(r'\s+'), ' ');
+    if (text.isEmpty) return '';
+    final looksLikeTag = !text.contains(' ') || text.length < 18;
+    if (looksLikeTag) {
+      final normalized = text.toLowerCase();
+      final tr = langCode == 'tr';
+      const trMap = {
+        'üstün yapay zeka performansı':
+            'Yapay zeka iş yüklerinde güçlü performans beklentisiyle örtüşüyor.',
+        'yuksek saat hizlari':
+            'Yüksek saat hızları performans önceliğini destekliyor.',
+        'yüksek saat hızları':
+            'Yüksek saat hızları performans önceliğini destekliyor.',
+        'saglam sogutma cozumu':
+            'Soğutma tasarımı uzun süreli yük altında daha dengeli kullanım sağlar.',
+        'sağlam soğutma çözümü':
+            'Soğutma tasarımı uzun süreli yük altında daha dengeli kullanım sağlar.',
+        'dayanikli yapi kalitesi':
+            'Dayanıklı yapı kalitesi uzun kullanım beklentisiyle uyumlu.',
+        'dayanıklı yapı kalitesi':
+            'Dayanıklı yapı kalitesi uzun kullanım beklentisiyle uyumlu.',
+        'butce uyumu':
+            'Fiyat seviyesi kullanıcının bütçe beklentisiyle makul şekilde örtüşüyor.',
+        'bütçe uyumu':
+            'Fiyat seviyesi kullanıcının bütçe beklentisiyle makul şekilde örtüşüyor.',
+        'tasınabilirlik':
+            'Taşınabilirlik beklentisi varsa boyut ve ağırlık ayrıca kontrol edilmeli.',
+        'taşınabilirlik':
+            'Taşınabilirlik beklentisi varsa boyut ve ağırlık ayrıca kontrol edilmeli.',
+        'kasa boyut uyumluluğu':
+            'Kasa ölçüsü ve fiziksel uyumluluk satın almadan önce doğrulanmalı.',
+      };
+      const enMap = {
+        'superior ai performance':
+            'AI-heavy workloads are well aligned with this product class.',
+        'high clock speeds':
+            'High clock speeds support the expected performance priority.',
+        'robust cooling solution':
+            'The cooling design should help stability under sustained load.',
+        'durable build quality':
+            'The build quality aligns with long-term use expectations.',
+        'budget fit':
+            'The price level appears reasonably aligned with the budget signal.',
+        'portability':
+            'Portability needs should be checked against the size and weight.',
+        'case size compatibility':
+            'Case clearance and physical compatibility should be verified before purchase.',
+      };
+      final mapped = tr ? trMap[normalized] : enMap[normalized];
+      if (mapped != null) return mapped;
+      final sentence = text[0].toUpperCase() + text.substring(1);
+      return tr
+          ? '$sentence dikkate alınmalı.'
+          : '$sentence should be considered.';
+    }
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
   String? _normalizeFocusKey(String raw) {
     final key = raw.trim().toLowerCase();
     switch (key) {
@@ -2590,7 +2756,6 @@ class _GeminiMatchScoreNotifier
         return key;
     }
   }
-
 
   void reset() => state = const AsyncValue.data(null);
 }

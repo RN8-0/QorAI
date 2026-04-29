@@ -1,3 +1,4 @@
+import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,9 +41,15 @@ class ChatHistoryScreen extends ConsumerWidget {
           data: (conversations) {
             if (conversations.isEmpty) {
               return Center(
-                child: Text(
-                  'No chat history yet',
-                  style: GoogleFonts.plusJakartaSans(color: Colors.grey),
+                child: _HistoryEmptyState(
+                  onNewChat: () {
+                    ref.read(chatSessionProvider.notifier).newConversation();
+                    if (isOverlay) {
+                      onBack?.call();
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
                 ),
               );
             }
@@ -123,7 +130,10 @@ class ChatHistoryScreen extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => _HistoryErrorState(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(chatHistoryProvider(user.uid)),
+          ),
         );
         if (isOverlay) {
           return _OverlayHistoryScaffold(
@@ -166,6 +176,136 @@ class ChatHistoryScreen extends ConsumerWidget {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
     );
+  }
+}
+
+class _HistoryEmptyState extends StatelessWidget {
+  final VoidCallback onNewChat;
+
+  const _HistoryEmptyState({required this.onNewChat});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.accentCyan.withValues(alpha: 0.10),
+              border: Border.all(
+                color: AppTheme.accentCyan.withValues(alpha: 0.22),
+              ),
+            ),
+            child: const Icon(
+              Icons.forum_outlined,
+              color: AppTheme.accentCyan,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            _historyCopy(context, 'emptyTitle'),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _historyCopy(context, 'emptySubtitle'),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              height: 1.5,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.58),
+            ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: onNewChat,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(_historyCopy(context, 'newChat')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _HistoryErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: AppTheme.error,
+              size: 34,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _historyCopy(context, 'loadError'),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(fontSize: 12),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(context.l10n?.retry ?? 'Tekrar dene'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _historyCopy(BuildContext context, String key) {
+  final lang = Localizations.localeOf(context).languageCode.toLowerCase();
+  final tr = lang == 'tr';
+  switch (key) {
+    case 'emptyTitle':
+      return tr ? 'Henüz sohbet geçmişi yok' : 'No chat history yet';
+    case 'emptySubtitle':
+      return tr
+          ? 'Qor AI ile yaptığınız sohbetler burada güvenle listelenecek.'
+          : 'Your Qor AI conversations will appear here as soon as you start chatting.';
+    case 'newChat':
+      return tr ? 'Yeni sohbet' : 'New chat';
+    case 'loadError':
+      return tr ? 'Sohbet geçmişi yüklenemedi' : 'Could not load chat history';
+    default:
+      return '';
   }
 }
 

@@ -117,6 +117,12 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
     final currentUser = ref.read(userProfileProvider).valueOrNull;
     final currentUserId = currentUser?.uid;
     final isOwner = currentUser != null && currentUser.uid == userId;
+    final authorPhotoUrl =
+        (isOwner
+                ? currentUser.photoURL
+                : widget.data['authorPhotoURL'] ?? widget.data['photoURL'])
+            ?.toString()
+            .trim();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -144,14 +150,31 @@ class _CompareReviewCardState extends ConsumerState<_CompareReviewCard> {
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
-                  child: Text(
-                    displayChar,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.brandBlue,
-                    ),
-                  ),
+                  child: authorPhotoUrl != null && authorPhotoUrl.isNotEmpty
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: authorPhotoUrl,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, _, _) => Text(
+                              displayChar,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.brandBlue,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Text(
+                          displayChar,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.brandBlue,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

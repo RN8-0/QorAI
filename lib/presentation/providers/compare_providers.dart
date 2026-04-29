@@ -363,6 +363,7 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         productTitle: baseResult.metadata.title ?? 'Product',
         url: url,
         language: _appLang,
+        profile: localizedUser,
       );
 
       if (quiz.questions.isEmpty) {
@@ -381,6 +382,20 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
       debugPrint(
         '[LinkQuiz] Quiz generated: ${quiz.questions.length} questions',
+      );
+      unawaited(
+        _pbDs.saveQuizHistory(user.uid, {
+          'timestamp': DateTime.now().toIso8601String(),
+          'status': 'generated',
+          'productUrl': baseResult.url,
+          'productTitle': baseResult.metadata.title,
+          'category': baseResult.category,
+          'mode': 'single',
+          'questionCount': quiz.questions.length,
+          'questions': quiz.questions
+              .map((q) => {'question': q.text, 'options': q.options})
+              .toList(),
+        }),
       );
       state = state.copyWith(
         phase: LinkFlowPhase.quiz,
@@ -516,10 +531,15 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
     if (quizData.isNotEmpty) {
       _pbDs.saveQuizHistory(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
+        'status': 'completed',
         'productUrl': base.url,
         'productTitle': base.metadata.title,
         'category': base.category,
         'mode': 'single',
+        'questionCount': state.answeredQuestions.length,
+        'questions': state.answeredQuestions
+            .map((q) => {'question': q.text, 'options': q.options})
+            .toList(),
         'answers': quizData,
         'score': enhanced.enhancedScore,
       });
@@ -898,10 +918,24 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         url: urls.first,
         language: lang,
         allProducts: allProductInfo,
+        profile: localizedUser,
       );
       _updateStep(quizStepIdx, (s) => s.withDone());
 
       if (quiz.questions.isNotEmpty) {
+        unawaited(
+          _pbDs.saveQuizHistory(user.uid, {
+            'timestamp': DateTime.now().toIso8601String(),
+            'status': 'generated',
+            'productUrls': urls,
+            'mode': 'compare',
+            'category': primaryCategory,
+            'questionCount': quiz.questions.length,
+            'questions': quiz.questions
+                .map((q) => {'question': q.text, 'options': q.options})
+                .toList(),
+          }),
+        );
         state = state.copyWith(
           phase: ComparePhase.quiz,
           quiz: quiz,
@@ -1065,8 +1099,13 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
     if (answeredQs.isNotEmpty) {
       _pbDs.saveQuizHistory(user.uid, {
         'timestamp': DateTime.now().toIso8601String(),
+        'status': 'completed',
         'productUrls': state.validUrls,
         'mode': 'compare',
+        'questionCount': quizAnswers.length,
+        'questions': quizAnswers
+            .map((q) => {'question': q.text, 'options': q.options})
+            .toList(),
         'answers': answeredQs,
         'scores': results.map((r) => r.enhancedScore).toList(),
       });

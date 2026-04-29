@@ -240,7 +240,7 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
             ),
             tabs: [
               Tab(text: context.l10n?.specsTab ?? 'Specs'),
-              Tab(text: context.l10n?.reviews ?? 'Reviews'),
+              Tab(text: _detailPreviewTabLabel(context)),
               Tab(text: context.l10n?.similarTab ?? 'Similar'),
               Tab(text: context.l10n?.proTab ?? 'Premium'),
             ],
@@ -252,6 +252,35 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_StickyTabBarDelegate oldDelegate) => false;
+}
+
+String _detailPreviewTabLabel(BuildContext context) {
+  switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
+    case 'tr':
+      return 'Önizleme';
+    case 'de':
+      return 'Vorschau';
+    case 'fr':
+      return 'Aperçu';
+    case 'es':
+      return 'Vista previa';
+    case 'it':
+      return 'Anteprima';
+    case 'pt':
+      return 'Prévia';
+    case 'ar':
+      return 'معاينة';
+    case 'ja':
+      return 'プレビュー';
+    case 'nl':
+      return 'Voorbeeld';
+    case 'pl':
+      return 'Podgląd';
+    case 'sv':
+      return 'Förhandsvisning';
+    default:
+      return 'Preview';
+  }
 }
 
 class _CardHeader extends StatelessWidget {

@@ -230,13 +230,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   Future<void> _startComparison() async {
     final selectedIds = _selectedProductIds.toList(growable: false);
     if (selectedIds.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n?.selectAtLeast2 ?? 'Select at least 2 products',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      _showCompareNotice(
+        context.l10n?.selectAtLeast2 ?? 'Select at least 2 products',
       );
       return;
     }
@@ -245,13 +240,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     if (!mounted) return;
 
     if (products.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n?.couldNotLoadProduct ?? 'Could not load product data',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      _showCompareNotice(
+        context.l10n?.couldNotLoadProduct ?? 'Could not load product data',
       );
       return;
     }
@@ -259,14 +249,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     // Enforce same category
     final categories = products.map((p) => p.category).toSet();
     if (categories.length > 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n?.mustBeSameCategory ??
-                'Products must be from the same category to compare',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      _showCompareNotice(
+        context.l10n?.mustBeSameCategory ??
+            'Products must be from the same category to compare',
       );
       return;
     }
@@ -308,6 +293,107 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(compareSessionProvider.notifier).state =
         const CompareSessionData();
     ref.read(hideNavBarProvider.notifier).state = false;
+  }
+
+  Future<void> _showCompareNotice(String message) async {
+    if (!mounted) return;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    HapticFeedback.mediumImpact();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: AppTheme.brandCyan.withValues(alpha: 0.22),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.34),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: AppTheme.brandCyan.withValues(alpha: 0.10),
+                  blurRadius: 32,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.brandCyan.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: AppTheme.brandCyan.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.compare_arrows_rounded,
+                    color: AppTheme.brandCyan,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  isTr ? 'Karşılaştırma Hazır Değil' : 'Compare Not Ready',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.brandBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      isTr ? 'Tamam' : 'OK',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _handleCompareBack() {
@@ -708,15 +794,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                                 ),
                               ),
                             )
-                              : null,
-                          border: InputBorder.none,
-                          filled: false,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 12,
-                          ),
-                        ),
+                          : null,
+                      border: InputBorder.none,
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 0,
+                        vertical: 12,
                       ),
+                    ),
+                  ),
                 ),
               ),
 

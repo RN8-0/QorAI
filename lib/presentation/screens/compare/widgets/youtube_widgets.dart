@@ -240,7 +240,7 @@ class _CompareVideoTile extends StatelessWidget {
                   child: Image.network(
                     video.thumbnailUrl.isNotEmpty
                         ? video.thumbnailUrl
-                        : 'https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg',
+                        : 'https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg',
                     width: 120,
                     height: 68,
                     fit: BoxFit.cover,
@@ -780,7 +780,7 @@ class _CompareFloatingPlayerState extends State<_CompareFloatingPlayer> {
 
     final thumb = widget.thumbnailUrl.isNotEmpty
         ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
+        : 'https://img.youtube.com/vi/${widget.videoId}/hqdefault.jpg';
 
     return Positioned(
       left: _dx,

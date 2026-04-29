@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/ai_service.dart';
@@ -21,6 +22,7 @@ import 'package:qor_ai/services/cache_service.dart';
 class GeminiService implements AIService {
   final Dio _dio;
   final CacheService _cacheService;
+  final PbDataSource? _pbDataSource;
 
   // All Gemini calls now go through the PocketBase proxy hook
   // (pb_hooks/gemini.pb.js). The API key lives only on the server —
@@ -35,10 +37,12 @@ class GeminiService implements AIService {
   GeminiService({
     required Dio dio,
     required CacheService cacheService,
+    PbDataSource? pbDataSource,
     @Deprecated('No longer used — key is server-side via PB proxy')
     String? apiKey,
   }) : _dio = dio,
-       _cacheService = cacheService;
+       _cacheService = cacheService,
+       _pbDataSource = pbDataSource;
 
   // ─────────────────────────────────────────────────────────────────────────
   //  PUBLIC API — implements [AIService]
@@ -576,7 +580,10 @@ class GeminiService implements AIService {
   Future<String> askQuestion(String question, UserEntity profile) async {
     final currentYear = DateTime.now().year;
     final response = await _jsonRequest(
-      system: _chatSystemPrompt(profile, currentYear),
+      system: await _adminPrompt(
+        'gemini_chat_system',
+        _chatSystemPrompt(profile, currentYear),
+      ),
       user: question,
       tier: AiTier.lite,
     );
@@ -606,7 +613,12 @@ class GeminiService implements AIService {
       'contents': contents,
       'systemInstruction': {
         'parts': [
-          {'text': _chatSystemPrompt(profile, currentYear)},
+          {
+            'text': await _adminPrompt(
+              'gemini_chat_system',
+              _chatSystemPrompt(profile, currentYear),
+            ),
+          },
         ],
       },
       'tools': [
@@ -641,7 +653,12 @@ class GeminiService implements AIService {
       'contents': contents,
       'systemInstruction': {
         'parts': [
-          {'text': _chatSystemPrompt(profile, currentYear)},
+          {
+            'text': await _adminPrompt(
+              'gemini_chat_system',
+              _chatSystemPrompt(profile, currentYear),
+            ),
+          },
         ],
       },
       'tools': [
@@ -1421,21 +1438,38 @@ $jsonSchema
     required String url,
     String language = 'en',
     List<Map<String, String>>? allProducts,
+    UserEntity? profile,
   }) async {
     debugPrint('[Gemini] generateQuiz for: $productTitle ($category)');
     final isCompare = allProducts != null && allProducts.length >= 2;
+    final promptKey = isCompare
+        ? 'gemini_quiz_compare_system'
+        : 'gemini_quiz_single_system';
+    final fallbackPrompt = isCompare
+        ? _compareQuizGenerationPrompt(language)
+        : _quizGenerationPrompt(language);
     final response = await _jsonRequest(
-      system: isCompare
-          ? _compareQuizGenerationPrompt(language)
-          : _quizGenerationPrompt(language),
+      system: await _adminPrompt(promptKey, fallbackPrompt),
       user: jsonEncode(
         isCompare
             ? {
                 'category': category,
                 'products': allProducts,
                 'productCount': allProducts.length,
+                'profileSignals': profile == null
+                    ? null
+                    : _quizProfileSignals(profile),
+                'quizGenerationId': DateTime.now().toUtc().toIso8601String(),
               }
-            : {'category': category, 'productTitle': productTitle, 'url': url},
+            : {
+                'category': category,
+                'productTitle': productTitle,
+                'url': url,
+                'profileSignals': profile == null
+                    ? null
+                    : _quizProfileSignals(profile),
+                'quizGenerationId': DateTime.now().toUtc().toIso8601String(),
+              },
       ),
       thinkingBudget: 512,
       timeout: const Duration(seconds: 45),
@@ -1463,6 +1497,37 @@ $jsonSchema
       questions: questions,
       createdAt: DateTime.now(),
     );
+  }
+
+  Future<String> _adminPrompt(String key, String fallback) async {
+    final ds = _pbDataSource;
+    if (ds == null) return fallback;
+    try {
+      final config = await ds.getPublicConfig();
+      final prompts = config['ai_prompts'];
+      if (prompts is Map) {
+        final value = prompts[key]?.toString().trim();
+        if (value != null && value.length >= 40) return value;
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  Map<String, dynamic> _quizProfileSignals(UserEntity profile) {
+    return {
+      'language': profile.language,
+      'country': profile.country,
+      'currency': profile.currency,
+      'primaryCategory': profile.primaryCategory,
+      'interestCategories': profile.interestCategories,
+      'priorities': profile.priorities,
+      'usageIntent': profile.usageIntent,
+      'profession': profile.profession,
+      'ageRange': profile.ageRange,
+      'budgetRange': profile.budgetRange,
+      'currentDevices': profile.currentDevices,
+      'ownedProducts': profile.ownedProducts.take(8).toList(),
+    };
   }
 
   /// Produce an enhanced compatibility analysis combining the base analysis,
@@ -2041,7 +2106,10 @@ You are Qor AI — a knowledgeable, friendly shopping and product advisor for AL
 - For current prices, suggest the user verify online.
 
 ## PAGE AWARENESS
-When context mentions a specific product or page, USE that information proactively.
+When context mentions a specific product, compared products, route, page, PC build, or recent in-app state, USE that information proactively.
+If the user asks where they are, what they are viewing, or asks about “this product/these products”, answer from Page Context first before giving broader advice.
+For compared products, discuss the actual product names and scores/specs in the context rather than asking the user to repeat them.
+You may use Google Search for current public information, prices, reviews, market news, and release timing when the user asks for research or up-to-date details.
 
 ## CONVERSATION FLOW
 For general questions, ask clarifying questions ONE AT A TIME before recommending. Use profile to skip obvious questions.
@@ -2057,28 +2125,35 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
   static String _quizGenerationPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
-(4-6 questions) to understand the user's needs for the SPECIFIC product being analyzed.
+You are Qor AI's advanced product quiz engine. Generate a fresh, complex,
+personalized quiz (6-8 questions) to understand the user's needs for the
+SPECIFIC product being analyzed.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
-The goal: understand how the user plans to use THIS specific product, their priorities,
-living situation, habits, and expectations — so we can compute an accurate
-compatibility score.
+The goal: understand how the user plans to use THIS specific product, their
+trade-off tolerance, workflow, environment, ownership context, constraints,
+risk sensitivity, upgrade expectations, and long-term habits — so we can
+compute an accurate compatibility score.
 
 CRITICAL RULES:
 - Questions MUST be relevant to the specific product and its category
-- Reference the product name/type in at least 2 questions
+- Use profileSignals if provided; connect questions to priorities, profession,
+  usageIntent, currentDevices, ownedProducts, country/currency, and category interests
+- quizGenerationId is intentionally unique; do not reuse a generic template
+- Reference the product name/type in at least 3 questions
+- Ask scenario and trade-off questions that reveal why this product may or may not fit
 - For BOOKS: ask about reading preferences, genre interests, reading habits
 - For TECH: ask about usage scenarios, environment, feature priorities  
 - For CLOTHING: ask about style, occasions, comfort preferences
 - For HOME: ask about living space, household size, usage frequency
 - Each question has exactly 4 options
-- Options should cover the full spectrum of use-cases
+- Options should be nuanced and mutually distinct; avoid shallow yes/no framing
 - Keep questions conversational with emoji
 - NEVER ask about budget (we already know that)
 - NEVER ask about brand preference
-- Questions should feel fun, not like a survey
+- Do not ask generic questions like "What matters most?" without product-specific context
+- Questions should feel intelligent and adaptive, not like a simple survey
 - ALL text must be in $langName
 
 Return valid JSON:
@@ -2094,30 +2169,37 @@ Return valid JSON:
   static String _compareQuizGenerationPrompt(String language) {
     final langName = _languageName(language);
     return '''
-You are Qor AI's product COMPARISON quiz engine. The user is comparing multiple products.
-Generate a SHORT personalized quiz (4-6 questions) to understand the user's needs
-so we can determine which product is the BEST FIT for them.
+You are Qor AI's advanced product COMPARISON quiz engine. The user is comparing
+multiple products. Generate a fresh, complex personalized quiz (6-8 questions)
+to understand the user's needs so we can determine which product is the BEST FIT.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
-The goal: understand the user's priorities, use cases, and preferences to help
-determine which of the products being compared is the best match.
+The goal: understand the user's priorities, use cases, risk tolerance, upgrade
+intent, environment, long-term habits, and trade-off preferences to determine
+which compared product is the best match.
 
 CRITICAL RULES:
 - You are given MULTIPLE products that are being compared
 - Questions should help differentiate between the products
+- Use profileSignals if provided; personalize questions around priorities,
+  profession, usageIntent, currentDevices, ownedProducts, country/currency,
+  and category interests
+- quizGenerationId is intentionally unique; do not reuse a generic template
 - Ask about the user's specific needs that would make one product better than another
-- Reference the actual product names in questions where relevant
+- Reference the actual product names in at least 3 questions where relevant
 - For BOOKS: ask about reading goals, preferred topics, reading level, format preferences
 - For TECH: ask about primary use cases, feature priorities, environment
 - For CLOTHING: ask about occasions, style preferences, comfort vs looks
 - For HOME: ask about space, frequency of use, household needs
 - Each question has exactly 4 options
 - Options should represent different priorities that favor different products
+- Options must be nuanced and mutually distinct; avoid shallow yes/no framing
 - Keep questions conversational with emoji
 - NEVER ask about budget (we already know that)
 - NEVER ask about brand preference
-- Questions should feel fun, not like a survey
+- Do not ask generic questions like "What matters most?" without product-specific context
+- Questions should feel intelligent and adaptive, not like a simple survey
 - ALL text must be in $langName
 
 Return valid JSON:

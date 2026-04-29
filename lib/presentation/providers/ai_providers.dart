@@ -222,10 +222,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
 
   Future<String> _ensureConversation(String userId, String title) async {
     if (state.conversationId != null) return state.conversationId!;
-    // Use local ID immediately, persist to Firestore in background
-    final localId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-    state = state.copyWith(conversationId: localId);
-    // Fire-and-forget Firestore creation (don't block chat on it)
+
     final ds = _ref.read(pbDataSourceProvider);
     final now = DateTime.now();
     final conv = ChatConversation(
@@ -236,15 +233,15 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       createdAt: now,
       updatedAt: now,
     );
-    ds
-        .createChatConversation(conv)
-        .then((newId) {
-          if (newId != localId) state = state.copyWith(conversationId: newId);
-        })
-        .catchError((_) {
-          /* keep localId */
-        });
-    return localId;
+    try {
+      final newId = await ds.createChatConversation(conv);
+      state = state.copyWith(conversationId: newId);
+      return newId;
+    } catch (_) {
+      final localId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      state = state.copyWith(conversationId: localId);
+      return localId;
+    }
   }
 
   List<Map<String, String>> _buildTurns(

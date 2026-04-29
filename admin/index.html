@@ -874,6 +874,26 @@
           </div>
         </div>
 
+        <!-- AI Prompts -->
+        <div class="card">
+          <div class="card-title">🤖 AI Prompt Yönetimi</div>
+          <p class="text-muted" style="font-size:12px;margin-top:0">Boş bırakılan promptlarda uygulama içindeki güvenli varsayılan prompt kullanılır. Değişiklikler public_config üzerinden uygulamaya redeploy gerektirmeden yansır.</p>
+          <div class="form-grid" style="grid-template-columns:1fr">
+            <div class="form-field">
+              <label>Qor AI Chat Sistem Promptu</label>
+              <textarea class="input" id="prompt_gemini_chat_system" rows="8" placeholder="Qor AI chat sistem promptu..."></textarea>
+            </div>
+            <div class="form-field">
+              <label>Tekil Link Quiz Promptu</label>
+              <textarea class="input" id="prompt_gemini_quiz_single_system" rows="7" placeholder="Tekil ürün link quiz promptu..."></textarea>
+            </div>
+            <div class="form-field">
+              <label>Karşılaştırma Quiz Promptu</label>
+              <textarea class="input" id="prompt_gemini_quiz_compare_system" rows="7" placeholder="Karşılaştırma quiz promptu..."></textarea>
+            </div>
+          </div>
+        </div>
+
         <!-- About -->
         <div class="card">
           <div class="card-title">About</div>
@@ -907,6 +927,6 @@
   <script src="js/scraper.js?v=20260426a"></script>
   <script src="js/notifications.js?v=20260426a"></script>
   <script src="js/support.js?v=20260426f"></script>
-  <script src="js/app.js?v=20260426f"></script>
+  <script src="js/app.js?v=20260429a"></script>
 </body>
 </html>

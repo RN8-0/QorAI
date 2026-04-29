@@ -1805,8 +1805,9 @@ class PbDataSource {
       } else if (rawChatMessages is String && rawChatMessages.isNotEmpty) {
         try {
           final decoded = jsonDecode(rawChatMessages);
-          if (decoded is List)
+          if (decoded is List) {
             chatMessages = decoded.cast<Map<String, dynamic>>();
+          }
         } catch (_) {}
       }
 

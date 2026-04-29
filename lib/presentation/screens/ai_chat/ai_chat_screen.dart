@@ -284,8 +284,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           // "Qor AI" title + inline Q cost
           Expanded(
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
+                Flexible(
                   child: Text.rich(
                     TextSpan(
                       style: GoogleFonts.plusJakartaSans(
@@ -295,7 +296,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                       ),
                       children: const [
                         TextSpan(text: 'Qor '),
-                        TextSpan(text: 'AI'),
+                        TextSpan(
+                          text: 'AI',
+                          style: TextStyle(color: AppTheme.accentCyan),
+                        ),
                       ],
                     ),
                     overflow: TextOverflow.ellipsis,

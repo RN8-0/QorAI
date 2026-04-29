@@ -163,6 +163,7 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
   return GeminiService(
     dio: ref.read(dioProvider),
     cacheService: ref.read(cacheServiceProvider),
+    pbDataSource: ref.read(pbDataSourceProvider),
   );
 });
 
@@ -304,13 +305,10 @@ final behaviorSignalsProvider = FutureProvider<BehaviorSignals>((ref) async {
   }
 
   // Viewed product IDs (from PB + Hive)
-  final viewedIds =
-      ref.watch(viewedProductsProvider).valueOrNull ?? <String>[];
+  final viewedIds = ref.watch(viewedProductsProvider).valueOrNull ?? <String>[];
 
   // productViews: each viewed product gets at least 1 view signal
-  final productViews = <String, int>{
-    for (final id in viewedIds) id: 1,
-  };
+  final productViews = <String, int>{for (final id in viewedIds) id: 1};
 
   // categoryViews: derived from interest categories (weighted by position)
   final categoryViews = <String, int>{};

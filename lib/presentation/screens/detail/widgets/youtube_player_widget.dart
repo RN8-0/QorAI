@@ -175,9 +175,8 @@ class _YouTubePlaybackSession {
     if (_disposed) return;
 
     final previousVideo = _videoController;
-    final currentPosition = resumeFrom ??
-        previousVideo?.value.position ??
-        Duration.zero;
+    final currentPosition =
+        resumeFrom ?? previousVideo?.value.position ?? Duration.zero;
     final shouldPlay = autoplay || (previousVideo?.value.isPlaying ?? false);
 
     if (_selectedQuality?.label == option.label && previousVideo != null) {
@@ -321,21 +320,20 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
 
     if (!mounted) return;
     setState(() => _hidden = true);
-    final shouldResume = await Navigator.of(context, rootNavigator: true)
-        .push(
-          PageRouteBuilder(
-            fullscreenDialog: true,
-            transitionDuration: const Duration(milliseconds: 250),
-            reverseTransitionDuration: const Duration(milliseconds: 200),
-            pageBuilder: (_, _, _) => _FullscreenYouTubePlayer(
-              title: widget.title,
-              session: _session,
-              playOnOpen: wasPlaying,
-            ),
-            transitionsBuilder: (_, anim, _, child) =>
-                FadeTransition(opacity: anim, child: child),
-          ),
-        );
+    final shouldResume = await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        fullscreenDialog: true,
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (_, _, _) => _FullscreenYouTubePlayer(
+          title: widget.title,
+          session: _session,
+          playOnOpen: wasPlaying,
+        ),
+        transitionsBuilder: (_, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
 
     if (!mounted) return;
     if (shouldResume ?? false) {
@@ -415,7 +413,7 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
 
     final thumb = widget.thumbnailUrl.isNotEmpty
         ? widget.thumbnailUrl
-        : 'https://img.youtube.com/vi/${widget.videoId}/mqdefault.jpg';
+        : 'https://img.youtube.com/vi/${widget.videoId}/hqdefault.jpg';
 
     return Positioned(
       left: _dx,
@@ -467,10 +465,14 @@ class _FloatingYouTubePlayerState extends State<_FloatingYouTubePlayer> {
                     behavior: HitTestBehavior.translucent,
                     onPanUpdate: (details) {
                       setState(() {
-                        _dx = (_dx + details.delta.dx)
-                            .clamp(0.0, size.width - _playerW);
-                        _dy = (_dy + details.delta.dy)
-                            .clamp(0.0, size.height - _playerH);
+                        _dx = (_dx + details.delta.dx).clamp(
+                          0.0,
+                          size.width - _playerW,
+                        );
+                        _dy = (_dy + details.delta.dy).clamp(
+                          0.0,
+                          size.height - _playerH,
+                        );
                       });
                     },
                     child: Container(
@@ -558,7 +560,8 @@ class _NativeYouTubePlayerScreen extends StatefulWidget {
       _NativeYouTubePlayerScreenState();
 }
 
-class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> {
+class _NativeYouTubePlayerScreenState
+    extends State<_NativeYouTubePlayerScreen> {
   ChewieController? _chewieCtrl;
   bool _loading = true;
   bool _hasError = false;
@@ -570,7 +573,7 @@ class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> 
     super.initState();
     _bindPlayer(playOnOpen: widget.playOnOpen);
   }
-  
+
   Future<void> _applySystemUiMode() async {
     await SystemChrome.setEnabledSystemUIMode(
       _isLandscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
@@ -700,7 +703,8 @@ class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> 
                     quality.label == widget.session.selectedQuality?.label
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_off_rounded,
-                    color: quality.label == widget.session.selectedQuality?.label
+                    color:
+                        quality.label == widget.session.selectedQuality?.label
                         ? AppTheme.primaryBlue
                         : Colors.white70,
                   ),
@@ -782,7 +786,7 @@ class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> 
   void _closePlayer() {
     Navigator.of(context).pop(widget.session.isPlaying);
   }
-  
+
   Widget _buildPlayerViewport() {
     final controller = widget.session.videoController;
     final rawAspectRatio = controller?.value.aspectRatio ?? 0;
@@ -819,10 +823,7 @@ class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> 
       right: 8,
       child: Row(
         children: [
-          _MiniBtn(
-            icon: Icons.arrow_back_rounded,
-            onTap: _closePlayer,
-          ),
+          _MiniBtn(icon: Icons.arrow_back_rounded, onTap: _closePlayer),
           const Spacer(),
           if (widget.session.qualityOptions.length > 1)
             GestureDetector(
@@ -922,9 +923,7 @@ class _NativeYouTubePlayerScreenState extends State<_NativeYouTubePlayerScreen> 
                 ],
               ),
         body: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.red),
-              )
+            ? const Center(child: CircularProgressIndicator(color: Colors.red))
             : _hasError || _chewieCtrl == null
             ? _buildErrorState(context)
             : Stack(

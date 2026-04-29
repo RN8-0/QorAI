@@ -146,7 +146,7 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
       ),
       body: threadAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
+        error: (error, stackTrace) => Center(
           child: Text(
             'Sohbet yüklenemedi.',
             style: TextStyle(color: context.textSecondary),

@@ -13,10 +13,7 @@ LocalizedProductKey _detailLocalizedProductKey(
       (ref.read(localeProvider)?.languageCode ??
               Localizations.localeOf(context).languageCode)
           .toLowerCase();
-  return LocalizedProductKey(
-    productId: product.id,
-    languageCode: languageCode,
-  );
+  return LocalizedProductKey(productId: product.id, languageCode: languageCode);
 }
 
 Future<void> _requestDetailAiMatch(
@@ -98,43 +95,26 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     final thumbCacheWidth = (56 * dpr).round().clamp(84, 180);
     final heroCacheWidth = (220 * dpr).round().clamp(280, 720);
-    final cacheKey = _detailLocalizedProductKey(ref, context, widget.product);
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
-    final isPremium = ref.watch(
-      subscriptionServiceProvider.select((service) => service.isPremium),
-    );
-    final detailMatchCost = ref.watch(
-      subscriptionServiceProvider.select(
-        (service) => service.creditCostForFeature('detail_match'),
-      ),
-    );
-    final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
-    final showHeroAiAction =
-        (userProfile?.quizCompleted ?? false) &&
-        !isPremium &&
-        !matchAsync.isLoading &&
-        matchAsync.valueOrNull == null;
-    final heroBottomActionSpace = showHeroAiAction ? 42.0 : 0.0;
+    const heroBottomActionSpace = 0.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final imageBg = isDark ? Colors.white : Colors.white;
 
     final hasOverflowImages = allImages.length > 4;
-    final heroBaseHeight = hasOverflowImages ? 308.0 : 280.0;
+    final heroBaseHeight = hasOverflowImages ? 260.0 : 238.0;
 
     return SliverToBoxAdapter(
       child: Container(
         height: heroBaseHeight + heroBottomActionSpace,
         decoration: BoxDecoration(
           color: imageBg,
-          gradient: isDark ? null : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFFF8FAFC),
-              Colors.white,
-            ],
-          ),
+          gradient: isDark
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [const Color(0xFFF8FAFC), Colors.white],
+                ),
         ),
         child: Stack(
           children: [
@@ -193,52 +173,80 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                 },
                                 blendMode: BlendMode.dstIn,
                                 child: SingleChildScrollView(
-                                child: Column(
-                                  children: List.generate(allImages.length.clamp(0, 8), (i) {
-                                    final isSelected = _selectedIndex == i;
-                                    return GestureDetector(
-                                      onTap: () => setState(() => _selectedIndex = i),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        margin: const EdgeInsets.only(bottom: 8),
-                                        width: 56,
-                                        height: 56,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? AppTheme.primaryBlue
-                                                : context.textTertiaryColor,
-                                            width: isSelected ? 2 : 1,
+                                  child: Column(
+                                    children: List.generate(
+                                      allImages.length.clamp(0, 8),
+                                      (i) {
+                                        final isSelected = _selectedIndex == i;
+                                        return GestureDetector(
+                                          onTap: () => setState(
+                                            () => _selectedIndex = i,
                                           ),
-                                          color: isSelected
-                                              ? AppTheme.primaryBlue.withValues(alpha: 0.06)
-                                              : imageBg,
-                                          boxShadow: isSelected
-                                              ? [
-                                                  BoxShadow(
-                                                    color: AppTheme.primaryBlue.withValues(alpha: 0.14),
-                                                    blurRadius: 4,
-                                                  ),
-                                                ]
-                                              : null,
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(9),
-                                          child: CachedNetworkImage(
-                                            imageUrl: allImages[i],
-                                            fit: BoxFit.contain,
-                                            memCacheWidth: thumbCacheWidth,
-                                            maxWidthDiskCache: thumbCacheWidth,
-                                            fadeInDuration: const Duration(milliseconds: 80),
-                                            placeholder: (_, _) => const ColoredBox(color: Color(0xFFF1F5F9)),
-                                            errorWidget: (_, _, _) => const Icon(Icons.image_not_supported_outlined, color: AppTheme.slate600, size: 20),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            margin: const EdgeInsets.only(
+                                              bottom: 8,
+                                            ),
+                                            width: 56,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? AppTheme.primaryBlue
+                                                    : context.textTertiaryColor,
+                                                width: isSelected ? 2 : 1,
+                                              ),
+                                              color: isSelected
+                                                  ? AppTheme.primaryBlue
+                                                        .withValues(alpha: 0.06)
+                                                  : imageBg,
+                                              boxShadow: isSelected
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: AppTheme
+                                                            .primaryBlue
+                                                            .withValues(
+                                                              alpha: 0.14,
+                                                            ),
+                                                        blurRadius: 4,
+                                                      ),
+                                                    ]
+                                                  : null,
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                              child: CachedNetworkImage(
+                                                imageUrl: allImages[i],
+                                                fit: BoxFit.contain,
+                                                memCacheWidth: thumbCacheWidth,
+                                                maxWidthDiskCache:
+                                                    thumbCacheWidth,
+                                                fadeInDuration: const Duration(
+                                                  milliseconds: 80,
+                                                ),
+                                                placeholder: (_, _) =>
+                                                    const ColoredBox(
+                                                      color: Color(0xFFF1F5F9),
+                                                    ),
+                                                errorWidget: (_, _, _) =>
+                                                    const Icon(
+                                                      Icons
+                                                          .image_not_supported_outlined,
+                                                      color: AppTheme.slate600,
+                                                      size: 20,
+                                                    ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                       ),
@@ -247,22 +255,36 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                   // RIGHT — main selected image
                   Expanded(
                     child: GestureDetector(
-                      onTap: allImages.isNotEmpty ? () {
-                        Navigator.of(context).push(PageRouteBuilder(
-                          opaque: false,
-                          barrierColor: Colors.black87,
-                          pageBuilder: (context, animation, secondaryAnimation) {
-                            return _FullScreenImageViewer(
-                              images: allImages,
-                              initialIndex: _selectedIndex,
-                              animation: animation,
-                            );
-                          },
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return FadeTransition(opacity: animation, child: child);
-                          },
-                        ));
-                      } : null,
+                      onTap: allImages.isNotEmpty
+                          ? () {
+                              Navigator.of(context).push(
+                                PageRouteBuilder(
+                                  opaque: false,
+                                  barrierColor: Colors.black87,
+                                  pageBuilder:
+                                      (context, animation, secondaryAnimation) {
+                                        return _FullScreenImageViewer(
+                                          images: allImages,
+                                          initialIndex: _selectedIndex,
+                                          animation: animation,
+                                        );
+                                      },
+                                  transitionsBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                        child,
+                                      ) {
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: child,
+                                        );
+                                      },
+                                ),
+                              );
+                            }
+                          : null,
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
                           4,
@@ -271,23 +293,35 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                           16 + heroBottomActionSpace,
                         ),
                         child: allImages.isEmpty
-                            ? Center(child: _CategoryEmoji(cat: widget.product.categoryId))
+                            ? Center(
+                                child: _CategoryEmoji(
+                                  cat: widget.product.categoryId,
+                                ),
+                              )
                             : Hero(
-                                tag: 'product_image_${widget.product.id}_$_selectedIndex',
+                                tag:
+                                    'product_image_${widget.product.id}_$_selectedIndex',
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 220),
                                   transitionBuilder: (child, anim) =>
-                                      FadeTransition(opacity: anim, child: child),
+                                      FadeTransition(
+                                        opacity: anim,
+                                        child: child,
+                                      ),
                                   child: CachedNetworkImage(
                                     key: ValueKey(_selectedIndex),
                                     imageUrl: allImages[_selectedIndex],
                                     fit: BoxFit.contain,
                                     memCacheWidth: heroCacheWidth,
                                     maxWidthDiskCache: heroCacheWidth,
-                                    fadeInDuration: const Duration(milliseconds: 120),
-                                    placeholder: (_, _) => const ColoredBox(color: Colors.white),
-                                    errorWidget: (_, _, _) =>
-                                        _CategoryEmoji(cat: widget.product.categoryId),
+                                    fadeInDuration: const Duration(
+                                      milliseconds: 120,
+                                    ),
+                                    placeholder: (_, _) =>
+                                        const ColoredBox(color: Colors.white),
+                                    errorWidget: (_, _, _) => _CategoryEmoji(
+                                      cat: widget.product.categoryId,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -297,16 +331,6 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                 ],
               ),
             ),
-            if (showHeroAiAction)
-              Positioned(
-                right: 18,
-                bottom: 14,
-                child: _HeroAiMatchTrigger(
-                  amount: detailMatchCost,
-                  onTap: () => _requestDetailAiMatch(context, ref, widget.product),
-                ),
-              ),
-
           ],
         ),
       ),
@@ -388,7 +412,15 @@ class _HeroScoreBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceColor,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: (isDark ? Colors.black : Colors.black12).withValues(alpha: isDark ? 0.3 : 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.black12).withValues(
+              alpha: isDark ? 0.3 : 0.06,
+            ),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
         border: Border.all(color: AppTheme.primaryBlue, width: 2.5),
       ),
       child: Stack(
@@ -401,7 +433,9 @@ class _HeroScoreBadge extends StatelessWidget {
               value: score / 100,
               strokeWidth: 3,
               backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.15),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.primaryBlue,
+              ),
             ),
           ),
           Column(
@@ -409,7 +443,12 @@ class _HeroScoreBadge extends StatelessWidget {
             children: [
               Text(
                 '$score',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryBlue, height: 1.0),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.primaryBlue,
+                  height: 1.0,
+                ),
               ),
             ],
           ),

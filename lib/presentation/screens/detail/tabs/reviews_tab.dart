@@ -142,7 +142,7 @@ class _YouTubeReviewsCardState extends ConsumerState<_YouTubeReviewsCard> {
           title: title,
           thumbnailUrl: thumbnailUrl.isNotEmpty
               ? thumbnailUrl
-              : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+              : 'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
           onClose: _closePiP,
         ),
       );

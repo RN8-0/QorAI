@@ -2,6 +2,35 @@
 
 enum _AiPanelType { deepAnalysis, alternatives, advisor, prediction }
 
+String _previewTabLabel(BuildContext context) {
+  switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
+    case 'tr':
+      return 'Önizleme';
+    case 'de':
+      return 'Vorschau';
+    case 'fr':
+      return 'Aperçu';
+    case 'es':
+      return 'Vista previa';
+    case 'it':
+      return 'Anteprima';
+    case 'pt':
+      return 'Prévia';
+    case 'ar':
+      return 'معاينة';
+    case 'ja':
+      return 'プレビュー';
+    case 'nl':
+      return 'Voorbeeld';
+    case 'pl':
+      return 'Podgląd';
+    case 'sv':
+      return 'Förhandsvisning';
+    default:
+      return 'Preview';
+  }
+}
+
 class _SpecComparisonView extends ConsumerStatefulWidget {
   final List<ProductEntity> products;
   final VoidCallback onReset;
@@ -85,7 +114,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
           title: title,
           thumbnailUrl: thumbnailUrl.isNotEmpty
               ? thumbnailUrl
-              : 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+              : 'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
           onClose: _closePiP,
         ),
       );
@@ -1070,8 +1099,8 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
         .join('\n');
 
     final prompt =
-        '''You are a tech expert. The user is comparing: $productNames in category "$category".
-  Suggest 3-5 alternative product CLASSES or well-known market options they should also consider. Address the user directly using "you/your". ALL text in $langName.
+        '''You are Qor AI's market-aware comparison advisor. The user is comparing: $productNames in category "$category".
+    Suggest 3-5 realistic alternatives that are technically compatible with the same buying intent, segment, and category. Address the user directly using "you/your". ALL text in $langName.
 
   Compared products:
   $comparedSummary
@@ -1082,7 +1111,7 @@ Return ONLY valid JSON:
     {
       "name": "Product Name",
       "brand": "Brand",
-      "why_better": "1 sentence why this is worth considering for you",
+      "why_better": "2-3 sentence reason with concrete trade-offs and where it beats the compared set",
       "price_range": "approx price range",
       "score": 0-100
     }
@@ -1099,6 +1128,9 @@ Return ONLY valid JSON:
           '$prompt\n'
           'Quality constraints:\n'
           '- why_better must be 2-3 sentences with category-specific detail.\n'
+          '- Alternatives must be in the same category and practical buying tier unless you explicitly call out a step-up/step-down trade-off.\n'
+          '- Prefer alternatives that are likely to exist in current market discussions, not imaginary products.\n'
+          '- Explain compatibility with the user intent and compared products using concrete specs, price tier, thermals/build/size/feature deltas where relevant.\n'
           '- Do not claim a specific model is available in the app unless it is already in the compared product names.\n'
           '- If you name a market alternative, phrase it as "look for" or "consider the class" rather than pretending it is in stock.\n'
           '- Do not recommend absurd tier jumps; alternatives should stay close to the compared product segment unless you explain the trade-off.\n'
@@ -1198,7 +1230,7 @@ Return ONLY valid JSON, no markdown, no explanation:
         .join(',\n    ');
 
     final prompt =
-        '''You are a tech price analyst. Predict price trends for ALL of the following products. Address the user as "you/your". ALL text in $langName. Current year: ${DateTime.now().year}.
+        '''You are Qor AI's market and price-cycle analyst. Predict price trends for ALL of the following products using current web-search knowledge, release cadence, segment competition, historical category depreciation, and visible product specs. Address the user as "you/your". ALL text in $langName. Current year: ${DateTime.now().year}.
 
 Products (you MUST analyze ALL ${widget.products.length}):
 $productLines
@@ -1217,6 +1249,8 @@ Rules:
 - You MUST include all ${widget.products.length} products, one entry per product in the same order as listed above
 - Use the brand, release timing, category replacement cycle, price tier, and key specs to differentiate similar models
 - Explain the concrete product-specific trigger behind the prediction
+- If exact live price history is unavailable, say so inside reason and base the forecast on release timing, comparable model behavior, stock/availability pressure, and category refresh cycles
+- Confidence must be lower when price/history evidence is weak
 - Do NOT give identical trend, change_percent, or best_time_to_buy values to multiple products unless their inputs are effectively the same''';
 
     await _runAiPanelRequest(
@@ -4055,12 +4089,10 @@ Rules:
 
   Widget _buildAlternativesVisual() {
     final data = _alternativesStructured!;
-    final alternatives = List<Map<String, dynamic>>.from(
-      (data['alternatives'] as List<dynamic>?)?.map(
-            (e) => e as Map<String, dynamic>,
-          ) ??
-          [],
-    );
+    final alternatives = (data['alternatives'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
     if (alternatives.isEmpty) {
       return _buildAiError(() {
         setState(() {
@@ -4075,6 +4107,10 @@ Rules:
     return Column(
       children: alternatives.map((alt) {
         final score = (alt['score'] as num?)?.toDouble() ?? 0;
+        final name = (alt['name'] as String? ?? '').trim();
+        final brand = (alt['brand'] as String? ?? '').trim();
+        final priceRange = (alt['price_range'] as String? ?? '').trim();
+        final whyBetter = (alt['why_better'] as String? ?? '').trim();
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
@@ -4089,6 +4125,7 @@ Rules:
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -4114,52 +4151,78 @@ Rules:
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ExpandableText(
-                          alt['name'] as String? ?? '',
+                          name,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: context.textPrimary,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                         ),
-                        if (alt['brand'] != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            (alt['brand'] as String).toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: context.textTertiaryColor,
-                              letterSpacing: 0.5,
-                            ),
+                        if (brand.isNotEmpty || priceRange.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (brand.isNotEmpty)
+                                Text(
+                                  brand.toUpperCase(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.textTertiaryColor,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              if (priceRange.isNotEmpty)
+                                Container(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 220,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: context.surfaceColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.payments_outlined,
+                                        size: 13,
+                                        color: context.textTertiaryColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          priceRange,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (alt['price_range'] != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.surfaceColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '💰 ${alt['price_range']}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary,
-                        ),
-                      ),
-                    ),
                 ],
               ),
-              if (alt['why_better'] != null) ...[
-                const SizedBox(height: 8),
+              if (whyBetter.isNotEmpty) ...[
+                const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -4171,13 +4234,13 @@ Rules:
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: ExpandableText(
-                    alt['why_better'] as String,
+                    whyBetter,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       color: context.textPrimary,
-                      height: 1.4,
+                      height: 1.45,
                     ),
-                    maxLines: 2,
+                    maxLines: 4,
                   ),
                 ),
               ],
@@ -5292,7 +5355,7 @@ Rules:
                       ),
                       tabs: [
                         Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                        Tab(text: context.l10n?.reviews ?? 'Reviews'),
+                        Tab(text: _previewTabLabel(context)),
                         Tab(text: context.l10n?.similarTab ?? 'Similar'),
                         Tab(text: context.l10n?.proTab ?? 'Premium'),
                       ],
@@ -6969,6 +7032,7 @@ Rules:
     } else {
       resolvedDisplayName = 'Anonymous';
     }
+    final authorPhotoUrl = (user?.photoURL ?? '').trim();
     final textController = TextEditingController();
 
     showDialog(
@@ -7003,6 +7067,8 @@ Rules:
                           'docKey': docKey,
                           'userId': userId,
                           'displayName': resolvedDisplayName,
+                          if (authorPhotoUrl.isNotEmpty)
+                            'authorPhotoURL': authorPhotoUrl,
                           'reviewText': textController.text.trim(),
                           'timestamp': DateTime.now().toUtc().toIso8601String(),
                           'productIds': productIds,
