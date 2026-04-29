@@ -873,6 +873,47 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     return w - _estimatedPower;
   }
 
+  double _estimatedPowerWithCandidate(
+    PcComponent component,
+    ProductEntity candidate,
+  ) {
+    final current = _selected[component];
+    final currentPower = current == null
+        ? 0.0
+        : (_Compat.tdp(current) ?? component.defaultTdp);
+    final candidatePower = _Compat.tdp(candidate) ?? component.defaultTdp;
+    return _estimatedPower - currentPower + candidatePower;
+  }
+
+  bool _isBalancedGpuUpgrade(ProductEntity candidate) {
+    final cpu = _selected[PcComponent.cpu];
+    final currentGpu = _selected[PcComponent.gpu];
+    if (cpu != null) {
+      final maxReasonableGpuScore = cpu.techScore + 22;
+      if (candidate.techScore > maxReasonableGpuScore) return false;
+    }
+    final psu = _selected[PcComponent.psu];
+    final psuWatt = _psuWattage;
+    final gpuRecommended = _Compat.recommendedSystemPower(candidate) ?? 0.0;
+    if (psuWatt == null && gpuRecommended >= 650) return false;
+    if (psuWatt != null) {
+      final predictedPower = _estimatedPowerWithCandidate(
+        PcComponent.gpu,
+        candidate,
+      );
+      final required = max(predictedPower + 120, gpuRecommended);
+      if (psuWatt < required) return false;
+    }
+    if (_Compat.gpuNeedsModernPsu(candidate) &&
+        (psu == null || !_Compat.psuSupportsModernGpu(psu))) {
+      return false;
+    }
+    if (currentGpu != null && candidate.techScore - currentGpu.techScore > 45) {
+      return false;
+    }
+    return true;
+  }
+
   // ignore: unused_element
   String? get _selectedFormFactor {
     final mb = _selected[PcComponent.motherboard];
@@ -1030,6 +1071,7 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         return mem != null &&
             (mem.contains(memTypeTarget) || memTypeTarget.contains(mem));
       case PcComponent.gpu:
+        if (!_isBalancedGpuUpgrade(candidate)) return false;
         final gpuLength = _Compat.gpuLengthMm(candidate);
         final caseLimit = selectedCase == null
             ? null
@@ -1147,17 +1189,24 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
     final current = _selected[component];
     if (current == null) return const [];
 
-    // Only need top-scored candidates — load first page sorted by techScore desc.
-    // Avoids getAllProductsInCategoryTs (which fetches 1000s of items for 8+ sec).
+    // Scan a bounded ranked window. One page is not enough for balanced builds:
+    // a Ryzen 5 / RX 5500 XT build should see RTX 3060/4060-class options, not
+    // only the first page full of RTX 5090-class cards.
     final ds = ref.read(pbDataSourceProvider);
-    final (:products, hasMore: _, nextPage: _, totalFound: _) = await ds
-        .getProductsPageTs(
-          category: component.categoryId,
-          limit: 30,
-          page: 1,
-          sortBy: 'techScore:desc',
-        );
-    final pool = products.cast<ProductEntity>();
+    final pool = <ProductEntity>[];
+    var page = 1;
+    var hasMore = true;
+    while (hasMore && page <= 5 && pool.length < 300) {
+      final result = await ds.getProductsPageTs(
+        category: component.categoryId,
+        limit: 60,
+        page: page,
+        sortBy: 'techScore:desc',
+      );
+      pool.addAll(result.products.cast<ProductEntity>());
+      hasMore = result.hasMore;
+      page = result.nextPage;
+    }
     final candidates =
         pool
             .where((p) => p.id != current.id)
@@ -1804,6 +1853,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
         '3. If any incompatibility exists (socket mismatch, DDR4/DDR5 conflict, PSU too weak, case size mismatch), you MUST flag it in WEAKNESSES and RECOMMENDATIONS as a critical error.',
       );
       buf.writeln(
+        '3B. Never recommend an upgrade that violates the current PSU wattage, GPU power connector, case clearance, socket, memory generation, or CPU/GPU balance. Do not suggest ultra GPUs for entry or mid-range CPUs unless the PSU and platform are also upgraded.',
+      );
+      buf.writeln(
         '4. Write detailed but efficient analysis. Each bullet can use up to 28 words and may include one short supporting clause.',
       );
       buf.writeln(
@@ -1811,6 +1863,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
       );
       buf.writeln(
         '6. Mention exact component names when a recommendation depends on a specific bottleneck or incompatibility.',
+      );
+      buf.writeln(
+        '7. For replacement recommendations, use ONLY the products listed under COMPATIBLE UPGRADE CANDIDATES. If that section is empty, describe the upgrade class without naming a specific model.',
       );
       buf.writeln();
       buf.writeln('=== BUILD COMPONENTS ===');
@@ -1946,7 +2001,9 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
           );
         }
       } else {
-        buf.writeln('- [Best upgrade direction for this build with reason]');
+        buf.writeln(
+          '- [Best realistic upgrade direction for this build. If no compatible part candidate was provided, explain the platform/PSU constraint instead of naming an extreme part.]',
+        );
       }
       buf.writeln();
       buf.writeln(
@@ -2552,16 +2609,28 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                     ),
                   ),
                   if (!_aiLoading && _aiAnalysis == null)
-                    Container(
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.brandDeepBlue, AppTheme.brandCyan],
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.brandDeepBlue,
+                            AppTheme.brandBlue,
+                            AppTheme.brandCyan,
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.brandCyan.withValues(alpha: 0.22),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -2576,34 +2645,51 @@ class _PcBuilderScreenState extends ConsumerState<PcBuilderScreen>
                           ),
                           if (!ref.watch(premiumProvider)) ...[
                             const SizedBox(width: 8),
-                            QorAmountBadge(
+                            QorInlineCost(
                               amount: ref
                                   .read(subscriptionServiceProvider)
                                   .creditCostForFeature('pc_builder_ai'),
                               color: Colors.white,
-                              fontSize: 10,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            QorBalanceBadge(
-                              remaining: ref
-                                  .read(subscriptionServiceProvider)
-                                  .remainingDailyCredits,
-                              total: ref
-                                  .read(subscriptionServiceProvider)
-                                  .totalDailyCredits,
-                              unlimited: false,
-                              color: Colors.white,
-                              fontSize: 9,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
+                              iconSize: 16,
+                              fontSize: 11,
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                  if (_aiLoading)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandCyan.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppTheme.brandCyan.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.brandCyan,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _pcText(context, en: 'Analyzing', tr: 'Analiz'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.brandCyan,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -5670,14 +5756,28 @@ class _ComponentPickerPageState extends ConsumerState<_ComponentPickerPage> {
     PcPickerState pickerState,
   ) {
     final f = _applyFilters(allProducts);
+    final hasCompat =
+        widget.socketFilter != null ||
+        widget.memTypeFilter != null ||
+        widget.formFactorFilter != null ||
+        _hasAdditionalCompatFilters;
+    final isCompatCause = hasCompat && _compatOnly;
+    final desiredCompatItems = widget.component == PcComponent.motherboard
+        ? 90
+        : 30;
+    if (isCompatCause &&
+        f.length < desiredCompatItems &&
+        pickerState.hasMore &&
+        !pickerState.isLoadingMore) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(pcPickerProvider(widget.component.categoryId).notifier)
+            .loadMore();
+      });
+    }
     if (f.isEmpty) {
       // Check if compat filter is hiding everything
-      final hasCompat =
-          widget.socketFilter != null ||
-          widget.memTypeFilter != null ||
-          widget.formFactorFilter != null ||
-          _hasAdditionalCompatFilters;
-      final isCompatCause = hasCompat && _compatOnly;
       if (isCompatCause && pickerState.hasMore && !pickerState.isLoadingMore) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;

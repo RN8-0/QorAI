@@ -102,6 +102,43 @@ class QorBalanceBadge extends StatelessWidget {
   }
 }
 
+class QorInlineCost extends StatelessWidget {
+  final num amount;
+  final Color color;
+  final double iconSize;
+  final double fontSize;
+
+  const QorInlineCost({
+    super.key,
+    required this.amount,
+    required this.color,
+    this.iconSize = 16,
+    this.fontSize = 11,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = amount % 1 == 0
+        ? amount.toInt().toString()
+        : amount.toString();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _QCoinIcon(size: iconSize, color: color),
+        const SizedBox(width: 4),
+        Text(
+          normalized,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _QCoinIcon extends StatelessWidget {
   final double size;
   final Color color;
@@ -133,9 +170,7 @@ class _QCoinIcon extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.all(size * 0.18),
-        child: CustomPaint(
-          painter: _QGlyphPainter(),
-        ),
+        child: CustomPaint(painter: _QGlyphPainter()),
       ),
     );
   }
