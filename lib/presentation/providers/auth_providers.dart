@@ -38,7 +38,9 @@ final countryInitProvider = FutureProvider<void>((ref) async {
             'country': location.countryCode,
             'currency': location.currency,
           };
-          if (user.language == 'en' && locale != null && locale.languageCode != 'en') {
+          if (user.language == 'en' &&
+              locale != null &&
+              locale.languageCode != 'en') {
             updates['language'] = locale.languageCode;
           }
           await ref.read(pbDataSourceProvider).updateUser(uid, updates);
@@ -52,8 +54,7 @@ final countryInitProvider = FutureProvider<void>((ref) async {
 // ─── NOTIFICATION PROVIDERS ─── (StreamProvider)
 // ════════════════════════════════════════════════════
 
-final notificationsProvider =
-    StreamProvider<List<Map<String, dynamic>>>((ref) {
+final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   ref.keepAlive(); // keep stream alive globally for realtime push notifications
   // Use select so provider only rebuilds when the UID itself changes (not on
   // every authStore.save() that preserves the same UID).
@@ -67,3 +68,9 @@ final unreadNotificationCountProvider = Provider<int>((ref) {
   return notifs.where((n) => n['read'] != true).length;
 });
 
+/// Stream a single support_messages record by ID for real-time chat updates
+final supportThreadProvider =
+    StreamProvider.family<Map<String, dynamic>?, String>((ref, messageId) {
+      if (messageId.isEmpty) return Stream.value(null);
+      return ref.read(pbDataSourceProvider).watchSupportThread(messageId);
+    });

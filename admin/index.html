@@ -788,6 +788,7 @@
               <option value="replied">Yanıtlandı</option>
             </select>
             <button class="btn btn-ghost" onclick="loadSupportMessages()">Yenile</button>
+            <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Tüm yanıtlanmış mesajları sil">🗑 Yanıtlananları Sil</button>
           </div>
         </div>
         <div class="card">
@@ -797,11 +798,10 @@
         </div>
       </section>
 
-      <!-- Support Reply Modal -->
-      <div id="supportModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeSupportModal()">
-        <div class="modal-box modal-lg">
-          <div class="modal-head"><h2 id="supportModalTitle">Destek Mesajı</h2><button class="modal-x" onclick="closeSupportModal()">✕</button></div>
-          <div class="modal-body" id="supportModalBody"></div>
+      <div id="supportChatModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)_closeSupportChatModal()">
+        <div class="modal-box modal-lg" style="max-width:640px">
+          <div class="modal-head"><h2 id="supportChatModalTitle">Sohbet</h2><button class="modal-x" onclick="_closeSupportChatModal()">✕</button></div>
+          <div class="modal-body" id="supportChatModalBody"></div>
         </div>
       </div>
 

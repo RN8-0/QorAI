@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/screens/notifications/support_chat_screen.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -20,8 +21,11 @@ class NotificationsScreen extends ConsumerWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: context.textPrimary, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: context.textPrimary,
+            size: 20,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -37,13 +41,9 @@ class NotificationsScreen extends ConsumerWidget {
           if (notifs.any((n) => n['read'] != true))
             TextButton(
               onPressed: () {
-                final uid = ref
-                    .read(authStateProvider)
-                    .valueOrNull;
+                final uid = ref.read(authStateProvider).valueOrNull;
                 if (uid != null) {
-                  ref
-                      .read(pbDataSourceProvider)
-                      .markAllNotificationsRead(uid);
+                  ref.read(pbDataSourceProvider).markAllNotificationsRead(uid);
                 }
               },
               child: Text(
@@ -90,8 +90,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_rounded,
-              size: 64, color: context.textTertiaryColor),
+          Icon(
+            Icons.notifications_none_rounded,
+            size: 64,
+            color: context.textTertiaryColor,
+          ),
           const SizedBox(height: 16),
           Text(
             'No notifications yet',
@@ -104,10 +107,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Admin mesajlari ve destek yanitlari burada gorunur',
-            style: TextStyle(
-              fontSize: 13,
-              color: context.textTertiaryColor,
-            ),
+            style: TextStyle(fontSize: 13, color: context.textTertiaryColor),
           ),
         ],
       ),
@@ -115,12 +115,20 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends ConsumerWidget {
+class _NotificationTile extends ConsumerStatefulWidget {
   final Map<String, dynamic> notif;
   const _NotificationTile({required this.notif});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_NotificationTile> createState() => _NotificationTileState();
+}
+
+class _NotificationTileState extends ConsumerState<_NotificationTile> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final notif = widget.notif;
     final isRead = notif['read'] == true;
     final title = notif['title'] as String? ?? '';
     final body = notif['body'] as String? ?? '';
@@ -128,7 +136,13 @@ class _NotificationTile extends ConsumerWidget {
     final created = notif['created'] as String? ?? '';
     final id = notif['id'] as String? ?? '';
     final notifType = notif['type'] as String? ?? '';
-    final canReply = notifType == 'support_reply';
+    final referenceId = notif['referenceId']?.toString() ?? '';
+
+    // Chat-like types navigate to chat screen
+    final isChatType =
+        notifType == 'admin_message' ||
+        notifType == 'support_reply' ||
+        notifType == 'system';
 
     DateTime? createdAt;
     try {
@@ -136,6 +150,19 @@ class _NotificationTile extends ConsumerWidget {
     } catch (_) {}
 
     final timeText = createdAt != null ? _formatTimeAgo(createdAt) : '';
+
+    IconData iconData;
+    Color iconColor;
+    if (isChatType) {
+      iconData = Icons.support_agent_rounded;
+      iconColor = AppTheme.primaryBlue;
+    } else if (notifType == 'compare_reply') {
+      iconData = Icons.compare_arrows_rounded;
+      iconColor = AppTheme.accentCyan;
+    } else {
+      iconData = Icons.notifications_rounded;
+      iconColor = isRead ? context.textTertiaryColor : AppTheme.primaryBlue;
+    }
 
     return Material(
       color: isRead
@@ -147,8 +174,24 @@ class _NotificationTile extends ConsumerWidget {
           if (!isRead) {
             ref.read(pbDataSourceProvider).markNotificationRead(id);
           }
-          if (notifType == 'compare_reply') {
+          if (isChatType && referenceId.isNotEmpty) {
+            // Remove support_ prefix if present
+            final cleanId = referenceId.startsWith('support_')
+                ? referenceId.substring(8)
+                : referenceId;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SupportChatScreen(
+                  supportMessageId: cleanId,
+                  initialTitle: title,
+                ),
+              ),
+            );
+          } else if (notifType == 'compare_reply') {
             context.go('/compare');
+          } else {
+            // Expand/collapse to show full body
+            setState(() => _expanded = !_expanded);
           }
         },
         borderRadius: BorderRadius.circular(12),
@@ -166,11 +209,7 @@ class _NotificationTile extends ConsumerWidget {
                       : AppTheme.primaryBlue.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.reply_rounded,
-                  size: 20,
-                  color: isRead ? context.textTertiaryColor : AppTheme.primaryBlue,
-                ),
+                child: Icon(iconData, size: 20, color: iconColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -178,42 +217,72 @@ class _NotificationTile extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
                             title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: _expanded ? null : 1,
+                            overflow: _expanded
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight:
-                                  isRead ? FontWeight.w500 : FontWeight.w700,
+                              fontWeight: isRead
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
                               color: context.textPrimary,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         if (!isRead)
                           Container(
                             width: 8,
                             height: 8,
+                            margin: const EdgeInsets.only(top: 4),
                             decoration: BoxDecoration(
                               color: AppTheme.primaryBlue,
                               shape: BoxShape.circle,
                             ),
                           ),
+                        if (!isChatType && body.isNotEmpty)
+                          Icon(
+                            _expanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: context.textTertiaryColor,
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: context.textSecondary,
-                        height: 1.3,
+                    if (body.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      AnimatedCrossFade(
+                        duration: const Duration(milliseconds: 200),
+                        crossFadeState: _expanded
+                            ? CrossFadeState.showSecond
+                            : CrossFadeState.showFirst,
+                        firstChild: Text(
+                          body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                        secondChild: Text(
+                          body,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -241,216 +310,36 @@ class _NotificationTile extends ConsumerWidget {
                             ),
                           ),
                         ],
+                        if (isChatType) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Yanıtla →',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    if (canReply) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () => showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                            builder: (_) => _NotificationReplySheet(notif: notif),
-                          ),
-                          icon: const Icon(Icons.reply_rounded, size: 16),
-                          label: const Text('Reply'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.primaryBlue,
-                            padding: const EdgeInsets.symmetric(horizontal: 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            minimumSize: Size.zero,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationReplySheet extends ConsumerStatefulWidget {
-  final Map<String, dynamic> notif;
-
-  const _NotificationReplySheet({required this.notif});
-
-  @override
-  ConsumerState<_NotificationReplySheet> createState() =>
-      _NotificationReplySheetState();
-}
-
-class _NotificationReplySheetState
-    extends ConsumerState<_NotificationReplySheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _messageCtrl;
-  bool _sending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _messageCtrl = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _messageCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final user = ref.read(userProfileProvider).valueOrNull;
-    final authUid = ref.read(authStateProvider).valueOrNull;
-    final authRecord = pb.authStore.record;
-    final displayName =
-        user?.displayName.trim().isNotEmpty == true
-            ? user!.displayName.trim()
-            : (authRecord?.data['displayName']?.toString().trim().isNotEmpty == true
-                ? authRecord!.data['displayName'].toString().trim()
-                : (authRecord?.data['name']?.toString().trim() ?? 'Qor AI User'));
-    final email =
-        user?.email.trim().isNotEmpty == true
-            ? user!.email.trim()
-            : authRecord?.data['email']?.toString().trim();
-
-    if (authUid == null || email == null || email.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hesap bilgileri eksik. Lutfen tekrar giris yapin.')),
-      );
-      return;
-    }
-
-    final referenceId = widget.notif['referenceId']?.toString().trim() ?? '';
-    final title = widget.notif['title']?.toString().trim() ?? 'Bildirim';
-    final replyMessage = StringBuffer()
-      ..writeln('Bildirim yaniti')
-      ..writeln('Baslik: $title');
-    if (referenceId.isNotEmpty) {
-      replyMessage.writeln('Referans: $referenceId');
-    }
-    replyMessage
-      ..writeln()
-      ..write(_messageCtrl.text.trim());
-
-    setState(() => _sending = true);
-    try {
-      await ref.read(pbDataSourceProvider).sendSupportMessage(
-            userId: authUid,
-            displayName: displayName,
-            email: email,
-            message: replyMessage.toString(),
-          );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yanıtın destek ekibine gonderildi.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      final details = error.toString().replaceFirst('ServerException: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gonderim hatasi: $details'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _sending = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final title = widget.notif['title']?.toString().trim() ?? 'Support';
-    final body = widget.notif['body']?.toString().trim() ?? '';
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Reply to Support',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            if (body.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                body,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: context.textSecondary,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _messageCtrl,
-              minLines: 4,
-              maxLines: 6,
-              decoration: const InputDecoration(
-                hintText: 'Write your reply...',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Reply cannot be empty';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _sending ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _sending ? null : _send,
-                    child: Text(_sending ? 'Sending...' : 'Send'),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

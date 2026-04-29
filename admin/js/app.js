@@ -1388,7 +1388,10 @@ function openUserDetail(uid){
         <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'')}</div>
         <div style="font-size:11px;color:${actColor};margin-top:2px">${activityStatus}</div>
       </div>
-      <div>${premiumBadgeHtml(u,true)}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-sm btn-ghost" onclick="openUserSupportChat('${safeUid}')" title="Kullanıcıyla sohbet aç" style="font-size:18px;padding:6px 10px">💬</button>
+        <div>${premiumBadgeHtml(u,true)}</div>
+      </div>
     </div>
     <div class="card" style="margin:0 0 16px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,.16),rgba(59,130,246,.10));border-color:rgba(124,58,237,.18)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
@@ -1864,8 +1867,9 @@ async function loadUserProfile(uid){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Cevapları</div>${renderUserSummaryGrid(onboardingEntries,'Onboarding yanıtları henüz görünmüyor.')}</div>`;
     }
 
-    html+=renderUserSupportHistory(supportMessages);
-  html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📨 Kullanıcıya Ek Mesaj Gönder</div><div style="font-size:12px;color:var(--text2);margin-bottom:10px">Bu alandan kullanıcıya destek mesajı gönderebilirsin. Mesaj, profil geçmişine eklenecek ve bildirim olarak oluşturulacak.</div><textarea class="input" id="userSupportMessage_${safeUid}" rows="4" placeholder="Kullanıcıya gönderilecek mesaj..." style="resize:vertical;width:100%"></textarea><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" id="userSupportSendBtn_${safeUid}" onclick="sendUserSupportMessage('${safeUid}')">Mesajı Gönder</button></div></div>`;
+  html+=renderUserSupportHistory(supportMessages);
+  // Sohbet baloncuğu butonu
+  html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px">💬 Destek Sohbeti</div><div style="font-size:12px;color:var(--text2)">${supportMessages.length > 0 ? supportMessages.length + ' konuşma kaydı' : 'Henüz sohbet yok'}</div></div><button class="btn btn-primary" onclick="openUserSupportChat('${safeUid}')">💬 Sohbet Aç</button></div></div>`;
 
     // Priorities
     const priorities=u.priorities||[];

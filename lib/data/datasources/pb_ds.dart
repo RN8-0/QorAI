@@ -1756,6 +1756,110 @@ class PbDataSource {
   }
 
   // ────────────────────────────────────────────────────────────────────────
+  // ─── SUPPORT CHAT ───
+  // ────────────────────────────────────────────────────────────────────────
+
+  /// Fetch single support_messages record as a map
+  Future<Map<String, dynamic>?> getSupportThread(String messageId) async {
+    try {
+      final record = await _pb.collection('support_messages').getOne(messageId);
+      return {'id': record.id, ...record.data};
+    } catch (e) {
+      debugPrint('[PbDs] getSupportThread error: $e');
+      return null;
+    }
+  }
+
+  /// Watch a single support_messages record for real-time updates
+  Stream<Map<String, dynamic>?> watchSupportThread(String messageId) {
+    return _createRealtimeStream<Map<String, dynamic>?>(
+      collection: 'support_messages',
+      topic: messageId,
+      load: () => getSupportThread(messageId),
+    );
+  }
+
+  /// Append user reply to chatMessages in support_messages record.
+  /// User can only reply when last message in thread is from admin.
+  Future<void> sendSupportChatReply({
+    required String messageId,
+    required String replyText,
+    required String userId,
+  }) async {
+    final trimmed = replyText.trim();
+    if (trimmed.isEmpty) {
+      throw ServerException(message: 'Mesaj boş olamaz.');
+    }
+    try {
+      final record = await _pb.collection('support_messages').getOne(messageId);
+      final banned = record.data['banned'] as bool? ?? false;
+      if (banned) {
+        throw ServerException(message: 'Bu sohbet kapatılmıştır.');
+      }
+
+      // Parse existing chatMessages
+      final rawChatMessages = record.data['chatMessages'];
+      List<Map<String, dynamic>> chatMessages = [];
+      if (rawChatMessages is List) {
+        chatMessages = rawChatMessages.cast<Map<String, dynamic>>();
+      } else if (rawChatMessages is String && rawChatMessages.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawChatMessages);
+          if (decoded is List)
+            chatMessages = decoded.cast<Map<String, dynamic>>();
+        } catch (_) {}
+      }
+
+      // Build thread from existing fields if chatMessages is empty (backwards compat)
+      if (chatMessages.isEmpty) {
+        final status = record.data['status']?.toString() ?? '';
+        final message = record.data['message']?.toString().trim() ?? '';
+        final adminReply = record.data['adminReply']?.toString().trim() ?? '';
+        final created = record.data['created']?.toString() ?? '';
+        final repliedAt = record.data['repliedAt']?.toString() ?? '';
+        if (message.isNotEmpty) {
+          chatMessages.add({
+            'role': status == 'admin_message' ? 'admin' : 'user',
+            'text': message,
+            'ts': created,
+          });
+        }
+        if (adminReply.isNotEmpty) {
+          chatMessages.add({
+            'role': 'admin',
+            'text': adminReply,
+            'ts': repliedAt.isNotEmpty ? repliedAt : created,
+          });
+        }
+      }
+
+      // Check last message is from admin
+      if (chatMessages.isNotEmpty && chatMessages.last['role'] == 'user') {
+        throw ServerException(message: 'Admin yanıt verene kadar bekleyiniz.');
+      }
+
+      chatMessages.add({
+        'role': 'user',
+        'text': trimmed,
+        'ts': DateTime.now().toIso8601String(),
+      });
+
+      await _pb
+          .collection('support_messages')
+          .update(
+            messageId,
+            body: {
+              'chatMessages': jsonEncode(chatMessages),
+              'status': 'replied',
+            },
+          );
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(message: 'Yanıt gönderilemedi: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
   // ─── USER LINKS ───
   // ────────────────────────────────────────────────────────────────────────
 
