@@ -58,6 +58,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late FilterState _state;
   late final List<FilterDefinition> _definitions;
   late final Set<String> _expandedSections;
+  final Map<String, int> _optionLimits = {};
+
+  static const int _initialOptionLimit = 60;
+  static const int _optionLimitStep = 60;
 
   bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
 
@@ -88,7 +92,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         widget.definitions ??
         FilterConfig.getFiltersWithProducts(widget.categoryId, widget.products);
     _expandedSections = {
-      ..._definitions.take(5).map((def) => def.id),
       ..._state.multiSelect.entries
           .where((entry) => entry.value.isNotEmpty)
           .map((entry) => entry.key),
@@ -201,6 +204,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
     return options;
   }
+
+  int _optionLimitFor(String filterId) =>
+      _optionLimits[filterId] ?? _initialOptionLimit;
 
   String _activeSectionSummary(FilterDefinition def) {
     switch (def.type) {
@@ -775,6 +781,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     if (options.isEmpty) return const SizedBox.shrink();
 
     final visibleOptions = _visibleOptions(def);
+    final limit = _optionLimitFor(def.id);
+    final renderedOptions = visibleOptions.take(limit).toList(growable: false);
+    final hasMore = visibleOptions.length > renderedOptions.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,14 +807,12 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: visibleOptions.map((opt) {
+            children: renderedOptions.map((opt) {
               final isSelected = selected.contains(opt.id);
               return GestureDetector(
                 onTap: () => _toggleOption(def.id, opt.id),
                 behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
+                child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 7,
@@ -868,6 +875,26 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               );
             }).toList(),
           ),
+        if (hasMore) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _optionLimits[def.id] = limit + _optionLimitStep;
+                });
+              },
+              icon: const Icon(Icons.expand_more_rounded, size: 18),
+              label: Text(
+                _fallbackText(
+                  en: 'Show more (${visibleOptions.length - renderedOptions.length})',
+                  tr: 'Daha fazla göster (${visibleOptions.length - renderedOptions.length})',
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

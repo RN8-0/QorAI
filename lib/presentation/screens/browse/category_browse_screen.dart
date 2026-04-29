@@ -295,7 +295,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   bool _loading = true;
   bool _fetchingAll = false; // cursor pagination in progress
   bool _remoteSearching = false;
-  bool _hydratingFilterCatalog = false;
+  final bool _hydratingFilterCatalog = false;
   bool _warmingFullFilterCatalog = false;
 
   // Facets — loaded from Typesense API (single fast query)
@@ -448,18 +448,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
       if (entry.key == 'brand') {
         final brandOptions =
-            _filterDefinitions
-                .firstWhere(
-                  (def) => def.id == 'brand',
-                  orElse: () => const FilterDefinition(
-                    id: 'brand',
-                    label: 'Brand',
-                    type: FilterType.multiSelect,
-                    specKeys: [],
-                  ),
-                )
-                .options ??
-            const <FilterOption>[];
+            _typesenseFacets['brand'] ?? const <FilterOption>[];
         final selectedLabels = brandOptions
             .where((option) => selected.contains(option.id))
             .map((option) => option.label.trim())
@@ -826,7 +815,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final facets = await ds.getTypesenseFacets(
         category: _activeCategoryId,
         facets: ['brand', 'filterTokens'],
-        maxFacetValues: 600,
+        maxFacetValues: 220,
       );
       if (!mounted || facets.isEmpty) return;
       setState(() {
@@ -1042,11 +1031,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _loading = false;
         _error = null;
       });
-      // Preload lightweight Typesense facets so filter options come from the
-      // same indexed values that server-side filtering uses.
-      if (!_facetsLoaded) {
-        unawaited(_loadFacets());
-      }
       if (_searchQuery.isNotEmpty ||
           (_filterState.isActive && serverFilterBy == null)) {
         _scheduleVisibleProductsRebuild();
