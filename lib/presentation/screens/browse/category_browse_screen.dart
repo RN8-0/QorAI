@@ -371,7 +371,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
           if (entry.key == 'brand' || coveredFacetKeys.contains(entry.key)) {
             continue;
           }
-          final options = entry.value;
+          if (!_isFacetKeyAllowedForCategory(entry.key)) continue;
+          final options = _facetOptionsForKey(entry.key);
           if (options.isEmpty) continue;
           defs.add(
             FilterDefinition(
@@ -448,7 +449,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     'weight': 'weightValueKg',
   };
 
+  static const Map<String, Set<String>> _categoryRangeAllowList = {
+    'smartphones': {'screen_size', 'battery', 'weight'},
+    'laptops': {'screen_size', 'battery', 'weight'},
+    'tablets': {'screen_size', 'battery', 'weight'},
+    'smartwatches': {'screen_size', 'battery', 'weight'},
+    'tvs': {'screen_size'},
+    'monitors': {'screen_size'},
+    'power_banks': {'battery'},
+    'powerbanks': {'battery'},
+  };
+
   static const Map<String, List<String>> _facetKeyAliases = {
+    'capacity': ['storage'],
     'operating_system': ['os'],
     'os_version': ['os'],
     'screen_technology': ['screen_tech'],
@@ -463,6 +476,124 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     'bluetooth': ['bluetooth_version'],
     'usb': ['usb_type'],
     'waterproof': ['water_resistance'],
+  };
+
+  static const Map<String, Map<String, List<String>>> _categoryFacetAliases = {
+    'ram': {
+      'capacity': ['ram'],
+    },
+    'ssd': {
+      'capacity': ['storage'],
+    },
+    'cpus': {
+      'processor_brand': ['processor_brand'],
+    },
+    'processors': {
+      'processor_brand': ['processor_brand'],
+    },
+    'tvs': {
+      'panel_type': ['screen_tech'],
+      'smart_tv': ['os'],
+    },
+  };
+
+  static const Map<String, Set<String>> _categoryFacetAllowList = {
+    'smartphones': {
+      'ram',
+      'storage',
+      'os',
+      'screen_tech',
+      'refresh_rate',
+      'processor_brand',
+      'gpu_type',
+      'usb_type',
+      'five_g',
+      'nfc',
+      'fingerprint',
+      'fast_charging',
+      'wireless_charging',
+      'water_resistance',
+    },
+    'laptops': {
+      'ram',
+      'storage',
+      'os',
+      'screen_tech',
+      'refresh_rate',
+      'processor_brand',
+      'gpu_type',
+    },
+    'tablets': {
+      'ram',
+      'storage',
+      'os',
+      'screen_tech',
+      'refresh_rate',
+      'processor_brand',
+      'nfc',
+      'water_resistance',
+    },
+    'smartwatches': {
+      'ram',
+      'storage',
+      'os',
+      'screen_tech',
+      'processor_brand',
+      'nfc',
+      'water_resistance',
+    },
+    'tvs': {'ram', 'storage', 'os', 'screen_tech', 'refresh_rate'},
+    'media-players': {'ram', 'storage', 'os', 'processor_brand', 'gpu_type'},
+    'cpus': {'processor_brand'},
+    'processors': {'processor_brand'},
+    'ssd': {'storage'},
+    'ram': {'ram'},
+    'desktops': {'ram', 'storage', 'processor_brand', 'gpu_type', 'os'},
+    'consoles': {'storage'},
+    'soundbars': {'nfc'},
+    'speakers': {'nfc', 'water_resistance'},
+  };
+
+  static const Map<String, Set<String>> _facetAllowedValues = {
+    'ram': {
+      '1_gb',
+      '2_gb',
+      '3_gb',
+      '4_gb',
+      '5_gb',
+      '6_gb',
+      '8_gb',
+      '10_gb',
+      '12_gb',
+      '16_gb',
+      '18_gb',
+      '24_gb',
+      '32_gb',
+      '48_gb',
+      '64_gb',
+      '128_gb',
+    },
+    'storage': {
+      '1_gb',
+      '2_gb',
+      '4_gb',
+      '8_gb',
+      '16_gb',
+      '32_gb',
+      '64_gb',
+      '120_gb',
+      '128_gb',
+      '240_gb',
+      '250_gb',
+      '256_gb',
+      '480_gb',
+      '500_gb',
+      '512_gb',
+      '960_gb',
+      '1_tb',
+      '2_tb',
+      '4_tb',
+    },
   };
 
   static const Map<String, String> _facetLabelOverrides = {
@@ -487,12 +618,44 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     'water_resistance': 'Water Resistance',
   };
 
-  String _facetKeyForFilterId(String filterId) {
-    if (_typesenseFacets.containsKey(filterId)) return filterId;
+  String get _facetCategoryKey => _activeCategoryId.toLowerCase().trim();
+
+  Iterable<String> _facetCandidatesForFilterId(String filterId) sync* {
+    yield filterId;
+    for (final alias
+        in _categoryFacetAliases[_facetCategoryKey]?[filterId] ??
+            const <String>[]) {
+      yield alias;
+    }
     for (final alias in _facetKeyAliases[filterId] ?? const <String>[]) {
-      if (_typesenseFacets.containsKey(alias)) return alias;
+      yield alias;
+    }
+  }
+
+  bool _isFacetKeyAllowedForCategory(String key) {
+    if (key == 'brand') return true;
+    final allowed = _categoryFacetAllowList[_facetCategoryKey];
+    if (allowed == null) return false;
+    return allowed.contains(key);
+  }
+
+  String _facetKeyForFilterId(String filterId) {
+    for (final candidate in _facetCandidatesForFilterId(filterId)) {
+      if (_typesenseFacets.containsKey(candidate) &&
+          _isFacetKeyAllowedForCategory(candidate)) {
+        return candidate;
+      }
     }
     return '';
+  }
+
+  List<FilterOption> _facetOptionsForKey(String key) {
+    final options = _typesenseFacets[key] ?? const <FilterOption>[];
+    final allowedValues = _facetAllowedValues[key];
+    final filtered = allowedValues == null
+        ? options
+        : options.where((option) => allowedValues.contains(option.id)).toList();
+    return filtered.take(80).toList(growable: false);
   }
 
   String _labelForFacetKey(String key) {
@@ -521,14 +684,16 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     switch (def.type) {
       case FilterType.multiSelect:
         final key = _facetKeyForFilterId(def.id);
-        return key.isNotEmpty && (_typesenseFacets[key]?.isNotEmpty ?? false);
+        return key.isNotEmpty && _facetOptionsForKey(key).isNotEmpty;
       case FilterType.toggle:
         final key = _facetKeyForFilterId(def.id);
         return key.isNotEmpty &&
             (_typesenseFacets[key]?.any((option) => option.id == 'true') ??
                 false);
       case FilterType.rangeSlider:
-        return _serverRangeFields.containsKey(def.id);
+        return _serverRangeFields.containsKey(def.id) &&
+            (_categoryRangeAllowList[_facetCategoryKey]?.contains(def.id) ??
+                false);
     }
   }
 
@@ -537,7 +702,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       return def.withOptions(_typesenseFacets['brand'] ?? def.options ?? []);
     }
     final key = _facetKeyForFilterId(def.id);
-    final options = key.isEmpty ? null : _typesenseFacets[key];
+    final options = key.isEmpty ? null : _facetOptionsForKey(key);
     if (options == null || options.isEmpty) return def;
     return def.withOptions(options);
   }
@@ -567,6 +732,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
       final tokenKey = _facetKeyForFilterId(entry.key);
       if (tokenKey.isEmpty) return null;
+      final allowedOptionIds = _facetOptionsForKey(
+        tokenKey,
+      ).map((option) => option.id).toSet();
+      if (!selected.every(allowedOptionIds.contains)) return null;
       final clause = _buildAnyOfClause(
         'filterTokens',
         selected.map((id) => '$tokenKey:$id'),
@@ -598,9 +767,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final tokenKey = _facetKeyForFilterId(entry.key);
       if (tokenKey.isEmpty) return null;
       final optionId = value ? 'true' : 'false';
-      final hasOption =
-          _typesenseFacets[tokenKey]?.any((option) => option.id == optionId) ??
-          false;
+      final hasOption = _facetOptionsForKey(
+        tokenKey,
+      ).any((option) => option.id == optionId);
       if (hasOption) {
         final token = '$tokenKey:$optionId';
         clauses.add('filterTokens:=${_quoteTypesenseValue(token)}');
@@ -931,7 +1100,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final facets = await ds.getTypesenseFacets(
         category: _activeCategoryId,
         facets: ['brand', 'filterTokens'],
-        maxFacetValues: 1000,
+        maxFacetValues: 120,
       );
       if (!mounted || facets.isEmpty) return;
       setState(() {

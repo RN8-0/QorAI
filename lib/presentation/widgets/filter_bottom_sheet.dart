@@ -60,8 +60,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late final Set<String> _expandedSections;
   final Map<String, int> _optionLimits = {};
 
-  static const int _initialOptionLimit = 60;
-  static const int _optionLimitStep = 60;
+  static const int _initialOptionLimit = 24;
+  static const int _optionLimitStep = 24;
 
   bool get _hasPriceFilter => _definitions.any((def) => def.id == 'price');
 
@@ -629,10 +629,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
               itemCount: _definitions.length,
-              shrinkWrap: true,
               itemBuilder: (context, i) {
                 final def = _definitions[i];
-                return _buildSection(def, isDark);
+                return RepaintBoundary(child: _buildSection(def, isDark));
               },
             ),
           ),
