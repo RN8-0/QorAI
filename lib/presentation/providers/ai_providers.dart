@@ -64,62 +64,54 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         activeScreen.contains('subscription') ||
         subscriptions?.isNotEmpty == true) {
       return isTr
-          ? 'Abonelik analizi ekranını görüyorum; seçili servisleri, skorları ve quiz cevaplarını birlikte yorumlayabilirim.'
-          : 'I can see the Subscription Analysis screen; I can interpret the selected services, scores, and quiz answers with you.';
+          ? 'Şu an Abonelik Analizi ekranındasınız; seçili servisleri ve quiz cevaplarını yorumlayabilirim.'
+          : 'You are on the Subscription Analysis screen; I can interpret the selected services and quiz answers.';
     }
     if (route.contains('link-paste') ||
         activeScreen.contains('link') ||
         linkProducts?.isNotEmpty == true) {
       final suffix = linkProducts?.isNotEmpty == true ? ' ($linkProducts)' : '';
       return isTr
-          ? 'Link Analysis ekranındasın$suffix; ürün linklerini, karşılaştırma sonucunu ve uyumluluk skorunu okuyabiliyorum.'
-          : 'You are on Link Analysis$suffix; I can read the product links, comparison result, and compatibility score.';
+          ? 'Şu an Link Analizi ekranındasınız$suffix; linkleri ve analiz sonucunu okuyabilirim.'
+          : 'You are on the Link Analysis screen$suffix; I can read the links and analysis result.';
     }
     if (product?.isNotEmpty == true) {
       return isTr
-          ? '$product ürün detayını inceliyorsun; teknik skor, özellikler ve alternatifler üzerinden yardımcı olabilirim.'
-          : 'You are viewing $product; I can help with its specs, score, trade-offs, and alternatives.';
+          ? 'Şu an $product ürün detayındasınız; özellikleri ve alternatifleri yorumlayabilirim.'
+          : 'You are on the $product product detail screen; I can review specs and alternatives.';
     }
     if (compareProducts?.isNotEmpty == true) {
       return isTr
-          ? 'Karşılaştırma ekranındaki ürünleri görüyorum: $compareProducts. Güçlü/zayıf yönleri netleştirebilirim.'
-          : 'I can see your comparison: $compareProducts. I can clarify the strengths and trade-offs.';
+          ? 'Şu an Karşılaştırma ekranındasınız: $compareProducts. Farkları netleştirebilirim.'
+          : 'You are on the Comparison screen: $compareProducts. I can clarify the differences.';
     }
     if (route.contains('pc-builder')) {
       return isTr
-          ? 'PC Builder ekranındasın; parça uyumu, darboğaz ve yükseltme önerilerinde yardımcı olabilirim.'
-          : 'You are in PC Builder; I can help with compatibility, bottlenecks, and upgrade choices.';
+          ? 'Şu an PC Builder ekranındasınız; parça uyumu ve yükseltme önerilerinde yardımcı olabilirim.'
+          : 'You are on the PC Builder screen; I can help with compatibility and upgrades.';
     }
     return isTr
-        ? 'Bu sayfadaki ürün ve alışveriş bağlamını okuyup sorularını ona göre yanıtlayabilirim.'
-        : 'I can use the current product and shopping context on this screen when answering.';
+        ? 'Şu an bu sayfadasınız; ekrandaki ürün ve alışveriş bağlamına göre yardımcı olabilirim.'
+        : 'You are on this screen; I can use the current product and shopping context.';
   }
 
   String _welcomeText([Map<String, dynamic>? pageContext]) {
     final langCode = _activeLanguageCode();
     const greetings = <String, String>{
-      'tr':
-          '!Ben Qor AI! Ürün asistanıyım. Ürünler, markalar, abonelikler, link analizleri ve satın alma kararları için buradayım.',
-      'de':
-          'Hallo! Ich bin Qor AI, dein Produktassistent. Ich helfe dir bei Produkten, Links, Abos und Kaufentscheidungen.',
-      'fr':
-          'Bonjour! Je suis Qor AI, votre assistant produit. Je peux vous aider avec les produits, liens, abonnements et décisions d’achat.',
-      'es':
-          'Hola! Soy Qor AI, tu asistente de productos. Puedo ayudarte con productos, enlaces, suscripciones y decisiones de compra.',
-      'ar': 'مرحباً! أنا مساعدك Qor AI. اسألني عن المنتجات والتسوق! 🚀',
-      'ru':
-          'Привет! Я ваш ассистент Qor AI. Спрашивайте меня о продуктах и покупках! 🚀',
-      'zh': '你好！我是您的Qor AI助手。询问关于产品和购物的任何问题！🚀',
-      'ja': 'こんにちは！Qor AIアシスタントです。製品やお買い物について何でも聞いてください！🚀',
-      'ko': '안녕하세요! Qor AI 어시스턴트입니다. 제품과 쇼핑에 대해 무엇이든 물어보세요! 🚀',
-      'pt':
-          'Olá! Sou seu assistente Qor AI. Pergunte-me sobre produtos e compras! 🚀',
-      'it':
-          'Ciao! Sono Qor AI, il tuo assistente prodotto. Posso aiutarti con prodotti, link, abbonamenti e decisioni di acquisto.',
+      'tr': '🚀 Ben Qor AI, ürün asistanınız.',
+      'de': '🚀 Hallo, ich bin Qor AI, dein Produktassistent.',
+      'fr': '🚀 Bonjour, je suis Qor AI, votre assistant produit.',
+      'es': '🚀 Hola, soy Qor AI, tu asistente de productos.',
+      'ar': '🚀 مرحباً، أنا Qor AI، مساعدك للمنتجات.',
+      'ru': '🚀 Привет, я Qor AI, ваш продуктовый ассистент.',
+      'zh': '🚀 你好，我是 Qor AI，你的产品助手。',
+      'ja': '🚀 こんにちは、Qor AI 製品アシスタントです。',
+      'ko': '🚀 안녕하세요, 제품 어시스턴트 Qor AI입니다.',
+      'pt': '🚀 Olá, sou Qor AI, seu assistente de produtos.',
+      'it': '🚀 Ciao, sono Qor AI, il tuo assistente prodotto.',
     };
     final base =
-        greetings[langCode] ??
-        'Hi! I am Qor AI, your product assistant. I can help with products, links, subscriptions, and buying decisions.';
+        greetings[langCode] ?? '🚀 Hi, I am Qor AI, your product assistant.';
     return '$base ${_contextGreeting(pageContext, langCode)}';
   }
 
@@ -142,7 +134,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         .where((m) => m.role == PersistedMsgRole.user)
         .length;
     final welcomeIndex = state.messages.indexWhere((m) => m.id == 'welcome');
-    if (!forceWelcome && (userMsgCount > 0 || welcomeIndex < 0)) return;
+    if (userMsgCount > 0 || (!forceWelcome && welcomeIndex < 0)) return;
     final updated = List<PersistedChatMsg>.from(state.messages);
     final previousWelcome = welcomeIndex >= 0
         ? updated.removeAt(welcomeIndex)
@@ -151,9 +143,9 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       id: 'welcome',
       role: PersistedMsgRole.ai,
       text: _welcomeText(pageContext),
-      timestamp: forceWelcome ? DateTime.now() : previousWelcome?.timestamp,
+      timestamp: previousWelcome?.timestamp,
     );
-    if (forceWelcome) {
+    if (forceWelcome || welcomeIndex < 0) {
       updated.insert(0, nextWelcome);
     } else if (welcomeIndex >= 0) {
       updated.insert(welcomeIndex, nextWelcome);
@@ -222,7 +214,13 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       final gemini = _ref.read(geminiServiceProvider);
 
       // Text chat only — image analysis moved to Visual Scanner
-      final turns = await _buildTurns(trimmed, user, pageContext: pageContext);
+      final effectivePageContext = pageContext ?? _lastPageContext;
+      _lastPageContext = effectivePageContext;
+      final turns = await _buildTurns(
+        trimmed,
+        user,
+        pageContext: effectivePageContext,
+      );
       final aiMsgId = '${DateTime.now().millisecondsSinceEpoch}_ai';
       String accumulated = '';
 

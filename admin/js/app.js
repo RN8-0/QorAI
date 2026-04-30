@@ -185,7 +185,7 @@ function toast(msg,type='i',dur=4000){
 //  DASHBOARD
 // ═══════════════════════════════════════
 
-let catChart=null,trendChart=null;
+let catChart=null,trendChart=null,dashPlanChart=null,dashSupportChart=null,dashQualityChart=null;
 let userPlanChart=null,userPersonaChart=null,userInterestChart=null;
 let userBehaviorChart=null,userInterestBreakdownChart=null,userQuizTypeChart=null,userAnalysisCategoryChart=null;
 let activityActionChart=null,allActivityLogs=[];
@@ -777,7 +777,8 @@ async function refreshDashboard(){
     }
 
     const scores=sampleProducts.map(p=>p.techScore||0).filter(s=>s>0);
-    document.getElementById('dashAvgScore').textContent=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
+    const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+    document.getElementById('dashAvgScore').textContent=avgScore?avgScore.toFixed(1):'—';
 
     const week=new Date(Date.now()-7*864e5);
     const recent=sampleProducts.filter(p=>p.scrapedAt&&new Date(p.scrapedAt)>week).length;
@@ -785,24 +786,16 @@ async function refreshDashboard(){
     if(te&&recent>0)te.textContent='+'+recent+' this week';
 
     const prem=users.filter(u=>u.isPremium).length;
-    const parseSupportChat=(raw)=>{
-      if(Array.isArray(raw))return raw;
-      if(typeof raw==='string'&&raw.trim()){
-        try{return JSON.parse(raw)}catch(_){return []}
-      }
-      return [];
-    };
-    const openSupport=safeArray(supportRes.items).filter(item=>{
-      const chat=parseSupportChat(item.chatMessages);
-      const last=chat[chat.length-1];
-      return item.banned!==true&&(!chat.length||last?.role!=='admin');
-    }).length;
+    const supportItems=safeArray(supportRes.items);
+    const openSupport=supportItems.filter(item=>supportQueueState(item)==='open').length;
     anim('dashPremiumUsers',prem);
     anim('dashOpenSupport',openSupport);
     const ue=document.getElementById('dashUsersTrend');
     if(ue)ue.textContent=users.length?Math.round(prem/users.length*100)+'% premium':'';
 
     document.getElementById('dashLastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
+  renderDashboardCharts(users,supportItems,sampleProducts);
+  renderDashboardHealth({users,products:sampleProducts,supportItems,avgScore,statsUpdatedAt});
 
     const sampleCats={};sampleProducts.forEach(p=>{if(p.category)sampleCats[p.category]=(sampleCats[p.category]||0)+1});
     // Flicker fix: only render if we have full stats; otherwise show loading state until background count completes
@@ -843,6 +836,88 @@ async function refreshDashboard(){
 
 function anim(id,target){const el=document.getElementById(id);if(!el)return;const start=parseInt(el.textContent.replace(/,/g,''))||0;if(start===target){el.textContent=target.toLocaleString();return}const t0=performance.now();(function step(now){const p=Math.min((now-t0)/500,1);el.textContent=Math.round(start+(target-start)*(1-Math.pow(1-p,3))).toLocaleString();if(p<1)requestAnimationFrame(step)})(t0)}
 function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+
+function destroyDashChart(name){
+  const map={dashPlanChart,dashSupportChart,dashQualityChart};
+  if(map[name])map[name].destroy();
+  if(name==='dashPlanChart')dashPlanChart=null;
+  if(name==='dashSupportChart')dashSupportChart=null;
+  if(name==='dashQualityChart')dashQualityChart=null;
+}
+
+function parseSupportChatMessages(raw){
+  if(Array.isArray(raw))return raw;
+  if(typeof raw==='string'&&raw.trim()){
+    try{return JSON.parse(raw)}catch(_){return []}
+  }
+  return [];
+}
+
+function supportQueueState(item){
+  if(item?.banned===true)return 'closed';
+  const chat=parseSupportChatMessages(item?.chatMessages);
+  const last=chat[chat.length-1];
+  if(!chat.length||last?.role!=='admin')return 'open';
+  return 'replied';
+}
+
+function mountDashChart(name,canvas,config){
+  if(!canvas||typeof Chart==='undefined')return;
+  destroyDashChart(name);
+  const chart=new Chart(canvas,config);
+  if(name==='dashPlanChart')dashPlanChart=chart;
+  if(name==='dashSupportChart')dashSupportChart=chart;
+  if(name==='dashQualityChart')dashQualityChart=chart;
+}
+
+function renderDashboardCharts(users,supportItems,products){
+  const premium=users.filter(u=>u.isPremium).length;
+  const free=Math.max(0,users.length-premium);
+  const supportCounts={open:0,replied:0,closed:0};
+  safeArray(supportItems).forEach(item=>{const state=supportQueueState(item);supportCounts[state]=(supportCounts[state]||0)+1});
+  const scored=safeArray(products).filter(p=>Number(p.techScore)>0).length;
+  const withImages=safeArray(products).filter(p=>safeArray(p.images).length>0).length;
+  const withSpecs=safeArray(products).filter(p=>safeNumber(p.specsCount)||Object.keys(safeMap(p.specs)).length).length;
+  const total=Math.max(1,safeArray(products).length);
+  const textColor=getCSS('--text2')||'#a1a1aa';
+  mountDashChart('dashPlanChart',document.getElementById('dashPlanChart'),{
+    type:'doughnut',data:{labels:['Free','Premium'],datasets:[{data:[free,premium],backgroundColor:['#38bdf8','#22c55e'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{color:textColor,boxWidth:10,font:{size:11}}}}}
+  });
+  mountDashChart('dashSupportChart',document.getElementById('dashSupportChart'),{
+    type:'bar',data:{labels:['Open','Replied','Closed'],datasets:[{data:[supportCounts.open,supportCounts.replied,supportCounts.closed],backgroundColor:['#f59e0b','#22c55e','#64748b'],borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:textColor,font:{size:11}}},y:{beginAtZero:true,grid:{color:getCSS('--border')},ticks:{color:textColor,precision:0}}}}
+  });
+  mountDashChart('dashQualityChart',document.getElementById('dashQualityChart'),{
+    type:'radar',data:{labels:['Scored','Images','Specs'],datasets:[{data:[Math.round(scored/total*100),Math.round(withImages/total*100),Math.round(withSpecs/total*100)],backgroundColor:'rgba(34,197,94,.14)',borderColor:'#22c55e',pointBackgroundColor:'#22c55e'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{beginAtZero:true,max:100,grid:{color:getCSS('--border')},angleLines:{color:getCSS('--border')},pointLabels:{color:textColor,font:{size:11}},ticks:{display:false}}}}
+  });
+}
+
+function renderDashboardHealth({users,products,supportItems,avgScore,statsUpdatedAt}){
+  const healthEl=document.getElementById('dashOpsHealth');
+  const actionsEl=document.getElementById('dashNextActions');
+  const openSupport=safeArray(supportItems).filter(item=>supportQueueState(item)==='open').length;
+  const missingImages=safeArray(products).filter(p=>!safeArray(p.images).length).length;
+  const missingScore=safeArray(products).filter(p=>!safeNumber(p.techScore)).length;
+  const premium=users.filter(u=>u.isPremium).length;
+  const statsAgeHours=statsUpdatedAt?Math.round((Date.now()-statsUpdatedAt)/36e5):999;
+  const rows=[
+    {label:'Support queue',value:openSupport?`${openSupport} needs reply`:'Clear',state:openSupport?'warn':'ok'},
+    {label:'Catalog score coverage',value:missingScore?`${missingScore} missing in sample`:'Healthy',state:missingScore?'warn':'ok'},
+    {label:'Image coverage',value:missingImages?`${missingImages} missing in sample`:'Healthy',state:missingImages?'warn':'ok'},
+    {label:'Stats cache',value:statsAgeHours>8?'Stale':'Fresh',state:statsAgeHours>8?'warn':'ok'},
+    {label:'Average score',value:avgScore?avgScore.toFixed(1):'No sample',state:avgScore>=70?'ok':'warn'},
+    {label:'Premium ratio',value:users.length?`${Math.round(premium/users.length*100)}%`:'No users',state:'info'},
+  ];
+  if(healthEl)healthEl.innerHTML=rows.map(row=>`<div class="ops-health-row ${row.state}"><span>${escHtml(row.label)}</span><b>${escHtml(row.value)}</b></div>`).join('');
+  const actions=[];
+  if(openSupport)actions.push(['Reply to Contact Us',`${openSupport} conversation${openSupport>1?'s':''} waiting`,"showView('support')"]);
+  if(missingImages||missingScore)actions.push(['Run catalog quality scan',`${missingImages+missingScore} sample quality issues`,"showView('scraper')"]);
+  if(statsAgeHours>8)actions.push(['Refresh catalog stats','Background counts look stale',"countAllProductsInBackground()"]);
+  actions.push(['Review notification history','Check reach and errors',"showView('notifications')"]);
+  if(actionsEl)actionsEl.innerHTML=actions.slice(0,4).map(([title,desc,action])=>`<button class="next-action" onclick="${action}"><span>${escHtml(title)}</span><b>${escHtml(desc)}</b></button>`).join('');
+}
 
 // Background product counter
 let _bgCountRunning=false;

@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="qorai_logo.png?v=20260424b">
     <link rel="shortcut icon" type="image/png" href="qorai_logo.png?v=20260424b">
     <link rel="apple-touch-icon" href="qorai_logo.png?v=20260424b">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20260430b">
   </head>
 <body>
 
@@ -119,20 +119,45 @@
 
       <!-- ===== DASHBOARD ===== -->
       <section id="dashboardView" class="view active">
-        <div class="view-header">
-          <h1>Dashboard</h1>
-          <div class="view-actions">
-            <span class="text-muted" id="dashLastUpdated"></span>
-            <button class="btn btn-ghost" onclick="refreshDashboard()">Refresh</button>
+        <div class="ops-hero">
+          <div>
+            <div class="eyebrow">Global command center</div>
+            <h1>Qor AI Admin</h1>
+            <p>Monitor catalog quality, user growth, support load, notifications, scraping, and app configuration from one operational surface.</p>
+          </div>
+          <div class="ops-actions">
+            <span class="text-muted" id="dashLastUpdated">Not loaded yet</span>
+            <button class="btn btn-primary" onclick="refreshDashboard()">Refresh Dashboard</button>
           </div>
         </div>
-        <div class="stats-grid">
-          <div class="stat-card stat-purple"><div class="stat-value" id="dashTotalProducts">—</div><div class="stat-label">Products</div><div class="stat-trend" id="dashProductsTrend"></div></div>
-          <div class="stat-card stat-green"><div class="stat-value" id="dashTotalUsers">—</div><div class="stat-label">Users</div><div class="stat-trend" id="dashUsersTrend"></div></div>
-          <div class="stat-card stat-blue"><div class="stat-value" id="dashTotalComparisons">—</div><div class="stat-label">Comparisons</div></div>
-          <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Avg Score</div></div>
-          <div class="stat-card stat-green"><div class="stat-value" id="dashPremiumUsers">—</div><div class="stat-label">Premium Users</div></div>
-          <div class="stat-card stat-amber"><div class="stat-value" id="dashOpenSupport">—</div><div class="stat-label">Open Contact Us</div></div>
+        <div class="quick-actions-bar">
+          <button class="quick-action" onclick="showView('products')"><span>Catalog</span><b>Products & quality</b></button>
+          <button class="quick-action" onclick="showView('users')"><span>Customers</span><b>Users & premium</b></button>
+          <button class="quick-action" onclick="showView('support')"><span>Inbox</span><b>Contact Us</b></button>
+          <button class="quick-action" onclick="showView('notifications')"><span>Messaging</span><b>Notifications</b></button>
+          <button class="quick-action" onclick="showView('scraper')"><span>Data</span><b>Scraper</b></button>
+          <button class="quick-action" onclick="showView('settings')"><span>Control</span><b>Settings</b></button>
+        </div>
+        <div class="ops-layout">
+          <div class="ops-main">
+            <div class="stats-grid stats-grid-command">
+              <div class="stat-card stat-purple"><div class="stat-value" id="dashTotalProducts">—</div><div class="stat-label">Products</div><div class="stat-trend" id="dashProductsTrend"></div></div>
+              <div class="stat-card stat-green"><div class="stat-value" id="dashTotalUsers">—</div><div class="stat-label">Users</div><div class="stat-trend" id="dashUsersTrend"></div></div>
+              <div class="stat-card stat-blue"><div class="stat-value" id="dashTotalComparisons">—</div><div class="stat-label">Comparisons</div></div>
+              <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Avg Score</div></div>
+              <div class="stat-card stat-green"><div class="stat-value" id="dashPremiumUsers">—</div><div class="stat-label">Premium Users</div></div>
+              <div class="stat-card stat-amber"><div class="stat-value" id="dashOpenSupport">—</div><div class="stat-label">Open Contact Us</div></div>
+            </div>
+            <div class="grid-3 command-chart-grid">
+              <div class="card"><div class="card-title">User Plan Split</div><div class="chart-shell compact"><canvas id="dashPlanChart"></canvas></div></div>
+              <div class="card"><div class="card-title">Support Queue</div><div class="chart-shell compact"><canvas id="dashSupportChart"></canvas></div></div>
+              <div class="card"><div class="card-title">Catalog Quality</div><div class="chart-shell compact"><canvas id="dashQualityChart"></canvas></div></div>
+            </div>
+          </div>
+          <aside class="ops-side">
+            <div class="card ops-health-card"><div class="card-title">Operational Health</div><div id="dashOpsHealth" class="ops-health-list"><div class="placeholder">Loading...</div></div></div>
+            <div class="card"><div class="card-title">Next Best Actions</div><div id="dashNextActions" class="insight-stack"><div class="placeholder">Loading...</div></div></div>
+          </aside>
         </div>
         <div class="grid-2">
           <div class="card"><div class="card-title">Category Distribution</div><div class="card-body"><canvas id="categoryChart"></canvas></div></div>
@@ -973,7 +998,7 @@
   <script src="js/categories.js?v=20260426a"></script>
   <script src="js/scraper.js?v=20260430a"></script>
   <script src="js/notifications.js?v=20260430a"></script>
-  <script src="js/support.js?v=20260430a"></script>
-  <script src="js/app.js?v=20260430a"></script>
+  <script src="js/support.js?v=20260430b"></script>
+  <script src="js/app.js?v=20260430b"></script>
 </body>
 </html>
