@@ -64,7 +64,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       if (!mounted) return;
       ref
           .read(chatSessionProvider.notifier)
-          .updatePageContext(widget.pageContext);
+          .updatePageContext(
+            widget.pageContext,
+            forceWelcome: widget.isOverlay,
+          );
     });
     // Auto-send initial query if provided
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {

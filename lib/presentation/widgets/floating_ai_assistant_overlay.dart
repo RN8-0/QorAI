@@ -3,13 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
+import 'package:qor_ai/routing/router.dart';
 
 class FloatingAiAssistantOverlay extends ConsumerStatefulWidget {
   const FloatingAiAssistantOverlay({super.key});
@@ -27,9 +27,11 @@ class _FloatingAiAssistantOverlayState
 
   bool _isOpen = false;
   bool _showHistory = false;
+  int _openSerial = 0;
   Offset? _fabOffset;
   double _dragDistance = 0;
   bool _dragging = false;
+  late final RouteInformationProvider _routeInformationProvider;
   late final AnimationController _panelCtrl;
   late final AnimationController _fabCtrl;
   late final Animation<double> _panelScale;
@@ -39,6 +41,10 @@ class _FloatingAiAssistantOverlayState
   @override
   void initState() {
     super.initState();
+    _routeInformationProvider = ref
+        .read(routerProvider)
+        .routeInformationProvider;
+    _routeInformationProvider.addListener(_handleRouteChanged);
     _panelCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
@@ -62,9 +68,14 @@ class _FloatingAiAssistantOverlayState
 
   @override
   void dispose() {
+    _routeInformationProvider.removeListener(_handleRouteChanged);
     _panelCtrl.dispose();
     _fabCtrl.dispose();
     super.dispose();
+  }
+
+  void _handleRouteChanged() {
+    if (mounted) setState(() {});
   }
 
   void _toggle() {
@@ -72,6 +83,9 @@ class _FloatingAiAssistantOverlayState
     _fabCtrl.forward(from: 0);
     setState(() {
       _isOpen = !_isOpen;
+      if (_isOpen) {
+        _openSerial++;
+      }
       if (!_isOpen) {
         _showHistory = false;
       }
@@ -91,11 +105,9 @@ class _FloatingAiAssistantOverlayState
         _edge;
   }
 
-  String _routePath(BuildContext context) {
+  String _routePath() {
     try {
-      final router = GoRouter.maybeOf(context);
-      final uri = router?.routeInformationProvider.value.uri;
-      return uri?.path ?? '';
+      return ref.read(routerProvider).routeInformationProvider.value.uri.path;
     } catch (_) {
       return '';
     }
@@ -167,8 +179,8 @@ class _FloatingAiAssistantOverlayState
   Map<String, dynamic> _linkAnalysisContext(String route) {
     if (!route.contains('link-paste')) return const {};
 
-    final single = ref.read(linkQuizProvider);
-    final compare = ref.read(compareAnalysisProvider);
+    final single = ref.watch(linkQuizProvider);
+    final compare = ref.watch(compareAnalysisProvider);
     final context = <String, dynamic>{
       'contextRoute': 'link-paste',
       'activeScreen': 'Link AI analysis screen',
@@ -258,8 +270,8 @@ class _FloatingAiAssistantOverlayState
   Map<String, dynamic> _subscriptionAnalysisContext(String route) {
     if (!route.contains('subscriptions')) return const {};
 
-    final state = ref.read(subQuizProvider);
-    final subscription = ref.read(subscriptionServiceProvider);
+    final state = ref.watch(subQuizProvider);
+    final subscription = ref.watch(subscriptionServiceProvider);
     final context = <String, dynamic>{
       'contextRoute': 'subscriptions',
       'activeScreen': 'subscription analysis screen',
@@ -296,7 +308,7 @@ class _FloatingAiAssistantOverlayState
 
   Map<String, dynamic> _premiumPageContext(String route) {
     if (!route.contains('premium')) return const {};
-    final subscription = ref.read(subscriptionServiceProvider);
+    final subscription = ref.watch(subscriptionServiceProvider);
     return {
       'contextRoute': 'premium',
       'activeScreen': 'premium subscription page',
@@ -315,10 +327,10 @@ class _FloatingAiAssistantOverlayState
   Map<String, dynamic> _buildContext(String route) {
     final pageCtx = _routeScopedPageContext(
       route,
-      ref.read(aiPageContextProvider),
+      ref.watch(aiPageContextProvider),
     );
-    final compare = ref.read(compareSessionProvider);
-    final pcBuild = ref.read(pcBuilderSessionProvider);
+    final compare = ref.watch(compareSessionProvider);
+    final pcBuild = ref.watch(pcBuilderSessionProvider);
     final chatState = ref.read(chatSessionProvider);
 
     return {
@@ -402,7 +414,7 @@ class _FloatingAiAssistantOverlayState
 
   @override
   Widget build(BuildContext context) {
-    final route = _routePath(context);
+    final route = _routePath();
     final auth = ref.watch(authStateProvider);
     final isLoggedIn = auth.valueOrNull != null || pb.authStore.isValid;
     if (!isLoggedIn || route == '/') {
@@ -498,6 +510,9 @@ class _FloatingAiAssistantOverlayState
                                 onBack: _closeHistory,
                               )
                             : AIChatScreen(
+                                key: ValueKey(
+                                  'overlay-chat-$route-$_openSerial',
+                                ),
                                 isOverlay: true,
                                 onHistoryPressed: _openHistory,
                                 pageContext: _buildContext(route),

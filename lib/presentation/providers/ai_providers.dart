@@ -133,20 +133,33 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     state = state.copyWith(messages: [welcome]);
   }
 
-  void updatePageContext(Map<String, dynamic>? pageContext) {
+  void updatePageContext(
+    Map<String, dynamic>? pageContext, {
+    bool forceWelcome = false,
+  }) {
     _lastPageContext = pageContext;
     final userMsgCount = state.messages
         .where((m) => m.role == PersistedMsgRole.user)
         .length;
     final welcomeIndex = state.messages.indexWhere((m) => m.id == 'welcome');
-    if (userMsgCount > 0 || welcomeIndex < 0) return;
+    if (!forceWelcome && (userMsgCount > 0 || welcomeIndex < 0)) return;
     final updated = List<PersistedChatMsg>.from(state.messages);
-    updated[welcomeIndex] = PersistedChatMsg(
+    final previousWelcome = welcomeIndex >= 0
+        ? updated.removeAt(welcomeIndex)
+        : null;
+    final nextWelcome = PersistedChatMsg(
       id: 'welcome',
       role: PersistedMsgRole.ai,
       text: _welcomeText(pageContext),
-      timestamp: updated[welcomeIndex].timestamp,
+      timestamp: forceWelcome ? DateTime.now() : previousWelcome?.timestamp,
     );
+    if (forceWelcome) {
+      updated.insert(0, nextWelcome);
+    } else if (welcomeIndex >= 0) {
+      updated.insert(welcomeIndex, nextWelcome);
+    } else {
+      updated.insert(0, nextWelcome);
+    }
     state = state.copyWith(messages: updated);
   }
 
