@@ -48,6 +48,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   bool _speechAvailable = false;
+  int _speechSession = 0;
 
   @override
   void initState() {
@@ -57,7 +58,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
     _ctrl.addListener(_handleTextChanged);
-    _focusNode.addListener(_handleFocusChanged);
     _initSpeech();
     // Auto-send initial query if provided
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
@@ -74,18 +74,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     }
   }
 
-  void _handleFocusChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
   Future<void> _initSpeech() async {
     _speechAvailable = await _speech.initialize(
-      onError: (_) => setState(() => _isListening = false),
+      onError: (_) {
+        if (mounted) setState(() => _isListening = false);
+      },
       onStatus: (status) {
         if (status == 'done' || status == 'notListening') {
-          setState(() => _isListening = false);
+          if (mounted) setState(() => _isListening = false);
         }
       },
     );
@@ -94,15 +90,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   void _toggleListening() async {
     HapticFeedback.mediumImpact();
     if (_isListening) {
+      _speechSession++;
       await _speech.stop();
-      setState(() => _isListening = false);
+      if (mounted) setState(() => _isListening = false);
       if (_ctrl.text.trim().isNotEmpty) {
         _send(_ctrl.text);
       }
     } else if (_speechAvailable) {
+      final session = ++_speechSession;
       setState(() => _isListening = true);
       await _speech.listen(
         onResult: (result) {
+          if (!mounted || !_isListening || session != _speechSession) return;
           _ctrl.value = TextEditingValue(
             text: result.recognizedWords,
             selection: TextSelection.collapsed(
@@ -110,8 +109,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
             ),
           );
           if (result.finalResult && result.recognizedWords.isNotEmpty) {
-            _send(result.recognizedWords);
+            final recognizedWords = result.recognizedWords;
+            _speechSession++;
             setState(() => _isListening = false);
+            _speech.stop();
+            _send(recognizedWords);
           }
         },
         listenFor: const Duration(seconds: 30),
@@ -133,9 +135,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   @override
   void dispose() {
+    _speechSession++;
     _speech.stop();
     _ctrl.removeListener(_handleTextChanged);
-    _focusNode.removeListener(_handleFocusChanged);
     _ctrl.dispose();
     _scroll.dispose();
     _focusNode.dispose();
@@ -575,8 +577,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                         maxLines: null,
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.newline,
+                        textCapitalization: TextCapitalization.none,
                         autocorrect: false,
                         enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        autofillHints: const <String>[],
                         smartDashesType: SmartDashesType.disabled,
                         smartQuotesType: SmartQuotesType.disabled,
                         style: GoogleFonts.plusJakartaSans(

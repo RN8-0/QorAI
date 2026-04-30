@@ -2252,6 +2252,25 @@ class PbDataSource {
     );
   }
 
+  Future<List<ChatConversation>> getChatConversations(String userId) async {
+    if (userId.trim().isEmpty) return <ChatConversation>[];
+    try {
+      final result = await _pb
+          .collection('chat_conversations')
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$userId"',
+            sort: '-updated',
+          )
+          .timeout(const Duration(seconds: 10));
+      return result.items.map(ChatConversation.fromPb).toList();
+    } catch (error) {
+      debugPrint('[PbDs] chat history future load failed: $error');
+      return <ChatConversation>[];
+    }
+  }
+
   Future<ChatConversation?> getChatConversation(
     String userId,
     String convId,

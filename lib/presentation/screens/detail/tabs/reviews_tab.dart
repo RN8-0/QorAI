@@ -1591,6 +1591,18 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     final displayChar = widget.displayName.isNotEmpty
         ? widget.displayName[0].toUpperCase()
         : (widget.userId.isNotEmpty ? widget.userId[0].toUpperCase() : '?');
+    final fallbackAvatar = CircleAvatar(
+      radius: 22,
+      backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
+      child: Text(
+        displayChar,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.brandBlue,
+        ),
+      ),
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -1624,37 +1636,12 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     fadeInDuration: const Duration(milliseconds: 100),
                     imageBuilder: (_, img) =>
                         CircleAvatar(radius: 22, backgroundImage: img),
-                    errorWidget: (_, _, _) => ClipOval(
-                      child: Image.asset(
-                        'assets/images/default_avatar.jpeg',
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    errorWidget: (_, _, _) => fallbackAvatar,
                   );
                 } else if (isOwner) {
-                  avatarWidget = ClipOval(
-                    child: Image.asset(
-                      'assets/images/default_avatar.jpeg',
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-                  );
+                  avatarWidget = fallbackAvatar;
                 } else {
-                  avatarWidget = CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.15),
-                    child: Text(
-                      displayChar,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.brandBlue,
-                      ),
-                    ),
-                  );
+                  avatarWidget = fallbackAvatar;
                 }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

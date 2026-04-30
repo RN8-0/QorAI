@@ -199,6 +199,7 @@ class _FloatingAiAssistantOverlayState
   Widget build(BuildContext context) {
     final route = _routePath(context);
     final padding = MediaQuery.of(context).padding;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final shouldHide = route.contains('/ai-chat');
     if (shouldHide) return const SizedBox.shrink();
@@ -223,14 +224,11 @@ class _FloatingAiAssistantOverlayState
         );
         final panelBg = context.surfaceVariantColor;
         final bubbleBg = isDark ? Colors.black : Colors.white;
+        final openTopLimit = keyboardHeight > 0
+            ? size.height - keyboardHeight - _fabSize - 96
+            : size.height - padding.bottom - _fabSize - 220;
         final visibleFabTop = _isOpen
-            ? math.max(
-                padding.top + 12,
-                math.min(
-                  current.dy,
-                  size.height - padding.bottom - _fabSize - 132,
-                ),
-              )
+            ? math.max(padding.top + 12, math.min(current.dy, openTopLimit))
             : current.dy;
 
         return Stack(

@@ -941,8 +941,11 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
     final bubbleShadow = isDark
         ? Colors.black.withValues(alpha: 0.55)
         : Colors.black.withValues(alpha: 0.18);
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
-    final openFabLift = _isOpen ? 112.0 : 0.0;
+    final openFabLift = _isOpen
+        ? (keyboardHeight > 0 ? keyboardHeight + 92.0 : 176.0)
+        : 0.0;
     final panelBottomOffset = bottomPadding + fabBottomBase + fabSize + 6;
 
     return LayoutBuilder(

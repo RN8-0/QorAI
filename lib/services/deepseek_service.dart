@@ -56,6 +56,21 @@ class DeepSeekService implements AIService {
     return fallback;
   }
 
+  Future<String> _chatSystemPromptWithGuardrails(
+    UserEntity profile,
+    int currentYear,
+  ) async {
+    final base = await adminPrompt(
+      'deepseek_chat_system',
+      _chatSystemPrompt(profile, currentYear),
+    );
+    final guardrails = await adminPrompt(
+      'qor_ai_chat_guardrails',
+      _chatGuardrailPrompt(),
+    );
+    return '$base\n\n$guardrails';
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   //  PUBLIC API
   // ─────────────────────────────────────────────────────────────────────────
@@ -218,10 +233,7 @@ class DeepSeekService implements AIService {
   Future<String> askQuestion(String question, UserEntity profile) async {
     final currentYear = DateTime.now().year;
     final response = await _jsonRequest(
-      system: await adminPrompt(
-        'deepseek_chat_system',
-        _chatSystemPrompt(profile, currentYear),
-      ),
+      system: await _chatSystemPromptWithGuardrails(profile, currentYear),
       user: question,
     );
     return jsonEncode(response);
@@ -237,10 +249,7 @@ class DeepSeekService implements AIService {
     final apiMessages = <Map<String, String>>[
       {
         'role': 'system',
-        'content': await adminPrompt(
-          'deepseek_chat_system',
-          _chatSystemPrompt(profile, currentYear),
-        ),
+        'content': await _chatSystemPromptWithGuardrails(profile, currentYear),
       },
       ...messages.map((m) {
         final role = m['role'] == 'user' ? 'user' : 'assistant';
@@ -262,10 +271,7 @@ class DeepSeekService implements AIService {
     final apiMessages = <Map<String, String>>[
       {
         'role': 'system',
-        'content': await adminPrompt(
-          'deepseek_chat_system',
-          _chatSystemPrompt(profile, currentYear),
-        ),
+        'content': await _chatSystemPromptWithGuardrails(profile, currentYear),
       },
       ...messages.map((m) {
         final role = m['role'] == 'user' ? 'user' : 'assistant';
@@ -930,6 +936,15 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - ALWAYS respond in the SAME language the user writes in
 - Default: ${_languageName(profile.language)}
 - Current year: $currentYear
+''';
+
+  static String _chatGuardrailPrompt() => '''
+## SCOPE AND NEGATIVE PROMPT RULES
+- Qor AI is a shopping and product advisor. Help with products, subscriptions, buying decisions, comparisons, specs, compatibility, prices, availability, reviews, and product-related research.
+- If the user asks for something unrelated to products or shopping, politely decline in one short sentence and redirect them to a product-related question.
+- Do not answer unrelated requests such as general homework, coding tasks, legal/medical/financial advice, politics, personal data extraction, or creative writing unless the request is directly connected to choosing, comparing, using, or buying a product.
+- Never provide harmful, illegal, unsafe, hateful, sexual, or privacy-invasive instructions. Redirect to safe product guidance when possible.
+- Keep refusals brief; do not lecture. Offer a product-focused alternative.
 ''';
 
   static String _quizGenerationPrompt(String language) {

@@ -5989,7 +5989,77 @@ Rules:
   List<ProductEntity> _takeEvenCompareSimilarProducts(
     Iterable<ProductEntity> products,
   ) {
-    final raw = products.take(26).toList();
+    final refs = widget.products.where((p) => p.techScore > 0).toList();
+    final categorySet = widget.products
+        .map((p) => p.category.toLowerCase().trim())
+        .where((category) => category.isNotEmpty)
+        .toSet();
+    final comparedPrice = widget.products
+        .map((p) => p.prices.values.isNotEmpty ? p.prices.values.first : 0.0)
+        .where((price) => price > 0)
+        .fold<double>(0, (sum, price) => sum + price);
+    final comparedPriceCount = widget.products
+        .where((p) => p.prices.values.isNotEmpty && p.prices.values.first > 0)
+        .length;
+    final avgPrice = comparedPriceCount == 0
+        ? 0.0
+        : comparedPrice / comparedPriceCount;
+    final items = products.toList();
+
+    if (refs.isNotEmpty) {
+      final avgTech =
+          refs.fold<double>(0, (sum, p) => sum + p.techScore) / refs.length;
+      final minTech = refs
+          .map((p) => p.techScore)
+          .reduce((a, b) => a < b ? a : b);
+      final maxTech = refs
+          .map((p) => p.techScore)
+          .reduce((a, b) => a > b ? a : b);
+
+      double distanceFromComparedRange(ProductEntity product) {
+        if (product.techScore <= 0) return 999;
+        if (product.techScore >= minTech && product.techScore <= maxTech) {
+          return (product.techScore - avgTech).abs() * 0.5;
+        }
+        return (product.techScore - avgTech).abs();
+      }
+
+      double priceDistance(ProductEntity product) {
+        if (avgPrice <= 0 || product.prices.values.isEmpty) return 1;
+        final price = product.prices.values.first;
+        if (price <= 0) return 1;
+        return ((price - avgPrice) / avgPrice).abs();
+      }
+
+      items.sort((a, b) {
+        final techCompare = distanceFromComparedRange(
+          a,
+        ).compareTo(distanceFromComparedRange(b));
+        if (techCompare != 0) return techCompare;
+
+        final aCat = categorySet.contains(a.category.toLowerCase().trim())
+            ? 0
+            : 1;
+        final bCat = categorySet.contains(b.category.toLowerCase().trim())
+            ? 0
+            : 1;
+        if (aCat != bCat) return aCat.compareTo(bCat);
+
+        return priceDistance(a).compareTo(priceDistance(b));
+      });
+
+      final close = items
+          .where((p) => distanceFromComparedRange(p) <= 25)
+          .take(26)
+          .toList();
+      final raw = close.length >= 8 ? close : items.take(26).toList();
+      if (raw.length.isOdd && raw.length > 1) {
+        return raw.sublist(0, raw.length - 1);
+      }
+      return raw;
+    }
+
+    final raw = items.take(26).toList();
     if (raw.length.isOdd && raw.length > 1) {
       return raw.sublist(0, raw.length - 1);
     }

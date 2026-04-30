@@ -384,7 +384,7 @@ final chatSessionProvider =
       return ChatSessionNotifier(ref);
     });
 
-final chatHistoryProvider = StreamProvider.autoDispose
+final chatHistoryProvider = FutureProvider.autoDispose
     .family<List<ChatConversation>, String>((ref, userId) {
-      return ref.read(pbDataSourceProvider).streamChatConversations(userId);
+      return ref.read(pbDataSourceProvider).getChatConversations(userId);
     });

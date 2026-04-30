@@ -2629,9 +2629,11 @@ final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>(
   final sortedProducts = List<ProductEntity>.from(allProducts)
     ..sort((a, b) {
       final aIdx =
-          priorityIndex[a.category.toLowerCase().trim()] ?? priorityIndex.length;
+          priorityIndex[a.category.toLowerCase().trim()] ??
+          priorityIndex.length;
       final bIdx =
-          priorityIndex[b.category.toLowerCase().trim()] ?? priorityIndex.length;
+          priorityIndex[b.category.toLowerCase().trim()] ??
+          priorityIndex.length;
       if (aIdx != bIdx) return aIdx.compareTo(bIdx);
       return scoreMap[b.id]!.compareTo(scoreMap[a.id]!);
     });
@@ -3392,37 +3394,40 @@ final similarProductsProvider = FutureProvider.autoDispose
         // ── Score candidates with persona-aware algorithm ──
         List<MapEntry<ProductEntity, double>> scored = candidates.map((p) {
           double score = 0;
+          final techDiff = (p.techScore - techScore).abs();
 
-          // Persona fit score (0-100 range, weighted to 0-35)
+          if (techScore > 0 && p.techScore > 0) {
+            if (techDiff <= 5) {
+              score += 90;
+            } else if (techDiff <= 10) {
+              score += 74;
+            } else if (techDiff <= 15) {
+              score += 58;
+            } else if (techDiff <= 25) {
+              score += 28;
+            } else if (techDiff <= 35) {
+              score += 8;
+            } else {
+              score -= 80 + techDiff;
+            }
+          }
+
+          // Persona fit score is secondary; this tab must stay technically similar.
           if (user != null && algorithmService != null) {
             final fitScore = algorithmService.calculateTotalFitScore(
               user: user,
               product: p,
               behavior: behavior,
             );
-            score += fitScore * 0.35;
+            score += fitScore * 0.12;
           }
 
           // Category match bonus
-          if (p.category.toLowerCase().trim() == catKey) score += 15;
-
-          // Tech score similarity (important for "similar" products)
-          final techDiff = (p.techScore - techScore).abs();
-          if (techDiff <= 5) {
-            score += 20;
-          } else if (techDiff <= 10) {
-            score += 15;
-          } else if (techDiff <= 15) {
-            score += 10;
-          } else if (techDiff <= 25) {
-            score += 5;
-          } else {
-            score += 1;
-          }
+          if (p.category.toLowerCase().trim() == catKey) score += 24;
 
           // Brand diversity bonus — strongly prefer different brands
           if (p.brand?.toLowerCase() != product.brand?.toLowerCase()) {
-            score += 12;
+            score += 6;
           }
 
           // Recently viewed category boost (user is interested in this type)
@@ -3438,15 +3443,15 @@ final similarProductsProvider = FutureProvider.autoDispose
               }
             }
             if (viewedCats.contains(p.category.toLowerCase().trim())) {
-              score += 5;
+              score += 3;
             }
           }
 
           // Trend score bonus
           if (p.trendScore > 75) {
-            score += 4;
-          } else if (p.trendScore > 50) {
             score += 2;
+          } else if (p.trendScore > 50) {
+            score += 1;
           }
 
           // Price proximity bonus
@@ -3459,11 +3464,11 @@ final similarProductsProvider = FutureProvider.autoDispose
           if (pAnyPrice > 0 && prodAnyPrice > 0) {
             final priceDiff = ((pAnyPrice - prodAnyPrice) / prodAnyPrice).abs();
             if (priceDiff <= 0.15) {
-              score += 8;
+              score += 6;
             } else if (priceDiff <= 0.3) {
-              score += 5;
+              score += 3;
             } else if (priceDiff <= 0.5) {
-              score += 2;
+              score += 1;
             }
           }
 
