@@ -194,14 +194,19 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'تحليل الروابط الذكي',
   },
   'Paste any product URL for instant AI product analysis.': {
-    'de': 'Fuge eine beliebige Produkt-URL ein, um sofort eine KI-Analyse zu erhalten.',
-    'es': 'Pega cualquier URL de producto para obtener un analisis instantaneo con IA.',
-    'fr': 'Collez n importe quelle URL produit pour obtenir instantanement une analyse IA.',
+    'de':
+        'Fuge eine beliebige Produkt-URL ein, um sofort eine KI-Analyse zu erhalten.',
+    'es':
+        'Pega cualquier URL de producto para obtener un analisis instantaneo con IA.',
+    'fr':
+        'Collez n importe quelle URL produit pour obtenir instantanement une analyse IA.',
     'it': 'Incolla qualsiasi URL prodotto per ottenere subito un analisi AI.',
     'ja': '商品のURLを貼り付けるだけで、AIによる即時分析を取得できます。',
     'nl': 'Plak een product-URL voor directe AI-productanalyse.',
-    'pl': 'Wklej dowolny adres URL produktu, aby natychmiast uzyskac analize AI.',
-    'pt': 'Cole qualquer URL de produto para obter uma analise instantanea com IA.',
+    'pl':
+        'Wklej dowolny adres URL produktu, aby natychmiast uzyskac analize AI.',
+    'pt':
+        'Cole qualquer URL de produto para obter uma analise instantanea com IA.',
     'sv': 'Klistra in valfri produkt-URL for omedelbar AI-analys.',
     'ar': 'الصق اي رابط منتج للحصول على تحليل فوري بالذكاء الاصطناعي.',
   },
@@ -218,13 +223,16 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'مقارنة جنبا الى جنب',
   },
   'Compare more products with AI summaries and better context.': {
-    'de': 'Vergleiche mehr Produkte mit KI-Zusammenfassungen und besserem Kontext.',
+    'de':
+        'Vergleiche mehr Produkte mit KI-Zusammenfassungen und besserem Kontext.',
     'es': 'Compara mas productos con resúmenes de IA y mejor contexto.',
-    'fr': 'Comparez plus de produits avec des resumes IA et un meilleur contexte.',
+    'fr':
+        'Comparez plus de produits avec des resumes IA et un meilleur contexte.',
     'it': 'Confronta piu prodotti con riepiloghi AI e un contesto migliore.',
     'ja': 'AI要約とより良い文脈で、さらに多くの商品を比較できます。',
     'nl': 'Vergelijk meer producten met AI-samenvattingen en betere context.',
-    'pl': 'Porownuj wiecej produktow dzieki podsumowaniom AI i lepszemu kontekstowi.',
+    'pl':
+        'Porownuj wiecej produktow dzieki podsumowaniom AI i lepszemu kontekstowi.',
     'pt': 'Compare mais produtos com resumos de IA e contexto melhor.',
     'sv': 'Jamfor fler produkter med AI-sammanfattningar och battre kontext.',
     'ar': 'قارن المزيد من المنتجات مع ملخصات الذكاء الاصطناعي وسياق اوضح.',
@@ -572,10 +580,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     };
   }
 
-  String _dailyCreditPoolLabel(int count) {
+  String _limitedDailyCreditLabel(int count) {
     return _txt(
-      tr: '$count ${AppConstants.qorCurrencyName}/gün',
-      en: '$count ${AppConstants.qorCurrencyName}/day',
+      tr: 'Sınırlı ${AppConstants.qorCurrencyName} ile ($count ${AppConstants.qorCurrencyName}/gün)',
+      en: 'Limited by daily ${AppConstants.qorCurrencyName} ($count ${AppConstants.qorCurrencyName}/day)',
     );
   }
 
@@ -597,9 +605,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         return FadeTransition(
           opacity: anim,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-            ),
+            scale: Tween<double>(
+              begin: 0.8,
+              end: 1.0,
+            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack)),
             child: Center(
               child: Container(
                 margin: const EdgeInsets.all(32),
@@ -625,10 +634,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                       tween: Tween(begin: 0.0, end: 1.0),
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.elasticOut,
-                      builder: (_, val, child) => Transform.scale(
-                        scale: val,
-                        child: child,
-                      ),
+                      builder: (_, val, child) =>
+                          Transform.scale(scale: val, child: child),
                       child: Container(
                         width: 88,
                         height: 88,
@@ -652,10 +659,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      _txt(
-                        tr: 'Hoşgeldiniz!',
-                        en: 'Welcome!',
-                      ),
+                      _txt(tr: 'Hoşgeldiniz!', en: 'Welcome!'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
@@ -986,9 +990,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       spacing: 8,
       runSpacing: 8,
       children: pills
-          .map(
-            (pill) => _buildHeroPill(icon: pill.$1, label: pill.$2),
-          )
+          .map((pill) => _buildHeroPill(icon: pill.$1, label: pill.$2))
           .toList(),
     );
   }
@@ -1423,7 +1425,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       AppConstants.yearlySubscriptionId,
     );
     final isCurrentPlanSelected = _selectedPlan == 1;
-    final yearlyLabel = yearlyProduct?.price ??
+    final yearlyLabel =
+        yearlyProduct?.price ??
         '\$${AppConstants.yearlyProPrice.toStringAsFixed(2)}/yıl';
 
     return Container(
@@ -1438,10 +1441,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _txt(
-              tr: 'Yıllık plana geç',
-              en: 'Switch to yearly',
-            ),
+            _txt(tr: 'Yıllık plana geç', en: 'Switch to yearly'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -1468,9 +1468,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             height: 54,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: isCurrentPlanSelected
-                    ? null
-                    : _kPremiumGradient,
+                gradient: isCurrentPlanSelected ? null : _kPremiumGradient,
                 color: isCurrentPlanSelected
                     ? context.surfaceElevatedColor
                     : null,
@@ -1482,7 +1480,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                 ),
               ),
               child: ElevatedButton(
-                onPressed: (_isPurchasing || _isLoading || isCurrentPlanSelected)
+                onPressed:
+                    (_isPurchasing || _isLoading || isCurrentPlanSelected)
                     ? null
                     : _handlePurchaseTap,
                 style: ElevatedButton.styleFrom(
@@ -1588,23 +1587,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildComparisonTable() {
     final l = context.l10n;
     final unlimited = l?.unlimited ?? 'Unlimited';
-    final totalCredits = ref.watch(subscriptionServiceProvider).totalDailyCredits.round();
+    final totalCredits = AppConstants.freeDailyAiCreditLimit;
+    final limitedCredits = _limitedDailyCreditLabel(totalCredits);
     final rows = [
       _TableRow(
         _txt(tr: 'Qor AI Chat', en: 'Qor AI Chat'),
-        _dailyCreditPoolLabel(totalCredits),
+        limitedCredits,
         _unlimitedCreditsLabel(),
         Icons.chat_bubble_outline_rounded,
       ),
       _TableRow(
         _txt(tr: 'Görsel Tarayıcı', en: 'Visual Scanner'),
-        _txt(tr: 'Sınırlı Q ile', en: 'Uses free Q'),
+        limitedCredits,
         unlimited,
         Icons.image_search_rounded,
       ),
       _TableRow(
         _txt(tr: 'Akıllı Link Analizi', en: 'Smart Link Analysis'),
-        _txt(tr: 'Sınırlı Q ile', en: 'Uses free Q'),
+        limitedCredits,
         unlimited,
         Icons.link_rounded,
       ),
@@ -1638,12 +1638,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         true,
         Icons.category_rounded,
       ),
-      _TableRow(
-        l?.pcBuilder ?? 'PC Builder',
-        true,
-        true,
-        Icons.build_rounded,
-      ),
+      _TableRow(l?.pcBuilder ?? 'PC Builder', true, true, Icons.build_rounded),
       _TableRow(
         l?.prioritySupport ?? 'Priority Support',
         false,
@@ -1757,7 +1752,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
               decoration: BoxDecoration(
                 color: context.surfaceVariantColor,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: _kPremiumBase.withValues(alpha: 0.16)),
+                border: Border.all(
+                  color: _kPremiumBase.withValues(alpha: 0.16),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: _kPremiumBase.withValues(alpha: 0.06),
@@ -1985,7 +1982,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       ),
     );
   }
-
 }
 
 class _TableRow {

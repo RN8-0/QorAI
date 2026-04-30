@@ -174,24 +174,27 @@ class GeminiService implements AIService {
     if (needsResearch || amazonProductId != null) {
       try {
         debugPrint('[Qor AI] URL research phase — looking up: $url');
+        final runtimeResearchPrompt = _buildLinkResearchPrompt(
+          url: url,
+          resolvedTitle: resolvedTitle,
+          productId: amazonProductId,
+          productIdType: amazonProductIdType,
+          storeDomain: storeDomain,
+          metadata: metadata,
+        );
+        final configuredResearchPrompt = await adminPrompt(
+          'gemini_link_research',
+          runtimeResearchPrompt,
+        );
+        final researchPrompt = configuredResearchPrompt == runtimeResearchPrompt
+            ? runtimeResearchPrompt
+            : '$configuredResearchPrompt\n\nRUNTIME TARGET CONTEXT:\n$runtimeResearchPrompt\n\nUse the runtime target URL and identifier above. Do not ask the user for a URL.';
         webResearch = await _rawRequest(
           {
             'contents': [
               {
                 'parts': [
-                  {
-                    'text': await adminPrompt(
-                      'gemini_link_research',
-                      _buildLinkResearchPrompt(
-                        url: url,
-                        resolvedTitle: resolvedTitle,
-                        productId: amazonProductId,
-                        productIdType: amazonProductIdType,
-                        storeDomain: storeDomain,
-                        metadata: metadata,
-                      ),
-                    ),
-                  },
+                  {'text': researchPrompt},
                 ],
               },
             ],
@@ -1562,13 +1565,18 @@ $jsonSchema
     String researchData = '';
     try {
       final productName = baseResult.metadata.title ?? 'unknown';
-      final researchPrompt = await adminPrompt(
+      final runtimeResearchPrompt =
+          'Research "$productName" (${baseResult.category ?? "product"}) from URL ${baseResult.url}.\n'
+          'Find: user reviews, Reddit/forum opinions, expert reviews, '
+          'common pros/cons, known issues, and current price in ${profile.country}.\n'
+          'Be concise — max 300 words.';
+      final configuredResearchPrompt = await adminPrompt(
         'gemini_enhanced_link_research',
-        'Research "$productName" (${baseResult.category ?? "product"}).\n'
-            'Find: user reviews, Reddit/forum opinions, expert reviews, '
-            'common pros/cons, known issues, and current price in ${profile.country}.\n'
-            'Be concise — max 300 words.',
+        runtimeResearchPrompt,
       );
+      final researchPrompt = configuredResearchPrompt == runtimeResearchPrompt
+          ? runtimeResearchPrompt
+          : '$configuredResearchPrompt\n\nRUNTIME PRODUCT CONTEXT:\n$runtimeResearchPrompt\n\nUse this product and URL. Do not ask the user for more input.';
       researchData = await _rawRequest(
         {
           'contents': [
@@ -1583,7 +1591,7 @@ $jsonSchema
           ],
           'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1024},
         },
-        receiveTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 45),
         tier: AiTier.heavy,
       );
       debugPrint(

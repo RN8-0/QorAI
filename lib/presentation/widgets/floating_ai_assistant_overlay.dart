@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -135,6 +136,182 @@ class _FloatingAiAssistantOverlayState
     return pageCtx;
   }
 
+  String _enumName(Object value) => value.toString().split('.').last;
+
+  String _shortText(String? value, {int max = 900}) {
+    final text = value?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+    if (text.length <= max) return text;
+    return '${text.substring(0, max)}...';
+  }
+
+  String _compactUrl(String url) {
+    final uri = Uri.tryParse(url);
+    final host = uri?.host.isNotEmpty == true ? uri!.host : url;
+    final path = uri?.pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .take(3)
+        .join('/');
+    return path == null || path.isEmpty ? host : '$host/$path';
+  }
+
+  String _quizProgress(List<dynamic> questions, int currentIndex) {
+    if (questions.isEmpty) return '';
+    final answered = questions.where((question) {
+      final selected = question.selectedOption?.toString().trim() ?? '';
+      return selected.isNotEmpty;
+    }).length;
+    final position = math.min(currentIndex + 1, questions.length);
+    return '$answered/${questions.length} answered, current question $position/${questions.length}';
+  }
+
+  Map<String, dynamic> _linkAnalysisContext(String route) {
+    if (!route.contains('link-paste')) return const {};
+
+    final single = ref.read(linkQuizProvider);
+    final compare = ref.read(compareAnalysisProvider);
+    final context = <String, dynamic>{
+      'contextRoute': 'link-paste',
+      'activeScreen': 'Link AI analysis screen',
+    };
+
+    if (single.phase != LinkFlowPhase.idle ||
+        single.baseResult != null ||
+        single.enhancedResult != null) {
+      final base = single.baseResult;
+      final enhanced = single.enhancedResult;
+      context.addAll({
+        'singleLinkPhase': _enumName(single.phase),
+        if (base != null) 'singleLinkUrl': _compactUrl(base.url),
+        if (base?.metadata.title != null)
+          'singleLinkProduct': base!.metadata.title,
+        if (base?.category != null) 'singleLinkCategory': base!.category,
+        if (base != null)
+          'singleLinkInitialScore': base.aiScore.toStringAsFixed(0),
+        if (enhanced != null)
+          'singleLinkEnhancedScore': enhanced.enhancedScore.toStringAsFixed(0),
+        if (enhanced != null)
+          'singleLinkVerdict': _shortText(enhanced.detailedVerdict),
+        if (single.databaseMatch != null)
+          'singleLinkDatabaseMatch': single.databaseMatch!.name,
+        if (single.similarProducts.isNotEmpty)
+          'singleLinkSimilarProducts': single.similarProducts
+              .take(5)
+              .map((product) => product.name)
+              .join(' | '),
+        if (single.answeredQuestions.isNotEmpty)
+          'singleLinkQuizProgress': _quizProgress(
+            single.answeredQuestions,
+            single.currentQuestionIndex,
+          ),
+        if (single.error?.trim().isNotEmpty == true)
+          'singleLinkError': single.error,
+      });
+    }
+
+    if (compare.phase != ComparePhase.idle ||
+        compare.validUrls.isNotEmpty ||
+        compare.results.isNotEmpty) {
+      context.addAll({
+        'linkComparePhase': _enumName(compare.phase),
+        if (compare.validUrls.isNotEmpty)
+          'linkCompareUrls': compare.validUrls.map(_compactUrl).join(' vs '),
+        if (compare.allBaseResults.isNotEmpty)
+          'linkCompareScannedProducts': compare.allBaseResults
+              .map(
+                (result) =>
+                    '${result.metadata.title ?? _compactUrl(result.url)} (${result.category ?? 'unknown'})',
+              )
+              .join(' vs '),
+        if (compare.results.isNotEmpty)
+          'linkCompareResults': compare.results
+              .map(
+                (result) =>
+                    '${result.baseResult.metadata.title ?? _compactUrl(result.baseResult.url)} (${result.enhancedScore.toStringAsFixed(0)}/100)',
+              )
+              .join(' vs '),
+        if (compare.steps.isNotEmpty)
+          'linkCompareSteps': compare.steps
+              .map((step) {
+                final status = step.hasError
+                    ? 'error'
+                    : step.isDone
+                    ? 'done'
+                    : step.isActive
+                    ? 'active'
+                    : 'pending';
+                return '${step.label}: $status';
+              })
+              .join(' | '),
+        if (compare.quizAnswers.isNotEmpty)
+          'linkCompareQuizProgress': _quizProgress(
+            compare.quizAnswers,
+            compare.quizIndex,
+          ),
+        if (compare.error?.trim().isNotEmpty == true)
+          'linkCompareError': compare.error,
+      });
+    }
+
+    return context;
+  }
+
+  Map<String, dynamic> _subscriptionAnalysisContext(String route) {
+    if (!route.contains('subscriptions')) return const {};
+
+    final state = ref.read(subQuizProvider);
+    final subscription = ref.read(subscriptionServiceProvider);
+    final context = <String, dynamic>{
+      'contextRoute': 'subscriptions',
+      'activeScreen': 'subscription analysis screen',
+      'freeDailyQ':
+          '${AppConstants.freeDailyAiCreditLimit} ${AppConstants.qorCurrencyName}/day',
+      if (!subscription.isPremium)
+        'remainingDailyQ': subscription.remainingDailyCredits.toStringAsFixed(
+          1,
+        ),
+    };
+
+    if (state.phase != SubFlowPhase.idle ||
+        state.subscriptionNames.isNotEmpty) {
+      context.addAll({
+        'subscriptionAnalysisPhase': _enumName(state.phase),
+        if (state.subscriptionNames.isNotEmpty)
+          'subscriptionServices': state.subscriptionNames.join(' vs '),
+        if (state.scores.isNotEmpty)
+          'subscriptionScores': state.scores.toString(),
+        if (state.analysisResult?.trim().isNotEmpty == true)
+          'subscriptionAnalysisSummary': _shortText(state.analysisResult),
+        if (state.answeredQuestions.isNotEmpty)
+          'subscriptionQuizProgress': _quizProgress(
+            state.answeredQuestions,
+            state.currentQuestionIndex,
+          ),
+        if (state.error?.trim().isNotEmpty == true)
+          'subscriptionError': state.error,
+      });
+    }
+
+    return context;
+  }
+
+  Map<String, dynamic> _premiumPageContext(String route) {
+    if (!route.contains('premium')) return const {};
+    final subscription = ref.read(subscriptionServiceProvider);
+    return {
+      'contextRoute': 'premium',
+      'activeScreen': 'premium subscription page',
+      'premiumStatus': subscription.isPremium ? 'premium' : 'free',
+      'freeTierDailyQ':
+          '${AppConstants.freeDailyAiCreditLimit} ${AppConstants.qorCurrencyName}/day',
+      'freeTierLimits':
+          'Free AI actions use a shared limited daily Q pool. Premium unlocks unlimited Q.',
+      if (!subscription.isPremium)
+        'remainingDailyQ': subscription.remainingDailyCredits.toStringAsFixed(
+          1,
+        ),
+    };
+  }
+
   Map<String, dynamic> _buildContext(String route) {
     final pageCtx = _routeScopedPageContext(
       route,
@@ -148,6 +325,9 @@ class _FloatingAiAssistantOverlayState
       'page': _pageDescription(route),
       'route': route,
       ...pageCtx,
+      ..._linkAnalysisContext(route),
+      ..._subscriptionAnalysisContext(route),
+      ..._premiumPageContext(route),
       if (compare.comparedProducts != null &&
           compare.comparedProducts!.isNotEmpty)
         'compareProducts': compare.comparedProducts!

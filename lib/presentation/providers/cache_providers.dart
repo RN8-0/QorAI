@@ -895,7 +895,7 @@ class _AlternativesCacheNotifier
           .jsonFreeTextQuery(
             '$prompt\n\nRuntime context: referenceProduct="$productName".',
             language: _languageCode,
-            maxTokens: 900,
+            maxTokens: 1600,
           )
           .timeout(
             _premiumAiRequestTimeout,
@@ -919,8 +919,16 @@ class _AlternativesCacheNotifier
   }
 
   AlternativesResult _parseAlternatives(String raw) {
+    final cleaned = _cleanJsonString(raw);
+    final trimmed = cleaned.trimRight();
+    final looksTruncatedJson =
+        trimmed.startsWith('{') && !trimmed.endsWith('}') ||
+        trimmed.startsWith('[') && !trimmed.endsWith(']');
+    if (looksTruncatedJson) {
+      return AlternativesResult(rawFallback: raw);
+    }
     try {
-      final json = _decodeJsonMap(raw);
+      final json = _decodeJsonMap(cleaned);
       final alts = (json['alternatives'] as List? ?? [])
           .map(
             (a) => AlternativeProduct(
