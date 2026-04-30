@@ -424,6 +424,25 @@ async function sendSupportChatReply(messageId, userId) {
       banned: false,
     });
 
+    const language = _supportPreferredLanguage(_supportMessages.find((item) => item.id === messageId) || message || {});
+    let notificationCreated = false;
+    try {
+      await getPb().collection('notifications').create({
+        recipientId: resolvedUserId,
+        senderId: 'admin',
+        senderName: 'Qor AI Support',
+        type: 'support_reply',
+        title: language === 'tr' ? 'Qor AI Support yanıtladı' : 'New reply from Qor AI Support',
+        body: replyText,
+        referenceId: messageId,
+        read: false,
+        language,
+      }, { $autoCancel: false });
+      notificationCreated = true;
+    } catch (notifyError) {
+      console.warn('support reply notification failed:', notifyError);
+    }
+
     const index = _supportMessages.findIndex((item) => item.id === messageId);
     if (index !== -1) {
       _supportMessages[index] = _supportApplyAccount({
@@ -437,7 +456,7 @@ async function sendSupportChatReply(messageId, userId) {
       });
     }
 
-    toast('Message sent.', 's');
+    toast(notificationCreated ? 'Message sent and user notified.' : 'Message sent, but notification could not be created.', notificationCreated ? 's' : 'w');
     _renderChatModalThread(messageId);
     renderSupportMessages();
     updateSupportBadge();
@@ -510,8 +529,8 @@ async function _openNewAdminMessageForUser(uid) {
       recipientId: uid,
       senderId: 'admin',
       senderName: 'Qor AI Support',
-      type: 'transactional',
-      title: language === 'tr' ? 'Qor AI Destek yeni mesaj gönderdi' : 'New message from Qor AI Support',
+      type: 'support_reply',
+      title: language === 'tr' ? 'Qor AI Support yeni mesaj gönderdi' : 'New message from Qor AI Support',
       body: text.trim(),
       referenceId: record.id,
       read: false,

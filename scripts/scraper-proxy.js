@@ -19,11 +19,8 @@ const fs = require('fs');
 const rootDir = path.resolve(__dirname, '..');
 const puppeteerExtra = require(path.join(rootDir, 'node_modules', 'puppeteer-extra'));
 const StealthPlugin = require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stealth'));
-const puppeteerCore = require(path.join(rootDir, 'node_modules', 'puppeteer-core'));
 
 puppeteerExtra.use(StealthPlugin());
-// Use puppeteer-core as the underlying engine
-puppeteerExtra.use(require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stealth'))());
 
 const PORT = parseInt(process.argv[2]) || 3456;
 const ALLOWED_ORIGINS = [
@@ -69,10 +66,10 @@ async function getBrowser() {
 
   const chromePath = findChromePath();
   if (!chromePath) {
-    throw new Error('Chrome/Edge bulunamadı. Lütfen Chrome\'u yükleyin.');
+    throw new Error('Chrome or Edge was not found. Please install Chrome or Edge.');
   }
 
-  console.log(`  🚀 Chrome başlatılıyor: ${chromePath}`);
+  console.log(`  🚀 Starting Chrome: ${chromePath}`);
   console.log(`  🎭 User-Agent: ${currentUA.substring(0, 60)}...`);
 
   browser = await puppeteerExtra.launch({
@@ -95,10 +92,10 @@ async function getBrowser() {
     ignoreHTTPSErrors: true,
   });
 
-  console.log('  ✅ Chrome başlatıldı (Stealth modu aktif)');
+  console.log('  ✅ Chrome started with stealth mode enabled');
 
   // Pre-warm: visit epey.com homepage to get valid session cookies
-  console.log('  🍪 epey.com oturumu başlatılıyor...');
+  console.log('  🍪 Preparing epey.com session...');
   try {
     const warmPage = await browser.newPage();
     await warmPage.setUserAgent(currentUA);
@@ -111,9 +108,9 @@ async function getBrowser() {
     await _humanDelay(1000, 2500);
     sessionCookies = await warmPage.cookies();
     await warmPage.close();
-    console.log(`  ✅ Oturum hazır (${sessionCookies.length} cookie)`);
+    console.log(`  ✅ Session ready (${sessionCookies.length} cookies)`);
   } catch (e) {
-    console.warn(`  ⚠️ Ön yükleme başarısız (önemli değil): ${e.message}`);
+    console.warn(`  ⚠️ Preload failed, continuing anyway: ${e.message}`);
   }
 
   return browser;
@@ -221,7 +218,9 @@ async function fetchWithPuppeteer(url) {
 }
 
 function setCORSHeaders(res, origin) {
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const isLocal = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin || '');
+  const allowed = !origin || origin === 'null' || isLocal || ALLOWED_ORIGINS.includes(origin) ? (origin && origin !== 'null' ? origin : '*') : ALLOWED_ORIGINS[0];
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Origin', allowed);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Target-URL');
@@ -259,7 +258,7 @@ const server = http.createServer(async (req, res) => {
 
   if (!targetUrl) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'URL eksik. ?url=... veya X-Target-URL header kullanın' }));
+    res.end(JSON.stringify({ error: 'Missing URL. Use ?url=... or the X-Target-URL header.' }));
     return;
   }
 
@@ -268,13 +267,13 @@ const server = http.createServer(async (req, res) => {
     parsed = new URL(targetUrl);
   } catch {
     res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Geçersiz URL' }));
+    res.end(JSON.stringify({ error: 'Invalid URL.' }));
     return;
   }
 
   if (!parsed.hostname.endsWith('epey.com')) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Sadece epey.com izinlidir' }));
+    res.end(JSON.stringify({ error: 'Only epey.com URLs are allowed.' }));
     return;
   }
 
@@ -285,7 +284,7 @@ const server = http.createServer(async (req, res) => {
     if (!html || status === 404) {
       res.setHeader('X-Status-Code', '404');
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Sayfa bulunamadı (404)' }));
+      res.end(JSON.stringify({ error: 'Page not found (404).' }));
       return;
     }
 
@@ -295,26 +294,26 @@ const server = http.createServer(async (req, res) => {
     res.end(html);
   } catch (err) {
     res.writeHead(502, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Proxy hatası: ' + err.message }));
+    res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }));
   }
 });
 
 server.listen(PORT, async () => {
   console.log(`\n  ⚡ Qor AI Scraper Proxy v3.0 (Stealth) — http://localhost:${PORT}`);
-  console.log(`  🛡️  puppeteer-extra-plugin-stealth aktif`);
-  console.log(`  📡 İstekler KENDİ IP adresinizi kullanır`);
-  console.log(`  🔒 Sadece epey.com\'a izin verilir\n`);
+  console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
+  console.log(`  📡 Requests use your local IP address`);
+  console.log(`  🔒 Only epey.com is allowed\n`);
   try {
     await getBrowser();
-    console.log(`  ✅ Proxy hazır! Test: http://localhost:${PORT}/health\n`);
+    console.log(`  ✅ Proxy ready. Test: http://localhost:${PORT}/health\n`);
   } catch (err) {
-    console.error(`  ❌ Chrome başlatılamadı: ${err.message}`);
-    console.error(`  Chrome veya Edge yüklü olduğundan emin olun.\n`);
+    console.error(`  ❌ Chrome could not be started: ${err.message}`);
+    console.error(`  Make sure Chrome or Edge is installed.\n`);
   }
 });
 
 process.on('SIGINT', async () => {
-  console.log('\n  Proxy durduruluyor...');
+  console.log('\n  Stopping proxy...');
   if (browser) await browser.close().catch(() => {});
   process.exit();
 });

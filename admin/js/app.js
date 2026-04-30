@@ -48,7 +48,7 @@ function showUnauthorized(email) {
     el.innerHTML = `<div class="unauth-card">
       <div style="font-size:48px;margin-bottom:16px">🚫</div>
       <h2>Access Denied</h2>
-      <p>Bu hesap admin paneline erisemiyor: <strong>${escHtml(email)}</strong>.</p>
+      <p>This account is not authorized to access the admin panel: <strong>${escHtml(email)}</strong>.</p>
       <button class="btn btn-primary" onclick="logoutAdmin()" style="margin-right:8px">Sign Out</button>
     </div>`;
     document.body.appendChild(el);
@@ -223,8 +223,8 @@ function premiumPlanLabel(plan){
 }
 function premiumPlanDescription(plan){
   switch(plan){
-    case 'monthly': return 'Aylık Premium';
-    case 'yearly': return 'Yıllık Premium';
+    case 'monthly': return 'Monthly Premium';
+    case 'yearly': return 'Yearly Premium';
     case 'premium': return 'Premium';
     default: return 'Free';
   }
@@ -747,10 +747,11 @@ function normalizeConfigData(data){
 
 async function refreshDashboard(){
   try{
-    const [userDocs,compDocs,statsDoc]=await Promise.all([
+    const [userDocs,compDocs,statsDoc,supportRes]=await Promise.all([
       pbGetAll('users',{sort:'id'}),
       pbGetAll('comparisons',{sort:'id'}),
-      pbGetDoc('public_config','stats').catch(()=>({exists:false,data:()=>null}))
+      pbGetDoc('public_config','stats').catch(()=>({exists:false,data:()=>null})),
+      pbGetList('support_messages',1,200,{sort:'-updated'}).catch(()=>({items:[]}))
     ]);
     const users=userDocs.map(d=>({uid:d.id,...d.data()}));
     const cSnap={size:compDocs.length};
@@ -781,13 +782,27 @@ async function refreshDashboard(){
     const week=new Date(Date.now()-7*864e5);
     const recent=sampleProducts.filter(p=>p.scrapedAt&&new Date(p.scrapedAt)>week).length;
     const te=document.getElementById('dashProductsTrend');
-    if(te&&recent>0)te.textContent='+'+recent+' bu hafta';
+    if(te&&recent>0)te.textContent='+'+recent+' this week';
 
     const prem=users.filter(u=>u.isPremium).length;
+    const parseSupportChat=(raw)=>{
+      if(Array.isArray(raw))return raw;
+      if(typeof raw==='string'&&raw.trim()){
+        try{return JSON.parse(raw)}catch(_){return []}
+      }
+      return [];
+    };
+    const openSupport=safeArray(supportRes.items).filter(item=>{
+      const chat=parseSupportChat(item.chatMessages);
+      const last=chat[chat.length-1];
+      return item.banned!==true&&(!chat.length||last?.role!=='admin');
+    }).length;
+    anim('dashPremiumUsers',prem);
+    anim('dashOpenSupport',openSupport);
     const ue=document.getElementById('dashUsersTrend');
     if(ue)ue.textContent=users.length?Math.round(prem/users.length*100)+'% premium':'';
 
-    document.getElementById('dashLastUpdated').textContent='Güncellendi '+new Date().toLocaleTimeString();
+    document.getElementById('dashLastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
 
     const sampleCats={};sampleProducts.forEach(p=>{if(p.category)sampleCats[p.category]=(sampleCats[p.category]||0)+1});
     // Flicker fix: only render if we have full stats; otherwise show loading state until background count completes
@@ -1619,7 +1634,7 @@ async function loadUserQuizzes(uid){
     }
 
     if(latestTrackedAnswers.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📝 Latest Quiz Answers</div>${latestTrackedAnswers.map(answer=>`<div style="margin-bottom:6px;font-size:11px"><span style="color:var(--text2)">${escHtml(answer.question||answer.label||'Question')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(answer.answer||answer.selectedOption||answer.value||'—')}</span></div>`).join('')}</div>`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📝 Latest Quiz Answers</div>${renderGroupedQuizAnswers(latestTrackedAnswers)}</div>`;
     }
 
     if(newQuizHistory.length){
@@ -1651,9 +1666,7 @@ async function loadUserQuizzes(uid){
         html+=`</div>`;
       }
       if(answers.length){
-        html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-        for(const a of answers)html+=`<div style="margin-bottom:4px;font-size:11px"><span style="color:var(--text2)">${escHtml(a.question||'—')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(a.answer||a.selectedOption||'—')}</span></div>`;
-        html+=`</div>`;
+        html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px">${renderGroupedQuizAnswers(answers)}</div>`;
       }
       html+=`</div>`;
     }
@@ -1719,6 +1732,29 @@ function buildUserOnboardingEntries(user,trackedAnswers=[]){
     seenLabels.add(label.toLowerCase());
   });
   return entries;
+}
+
+function quizAnswerGroupLabel(answer, fallback='General'){
+  const raw=answer?.group||answer?.section||answer?.category||answer?.type||fallback;
+  return formatUserFieldValue(raw)||fallback;
+}
+
+function renderGroupedQuizAnswers(answers, emptyText='No answers saved yet.'){
+  const groups=new Map();
+  safeArray(answers).forEach(answer=>{
+    const question=formatUserFieldValue(answer.question||answer.label||answer.field||'Question');
+    const value=formatUserFieldValue(answer.answer||answer.selectedOption||answer.value||answer.text);
+    if(!question&&!value)return;
+    const group=quizAnswerGroupLabel(answer);
+    if(!groups.has(group))groups.set(group,[]);
+    groups.get(group).push({question:question||'Question',value:value||'-'});
+  });
+  if(!groups.size)return `<div style="color:var(--text3);font-size:12px">${escHtml(emptyText)}</div>`;
+  return [...groups.entries()].map(([group,items])=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--bg2)">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:800;margin-bottom:8px">${escHtml(group)}</div>
+      ${items.map(item=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.55fr);gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:11px"><span style="color:var(--text2);line-height:1.45">${escHtml(item.question)}</span><b style="color:var(--primary);line-height:1.45">${escHtml(item.value)}</b></div>`).join('')}
+    </div>`).join('');
 }
 
 function renderUserSummaryGrid(entries,emptyText='No data specified'){
