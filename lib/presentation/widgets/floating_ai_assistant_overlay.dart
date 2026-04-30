@@ -286,11 +286,9 @@ class _FloatingAiAssistantOverlayState
                             ? ChatHistoryScreen(
                                 isOverlay: true,
                                 onBack: _closeHistory,
-                                onClose: _toggle,
                               )
                             : AIChatScreen(
                                 isOverlay: true,
-                                onClose: _toggle,
                                 onHistoryPressed: _openHistory,
                                 pageContext: _buildContext(route),
                               ),
@@ -368,26 +366,11 @@ class _FloatingAiAssistantOverlayState
                       ],
                     ),
                     child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 160),
-                        transitionBuilder: (child, animation) =>
-                            ScaleTransition(scale: animation, child: child),
-                        child: _isOpen
-                            ? Icon(
-                                Icons.close_rounded,
-                                key: const ValueKey('close'),
-                                color: isDark
-                                    ? Colors.white
-                                    : AppTheme.brandCyan,
-                                size: 18,
-                              )
-                            : Image.asset(
-                                key: const ValueKey('logo'),
-                                'assets/logo/qor_ai_logo.png',
-                                width: 32,
-                                height: 32,
-                                fit: BoxFit.contain,
-                              ),
+                      child: Image.asset(
+                        'assets/logo/qor_ai_logo.png',
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

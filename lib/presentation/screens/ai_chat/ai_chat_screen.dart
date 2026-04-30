@@ -68,6 +68,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   }
 
   void _handleTextChanged() {
+    if (_ctrl.text.isEmpty && !_ctrl.value.composing.isCollapsed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _ctrl.text.isEmpty) {
+          _ctrl.clearComposing();
+        }
+      });
+    }
     final nextHasText = _ctrl.text.trim().isNotEmpty;
     if (_hasText.value != nextHasText) {
       _hasText.value = nextHasText;
@@ -405,17 +412,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
               color: context.textTertiaryColor,
             ),
           ),
-          if (widget.isOverlay && widget.onClose != null) ...[
-            const SizedBox(width: 14),
-            GestureDetector(
-              onTap: widget.onClose,
-              child: Icon(
-                Icons.close_rounded,
-                size: 20,
-                color: context.textTertiaryColor,
-              ),
-            ),
-          ],
           const SizedBox(width: 4),
         ],
       ),
@@ -539,75 +535,74 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ValueListenableBuilder<bool>(
-            valueListenable: _hasText,
-            builder: (context, hasText, _) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minHeight: 40,
-                        maxHeight: 120,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minHeight: 40,
+                    maxHeight: 120,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _focusNode.hasFocus
+                          ? AppTheme.accentCyan.withValues(alpha: 0.45)
+                          : context.dividerColor.withValues(alpha: 0.5),
+                      width: _focusNode.hasFocus ? 1.5 : 1,
+                    ),
+                    boxShadow: _focusNode.hasFocus
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.accentCyan.withValues(
+                                alpha: 0.07,
+                              ),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: TextField(
+                    controller: _ctrl,
+                    focusNode: _focusNode,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enableIMEPersonalizedLearning: false,
+                    autofillHints: const <String>[],
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: context.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText:
+                          context.l10n?.askMeAnything ?? 'Ask me anything...',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: context.textTertiaryColor,
                       ),
-                      decoration: BoxDecoration(
-                        color: context.surfaceColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _focusNode.hasFocus
-                              ? AppTheme.accentCyan.withValues(alpha: 0.45)
-                              : context.dividerColor.withValues(alpha: 0.5),
-                          width: _focusNode.hasFocus ? 1.5 : 1,
-                        ),
-                        boxShadow: _focusNode.hasFocus
-                            ? [
-                                BoxShadow(
-                                  color: AppTheme.accentCyan.withValues(
-                                    alpha: 0.07,
-                                  ),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : [],
-                      ),
-                      child: TextField(
-                        controller: _ctrl,
-                        focusNode: _focusNode,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        textCapitalization: TextCapitalization.none,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        enableIMEPersonalizedLearning: false,
-                        autofillHints: const <String>[],
-                        smartDashesType: SmartDashesType.disabled,
-                        smartQuotesType: SmartQuotesType.disabled,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          color: context.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText:
-                              context.l10n?.askMeAnything ??
-                              'Ask me anything...',
-                          hintStyle: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: context.textTertiaryColor,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                        ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  hasText
+                ),
+              ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<bool>(
+                valueListenable: _hasText,
+                builder: (context, hasText, _) {
+                  return hasText
                       ? GestureDetector(
                           onTap: () => _send(_ctrl.text),
                           child: Container(
@@ -662,10 +657,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                                   : AppTheme.neonCyan,
                             ),
                           ),
-                        ),
-                ],
-              );
-            },
+                        );
+                },
+              ),
+            ],
           ),
 
           // Listening indicator

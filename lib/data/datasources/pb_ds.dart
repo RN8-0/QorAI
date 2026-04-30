@@ -1932,9 +1932,8 @@ class PbDataSource {
       return cached.results;
     }
 
-    // Normalize query: split alpha-digit boundaries so "note9" → "note 9",
-    // "redmi14" → "redmi 14". Keeps model numbers as separate tokens so
-    // Typesense can match them individually and rank exactly.
+    // Normalize query while preserving single-letter model suffixes such as
+    // "2600x" so product-name substrings keep matching the indexed token.
     final normalizedQ = _normalizeSearchQuery(q);
 
     try {
@@ -1949,6 +1948,7 @@ class PbDataSource {
         'prioritize_token_position': true,
         'prioritize_num_matching_fields': true,
         'text_match_type': 'max_score',
+        'infix': 'always,off,off,off,off',
         // Only allow 1 typo for tokens with 4+ characters; short numeric
         // tokens (e.g. "8", "9") must match exactly — prevents "Note 8"
         // from matching "Note 9" or "Note 15" via typo expansion.
@@ -2690,6 +2690,7 @@ class PbDataSource {
           if (isSearch) 'prioritize_token_position': true,
           if (isSearch) 'prioritize_num_matching_fields': true,
           if (isSearch) 'text_match_type': 'max_score',
+          if (isSearch) 'infix': 'always,off,off,off,off',
           if (isSearch) 'num_typos': '1,0,1,1,1',
           if (isSearch) 'min_len_1typo': 4,
           if (isSearch) 'min_len_2typo': 8,
@@ -2791,15 +2792,17 @@ class PbDataSource {
   }
 
   /// Normalizes a search query for Typesense: splits alpha-digit boundaries
-  /// so compound tokens like "note9" become "note 9" and numeric model numbers
-  /// are separate tokens. This ensures "Redmi Note 9" ranks above "Redmi Note
-  /// 15 Pro+" when the user types "note9" or "redmi note9".
+  /// and multi-letter numeric suffixes while keeping single-letter model
+  /// suffixes intact ("2600x", "5g").
   static String _normalizeSearchQuery(String query) {
     var q = query.trim().toLowerCase();
     // letter → digit boundary: "note9" → "note 9"
     q = q.replaceAllMapped(RegExp(r'([a-z])(\d)'), (m) => '${m[1]} ${m[2]}');
-    // digit → letter boundary: "9pro" → "9 pro"
-    q = q.replaceAllMapped(RegExp(r'(\d)([a-z])'), (m) => '${m[1]} ${m[2]}');
+    // digit → multi-letter boundary: "9pro" → "9 pro", but keep "2600x".
+    q = q.replaceAllMapped(
+      RegExp(r'(\d)([a-z]{2,})'),
+      (m) => '${m[1]} ${m[2]}',
+    );
     // collapse extra whitespace
     return q.replaceAll(RegExp(r'\s+'), ' ').trim();
   }

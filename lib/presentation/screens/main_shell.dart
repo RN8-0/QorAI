@@ -1015,7 +1015,6 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
                         child: _isOpen
                             ? AIChatScreen(
                                 isOverlay: true,
-                                onClose: _toggle,
                                 pageContext: _buildContext(),
                               )
                             : const SizedBox.shrink(),
@@ -1072,26 +1071,11 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
                           ],
                         ),
                         child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            transitionBuilder: (child, anim) =>
-                                ScaleTransition(scale: anim, child: child),
-                            child: _isOpen
-                                ? Icon(
-                                    Icons.close_rounded,
-                                    key: const ValueKey('close'),
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppTheme.brandCyan,
-                                    size: 20,
-                                  )
-                                : Image.asset(
-                                    key: const ValueKey('logo'),
-                                    'assets/logo/qor_ai_logo.png',
-                                    width: 30,
-                                    height: 30,
-                                    fit: BoxFit.contain,
-                                  ),
+                          child: Image.asset(
+                            'assets/logo/qor_ai_logo.png',
+                            width: 30,
+                            height: 30,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

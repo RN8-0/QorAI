@@ -12,7 +12,7 @@ const schema = {
   fields: [
     { name: 'id', type: 'string' }, // PB record id
     { name: 'slug', type: 'string' },
-    { name: 'name', type: 'string' },
+    { name: 'name', type: 'string', infix: true },
     { name: 'brand', type: 'string', facet: true, optional: true },
     { name: 'category', type: 'string', facet: true },
     { name: 'subcategory', type: 'string', facet: true, optional: true },
