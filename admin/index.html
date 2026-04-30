@@ -404,7 +404,7 @@
         <div class="scraper-tabs">
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
-          <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Puan Motoru v6</button>
+          <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v6</button>
           <button class="scraper-tab" data-tab="productUpdate" onclick="switchScraperTab(this)">🔄 Update Products</button>
           <button class="scraper-tab" data-tab="inventoryScan" onclick="switchScraperTab(this)">🔍 Inventory Scan</button>
           <button class="scraper-tab" data-tab="qualityScan" onclick="switchScraperTab(this)">🔬 Quality Scan</button>
@@ -472,36 +472,35 @@
           </div>
         </div>
 
-        <!-- Score Update panel removed (replaced by Puan Motoru v4) -->
+        <!-- Score Update panel removed (replaced by Score Engine v4) -->
 
         <!-- Tech Score Engine v2 (spec-based, percentile + power curve) -->
         <div class="scraper-panel" id="scoreEnginePanel">
           <div class="card">
-            <div class="card-title">⚡ Teknik Puan Motoru v6 (Anchored + Brand Modifier)</div>
+            <div class="card-title">⚡ Technical Score Engine v6 (Anchored + Brand Modifier)</div>
             <p class="text-muted" style="margin-bottom:12px">
-              Mutlak rank-based GPU/CPU/Chipset + log-scale numeric normalization +
-              tier caps (flagship/upper/mid/entry). PocketBase'e yazar, Typesense'e
-              otomatik mirror eder. Tek source of truth, geleceğe dönük (yeni nesil
-              eklendiğinde eski ürünler stabil).
+              Absolute rank-based GPU/CPU/chipset scoring, log-scale numeric normalization,
+              and tier caps (flagship/upper/mid/entry). Writes to PocketBase and mirrors to
+              Typesense automatically. One source of truth, stable for future product generations.
             </p>
             <div class="form-grid">
               <div class="form-field">
-                <label>Kategori (Seçili Kategoriyi Hesapla için)</label>
+                <label>Category (for Calculate Selected Category)</label>
                 <select class="input" id="scoreEngineCategory">
-                  <option value="">— Kategori seçin —</option>
+                  <option value="">Select Category</option>
                 </select>
               </div>
               <div class="form-field">
                 <label style="display:flex;align-items:center;gap:8px;margin-top:24px">
                   <input type="checkbox" id="scoreEngineOverwrite" checked>
-                  <span>Mevcut puanların üzerine yaz</span>
+                  <span>Overwrite existing scores</span>
                 </label>
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="runScoreEngineAll()">Tüm Ürünleri Hesapla</button>
-              <button class="btn" onclick="runScoreEngineCategory()">Seçili Kategoriyi Hesapla</button>
-              <button class="btn btn-secondary" onclick="stopScoreEngine()">Durdur</button>
+              <button class="btn btn-primary" onclick="runScoreEngineAll()">Calculate All Products</button>
+              <button class="btn" onclick="runScoreEngineCategory()">Calculate Selected Category</button>
+              <button class="btn btn-secondary" onclick="stopScoreEngine()">Stop</button>
             </div>
             <div style="margin-top:14px">
               <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
@@ -526,8 +525,8 @@
                 </select>
               </div>
               <div class="form-field">
-                <label>Limit (boş = tümü)</label>
-                <input class="input" type="number" id="updateLimit" placeholder="Tüm ürünler" min="1">
+                <label>Limit (empty = all)</label>
+                <input class="input" type="number" id="updateLimit" placeholder="All products" min="1">
               </div>
               <div class="form-field" style="display:flex;align-items:end">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -561,51 +560,51 @@
         <!-- Quality Scan -->
         <div class="scraper-panel" id="qualityScanPanel">
           <div class="card">
-            <div class="card-title">🔬 Çift Katman Kalite Taraması</div>
+            <div class="card-title">🔬 Two-Layer Quality Scan</div>
             <p class="text-muted" style="margin-bottom:12px">
-              <strong>Katman 1 — Kalite Kontrolü:</strong> Kırık görseli veya az spec'i olan ürünleri tespit edip yeniden scrape eder.<br>
-              <strong>Katman 2 — Duplikasyon Temizliği:</strong> Aynı ürünün birden fazla kaydını bulur, en kaliteli olanı tutar, diğerlerini siler.
+              <strong>Layer 1 — Quality Control:</strong> Detects products with broken images or too few specs and re-scrapes them.<br>
+              <strong>Layer 2 — Deduplication:</strong> Finds duplicate product records, keeps the best-quality one, and deletes the rest.
             </p>
             <div class="form-grid">
               <div class="form-field">
-                <label>Kategori (boş = tümü)</label>
+                <label>Category (empty = all)</label>
                 <select class="input" id="qualityScanCategory">
-                  <option value="">Tüm Kategoriler</option>
+                  <option value="">All Categories</option>
                 </select>
               </div>
               <div class="form-field">
-                <label>Min. Spec Sayısı (altı → yeniden scrape)</label>
+                <label>Min. Spec Count (below = re-scrape)</label>
                 <input class="input" type="number" id="qualityMinSpecs" value="5" min="1" max="100">
               </div>
               <div class="form-field">
-                <label>Min. Görsel Sayısı (altı → yeniden scrape)</label>
+                <label>Min. Image Count (below = re-scrape)</label>
                 <input class="input" type="number" id="qualityMinImages" value="1" min="0" max="20">
               </div>
               <div class="form-field">
-                <label>Bekleme Süresi (ms)</label>
+                <label>Delay (ms)</label>
                 <input class="input" type="number" id="qualityScanDelay" value="2000" min="500" step="500">
               </div>
               <div class="form-field" style="display:flex;align-items:end">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityRescrape" checked> Kötü ürünleri yeniden scrape et
+                  <input type="checkbox" id="qualityRescrape" checked> Re-scrape bad products
                 </label>
               </div>
               <div class="form-field" style="display:flex;align-items:end">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityDedupe" checked> Duplikatları sil
+                  <input type="checkbox" id="qualityDedupe" checked> Delete duplicates
                 </label>
               </div>
               <div class="form-field" style="display:flex;align-items:end">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityCheckImages" checked> Kırık görsel URL'lerini test et (paralel batch)
+                  <input type="checkbox" id="qualityCheckImages" checked> Test broken image URLs (parallel batch)
                 </label>
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnQualityScan" onclick="startQualityScan()">🔬 Tam Tarama Başlat</button>
-              <button class="btn" style="background:#e67e22;color:#fff" onclick="startDeduplicateOnly()">🗑️ Sadece Duplikat Temizle</button>
-              <button class="btn" style="background:#0891b2;color:#fff" id="btnFixImages" onclick="fixAllImages()">🖼️ Görselleri Temizle (max 8)</button>
-              <button class="btn btn-danger" id="btnStopQuality" onclick="stopScraping()" style="display:none">Durdur</button>
+              <button class="btn btn-primary" id="btnQualityScan" onclick="startQualityScan()">🔬 Start Full Scan</button>
+              <button class="btn" style="background:#e67e22;color:#fff" onclick="startDeduplicateOnly()">🗑️ Deduplicate Only</button>
+              <button class="btn" style="background:#0891b2;color:#fff" id="btnFixImages" onclick="fixAllImages()">🖼️ Clean Images (max 8)</button>
+              <button class="btn btn-danger" id="btnStopQuality" onclick="stopScraping()" style="display:none">Stop</button>
             </div>
           </div>
         </div>
@@ -680,33 +679,33 @@
         <div class="view-header">
           <div>
             <h1>AI Prompts</h1>
-            <p class="text-muted" style="margin:6px 0 0;font-size:13px">Uygulamada kullanılan canlı promptları başlık bazlı düzenle. Kaydedilen değerler public_config.ai_prompts üzerinden uygulamaya redeploy olmadan yansır.</p>
+            <p class="text-muted" style="margin:6px 0 0;font-size:13px">Edit live prompts by section. Saved values are applied through public_config.ai_prompts without redeploying the app.</p>
           </div>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadAiPromptManager()">Yenile</button>
-            <button class="btn btn-primary" onclick="saveAiPromptManager()">Promptları Kaydet</button>
+            <button class="btn btn-ghost" onclick="loadAiPromptManager()">Refresh</button>
+            <button class="btn btn-primary" onclick="saveAiPromptManager()">Save Prompts</button>
           </div>
         </div>
         <div class="prompt-toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="promptSearchInput" placeholder="Prompt başlığı, anahtar veya kategori ara..." oninput="filterAiPromptCards()">
+            <input type="text" id="promptSearchInput" placeholder="Search prompt title, key, or category..." oninput="filterAiPromptCards()">
           </div>
           <select id="promptGroupFilter" class="field-select" onchange="filterAiPromptCards()">
-            <option value="">Tüm Kategoriler</option>
+            <option value="">All Categories</option>
           </select>
-          <button class="btn btn-ghost" onclick="resetAllPromptEditorsToDefaults()">Varsayılanları Göster</button>
+          <button class="btn btn-ghost" onclick="resetAllPromptEditorsToDefaults()">Show Defaults</button>
         </div>
         <div class="card prompt-info-card">
-          <div class="card-title">Çalışma Mantığı</div>
+          <div class="card-title">How It Works</div>
           <div class="insight-stack">
-            <div class="insight-item"><div class="insight-label">SERVER</div>Kaydet butonu promptları PocketBase public_config koleksiyonundaki ai_prompts map alanına yazar.</div>
-            <div class="insight-item"><div class="insight-label">APP</div>Flutter tarafı ilgili AI çağrısından önce bu map'i okur; boş bırakılan promptlarda kod içindeki güvenli varsayılan kullanılır.</div>
-            <div class="insight-item"><div class="insight-label">DEFAULT</div>Kutularda önce kodda kullanılan mevcut promptlar görünür; düzenlenmiş promptlar ayrı badge ile işaretlenir.</div>
+            <div class="insight-item"><div class="insight-label">SERVER</div>The save button writes prompts to the ai_prompts map in PocketBase public_config.</div>
+            <div class="insight-item"><div class="insight-label">APP</div>Flutter reads this map before each related AI call; empty prompts fall back to safe code defaults.</div>
+            <div class="insight-item"><div class="insight-label">DEFAULT</div>Editors show the current code defaults first; server overrides are marked with a badge.</div>
           </div>
         </div>
         <div id="aiPromptStatus" class="text-muted" style="font-size:12px;margin:12px 0"></div>
-        <div id="aiPromptList" class="prompt-editor-list"><div class="placeholder">Promptlar yükleniyor...</div></div>
+        <div id="aiPromptList" class="prompt-editor-list"><div class="placeholder">Loading prompts...</div></div>
       </section>
 
       <!-- ===== NOTIFICATIONS ===== -->
@@ -967,12 +966,12 @@
   <script src="js/pb_client.js?v=20260426f"></script>
   <script src="js/ts_client.js?v=20260426a"></script>
   <script src="js/scoring/score_engine.js?v=20260426a"></script>
-  <script src="js/scoring/score_runner.js?v=20260426a"></script>
+  <script src="js/scoring/score_runner.js?v=20260430a"></script>
   <script src="js/dictionary.js?v=20260426a"></script>
   <script src="js/categories.js?v=20260426a"></script>
-  <script src="js/scraper.js?v=20260426a"></script>
-  <script src="js/notifications.js?v=20260426a"></script>
-  <script src="js/support.js?v=20260426f"></script>
-  <script src="js/app.js?v=20260429a"></script>
+  <script src="js/scraper.js?v=20260430a"></script>
+  <script src="js/notifications.js?v=20260430a"></script>
+  <script src="js/support.js?v=20260430a"></script>
+  <script src="js/app.js?v=20260430a"></script>
 </body>
 </html>

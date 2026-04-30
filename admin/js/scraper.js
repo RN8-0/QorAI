@@ -1949,33 +1949,33 @@ function _cleanImgList(imgs) {
 
 // One-shot bulk image cleanup: normalize URLs, remove duplicates, cap at 8
 async function fixAllImages() {
-  if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
+  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
   scraperRunning = true;
   scraperAbort = false;
   document.getElementById('btnFixImages').style.display = 'none';
   document.getElementById('btnStopQuality').style.display = '';
   clearScraperLog();
-  slog('══ Görsel Temizleme Başladı ══', 'info');
-  slog('Tüm ürünler taranıyor: URL normalize + duplikat kaldır + max 8...', 'info');
+  slog('══ Image Cleanup Started ══', 'info');
+  slog('Scanning all products: normalize URLs + remove duplicates + max 8...', 'info');
 
   let products = [];
   try {
     const total = (await getPb().collection('products').getList(1, 1, {})).totalItems;
     const pages = Math.ceil(total / 500);
-    slog(`Toplam ${total} ürün, ${pages} sayfa`, 'info');
+    slog(`Total ${total} products, ${pages} pages`, 'info');
     for (let page = 1; page <= pages && !scraperAbort; page++) {
       const r = await getPb().collection('products').getList(page, 500, {});
       products.push(...r.items);
-      updateProgress(page, pages, 'Yükleniyor');
+      updateProgress(page, pages, 'Loading');
     }
-  } catch(e) { slog('Yükleme hatası: ' + e.message, 'error'); _finishQualityScan(); return; }
+  } catch(e) { slog('Load error: ' + e.message, 'error'); _finishQualityScan(); return; }
 
-  slog(`✓ ${products.length} ürün yüklendi. Temizleniyor...`, 'success');
+  slog(`✓ ${products.length} products loaded. Cleaning...`, 'success');
 
   let fixed = 0, skipped = 0;
   for (let i = 0; i < products.length && !scraperAbort; i++) {
     const p = products[i];
-    updateProgress(i + 1, products.length, 'Temizleniyor');
+    updateProgress(i + 1, products.length, 'Cleaning');
 
     const cleaned = _cleanImgList(p.images);
     const cleanedUrl = _normImgUrl(p.imageUrl || p.imageURL || cleaned[0] || '');
@@ -1995,22 +1995,22 @@ async function fixAllImages() {
       });
       fixed++;
       if (fixed <= 20 || fixed % 100 === 0) {
-        slog(`  ✓ ${p.name || p.id}: ${(p.images||[]).length} → ${cleaned.length} görsel`, 'success');
+        slog(`  ✓ ${p.name || p.id}: ${(p.images||[]).length} → ${cleaned.length} images`, 'success');
       }
     } catch(e) {
       slog(`  ✗ ${p.name || p.id}: ${e.message}`, 'error');
     }
   }
 
-  slog(`\n══ Tamamlandı ══`, 'success');
-  slog(`✓ Düzeltildi: ${fixed} | Zaten temiz: ${skipped}`, 'success');
+  slog(`\n══ Completed ══`, 'success');
+  slog(`✓ Fixed: ${fixed} | Already clean: ${skipped}`, 'success');
   _finishQualityScan();
   document.getElementById('btnFixImages').style.display = '';
 }
 
 async function startQualityScan() {
-  if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
-  if (!(await checkProxy())) { toast('Önce proxy\'yi başlatın', 'e'); return; }
+  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
+  if (!(await checkProxy())) { toast('Start the proxy first', 'e'); return; }
 
   const cat = document.getElementById('qualityScanCategory')?.value || '';
   const minSpecs = parseInt(document.getElementById('qualityMinSpecs')?.value) || 5;
@@ -2027,11 +2027,11 @@ async function startQualityScan() {
   clearScraperLog();
   await loadLearnedTranslations();
 
-  slog('══ Kalite Taraması Başladı ══', 'info');
-  slog(`Kategori: ${cat || 'Tümü'} | Min spec: ${minSpecs} | Min görsel: ${minImages}`, 'info');
+  slog('══ Quality Scan Started ══', 'info');
+  slog(`Category: ${cat || 'All'} | Min specs: ${minSpecs} | Min images: ${minImages}`, 'info');
 
   // ── Load all products via pagination (PB perPage capped at 500) ──
-  slog('\n[1/4] PocketBase\'den ürünler yükleniyor...', 'info');
+  slog('\n[1/4] Loading products from PocketBase...', 'info');
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
@@ -2040,22 +2040,22 @@ async function startQualityScan() {
     const total = first.totalItems;
     const pages = Math.ceil(total / PER_PAGE);
     products.push(...first.items.map(d => ({ _docId: d.id, ...d })));
-    slog(`Toplam ${total} ürün, ${pages} sayfa`, 'info');
-    updateProgress(1, pages, 'Yükleniyor');
+    slog(`Total ${total} products, ${pages} pages`, 'info');
+    updateProgress(1, pages, 'Loading');
     for (let page = 2; page <= pages && !scraperAbort; page++) {
       const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
       products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
-      updateProgress(page, pages, 'Yükleniyor');
+      updateProgress(page, pages, 'Loading');
     }
-    slog(`✓ ${products.length} ürün yüklendi`, 'success');
+    slog(`✓ ${products.length} products loaded`, 'success');
   } catch (e) {
-    slog(`Ürünler yüklenemedi: ${e.message}`, 'error');
+    slog(`Products could not be loaded: ${e.message}`, 'error');
     _finishQualityScan();
     return;
   }
 
   // ── Phase 1: Detect quality issues ──
-  slog(`\n[2/4] Kalite kontrolü yapılıyor...`, 'info');
+  slog(`\n[2/4] Running quality checks...`, 'info');
   const badProducts = [];
   const goodProducts = [];
 
@@ -2068,17 +2068,17 @@ async function startQualityScan() {
     }
   }
 
-  slog(`✓ Sorunsuz: ${goodProducts.length} | ⚠️ Sorunlu: ${badProducts.length}`, badProducts.length > 0 ? 'warn' : 'success');
+  slog(`✓ Clean: ${goodProducts.length} | ⚠️ Problematic: ${badProducts.length}`, badProducts.length > 0 ? 'warn' : 'success');
   if (badProducts.length > 0) {
-    slog('Sorunlu ürünler (ilk 30):', 'warn');
+    slog('Problematic products (first 30):', 'warn');
     badProducts.slice(0, 30).forEach(p => slog(`  ⚠️ ${p.name || p._docId}: ${p._issues.join(', ')}`, 'warn'));
-    if (badProducts.length > 30) slog(`  ... ve ${badProducts.length - 30} ürün daha`, 'warn');
+    if (badProducts.length > 30) slog(`  ... and ${badProducts.length - 30} more products`, 'warn');
   }
 
   // ── Phase 1b: Broken image URL check (optional, parallel batched) ──
   if (doCheckImages && !scraperAbort) {
-    slog(`\n[2b/4] Görsel URL erişilebilirlik testi yapılıyor (${goodProducts.length + badProducts.length} ürün)...`, 'info');
-    slog('Paralel 20\'şer batch ile test ediliyor...', 'info');
+    slog(`\n[2b/4] Testing image URL reachability (${goodProducts.length + badProducts.length} products)...`, 'info');
+    slog('Testing in parallel batches of 20...', 'info');
     let brokenCount = 0;
     const allToCheck = [...goodProducts];
     const BATCH = 20;
@@ -2093,41 +2093,41 @@ async function startQualityScan() {
       for (const { p, ok, skip } of results) {
         if (skip || ok) continue;
         if (!p.sourceUrl) continue;
-        slog(`  🔴 Kırık görsel: ${p.name || p._docId}`, 'warn');
+        slog(`  🔴 Broken image: ${p.name || p._docId}`, 'warn');
         const alreadyBad = badProducts.some(b => b._docId === p._docId);
         if (!alreadyBad) {
-          badProducts.push({ ...p, _issues: ['kırık görsel URL'] });
+          badProducts.push({ ...p, _issues: ['broken image URL'] });
           const idx = goodProducts.findIndex(g => g._docId === p._docId);
           if (idx !== -1) goodProducts.splice(idx, 1);
         } else {
           const existing = badProducts.find(b => b._docId === p._docId);
-          if (existing && !existing._issues.includes('kırık görsel URL')) {
-            existing._issues.push('kırık görsel URL');
+          if (existing && !existing._issues.includes('broken image URL')) {
+            existing._issues.push('broken image URL');
           }
         }
         brokenCount++;
       }
       processed += slice.length;
-      updateProgress(processed, allToCheck.length, 'Görsel Test');
+      updateProgress(processed, allToCheck.length, 'Image Test');
     }
-    slog(`✓ Kırık görsel URL testi tamamlandı: ${brokenCount} kırık görsel bulundu`, brokenCount > 0 ? 'warn' : 'success');
+    slog(`✓ Broken image URL test complete: ${brokenCount} broken images found`, brokenCount > 0 ? 'warn' : 'success');
   }
 
   // ── Phase 1b: Re-scrape bad products ──
   if (doRescrape && badProducts.length > 0 && !scraperAbort) {
-    slog(`\n[3/4] ${badProducts.length} sorunlu ürün yeniden scrape ediliyor...`, 'info');
+    slog(`\n[3/4] Re-scraping ${badProducts.length} problematic products...`, 'info');
     _scrapeStartTime = Date.now();
     let fixed = 0, failed = 0, deleted = 0;
 
     for (let i = 0; i < badProducts.length && !scraperAbort; i++) {
       const p = badProducts[i];
-      updateProgress(i + 1, badProducts.length, 'Yeniden Scrape');
+      updateProgress(i + 1, badProducts.length, 'Re-scrape');
       slog(`[${i + 1}/${badProducts.length}] ${p.name || p._docId} (${p._issues.join(', ')})`);
 
       try {
         const html = await proxyFetch(p.sourceUrl);
         if (!html) {
-          slog(`  → 404/yok. Siliniyor...`, 'warn');
+          slog(`  → 404/missing. Deleting...`, 'warn');
           await pbDeleteDoc('products', p._docId);
           deleted++;
           continue;
@@ -2135,7 +2135,7 @@ async function startQualityScan() {
 
         const fresh = await scrapeProductDetail(html, p.sourceUrl, p.category || cat);
         if (!fresh || (fresh.specsCount || 0) === 0) {
-          slog(`  → Geçersiz sayfa. Atlanıyor.`, 'warn');
+          slog(`  → Invalid page. Skipping.`, 'warn');
           failed++;
           continue;
         }
@@ -2164,38 +2164,38 @@ async function startQualityScan() {
         await pbUpdateDoc('products', p._docId, update);
 
         const improvements = [];
-        if (update.images) improvements.push(`${mergedSliced.length} görsel`);
+        if (update.images) improvements.push(`${mergedSliced.length} images`);
         if (update.specs) improvements.push(`${freshSpecCount} spec`);
-        slog(`  → Düzeltildi: ${improvements.join(', ')}`, 'success');
+        slog(`  → Fixed: ${improvements.join(', ')}`, 'success');
         fixed++;
       } catch (e) {
-        slog(`  → Hata: ${e.message}`, 'error');
+        slog(`  → Error: ${e.message}`, 'error');
         failed++;
       }
 
       await sleep(delay);
     }
 
-    slog(`\nYeniden scrape tamamlandı: Düzeltilen ${fixed} | Başarısız ${failed} | Silinen ${deleted}`, 'success');
+    slog(`\nRe-scrape complete: Fixed ${fixed} | Failed ${failed} | Deleted ${deleted}`, 'success');
   } else if (!doRescrape) {
-    slog('\n[3/4] Yeniden scrape atlandı (seçenek kapalı)', 'info');
+    slog('\n[3/4] Re-scrape skipped (option disabled)', 'info');
   }
 
   // ── Phase 2: Deduplication ──
   if (doDedupe && !scraperAbort) {
-    slog('\n[4/4] Duplikasyon taraması başlıyor...', 'info');
+    slog('\n[4/4] Starting deduplication scan...', 'info');
     await _runDeduplication(products, cat);
   } else if (!doDedupe) {
-    slog('\n[4/4] Duplikasyon taraması atlandı (seçenek kapalı)', 'info');
+    slog('\n[4/4] Deduplication scan skipped (option disabled)', 'info');
   }
 
-  slog('\n═══ Kalite Taraması Tamamlandı ═══', 'success');
+  slog('\n═══ Quality Scan Complete ═══', 'success');
   triggerAITranslation();
   _finishQualityScan();
 }
 
 async function startDeduplicateOnly() {
-  if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
+  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
 
   const cat = document.getElementById('qualityScanCategory')?.value || '';
 
@@ -2205,10 +2205,10 @@ async function startDeduplicateOnly() {
   document.getElementById('btnStopQuality').style.display = '';
   clearScraperLog();
 
-  slog('══ Duplikasyon Temizliği Başladı ══', 'info');
-  slog(`Kategori: ${cat || 'Tümü'}`, 'info');
+  slog('══ Deduplication Cleanup Started ══', 'info');
+  slog(`Category: ${cat || 'All'}`, 'info');
 
-  slog('\nPocketBase\'den ürünler yükleniyor...', 'info');
+  slog('\nLoading products from PocketBase...', 'info');
   let products = [];
   try {
     const filter = cat ? `category="${cat}"` : '';
@@ -2220,24 +2220,24 @@ async function startDeduplicateOnly() {
     for (let page = 2; page <= pages && !scraperAbort; page++) {
       const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
       products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
-      updateProgress(page, pages, 'Yükleniyor');
+      updateProgress(page, pages, 'Loading');
     }
-    slog(`✓ ${products.length} ürün yüklendi`, 'success');
+    slog(`✓ ${products.length} products loaded`, 'success');
   } catch (e) {
-    slog(`Yüklenemedi: ${e.message}`, 'error');
+    slog(`Could not load: ${e.message}`, 'error');
     _finishQualityScan();
     return;
   }
 
   await _runDeduplication(products, cat);
 
-  slog('\n═══ Duplikasyon Temizliği Tamamlandı ═══', 'success');
+  slog('\n═══ Deduplication Cleanup Complete ═══', 'success');
   _finishQualityScan();
 }
 
 async function _runDeduplication(products, categoryFilter) {
   // Step 1: Group by exact same sourceUrl (definitive duplicates)
-  slog('\n— Aynı kaynak URL\'ye sahip duplikatlar kontrol ediliyor...', 'info');
+  slog('\n— Checking duplicates with the same source URL...', 'info');
   const byUrl = new Map();
   for (const p of products) {
     if (categoryFilter && p.category !== categoryFilter) continue;
@@ -2248,7 +2248,7 @@ async function _runDeduplication(products, categoryFilter) {
   }
 
   const urlDups = [...byUrl.values()].filter(g => g.length > 1);
-  slog(`Aynı URL'den ${urlDups.length} duplikat grup bulundu`, urlDups.length > 0 ? 'warn' : 'success');
+  slog(`${urlDups.length} duplicate groups found by same URL`, urlDups.length > 0 ? 'warn' : 'success');
 
   let totalDeleted = 0;
 
@@ -2258,20 +2258,20 @@ async function _runDeduplication(products, categoryFilter) {
     const keeper = sorted[0];
     const toDelete = sorted.slice(1);
     slog(`\n[URL Dup] "${keeper.name || keeper._docId}"`, 'warn');
-    slog(`  ✓ TUTULAN: ${keeper._docId} (score: ${_qualityScore(keeper)})`, 'success');
+    slog(`  ✓ KEPT: ${keeper._docId} (score: ${_qualityScore(keeper)})`, 'success');
     for (const dup of toDelete) {
-      slog(`  🗑️ SİLİNDİ: ${dup._docId} (score: ${_qualityScore(dup)})`, 'warn');
+      slog(`  🗑️ DELETED: ${dup._docId} (score: ${_qualityScore(dup)})`, 'warn');
       try {
         await _mergeAndDelete(keeper, dup);
         totalDeleted++;
       } catch (e) {
-        slog(`    Hata: ${e.message}`, 'error');
+        slog(`    Error: ${e.message}`, 'error');
       }
     }
   }
 
   // Step 2: Group by normalized name within category
-  slog('\n— İsim benzerliğine göre duplikatlar kontrol ediliyor...', 'info');
+  slog('\n— Checking duplicates by name similarity...', 'info');
   const byName = new Map();
   for (const p of products) {
     if (categoryFilter && p.category !== categoryFilter) continue;
@@ -2283,7 +2283,7 @@ async function _runDeduplication(products, categoryFilter) {
   }
 
   const nameDups = [...byName.entries()].filter(([, g]) => g.length > 1);
-  slog(`İsim bazlı ${nameDups.length} potansiyel duplikat grup bulundu`, nameDups.length > 0 ? 'warn' : 'success');
+  slog(`${nameDups.length} potential duplicate groups found by name`, nameDups.length > 0 ? 'warn' : 'success');
 
   for (const [key, group] of nameDups) {
     if (scraperAbort) break;
@@ -2299,20 +2299,20 @@ async function _runDeduplication(products, categoryFilter) {
     const keeper = sorted[0];
     const toDelete = sorted.slice(1);
 
-    slog(`\n[İsim Dup] "${key.split('::')[1]}"`, 'warn');
-    slog(`  ✓ TUTULAN: ${keeper.name || keeper._docId} (score: ${_qualityScore(keeper)}, specs: ${keeper.specsCount || 0})`, 'success');
+    slog(`\n[Name Dup] "${key.split('::')[1]}"`, 'warn');
+    slog(`  ✓ KEPT: ${keeper.name || keeper._docId} (score: ${_qualityScore(keeper)}, specs: ${keeper.specsCount || 0})`, 'success');
     for (const dup of toDelete) {
-      slog(`  🗑️ SİLİNDİ: ${dup.name || dup._docId} (score: ${_qualityScore(dup)}, specs: ${dup.specsCount || 0})`, 'warn');
+      slog(`  🗑️ DELETED: ${dup.name || dup._docId} (score: ${_qualityScore(dup)}, specs: ${dup.specsCount || 0})`, 'warn');
       try {
         await _mergeAndDelete(keeper, dup);
         totalDeleted++;
       } catch (e) {
-        slog(`    Hata: ${e.message}`, 'error');
+        slog(`    Error: ${e.message}`, 'error');
       }
     }
   }
 
-  slog(`\nDuplikasyon tamamlandı: ${totalDeleted} kayıt silindi`, 'success');
+  slog(`\nDeduplication complete: ${totalDeleted} records deleted`, 'success');
 }
 
 // Merge images from dup into keeper, then delete dup

@@ -282,8 +282,8 @@ function normalizeAdminAiProfile(raw){
 function renderAdminAiProfileCard(profile,uid){
   const p=normalizeAdminAiProfile(profile);
   const hasContent=!!(p.summary||p.persona||p.retentionRisk||p.premiumRecommendation||p.qCoinAction||p.nextActions.length);
-  const generated=p.generatedAt?formatDateTimeLabel(p.generatedAt):'Henüz üretilmedi';
-  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧠 Qor AI Kullanıcı Portresi</span><button class="btn btn-primary btn-sm" onclick="generateUserDeepSeekProfile('${escJs(uid)}')">${hasContent?'Yenile':'Oluştur'}</button></div>${hasContent?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px"><div><span style="color:var(--text2)">Persona:</span> <b>${escHtml(p.persona||'—')}</b></div><div><span style="color:var(--text2)">Üretildi:</span> <b>${escHtml(generated)}</b></div><div style="grid-column:1/-1;line-height:1.6;color:var(--text1)">${escHtml(p.summary||'—')}</div><div><span style="color:var(--text2)">Retention Risk:</span> <b>${escHtml(p.retentionRisk||'—')}</b></div><div><span style="color:var(--text2)">Monetization:</span> <b>${escHtml(p.monetizationSignal||'—')}</b></div><div><span style="color:var(--text2)">Premium Önerisi:</span> <b>${escHtml(p.premiumRecommendation||'—')}</b></div><div><span style="color:var(--text2)">Q Coin Aksiyonu:</span> <b>${escHtml(p.qCoinAction||'—')}</b></div>${p.nextActions.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Önerilen sonraki adımlar</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.nextActions.map(item=>`<span class="feature-pill ghost">${escHtml(item)}</span>`).join('')}</div></div>`:''}${p.watchouts.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Dikkat noktaları</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.watchouts.map(item=>`<span class="feature-pill">${escHtml(item)}</span>`).join('')}</div></div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px;line-height:1.6">Qor AI bu kullanıcının profilini, davranışını, Q Coin durumunu ve premium dönüşüm potansiyelini yorumlayıp admin için kısa aksiyon planı üretecek.</div>`}</div>`;
+  const generated=p.generatedAt?formatDateTimeLabel(p.generatedAt):'Not generated yet';
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧠 Qor AI User Portrait</span><button class="btn btn-primary btn-sm" onclick="generateUserDeepSeekProfile('${escJs(uid)}')">${hasContent?'Refresh':'Generate'}</button></div>${hasContent?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px"><div><span style="color:var(--text2)">Persona:</span> <b>${escHtml(p.persona||'—')}</b></div><div><span style="color:var(--text2)">Generated:</span> <b>${escHtml(generated)}</b></div><div style="grid-column:1/-1;line-height:1.6;color:var(--text1)">${escHtml(p.summary||'—')}</div><div><span style="color:var(--text2)">Retention Risk:</span> <b>${escHtml(p.retentionRisk||'—')}</b></div><div><span style="color:var(--text2)">Monetization:</span> <b>${escHtml(p.monetizationSignal||'—')}</b></div><div><span style="color:var(--text2)">Premium Recommendation:</span> <b>${escHtml(p.premiumRecommendation||'—')}</b></div><div><span style="color:var(--text2)">Q Coin Action:</span> <b>${escHtml(p.qCoinAction||'—')}</b></div>${p.nextActions.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Recommended next actions</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.nextActions.map(item=>`<span class="feature-pill ghost">${escHtml(item)}</span>`).join('')}</div></div>`:''}${p.watchouts.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Watchouts</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.watchouts.map(item=>`<span class="feature-pill">${escHtml(item)}</span>`).join('')}</div></div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px;line-height:1.6">Qor AI will interpret this user's profile, behavior, Q Coin state, and premium conversion potential, then generate a short admin action plan.</div>`}</div>`;
 }
 async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={}){
   const token=getPb().authStore.token;
@@ -293,12 +293,12 @@ async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={
     body:JSON.stringify({model:'deepseek-chat',messages,max_tokens:maxTokens,temperature,response_format:{type:'json_object'}}),
   });
   const data=await response.json().catch(()=>({}));
-  if(!response.ok||data.error){throw new Error(data.message||data.error||'Qor AI isteği başarısız');}
+  if(!response.ok||data.error){throw new Error(data.message||data.error||'Qor AI request failed');}
   const content=data.choices?.[0]?.message?.content||'{}';
   try{return JSON.parse(content);}catch(_){
     const match=String(content).match(/\{[\s\S]*\}/);
     if(match)return JSON.parse(match[0]);
-    throw new Error('Qor AI yanıtı çözümlenemedi');
+    throw new Error('Qor AI response could not be parsed');
   }
 }
 function normalizeSegmentAnalysis(raw){
@@ -360,37 +360,37 @@ function renderStoredSegmentAnalysis(){
   const content=document.getElementById('deepSeekSegmentContent');
   if(!meta||!content)return;
   if(!_segmentAnalysisReport){
-    meta.textContent='Henüz toplu segment analizi oluşturulmadı.';
-    content.innerHTML='<div class="placeholder">Qor AI, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div>';
+    meta.textContent='No saved segment analysis yet.';
+    content.innerHTML='<div class="placeholder">Qor AI will segment users and generate actionable admin recommendations.</div>';
     return;
   }
   const report=normalizeSegmentAnalysis(_segmentAnalysisReport);
-  meta.textContent=report.generatedAt?`Son üretim: ${formatDateTimeLabel(report.generatedAt)}`:'Toplu segment analizi hazır';
-  content.innerHTML=`${report.summary?`<div class="card" style="margin:0 0 12px;padding:14px;line-height:1.7">${escHtml(report.summary)}</div>`:''}<div class="grid-3 intelligence-chart-grid" style="margin-bottom:12px">${report.segments.map(segment=>`<div class="card" style="margin:0;padding:14px"><div class="card-title"><span>${escHtml(segment.name)}</span><span style="font-size:11px;color:var(--text3)">${escHtml(segment.size||'')}</span></div><div style="font-size:12px;line-height:1.6;color:var(--text1);margin-bottom:10px">${escHtml(segment.description||'')}</div><div class="feature-pill-row"><span class="feature-pill">Premium: ${escHtml(segment.premiumPotential||'—')}</span><span class="feature-pill ghost">Q Coin: ${escHtml(segment.qCoinAction||'—')}</span></div><div style="font-size:11px;color:var(--text2);margin-top:10px">Kampanya: <b>${escHtml(segment.recommendedCampaign||'—')}</b></div></div>`).join('')}</div><div class="grid-2 intelligence-detail-grid"><div class="card"><div class="card-title">Önerilen Aksiyonlar</div><div class="insight-stack">${report.actions.length?report.actions.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">Öneri yok</div>'}</div></div><div class="card"><div class="card-title">Riskler / Dikkat Noktaları</div><div class="insight-stack">${report.risks.length?report.risks.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">Risk notu yok</div>'}</div></div></div>`;
+  meta.textContent=report.generatedAt?`Last generated: ${formatDateTimeLabel(report.generatedAt)}`:'Segment analysis is ready';
+  content.innerHTML=`${report.summary?`<div class="card" style="margin:0 0 12px;padding:14px;line-height:1.7">${escHtml(report.summary)}</div>`:''}<div class="grid-3 intelligence-chart-grid" style="margin-bottom:12px">${report.segments.map(segment=>`<div class="card" style="margin:0;padding:14px"><div class="card-title"><span>${escHtml(segment.name)}</span><span style="font-size:11px;color:var(--text3)">${escHtml(segment.size||'')}</span></div><div style="font-size:12px;line-height:1.6;color:var(--text1);margin-bottom:10px">${escHtml(segment.description||'')}</div><div class="feature-pill-row"><span class="feature-pill">Premium: ${escHtml(segment.premiumPotential||'—')}</span><span class="feature-pill ghost">Q Coin: ${escHtml(segment.qCoinAction||'—')}</span></div><div style="font-size:11px;color:var(--text2);margin-top:10px">Campaign: <b>${escHtml(segment.recommendedCampaign||'—')}</b></div></div>`).join('')}</div><div class="grid-2 intelligence-detail-grid"><div class="card"><div class="card-title">Recommended Actions</div><div class="insight-stack">${report.actions.length?report.actions.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">No recommendation</div>'}</div></div><div class="card"><div class="card-title">Risks / Watchouts</div><div class="insight-stack">${report.risks.length?report.risks.map(item=>`<div class="insight-item">${escHtml(item)}</div>`).join(''):'<div class="placeholder">No risk note</div>'}</div></div></div>`;
 }
 async function loadStoredSegmentAnalysis(){
   const meta=document.getElementById('deepSeekSegmentMeta');
   const content=document.getElementById('deepSeekSegmentContent');
-  if(meta)meta.textContent='Kaydedilmiş segment analizi yükleniyor...';
-  if(content)content.innerHTML='<div class="placeholder">Yükleniyor...</div>';
+  if(meta)meta.textContent='Loading saved segment analysis...';
+  if(content)content.innerHTML='<div class="placeholder">Loading...</div>';
   try{
     const doc=await pbGetDoc('app_config','admin_user_segment_analysis');
     const raw=doc.exists?(doc.data()?.value||doc.data()):null;
     _segmentAnalysisReport=raw?normalizeSegmentAnalysis(raw):null;
   }catch(e){
     _segmentAnalysisReport=null;
-    if(meta)meta.textContent='Segment analizi yüklenemedi';
-    if(content)content.innerHTML=`<div style="color:var(--red)">Hata: ${escHtml(e.message||String(e))}</div>`;
+    if(meta)meta.textContent='Segment analysis could not be loaded';
+    if(content)content.innerHTML=`<div style="color:var(--red)">Error: ${escHtml(e.message||String(e))}</div>`;
     return;
   }
   renderStoredSegmentAnalysis();
 }
 async function generateBulkDeepSeekSegments(){
-  if(!allUsers.length){toast('Önce kullanıcıları yükle','w');return}
+  if(!allUsers.length){toast('Load users first','w');return}
   const meta=document.getElementById('deepSeekSegmentMeta');
   const content=document.getElementById('deepSeekSegmentContent');
-  if(meta)meta.textContent='Qor AI segment analizi oluşturuyor...';
-  if(content)content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Segmentler hesaplanıyor...</div></div>';
+  if(meta)meta.textContent='Qor AI is generating segment analysis...';
+  if(content)content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Calculating segments...</div></div>';
   try{
     const payload=buildBulkSegmentPayload(allUsers);
     const raw=await callDeepSeekAdminJson([
@@ -400,12 +400,12 @@ async function generateBulkDeepSeekSegments(){
     _segmentAnalysisReport={...normalizeSegmentAnalysis(raw),generatedAt:new Date().toISOString()};
     await pbSetDoc('app_config','admin_user_segment_analysis',{key:'admin_user_segment_analysis',value:_segmentAnalysisReport,updatedAt:new Date().toISOString()});
     renderStoredSegmentAnalysis();
-    logActivity('deepseek_segment_analysis','Toplu Qor AI segment analizi olusturuldu',{userCount:allUsers.length});
-    toast('Toplu segment analizi hazır','s');
+    logActivity('deepseek_segment_analysis','Bulk Qor AI segment analysis generated',{userCount:allUsers.length});
+    toast('Segment analysis is ready','s');
   }catch(e){
-    if(meta)meta.textContent='Qor AI segment analizi başarısız';
-    if(content)content.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message||String(e))}</div>`;
-    toast('Qor AI segment analizi hatası: '+(e.message||e),'e');
+    if(meta)meta.textContent='Qor AI segment analysis failed';
+    if(content)content.innerHTML=`<div style="color:var(--red);padding:20px">Error: ${escHtml(e.message||String(e))}</div>`;
+    toast('Qor AI segment analysis error: '+(e.message||e),'e');
   }
 }
 
@@ -447,7 +447,7 @@ async function loadQCoinConfig(){
   const input=document.getElementById('usersDailyQCoinInput');
   if(input)input.value=String(_freeDailyAiCreditLimit);
   const hint=document.getElementById('usersQCoinHint');
-  if(hint)hint.textContent=`Global günlük havuz şu an ${formatQCoinAmount(_freeDailyAiCreditLimit)} Q. Kullanıcı detayından kişisel ekstra Q ekleyebilir veya bakiyeyi sıfırlayabilirsin.`;
+  if(hint)hint.textContent=`Global daily pool is ${formatQCoinAmount(_freeDailyAiCreditLimit)} Q. You can add personal extra Q or reset the balance from the user detail view.`;
   return _freeDailyAiCreditLimit;
 }
 
@@ -464,7 +464,7 @@ function getUserQCoinSnapshot(user){
 async function generateUserDeepSeekProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const analysisEl=document.getElementById('analysisContent');
-  if(analysisEl)analysisEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Qor AI kullanıcı profili hazırlanıyor...</div></div>';
+  if(analysisEl)analysisEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Preparing Qor AI user profile...</div></div>';
   try{
     const [rvRes,compRes]=await Promise.all([
       pbGetList('recently_viewed',1,12,{filter:`userId="${uid}"`,sort:'-created'}),
@@ -483,28 +483,28 @@ async function generateUserDeepSeekProfile(uid){
       },
       premium:{plan:premiumPlanKey(u),details:premiumDetails(u),isPremium:u.isPremium},
       qCoin:{remaining:snapshot.remaining,total:snapshot.total,used:snapshot.used,extra:snapshot.extra},
-      adminContext:{goal:'Kullaniciyi tanimak, retention riski, premium upsell ve q coin aksiyonunu belirlemek'}
+      adminContext:{goal:'Understand the user, retention risk, premium upsell potential, and Q Coin action'}
     };
     const result=await callDeepSeekAdminJson([
-      {role:'system',content:'Qor AI admin paneli icin calisan bir kullanici zekasi asistani ol. Yaniti sadece JSON object olarak ver. JSON anahtarlari: persona, summary, retentionRisk, monetizationSignal, premiumRecommendation, qCoinAction, nextActions, watchouts. Tum metinler Turkce olsun. nextActions en fazla 4, watchouts en fazla 3 kisa madde olsun.'},
-      {role:'user',content:`Su kullaniciyi analiz et ve admin aksiyonu oner:\n${JSON.stringify(payload)}`}
+      {role:'system',content:'Act as a user intelligence assistant for the Qor AI admin panel. Return only a JSON object. JSON keys: persona, summary, retentionRisk, monetizationSignal, premiumRecommendation, qCoinAction, nextActions, watchouts. All text must be English. nextActions max 4 short items, watchouts max 3 short items.'},
+      {role:'user',content:`Analyze this user and suggest admin actions:\n${JSON.stringify(payload)}`}
     ]);
     const profile={...normalizeAdminAiProfile(result),generatedAt:new Date().toISOString(),model:'qor-ai'};
     await pbUpdateDoc('users',uid,{adminAiProfile:profile});
     u.adminAiProfile=profile;
-    logActivity('user_deepseek_profile',`Qor AI kullanici analizi olusturuldu: ${uid}`,{userId:uid});
+    logActivity('user_deepseek_profile',`Qor AI user analysis generated: ${uid}`,{userId:uid});
     openUserDetail(uid);
     const analysisTab=[...document.querySelectorAll('#userModalBody .user-tab')].find(btn=>btn.dataset.tab==='analysis');
     if(analysisTab)analysisTab.click();
-    toast('Qor AI kullanıcı profili hazır','s');
+    toast('Qor AI user profile is ready','s');
   }catch(e){
-    if(analysisEl)analysisEl.innerHTML=`<div style="color:var(--red);padding:20px">Qor AI hatası: ${escHtml(e.message||String(e))}</div>`;
-    toast('Qor AI hatası: '+(e.message||e),'e');
+    if(analysisEl)analysisEl.innerHTML=`<div style="color:var(--red);padding:20px">Qor AI error: ${escHtml(e.message||String(e))}</div>`;
+    toast('Qor AI error: '+(e.message||e),'e');
   }
 }
 function parseDateValue(...values){for(const value of values){if(!value)continue;const dt=new Date(value);if(!Number.isNaN(dt.getTime()))return dt}return null}
-function formatDateLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—'}
-function formatDateTimeLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
+function formatDateLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}):'—'}
+function formatDateTimeLabel(value){const dt=parseDateValue(value);return dt?dt.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}
 function getUserComparisonCount(user){return Number(user.comparisonsCount||user.comparisonCount||safeArray(user.comparisonHistory).length||0)}
 function getUserLastActive(user){return parseDateValue(user.lastActive,user.updatedAt,user.updated,user.createdAt,user.created)}
 
@@ -802,7 +802,7 @@ async function refreshDashboard(){
           const ld=document.createElement('div');
           ld.className='chart-loading';
           ld.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;';
-          ld.innerHTML='⏳ Kategori dağılımı hesaplanıyor...';
+          ld.innerHTML='⏳ Calculating category distribution...';
           p.style.position='relative';
           p.appendChild(ld);
         }
@@ -876,12 +876,12 @@ function updateInsights(totalCount,totalCats){
   const ins=[];
   const pc=totalCount||totalProductCount||0;
   const catCount=totalCats||(typeof QorAiCategories!=='undefined'?QorAiCategories.getAll().length:0);
-  if(pc)ins.push(`<div class="insight-item"><div class="insight-label">VERİTABANI</div>📊 ${pc.toLocaleString()} ürün, ${catCount} kategori</div>`);
+  if(pc)ins.push(`<div class="insight-item"><div class="insight-label">DATABASE</div>📊 ${pc.toLocaleString()} products, ${catCount} categories</div>`);
   const scores=(dashSampleProducts||[]).map(p=>p.techScore||0).filter(s=>s>0);
-  if(scores.length)ins.push(`<div class="insight-item"><div class="insight-label">KALİTE</div>⭐ Ort. puan: ${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}/100</div>`);
+  if(scores.length)ins.push(`<div class="insight-item"><div class="insight-label">QUALITY</div>⭐ Avg. score: ${(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1)}/100</div>`);
   const userCount=parseInt(document.getElementById('dashTotalUsers')?.textContent?.replace(/,/g,'')||'0');
-  ins.push(`<div class="insight-item"><div class="insight-label">KULLANICILAR</div>👥 ${userCount} kullanıcı</div>`);
-  iEl.innerHTML=ins.join('')||'<div class="placeholder">Veri yok</div>';
+  ins.push(`<div class="insight-item"><div class="insight-label">USERS</div>👥 ${userCount} users</div>`);
+  iEl.innerHTML=ins.join('')||'<div class="placeholder">No data</div>';
 }
 
 function updateCategoryChart(catCounts){
@@ -904,7 +904,7 @@ function updateCategoryChart(catCounts){
 
   const totalCats=entries.length;
   const titleEl=cCtx.closest('.card')?.querySelector('.card-title');
-  if(titleEl)titleEl.textContent=`KATEGORİ DAĞILIMI (${totalCats} KATEGORİ)`;
+  if(titleEl)titleEl.textContent=`CATEGORY DISTRIBUTION (${totalCats} CATEGORIES)`;
 
   // Generate distinct colors for up to 50 categories
   const cl=['#7c3aed','#22c55e','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4',
@@ -940,7 +940,7 @@ function updateCategoryChart(catCounts){
         tooltip:{callbacks:{label:ctx=>{
           const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
           const pct=((ctx.parsed.x/total)*100).toFixed(1);
-          return`${ctx.parsed.x.toLocaleString()} ürün (${pct}%)`;
+          return`${ctx.parsed.x.toLocaleString()} products (${pct}%)`;
         }}}
       },
       scales:{
@@ -961,7 +961,7 @@ const PER=50;
 
 async function loadProducts(){
   const g=document.getElementById('productGrid');
-  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Ürünler yükleniyor...</div>';
+  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading products...</div>';
   try{
     // Load first page IMMEDIATELY — no counting, no blocking
     currentPage=1;
@@ -972,7 +972,7 @@ async function loadProducts(){
     }
     // Populate filters from categories.js if available, otherwise from loaded data
     populateFiltersFromData();
-  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>'}
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
 }
 
 function populateFiltersFromData(){
@@ -1001,8 +1001,8 @@ function populateFiltersFromData(){
   cats.sort((a,b)=>a.name.localeCompare(b.name));
   const bf=document.getElementById('brandFilter');
   const cf=document.getElementById('categoryFilter');
-  if(bf)bf.innerHTML='<option value="">Tüm Markalar</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
-  if(cf)cf.innerHTML='<option value="">Tüm Kategoriler</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
+  if(bf)bf.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
+  if(cf)cf.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
 }
 
 function buildQuery(){
@@ -1034,9 +1034,9 @@ async function loadPage(direction){
 
     const result=await pbGetList('products',currentPage,PER,{filter,sort});
 
-    if(result.empty&&direction==='next'){currentPage--;toast('Son sayfa','i');return}
+    if(result.empty&&direction==='next'){currentPage--;toast('Last page','i');return}
     if(result.empty){
-      g.innerHTML='<div class="placeholder">Ürün bulunamadı. Filtreleri değiştirmeyi deneyin.</div>';
+      g.innerHTML='<div class="placeholder">No products found. Try changing the filters.</div>';
       document.getElementById('pagination').innerHTML='';
       return;
     }
@@ -1058,14 +1058,14 @@ async function loadPage(direction){
 
     renderProductsPage();
   }catch(e){
-    g.innerHTML='<div class="placeholder" style="color:var(--red)">Hata: '+escHtml(e.message)+'</div>';
+    g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>';
     console.error('loadPage error:',e);
   }
 }
 
 function renderProductsPage(){
   const g=document.getElementById('productGrid');
-  if(!displayProducts.length){g.innerHTML='<div class="placeholder">Ürün bulunamadı</div>';document.getElementById('pagination').innerHTML='';return}
+  if(!displayProducts.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
   g.innerHTML=displayProducts.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
     const id=escJs(p.id);
@@ -1082,10 +1082,10 @@ function renderProductsPage(){
   const hasPrev=currentPage>1;
   let h='';
   if(hasPrev||hasNext){
-    h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Önceki</button>`;
-    h+=`<span class="pg-btn" style="cursor:default;font-weight:600">Sayfa ${currentPage}</span>`;
-    h+=`<button class="pg-btn" ${hasNext?'':`disabled`} onclick="nextPage()">Sonraki ▶</button>`;
-    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} ürün</span>`;
+    h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Previous</button>`;
+    h+=`<span class="pg-btn" style="cursor:default;font-weight:600">Page ${currentPage}</span>`;
+    h+=`<button class="pg-btn" ${hasNext?'':`disabled`} onclick="nextPage()">Next ▶</button>`;
+    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} products</span>`;
   }
   pEl.innerHTML=h;
 }
@@ -1097,7 +1097,7 @@ async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
   if(!q){currentPage=1;await loadPage();return}
   const g=document.getElementById('productGrid');
-  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor...</div>';
+  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Searching...</div>';
   try{
     const esc=q.replace(/"/g,'\\"');
     // Search by name, brand, category or slug-style id
@@ -1118,9 +1118,9 @@ async function serverSearch(){
     displayProducts=sorted;
     allProducts=sorted;
     renderProductsPage();
-    document.getElementById('productCount').textContent=result.totalItems+' sonuç';
-    if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
-  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+escHtml(e.message)+'</div>'}
+    document.getElementById('productCount').textContent=result.totalItems+' results';
+    if(!sorted.length)toast('No results for "'+q+'"','i');
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Search error: '+escHtml(e.message)+'</div>'}
 }
 
 function filterProducts(){
@@ -1132,10 +1132,10 @@ function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt
 // Old renderProducts replaced by renderProductsPage above
 function scrollTop(){document.querySelector('.main-content').scrollTo(0,0)}
 function handleCardClick(e,id){if(e.target.type==='checkbox')return;if(selectedIds.size>0){toggleSel(id);return}openProduct(id)}
-function toggleSel(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);renderProductsPage();const bar=document.getElementById('selectionBar');if(selectedIds.size>0){bar.style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' seçildi'}else bar.style.display='none'}
-function selectAll(){displayProducts.forEach(p=>selectedIds.add(p.id));renderProductsPage();document.getElementById('selectionBar').style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' seçildi'}
+function toggleSel(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);renderProductsPage();const bar=document.getElementById('selectionBar');if(selectedIds.size>0){bar.style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}else bar.style.display='none'}
+function selectAll(){displayProducts.forEach(p=>selectedIds.add(p.id));renderProductsPage();document.getElementById('selectionBar').style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}
 function deselectAll(){selectedIds.clear();renderProductsPage();document.getElementById('selectionBar').style.display='none'}
-async function deleteSelected(){if(!selectedIds.size||!confirm(selectedIds.size+' ürünü silmek istediğinize emin misiniz?'))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} ürün toplu silindi`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
+async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
 // Search debounce — server-side search with cancellation
@@ -1174,21 +1174,21 @@ function openProduct(id){
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
-  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Görseli sil" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Düzenle</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Yeniden Scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Sil</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Kaynak</a>`:''}</div></div></div>
+  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
-      <div class="card-title">✏️ Ürün Düzenle</div>
+      <div class="card-title">✏️ Edit Product</div>
       <div class="form-grid">
-        <div class="form-field"><label>Ad</label><input class="input" id="editName" value="${escHtml(p.name||'')}"></div>
-        <div class="form-field"><label>Marka</label><input class="input" id="editBrand" value="${escHtml(p.brand||'')}"></div>
-        <div class="form-field"><label>Kategori</label><select class="input" id="editCategory">${catOpts}</select></div>
-        <div class="form-field"><label>Fiyat (TL)</label><input class="input" type="number" id="editPrice" value="${p.price_raw||''}"></div>
+        <div class="form-field"><label>Name</label><input class="input" id="editName" value="${escHtml(p.name||'')}"></div>
+        <div class="form-field"><label>Brand</label><input class="input" id="editBrand" value="${escHtml(p.brand||'')}"></div>
+        <div class="form-field"><label>Category</label><select class="input" id="editCategory">${catOpts}</select></div>
+        <div class="form-field"><label>Price (TL)</label><input class="input" type="number" id="editPrice" value="${p.price_raw||''}"></div>
         <div class="form-field"><label>Tech Score</label><input class="input" type="number" id="editScore" value="${p.techScore||''}" min="0" max="100"></div>
-        <div class="form-field"><label>Görsel URL</label><input class="input" id="editImageUrl" value="${escHtml(p.imageUrl||p.images?.[0]||'')}"></div>
+        <div class="form-field"><label>Image URL</label><input class="input" id="editImageUrl" value="${escHtml(p.imageUrl||p.images?.[0]||'')}"></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-primary btn-sm" onclick="saveProductEdit('${safeId}')">💾 Kaydet</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleEditForm()">İptal</button>
+        <button class="btn btn-primary btn-sm" onclick="saveProductEdit('${safeId}')">💾 Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEditForm()">Cancel</button>
       </div>
     </div>
   </div>
@@ -1215,62 +1215,62 @@ async function saveProductEdit(id){
   updates.updatedBy=_currentAdminEmail||'admin';
   try{
     await pbUpdateDoc('products',id,updates);
-    logActivity('product_edit',`Ürün düzenlendi: ${name||id}`,{productId:id,changes:Object.keys(updates)});
+    logActivity('product_edit',`Product edited: ${name||id}`,{productId:id,changes:Object.keys(updates)});
     const mem=allProducts.find(p=>p.id===id);
     if(mem)Object.assign(mem,{name,brand,category,price_raw:price,techScore:score});
-    toast('Ürün güncellendi','s');closeModal();renderProductsPage();
-  }catch(e){toast('Hata: '+e.message,'e')}
+    toast('Product updated','s');closeModal();renderProductsPage();
+  }catch(e){toast('Error: '+e.message,'e')}
 }
 // Delete a single image URL from a product (modal thumbnail × button)
 async function deleteProductImage(id, url) {
-  if (!confirm('Bu görseli silmek istediğinize emin misiniz?')) return;
+  if (!confirm('Delete this image?')) return;
   try {
     const p = allProducts.find(x => x.id === id);
-    if (!p) { toast('Ürün bulunamadı', 'e'); return; }
+    if (!p) { toast('Product not found', 'e'); return; }
     const imgs = (p.images || []).filter(u => u !== url);
     const updates = { images: imgs, updatedAt: serverTimestamp(), updatedBy: _currentAdminEmail || 'admin' };
     if (p.imageUrl === url) updates.imageUrl = imgs[0] || '';
     await pbUpdateDoc('products', id, updates);
     p.images = imgs;
     if (updates.imageUrl !== undefined) p.imageUrl = updates.imageUrl;
-    logActivity('product_image_delete', `Görsel silindi: ${p.name || id}`, { productId: id, url });
-    toast('Görsel silindi', 's');
+    logActivity('product_image_delete', `Image deleted: ${p.name || id}`, { productId: id, url });
+    toast('Image deleted', 's');
     openProduct(id); // re-render modal
     renderProductsPage();
-  } catch (e) { toast('Hata: ' + e.message, 'e'); }
+  } catch (e) { toast('Error: ' + e.message, 'e'); }
 }
 
 // Re-scrape a single product on demand (modal "🔄 Yeniden Scrape" button)
 async function rescrapeProduct(id) {
   const p = allProducts.find(x => x.id === id);
-  if (!p || !p.sourceUrl) { toast('Kaynak URL yok', 'e'); return; }
-  if (typeof checkProxy === 'function' && !(await checkProxy())) { toast('Önce proxy\'yi başlatın (Scraper sekmesi)', 'e'); return; }
-  toast('🔄 Yeniden scrape ediliyor…', 'i');
+  if (!p || !p.sourceUrl) { toast('No source URL', 'e'); return; }
+  if (typeof checkProxy === 'function' && !(await checkProxy())) { toast('Start the proxy first (Scraper tab)', 'e'); return; }
+  toast('🔄 Re-scraping…', 'i');
   try {
     const html = await proxyFetch(p.sourceUrl);
-    if (!html) { toast('Sayfa yüklenemedi (404?)', 'e'); return; }
+    if (!html) { toast('Page could not be loaded (404?)', 'e'); return; }
     const fresh = await scrapeProductDetail(html, p.sourceUrl, p.category);
     if (!fresh || !fresh.name || (fresh.specsCount || 0) === 0) {
-      toast('Geçersiz scrape sonucu', 'e'); return;
+      toast('Invalid scrape result', 'e'); return;
     }
     const changes = {};
     const fields = ['name','brand','price_raw','imageUrl','specsCount','variantGroup','specs','specSections','keySpecs','images','_originalSpecs','_originalSections','_originalKeySpecs','_originalName'];
     for (const f of fields) {
       if (fresh[f] !== undefined && JSON.stringify(fresh[f]) !== JSON.stringify(p[f])) changes[f] = fresh[f];
     }
-    if (!Object.keys(changes).length) { toast('Hiçbir alan değişmedi', 'i'); return; }
+    if (!Object.keys(changes).length) { toast('No fields changed', 'i'); return; }
     changes.updatedAt = serverTimestamp();
     changes.updatedBy = _currentAdminEmail || 'admin';
     await pbUpdateDoc('products', id, changes);
     Object.assign(p, changes);
-    logActivity('product_rescrape', `Yeniden scrape: ${p.name}`, { productId: id, changedFields: Object.keys(changes) });
-    toast(`✅ Güncellendi (${Object.keys(changes).length - 2} alan)`, 's');
+    logActivity('product_rescrape', `Re-scraped: ${p.name}`, { productId: id, changedFields: Object.keys(changes) });
+    toast(`✅ Updated (${Object.keys(changes).length - 2} fields)`, 's');
     openProduct(id);
     renderProductsPage();
-  } catch (e) { toast('Scrape hatası: ' + e.message, 'e'); }
+  } catch (e) { toast('Scrape error: ' + e.message, 'e'); }
 }
 
-async function deleteProduct(id){if(!confirm('Bu ürünü silmek istediğinize emin misiniz?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Ürün silindi: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Silindi','s')}catch(e){toast('Hata: '+e.message,'e')}}
+async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Product deleted: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}}
 
 // ═══════════════════════════════════════
 //  USERS
@@ -1292,21 +1292,21 @@ async function saveUsersDailyQCoin(){
     await loadQCoinConfig();
     renderUsers();
     if(_activeUserModalUid)openUserDetail(_activeUserModalUid);
-    logActivity('qcoin_daily_pool_update',`Günlük Q Coin havuzu güncellendi: ${nextValue}`,{dailyQCoinPool:nextValue});
-    toast(`Günlük havuz ${formatQCoinAmount(nextValue)} Q olarak kaydedildi`,'s');
+    logActivity('qcoin_daily_pool_update',`Daily Q Coin pool updated: ${nextValue}`,{dailyQCoinPool:nextValue});
+    toast(`Daily pool saved as ${formatQCoinAmount(nextValue)} Q`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
 async function resetAllUserExtraQCoins(){
-  if(!allUsers.length){toast('Önce kullanıcıları yükle','w');return}
-  if(!confirm('Tüm kullanıcılardaki extra Q coin bakiyeleri sıfırlansın mı?'))return;
+  if(!allUsers.length){toast('Load users first','w');return}
+  if(!confirm('Reset extra Q Coin balances for all users?'))return;
   try{
     await Promise.all(allUsers.map(u=>pbUpdateDoc('users',u.uid,{bonusQCoins:0})));
     allUsers.forEach(u=>{u.bonusQCoins=0});
     renderUsers();
     if(_activeUserModalUid)openUserDetail(_activeUserModalUid);
-    logActivity('qcoin_bulk_extra_reset',`Tüm kullanıcıların extra Q coin bakiyeleri sıfırlandı`,{userCount:allUsers.length});
-    toast('Tüm extra Q coin bakiyeleri sıfırlandı','s');
+    logActivity('qcoin_bulk_extra_reset',`All user extra Q Coin balances reset`,{userCount:allUsers.length});
+    toast('All extra Q Coin balances reset','s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
@@ -1337,13 +1337,13 @@ function renderUsers(){
 function openUserDetail(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   _activeUserModalUid=uid;
-  document.getElementById('userModalTitle').textContent=u.displayName||'Kullanıcı';
+  document.getElementById('userModalTitle').textContent=u.displayName||'User';
   const b=document.getElementById('userModalBody');
   const safeUid=escJs(uid);
   const j=parseDateValue(u.createdAt,u.created);
   const la=getUserLastActive(u);
-  const jStr=j?j.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
-  const laStr=la?la.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}):'—';
+  const jStr=j?j.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}):'—';
+  const laStr=la?la.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}):'—';
 
   // Engagement analysis
   const daysSinceJoin=j?Math.floor((Date.now()-j.getTime())/864e5):0;
@@ -1368,16 +1368,16 @@ function openUserDetail(uid){
 
   // Activity status
   let activityStatus,actColor;
-  if(daysSinceActive<=1){activityStatus='🟢 Aktif';actColor='#22c55e'}
-  else if(daysSinceActive<=7){activityStatus='🟡 Bu hafta aktif';actColor='#f59e0b'}
-  else if(daysSinceActive<=30){activityStatus='🟠 Bu ay aktif';actColor='#f97316'}
-  else{activityStatus='🔴 İnaktif';actColor='#ef4444'}
+  if(daysSinceActive<=1){activityStatus='Active';actColor='#22c55e'}
+  else if(daysSinceActive<=7){activityStatus='Active this week';actColor='#f59e0b'}
+  else if(daysSinceActive<=30){activityStatus='Active this month';actColor='#f97316'}
+  else{activityStatus='Inactive';actColor='#ef4444'}
 
   // User type analysis
-  let userType='Yeni Kullanıcı';
+  let userType='New User';
   if(compCount>=20||analysisCount>=20)userType='Power User';
-  else if(compCount>=5)userType='Aktif Kullanıcı';
-  else if(daysSinceJoin>=7&&compCount===0)userType='Pasif Kullanıcı';
+  else if(compCount>=5)userType='Active User';
+  else if(daysSinceJoin>=7&&compCount===0)userType='Passive User';
 
   const engRate=daysSinceJoin>0?Math.min(100,Math.round(compCount/daysSinceJoin*100)):0;
 
@@ -1385,12 +1385,12 @@ function openUserDetail(uid){
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
       <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${userAvatarHtml(u)}</div>
       <div style="flex:1">
-        <div style="font-size:16px;font-weight:700">${escHtml(u.displayName||'Anonim')}</div>
+        <div style="font-size:16px;font-weight:700">${escHtml(u.displayName||'Anonymous')}</div>
         <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'')}</div>
         <div style="font-size:11px;color:${actColor};margin-top:2px">${activityStatus}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-sm btn-ghost" onclick="openUserSupportChat('${safeUid}')" title="Kullanıcıyla sohbet aç" style="font-size:18px;padding:6px 10px">💬</button>
+        <button class="btn btn-sm btn-ghost" onclick="openUserSupportChat('${safeUid}')" title="Open conversation with user" style="font-size:18px;padding:6px 10px">💬</button>
         <div>${premiumBadgeHtml(u,true)}</div>
       </div>
     </div>
@@ -1402,45 +1402,45 @@ function openUserDetail(uid){
           <div class="chart-note">${escHtml(narrative)}</div>
         </div>
         <div class="feature-pill-row">
-            ${topInterests.length?topInterests.map(([label,value])=>`<span class="feature-pill">${escHtml(label)} · ${Math.round(value)}</span>`).join(''):'<span class="feature-pill ghost">Henüz güçlü kategori sinyali yok</span>'}
+            ${topInterests.length?topInterests.map(([label,value])=>`<span class="feature-pill">${escHtml(label)} · ${Math.round(value)}</span>`).join(''):'<span class="feature-pill ghost">No strong category signal yet</span>'}
         </div>
       </div>
     </div>
     <!-- Tab Navigation -->
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
-      <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${safeUid}')">📊 Genel</button>
-      <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${safeUid}')">🎯 Davranış</button>
+      <button class="user-tab active" data-tab="overview" onclick="switchUserTab(this,'${safeUid}')">📊 Overview</button>
+      <button class="user-tab" data-tab="behavior" onclick="switchUserTab(this,'${safeUid}')">🎯 Behavior</button>
       <button class="user-tab" data-tab="quizzes" onclick="switchUserTab(this,'${safeUid}')">🧠 Quiz</button>
-      <button class="user-tab" data-tab="analysis" onclick="switchUserTab(this,'${safeUid}')">🤖 AI Analiz</button>
-      <button class="user-tab" data-tab="profile" onclick="switchUserTab(this,'${safeUid}')">👤 Profil</button>
+      <button class="user-tab" data-tab="analysis" onclick="switchUserTab(this,'${safeUid}')">🤖 AI Analysis</button>
+      <button class="user-tab" data-tab="profile" onclick="switchUserTab(this,'${safeUid}')">👤 Profile</button>
     </div>
     <!-- Overview Tab -->
     <div class="user-tab-panel active" data-panel="overview">
       <div class="metric-grid-compact">
-        <div class="metric-tile"><div class="metric-tile-value">${jStr}</div><div class="metric-tile-label">Kayıt Tarihi</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${laStr}</div><div class="metric-tile-label">Son Aktivite</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${completeness}%</div><div class="metric-tile-label">Profil Skoru</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${engRate}%</div><div class="metric-tile-label">Etkileşim</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${compCount}</div><div class="metric-tile-label">Karşılaştırmalar</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analizleri</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Oturumları</div></div>
-        <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Aramalar</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${jStr}</div><div class="metric-tile-label">Join Date</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${laStr}</div><div class="metric-tile-label">Last Activity</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${completeness}%</div><div class="metric-tile-label">Profile Score</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${engRate}%</div><div class="metric-tile-label">Engagement</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${compCount}</div><div class="metric-tile-label">Comparisons</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${analysisCount}</div><div class="metric-tile-label">AI Analyses</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${quizCount}</div><div class="metric-tile-label">Quiz Sessions</div></div>
+        <div class="metric-tile"><div class="metric-tile-value">${searchCount}</div><div class="metric-tile-label">Searches</div></div>
       </div>
       <div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🪙 Q Coin Yönetimi</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🪙 Q Coin Management</div>
         <div class="metric-grid-compact" style="margin-bottom:12px">
-          <div class="metric-tile"><div class="metric-tile-value">${currentQLabel}</div><div class="metric-tile-label">Güncel Q</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${totalQLabel}</div><div class="metric-tile-label">Günlük Toplam</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${usedQLabel}</div><div class="metric-tile-label">Bugün Kullanılan</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Ekstra Q</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${currentQLabel}</div><div class="metric-tile-label">Current Q</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${totalQLabel}</div><div class="metric-tile-label">Daily Total</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${usedQLabel}</div><div class="metric-tile-label">Used Today</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Extra Q</div></div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div style="font-size:12px;color:var(--text2)">Global günlük havuz: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b>${u.isPremium?' · <span style="color:#f59e0b">Premium (limitsiz)</span>':''}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="showAddQCoinModal('${safeUid}')">Extra Q Ekle</button><button class="btn btn-ghost btn-sm" onclick="showResetQCoinModal('${safeUid}')">Q Coin Sıfırla</button></div>
+          <div style="font-size:12px;color:var(--text2)">Global daily pool: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b>${u.isPremium?' · <span style="color:#f59e0b">Premium (unlimited)</span>':''}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="showAddQCoinModal('${safeUid}')">Add Extra Q</button><button class="btn btn-ghost btn-sm" onclick="showResetQCoinModal('${safeUid}')">Reset Q Coin</button></div>
         </div>
       </div>
       <div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⭐ Premium Yönetimi</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⭐ Premium Management</div>
         <div class="form-grid" style="align-items:end;margin-bottom:12px">
           <div class="form-field">
             <label>Plan</label>
@@ -1451,74 +1451,74 @@ function openUserDetail(uid){
             </select>
           </div>
           <div class="form-field">
-            <label>Mevcut Durum</label>
+            <label>Current Status</label>
             <div class="metric-tile" style="padding:10px">
               <div style="font-size:12px"><span style="color:var(--text2)">Plan:</span> <b>${escHtml(premiumPlanLabel(premiumPlan))}</b></div>
-              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">Başlangıç:</span> <b>${escHtml(formatIsoDate(premiumInfo.startedAt))}</b></div>
-              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">Bitiş:</span> <b>${escHtml(formatIsoDate(premiumInfo.expiresAt))}</b></div>
+              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">Start:</span> <b>${escHtml(formatIsoDate(premiumInfo.startedAt))}</b></div>
+              <div style="font-size:12px;margin-top:4px"><span style="color:var(--text2)">End:</span> <b>${escHtml(formatIsoDate(premiumInfo.expiresAt))}</b></div>
             </div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="saveUserPremiumPlan('${safeUid}')">Planı Uygula</button>
-          ${u.isPremium?`<button class="btn btn-ghost" onclick="saveUserPremiumPlan('${safeUid}','free')">Premium İptal</button>`:''}
+          <button class="btn btn-primary" onclick="saveUserPremiumPlan('${safeUid}')">Apply Plan</button>
+          ${u.isPremium?`<button class="btn btn-ghost" onclick="saveUserPremiumPlan('${safeUid}','free')">Cancel Premium</button>`:''}
         </div>
       </div>
       ${renderAdminAiProfileCard(aiProfile,safeUid)}
       <div class="user-overview-grid">
         <div class="card" style="margin:0;padding:14px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Davranış Dağılımı</div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Behavior Distribution</div>
           <div class="chart-shell" style="height:260px"><canvas id="userBehaviorChartCanvas"></canvas></div>
-          <div class="chart-note">Görüntüleme, arama, karşılaştırma, quiz ve AI kullanım dengesi bu grafikle okunur.</div>
+          <div class="chart-note">Shows the balance between views, searches, comparisons, quiz, and AI usage.</div>
         </div>
         <div class="card" style="margin:0;padding:14px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧲 İlgi Haritası</div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧲 Interest Map</div>
           <div class="chart-shell" style="height:260px"><canvas id="userInterestBreakdownChartCanvas"></canvas></div>
-          <div class="chart-note">Kategori, analiz ve quiz geçmişinden türetilen baskın ilgi alanları.</div>
+          <div class="chart-note">Dominant interests inferred from category, analysis, and quiz history.</div>
         </div>
       </div>
       <div class="card" style="margin:16px 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 Kullanıcı Analizi</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">📊 User Analysis</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-          <div><span style="color:var(--text2)">Kullanıcı Tipi:</span> <b>${escHtml(userType)}</b></div>
-          <div><span style="color:var(--text2)">Üyelik Süresi:</span> <b>${daysSinceJoin} gün</b></div>
-          <div><span style="color:var(--text2)">Etkileşim Oranı:</span> <b>${engRate}%</b></div>
-          <div><span style="color:var(--text2)">Favoriler:</span> <b>${favCount}</b></div>
-          ${u.deviceInfo?`<div><span style="color:var(--text2)">Cihaz:</span> <b>${escHtml(u.deviceInfo)}</b></div>`:''}
-          ${u.appVersion?`<div><span style="color:var(--text2)">Uygulama:</span> <b>v${escHtml(u.appVersion)}</b></div>`:''}
+          <div><span style="color:var(--text2)">User Type:</span> <b>${escHtml(userType)}</b></div>
+          <div><span style="color:var(--text2)">Membership Age:</span> <b>${daysSinceJoin} days</b></div>
+          <div><span style="color:var(--text2)">Engagement Rate:</span> <b>${engRate}%</b></div>
+          <div><span style="color:var(--text2)">Favorites:</span> <b>${favCount}</b></div>
+          ${u.deviceInfo?`<div><span style="color:var(--text2)">Device:</span> <b>${escHtml(u.deviceInfo)}</b></div>`:''}
+          ${u.appVersion?`<div><span style="color:var(--text2)">App:</span> <b>v${escHtml(u.appVersion)}</b></div>`:''}
           ${u.platform?`<div><span style="color:var(--text2)">Platform:</span> <b>${escHtml(u.platform)}</b></div>`:''}
-          ${u.language?`<div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language)}</b></div>`:''}
+          ${u.language?`<div><span style="color:var(--text2)">Language:</span> <b>${escHtml(u.language)}</b></div>`:''}
         </div>
       </div>
-      <div id="userSupportPreview_${safeUid}"><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Yükleniyor...</div></div></div>
-      <div style="display:flex;gap:8px"><button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Sil</button></div>
+      <div id="userSupportPreview_${safeUid}"><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us History</div><div style="color:var(--text3);font-size:12px">Loading...</div></div></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-danger" onclick="deleteUser('${safeUid}')">Delete</button></div>
     </div>
     <!-- Behavior Tab -->
     <div class="user-tab-panel" data-panel="behavior" style="display:none">
       <div id="behaviorContent" style="text-align:center;padding:30px;color:var(--text3)">
         <div class="spinner"></div>
-        <div style="margin-top:8px">Davranış verileri yükleniyor...</div>
+        <div style="margin-top:8px">Loading behavior data...</div>
       </div>
     </div>
     <!-- Quiz Tab -->
     <div class="user-tab-panel" data-panel="quizzes" style="display:none">
       <div id="quizContent" style="text-align:center;padding:30px;color:var(--text3)">
         <div class="spinner"></div>
-        <div style="margin-top:8px">Quiz verileri yükleniyor...</div>
+        <div style="margin-top:8px">Loading quiz data...</div>
       </div>
     </div>
     <!-- Analysis Tab -->
     <div class="user-tab-panel" data-panel="analysis" style="display:none">
       <div id="analysisContent" style="text-align:center;padding:30px;color:var(--text3)">
         <div class="spinner"></div>
-        <div style="margin-top:8px">Analiz geçmişi yükleniyor...</div>
+        <div style="margin-top:8px">Loading analysis history...</div>
       </div>
     </div>
     <!-- Profile Tab -->
     <div class="user-tab-panel" data-panel="profile" style="display:none">
       <div id="profileContent" style="text-align:center;padding:30px;color:var(--text3)">
         <div class="spinner"></div>
-        <div style="margin-top:8px">Profil verisi yükleniyor...</div>
+        <div style="margin-top:8px">Loading profile data...</div>
       </div>
     </div>`;
   document.getElementById('userModal').style.display='flex';
@@ -1559,37 +1559,37 @@ async function loadUserBehavior(uid){
     const comparisonHistory=safeArray(u.comparisonHistory);
 
     let html=`<div class="form-grid" style="margin-bottom:16px">
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Ürün Görüntüleme</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.length}</div></div>
-      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Karşılaştırma</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${Math.max(comps.length,comparisonHistory.length)}</div></div>
+      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Product Views</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#22c55e">${views.length}</div></div>
+      <div class="card" style="margin:0;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">Comparisons</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f59e0b">${Math.max(comps.length,comparisonHistory.length)}</div></div>
     </div>`;
 
     if(catInterests.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Kategori İlgi Alanları</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Category Interests</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const ci of catInterests)html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(ci.cat)} (${ci.count})</span>`;
       html+=`</div></div>`;
     }
 
     if(prefWeights.length){
       const maxW=prefWeights[0]?.count||1;
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Tercih Ağırlıkları</div>`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⚖️ Preference Weights</div>`;
       for(const pw of prefWeights){const pct=Math.round(pw.count/maxW*100);html+=`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${escHtml(pw.pref)}</span><span style="color:var(--text3)">${pw.count}</span></div><div style="background:var(--bg3);border-radius:4px;height:6px"><div style="background:var(--primary);border-radius:4px;height:6px;width:${pct}%"></div></div></div>`;}
       html+=`</div>`;
     }
 
     if(views.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Son Görüntülenen Ürünler</div><div style="max-height:200px;overflow-y:auto">`;
-      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('tr-TR'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(v.productId||v.productName||'—')}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">👁️ Recently Viewed Products</div><div style="max-height:200px;overflow-y:auto">`;
+      views.forEach(v=>{const date=v.created?new Date(v.created).toLocaleDateString('en-US'):'—';html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(v.productId||v.productName||'—')}</span><span style="color:var(--text3);margin-left:8px;white-space:nowrap">${date}</span></div>`;});
       html+=`</div></div>`;
     }
 
     if(!catInterests.length&&!views.length&&!comps.length){
-      html+=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Henüz davranış verisi yok</div></div>`;
+      html+=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>No behavior data yet</div></div>`;
     }
 
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Error: ${escHtml(e.message)}</div>`;
   }
 }
 
@@ -1661,7 +1661,7 @@ async function loadUserQuizzes(uid){
     el.dataset.loaded='1';
     if(newQuizHistory.length)setTimeout(()=>renderUserQuizChart(newQuizHistory),0);
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Error: ${escHtml(e.message)}</div>`;
   }
 }
 function closeUserModal(){_activeUserModalUid='';document.getElementById('userModal').style.display='none'}
@@ -1696,20 +1696,20 @@ function buildUserOnboardingEntries(user,trackedAnswers=[]){
       seenLabels.add(label.toLowerCase());
     }
   };
-  pushValue('Ekosistem',user.ecosystem);
-  pushValue('Bütçe',user.budgetRange);
-  pushValue('Yaş Aralığı',user.ageRange);
-  pushValue('Meslek',user.profession);
-  pushValue('Cinsiyet',user.gender);
-  pushValue('Kullanım Amacı',user.usageIntent);
-  pushValue('Birincil Kategori',user.primaryCategory);
-  pushValue('Dil',user.language);
-  pushValue('Ülke',user.country);
-  pushValue('Para Birimi',user.currency);
-  pushList('İlgi Kategorileri',user.interestCategories);
-  pushList('Karar Öncelikleri',user.priorities);
-  pushList('Mevcut Cihazlar',user.currentDevices);
-  pushList('Abonelikler',user.subscriptions);
+  pushValue('Ecosystem',user.ecosystem);
+  pushValue('Budget',user.budgetRange);
+  pushValue('Age Range',user.ageRange);
+  pushValue('Profession',user.profession);
+  pushValue('Gender',user.gender);
+  pushValue('Usage Intent',user.usageIntent);
+  pushValue('Primary Category',user.primaryCategory);
+  pushValue('Language',user.language);
+  pushValue('Country',user.country);
+  pushValue('Currency',user.currency);
+  pushList('Interest Categories',user.interestCategories);
+  pushList('Decision Priorities',user.priorities);
+  pushList('Current Devices',user.currentDevices);
+  pushList('Subscriptions',user.subscriptions);
   safeArray(trackedAnswers).forEach(answer=>{
     const label=formatUserFieldValue(answer.question||answer.label||answer.field);
     const value=formatUserFieldValue(answer.answer||answer.selectedOption||answer.value);
@@ -1721,7 +1721,7 @@ function buildUserOnboardingEntries(user,trackedAnswers=[]){
   return entries;
 }
 
-function renderUserSummaryGrid(entries,emptyText='Belirtilmiş veri yok'){
+function renderUserSummaryGrid(entries,emptyText='No data specified'){
   if(!entries.length)return `<div style="color:var(--text3);font-size:12px">${escHtml(emptyText)}</div>`;
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">${entries.map(entry=>`<div><span style="color:var(--text2)">${escHtml(entry.label)}:</span> <b>${escHtml(entry.value)}</b></div>`).join('')}</div>`;
 }
@@ -1729,19 +1729,19 @@ function renderUserSummaryGrid(entries,emptyText='Belirtilmiş veri yok'){
 function renderUserSupportHistory(messages){
   const items=safeArray(messages).slice().sort((a,b)=>String(b.repliedAt||b.created||'').localeCompare(String(a.repliedAt||a.created||'')));
   if(!items.length){
-    return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--text3);font-size:12px">Bu kullanıcı için support mesajı bulunmuyor.</div></div>`;
+    return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us History</div><div style="color:var(--text3);font-size:12px">No Contact Us messages for this user.</div></div>`;
   }
-  return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div>${items.map(item=>{
-    const created=(item.created||item.repliedAt)?new Date(item.created||item.repliedAt).toLocaleString('tr-TR'):'—';
-    const replied=item.repliedAt?new Date(item.repliedAt).toLocaleString('tr-TR'):'';
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us History</div>${items.map(item=>{
+    const created=(item.created||item.repliedAt)?new Date(item.created||item.repliedAt).toLocaleString('en-US'):'—';
+    const replied=item.repliedAt?new Date(item.repliedAt).toLocaleString('en-US'):'';
     const isAdminMessage=item.status==='admin_message';
     const status=isAdminMessage
-      ? '<span class="badge" style="background:rgba(59,130,246,.15);color:#60a5fa">Admin mesajı</span>'
+      ? '<span class="badge" style="background:rgba(59,130,246,.15);color:#60a5fa">Admin message</span>'
       : item.status==='replied'
-      ? '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e">Yanıtlandı</span>'
-      : '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">Açık</span>';
+      ? '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e">Replied</span>'
+      : '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">Open</span>';
     const messageBody=isAdminMessage?(item.message||''):(item.message||'');
-    return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div>${isAdminMessage?`<div style="margin-top:2px;padding:10px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Destek mesajı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div></div>`:`<div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin Yanıtı${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}`}</div>`;
+    return `<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">${created}</div>${status}</div>${isAdminMessage?`<div style="margin-top:2px;padding:10px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Support message${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div></div>`:`<div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(messageBody)}</div>${item.adminReply?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16)"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Admin reply${replied?` · ${replied}`:''}</div><div style="font-size:12px;color:var(--text1);line-height:1.6;white-space:pre-wrap">${escHtml(item.adminReply)}</div></div>`:''}`}</div>`;
   }).join('')}</div>`;
 }
 
@@ -1752,23 +1752,23 @@ async function loadUserSupportPreview(uid){
     const supportRes=await pbGetList('support_messages',1,5,{filter:`userId="${uid}"`,sort:'-created'});
     el.innerHTML=renderUserSupportHistory(safeArray(supportRes.items));
   }catch(e){
-    el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us Geçmişi</div><div style="color:var(--red);font-size:12px">Geçmiş yüklenemedi: ${escHtml(e.message||String(e))}</div></div>`;
+    el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">💬 Contact Us History</div><div style="color:var(--red);font-size:12px">History could not be loaded: ${escHtml(e.message||String(e))}</div></div>`;
   }
 }
 
 async function sendUserSupportMessage(uid){
   const u=allUsers.find(x=>x.uid===uid);
-  if(!u){toast('Kullanıcı bulunamadı','e');return}
+  if(!u){toast('User not found','e');return}
   const textarea=document.getElementById(`userSupportMessage_${uid}`);
   const button=document.getElementById(`userSupportSendBtn_${uid}`);
   const text=(textarea?.value||'').trim();
-  if(!text){toast('Mesaj boş olamaz','w');return}
+  if(!text){toast('Message cannot be empty','w');return}
 
   const email=String(u.email||u.googleEmail||'').trim().toLowerCase();
-  if(!email){toast('Kullanıcının kayıtlı e-postası yok','e');return}
+  if(!email){toast('This user has no registered email','e');return}
 
-  const displayName=String(u.displayName||u.name||email.split('@')[0]||'Kullanıcı').trim();
-  if(button){button.disabled=true;button.textContent='Gönderiliyor...';}
+  const displayName=String(u.displayName||u.name||email.split('@')[0]||'User').trim();
+  if(button){button.disabled=true;button.textContent='Sending...';}
 
   try{
     const supportRecord=await pbAddDoc('support_messages',{
@@ -1783,9 +1783,9 @@ async function sendUserSupportMessage(uid){
     await getPb().collection('notifications').create({
       recipientId:uid,
       senderId:'admin',
-      senderName:'Qor AI Destek',
-      type:'system',
-      title:'Qor AI Destek\'ten yeni mesaj',
+      senderName:'Qor AI Support',
+      type:'transactional',
+      title:'New message from Qor AI Support',
       body:text,
       referenceId:supportRecord.id,
       read:false,
@@ -1795,11 +1795,11 @@ async function sendUserSupportMessage(uid){
     if(profileEl)profileEl.dataset.loaded='';
     await loadUserSupportPreview(uid);
     await loadUserProfile(uid);
-    toast('Ek mesaj kullanıcıya gönderildi','s');
+    toast('Message sent to user','s');
   }catch(e){
-    toast('Mesaj gönderilemedi: '+(e.message||e),'e');
+    toast('Message could not be sent: '+(e.message||e),'e');
   }finally{
-    if(button){button.disabled=false;button.textContent='Mesajı Gönder';}
+    if(button){button.disabled=false;button.textContent='Send Message';}
   }
 }
 
@@ -1812,7 +1812,7 @@ async function loadUserAnalysis(uid){
     const aiProfileHtml=renderAdminAiProfileCard(u.adminAiProfile,uid);
 
     if(!analyzedProducts.length){
-      el.innerHTML=`${aiProfileHtml}<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Henüz uygulama içi AI analiz yapılmamış</div></div>`;
+      el.innerHTML=`${aiProfileHtml}<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>No in-app AI analysis yet.</div></div>`;
       el.dataset.loaded='1';
       return;
     }
@@ -1822,18 +1822,18 @@ async function loadUserAnalysis(uid){
     const scores=analyzedProducts.map(item=>Number(item.score)||0).filter(Boolean);
     const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
 
-    let html=`${aiProfileHtml}<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analiz Kategorileri</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
+    let html=`${aiProfileHtml}<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analysis Categories</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
 
     for(const p of analyzedProducts){
-      const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
       const score=p.score?Math.round(p.score):'—';
       const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
-      const mode=p.mode==='compare'?'🔀 Karşılaştırma':'🔍 Tekil Analiz';
+      const mode=p.mode==='compare'?'Compare':'Single Analysis';
 
       html+=`<div class="card" style="margin:0 0 12px;padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.title||'Bilinmeyen Ürün')}</div>
+            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.title||'Unknown Product')}</div>
             <div style="font-size:10px;color:var(--text3)">${date} · ${mode}</div>
           </div>
           <div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score}%</div>
@@ -1848,7 +1848,7 @@ async function loadUserAnalysis(uid){
     el.dataset.loaded='1';
     setTimeout(()=>renderUserAnalysisChart(analyzedProducts),0);
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Error: ${escHtml(e.message)}</div>`;
   }
 }
 
@@ -1857,7 +1857,7 @@ async function loadUserProfile(uid){
   if(el.dataset.loaded)return;
   try{
     const u=allUsers.find(x=>x.uid===uid);
-    if(!u){el.innerHTML='Kullanıcı bulunamadı';return;}
+    if(!u){el.innerHTML='User not found';return;}
     const safeUid=escJs(uid);
     const supportRes=await pbGetList('support_messages',1,50,{filter:`userId="${uid}"`,sort:'-created'});
     const supportMessages=safeArray(supportRes.items);
@@ -1866,32 +1866,32 @@ async function loadUserProfile(uid){
     const onboardingEntries=buildUserOnboardingEntries(u,latestTrackedAnswers);
 
     let html=`<div class="card" style="margin:0 0 16px;padding:14px">
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profil Özeti</div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">👤 Profile Summary</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
-        <div><span style="color:var(--text2)">Ekosistem:</span> <b>${escHtml(u.ecosystem||'Belirtilmemiş')}</b></div>
-        <div><span style="color:var(--text2)">Bütçe:</span> <b>${escHtml(u.budgetRange||'Belirtilmemiş')}</b></div>
-        <div><span style="color:var(--text2)">Yaş Aralığı:</span> <b>${escHtml(u.ageRange||'Belirtilmemiş')}</b></div>
-        <div><span style="color:var(--text2)">Meslek:</span> <b>${escHtml(u.profession||'Belirtilmemiş')}</b></div>
-        <div><span style="color:var(--text2)">Cinsiyet:</span> <b>${escHtml(u.gender||'Belirtilmemiş')}</b></div>
-        <div><span style="color:var(--text2)">Dil:</span> <b>${escHtml(u.language||'—')}</b></div>
-        <div><span style="color:var(--text2)">Ülke:</span> <b>${escHtml(u.country||'—')}</b></div>
-        <div><span style="color:var(--text2)">Kullanım:</span> <b>${escHtml(u.usageIntent||'Belirtilmemiş')}</b></div>
+        <div><span style="color:var(--text2)">Ecosystem:</span> <b>${escHtml(u.ecosystem||'Not specified')}</b></div>
+        <div><span style="color:var(--text2)">Budget:</span> <b>${escHtml(u.budgetRange||'Not specified')}</b></div>
+        <div><span style="color:var(--text2)">Age Range:</span> <b>${escHtml(u.ageRange||'Not specified')}</b></div>
+        <div><span style="color:var(--text2)">Profession:</span> <b>${escHtml(u.profession||'Not specified')}</b></div>
+        <div><span style="color:var(--text2)">Gender:</span> <b>${escHtml(u.gender||'Not specified')}</b></div>
+        <div><span style="color:var(--text2)">Language:</span> <b>${escHtml(u.language||'—')}</b></div>
+        <div><span style="color:var(--text2)">Country:</span> <b>${escHtml(u.country||'—')}</b></div>
+        <div><span style="color:var(--text2)">Usage:</span> <b>${escHtml(u.usageIntent||'Not specified')}</b></div>
       </div>
     </div>`;
 
     if(onboardingEntries.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Cevapları</div>${renderUserSummaryGrid(onboardingEntries,'Onboarding yanıtları henüz görünmüyor.')}</div>`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Onboarding Quiz Answers</div>${renderUserSummaryGrid(onboardingEntries,'Onboarding answers are not visible yet.')}</div>`;
     }
 
   html+=renderUserSupportHistory(supportMessages);
-  // Sohbet baloncuğu butonu
-  html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px">💬 Destek Sohbeti</div><div style="font-size:12px;color:var(--text2)">${supportMessages.length > 0 ? supportMessages.length + ' konuşma kaydı' : 'Henüz sohbet yok'}</div></div><button class="btn btn-primary" onclick="openUserSupportChat('${safeUid}')">💬 Sohbet Aç</button></div></div>`;
+  // Contact shortcut
+  html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:4px">💬 Contact Us Conversation</div><div style="font-size:12px;color:var(--text2)">${supportMessages.length > 0 ? supportMessages.length + ' conversation records' : 'No conversation yet'}</div></div><button class="btn btn-primary" onclick="openUserSupportChat('${safeUid}')">💬 Open Chat</button></div></div>`;
 
     // Priorities
     const priorities=u.priorities||[];
     if(priorities.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Öncelikler</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Priorities</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const p of priorities){
         html+=`<span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(p)}</span>`;
@@ -1903,7 +1903,7 @@ async function loadUserProfile(uid){
     const devices=u.currentDevices||[];
     if(devices.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📱 Mevcut Cihazlar</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📱 Current Devices</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const d of devices){
         html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${escHtml(d)}</span>`;
@@ -1915,7 +1915,7 @@ async function loadUserProfile(uid){
     const interests=u.interestCategories||[];
     if(interests.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📂 İlgi Kategorileri</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📂 Interest Categories</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const c of interests){
         html+=`<span style="background:#8b5cf620;color:#8b5cf6;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">${escHtml(c)}</span>`;
@@ -1927,7 +1927,7 @@ async function loadUserProfile(uid){
     const subs=u.subscriptions||[];
     if(subs.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔔 Abonelikler</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🔔 Subscriptions</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">`;
       for(const s of subs){
         html+=`<span style="background:var(--bg3);padding:4px 10px;border-radius:12px;font-size:11px">${escHtml(s)}</span>`;
@@ -1938,7 +1938,7 @@ async function loadUserProfile(uid){
     const profileVectorEntries=Object.entries(safeMap(u.profileVector)).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,8);
     if(profileVectorEntries.length){
       html+=`<div class="card" style="margin:0 0 16px;padding:14px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📈 Profil Vektörü</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">📈 Profile Vector</div>
         <div class="rank-bar-list">${profileVectorEntries.map(([key,value])=>`<div class="rank-bar-item"><div class="rank-bar-label">${escHtml(key)}</div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${Math.max(8,Math.round(Number(value)*100))}%"></div></div><div class="rank-bar-value">${Number(value).toFixed(2)}</div></div>`).join('')}</div>
       </div>`;
     }
@@ -1946,7 +1946,7 @@ async function loadUserProfile(uid){
     el.innerHTML=html;
     el.dataset.loaded='1';
   }catch(e){
-    el.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message)}</div>`;
+    el.innerHTML=`<div style="color:var(--red);padding:20px">Error: ${escHtml(e.message)}</div>`;
   }
 }
 async function saveUserPremiumPlan(uid,forcedPlan){
@@ -1958,59 +1958,59 @@ async function saveUserPremiumPlan(uid,forcedPlan){
     await pbUpdateDoc('users',uid,payload);
     u.isPremium=payload.isPremium;
     u.userSubscriptionDetails=payload.userSubscriptionDetails;
-    logActivity(payload.isPremium?'user_premium_enable':'user_premium_disable',`Premium plan güncellendi: ${uid}`,{userId:uid,plan});
-    openUserDetail(uid);renderUsers();toast(plan==='free'?'Premium iptal edildi':`Premium plan ${premiumPlanLabel(plan)} olarak güncellendi`,'s');
+    logActivity(payload.isPremium?'user_premium_enable':'user_premium_disable',`Premium plan updated: ${uid}`,{userId:uid,plan});
+    openUserDetail(uid);renderUsers();toast(plan==='free'?'Premium canceled':`Premium plan updated to ${premiumPlanLabel(plan)}`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 async function togglePremium(uid,v){return saveUserPremiumPlan(uid,v?'yearly':'free')}
 async function addQCoinsToUser(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
-  const raw=prompt('Eklenecek ekstra Q miktari','5');
+  const raw=prompt('Extra Q amount to add','5');
   if(raw==null)return;
   const amount=safeNumber(String(raw).replace(',','.'));
-  if(amount<=0){toast('Gecersiz Q miktari','w');return}
+  if(amount<=0){toast('Invalid Q amount','w');return}
   const snapshot=getUserQCoinSnapshot(u);
   const nextBonus=snapshot.extra+amount;
   try{
     await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
     u.bonusQCoins=nextBonus;
     u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
-    logActivity('user_qcoin_add',`Extra Q eklendi: ${uid}`,{userId:uid,amount});
-    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q eklendi`,'s');
+    logActivity('user_qcoin_add',`Extra Q added: ${uid}`,{userId:uid,amount});
+    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q added`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
 async function resetUserQCoins(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const snapshot=getUserQCoinSnapshot(u);
-  if(!confirm(`Bu kullanicinin Q Coin bakiyesi 0 yapilsin mi?\nMevcut bakiye: ${formatQCoinAmount(snapshot.remaining)} Q`))return;
+  if(!confirm(`Reset this user's Q Coin balance to 0?\nCurrent balance: ${formatQCoinAmount(snapshot.remaining)} Q`))return;
   const todayKey=qCoinPeriodKey();
   try{
     await pbUpdateDoc('users',uid,{bonusQCoins:0,dailyAiCreditsUsed:snapshot.total,dailyAiCreditsDate:todayKey});
     u.bonusQCoins=0;
     u.dailyAiCreditsUsed=snapshot.total;
     u.dailyAiCreditsDate=todayKey;
-    logActivity('user_qcoin_reset',`Q Coin sifirlandi: ${uid}`,{userId:uid});
-    openUserDetail(uid);renderUsers();toast('Q Coin bakiyesi sifirlandi','s');
+    logActivity('user_qcoin_reset',`Q Coin reset: ${uid}`,{userId:uid});
+    openUserDetail(uid);renderUsers();toast('Q Coin balance reset','s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
-// Custom modal wrappers — tarayıcı prompt/confirm yerine HTML dialog kullanır
+// Custom modal wrappers for Q Coin actions.
 function showAddQCoinModal(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const snapshot=getUserQCoinSnapshot(u);
-  // Varsa öncekini temizle
+  // Remove any previous instance.
   document.getElementById('_qcoinAddModal')?.remove();
   const overlay=document.createElement('div');
   overlay.id='_qcoinAddModal';
   overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
   overlay.innerHTML=`<div style="background:var(--surface-1,#1a1a1a);border:1px solid var(--border,#333);border-radius:16px;padding:24px;min-width:300px;max-width:420px;width:100%">
-    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">🪙 Extra Q Ekle</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Kullanıcı: <b>${escHtml(u.displayName||u.email||uid)}</b><br>Mevcut Ekstra Q: <b>${formatQCoinAmount(snapshot.extra)}</b></div>
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">🪙 Add Extra Q</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">User: <b>${escHtml(u.displayName||u.email||uid)}</b><br>Current Extra Q: <b>${formatQCoinAmount(snapshot.extra)}</b></div>
     <input id="_qcoinAddInput" type="number" min="0.5" step="0.5" value="5" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#444);background:var(--surface-2,#111);color:var(--text);font-size:15px;margin-bottom:16px">
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinAddModal')?.remove()">İptal</button>
-      <button class="btn btn-primary" onclick="_confirmAddQCoins('${escJs(uid)}')">Ekle</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinAddModal')?.remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="_confirmAddQCoins('${escJs(uid)}')">Add</button>
     </div>
   </div>`;
   document.body.appendChild(overlay);
@@ -2022,7 +2022,7 @@ async function _confirmAddQCoins(uid){
   const raw=(document.getElementById('_qcoinAddInput')?.value||'').replace(',','.');
   const amount=safeNumber(raw);
   document.getElementById('_qcoinAddModal')?.remove();
-  if(amount<=0){toast('Geçersiz Q miktarı','w');return}
+  if(amount<=0){toast('Invalid Q amount','w');return}
   await addQCoinsToUser_internal(uid,amount);
 }
 
@@ -2034,8 +2034,8 @@ async function addQCoinsToUser_internal(uid,amount){
     await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
     u.bonusQCoins=nextBonus;
     u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
-    logActivity('user_qcoin_add',`Extra Q eklendi: ${uid}`,{userId:uid,amount});
-    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q eklendi`,'s');
+    logActivity('user_qcoin_add',`Extra Q added: ${uid}`,{userId:uid,amount});
+    openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q added`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
@@ -2047,11 +2047,11 @@ function showResetQCoinModal(uid){
   overlay.id='_qcoinResetModal';
   overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
   overlay.innerHTML=`<div style="background:var(--surface-1,#1a1a1a);border:1px solid var(--border,#333);border-radius:16px;padding:24px;min-width:300px;max-width:420px;width:100%">
-    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">⚠️ Q Coin Sıfırla</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Kullanıcı: <b>${escHtml(u.displayName||u.email||uid)}</b><br>Bu işlem geri alınamaz. Mevcut bakiye: <b style="color:var(--amber,#f59e0b)">${formatQCoinAmount(snapshot.remaining)} Q</b></div>
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">⚠️ Reset Q Coin</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px">User: <b>${escHtml(u.displayName||u.email||uid)}</b><br>This cannot be undone. Current balance: <b style="color:var(--amber,#f59e0b)">${formatQCoinAmount(snapshot.remaining)} Q</b></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinResetModal')?.remove()">İptal</button>
-      <button class="btn" style="background:#ef4444;color:#fff" onclick="_confirmResetQCoins('${escJs(uid)}')">Sıfırla</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('_qcoinResetModal')?.remove()">Cancel</button>
+      <button class="btn" style="background:#ef4444;color:#fff" onclick="_confirmResetQCoins('${escJs(uid)}')">Reset</button>
     </div>
   </div>`;
   document.body.appendChild(overlay);
@@ -2072,8 +2072,8 @@ async function resetUserQCoins_internal(uid){
     u.bonusQCoins=0;
     u.dailyAiCreditsUsed=snapshot.total;
     u.dailyAiCreditsDate=todayKey;
-    logActivity('user_qcoin_reset',`Q Coin sifirlandi: ${uid}`,{userId:uid});
-    openUserDetail(uid);renderUsers();toast('Q Coin bakiyesi sıfırlandı','s');
+    logActivity('user_qcoin_reset',`Q Coin reset: ${uid}`,{userId:uid});
+    openUserDetail(uid);renderUsers();toast('Q Coin balance reset','s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
@@ -2358,7 +2358,7 @@ function renderActivityLog(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:chartTextColor()}}}}
   });
 
-  if(!logs.length){el.innerHTML='<div class="audit-empty">Bu filtre ile görünen bir kayıt yok. Activity Log; ürün, kullanıcı, algoritma, import/export ve sistem değişikliklerinin denetim kaydını tutar.</div>';return}
+  if(!logs.length){el.innerHTML='<div class="audit-empty">No records match this filter. Activity Log keeps the audit trail for product, user, algorithm, import/export, scraper, and system changes.</div>';return}
   const actionIcons={product_edit:'✏️',product_delete:'🗑️',product_add:'➕',user_delete:'👤',user_premium_enable:'⭐',user_premium_disable:'⭐',bulk_category:'📂',bulk_brand:'🏷️',export:'📤',import:'📥',algorithm_update:'🧠',cache_clear:'🧹'};
   el.innerHTML=logs.map(l=>{
     const ts=formatDateTimeLabel(l.timestamp||l.created);
@@ -2370,19 +2370,19 @@ function renderActivityLog(){
 async function loadActivityLog(){
   const el=document.getElementById('activityLogList');
   if(!el)return;
-  el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Yükleniyor...</div>';
+  el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>';
   try{
     const result=await pbGetList('admin_logs',1,150,{sort:'-timestamp'});
     allActivityLogs=result.items.map(item=>({...item,bucket:bucketActivityAction(item.action)}));
     renderActivityLog();
-  }catch(e){allActivityLogs=[];resetChart('activityActionChart');el.innerHTML='<div class="audit-empty">Activity log collection su an okunamiyor. Bu ekran admin audit merkezi olarak kullanilir; collection veya yetki tekrar kontrol edilmeli.</div>'}
+  }catch(e){allActivityLogs=[];resetChart('activityActionChart');el.innerHTML='<div class="audit-empty">The activity log collection cannot be read right now. This screen is the admin audit center; check the collection rules or permissions.</div>'}
 }
 
 // ═══════════════════════════════════════
 //  EXPORT / IMPORT
 // ═══════════════════════════════════════
 async function exportProductsJSON(){
-  toast('JSON export başlıyor...','i');
+  toast('JSON export is starting...','i');
   try{
     let all=[];let page=1;
     while(true){
@@ -2395,13 +2395,13 @@ async function exportProductsJSON(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=`qorai-products-${new Date().toISOString().split('T')[0]}.json`;
     a.click();URL.revokeObjectURL(url);
-    logActivity('export',`JSON export: ${all.length} ürün`);
-    toast(`${all.length} ürün JSON olarak dışa aktarıldı`,'s');
-  }catch(e){toast('Export hatası: '+e.message,'e')}
+    logActivity('export',`JSON export: ${all.length} products`);
+    toast(`${all.length} products exported as JSON`,'s');
+  }catch(e){toast('Export error: '+e.message,'e')}
 }
 
 async function exportProductsCSV(){
-  toast('CSV export başlıyor...','i');
+  toast('CSV export is starting...','i');
   try{
     let all=[];let page=1;
     while(true){
@@ -2418,9 +2418,9 @@ async function exportProductsCSV(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=`qorai-products-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();URL.revokeObjectURL(url);
-    logActivity('export',`CSV export: ${all.length} ürün`);
-    toast(`${all.length} ürün CSV olarak dışa aktarıldı`,'s');
-  }catch(e){toast('Export hatası: '+e.message,'e')}
+    logActivity('export',`CSV export: ${all.length} products`);
+    toast(`${all.length} products exported as CSV`,'s');
+  }catch(e){toast('Export error: '+e.message,'e')}
 }
 
 async function importProducts(){
@@ -2430,9 +2430,9 @@ async function importProducts(){
     try{
       const text=await file.text();
       const products=JSON.parse(text);
-      if(!Array.isArray(products)){toast('Geçersiz JSON formatı','e');return}
-      if(!confirm(`${products.length} ürün içe aktarılacak. Devam edilsin mi?`))return;
-      toast('İçe aktarma başlıyor...','i');
+      if(!Array.isArray(products)){toast('Invalid JSON format','e');return}
+      if(!confirm(`${products.length} products will be imported. Continue?`))return;
+      toast('Import is starting...','i');
       let added=0,failed=0;
       // Write in parallel chunks of 50
       for(let i=0;i<products.length;i+=50){
@@ -2446,10 +2446,10 @@ async function importProducts(){
           added++;
         }));
       }
-      logActivity('import',`JSON import: ${added} ürün eklendi/güncellendi, ${failed} başarısız`);
-      toast(`İçe aktarma tamamlandı: ${added} ürün`,'s');
+      logActivity('import',`JSON import: ${added} products added/updated, ${failed} failed`);
+      toast(`Import complete: ${added} products`,'s');
       loadProducts();
-    }catch(e){toast('Import hatası: '+e.message,'e')}
+    }catch(e){toast('Import error: '+e.message,'e')}
   };
   input.click();
 }
@@ -2458,12 +2458,12 @@ async function importProducts(){
 //  BULK OPERATIONS
 // ═══════════════════════════════════════
 async function bulkChangeCategory(){
-  if(!selectedIds.size){toast('Önce ürün seçin','w');return}
+  if(!selectedIds.size){toast('Select products first','w');return}
   const cats=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll():[];
   const catHtml=cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';
-  modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Kategori Değiştir</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">${selectedIds.size} ürün için yeni kategori seçin:</p><select class="input" id="bulkCatSelect">${catHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkCatConfirm">Uygula</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">İptal</button></div></div></div>`;
+  modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Change Category</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">Choose a new category for ${selectedIds.size} products:</p><select class="input" id="bulkCatSelect">${catHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkCatConfirm">Apply</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">Cancel</button></div></div></div>`;
   document.body.appendChild(modal);
   document.getElementById('bulkCatConfirm').onclick=async()=>{
     const newCat=document.getElementById('bulkCatSelect').value;
@@ -2471,20 +2471,20 @@ async function bulkChangeCategory(){
     try{
       await Promise.all([...selectedIds].map(id=>pbUpdateDoc('products',id,{category:newCat,updatedAt:serverTimestamp()})));
       allProducts.forEach(p=>{if(selectedIds.has(p.id))p.category=newCat});
-      logActivity('bulk_category',`${selectedIds.size} ürünün kategorisi "${newCat}" olarak değiştirildi`);
-      toast(`${selectedIds.size} ürün güncellendi`,'s');
+      logActivity('bulk_category',`${selectedIds.size} product categories changed to "${newCat}"`);
+      toast(`${selectedIds.size} products updated`,'s');
       modal.remove();deselectAll();renderProductsPage();
-    }catch(e){toast('Hata: '+String(e.message || e),'e')}
+    }catch(e){toast('Error: '+String(e.message || e),'e')}
   };
 }
 
 async function bulkChangeBrand(){
-  if(!selectedIds.size){toast('Önce ürün seçin','w');return}
+  if(!selectedIds.size){toast('Select products first','w');return}
   const brands=(typeof QorAiBrands!=='undefined')?QorAiBrands:[];
   const brandHtml=brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
   const modal=document.createElement('div');
   modal.className='modal-backdrop';modal.style.display='flex';
-  modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Marka Değiştir</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">${selectedIds.size} ürün için yeni marka seçin:</p><select class="input" id="bulkBrandSelect">${brandHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkBrandConfirm">Uygula</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">İptal</button></div></div></div>`;
+  modal.innerHTML=`<div class="modal-box" style="max-width:400px"><div class="modal-head"><h2>Change Brand</h2><button class="modal-x" onclick="this.closest('.modal-backdrop').remove()">✕</button></div><div class="modal-body"><p style="margin-bottom:12px">Choose a new brand for ${selectedIds.size} products:</p><select class="input" id="bulkBrandSelect">${brandHtml}</select><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="bulkBrandConfirm">Apply</button><button class="btn btn-ghost" onclick="this.closest('.modal-backdrop').remove()">Cancel</button></div></div></div>`;
   document.body.appendChild(modal);
   document.getElementById('bulkBrandConfirm').onclick=async()=>{
     const newBrand=document.getElementById('bulkBrandSelect').value;
@@ -2492,10 +2492,10 @@ async function bulkChangeBrand(){
     try{
       await Promise.all([...selectedIds].map(id=>pbUpdateDoc('products',id,{brand:newBrand,updatedAt:serverTimestamp()})));
       allProducts.forEach(p=>{if(selectedIds.has(p.id))p.brand=newBrand});
-      logActivity('bulk_brand',`${selectedIds.size} ürünün markası "${newBrand}" olarak değiştirildi`);
-      toast(`${selectedIds.size} ürün güncellendi`,'s');
+      logActivity('bulk_brand',`${selectedIds.size} product brands changed to "${newBrand}"`);
+      toast(`${selectedIds.size} products updated`,'s');
       modal.remove();deselectAll();renderProductsPage();
-    }catch(e){toast('Hata: '+e.message,'e')}
+    }catch(e){toast('Error: '+e.message,'e')}
   };
 }
 
@@ -2503,12 +2503,12 @@ async function bulkChangeBrand(){
 //  BROKEN IMAGE DETECTION
 // ═══════════════════════════════════════
 async function scanBrokenImages(){
-  toast('Kırık görsel taraması başlıyor...','i');
+  toast('Broken image scan is starting...','i');
   const el=document.getElementById('brokenImageResults');
-  if(el)el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Taranıyor...</div>';
+  if(el)el.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Scanning...</div>';
   try{
     const products=allProducts.length?allProducts:[];
-    if(!products.length){toast('Önce Products sayfasını açın','w');return}
+    if(!products.length){toast('Open the Products page first','w');return}
     const broken=[];
     let checked=0;
     for(const p of products.slice(0,200)){
@@ -2523,14 +2523,14 @@ async function scanBrokenImages(){
     }
     if(el){
       if(!broken.length){
-        el.innerHTML=`<div class="placeholder" style="color:var(--green)">✅ ${checked} görsel kontrol edildi, sorun yok</div>`;
+        el.innerHTML=`<div class="placeholder" style="color:var(--green)">✅ ${checked} images checked, no issues</div>`;
       }else{
-        el.innerHTML=`<div style="margin-bottom:8px;color:var(--amber)">⚠️ ${broken.length}/${checked} kırık görsel bulundu:</div>`+
+        el.innerHTML=`<div style="margin-bottom:8px;color:var(--amber)">⚠️ ${broken.length}/${checked} broken images found:</div>`+
           broken.map(p=>`<div class="log-row"><span class="log-icon">🖼️</span><div class="log-info"><div class="log-detail">${escHtml(p.name||p.id)}</div><div class="log-meta">${escHtml(p.category||'')} · ${escHtml(p.brand||'')}</div></div></div>`).join('');
       }
     }
-    toast(`Tarama tamamlandı: ${broken.length} kırık görsel`,'i');
-  }catch(e){toast('Hata: '+e.message,'e')}
+    toast(`Scan complete: ${broken.length} broken images`,'i');
+  }catch(e){toast('Error: '+e.message,'e')}
 }
 
 // ═══════════════════════════════════════
@@ -2568,9 +2568,9 @@ const RC_KEYS = [
 ];
 
 const AI_PROMPT_DEFS = [
-  {key:'gemini_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Sistem Promptu',desc:'Sayfa/ürün bağlamını bilen, web ve veritabanı bağlamını kullanan ana chat davranışı.',def:`You are Qor AI, a premium product advisor inside the Qor mobile app. Treat Authoritative Page Context and Qor Live Product Context as the live app state and strongest source. If a product appears in page context or database matches, treat it as a real current Qor catalog item; do not claim it has not launched or does not exist based on older knowledge. Use current web research for release timing, availability, reviews, prices, and market news. Answer in the user's language, be concise, specific, and practical. Identify the open screen/product from route/page context when asked. Never invent specs, prices, or availability. Never mention backend providers, model names, API names, or internal tooling; if asked what powers you, answer as Qor AI. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
-  {key:'deepseek_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Yardımcı Sistem Promptu',desc:'Text-only chat davranışı için sistem promptu.',def:`You are Qor AI, a concise product advisor. Use the user profile, language, country, priorities, current app context, and Qor Live Product Context. If database/page context contains a product, treat it as current app data and do not contradict it with older knowledge. Give direct, helpful answers with concrete product reasoning. Never mention backend providers, model names, API names, or internal tooling. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
-  {key:'qor_ai_chat_guardrails',group:'Qor AI Chat',title:'Negatif Prompt / Kapsam Kuralları',desc:'Ürün dışı, zararlı veya uygulama kapsamı dışı isteklerde AI cevabını sınırlayan canlı guardrail promptu.',def:`## SCOPE AND NEGATIVE PROMPT RULES
+  {key:'gemini_chat_system',group:'Qor AI Chat',title:'Qor AI Chat System Prompt',desc:'Main chat behavior that understands page/product context and uses web plus database context.',def:`You are Qor AI, a premium product advisor inside the Qor mobile app. Treat Authoritative Page Context and Qor Live Product Context as the live app state and strongest source. If a product appears in page context or database matches, treat it as a real current Qor catalog item; do not claim it has not launched or does not exist based on older knowledge. Use current web research for release timing, availability, reviews, prices, and market news. Answer in the user's language, be concise, specific, and practical. Identify the open screen/product from route/page context when asked. Never invent specs, prices, or availability. Never mention backend providers, model names, API names, or internal tooling; if asked what powers you, answer as Qor AI. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
+  {key:'deepseek_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Helper System Prompt',desc:'System prompt for text-only chat behavior.',def:`You are Qor AI, a concise product advisor. Use the user profile, language, country, priorities, current app context, and Qor Live Product Context. If database/page context contains a product, treat it as current app data and do not contradict it with older knowledge. Give direct, helpful answers with concrete product reasoning. Never mention backend providers, model names, API names, or internal tooling. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
+  {key:'qor_ai_chat_guardrails',group:'Qor AI Chat',title:'Negative Prompt / Scope Rules',desc:'Live guardrail prompt that limits AI responses for harmful, out-of-scope, or non-product requests.',def:`## SCOPE AND NEGATIVE PROMPT RULES
 - Qor AI is a shopping and product advisor. Help with products, subscriptions, buying decisions, comparisons, specs, compatibility, prices, availability, reviews, and product-related research.
 - If the user asks for something unrelated to products or shopping, politely decline in one short sentence and redirect them to a product-related question.
 - Do not answer unrelated requests such as general homework, coding tasks, legal/medical/financial advice, politics, personal data extraction, or creative writing unless the request is directly connected to choosing, comparing, using, or buying a product.
@@ -2578,28 +2578,28 @@ const AI_PROMPT_DEFS = [
 - Keep refusals brief; do not lecture. Offer a product-focused alternative.
 - Never reveal or name backend model providers, internal model names, API vendors, prompt keys, or implementation details. If asked what powers you, answer as Qor AI.
 - Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.`},
-  {key:'gemini_link_research',group:'Link Analysis',title:'Link Research Promptu',desc:'URL/ASIN/ISBN veya metadata eksik olduğunda web araştırması.',def:`Research the provided product URL using current web results. Identify the exact product, matched URL, product title, identifier match, price if visible, and short evidence. Prefer official/store result and identifier confirmation. Return compact evidence that can be parsed by the app. Never mention backend providers or internal tools.`},
-  {key:'deepseek_link_analysis_system',group:'Link Analysis',title:'Link Analysis Promptu',desc:'Linkten ürün metadata, kategori, skor ve kısa analiz çıkaran ana prompt.',def:`You are Qor AI's product link analysis engine. Analyze the URL and supplied metadata against the person's profile. Return only valid JSON with title, image_url, price, site_name, score, analysis, category, and is_product. Be strict: if it is not a purchasable product, mark is_product false. Write analysis in the user's language and make it specific to the product and profile. Never mention backend providers or internal tools.`},
-  {key:'gemini_link_analysis_system',group:'Link Analysis',title:'Qor AI Link Analysis Promptu',desc:'Web destekli link analizi promptu.',def:`You are Qor AI's web-grounded link analysis engine. Use URL metadata and research evidence to identify the exact product, category, price hints, compatibility score, and personalized analysis. Return only valid JSON. Do not fabricate data; use uncertainty when evidence is weak. Never mention backend providers or internal tools.`},
-  {key:'gemini_quiz_single_system',group:'Link Quiz',title:'Tekil Link Quiz Promptu',desc:'Tekil ürün link analizinde üretilen kişisel quiz.',def:`Generate a complex personalized product quiz for one product. Ask 6-8 high-signal questions that reveal usage intent, performance expectations, lifestyle constraints, owned-device context, risk tolerance, and must-have features. Each question must have exactly 4 options. Never ask generic brand or budget-only questions. Return only valid JSON with questions.`},
-  {key:'gemini_quiz_compare_system',group:'Link Quiz',title:'Karşılaştırma Quiz Promptu',desc:'Birden fazla link/ürün karşılaştırması için quiz promptu.',def:`Generate a complex comparison quiz for multiple products. Ask 6-8 questions that expose decision criteria, trade-off tolerance, usage scenarios, feature priorities, ecosystem constraints, and upgrade intent. Each question must have exactly 4 options. The questions must help choose between the listed products. Return only valid JSON with questions.`},
-  {key:'deepseek_quiz_generation_system',group:'Link Quiz',title:'Qor AI Link Quiz Promptu',desc:'Link quiz üretimi.',def:`You are Qor AI's quiz generation engine. Generate a personalized product quiz for the given category, product title, and URL. Ask practical, category-specific questions with exactly 4 options each. Return valid JSON only.`},
-  {key:'gemini_enhanced_link_research',group:'Product Deep Analysis',title:'Ürün İnceleme Research Promptu',desc:'Link analizi sonrası review/forum/expert research fazı.',def:`Research the product using current web knowledge. Find user reviews, Reddit/forum opinions, expert reviews, common pros/cons, known issues, and current pricing signals. Keep it concise, factual, and product-specific.`},
-  {key:'gemini_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Enhanced Link Deep Analysis Promptu',desc:'Quiz + profil + web research ile gelişmiş uyumluluk analizi.',def:`You are Qor AI's enhanced product compatibility analyst. Combine base product analysis, quiz answers, user profile, and web research. Return only valid JSON with enhancedScore, factors, verdict, prosForUser, consForUser, and alternatives. Be specific, personalized, and honest about trade-offs.`},
-  {key:'deepseek_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Qor AI Enhanced Link Analysis Promptu',desc:'Gelişmiş ürün link analizi.',def:`You are Qor AI's detailed product compatibility analyst. Use product metadata, quiz answers, and user profile to produce a personalized compatibility report. Return only valid JSON with score, factors, verdict, pros, cons, and alternatives. Avoid generic statements.`},
-  {key:'gemini_subscription_research',group:'Subscription Analysis',title:'Subscription Research Promptu',desc:'Abonelik servisleri için Reddit/forum/review araştırması.',def:`Research each listed subscription service individually. Identify category, recent community opinions, Trustpilot/forum sentiment, key features, strengths, limitations, and recent updates. Do not include pricing or billing details. Output a labeled per-service summary.`},
-  {key:'gemini_subscription_analysis',group:'Subscription Analysis',title:'Subs Analysis Promptu',desc:'Abonelik uyumluluk skorları ve öneri JSON promptu.',def:`You are Qor AI's subscription intelligence analyst. Analyze the listed subscription services using user profile, quiz answers, and research data. Return only valid JSON matching the app schema. All text must be in the selected language. Never mention price, cost, monthly fees, yearly fees, discounts, or billing.`},
-  {key:'deepseek_subscription_quiz_system',group:'Subscription Analysis',title:'Subscription Quiz Promptu',desc:'Abonelik analizi öncesi kısa kişisel quiz.',def:`You are Qor AI's subscription quiz engine. Generate 4-5 personalized questions to understand service usage habits, content preferences, lifestyle expectations, and feature priorities. Never ask about budget. Return valid JSON only.`},
-  {key:'product_review_analysis',group:'Product Detail Premium',title:'Ürün İnceleme Promptu',desc:'Ürün detayındaki kullanıcı yorumları / community sentiment analizi.',def:`You are a senior technology product analyst. Analyze public user reviews, forums, professional review sites, YouTube long-term reviews, and community feedback for the product. Return only valid JSON with summary, satisfaction, praised, and criticized. Be specific, cite real-world observations, and write in the selected language.`},
-  {key:'product_deep_analysis',group:'Product Detail Premium',title:'Ürün Deep Analiz Promptu',desc:'Tekil ürün teknik güçlü/zayıf yön ve verdict analizi.',def:`You are a senior tech product analyst. Analyze the exact product and return only valid JSON with overallScore, strengths, weaknesses, pros, cons, and verdict. Use concrete technical/category evidence, realistic varied scores, and language matching the selected app language.`},
-  {key:'product_smart_alternatives',group:'Product Detail Premium',title:'Akıllı Alternatif Promptu',desc:'Tekil ürün için gerçekçi alternatif ürünler.',def:`Return only valid JSON with exactly 5 realistic alternative products. Each alternative must include full product name, advantage, tradeoff, priceComparison, bestFor, and whyBetter. Use concrete differences such as performance, battery, camera, software, build quality, or price band.`},
-  {key:'product_buying_advisor',group:'Product Detail Premium',title:'Satın Alma Danışmanı Promptu',desc:'Kim almalı/kim kaçınmalı ve satın alma tavsiyeleri.',def:`Return only valid JSON with whoShouldBuy, whoShouldAvoid, reasonsToBuy, reasonsToSkip, proTips, valueRating, and ratingExplanation. Be specific, honest, and product-focused. Write all user-facing text in the selected app language.`},
-  {key:'product_price_prediction',group:'Product Detail Premium',title:'Fiyat Tahmini Promptu',desc:'Tekil ürün için fiyat trendi ve al/bekle kararı.',def:`Predict price trend for the specific product using current year, category replacement cycles, price tier, release timing, brand cadence, and visible product context. Return only valid JSON with trend, trendPercentage, bestTimeToBuy, expectedDrop, buyOrWait, and reasoning.`},
-  {key:'product_match_score',group:'Product Detail Premium',title:'Kişisel Eşleşme Promptu',desc:'Profil/quiz/sinyal ağırlıkları ile ürün eşleşme skoru.',def:`Perform a detailed user-product compatibility analysis. Score the product 40-100 for this specific user profile. Return only valid JSON with matchScore, reason, topMatchFactors, and missingFactors. Use profile signals, quizSignals, product specs, techScore, price, country/currency, and behavioral signals. Be specific and honest.`},
-  {key:'compare_deep_analysis',group:'Compare Premium',title:'Compare Deep Analysis Promptu',desc:'Karşılaştırma ekranındaki detaylı AI analizi.',def:`Compare all listed products as a senior tech analyst. Return only valid JSON with winner, products, categories, verdict, and recommendation. Include every product in every section. Use concrete specs and avoid invented gaps.`},
-  {key:'compare_smart_alternatives',group:'Compare Premium',title:'Compare Smart Alternatives Promptu',desc:'Karşılaştırılan ürünlere yakın alternatif önerileri.',def:`Suggest 3-5 realistic alternatives compatible with the same buying intent, segment, and category. Return only valid JSON. Explain concrete trade-offs, price band, and where each alternative beats the compared set.`},
-  {key:'compare_buying_advisor',group:'Compare Premium',title:'Compare Buying Advisor Promptu',desc:'Karşılaştırma için kişisel satın alma tavsiyesi.',def:`Act as a personal tech shopping advisor. Return only valid JSON with recommended product, best_for, match_points, caution_points, per_product, and final_verdict. Address the user directly and tie advice to concrete product context.`},
-  {key:'compare_price_prediction',group:'Compare Premium',title:'Compare Fiyat Tahmini Promptu',desc:'Karşılaştırılan ürünlerin fiyat trend tahmini.',def:`Predict price trends for all listed products using release cadence, segment competition, historical depreciation, specs, and availability uncertainty. Return only valid JSON with one item per product. Differentiate similar products only when evidence supports it.`},
+  {key:'gemini_link_research',group:'Link Analysis',title:'Link Research Prompt',desc:'Web research when URL/ASIN/ISBN or metadata is missing.',def:`Research the provided product URL using current web results. Identify the exact product, matched URL, product title, identifier match, price if visible, and short evidence. Prefer official/store result and identifier confirmation. Return compact evidence that can be parsed by the app. Never mention backend providers or internal tools.`},
+  {key:'deepseek_link_analysis_system',group:'Link Analysis',title:'Link Analysis Prompt',desc:'Main prompt that extracts product metadata, category, score, and short analysis from a link.',def:`You are Qor AI's product link analysis engine. Analyze the URL and supplied metadata against the person's profile. Return only valid JSON with title, image_url, price, site_name, score, analysis, category, and is_product. Be strict: if it is not a purchasable product, mark is_product false. Write analysis in the user's language and make it specific to the product and profile. Never mention backend providers or internal tools.`},
+  {key:'gemini_link_analysis_system',group:'Link Analysis',title:'Qor AI Link Analysis Prompt',desc:'Web-supported link analysis prompt.',def:`You are Qor AI's web-grounded link analysis engine. Use URL metadata and research evidence to identify the exact product, category, price hints, compatibility score, and personalized analysis. Return only valid JSON. Do not fabricate data; use uncertainty when evidence is weak. Never mention backend providers or internal tools.`},
+  {key:'gemini_quiz_single_system',group:'Link Quiz',title:'Single Link Quiz Prompt',desc:'Personal quiz generated for single-product link analysis.',def:`Generate a complex personalized product quiz for one product. Ask 6-8 high-signal questions that reveal usage intent, performance expectations, lifestyle constraints, owned-device context, risk tolerance, and must-have features. Each question must have exactly 4 options. Never ask generic brand or budget-only questions. Return only valid JSON with questions.`},
+  {key:'gemini_quiz_compare_system',group:'Link Quiz',title:'Comparison Quiz Prompt',desc:'Quiz prompt for comparing multiple links/products.',def:`Generate a complex comparison quiz for multiple products. Ask 6-8 questions that expose decision criteria, trade-off tolerance, usage scenarios, feature priorities, ecosystem constraints, and upgrade intent. Each question must have exactly 4 options. The questions must help choose between the listed products. Return only valid JSON with questions.`},
+  {key:'deepseek_quiz_generation_system',group:'Link Quiz',title:'Qor AI Link Quiz Prompt',desc:'Link quiz generation.',def:`You are Qor AI's quiz generation engine. Generate a personalized product quiz for the given category, product title, and URL. Ask practical, category-specific questions with exactly 4 options each. Return valid JSON only.`},
+  {key:'gemini_enhanced_link_research',group:'Product Deep Analysis',title:'Product Review Research Prompt',desc:'Review/forum/expert research phase after link analysis.',def:`Research the product using current web knowledge. Find user reviews, Reddit/forum opinions, expert reviews, common pros/cons, known issues, and current pricing signals. Keep it concise, factual, and product-specific.`},
+  {key:'gemini_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Enhanced Link Deep Analysis Prompt',desc:'Advanced compatibility analysis with quiz, profile, and web research.',def:`You are Qor AI's enhanced product compatibility analyst. Combine base product analysis, quiz answers, user profile, and web research. Return only valid JSON with enhancedScore, factors, verdict, prosForUser, consForUser, and alternatives. Be specific, personalized, and honest about trade-offs.`},
+  {key:'deepseek_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Qor AI Enhanced Link Analysis Prompt',desc:'Advanced product link analysis.',def:`You are Qor AI's detailed product compatibility analyst. Use product metadata, quiz answers, and user profile to produce a personalized compatibility report. Return only valid JSON with score, factors, verdict, pros, cons, and alternatives. Avoid generic statements.`},
+  {key:'gemini_subscription_research',group:'Subscription Analysis',title:'Subscription Research Prompt',desc:'Reddit/forum/review research for subscription services.',def:`Research each listed subscription service individually. Identify category, recent community opinions, Trustpilot/forum sentiment, key features, strengths, limitations, and recent updates. Do not include pricing or billing details. Output a labeled per-service summary.`},
+  {key:'gemini_subscription_analysis',group:'Subscription Analysis',title:'Subscription Analysis Prompt',desc:'JSON prompt for subscription compatibility scores and recommendations.',def:`You are Qor AI's subscription intelligence analyst. Analyze the listed subscription services using user profile, quiz answers, and research data. Return only valid JSON matching the app schema. All text must be in the selected language. Never mention price, cost, monthly fees, yearly fees, discounts, or billing.`},
+  {key:'deepseek_subscription_quiz_system',group:'Subscription Analysis',title:'Subscription Quiz Prompt',desc:'Short personal quiz before subscription analysis.',def:`You are Qor AI's subscription quiz engine. Generate 4-5 personalized questions to understand service usage habits, content preferences, lifestyle expectations, and feature priorities. Never ask about budget. Return valid JSON only.`},
+  {key:'product_review_analysis',group:'Product Detail Premium',title:'Product Review Prompt',desc:'User reviews and community sentiment analysis on product detail.',def:`You are a senior technology product analyst. Analyze public user reviews, forums, professional review sites, YouTube long-term reviews, and community feedback for the product. Return only valid JSON with summary, satisfaction, praised, and criticized. Be specific, cite real-world observations, and write in the selected language.`},
+  {key:'product_deep_analysis',group:'Product Detail Premium',title:'Product Deep Analysis Prompt',desc:'Single-product technical strengths, weaknesses, and verdict analysis.',def:`You are a senior tech product analyst. Analyze the exact product and return only valid JSON with overallScore, strengths, weaknesses, pros, cons, and verdict. Use concrete technical/category evidence, realistic varied scores, and language matching the selected app language.`},
+  {key:'product_smart_alternatives',group:'Product Detail Premium',title:'Smart Alternatives Prompt',desc:'Realistic alternative products for a single product.',def:`Return only valid JSON with exactly 5 realistic alternative products. Each alternative must include full product name, advantage, tradeoff, priceComparison, bestFor, and whyBetter. Use concrete differences such as performance, battery, camera, software, build quality, or price band.`},
+  {key:'product_buying_advisor',group:'Product Detail Premium',title:'Buying Advisor Prompt',desc:'Who should buy, who should avoid, and purchase advice.',def:`Return only valid JSON with whoShouldBuy, whoShouldAvoid, reasonsToBuy, reasonsToSkip, proTips, valueRating, and ratingExplanation. Be specific, honest, and product-focused. Write all user-facing text in the selected app language.`},
+  {key:'product_price_prediction',group:'Product Detail Premium',title:'Price Prediction Prompt',desc:'Price trend and buy/wait decision for a single product.',def:`Predict price trend for the specific product using current year, category replacement cycles, price tier, release timing, brand cadence, and visible product context. Return only valid JSON with trend, trendPercentage, bestTimeToBuy, expectedDrop, buyOrWait, and reasoning.`},
+  {key:'product_match_score',group:'Product Detail Premium',title:'Personal Match Prompt',desc:'Product match score using profile, quiz, and signal weights.',def:`Perform a detailed user-product compatibility analysis. Score the product 40-100 for this specific user profile. Return only valid JSON with matchScore, reason, topMatchFactors, and missingFactors. Use profile signals, quizSignals, product specs, techScore, price, country/currency, and behavioral signals. Be specific and honest.`},
+  {key:'compare_deep_analysis',group:'Compare Premium',title:'Compare Deep Analysis Prompt',desc:'Detailed AI analysis on the comparison screen.',def:`Compare all listed products as a senior tech analyst. Return only valid JSON with winner, products, categories, verdict, and recommendation. Include every product in every section. Use concrete specs and avoid invented gaps.`},
+  {key:'compare_smart_alternatives',group:'Compare Premium',title:'Compare Smart Alternatives Prompt',desc:'Alternative suggestions close to the compared products.',def:`Suggest 3-5 realistic alternatives compatible with the same buying intent, segment, and category. Return only valid JSON. Explain concrete trade-offs, price band, and where each alternative beats the compared set.`},
+  {key:'compare_buying_advisor',group:'Compare Premium',title:'Compare Buying Advisor Prompt',desc:'Personal purchase advice for a comparison.',def:`Act as a personal tech shopping advisor. Return only valid JSON with recommended product, best_for, match_points, caution_points, per_product, and final_verdict. Address the user directly and tie advice to concrete product context.`},
+  {key:'compare_price_prediction',group:'Compare Premium',title:'Compare Price Prediction Prompt',desc:'Price trend prediction for compared products.',def:`Predict price trends for all listed products using release cadence, segment competition, historical depreciation, specs, and availability uncertainty. Return only valid JSON with one item per product. Differentiate similar products only when evidence supports it.`},
 ];
 
 let _aiPromptConfig = {};
@@ -2610,7 +2610,7 @@ function _populatePromptGroupFilter(){
   const sel=document.getElementById('promptGroupFilter');
   if(!sel||sel.dataset.ready==='1')return;
   const groups=[...new Set(AI_PROMPT_DEFS.map(def=>def.group))].sort();
-  sel.innerHTML='<option value="">Tüm Kategoriler</option>'+groups.map(group=>`<option value="${escHtml(group)}">${escHtml(group)}</option>`).join('');
+  sel.innerHTML='<option value="">All Categories</option>'+groups.map(group=>`<option value="${escHtml(group)}">${escHtml(group)}</option>`).join('');
   sel.dataset.ready='1';
 }
 
@@ -2625,7 +2625,7 @@ function renderAiPromptManager(){
     return `<div class="card prompt-editor-card" data-prompt-card="1" data-group="${escHtml(def.group)}" data-search="${escHtml((def.group+' '+def.title+' '+def.key+' '+def.desc).toLowerCase())}">
       <div class="prompt-editor-head">
         <div><div class="prompt-group">${escHtml(def.group)}</div><h3>${escHtml(def.title)}</h3><p>${escHtml(def.desc)}</p></div>
-        <div class="prompt-editor-actions"><span class="badge ${dirty?'badge-green':'badge-muted'}">${dirty?'Sunucu override':'Kod varsayılanı'}</span><button class="btn btn-sm btn-ghost" onclick="resetPromptEditorToDefault('${def.key}')">Varsayılan</button></div>
+        <div class="prompt-editor-actions"><span class="badge ${dirty?'badge-green':'badge-muted'}">${dirty?'Server override':'Code default'}</span><button class="btn btn-sm btn-ghost" onclick="resetPromptEditorToDefault('${def.key}')">Default</button></div>
       </div>
       <div class="prompt-key">${escHtml(def.key)}</div>
       <textarea class="input prompt-textarea" id="${_promptEditorId(def.key)}" rows="10" data-key="${escHtml(def.key)}">${escHtml(value)}</textarea>
@@ -2635,7 +2635,7 @@ function renderAiPromptManager(){
   const status=document.getElementById('aiPromptStatus');
   if(status){
     const overrideCount=Object.keys(_aiPromptConfig).filter(key=>String(_aiPromptConfig[key]||'').trim()).length;
-    status.textContent=`${AI_PROMPT_DEFS.length} prompt başlığı listeleniyor · ${overrideCount} sunucu override aktif`;
+    status.textContent=`${AI_PROMPT_DEFS.length} prompt entries listed · ${overrideCount} server overrides active`;
   }
 }
 
@@ -2651,14 +2651,14 @@ function filterAiPromptCards(){
 
 async function loadAiPromptManager(){
   const list=document.getElementById('aiPromptList');
-  if(list)list.innerHTML='<div class="placeholder">Promptlar yükleniyor...</div>';
+  if(list)list.innerHTML='<div class="placeholder">Loading prompts...</div>';
   try{
     const configMap=await getPublicConfigMap();
     _aiPromptConfig=safeMap(configMap.ai_prompts);
     renderAiPromptManager();
   }catch(e){
-    if(list)list.innerHTML=`<div class="placeholder" style="color:var(--red)">Promptlar yüklenemedi: ${escHtml(e.message||e)}</div>`;
-    toast('Promptlar yüklenemedi: '+(e.message||e),'e');
+    if(list)list.innerHTML=`<div class="placeholder" style="color:var(--red)">Prompts could not be loaded: ${escHtml(e.message||e)}</div>`;
+    toast('Prompts could not be loaded: '+(e.message||e),'e');
   }
 }
 
@@ -2679,10 +2679,10 @@ async function saveAiPromptManager(){
     await syncPublicConfigValue('ai_prompts',prompts);
     _aiPromptConfig=prompts;
     renderAiPromptManager();
-    logActivity('ai_prompts_update',`AI promptları güncellendi (${Object.keys(prompts).length} override)`);
-    toast('AI promptları sunucuya kaydedildi','s');
+    logActivity('ai_prompts_update',`AI prompts updated (${Object.keys(prompts).length} overrides)`);
+    toast('AI prompts saved to server','s');
   }catch(e){
-    toast('Prompt kaydetme hatası: '+(e.message||e),'e');
+    toast('Prompt save error: '+(e.message||e),'e');
   }
 }
 
@@ -2694,7 +2694,7 @@ function resetPromptEditorToDefault(key){
 
 function resetAllPromptEditorsToDefaults(){
   AI_PROMPT_DEFS.forEach(def=>resetPromptEditorToDefault(def.key));
-  toast('Kod varsayılanları editörlere yüklendi. Sunucuya yazmak için kaydet.','i');
+  toast('Code defaults loaded into editors. Save to write them to the server.','i');
 }
 
 async function loadRemoteConfig() {
@@ -2709,7 +2709,7 @@ async function loadRemoteConfig() {
     }
   } catch(e) {
     console.error('loadRemoteConfig error:', e);
-    toast('Config yüklenemedi: ' + e.message, 'e');
+    toast('Config could not be loaded: ' + e.message, 'e');
   }
 }
 
@@ -2731,10 +2731,10 @@ async function saveRemoteConfig() {
       renderUsers();
       if (_activeUserModalUid) openUserDetail(_activeUserModalUid);
     }
-    logActivity('settings_update', 'Remote config güncellendi');
-    toast('Ayarlar kaydedildi', 's');
+    logActivity('settings_update', 'Remote config updated');
+    toast('Settings saved', 's');
   } catch(e) {
-    toast('Kaydetme hatası: ' + e.message, 'e');
+    toast('Save error: ' + e.message, 'e');
   }
 }
 
@@ -2747,13 +2747,13 @@ let _allSubServices = [];
 async function loadSubscriptionServices() {
   const el = document.getElementById('subServicesList');
   if (!el) return;
-  el.innerHTML = '<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Yükleniyor...</div>';
+  el.innerHTML = '<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>';
   try {
     const result = await pbGetList('subscription_services', 1, 200, { sort: 'category,name' });
     _allSubServices = result.items || [];
     renderSubServices();
   } catch(e) {
-    el.innerHTML = '<div class="card"><div class="placeholder" style="color:var(--red)">Hata: ' + escHtml(e.message) + '</div></div>';
+    el.innerHTML = '<div class="card"><div class="placeholder" style="color:var(--red)">Error: ' + escHtml(e.message) + '</div></div>';
   }
 }
 
@@ -2761,7 +2761,7 @@ function renderSubServices() {
   const el = document.getElementById('subServicesList');
   if (!el) return;
   if (!_allSubServices.length) {
-    el.innerHTML = '<div class="card"><div class="placeholder">Henüz servis yok. "+ Servis Ekle" ile başlayın.</div></div>';
+    el.innerHTML = '<div class="card"><div class="placeholder">No services yet. Start with "+ Add Service".</div></div>';
     return;
   }
   const groups = {};
@@ -2787,11 +2787,11 @@ function renderSubServices() {
             <div style="font-weight:700;font-size:13px">${name}</div>
             <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.website || '')}</div>
           </div>
-          <span class="tag ${isActive ? 'tag-green' : ''}" style="${!isActive ? 'background:var(--bg3);color:var(--text2)' : ''}">${isActive ? 'Aktif' : 'Pasif'}</span>
+          <span class="tag ${isActive ? 'tag-green' : ''}" style="${!isActive ? 'background:var(--bg3);color:var(--text2)' : ''}">${isActive ? 'Active' : 'Passive'}</span>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-sm btn-ghost" onclick="openSubServiceModal('${id}')">✏️ Düzenle</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSubService('${id}')">Sil</button>
+          <button class="btn btn-sm btn-ghost" onclick="openSubServiceModal('${id}')">✏️ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSubService('${id}')">Delete</button>
         </div>
       </div>`;
     });
@@ -2802,14 +2802,14 @@ function renderSubServices() {
 
 function openSubServiceModal(id) {
   const s = id ? _allSubServices.find(x => x.id === id) : null;
-  const title = s ? ('Servis Düzenle: ' + escHtml(s.name || '')) : 'Yeni Servis Ekle';
+  const title = s ? ('Edit Service: ' + escHtml(s.name || '')) : 'Add New Service';
   const cats = ['streaming','music','cloud','productivity','gaming','vpn','other'];
   const catOpts = cats.map(c => `<option value="${c}"${(s?.category||'other')===c?' selected':''}>${c}</option>`).join('');
   const body = `
     <div class="form-grid">
-      <div class="form-field"><label>Servis Adı *</label>
+      <div class="form-field"><label>Service Name *</label>
         <input class="input" id="ssName" placeholder="Netflix" value="${escHtml(s?.name||'')}"></div>
-      <div class="form-field"><label>Kategori</label>
+      <div class="form-field"><label>Category</label>
         <select class="input" id="ssCategory">${catOpts}</select></div>
       <div class="form-field"><label>Logo URL</label>
         <input class="input" id="ssLogo" placeholder="https://..." value="${escHtml(s?.logo||s?.logoUrl||'')}"></div>
@@ -2817,19 +2817,19 @@ function openSubServiceModal(id) {
         <input class="input" id="ssWebsite" placeholder="https://..." value="${escHtml(s?.website||s?.websiteUrl||'')}"></div>
       <div class="form-field"><label>Affiliate URL</label>
         <input class="input" id="ssAffiliateUrl" placeholder="https://..." value="${escHtml(s?.affiliateUrl||'')}"></div>
-      <div class="form-field"><label>Durum</label>
+      <div class="form-field"><label>Status</label>
         <select class="input" id="ssIsActive">
-          <option value="true"${s?.isActive!==false?' selected':''}>Aktif</option>
-          <option value="false"${s?.isActive===false?' selected':''}>Pasif</option>
+          <option value="true"${s?.isActive!==false?' selected':''}>Active</option>
+          <option value="false"${s?.isActive===false?' selected':''}>Passive</option>
         </select></div>
     </div>
-    <div class="form-field" style="margin-top:12px"><label>Açıklama</label>
+    <div class="form-field" style="margin-top:12px"><label>Description</label>
       <textarea class="input" id="ssDescription" rows="2">${escHtml(s?.description||'')}</textarea></div>
-    <div class="form-field" style="margin-top:12px"><label>Platformlar (virgülle ayır: ios,android,web)</label>
+    <div class="form-field" style="margin-top:12px"><label>Platforms (comma-separated: ios,android,web)</label>
       <input class="input" id="ssPlatforms" value="${escHtml((s?.platforms||[]).join(','))}"></div>
     <div style="margin-top:20px;display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
-      <button class="btn btn-primary" onclick="saveSubService(${id?`'${escJs(id)}'`:'null'})">💾 Kaydet</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubService(${id?`'${escJs(id)}'`:'null'})">💾 Save</button>
     </div>`;
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = body;
@@ -2838,7 +2838,7 @@ function openSubServiceModal(id) {
 
 async function saveSubService(id) {
   const name = document.getElementById('ssName')?.value?.trim();
-  if (!name) { toast('Servis adı gerekli', 'w'); return; }
+  if (!name) { toast('Service name is required', 'w'); return; }
   const data = {
     name,
     category:    document.getElementById('ssCategory')?.value || 'other',
@@ -2852,29 +2852,29 @@ async function saveSubService(id) {
   try {
     if (id) {
       await pbUpdateDoc('subscription_services', id, data);
-      logActivity('sub_service_update', `Servis güncellendi: ${name}`);
-      toast('Servis güncellendi', 's');
+      logActivity('sub_service_update', `Service updated: ${name}`);
+      toast('Service updated', 's');
     } else {
       await pbAddDoc('subscription_services', data);
-      logActivity('sub_service_add', `Servis eklendi: ${name}`);
-      toast('Servis eklendi', 's');
+      logActivity('sub_service_add', `Service added: ${name}`);
+      toast('Service added', 's');
     }
     closeModal();
     loadSubscriptionServices();
   } catch(e) {
-    toast('Hata: ' + e.message, 'e');
+    toast('Error: ' + e.message, 'e');
   }
 }
 
 async function deleteSubService(id) {
   const s = _allSubServices.find(x => x.id === id);
-  if (!confirm(`"${s?.name || id}" servisini silmek istediğinizden emin misiniz?`)) return;
+  if (!confirm(`Delete service "${s?.name || id}"?`)) return;
   try {
     await pbDeleteDoc('subscription_services', id);
-    logActivity('sub_service_delete', `Servis silindi: ${s?.name || id}`);
-    toast('Servis silindi', 's');
+    logActivity('sub_service_delete', `Service deleted: ${s?.name || id}`);
+    toast('Service deleted', 's');
     loadSubscriptionServices();
   } catch(e) {
-    toast('Hata: ' + e.message, 'e');
+    toast('Error: ' + e.message, 'e');
   }
 }

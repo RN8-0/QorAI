@@ -123,27 +123,27 @@
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
     if (typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`🚀 Score Engine v6 başlatıldı${category ? ' — kategori: ' + category : ' — tüm kategoriler'}`);
+    _slog(`🚀 Score Engine v6 started${category ? ' — category: ' + category : ' — all categories'}`);
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
-    _setProgress('Yükleniyor', 0, 1);
-    _slog('📥 [1/3] PocketBase\'den ürünler çekiliyor…');
+    _setProgress('Loading', 0, 1);
+    _slog('📥 [1/3] Loading products from PocketBase...');
     let products;
     try {
       products = await _loadProducts(category);
     } catch (e) {
-      _slog(`✗ Yükleme hatası: ${e.message}`, 'error');
+      _slog(`✗ Load error: ${e.message}`, 'error');
       _running = false; return;
     }
     if (!products.length) {
-      _slog('Hiç ürün yok.', 'warn');
+      _slog('No products found.', 'warn');
       _running = false; return;
     }
-    _setProgress('Yüklendi', products.length, products.length);
-    _slog(`✓ ${products.length} ürün yüklendi`);
+    _setProgress('Loaded', products.length, products.length);
+    _slog(`✓ ${products.length} products loaded`);
 
     // ── PHASE 2: COMPUTE ────────────────────────────────────
-    _slog('🧮 [2/3] Skor hesaplanıyor (kategori bazlı)…');
+    _slog('🧮 [2/3] Calculating scores by category...');
     const groups = _groupByCategory(products);
     const groupKeys = Object.keys(groups);
     const allComputed = [];
@@ -155,9 +155,9 @@
       const dist = _distribution(scored);
       const bk = dist.buckets;
       _slog(
-        `  • ${cat}: ${dist.count} ürün — max ${dist.max}, ortalama ${dist.avg}, min ${dist.min} ` +
+        `  • ${cat}: ${dist.count} products — max ${dist.max}, avg ${dist.avg}, min ${dist.min} ` +
         `| flagship:${bk.flagship||0} upper:${bk['upper-mid']||0} mid:${bk.mid||0} entry:${bk.entry||0} budget:${bk.budget||0}` +
-        (dist.avgMissing > 0 ? ` | eksik spec ort: ${dist.avgMissing}` : '')
+        (dist.avgMissing > 0 ? ` | avg missing specs: ${dist.avgMissing}` : '')
       );
       allComputed.push(...scored.map(s => ({ ...s, category: cat })));
       // Yield to UI thread between heavy categories
@@ -178,32 +178,32 @@
     // Top-3 winners log
     const top3 = _topN(allComputed, 3);
     if (top3.length) {
-      _slog('🏆 En yüksek skorlar:');
+      _slog('🏆 Highest scores:');
       top3.forEach((t, i) => {
         _slog(`    ${i + 1}. ${t.name || t.id} — ${t.score} (${t.tier || '?'}, ${t.category})`);
       });
     }
-    _slog(`📊 Hesaplama bitti: ${allComputed.length} ürün skorlandı, ${toUpdate.length} değişti, ${unchanged} aynı kaldı`);
+    _slog(`📊 Calculation done: ${allComputed.length} products scored, ${toUpdate.length} changed, ${unchanged} unchanged`);
 
     if (!toUpdate.length) {
-      _setProgress('Tamam', 1, 1);
-      _showSummary(`<div><strong>✅ Tüm puanlar zaten güncel</strong> — ${allComputed.length} ürün kontrol edildi · <strong>⏱️ ${((Date.now()-_startTime)/1000).toFixed(1)}s</strong></div>`);
+      _setProgress('Done', 1, 1);
+      _showSummary(`<div><strong>✅ All scores are already current</strong> — ${allComputed.length} products checked · <strong>⏱️ ${((Date.now()-_startTime)/1000).toFixed(1)}s</strong></div>`);
       _running = false; return;
     }
 
     // ── PHASE 3: PERSIST ────────────────────────────────────
-    _slog(`💾 [3/3] PocketBase + Typesense'e yazılıyor (${concurrency} paralel)…`);
-    _setProgress('Yazılıyor', 0, toUpdate.length, `toplam ${products.length} ürün, ${unchanged} değişmedi`);
+    _slog(`💾 [3/3] Writing to PocketBase + Typesense (${concurrency} parallel)...`);
+    _setProgress('Writing', 0, toUpdate.length, `total ${products.length} products, ${unchanged} unchanged`);
 
     let lastLogged = 0;
     const result = await _persistInParallel(toUpdate, byId, concurrency, (done, lastRow) => {
-      _setProgress('Yazılıyor', done, toUpdate.length, `toplam ${products.length} ürün, ${unchanged} değişmedi`);
+      _setProgress('Writing', done, toUpdate.length, `total ${products.length} products, ${unchanged} unchanged`);
       // Log a sample every ~10% or every 100, whichever is smaller
       const step = Math.max(1, Math.min(100, Math.floor(toUpdate.length / 10)));
       if (done - lastLogged >= step || done === toUpdate.length) {
         lastLogged = done;
-        const sample = lastRow ? ` · son: ${(lastRow.name || lastRow.id).slice(0, 40)} → ${lastRow.score}` : '';
-        _slog(`  → ${done}/${toUpdate.length} yazıldı${sample}`);
+        const sample = lastRow ? ` · last: ${(lastRow.name || lastRow.id).slice(0, 40)} → ${lastRow.score}` : '';
+        _slog(`  → ${done}/${toUpdate.length} written${sample}`);
       }
     });
 
@@ -212,15 +212,15 @@
     const finalDist = _distribution(allComputed);
     const fb = finalDist.buckets;
 
-    _slog(`✅ Tamamlandı — ${result.updated} güncellendi, ${result.failed} hata, ${seconds}s`, result.failed ? 'warn' : 'success');
+    _slog(`✅ Completed — ${result.updated} updated, ${result.failed} errors, ${seconds}s`, result.failed ? 'warn' : 'success');
 
     const summaryHtml = `
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
-        <div><strong>✅ ${result.updated}</strong> güncellendi</div>
-        <div><strong>⏸️ ${unchanged}</strong> değişmedi</div>
-        <div><strong>⚠️ ${result.failed}</strong> hata</div>
+        <div><strong>✅ ${result.updated}</strong> updated</div>
+        <div><strong>⏸️ ${unchanged}</strong> unchanged</div>
+        <div><strong>⚠️ ${result.failed}</strong> errors</div>
         <div><strong>⏱️ ${seconds}s</strong></div>
-        <div style="opacity:.7">toplam ${products.length} ürün</div>
+        <div style="opacity:.7">total ${products.length} products</div>
       </div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-size:12px">
         <span style="padding:2px 8px;background:#7C3AED;border-radius:10px">Flagship: ${fb.flagship||0}</span>
@@ -228,9 +228,9 @@
         <span style="padding:2px 8px;background:#6366F1;border-radius:10px">Mid: ${fb.mid||0}</span>
         <span style="padding:2px 8px;background:#475569;border-radius:10px">Entry: ${fb.entry||0}</span>
         <span style="padding:2px 8px;background:#334155;border-radius:10px">Budget: ${fb.budget||0}</span>
-        <span style="padding:2px 8px;background:#1f2937;border-radius:10px">Max ${finalDist.max} · Ort ${finalDist.avg} · Min ${finalDist.min}</span>
+        <span style="padding:2px 8px;background:#1f2937;border-radius:10px">Max ${finalDist.max} · Avg ${finalDist.avg} · Min ${finalDist.min}</span>
       </div>
-      ${result.errors.length ? `<details style="margin-top:8px"><summary>${result.errors.length} hata detayları</summary><ul style="margin:8px 0 0 16px;font-size:12px">${result.errors.slice(0,30).map(e=>`<li><code>${e.id}</code> ${e.name||''} — ${e.error}</li>`).join('')}</ul></details>` : ''}
+      ${result.errors.length ? `<details style="margin-top:8px"><summary>${result.errors.length} error details</summary><ul style="margin:8px 0 0 16px;font-size:12px">${result.errors.slice(0,30).map(e=>`<li><code>${e.id}</code> ${e.name||''} — ${e.error}</li>`).join('')}</ul></details>` : ''}
     `;
     _showSummary(summaryHtml);
 
@@ -241,7 +241,7 @@
   function stopScoreEngine() {
     if (!_running) return;
     _abort = true;
-    _slog('⏹ Durdur isteği alındı, açık işlemler tamamlandıktan sonra duruyor…', 'warn');
+    _slog('⏹ Stop requested; stopping after in-flight operations finish...', 'warn');
   }
 
   // UI handlers
@@ -251,7 +251,7 @@
   };
   global.runScoreEngineCategory = function () {
     const cat = document.getElementById('scoreEngineCategory')?.value || '';
-    if (!cat) { if (typeof toast === 'function') toast('Önce kategori seç', 'w'); return; }
+    if (!cat) { if (typeof toast === 'function') toast('Select a category first', 'w'); return; }
     const overwrite = document.getElementById('scoreEngineOverwrite')?.checked !== false;
     startScoreEngine(cat, { overwrite });
   };
