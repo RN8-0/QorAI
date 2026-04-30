@@ -12,6 +12,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:google_fonts/google_fonts.dart";
 import "package:qor_ai/core/app_keys.dart";
+import "package:qor_ai/core/pb_client.dart";
 import "package:qor_ai/presentation/providers/providers.dart";
 import "package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:qor_ai/services/connectivity_service.dart";
@@ -131,6 +132,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   void _onNavTap(int index) {
     if (!kIsWeb) HapticFeedback.lightImpact();
+    if (index == 0 && !pb.authStore.isValid) {
+      context.go(AppRoutes.login);
+      return;
+    }
     // Close any open modals/bottom sheets before navigating
     Navigator.of(
       context,

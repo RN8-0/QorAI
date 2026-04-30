@@ -1693,6 +1693,21 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
         structured: result['structured'] as Map<String, dynamic>?,
       );
 
+      _ref.read(aiPageContextProvider.notifier).state = {
+        'contextRoute': 'subscriptions',
+        'activeAnalysisType': 'subscription analysis',
+        'activeSubscriptionServices': names.join(' vs '),
+        'activeSubscriptionScores': Map<String, double>.from(
+          result['scores'] as Map? ?? {},
+        ).toString(),
+        'activeSubscriptionSummary': result['analysis'] as String? ?? '',
+        'activeQuizAnswers': answered
+            .where((q) => q.selectedOption != null)
+            .map((q) => {'question': q.text, 'answer': q.selectedOption})
+            .toList()
+            .toString(),
+      };
+
       // Save subscription comparison to Firestore history
       try {
         final authState = _ref.read(authStateProvider).valueOrNull;

@@ -128,14 +128,14 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       final gemini = _ref.read(geminiServiceProvider);
 
       // Text chat only — image analysis moved to Visual Scanner
-      final turns = _buildTurns(trimmed, user, pageContext: pageContext);
+      final turns = await _buildTurns(trimmed, user, pageContext: pageContext);
       final aiMsgId = '${DateTime.now().millisecondsSinceEpoch}_ai';
       String accumulated = '';
 
       try {
         await for (final chunk in gemini.chatConversationStream(turns, user)) {
           accumulated += chunk;
-          final cleanText = _stripJsonWrapper(accumulated);
+          final cleanText = _sanitizeAiText(_stripJsonWrapper(accumulated));
           final aiMsg = PersistedChatMsg(
             id: aiMsgId,
             role: PersistedMsgRole.ai,
@@ -156,7 +156,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       }
 
       // Final update with complete text
-      final cleanText = _stripJsonWrapper(accumulated);
+      final cleanText = _sanitizeAiText(_stripJsonWrapper(accumulated));
       final aiMsg = PersistedChatMsg(
         id: aiMsgId,
         role: PersistedMsgRole.ai,
@@ -244,11 +244,11 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     }
   }
 
-  List<Map<String, String>> _buildTurns(
+  Future<List<Map<String, String>>> _buildTurns(
     String newMsg,
     dynamic user, {
     Map<String, dynamic>? pageContext,
-  }) {
+  }) async {
     // Keep last 5 messages to reduce token cost (~40% savings per call)
     final recent = state.messages
         .where((m) => m.role != PersistedMsgRole.system)
@@ -323,6 +323,25 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
           'Recent chat context: ${pageContext['recentChatMessages']}',
         );
       }
+      for (final entry in pageContext.entries) {
+        final key = entry.key;
+        if (const {
+          'page',
+          'route',
+          'productName',
+          'productBrand',
+          'productCategory',
+          'techScore',
+          'matchScore',
+          'compareProducts',
+          'pcBuilderParts',
+          'recentChatMessages',
+        }.contains(key)) {
+          continue;
+        }
+        final value = entry.value?.toString().trim() ?? '';
+        if (value.isNotEmpty) pageCtxStr.add('$key: $value');
+      }
     }
 
     try {
@@ -341,12 +360,143 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       }
     } catch (_) {}
 
+    final liveContext = await _buildLiveResearchContext(
+      newMsg,
+      user,
+      pageContext,
+    );
+
+    final liveInfo = liveContext.isEmpty
+        ? ''
+        : '\n[Qor Live Product Context: ${liveContext.join(' | ')} | Treat database matches as current app data. If a product appears here or in Page Context, do not claim it does not exist or has not launched based only on older model knowledge.]';
+
     final ctx = parts.isEmpty ? '' : '\n[User Profile: ${parts.join(' | ')}]';
     final pageInfo = pageCtxStr.isEmpty
         ? ''
-        : '\n[Page Context: ${pageCtxStr.join(' | ')}]';
-    turns.add({'role': 'user', 'text': '$newMsg$ctx$pageInfo'});
+        : '\n[Authoritative Page Context: ${pageCtxStr.join(' | ')} | Use this as the current screen state. Do not infer a different current page/product from older messages.]';
+    turns.add({'role': 'user', 'text': '$newMsg$ctx$pageInfo$liveInfo'});
     return turns;
+  }
+
+  Future<List<String>> _buildLiveResearchContext(
+    String message,
+    dynamic user,
+    Map<String, dynamic>? pageContext,
+  ) async {
+    final context = <String>[];
+
+    final url = _firstUrl(message);
+    if (url != null) {
+      try {
+        final result = await _ref
+            .read(geminiServiceProvider)
+            .analyzeLink(url, user);
+        final title = result.metadata.title?.trim();
+        if (title != null && title.isNotEmpty) {
+          context.add(
+            'Link analysis: ${result.isProduct ? 'product' : 'not product'}; title=$title; category=${result.category ?? 'unknown'}; score=${result.aiScore.round()}/100; summary=${_compact(result.aiAnalysis, 420)}',
+          );
+        }
+      } catch (_) {}
+    }
+
+    final queries = _productSearchQueries(message, pageContext);
+    if (queries.isEmpty) return context;
+
+    try {
+      final repo = _ref.read(productRepositoryProvider);
+      final seenProductIds = <String>{};
+      final matches = <ProductEntity>[];
+      for (final query in queries.take(3)) {
+        final result = await repo.searchProducts(query: query, limit: 5);
+        final products = result.dataOrNull ?? const <ProductEntity>[];
+        for (final product in products) {
+          if (seenProductIds.add(product.id)) matches.add(product);
+          if (matches.length >= 5) break;
+        }
+        if (matches.length >= 5) break;
+      }
+      if (matches.isNotEmpty) {
+        context.add(
+          'Database matches: ${matches.map(_formatProductContext).join(' ; ')}',
+        );
+      }
+    } catch (_) {}
+
+    return context;
+  }
+
+  List<String> _productSearchQueries(
+    String message,
+    Map<String, dynamic>? pageContext,
+  ) {
+    final queries = <String>[];
+    void addQuery(String? value) {
+      final clean = value
+          ?.replaceAll(RegExp(r'https?://\S+', caseSensitive: false), ' ')
+          .replaceAll(RegExp(r'[^\w\s\-+./ğüşöçıİĞÜŞÖÇ]', unicode: true), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (clean == null || clean.length < 2 || clean.length > 90) return;
+      if (!queries.any((query) => query.toLowerCase() == clean.toLowerCase())) {
+        queries.add(clean);
+      }
+    }
+
+    addQuery(pageContext?['productName']?.toString());
+    addQuery(pageContext?['activeAnalysisProduct']?.toString());
+
+    final modelMatches = RegExp(
+      r'\b(?:[A-Za-zğüşöçıİĞÜŞÖÇ]+[\s-]+){0,3}[A-Za-zğüşöçıİĞÜŞÖÇ]*\d[A-Za-z0-9]*(?:[\s-]+(?:Ultra|Pro|Max|Plus|Mini|Air|Fold|Flip|Note|Galaxy|iPhone|Ryzen|Core|RTX|GTX|MacBook|iPad)){0,3}\b',
+      caseSensitive: false,
+      unicode: true,
+    ).allMatches(message);
+    for (final match in modelMatches) {
+      addQuery(match.group(0));
+    }
+
+    if (queries.isEmpty || message.length <= 90) addQuery(message);
+    return queries.take(5).toList(growable: false);
+  }
+
+  String? _firstUrl(String text) {
+    final match = RegExp(
+      r'https?://[^\s)\]}>,]+',
+      caseSensitive: false,
+    ).firstMatch(text);
+    return match?.group(0);
+  }
+
+  String _formatProductContext(ProductEntity product) {
+    final specs = product.keySpecs.entries
+        .take(4)
+        .map((entry) => '${entry.key}: ${entry.value}')
+        .join(', ');
+    final pros = product.pros.take(2).join(', ');
+    final cons = product.cons.take(2).join(', ');
+    return [
+      '${product.name} (${product.brand ?? 'brand unknown'}, ${product.category}/${product.subcategory}, score ${product.techScore.round()}/100)',
+      if (specs.isNotEmpty) 'specs: $specs',
+      if (pros.isNotEmpty) 'pros: $pros',
+      if (cons.isNotEmpty) 'cons: $cons',
+    ].join(', ');
+  }
+
+  String _compact(String text, int maxChars) {
+    final clean = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.length <= maxChars) return clean;
+    return '${clean.substring(0, maxChars).trim()}...';
+  }
+
+  static String _sanitizeAiText(String text) {
+    return text
+        .replaceAll(
+          RegExp(r'\bGoogle\s+Search\b', caseSensitive: false),
+          'web search',
+        )
+        .replaceAll(RegExp(r'\bGoogle\s+AI\b', caseSensitive: false), 'Qor AI')
+        .replaceAll(RegExp(r'\bGemini\b', caseSensitive: false), 'Qor AI')
+        .replaceAll(RegExp(r'\bDeepSeek\b', caseSensitive: false), 'Qor AI');
   }
 
   void _addMsg(PersistedChatMsg msg) {

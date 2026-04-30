@@ -114,14 +114,14 @@ class GeminiService implements AIService {
     UserEntity profile, {
     OgMetadata? metadata,
   }) async {
-    debugPrint('[Gemini] analyzeLink called for: $url');
+    debugPrint('[Qor AI] analyzeLink called for: $url');
 
     // Extract product name from URL slug (free, no API cost)
     final slugTitle = extractProductNameFromUrl(url);
     final amazonProductId = extractAmazonProductId(url);
     final amazonProductIdType = extractAmazonProductIdType(url);
     final storeDomain = _extractStoreDomain(url);
-    debugPrint('[Gemini] URL slug title: $slugTitle');
+    debugPrint('[Qor AI] URL slug title: $slugTitle');
 
     // Build metadata context — prefer scraped metadata, fall back to slug extraction
     // Filter out domain-only titles (e.g. "trendyol.com", "amazon.com")
@@ -160,9 +160,9 @@ class GeminiService implements AIService {
       }
     }
 
-    // ── Step 1: Google Search research — identify product from URL ──
-    // When metadata scraping fails (Amazon bot detection etc.), Gemini uses
-    // its built-in Google Search to look up the actual product page.
+    // ── Step 1: web research — identify product from URL ──
+    // When metadata scraping fails (Amazon bot detection etc.), Qor AI uses
+    // current web grounding to look up the actual product page.
     String webResearch = '';
     String? researchedTitle;
     bool researchConfirmed = false;
@@ -173,7 +173,7 @@ class GeminiService implements AIService {
         (scrapedTitle == null && slugTitle == null);
     if (needsResearch || amazonProductId != null) {
       try {
-        debugPrint('[Gemini] URL research phase — looking up: $url');
+        debugPrint('[Qor AI] URL research phase — looking up: $url');
         webResearch = await _rawRequest(
           {
             'contents': [
@@ -204,7 +204,7 @@ class GeminiService implements AIService {
           tier: AiTier.heavy,
         );
         debugPrint(
-          '[Gemini] URL research result: ${webResearch.length > 200 ? webResearch.substring(0, 200) : webResearch}',
+          '[Qor AI] URL research result: ${webResearch.length > 200 ? webResearch.substring(0, 200) : webResearch}',
         );
         final evidence = parseLinkResearchEvidence(webResearch);
         researchConfirmed =
@@ -226,7 +226,7 @@ class GeminiService implements AIService {
           }
         }
       } catch (e) {
-        debugPrint('[Gemini] URL research failed (continuing without): $e');
+        debugPrint('[Qor AI] URL research failed (continuing without): $e');
       }
     }
 
@@ -254,7 +254,7 @@ class GeminiService implements AIService {
       tier: AiTier.heavy,
     );
 
-    debugPrint('[Gemini] analyzeLink response keys: ${response.keys}');
+    debugPrint('[Qor AI] analyzeLink response keys: ${response.keys}');
 
     // Use slug title as fallback if AI returned an error/empty title
     final aiTitle = response['title'] as String?;
@@ -557,7 +557,7 @@ class GeminiService implements AIService {
       buffer.writeln('Metadata price hint: ${metadata!.price}');
     }
     buffer
-      ..writeln('Use Google Search now.')
+      ..writeln('Use current web search now.')
       ..writeln('Return EXACTLY these lines and nothing else:')
       ..writeln('IDENTIFIER_CONFIRMED: yes|no')
       ..writeln('MATCHED_URL: exact best matching product URL or null')
@@ -625,7 +625,7 @@ class GeminiService implements AIService {
       'tools': [
         {'googleSearch': {}},
       ],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
+      'generationConfig': {'temperature': 0.55, 'maxOutputTokens': 2048},
     };
 
     final text = await _rawRequest(body, tier: AiTier.lite);
@@ -660,7 +660,7 @@ class GeminiService implements AIService {
       'tools': [
         {'googleSearch': {}},
       ],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
+      'generationConfig': {'temperature': 0.55, 'maxOutputTokens': 2048},
     };
 
     try {
@@ -785,7 +785,7 @@ class GeminiService implements AIService {
     return _rawRequest(body, tier: tier);
   }
 
-  /// Query Gemini with Google Search grounding for real-time factual data.
+  /// Query Qor AI with web grounding for real-time factual data.
   Future<String> groundedQuery(String prompt, {int maxTokens = 2048}) async {
     final body = {
       'contents': [
@@ -890,7 +890,7 @@ For MUSIC (Spotify, Apple Music, YouTube Music, Tidal etc.):
   - Audiophile quality vs convenience trade-offs
   - Podcast integration scenarios
 
-For AI TOOLS (ChatGPT, Claude, Gemini, Copilot etc.):
+For AI TOOLS (ChatGPT, Claude, Copilot etc.):
   - Specific task scenarios: "You need to write a difficult email at 11pm — do you use AI?" 
   - Code debugging vs creative writing vs research
   - How they handle AI mistakes / trust levels
@@ -1440,7 +1440,7 @@ $jsonSchema
     List<Map<String, String>>? allProducts,
     UserEntity? profile,
   }) async {
-    debugPrint('[Gemini] generateQuiz for: $productTitle ($category)');
+    debugPrint('[Qor AI] generateQuiz for: $productTitle ($category)');
     final isCompare = allProducts != null && allProducts.length >= 2;
     final promptKey = isCompare
         ? 'gemini_quiz_compare_system'
@@ -1489,7 +1489,7 @@ $jsonSchema
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
         .toList();
 
-    debugPrint('[Gemini] generateQuiz got ${questions.length} questions');
+    debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
     return ProductQuiz(
       id: '${category}_${DateTime.now().millisecondsSinceEpoch}',
       category: category,
@@ -1552,13 +1552,13 @@ $jsonSchema
     required List<QuizQuestion> answeredQuestions,
     required UserEntity profile,
   }) async {
-    debugPrint('[Gemini] enhancedAnalysis for: ${baseResult.metadata.title}');
+    debugPrint('[Qor AI] enhancedAnalysis for: ${baseResult.metadata.title}');
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
         .toList();
 
-    // Step 1: Google Search research — gather community reviews & real-time data
+    // Step 1: web research — gather community reviews & real-time data
     String researchData = '';
     try {
       final productName = baseResult.metadata.title ?? 'unknown';
@@ -1587,10 +1587,10 @@ $jsonSchema
         tier: AiTier.heavy,
       );
       debugPrint(
-        '[Gemini] enhancedAnalysis research: ${researchData.length} chars',
+        '[Qor AI] enhancedAnalysis research: ${researchData.length} chars',
       );
     } catch (e) {
-      debugPrint('[Gemini] enhancedAnalysis research failed (continuing): $e');
+      debugPrint('[Qor AI] enhancedAnalysis research failed (continuing): $e');
     }
 
     // Step 2: Structured JSON analysis
@@ -1634,7 +1634,7 @@ $jsonSchema
 
     final rawFactors = response['factors'];
     debugPrint(
-      '[Gemini] raw factors type: ${rawFactors.runtimeType}, value: $rawFactors',
+      '[Qor AI] raw factors type: ${rawFactors.runtimeType}, value: $rawFactors',
     );
     final factors = (rawFactors is List ? rawFactors : <dynamic>[])
         .map((f) {
@@ -1642,7 +1642,7 @@ $jsonSchema
           final label = (f['label'] ?? f['name'] ?? '') as String;
           final score = parseScore(f['score'] ?? f['value']);
           final emoji = (f['emoji'] ?? f['icon'] ?? '📊') as String;
-          debugPrint('[Gemini]   factor: $label = $score ($emoji)');
+          debugPrint('[Qor AI]   factor: $label = $score ($emoji)');
           return CompatibilityFactor(label: label, score: score, emoji: emoji);
         })
         .whereType<CompatibilityFactor>()
@@ -1655,7 +1655,7 @@ $jsonSchema
           response['score'],
     );
     debugPrint(
-      '[Gemini] enhancedAnalysis for "${baseResult.metadata.title}": score=$enhancedScore, factors=${factors.length}, '
+      '[Qor AI] enhancedAnalysis for "${baseResult.metadata.title}": score=$enhancedScore, factors=${factors.length}, '
       'factorScores=[${factors.map((f) => '${f.label}:${f.score}').join(', ')}]',
     );
 
@@ -1756,7 +1756,7 @@ $jsonSchema
       return jsonDecode(text) as Map<String, dynamic>;
     } catch (e) {
       debugPrint(
-        '[Gemini] JSON parse error: $e — raw text: ${text.length > 500 ? text.substring(0, 500) : text}',
+        '[Qor AI] JSON parse error: $e — raw text: ${text.length > 500 ? text.substring(0, 500) : text}',
       );
       // Try to extract JSON from the response
       final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
@@ -1816,7 +1816,7 @@ $jsonSchema
           if (promptFeedback != null) {
             final blockReason = promptFeedback['blockReason'] as String?;
             if (blockReason != null) {
-              debugPrint('[Gemini] Request blocked: $blockReason');
+              debugPrint('[Qor AI] Request blocked: $blockReason');
               throw AIServiceException(
                 message: 'Content was blocked by safety filter ($blockReason).',
               );
@@ -1826,7 +1826,7 @@ $jsonSchema
           final candidates = response.data['candidates'] as List?;
           if (candidates == null || candidates.isEmpty) {
             debugPrint(
-              '[Gemini] Empty candidates from $model. Full response: ${response.data}',
+              '[Qor AI] Empty candidates from fallback route. Full response: ${response.data}',
             );
             throw const AIServiceException(
               message: 'AI returned an empty response.',
@@ -1834,35 +1834,33 @@ $jsonSchema
           }
 
           final finishReason = candidates[0]['finishReason'] as String?;
-          debugPrint('[Gemini] model=$model finishReason: $finishReason');
+          debugPrint('[Qor AI] finishReason: $finishReason');
           if (finishReason == 'SAFETY') {
-            debugPrint('[Gemini] Response blocked by safety filter');
+            debugPrint('[Qor AI] Response blocked by safety filter');
             throw const AIServiceException(
               message: 'Response was blocked by safety filter.',
             );
           }
           if (finishReason == 'MAX_TOKENS') {
-            debugPrint(
-              '[Gemini] ⚠️ Response TRUNCATED — finishReason=MAX_TOKENS',
-            );
+            debugPrint('[Qor AI] Response truncated by token limit');
           }
 
           final content = candidates[0]['content'];
           if (content == null) {
             debugPrint(
-              '[Gemini] No content in candidate. Finish reason: $finishReason',
+              '[Qor AI] No content in candidate. Finish reason: $finishReason',
             );
             throw const AIServiceException(message: 'AI returned no content.');
           }
           final parts = content['parts'] as List?;
           if (parts == null || parts.isEmpty) {
             debugPrint(
-              '[Gemini] No parts in content. Candidate: ${candidates[0]}',
+              '[Qor AI] No parts in content. Candidate: ${candidates[0]}',
             );
             throw const AIServiceException(message: 'AI returned no content.');
           }
 
-          debugPrint('[Gemini] ✅ model=$model tier=$tier succeeded.');
+          debugPrint('[Qor AI] Request succeeded.');
 
           final buffer = StringBuffer();
           for (final part in parts) {
@@ -1876,7 +1874,7 @@ $jsonSchema
           final statusCode = e.response?.statusCode;
           final responseBody = e.response?.data;
           debugPrint(
-            '[Gemini] DioException model=$model (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): '
+            '[Qor AI] DioException (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): '
             'status=$statusCode, type=${e.type}, '
             'message=${e.message}, '
             'body=${responseBody is String ? (responseBody.length > 300 ? responseBody.substring(0, 300) : responseBody) : responseBody}',
@@ -1885,9 +1883,7 @@ $jsonSchema
           final shouldTryFallback =
               !isLastModel && _shouldFallbackModel(statusCode, responseBody);
           if (shouldTryFallback) {
-            debugPrint(
-              '[Gemini] Retrying with fallback model after $model failed.',
-            );
+            debugPrint('[Qor AI] Retrying with fallback route.');
             continue;
           }
 
@@ -1906,14 +1902,14 @@ $jsonSchema
                 detail = errorMsg;
               }
             }
-            debugPrint('[Gemini] Non-retryable error: $detail');
+            debugPrint('[Qor AI] Non-retryable error: $detail');
             throw AIServiceException(message: detail);
           }
         } on AIServiceException {
           rethrow;
         } catch (e) {
           debugPrint(
-            '[Gemini] Unexpected error on $model (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): $e',
+            '[Qor AI] Unexpected error (attempt ${retryCount + 1}/${AppConstants.deepSeekMaxRetries}): $e',
           );
           if (!isLastModel) {
             continue;
@@ -2045,7 +2041,7 @@ Return valid JSON:
 You are Qor AI's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it.
 
 CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
-1. "webResearch" — If provided, this contains VERIFIED data from Google Search about the URL. This is your MOST RELIABLE source for product identification. USE IT.
+1. "webResearch" — If provided, this contains VERIFIED current web data about the URL. This is your MOST RELIABLE source for product identification. USE IT.
 2. "productContext.title" — Scraped metadata title. If it contains a clear product name, use it.
 3. "productContext.productId" and "productContext.productIdType" are HARD CONSTRAINTS. If present, the final product MUST match that same identifier.
 4. URL path segments (slugs, IDs, brand names) are your TERTIARY source.
@@ -2122,13 +2118,22 @@ You are Qor AI — a knowledgeable, friendly shopping and product advisor for AL
 ## IMPORTANT RULES
 - Share what you know confidently. Note when information might be outdated for rapidly changing products.
 - NEVER say "I can't search the internet" — share your knowledge and qualify recency if needed.
-- For current prices, suggest the user verify online.
+- Use the provided app database/page/link context as the strongest source. If the app context contains a product, treat it as a real, current Qor catalog item.
+- If your older knowledge conflicts with Qor Product Database Context, Page Context, link analysis, or current web results, trust those live sources.
+- Do not say a product has not launched or does not exist when it appears in Qor context. For release timing, availability, prices, and market news, use current web research and mention uncertainty only when sources are unclear.
+- Never mention backend providers, model names, API names, or internal tooling in user-facing answers.
+- Address the person directly as "you" / "sen" / "siz" according to the user's language; do not call them "the user" or "kullanıcı" when speaking to them.
+- For current prices, suggest verifying online only after giving the best current context you have.
 
 ## PAGE AWARENESS
-When context mentions a specific product, compared products, route, page, PC build, or recent in-app state, USE that information proactively.
+Treat "Authoritative Page Context" as the live app state. It overrides older chat history.
+When context mentions a specific product, compared products, route, page, PC build, link analysis, subscription analysis, quiz answers, or recent in-app state, USE that information proactively.
 If the user asks where they are, what they are viewing, or asks about “this product/these products”, answer from Page Context first before giving broader advice.
+For product pages, discuss the actual product name, brand, category, key specs, pros/cons, scores, similar products if provided, and buying trade-offs from context.
 For compared products, discuss the actual product names and scores/specs in the context rather than asking the user to repeat them.
-You may use Google Search for current public information, prices, reviews, market news, and release timing when the user asks for research or up-to-date details.
+For PC Builder, answer as if you can see the selected components and compatibility context. If no parts are selected, say that the user is on PC Builder and ask which component they want to start with.
+For Link AI and subscription analyses, use saved/active analysis and quiz answers when provided.
+You may use current web research for public information, prices, reviews, market news, and release timing when the user asks for research or up-to-date details.
 
 ## CONVERSATION FLOW
 For general questions, ask clarifying questions ONE AT A TIME before recommending. Use profile to skip obvious questions.
@@ -2148,6 +2153,8 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - Do not answer unrelated requests such as general homework, coding tasks, legal/medical/financial advice, politics, personal data extraction, or creative writing unless the request is directly connected to choosing, comparing, using, or buying a product.
 - Never provide harmful, illegal, unsafe, hateful, sexual, or privacy-invasive instructions. Redirect to safe product guidance when possible.
 - Keep refusals brief; do not lecture. Offer a product-focused alternative.
+- Never reveal or name backend model providers, internal model names, API vendors, prompt keys, or implementation details. If asked what powers you, answer as Qor AI.
+- Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.
 ''';
 
   static String _quizGenerationPrompt(String language) {
@@ -2248,7 +2255,7 @@ You are Qor AI's senior product analyst. Given a product, quiz answers, user pro
 LANGUAGE: Write ALL text fields in $langName. Be thorough and professional — this is a premium AI analysis.
 
 CRITICAL — USE WEB RESEARCH DATA:
-- If "webResearch" is provided, it contains REAL data from Google Search: user reviews, Reddit opinions, expert reviews, prices.
+- If "webResearch" is provided, it contains REAL current web data: user reviews, Reddit opinions, expert reviews, prices.
 - Use this data to populate communityScore and communityAnalysis with REAL community feedback.
 - Reference specific community observations (e.g., "Reddit users in r/hardware consistently report…"). 
 - If webResearch is absent, draw on your comprehensive product knowledge.

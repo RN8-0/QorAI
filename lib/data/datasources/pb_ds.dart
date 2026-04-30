@@ -1956,58 +1956,20 @@ class PbDataSource {
         throw ServerException(message: 'Bu sohbet kapatılmıştır.');
       }
 
-      // Parse existing chatMessages
-      final rawChatMessages = record.data['chatMessages'];
-      List<Map<String, dynamic>> chatMessages = [];
-      if (rawChatMessages is List) {
-        chatMessages = rawChatMessages.cast<Map<String, dynamic>>();
-      } else if (rawChatMessages is String && rawChatMessages.isNotEmpty) {
-        try {
-          final decoded = jsonDecode(rawChatMessages);
-          if (decoded is List) {
-            chatMessages = decoded.cast<Map<String, dynamic>>();
-          }
-        } catch (_) {}
-      }
+      final chatMessages = _supportChatMessagesFromRecord(record.data);
+      final now = DateTime.now().toIso8601String();
 
-      // Build thread from existing fields if chatMessages is empty (backwards compat)
-      if (chatMessages.isEmpty) {
-        final status = record.data['status']?.toString() ?? '';
-        final message = record.data['message']?.toString().trim() ?? '';
-        final adminReply = record.data['adminReply']?.toString().trim() ?? '';
-        final created = record.data['created']?.toString() ?? '';
-        final repliedAt = record.data['repliedAt']?.toString() ?? '';
-        if (message.isNotEmpty) {
-          chatMessages.add({
-            'role': status == 'admin_message' ? 'admin' : 'user',
-            'text': message,
-            'ts': created,
-          });
-        }
-        if (adminReply.isNotEmpty) {
-          chatMessages.add({
-            'role': 'admin',
-            'text': adminReply,
-            'ts': repliedAt.isNotEmpty ? repliedAt : created,
-          });
-        }
-      }
-
-      chatMessages.add({
-        'role': 'user',
-        'text': trimmed,
-        'ts': DateTime.now().toIso8601String(),
-      });
+      chatMessages.add({'role': 'user', 'text': trimmed, 'ts': now});
 
       await _pb
           .collection('support_messages')
           .update(
             messageId,
             body: {
-              'chatMessages': jsonEncode(chatMessages),
+              'chatMessages': chatMessages,
               'message': trimmed,
               'status': 'open',
-              'repliedAt': DateTime.now().toIso8601String(),
+              'repliedAt': now,
             },
           );
     } catch (e) {
@@ -2295,6 +2257,8 @@ class PbDataSource {
       if (analysisData['urls'] != null) 'urls': analysisData['urls'],
       if (analysisData['analysis'] != null)
         'analysis': analysisData['analysis'],
+      if (analysisData['quizAnswers'] != null)
+        'quizAnswers': analysisData['quizAnswers'],
     };
   }
 
@@ -2323,6 +2287,7 @@ class PbDataSource {
           data['aiSummary']?.toString() ??
           '',
       'structured': analysisData['structured'],
+      'quizAnswers': analysisData['quizAnswers'],
     };
   }
 

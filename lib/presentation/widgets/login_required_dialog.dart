@@ -20,58 +20,127 @@ void showLoginRequiredDialog(BuildContext context) {
   final isTr = Localizations.localeOf(context).languageCode == 'tr';
   showDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: ctx.surfaceColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      icon: Container(
-        padding: const EdgeInsets.all(12),
+    barrierColor: Colors.black.withValues(alpha: 0.62),
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppTheme.accentTeal, Color(0xFF14B8A6)],
+          color: ctx.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.accentCyan.withValues(alpha: 0.20),
           ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 28),
-      ),
-      title: Text(
-        isTr ? 'Giriş Gerekli' : 'Sign In Required',
-        style: TextStyle(
-          color: ctx.textPrimary,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: Text(
-        isTr
-            ? 'AI özelliklerini kullanmak için lütfen giriş yapın.'
-            : 'Please sign in to use AI features.',
-        style: TextStyle(color: ctx.textSecondary),
-        textAlign: TextAlign.center,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: Text(
-            isTr ? 'İptal' : 'Cancel',
-            style: TextStyle(color: ctx.textTertiaryColor),
-          ),
-        ),
-        FilledButton(
-          onPressed: () {
-            Navigator.of(ctx).pop();
-            context.go(AppRoutes.login);
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.accentTeal,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 34,
+              offset: const Offset(0, 16),
             ),
-          ),
-          child: Text(
-            isTr ? 'Giriş Yap' : 'Sign In',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          ),
+            BoxShadow(
+              color: AppTheme.accentCyan.withValues(alpha: 0.12),
+              blurRadius: 30,
+            ),
+          ],
         ),
-      ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accentCyan.withValues(alpha: 0.35),
+                      blurRadius: 22,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.lock_outline_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              isTr ? 'Giriş gerekli' : 'Sign in required',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ctx.textPrimary,
+                fontSize: 19,
+                height: 1.15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isTr
+                  ? 'Qor AI analizleri, sohbet ve kişisel öneriler hesabınıza kaydedilir. Devam etmek için giriş yapın.'
+                  : 'Qor AI analyses, chat and personal recommendations are saved to your account. Sign in to continue.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ctx.textSecondary,
+                fontSize: 13.5,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: ctx.textTertiaryColor,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(isTr ? 'Daha sonra' : 'Not now'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      context.go(AppRoutes.login);
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      backgroundColor: AppTheme.accentCyan,
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    child: Text(
+                      isTr ? 'Giriş yap' : 'Sign in',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

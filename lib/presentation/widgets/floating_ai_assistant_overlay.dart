@@ -114,8 +114,32 @@ class _FloatingAiAssistantOverlayState
     return 'current app screen';
   }
 
+  Map<String, dynamic> _routeScopedPageContext(
+    String route,
+    Map<String, dynamic>? pageCtx,
+  ) {
+    if (pageCtx == null) return const {};
+    final contextRoute = pageCtx['contextRoute']?.toString().trim() ?? '';
+    final routeMatchesContext =
+        contextRoute.isEmpty ||
+        route.contains(contextRoute) ||
+        (contextRoute == 'subscriptions' && route.contains('premium'));
+    if (!routeMatchesContext) {
+      return const {};
+    }
+    final hasProduct =
+        pageCtx.containsKey('productName') || pageCtx.containsKey('productId');
+    if (hasProduct && !route.contains('product')) {
+      return const {};
+    }
+    return pageCtx;
+  }
+
   Map<String, dynamic> _buildContext(String route) {
-    final pageCtx = ref.read(aiPageContextProvider);
+    final pageCtx = _routeScopedPageContext(
+      route,
+      ref.read(aiPageContextProvider),
+    );
     final compare = ref.read(compareSessionProvider);
     final pcBuild = ref.read(pcBuilderSessionProvider);
     final chatState = ref.read(chatSessionProvider);
@@ -123,7 +147,7 @@ class _FloatingAiAssistantOverlayState
     return {
       'page': _pageDescription(route),
       'route': route,
-      if (pageCtx != null) ...pageCtx,
+      ...pageCtx,
       if (compare.comparedProducts != null &&
           compare.comparedProducts!.isNotEmpty)
         'compareProducts': compare.comparedProducts!

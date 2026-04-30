@@ -125,8 +125,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       // Precache the main product image immediately so hero renders instantly
       final mainImage = widget.product.imageUrl;
       if (mainImage != null && mainImage.isNotEmpty) {
-        precacheImage(CachedNetworkImageProvider(mainImage), context)
-            .catchError((_) {});
+        precacheImage(
+          CachedNetworkImageProvider(mainImage),
+          context,
+        ).catchError((_) {});
       }
       _resetComparePoolIfCategoryChanged();
       if (!mounted) return;
@@ -172,8 +174,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     // Skip index 0 (already precached above), cache up to 7 gallery images
     for (final url in allImages.skip(1).take(7)) {
       if (url.isNotEmpty) {
-        precacheImage(CachedNetworkImageProvider(url), context)
-            .catchError((_) {});
+        precacheImage(
+          CachedNetworkImageProvider(url),
+          context,
+        ).catchError((_) {});
       }
     }
   }
@@ -203,11 +207,27 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(aiPageContextProvider.notifier).state = {
+        'contextRoute': 'product',
         'productName': widget.product.name,
         'productBrand': widget.product.brand ?? '',
         'productCategory': widget.product.category,
+        'productSubcategory': widget.product.subcategory,
         'techScore': widget.product.techScore.toString(),
         'productId': widget.product.id,
+        if (widget.product.keySpecs.isNotEmpty)
+          'productKeySpecs': widget.product.keySpecs.entries
+              .take(10)
+              .map((e) => '${e.key}: ${e.value}')
+              .join(' | '),
+        if (widget.product.pros.isNotEmpty)
+          'productPros': widget.product.pros.take(5).join(' | '),
+        if (widget.product.cons.isNotEmpty)
+          'productCons': widget.product.cons.take(5).join(' | '),
+        if (widget.product.prices.isNotEmpty)
+          'productPrices': widget.product.prices.entries
+              .take(6)
+              .map((e) => '${e.key}: ${e.value}')
+              .join(' | '),
       };
     });
   }
@@ -348,13 +368,19 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     controller: DefaultTabController.of(context),
                     children: [
                       RepaintBoundary(
-                        child: _SpecsTabContent(product: product, isDark: isDark),
+                        child: _SpecsTabContent(
+                          product: product,
+                          isDark: isDark,
+                        ),
                       ),
                       RepaintBoundary(
                         child: _ReviewsTab(product: product, isDark: isDark),
                       ),
                       RepaintBoundary(
-                        child: _SimilarProductsTab(product: product, isDark: isDark),
+                        child: _SimilarProductsTab(
+                          product: product,
+                          isDark: isDark,
+                        ),
                       ),
                       RepaintBoundary(
                         child: _AIAnalysisTab(product: product, isDark: isDark),

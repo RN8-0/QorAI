@@ -276,14 +276,14 @@ function normalizeAdminAiProfile(raw){
     nextActions:safeArray(data.nextActions).map(item=>String(item||'').trim()).filter(Boolean).slice(0,4),
     watchouts:safeArray(data.watchouts).map(item=>String(item||'').trim()).filter(Boolean).slice(0,3),
     generatedAt:String(data.generatedAt||'').trim(),
-    model:String(data.model||'deepseek-chat').trim(),
+    model:String(data.model||'qor-ai').trim(),
   };
 }
 function renderAdminAiProfileCard(profile,uid){
   const p=normalizeAdminAiProfile(profile);
   const hasContent=!!(p.summary||p.persona||p.retentionRisk||p.premiumRecommendation||p.qCoinAction||p.nextActions.length);
   const generated=p.generatedAt?formatDateTimeLabel(p.generatedAt):'Henüz üretilmedi';
-  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧠 DeepSeek Kullanıcı Portresi</span><button class="btn btn-primary btn-sm" onclick="generateUserDeepSeekProfile('${escJs(uid)}')">${hasContent?'Yenile':'Oluştur'}</button></div>${hasContent?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px"><div><span style="color:var(--text2)">Persona:</span> <b>${escHtml(p.persona||'—')}</b></div><div><span style="color:var(--text2)">Üretildi:</span> <b>${escHtml(generated)}</b></div><div style="grid-column:1/-1;line-height:1.6;color:var(--text1)">${escHtml(p.summary||'—')}</div><div><span style="color:var(--text2)">Retention Risk:</span> <b>${escHtml(p.retentionRisk||'—')}</b></div><div><span style="color:var(--text2)">Monetization:</span> <b>${escHtml(p.monetizationSignal||'—')}</b></div><div><span style="color:var(--text2)">Premium Önerisi:</span> <b>${escHtml(p.premiumRecommendation||'—')}</b></div><div><span style="color:var(--text2)">Q Coin Aksiyonu:</span> <b>${escHtml(p.qCoinAction||'—')}</b></div>${p.nextActions.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Önerilen sonraki adımlar</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.nextActions.map(item=>`<span class="feature-pill ghost">${escHtml(item)}</span>`).join('')}</div></div>`:''}${p.watchouts.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Dikkat noktaları</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.watchouts.map(item=>`<span class="feature-pill">${escHtml(item)}</span>`).join('')}</div></div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px;line-height:1.6">DeepSeek bu kullanıcının profilini, davranışını, Q Coin durumunu ve premium dönüşüm potansiyelini yorumlayıp admin için kısa aksiyon planı üretecek.</div>`}</div>`;
+  return `<div class="card" style="margin:0 0 16px;padding:14px"><div class="card-title"><span>🧠 Qor AI Kullanıcı Portresi</span><button class="btn btn-primary btn-sm" onclick="generateUserDeepSeekProfile('${escJs(uid)}')">${hasContent?'Yenile':'Oluştur'}</button></div>${hasContent?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px"><div><span style="color:var(--text2)">Persona:</span> <b>${escHtml(p.persona||'—')}</b></div><div><span style="color:var(--text2)">Üretildi:</span> <b>${escHtml(generated)}</b></div><div style="grid-column:1/-1;line-height:1.6;color:var(--text1)">${escHtml(p.summary||'—')}</div><div><span style="color:var(--text2)">Retention Risk:</span> <b>${escHtml(p.retentionRisk||'—')}</b></div><div><span style="color:var(--text2)">Monetization:</span> <b>${escHtml(p.monetizationSignal||'—')}</b></div><div><span style="color:var(--text2)">Premium Önerisi:</span> <b>${escHtml(p.premiumRecommendation||'—')}</b></div><div><span style="color:var(--text2)">Q Coin Aksiyonu:</span> <b>${escHtml(p.qCoinAction||'—')}</b></div>${p.nextActions.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Önerilen sonraki adımlar</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.nextActions.map(item=>`<span class="feature-pill ghost">${escHtml(item)}</span>`).join('')}</div></div>`:''}${p.watchouts.length?`<div style="grid-column:1/-1"><div style="color:var(--text2);margin-bottom:6px">Dikkat noktaları</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.watchouts.map(item=>`<span class="feature-pill">${escHtml(item)}</span>`).join('')}</div></div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px;line-height:1.6">Qor AI bu kullanıcının profilini, davranışını, Q Coin durumunu ve premium dönüşüm potansiyelini yorumlayıp admin için kısa aksiyon planı üretecek.</div>`}</div>`;
 }
 async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={}){
   const token=getPb().authStore.token;
@@ -293,12 +293,12 @@ async function callDeepSeekAdminJson(messages,{maxTokens=1200,temperature=0.4}={
     body:JSON.stringify({model:'deepseek-chat',messages,max_tokens:maxTokens,temperature,response_format:{type:'json_object'}}),
   });
   const data=await response.json().catch(()=>({}));
-  if(!response.ok||data.error){throw new Error(data.message||data.error||'DeepSeek isteği başarısız');}
+  if(!response.ok||data.error){throw new Error(data.message||data.error||'Qor AI isteği başarısız');}
   const content=data.choices?.[0]?.message?.content||'{}';
   try{return JSON.parse(content);}catch(_){
     const match=String(content).match(/\{[\s\S]*\}/);
     if(match)return JSON.parse(match[0]);
-    throw new Error('DeepSeek yanıtı çözümlenemedi');
+    throw new Error('Qor AI yanıtı çözümlenemedi');
   }
 }
 function normalizeSegmentAnalysis(raw){
@@ -361,7 +361,7 @@ function renderStoredSegmentAnalysis(){
   if(!meta||!content)return;
   if(!_segmentAnalysisReport){
     meta.textContent='Henüz toplu segment analizi oluşturulmadı.';
-    content.innerHTML='<div class="placeholder">DeepSeek, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div>';
+    content.innerHTML='<div class="placeholder">Qor AI, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div>';
     return;
   }
   const report=normalizeSegmentAnalysis(_segmentAnalysisReport);
@@ -389,7 +389,7 @@ async function generateBulkDeepSeekSegments(){
   if(!allUsers.length){toast('Önce kullanıcıları yükle','w');return}
   const meta=document.getElementById('deepSeekSegmentMeta');
   const content=document.getElementById('deepSeekSegmentContent');
-  if(meta)meta.textContent='DeepSeek segment analizi oluşturuyor...';
+  if(meta)meta.textContent='Qor AI segment analizi oluşturuyor...';
   if(content)content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Segmentler hesaplanıyor...</div></div>';
   try{
     const payload=buildBulkSegmentPayload(allUsers);
@@ -400,12 +400,12 @@ async function generateBulkDeepSeekSegments(){
     _segmentAnalysisReport={...normalizeSegmentAnalysis(raw),generatedAt:new Date().toISOString()};
     await pbSetDoc('app_config','admin_user_segment_analysis',{key:'admin_user_segment_analysis',value:_segmentAnalysisReport,updatedAt:new Date().toISOString()});
     renderStoredSegmentAnalysis();
-    logActivity('deepseek_segment_analysis','Toplu DeepSeek segment analizi olusturuldu',{userCount:allUsers.length});
+    logActivity('deepseek_segment_analysis','Toplu Qor AI segment analizi olusturuldu',{userCount:allUsers.length});
     toast('Toplu segment analizi hazır','s');
   }catch(e){
-    if(meta)meta.textContent='DeepSeek segment analizi başarısız';
+    if(meta)meta.textContent='Qor AI segment analizi başarısız';
     if(content)content.innerHTML=`<div style="color:var(--red);padding:20px">Hata: ${escHtml(e.message||String(e))}</div>`;
-    toast('DeepSeek segment analizi hatası: '+(e.message||e),'e');
+    toast('Qor AI segment analizi hatası: '+(e.message||e),'e');
   }
 }
 
@@ -464,7 +464,7 @@ function getUserQCoinSnapshot(user){
 async function generateUserDeepSeekProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const analysisEl=document.getElementById('analysisContent');
-  if(analysisEl)analysisEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">DeepSeek kullanıcı profili hazırlanıyor...</div></div>';
+  if(analysisEl)analysisEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner"></div><div style="margin-top:8px">Qor AI kullanıcı profili hazırlanıyor...</div></div>';
   try{
     const [rvRes,compRes]=await Promise.all([
       pbGetList('recently_viewed',1,12,{filter:`userId="${uid}"`,sort:'-created'}),
@@ -489,17 +489,17 @@ async function generateUserDeepSeekProfile(uid){
       {role:'system',content:'Qor AI admin paneli icin calisan bir kullanici zekasi asistani ol. Yaniti sadece JSON object olarak ver. JSON anahtarlari: persona, summary, retentionRisk, monetizationSignal, premiumRecommendation, qCoinAction, nextActions, watchouts. Tum metinler Turkce olsun. nextActions en fazla 4, watchouts en fazla 3 kisa madde olsun.'},
       {role:'user',content:`Su kullaniciyi analiz et ve admin aksiyonu oner:\n${JSON.stringify(payload)}`}
     ]);
-    const profile={...normalizeAdminAiProfile(result),generatedAt:new Date().toISOString(),model:'deepseek-chat'};
+    const profile={...normalizeAdminAiProfile(result),generatedAt:new Date().toISOString(),model:'qor-ai'};
     await pbUpdateDoc('users',uid,{adminAiProfile:profile});
     u.adminAiProfile=profile;
-    logActivity('user_deepseek_profile',`DeepSeek kullanici analizi olusturuldu: ${uid}`,{userId:uid});
+    logActivity('user_deepseek_profile',`Qor AI kullanici analizi olusturuldu: ${uid}`,{userId:uid});
     openUserDetail(uid);
     const analysisTab=[...document.querySelectorAll('#userModalBody .user-tab')].find(btn=>btn.dataset.tab==='analysis');
     if(analysisTab)analysisTab.click();
-    toast('DeepSeek kullanıcı profili hazır','s');
+    toast('Qor AI kullanıcı profili hazır','s');
   }catch(e){
-    if(analysisEl)analysisEl.innerHTML=`<div style="color:var(--red);padding:20px">DeepSeek hatası: ${escHtml(e.message||String(e))}</div>`;
-    toast('DeepSeek hatası: '+(e.message||e),'e');
+    if(analysisEl)analysisEl.innerHTML=`<div style="color:var(--red);padding:20px">Qor AI hatası: ${escHtml(e.message||String(e))}</div>`;
+    toast('Qor AI hatası: '+(e.message||e),'e');
   }
 }
 function parseDateValue(...values){for(const value of values){if(!value)continue;const dt=new Date(value);if(!Number.isNaN(dt.getTime()))return dt}return null}
@@ -2549,23 +2549,25 @@ const RC_KEYS = [
 ];
 
 const AI_PROMPT_DEFS = [
-  {key:'gemini_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Sistem Promptu',desc:'Sayfa/ürün bağlamını bilen, web araştırması yapabilen ana chat davranışı.',def:`You are Qor AI, a premium AI product advisor inside a Flutter shopping app. Use the active page context, product context, comparison context, user profile, country, currency, and current year. Answer in the user's language. Be concise, specific, and practical. When the user asks about the current screen, identify the screen from route/page context. When product facts may be current or uncertain, use Google Search grounding and state uncertainty clearly. Never invent prices, availability, or specifications.`},
-  {key:'deepseek_chat_system',group:'Qor AI Chat',title:'DeepSeek Chat Sistem Promptu',desc:'Text-only fallback/primary chat modeli için sistem promptu.',def:`You are Qor AI, a concise product advisor. Use the user profile, language, country, priorities, and current app context. Give direct, helpful answers with concrete product reasoning. If data is missing, say what is missing and suggest the next best action.`},
+  {key:'gemini_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Sistem Promptu',desc:'Sayfa/ürün bağlamını bilen, web ve veritabanı bağlamını kullanan ana chat davranışı.',def:`You are Qor AI, a premium product advisor inside the Qor mobile app. Treat Authoritative Page Context and Qor Live Product Context as the live app state and strongest source. If a product appears in page context or database matches, treat it as a real current Qor catalog item; do not claim it has not launched or does not exist based on older knowledge. Use current web research for release timing, availability, reviews, prices, and market news. Answer in the user's language, be concise, specific, and practical. Identify the open screen/product from route/page context when asked. Never invent specs, prices, or availability. Never mention backend providers, model names, API names, or internal tooling; if asked what powers you, answer as Qor AI. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
+  {key:'deepseek_chat_system',group:'Qor AI Chat',title:'Qor AI Chat Yardımcı Sistem Promptu',desc:'Text-only chat davranışı için sistem promptu.',def:`You are Qor AI, a concise product advisor. Use the user profile, language, country, priorities, current app context, and Qor Live Product Context. If database/page context contains a product, treat it as current app data and do not contradict it with older knowledge. Give direct, helpful answers with concrete product reasoning. Never mention backend providers, model names, API names, or internal tooling. Address the person directly as you/sen/siz, not as "the user" or "kullanıcı".`},
   {key:'qor_ai_chat_guardrails',group:'Qor AI Chat',title:'Negatif Prompt / Kapsam Kuralları',desc:'Ürün dışı, zararlı veya uygulama kapsamı dışı isteklerde AI cevabını sınırlayan canlı guardrail promptu.',def:`## SCOPE AND NEGATIVE PROMPT RULES
 - Qor AI is a shopping and product advisor. Help with products, subscriptions, buying decisions, comparisons, specs, compatibility, prices, availability, reviews, and product-related research.
 - If the user asks for something unrelated to products or shopping, politely decline in one short sentence and redirect them to a product-related question.
 - Do not answer unrelated requests such as general homework, coding tasks, legal/medical/financial advice, politics, personal data extraction, or creative writing unless the request is directly connected to choosing, comparing, using, or buying a product.
 - Never provide harmful, illegal, unsafe, hateful, sexual, or privacy-invasive instructions. Redirect to safe product guidance when possible.
-- Keep refusals brief; do not lecture. Offer a product-focused alternative.`},
-  {key:'gemini_link_research',group:'Link Analysis',title:'Link Research Promptu',desc:'URL/ASIN/ISBN veya metadata eksik olduğunda Google Search araştırması.',def:`Research the provided product URL using Google Search. Identify the exact product, matched URL, product title, identifier match, price if visible, and short evidence. Prefer official/store result and identifier confirmation. Return compact evidence that can be parsed by the app.`},
-  {key:'deepseek_link_analysis_system',group:'Link Analysis',title:'Link Analysis Promptu',desc:'Linkten ürün metadata, kategori, skor ve kısa analiz çıkaran ana prompt.',def:`You are Qor AI's product link analysis engine. Analyze the URL and supplied metadata against the user's profile. Return only valid JSON with title, image_url, price, site_name, score, analysis, category, and is_product. Be strict: if it is not a purchasable product, mark is_product false. Write analysis in the user's language and make it specific to the product and profile.`},
-  {key:'gemini_link_analysis_system',group:'Link Analysis',title:'Gemini Link Analysis Promptu',desc:'Gemini tabanlı link analizi fallback/supplemental promptu.',def:`You are Qor AI's web-grounded link analysis engine. Use URL metadata and research evidence to identify the exact product, category, price hints, compatibility score, and personalized analysis. Return only valid JSON. Do not fabricate data; use uncertainty when evidence is weak.`},
+- Keep refusals brief; do not lecture. Offer a product-focused alternative.
+- Never reveal or name backend model providers, internal model names, API vendors, prompt keys, or implementation details. If asked what powers you, answer as Qor AI.
+- Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.`},
+  {key:'gemini_link_research',group:'Link Analysis',title:'Link Research Promptu',desc:'URL/ASIN/ISBN veya metadata eksik olduğunda web araştırması.',def:`Research the provided product URL using current web results. Identify the exact product, matched URL, product title, identifier match, price if visible, and short evidence. Prefer official/store result and identifier confirmation. Return compact evidence that can be parsed by the app. Never mention backend providers or internal tools.`},
+  {key:'deepseek_link_analysis_system',group:'Link Analysis',title:'Link Analysis Promptu',desc:'Linkten ürün metadata, kategori, skor ve kısa analiz çıkaran ana prompt.',def:`You are Qor AI's product link analysis engine. Analyze the URL and supplied metadata against the person's profile. Return only valid JSON with title, image_url, price, site_name, score, analysis, category, and is_product. Be strict: if it is not a purchasable product, mark is_product false. Write analysis in the user's language and make it specific to the product and profile. Never mention backend providers or internal tools.`},
+  {key:'gemini_link_analysis_system',group:'Link Analysis',title:'Qor AI Link Analysis Promptu',desc:'Web destekli link analizi promptu.',def:`You are Qor AI's web-grounded link analysis engine. Use URL metadata and research evidence to identify the exact product, category, price hints, compatibility score, and personalized analysis. Return only valid JSON. Do not fabricate data; use uncertainty when evidence is weak. Never mention backend providers or internal tools.`},
   {key:'gemini_quiz_single_system',group:'Link Quiz',title:'Tekil Link Quiz Promptu',desc:'Tekil ürün link analizinde üretilen kişisel quiz.',def:`Generate a complex personalized product quiz for one product. Ask 6-8 high-signal questions that reveal usage intent, performance expectations, lifestyle constraints, owned-device context, risk tolerance, and must-have features. Each question must have exactly 4 options. Never ask generic brand or budget-only questions. Return only valid JSON with questions.`},
   {key:'gemini_quiz_compare_system',group:'Link Quiz',title:'Karşılaştırma Quiz Promptu',desc:'Birden fazla link/ürün karşılaştırması için quiz promptu.',def:`Generate a complex comparison quiz for multiple products. Ask 6-8 questions that expose decision criteria, trade-off tolerance, usage scenarios, feature priorities, ecosystem constraints, and upgrade intent. Each question must have exactly 4 options. The questions must help choose between the listed products. Return only valid JSON with questions.`},
-  {key:'deepseek_quiz_generation_system',group:'Link Quiz',title:'DeepSeek Link Quiz Promptu',desc:'DeepSeek tarafındaki link quiz üretimi.',def:`You are Qor AI's quiz generation engine. Generate a personalized product quiz for the given category, product title, and URL. Ask practical, category-specific questions with exactly 4 options each. Return valid JSON only.`},
+  {key:'deepseek_quiz_generation_system',group:'Link Quiz',title:'Qor AI Link Quiz Promptu',desc:'Link quiz üretimi.',def:`You are Qor AI's quiz generation engine. Generate a personalized product quiz for the given category, product title, and URL. Ask practical, category-specific questions with exactly 4 options each. Return valid JSON only.`},
   {key:'gemini_enhanced_link_research',group:'Product Deep Analysis',title:'Ürün İnceleme Research Promptu',desc:'Link analizi sonrası review/forum/expert research fazı.',def:`Research the product using current web knowledge. Find user reviews, Reddit/forum opinions, expert reviews, common pros/cons, known issues, and current pricing signals. Keep it concise, factual, and product-specific.`},
   {key:'gemini_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Enhanced Link Deep Analysis Promptu',desc:'Quiz + profil + web research ile gelişmiş uyumluluk analizi.',def:`You are Qor AI's enhanced product compatibility analyst. Combine base product analysis, quiz answers, user profile, and web research. Return only valid JSON with enhancedScore, factors, verdict, prosForUser, consForUser, and alternatives. Be specific, personalized, and honest about trade-offs.`},
-  {key:'deepseek_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'DeepSeek Enhanced Link Analysis Promptu',desc:'DeepSeek tabanlı gelişmiş ürün link analizi.',def:`You are Qor AI's detailed product compatibility analyst. Use product metadata, quiz answers, and user profile to produce a personalized compatibility report. Return only valid JSON with score, factors, verdict, pros, cons, and alternatives. Avoid generic statements.`},
+  {key:'deepseek_enhanced_link_analysis_system',group:'Product Deep Analysis',title:'Qor AI Enhanced Link Analysis Promptu',desc:'Gelişmiş ürün link analizi.',def:`You are Qor AI's detailed product compatibility analyst. Use product metadata, quiz answers, and user profile to produce a personalized compatibility report. Return only valid JSON with score, factors, verdict, pros, cons, and alternatives. Avoid generic statements.`},
   {key:'gemini_subscription_research',group:'Subscription Analysis',title:'Subscription Research Promptu',desc:'Abonelik servisleri için Reddit/forum/review araştırması.',def:`Research each listed subscription service individually. Identify category, recent community opinions, Trustpilot/forum sentiment, key features, strengths, limitations, and recent updates. Do not include pricing or billing details. Output a labeled per-service summary.`},
   {key:'gemini_subscription_analysis',group:'Subscription Analysis',title:'Subs Analysis Promptu',desc:'Abonelik uyumluluk skorları ve öneri JSON promptu.',def:`You are Qor AI's subscription intelligence analyst. Analyze the listed subscription services using user profile, quiz answers, and research data. Return only valid JSON matching the app schema. All text must be in the selected language. Never mention price, cost, monthly fees, yearly fees, discounts, or billing.`},
   {key:'deepseek_subscription_quiz_system',group:'Subscription Analysis',title:'Subscription Quiz Promptu',desc:'Abonelik analizi öncesi kısa kişisel quiz.',def:`You are Qor AI's subscription quiz engine. Generate 4-5 personalized questions to understand service usage habits, content preferences, lifestyle expectations, and feature priorities. Never ask about budget. Return valid JSON only.`},

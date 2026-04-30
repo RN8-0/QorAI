@@ -2076,12 +2076,12 @@ class _GeminiMatchScoreNotifier
         },
       );
     } catch (e, st) {
-      debugPrint('[GeminiMatch] failed: $e\n$st');
+      debugPrint('[Qor AI Match] failed: $e\n$st');
       _clearStep(product.id);
       try {
         await _fallbackToLocal(product);
       } catch (fallbackError) {
-        debugPrint('[GeminiMatch] fallback also failed: $fallbackError');
+        debugPrint('[Qor AI Match] fallback also failed: $fallbackError');
       }
     } finally {
       // Defensive: never leave UI stuck on the spinner.
@@ -2442,7 +2442,7 @@ class _GeminiMatchScoreNotifier
     );
 
     debugPrint(
-      '[GeminiMatch] Product: ${product.name}, Score: $score, Reason: $reason',
+      '[Qor AI Match] Product: ${product.name}, Score: $score, Reason: $reason',
     );
     // Note: errors propagate up to fetchMatchScore for unified timeout/fallback handling.
   }

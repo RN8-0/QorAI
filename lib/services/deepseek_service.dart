@@ -1,7 +1,7 @@
 /// Qor AI - DeepSeek AI Service (Text-based Intelligence)
 ///
 /// Handles ALL text-only AI tasks. Gemini is used ONLY for:
-///   - Google Search grounding (groundedQuery, enhancedSubscriptionAnalysis)
+///   - Web grounding (groundedQuery, enhancedSubscriptionAnalysis)
 ///   - Vision / image analysis (analyzeImage)
 ///
 /// Model : deepseek-chat (V3)
@@ -139,11 +139,11 @@ class DeepSeekService implements AIService {
     UserEntity profile, {
     OgMetadata? metadata,
   }) async {
-    debugPrint('[DeepSeek] analyzeLink called for: $url');
+    debugPrint('[Qor AI] analyzeLink called for: $url');
 
     // Extract product name from URL slug (free, no API cost)
     final slugTitle = GeminiService.extractProductNameFromUrl(url);
-    debugPrint('[DeepSeek] URL slug title: $slugTitle');
+    debugPrint('[Qor AI] URL slug title: $slugTitle');
 
     // Build enriched input — metadata lets DeepSeek know what the product
     // actually is, since it cannot visit URLs.
@@ -335,7 +335,7 @@ class DeepSeekService implements AIService {
     required String url,
     String language = 'en',
   }) async {
-    debugPrint('[DeepSeek] generateQuiz for: $productTitle ($category)');
+    debugPrint('[Qor AI] generateQuiz for: $productTitle ($category)');
     final response = await _jsonRequest(
       system: await adminPrompt(
         'deepseek_quiz_generation_system',
@@ -362,7 +362,7 @@ class DeepSeekService implements AIService {
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
         .toList();
 
-    debugPrint('[DeepSeek] generateQuiz got ${questions.length} questions');
+    debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
     return ProductQuiz(
       id: '${category}_${DateTime.now().millisecondsSinceEpoch}',
       category: category,
@@ -482,7 +482,7 @@ Return valid JSON:
     required List<QuizQuestion> answeredQuestions,
     required UserEntity profile,
   }) async {
-    debugPrint('[DeepSeek] enhancedAnalysis for: ${baseResult.metadata.title}');
+    debugPrint('[Qor AI] enhancedAnalysis for: ${baseResult.metadata.title}');
     final qaPairs = answeredQuestions
         .where((q) => q.selectedOption != null)
         .map((q) => {'question': q.text, 'answer': q.selectedOption})
@@ -614,7 +614,7 @@ Return valid JSON:
       return jsonDecode(text) as Map<String, dynamic>;
     } catch (e) {
       debugPrint(
-        '[DeepSeek] JSON parse error: $e — raw: ${text.length > 500 ? text.substring(0, 500) : text}',
+        '[Qor AI] JSON parse error: $e — raw: ${text.length > 500 ? text.substring(0, 500) : text}',
       );
       final match = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
       if (match != null) {
@@ -668,15 +668,13 @@ Return valid JSON:
               isRateLimited: true,
             );
           }
-          throw AIServiceException(message: 'DeepSeek error: $error');
+          throw AIServiceException(message: 'Qor AI error: $error');
         }
 
         // Parse OpenAI-compatible response
         final choices = response.data['choices'] as List?;
         if (choices == null || choices.isEmpty) {
-          debugPrint(
-            '[DeepSeek] Empty choices. Full response: ${response.data}',
-          );
+          debugPrint('[Qor AI] Empty choices. Full response: ${response.data}');
           throw const AIServiceException(
             message: 'AI returned an empty response.',
           );
@@ -688,13 +686,13 @@ Return valid JSON:
         }
 
         debugPrint(
-          '[DeepSeek] ✅ Request succeeded. Content length: ${content.length}',
+          '[Qor AI] Request succeeded. Content length: ${content.length}',
         );
         return content;
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
         debugPrint(
-          '[DeepSeek] DioException (attempt ${retryCount + 1}/$maxRetries): '
+          '[Qor AI] DioException (attempt ${retryCount + 1}/$maxRetries): '
           'status=$statusCode, type=${e.type}',
         );
 
@@ -722,7 +720,7 @@ Return valid JSON:
         rethrow;
       } catch (e) {
         debugPrint(
-          '[DeepSeek] Unexpected error (attempt ${retryCount + 1}/$maxRetries): $e',
+          '[Qor AI] Unexpected error (attempt ${retryCount + 1}/$maxRetries): $e',
         );
         retryCount++;
         if (retryCount < maxRetries) {
@@ -919,13 +917,18 @@ You are Qor AI — a knowledgeable, friendly shopping and product advisor for AL
 - Profession: ${profile.profession}
 
 ## IMPORTANT RULES
-- When you don't know current prices or very recent product releases, say so honestly instead of making up information
-- You can share general knowledge about brands, product quality, and recommendations based on your training data
-- For very specific or current questions, suggest the user check current prices/availability online
-- NEVER say "I can't search the internet" — instead, share what you know and note if info might be outdated
+- Use the provided app database/page/link context as the strongest source. If the app context contains a product, treat it as a real, current Qor catalog item.
+- If older model knowledge conflicts with Qor Product Database Context, Page Context, link analysis, or current web results, trust those live sources.
+- Do not say a product has not launched or does not exist when it appears in Qor context.
+- Never mention backend providers, model names, API names, or internal tooling in user-facing answers.
+- Address the person directly as "you" / "sen" / "siz" according to the user's language; do not call them "the user" or "kullanıcı" when speaking to them.
 
 ## PAGE AWARENESS
-When context mentions a specific product or page, USE that information proactively.
+Treat "Authoritative Page Context" as the live app state. It overrides older chat history.
+When context mentions a specific product, compared products, route, page, PC build, link analysis, subscription analysis, quiz answers, or recent in-app state, USE that information proactively.
+If the user asks where they are, what they are viewing, or asks about "this product/these products", answer from Page Context first before giving broader advice.
+For product pages, discuss the actual product name, brand, category, key specs, pros/cons, scores, and buying trade-offs from context.
+For Link AI and subscription analyses, use saved/active analysis and quiz answers when provided.
 
 ## CONVERSATION FLOW
 For general questions, ask clarifying questions ONE AT A TIME before recommending. Use profile to skip obvious questions.
@@ -945,6 +948,8 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - Do not answer unrelated requests such as general homework, coding tasks, legal/medical/financial advice, politics, personal data extraction, or creative writing unless the request is directly connected to choosing, comparing, using, or buying a product.
 - Never provide harmful, illegal, unsafe, hateful, sexual, or privacy-invasive instructions. Redirect to safe product guidance when possible.
 - Keep refusals brief; do not lecture. Offer a product-focused alternative.
+- Never reveal or name backend model providers, internal model names, API vendors, prompt keys, or implementation details. If asked what powers you, answer as Qor AI.
+- Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.
 ''';
 
   static String _quizGenerationPrompt(String language) {

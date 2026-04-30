@@ -985,11 +985,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     ),
                     if (!ref.watch(premiumProvider))
                       QorAmountBadge(
-                        amount: AppConstants.creditCostForFeature('link_analysis'),
+                        amount: AppConstants.creditCostForFeature(
+                          'link_analysis',
+                        ),
                         unlimited: false,
                         color: AppTheme.brandBlue,
                         fontSize: 10,
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                       ),
                   ],
                 ),
@@ -1114,10 +1119,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
     final periodLabel = _linkText(
       context,
-      tr:
-          '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
-      en:
-          '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
+      tr: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
+      en: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 
@@ -1266,7 +1269,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                         unlimited: false,
                         color: AppTheme.brandCyan,
                         fontSize: 10,
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                       ),
                   ],
                 ),
@@ -4896,9 +4902,34 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         'category': result.baseResult.category,
       if (result != null && result.baseResult.metadata.image != null)
         'imageUrl': result.baseResult.metadata.image,
+      'quizAnswers': ref
+          .read(linkQuizProvider)
+          .answeredQuestions
+          .where((q) => q.selectedOption != null)
+          .map(
+            (q) => {
+              'question': q.text,
+              'answer': q.selectedOption,
+              'options': q.options,
+            },
+          )
+          .toList(),
       'timestamp': DateTime.now().toIso8601String(),
       if (result != null) 'result': result.toJson(),
     };
+
+    try {
+      ref.read(aiPageContextProvider.notifier).state = {
+        'contextRoute': 'link-paste',
+        'activeAnalysisType': 'single link analysis',
+        'activeAnalysisUrl': url,
+        'activeAnalysisProduct': productName,
+        'activeAnalysisScore': score.toStringAsFixed(0),
+        if (result != null) 'activeAnalysisSummary': result.detailedVerdict,
+        if ((entry['quizAnswers'] as List).isNotEmpty)
+          'activeQuizAnswers': entry['quizAnswers'].toString(),
+      };
+    } catch (_) {}
 
     // Anında yerel listeye ekle (optimistic update — geçmiş ekranı anında görsün)
     try {
@@ -4961,9 +4992,33 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       'urls': urls,
       'score': averageScore,
       'analysis': '',
+      'quizAnswers': ref
+          .read(compareAnalysisProvider)
+          .quizAnswers
+          .where((q) => q.selectedOption != null)
+          .map(
+            (q) => {
+              'question': q.text,
+              'answer': q.selectedOption,
+              'options': q.options,
+            },
+          )
+          .toList(),
       'timestamp': DateTime.now().toIso8601String(),
       'results': results.map((result) => result.toJson()).toList(),
     };
+
+    try {
+      ref.read(aiPageContextProvider.notifier).state = {
+        'contextRoute': 'link-paste',
+        'activeAnalysisType': 'multi link comparison',
+        'activeAnalysisProducts': products.join(' vs '),
+        'activeAnalysisUrls': urls.join(' | '),
+        'activeAnalysisScore': averageScore.toStringAsFixed(0),
+        if ((entry['quizAnswers'] as List).isNotEmpty)
+          'activeQuizAnswers': entry['quizAnswers'].toString(),
+      };
+    } catch (_) {}
 
     try {
       ref

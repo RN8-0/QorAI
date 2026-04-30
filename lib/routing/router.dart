@@ -481,8 +481,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         AppRoutes.termsOfService,
         AppRoutes.faq,
         AppRoutes.premium,
-        AppRoutes.pcBuilder,
-        AppRoutes.pcBuilderStart,
       ];
       final isPublicRoute =
           publicRoutes.contains(location) || location.startsWith('/product/');

@@ -304,7 +304,8 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       debugPrint('[Qor AI] ✅ Cache HIT for $feature');
       return data;
     } catch (e) {
-      debugPrint('[Qor AI] Cache read error ($feature): $e');
+      if (e is ClientException && e.statusCode == 404) return null;
+      debugPrint('[Qor AI] Cache read skipped ($feature): $e');
       return null;
     }
   }
@@ -329,7 +330,11 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         await pb.collection('ai_compare_cache').create(body: body);
       }
     } catch (e) {
-      debugPrint('[Qor AI] Cache write error ($feature): $e');
+      if (e is ClientException &&
+          (e.statusCode == 403 || e.statusCode == 404)) {
+        return;
+      }
+      debugPrint('[Qor AI] Cache write skipped ($feature): $e');
     }
   }
 
