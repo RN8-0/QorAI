@@ -1,60 +1,31 @@
-// ═══════════════════════════════════════════════════════════
-//  QOR AI ADMIN — Notification System
-// ═══════════════════════════════════════════════════════════
+// QOR AI ADMIN - Notification System
 
 const NOTIF_TEMPLATES = [
-  { id: 'new-feature', icon: '🚀', label: 'Yeni Özellik', type: 'feature',
-    title: '🚀 Yeni Özellik Geldi!',
-    body: "Qor AI'e yepyeni bir özellik ekledik! Uygulamayı aç ve hemen keşfet — daha akıllı karşılaştırmalar seni bekliyor." },
-  { id: 'price-drop', icon: '📉', label: 'Fiyat Düştü', type: 'alert',
-    title: '📉 Takip Ettiğin Üründe Fiyat Düştü!',
-    body: "İlgilendiğin bir ürünün fiyatı düştü. Hemen Qor AI'i aç ve fırsatı kaçırma — en iyi fiyatları gör." },
-  { id: 'premium-offer', icon: '👑', label: 'Premium Teklifi', type: 'promo',
-    title: '👑 Premium %50 İndirimde!',
-    body: "Sınırsız AI karşılaştırma, gelişmiş analiz ve reklamsız deneyim. Premium'a sadece bu hafta özel %50 indirimle geç." },
-  { id: 'maintenance', icon: '🔧', label: 'Bakım', type: 'system',
-    title: '🔧 Planlı Bakım Bildirimi',
-    body: "Qor AI kısa süreli bakıma giriyor. Hizmet birkaç dakika kesintiye uğrayabilir. Sabrın için teşekkürler!" },
-  { id: 'welcome-back', icon: '👋', label: 'Hoş Geldin', type: 'system',
-    title: '👋 Seni Özledik!',
-    body: "Son ziyaretinden bu yana yüzlerce yeni ürün ekledik. Tekrar aramıza hoş geldin — keşfetmeye devam et." },
-  { id: 'review-request', icon: '⭐', label: 'Uygulamayı Puanla', type: 'system',
-    title: '⭐ Qor AI\'i Beğeniyor musun?',
-    body: "Uygulamamızı beğendiysen mağazada 5 yıldız ile puanlayarak destek olabilirsin. Geri bildiriminin değeri büyük!" },
-  { id: 'weekly-summary', icon: '📊', label: 'Haftalık Özet', type: 'system',
-    title: '📊 Haftalık Ürün Özetin Hazır',
-    body: "Bu hafta ilgilendiğin kategorilerde öne çıkan 10 ürünü senin için derledik. Dokun ve incele!" },
-  { id: 'tip', icon: '💡', label: 'İpucu', type: 'tip',
-    title: '💡 Qor AI Pro İpucu',
-    body: "Biliyor muydun? Herhangi bir ürün linkini yapıştırarak AI'dan saniyeler içinde detaylı analiz alabilirsin." },
-  { id: 'announcement', icon: '📢', label: 'Duyuru', type: 'system',
-    title: '📢 Heyecan Verici Bir Duyurumuz Var!',
-    body: "Yakında çok özel bir şey paylaşacağız. Bildirimleri açık tut, sürpriz kaçırmasın!" },
-  { id: 'security', icon: '🛡️', label: 'Güvenlik', type: 'alert',
-    title: '🛡️ Güvenlik Güncellemesi',
-    body: "Hesabını daha güvenli hale getirdik. Lütfen ayarlarını gözden geçir ve şifreni güçlendir." },
-  { id: 'ai-pick', icon: '🤖', label: 'AI Önerisi', type: 'feature',
-    title: '🤖 Sana Özel AI Önerisi',
-    body: "Senin için en uygun 5 ürünü AI ile seçtik. Aç ve kişisel önerilerini gör — saniyeler içinde karar ver." },
-  { id: 'compare-recap', icon: '⚖️', label: 'Karşılaştırma Özeti', type: 'system',
-    title: '⚖️ Karşılaştırma Geçmişin Hazır',
-    body: "Yaptığın son karşılaştırmaların özetini hazırladık. AI yorumları ile birlikte gözden geçir!" },
-  { id: 'new-products', icon: '🆕', label: 'Yeni Ürünler', type: 'feature',
-    title: '🆕 Bu Hafta Eklenen Yeni Ürünler',
-    body: "Bu hafta veritabanımıza 200+ yeni ürün eklendi. Yeni nesil telefonlar, laptoplar, kulaklıklar ve daha fazlası seni bekliyor!" },
-  { id: 'streak', icon: '🔥', label: 'Streak', type: 'tip',
-    title: '🔥 Seri Bozulmasın!',
-    body: "Qor AI'i 3 gündür kullanmadın. Hadi geri dön ve serini koru — yeni ürünler ve fırsatlar seni bekliyor." },
+  { id: 'new-feature', icon: '🚀', label: 'New Feature', type: 'marketing', title: { en: '🚀 New Feature Available', tr: '🚀 Yeni Özellik Geldi' }, body: { en: 'Qor AI has a new feature. Open the app and explore smarter comparisons.', tr: 'Qor AI yeni bir özellik ekledi. Uygulamayı aç ve daha akıllı karşılaştırmaları keşfet.' } },
+  { id: 'price-drop', icon: '📉', label: 'Price Drop', type: 'alert', title: { en: '📉 A Product You Follow Dropped in Price', tr: '📉 Takip Ettiğin Üründe Fiyat Düştü' }, body: { en: 'A product you are interested in has a lower price. Open Qor AI to review the opportunity.', tr: 'İlgilendiğin bir ürünün fiyatı düştü. Fırsatı görmek için Qor AI’i aç.' } },
+  { id: 'premium-offer', icon: '👑', label: 'Premium Offer', type: 'marketing', title: { en: '👑 Premium Offer', tr: '👑 Premium Teklifi' }, body: { en: 'Unlock unlimited AI comparisons, advanced analysis, and an ad-free experience.', tr: 'Sınırsız AI karşılaştırma, gelişmiş analiz ve reklamsız deneyimi aç.' } },
+  { id: 'maintenance', icon: '🔧', label: 'Maintenance', type: 'alert', title: { en: '🔧 Scheduled Maintenance', tr: '🔧 Planlı Bakım' }, body: { en: 'Qor AI will enter short maintenance. Some services may be briefly unavailable.', tr: 'Qor AI kısa süreli bakıma girecek. Bazı servisler kısa süre erişilemeyebilir.' } },
+  { id: 'welcome-back', icon: '👋', label: 'Welcome Back', type: 'transactional', title: { en: '👋 Welcome Back', tr: '👋 Tekrar Hoş Geldin' }, body: { en: 'New products have been added since your last visit. Continue exploring with Qor AI.', tr: 'Son ziyaretinden beri yeni ürünler eklendi. Qor AI ile keşfetmeye devam et.' } },
+  { id: 'weekly-summary', icon: '📊', label: 'Weekly Summary', type: 'transactional', title: { en: '📊 Your Weekly Product Summary Is Ready', tr: '📊 Haftalık Ürün Özetin Hazır' }, body: { en: 'We prepared highlights from the categories you follow this week.', tr: 'Bu hafta ilgilendiğin kategorilerden öne çıkanları hazırladık.' } },
+  { id: 'tip', icon: '💡', label: 'Tip', type: 'marketing', title: { en: '💡 Qor AI Tip', tr: '💡 Qor AI İpucu' }, body: { en: 'Paste any product link to get a detailed AI analysis in seconds.', tr: 'Herhangi bir ürün linkini yapıştırarak saniyeler içinde detaylı AI analizi alabilirsin.' } },
+  { id: 'security', icon: '🛡️', label: 'Security', type: 'alert', title: { en: '🛡️ Security Update', tr: '🛡️ Güvenlik Güncellemesi' }, body: { en: 'We improved account security. Please review your settings when convenient.', tr: 'Hesap güvenliğini iyileştirdik. Uygun olduğunda ayarlarını gözden geçir.' } },
+  { id: 'compare-recap', icon: '⚖️', label: 'Compare Recap', type: 'transactional', title: { en: '⚖️ Your Comparison Recap Is Ready', tr: '⚖️ Karşılaştırma Özetin Hazır' }, body: { en: 'Review your latest comparisons with AI notes.', tr: 'Son karşılaştırmalarını AI notlarıyla birlikte gözden geçir.' } },
+  { id: 'new-products', icon: '🆕', label: 'New Products', type: 'marketing', title: { en: '🆕 New Products Added This Week', tr: '🆕 Bu Hafta Yeni Ürünler Eklendi' }, body: { en: 'New phones, laptops, audio products, and more are now in the catalog.', tr: 'Yeni telefonlar, laptoplar, ses ürünleri ve daha fazlası kataloğa eklendi.' } },
 ];
 
-const NOTIF_TYPE_ICONS = {
-  system: '⚙️', feature: '🚀', promo: '🎁', alert: '🔔', tip: '💡',
-};
+const NOTIF_TYPE_ICONS = { transactional: '✅', marketing: '📣', alert: '🔔', system: '⚙️', feature: '🚀', promo: '🎁', tip: '💡' };
 
 let _notifAllUsers = [];
 let _notifBroadcastLog = [];
+let _notifSelectedTemplateId = '';
 
-// ── INIT ──────────────────────────────────────────────────────
+function _notifText(value, language = 'en') {
+  if (value && typeof value === 'object') {
+    const lang = String(language || 'en').toLowerCase();
+    return value[lang] || value[lang.split('-')[0]] || value.en || value.tr || Object.values(value)[0] || '';
+  }
+  return String(value || '');
+}
 
 async function loadNotificationsView() {
   _renderTemplateGrid();
@@ -69,48 +40,17 @@ function _renderTemplateGrid() {
   const grid = document.getElementById('notifTemplateGrid');
   if (!grid || grid.dataset.rendered) return;
   grid.dataset.rendered = '1';
-
   grid.innerHTML = NOTIF_TEMPLATES.map(t => `
-    <button class="notif-template-btn" onclick="applyTemplate('${t.id}')" title="${t.title}">
+    <button class="notif-template-btn" onclick="applyTemplate('${t.id}')" title="${escHtml(_notifText(t.title, 'en'))}">
       <span style="font-size:20px;line-height:1">${t.icon}</span>
-      <span style="font-size:11px;font-weight:600;color:var(--text2);margin-top:4px">${t.label}</span>
+      <span style="font-size:11px;font-weight:600;color:var(--text2);margin-top:4px">${escHtml(t.label)}</span>
     </button>
   `).join('');
 
-  // inject CSS if not already present
   if (!document.getElementById('notif-styles')) {
     const s = document.createElement('style');
     s.id = 'notif-styles';
-    s.textContent = `
-      .notif-template-btn {
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
-        gap:4px;padding:10px 8px;background:var(--bg3);border:1px solid var(--border);
-        border-radius:10px;cursor:pointer;transition:all .15s;min-height:64px;
-        font-family:inherit;
-      }
-      .notif-template-btn:hover { border-color:var(--accent);background:var(--bg4);transform:translateY(-1px); }
-      .notif-template-btn.active { border-color:var(--accent);background:rgba(99,102,241,.12); }
-      .notif-history-item {
-        display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:start;
-        padding:14px 16px;border:1px solid var(--border);border-radius:10px;
-        background:var(--bg2);margin-bottom:8px;
-      }
-      .notif-history-icon {
-        width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
-        justify-content:center;font-size:18px;flex-shrink:0;
-        background:rgba(99,102,241,.12);
-      }
-      .notif-badge {
-        display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;
-        font-size:11px;font-weight:600;
-      }
-      .notif-badge-all { background:rgba(99,102,241,.15);color:#818cf8; }
-      .notif-badge-premium { background:rgba(245,158,11,.15);color:#f59e0b; }
-      .notif-badge-free { background:rgba(16,185,129,.15);color:#10b981; }
-      .notif-badge-specific { background:rgba(59,130,246,.15);color:#3b82f6; }
-      .notif-progress { height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px; }
-      .notif-progress-bar { height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s; }
-    `;
+    s.textContent = `.notif-template-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;min-height:64px;font-family:inherit}.notif-template-btn:hover{border-color:var(--accent);background:var(--bg4);transform:translateY(-1px)}.notif-template-btn.active{border-color:var(--accent);background:rgba(99,102,241,.12)}.notif-history-item{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:start;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px}.notif-history-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(99,102,241,.12)}.notif-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(99,102,241,.15);color:#818cf8}.notif-progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px}.notif-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s}`;
     document.head.appendChild(s);
   }
 }
@@ -120,11 +60,10 @@ function _bindComposerListeners() {
   const body = document.getElementById('notifBody');
   const type = document.getElementById('notifType');
   const recipient = document.getElementById('notifRecipient');
-
   if (title && !title.dataset.bound) {
     title.dataset.bound = '1';
-    title.addEventListener('input', _updatePreview);
-    body.addEventListener('input', _updatePreview);
+    title.addEventListener('input', () => { _notifSelectedTemplateId = ''; _updatePreview(); });
+    body.addEventListener('input', () => { _notifSelectedTemplateId = ''; _updatePreview(); });
     type.addEventListener('change', _updatePreview);
     recipient.addEventListener('change', () => {
       const specific = document.getElementById('notifSpecificUserField');
@@ -140,76 +79,59 @@ async function _loadUsers() {
     let page = 1;
     let allUsers = [];
     while (true) {
-      const res = await pb.collection('users').getList(page, 200, {
-        fields: 'id,email,isPremium',
-        $autoCancel: false,
-      });
+      const res = await pb.collection('users').getList(page, 200, { fields: 'id,email,isPremium,language,fcmToken', $autoCancel: false });
       allUsers = allUsers.concat(res.items);
       if (page >= res.totalPages) break;
       page++;
     }
     _notifAllUsers = allUsers;
-  } catch (e) {
-    console.warn('[Notif] load users error:', e);
-  }
+  } catch (e) { console.warn('[Notif] load users error:', e); }
 }
 
 async function _loadBroadcastLog() {
   try {
     const pb = getPb();
     const rec = await pb.collection('app_config').getFirstListItem('key="notification_broadcast_log"', { $autoCancel: false });
-    _notifBroadcastLog = JSON.parse(rec.value || '[]');
-  } catch {
-    _notifBroadcastLog = [];
-  }
+    const raw = rec.value;
+    _notifBroadcastLog = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+  } catch (_) { _notifBroadcastLog = []; }
   _renderBroadcastHistory();
 }
 
 async function _saveBroadcastLog() {
   try {
     const pb = getPb();
-    const value = JSON.stringify(_notifBroadcastLog.slice(0, 50)); // keep last 50
+    const value = JSON.stringify(_notifBroadcastLog.slice(0, 50));
     try {
       const rec = await pb.collection('app_config').getFirstListItem('key="notification_broadcast_log"', { $autoCancel: false });
       await pb.collection('app_config').update(rec.id, { value });
-    } catch {
+    } catch (_) {
       await pb.collection('app_config').create({ key: 'notification_broadcast_log', value });
     }
-  } catch (e) {
-    console.warn('[Notif] save log error:', e);
-  }
+  } catch (e) { console.warn('[Notif] save log error:', e); }
 }
-
-// ── TEMPLATES ─────────────────────────────────────────────────
 
 function applyTemplate(id) {
   const tpl = NOTIF_TEMPLATES.find(t => t.id === id);
   if (!tpl) return;
-
-  document.getElementById('notifTitle').value = tpl.title;
-  document.getElementById('notifBody').value = tpl.body;
+  _notifSelectedTemplateId = tpl.id;
+  document.getElementById('notifTitle').value = _notifText(tpl.title, 'en');
+  document.getElementById('notifBody').value = _notifText(tpl.body, 'en');
   document.getElementById('notifType').value = tpl.type;
-
   document.querySelectorAll('.notif-template-btn').forEach(b => b.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-
+  const activeTarget = typeof event !== 'undefined' ? event.currentTarget : null;
+  if (activeTarget) activeTarget.classList.add('active');
   _updatePreview();
 }
-
-// ── PREVIEW ───────────────────────────────────────────────────
 
 function _updatePreview() {
   const title = document.getElementById('notifTitle')?.value || 'Notification Title';
   const body = document.getElementById('notifBody')?.value || 'Notification message.';
-  const type = document.getElementById('notifType')?.value || 'system';
-
-  const icon = NOTIF_TYPE_ICONS[type] || '🔔';
-  document.getElementById('notifPreviewIcon').textContent = icon;
+  const type = document.getElementById('notifType')?.value || 'transactional';
+  document.getElementById('notifPreviewIcon').textContent = NOTIF_TYPE_ICONS[type] || '🔔';
   document.getElementById('notifPreviewTitle').textContent = title;
   document.getElementById('notifPreviewBody').textContent = body;
 }
-
-// ── RECIPIENT COUNT ───────────────────────────────────────────
 
 function _updateRecipientCount() {
   const mode = document.getElementById('notifRecipient')?.value || 'all';
@@ -218,19 +140,16 @@ function _updateRecipientCount() {
   else if (mode === 'premium') count = _notifAllUsers.filter(u => u.isPremium).length;
   else if (mode === 'free') count = _notifAllUsers.filter(u => !u.isPremium).length;
   else if (mode === 'specific') count = 1;
-
   const el = document.getElementById('notifRecipientCount');
   if (el) el.textContent = count === 1 && mode === 'specific' ? '1 specific' : count.toLocaleString();
 }
 
-// ── SEND ──────────────────────────────────────────────────────
-
 async function sendBroadcastNotification() {
   const title = document.getElementById('notifTitle')?.value?.trim();
   const body = document.getElementById('notifBody')?.value?.trim();
-  const type = document.getElementById('notifType')?.value || 'system';
+  const type = document.getElementById('notifType')?.value || 'transactional';
   const mode = document.getElementById('notifRecipient')?.value || 'all';
-
+  const template = NOTIF_TEMPLATES.find(t => t.id === _notifSelectedTemplateId);
   if (!title) { toast('Please enter a notification title', 'w'); return; }
   if (!body) { toast('Please enter a notification message', 'w'); return; }
 
@@ -245,94 +164,49 @@ async function sendBroadcastNotification() {
     if (!found) { toast('User not found', 'e'); return; }
     recipients = [found];
   }
-
-  if (recipients.length === 0) {
-    toast('No users match the selected recipient group', 'w');
-    return;
-  }
+  if (!recipients.length) { toast('No users match the selected recipient group', 'w'); return; }
 
   const modeLabel = { all: 'All Users', premium: 'Premium Only', free: 'Free Users', specific: 'Specific User' }[mode];
-  const confirmed = confirm(`Send "${title}" to ${recipients.length} ${modeLabel}?`);
-  if (!confirmed) return;
+  if (!confirm(`Send "${title}" to ${recipients.length} ${modeLabel}?`)) return;
 
   const btn = document.getElementById('notifSendBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-sm"></span> Sending...';
-
-  // Add progress indicator
-  const progressHtml = `
-    <div id="notifSendProgress" style="margin-top:12px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">
-        <span id="notifProgressText">Sending to 0 / ${recipients.length} users...</span>
-      </div>
-      <div class="notif-progress"><div class="notif-progress-bar" id="notifProgressBar" style="width:0%"></div></div>
-    </div>
-  `;
-  document.getElementById('notifPreviewBox').insertAdjacentHTML('afterend', progressHtml);
+  document.getElementById('notifPreviewBox').insertAdjacentHTML('afterend', `<div id="notifSendProgress" style="margin-top:12px"><div style="font-size:12px;color:var(--text2);margin-bottom:6px"><span id="notifProgressText">Sending to 0 / ${recipients.length} users...</span></div><div class="notif-progress"><div class="notif-progress-bar" id="notifProgressBar" style="width:0%"></div></div></div>`);
 
   let sent = 0;
   let errors = 0;
-  const BATCH = 10;
   let firstError = null;
-
+  const BATCH = 10;
   try {
     const pb = getPb();
-
-    // Debug: verify auth state
-    console.log('[Notif] auth valid:', pb.authStore.isValid, '| token prefix:', pb.authStore.token?.slice(0,20));
-
     for (let i = 0; i < recipients.length; i += BATCH) {
       const batch = recipients.slice(i, i + BATCH);
-      const results = await Promise.allSettled(batch.map(user =>
-        pb.collection('notifications').create({
-          recipientId: user.id,
-          senderId: 'system',
-          senderName: 'Qor AI Team',
-          type,
-          title,
-          body,
-          referenceId: '',
-          read: false,
-        }, { $autoCancel: false })
-      ));
+      const results = await Promise.allSettled(batch.map(user => pb.collection('notifications').create({
+        recipientId: user.id,
+        senderId: 'system',
+        senderName: 'Qor AI Team',
+        type,
+        title: template ? _notifText(template.title, user.language) : title,
+        body: template ? _notifText(template.body, user.language) : body,
+        referenceId: '',
+        read: false,
+      }, { $autoCancel: false })));
 
       for (const r of results) {
-        if (r.status === 'fulfilled') {
-          sent++;
-        } else {
-          errors++;
-          if (!firstError) firstError = r.reason;
-          console.error('[Notif] create error:', r.reason?.message || r.reason);
-        }
+        if (r.status === 'fulfilled') sent++;
+        else { errors++; if (!firstError) firstError = r.reason; console.error('[Notif] create error:', r.reason?.message || r.reason); }
       }
-
       const pct = Math.round(((sent + errors) / recipients.length) * 100);
       const progressEl = document.getElementById('notifProgressBar');
       const textEl = document.getElementById('notifProgressText');
       if (progressEl) progressEl.style.width = pct + '%';
       if (textEl) textEl.textContent = `Sending... ${sent + errors} / ${recipients.length} users`;
     }
-
-    if (sent === 0 && errors > 0) {
-      toast('Send failed: ' + (firstError?.message || firstError || 'PocketBase rejected all records'), 'e');
-      return;
-    }
-
-    // Log the broadcast
-    _notifBroadcastLog.unshift({
-      id: Date.now().toString(36),
-      timestamp: new Date().toISOString(),
-      title,
-      body,
-      type,
-      recipientType: mode,
-      recipientLabel: modeLabel,
-      count: sent,
-      errors,
-    });
+    if (sent === 0 && errors > 0) { toast('Send failed: ' + (firstError?.message || firstError || 'PocketBase rejected all records'), 'e'); return; }
+    _notifBroadcastLog.unshift({ id: Date.now().toString(36), timestamp: new Date().toISOString(), title, body, type, templateId: _notifSelectedTemplateId, recipientType: mode, recipientLabel: modeLabel, count: sent, errors });
     await _saveBroadcastLog();
-
-    toast(`✅ Sent to ${sent} users${errors > 0 ? ` (${errors} errors)` : ''}`, 's');
+    toast(`Sent to ${sent} users${errors > 0 ? ` (${errors} errors)` : ''}`, 's');
     _renderBroadcastHistory();
     _updateStats();
     resetNotifComposer();
@@ -346,47 +220,18 @@ async function sendBroadcastNotification() {
   }
 }
 
-// ── HISTORY ───────────────────────────────────────────────────
-
 function _renderBroadcastHistory() {
   const list = document.getElementById('notifHistoryList');
   if (!list) return;
-
-  if (_notifBroadcastLog.length === 0) {
+  if (!_notifBroadcastLog.length) {
     list.innerHTML = '<div class="placeholder" style="padding:24px;text-align:center;color:var(--text3)">No notifications sent yet. Use the composer above to send your first broadcast.</div>';
     return;
   }
-
   list.innerHTML = _notifBroadcastLog.map(item => {
     const icon = NOTIF_TYPE_ICONS[item.type] || '🔔';
-    const badgeClass = { all: 'notif-badge-all', premium: 'notif-badge-premium', free: 'notif-badge-free', specific: 'notif-badge-specific' }[item.recipientType] || 'notif-badge-all';
     const date = new Date(item.timestamp);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-    return `
-      <div class="notif-history-item">
-        <div class="notif-history-icon">${icon}</div>
-        <div style="min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${escHtml(item.title)}</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.body)}</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="notif-badge ${badgeClass}">${item.recipientLabel}</span>
-            <span style="font-size:11px;color:var(--text3)">
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-              ${item.count.toLocaleString()} recipients
-            </span>
-            ${item.errors > 0 ? `<span style="font-size:11px;color:var(--danger)">${item.errors} errors</span>` : ''}
-          </div>
-        </div>
-        <div style="text-align:right;white-space:nowrap;flex-shrink:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text2)">${dateStr}</div>
-          <div style="font-size:11px;color:var(--text3)">${timeStr}</div>
-        </div>
-      </div>
-    `;
+    return `<div class="notif-history-item"><div class="notif-history-icon">${icon}</div><div style="min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${escHtml(item.title)}</div><div style="font-size:13px;color:var(--text2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.body)}</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="notif-badge">${escHtml(item.recipientLabel || item.recipientType || 'Broadcast')}</span><span style="font-size:11px;color:var(--text3)">${Number(item.count || 0).toLocaleString()} recipients</span>${item.errors > 0 ? `<span style="font-size:11px;color:var(--danger)">${item.errors} errors</span>` : ''}</div></div><div style="text-align:right;white-space:nowrap"><div style="font-size:12px;font-weight:600;color:var(--text2)">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div><div style="font-size:11px;color:var(--text3)">${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div></div></div>`;
   }).join('');
-
   const countEl = document.getElementById('notifSentCount');
   if (countEl) countEl.textContent = _notifBroadcastLog.length;
 }
@@ -394,26 +239,20 @@ function _renderBroadcastHistory() {
 function _updateStats() {
   const total = _notifBroadcastLog.reduce((acc, i) => acc + (i.count || 0), 0);
   document.getElementById('notifStatTotal').textContent = total.toLocaleString();
-
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = _notifBroadcastLog.filter(i => i.timestamp?.startsWith(todayStr)).reduce((acc, i) => acc + (i.count || 0), 0);
   document.getElementById('notifStatToday').textContent = todayCount.toLocaleString();
-
   document.getElementById('notifStatUsers').textContent = _notifAllUsers.length.toLocaleString();
-  document.getElementById('notifStatRead').textContent = '—';
+  document.getElementById('notifStatRead').textContent = 'Live';
 }
-
-// ── RESET ─────────────────────────────────────────────────────
 
 function resetNotifComposer() {
   ['notifTitle', 'notifBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  document.getElementById('notifType').value = 'system';
+  document.getElementById('notifType').value = 'transactional';
   document.getElementById('notifRecipient').value = 'all';
   document.getElementById('notifPreviewTitle').textContent = 'Notification Title';
   document.getElementById('notifPreviewBody').textContent = 'Notification message will appear here.';
   document.getElementById('notifPreviewIcon').textContent = '🔔';
+  _notifSelectedTemplateId = '';
   document.querySelectorAll('.notif-template-btn').forEach(b => b.classList.remove('active'));
 }
-
-// ── HELPERS ───────────────────────────────────────────────────
-// escHtml is defined in app.js — use it directly

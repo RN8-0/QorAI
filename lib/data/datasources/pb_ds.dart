@@ -1867,9 +1867,24 @@ class PbDataSource {
 
   Future<void> updateFcmToken(String userId, String fcmToken) async {
     try {
+      final platform = switch (defaultTargetPlatform) {
+        TargetPlatform.android => 'android',
+        TargetPlatform.iOS => 'ios',
+        TargetPlatform.macOS => 'macos',
+        TargetPlatform.windows => 'windows',
+        TargetPlatform.linux => 'linux',
+        TargetPlatform.fuchsia => 'fuchsia',
+      };
       await _pb
           .collection('users')
-          .update(userId, body: {'fcmToken': fcmToken});
+          .update(
+            userId,
+            body: {
+              'fcmToken': fcmToken,
+              'fcmTokenUpdatedAt': DateTime.now().toIso8601String(),
+              'platform': platform,
+            },
+          );
       debugPrint('[PbDs] FCM token updated for user $userId');
     } catch (e) {
       debugPrint('[PbDs] updateFcmToken error: $e');

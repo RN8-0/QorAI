@@ -35,18 +35,77 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     _initWelcome();
   }
 
-  void _initWelcome() {
+  Map<String, dynamic>? _lastPageContext;
+
+  String _activeLanguageCode() {
     final locale = _ref.read(localeProvider);
-    final langCode = locale?.languageCode ?? 'en';
+    if (locale?.languageCode.trim().isNotEmpty == true) {
+      return locale!.languageCode.toLowerCase();
+    }
+    final profileLang = _ref.read(userProfileProvider).valueOrNull?.language;
+    return (profileLang?.trim().isNotEmpty == true ? profileLang! : 'en')
+        .toLowerCase();
+  }
+
+  String _contextGreeting(Map<String, dynamic>? pageContext, String langCode) {
+    final data = pageContext ?? const <String, dynamic>{};
+    final route = data['route']?.toString().toLowerCase() ?? '';
+    final activeScreen = data['activeScreen']?.toString().toLowerCase() ?? '';
+    final product = data['productName']?.toString().trim();
+    final compareProducts = data['compareProducts']?.toString().trim();
+    final linkProducts =
+        data['linkCompareResults']?.toString().trim().isNotEmpty == true
+        ? data['linkCompareResults'].toString().trim()
+        : data['singleLinkProduct']?.toString().trim();
+    final subscriptions = data['subscriptionServices']?.toString().trim();
+
+    final isTr = langCode == 'tr';
+    if (route.contains('subscriptions') ||
+        activeScreen.contains('subscription') ||
+        subscriptions?.isNotEmpty == true) {
+      return isTr
+          ? 'Abonelik analizi ekranını görüyorum; seçili servisleri, skorları ve quiz cevaplarını birlikte yorumlayabilirim.'
+          : 'I can see the Subscription Analysis screen; I can interpret the selected services, scores, and quiz answers with you.';
+    }
+    if (route.contains('link-paste') ||
+        activeScreen.contains('link') ||
+        linkProducts?.isNotEmpty == true) {
+      final suffix = linkProducts?.isNotEmpty == true ? ' ($linkProducts)' : '';
+      return isTr
+          ? 'Link Analysis ekranındasın$suffix; ürün linklerini, karşılaştırma sonucunu ve uyumluluk skorunu okuyabiliyorum.'
+          : 'You are on Link Analysis$suffix; I can read the product links, comparison result, and compatibility score.';
+    }
+    if (product?.isNotEmpty == true) {
+      return isTr
+          ? '$product ürün detayını inceliyorsun; teknik skor, özellikler ve alternatifler üzerinden yardımcı olabilirim.'
+          : 'You are viewing $product; I can help with its specs, score, trade-offs, and alternatives.';
+    }
+    if (compareProducts?.isNotEmpty == true) {
+      return isTr
+          ? 'Karşılaştırma ekranındaki ürünleri görüyorum: $compareProducts. Güçlü/zayıf yönleri netleştirebilirim.'
+          : 'I can see your comparison: $compareProducts. I can clarify the strengths and trade-offs.';
+    }
+    if (route.contains('pc-builder')) {
+      return isTr
+          ? 'PC Builder ekranındasın; parça uyumu, darboğaz ve yükseltme önerilerinde yardımcı olabilirim.'
+          : 'You are in PC Builder; I can help with compatibility, bottlenecks, and upgrade choices.';
+    }
+    return isTr
+        ? 'Bu sayfadaki ürün ve alışveriş bağlamını okuyup sorularını ona göre yanıtlayabilirim.'
+        : 'I can use the current product and shopping context on this screen when answering.';
+  }
+
+  String _welcomeText([Map<String, dynamic>? pageContext]) {
+    final langCode = _activeLanguageCode();
     const greetings = <String, String>{
       'tr':
-          'Merhaba! Ben Qor AI asistanınım. Ürünler, markalar ve alışveriş hakkında her şeyi sorabilirsiniz! 🚀',
+          '!Ben Qor AI! Ürün asistanıyım. Ürünler, markalar, abonelikler, link analizleri ve satın alma kararları için buradayım.',
       'de':
-          'Hallo! Ich bin dein Qor AI-Assistent. Frag mich alles über Produkte und Einkäufe! 🚀',
+          'Hallo! Ich bin Qor AI, dein Produktassistent. Ich helfe dir bei Produkten, Links, Abos und Kaufentscheidungen.',
       'fr':
-          'Salut! Je suis votre assistant Qor AI. Posez-moi des questions sur les produits et achats! 🚀',
+          'Bonjour! Je suis Qor AI, votre assistant produit. Je peux vous aider avec les produits, liens, abonnements et décisions d’achat.',
       'es':
-          '¡Hola! Soy tu asistente Qor AI. ¡Pregúntame sobre productos y compras! 🚀',
+          'Hola! Soy Qor AI, tu asistente de productos. Puedo ayudarte con productos, enlaces, suscripciones y decisiones de compra.',
       'ar': 'مرحباً! أنا مساعدك Qor AI. اسألني عن المنتجات والتسوق! 🚀',
       'ru':
           'Привет! Я ваш ассистент Qor AI. Спрашивайте меня о продуктах и покупках! 🚀',
@@ -56,17 +115,39 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       'pt':
           'Olá! Sou seu assistente Qor AI. Pergunte-me sobre produtos e compras! 🚀',
       'it':
-          'Ciao! Sono il tuo assistente Qor AI. Chiedimi di prodotti e acquisti! 🚀',
+          'Ciao! Sono Qor AI, il tuo assistente prodotto. Posso aiutarti con prodotti, link, abbonamenti e decisioni di acquisto.',
     };
-    final text =
+    final base =
         greetings[langCode] ??
-        'Hey! I\'m your Qor AI assistant. Ask me anything about products and shopping! 🚀';
+        'Hi! I am Qor AI, your product assistant. I can help with products, links, subscriptions, and buying decisions.';
+    return '$base ${_contextGreeting(pageContext, langCode)}';
+  }
+
+  void _initWelcome([Map<String, dynamic>? pageContext]) {
+    final text = _welcomeText(pageContext);
     final welcome = PersistedChatMsg(
       id: 'welcome',
       role: PersistedMsgRole.ai,
       text: text,
     );
     state = state.copyWith(messages: [welcome]);
+  }
+
+  void updatePageContext(Map<String, dynamic>? pageContext) {
+    _lastPageContext = pageContext;
+    final userMsgCount = state.messages
+        .where((m) => m.role == PersistedMsgRole.user)
+        .length;
+    final welcomeIndex = state.messages.indexWhere((m) => m.id == 'welcome');
+    if (userMsgCount > 0 || welcomeIndex < 0) return;
+    final updated = List<PersistedChatMsg>.from(state.messages);
+    updated[welcomeIndex] = PersistedChatMsg(
+      id: 'welcome',
+      role: PersistedMsgRole.ai,
+      text: _welcomeText(pageContext),
+      timestamp: updated[welcomeIndex].timestamp,
+    );
+    state = state.copyWith(messages: updated);
   }
 
   String _autoTitle(String firstUserMsg) {
@@ -264,6 +345,8 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       });
     }
     final parts = <String>[];
+    final appLanguage = _activeLanguageCode();
+    parts.add('App language: $appLanguage');
     try {
       if ((user.language as String?)?.isNotEmpty == true &&
           user.language != 'en') {
@@ -373,8 +456,13 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final ctx = parts.isEmpty ? '' : '\n[User Profile: ${parts.join(' | ')}]';
     final pageInfo = pageCtxStr.isEmpty
         ? ''
-        : '\n[Authoritative Page Context: ${pageCtxStr.join(' | ')} | Use this as the current screen state. Do not infer a different current page/product from older messages.]';
-    turns.add({'role': 'user', 'text': '$newMsg$ctx$pageInfo$liveInfo'});
+        : '\n[Authoritative Page Context: ${pageCtxStr.join(' | ')} | Use this as the current screen state. You can analyze Subscription Analysis and Link Analysis data shown here. Do not infer a different current page/product from older messages.]';
+    final languageInfo =
+        '\n[Language Directive: Always answer in the current app language: $appLanguage. If the user writes in another language, mirror the user only when it clearly overrides the app language.]';
+    turns.add({
+      'role': 'user',
+      'text': '$newMsg$ctx$pageInfo$liveInfo$languageInfo',
+    });
     return turns;
   }
 
@@ -525,7 +613,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
 
   void newConversation() {
     state = const ChatSessionState();
-    _initWelcome();
+    _initWelcome(_lastPageContext);
   }
 }
 

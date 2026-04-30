@@ -2,25 +2,33 @@
 setlocal
 title Qor AI Scraper Proxy
 
-set "DEFAULT_ROOT=%USERPROFILE%\Desktop\Qor AI-master"
+for %%I in ("%~dp0..") do set "DEFAULT_ROOT=%%~fI"
 set "ROOT=%DEFAULT_ROOT%"
 echo Qor AI Scraper Proxy launcher
 echo.
 
 if not exist "%ROOT%\scripts\scraper-proxy.js" (
+  if exist "%USERPROFILE%\Desktop\Compair-master\scripts\scraper-proxy.js" set "ROOT=%USERPROFILE%\Desktop\Compair-master"
+)
+
+if not exist "%ROOT%\scripts\scraper-proxy.js" (
+  if exist "%USERPROFILE%\Desktop\Qor AI-master\scripts\scraper-proxy.js" set "ROOT=%USERPROFILE%\Desktop\Qor AI-master"
+)
+
+if not exist "%ROOT%\scripts\scraper-proxy.js" (
   echo.
-  echo Varsayilan klasor bulunamadi: "%ROOT%"
-  set /p ROOT=Qor AI klasor yolu:
+  echo Default project folder was not found: "%DEFAULT_ROOT%"
+  set /p ROOT=Qor AI project folder path: 
   if "%ROOT%"=="" (
     echo.
-    echo HATA: Klasor yolu girilmedi.
+    echo ERROR: No folder path was entered.
     pause
     exit /b 1
   )
   if not exist "%ROOT%\scripts\scraper-proxy.js" (
     echo.
-    echo HATA: "%ROOT%\scripts\scraper-proxy.js" bulunamadi.
-    echo Repo klasorunu dogru girdiginden emin ol.
+    echo ERROR: "%ROOT%\scripts\scraper-proxy.js" was not found.
+    echo Make sure you entered the repository root folder.
     pause
     exit /b 1
   )
@@ -29,16 +37,16 @@ if not exist "%ROOT%\scripts\scraper-proxy.js" (
 where node >nul 2>nul
 if errorlevel 1 (
   echo.
-  echo HATA: Node.js bulunamadi. Node.js kurup tekrar dene.
+  echo ERROR: Node.js was not found. Install Node.js and try again.
   pause
   exit /b 1
 )
 
 cd /d "%ROOT%"
 echo.
-echo Repo klasoru: %ROOT%
-echo Proxy baslatiliyor... Bu cihazin IP adresi kullanilacak.
-echo Admin panelde "Check Proxy" ile durumu gorebilirsin.
+echo Repository folder: %ROOT%
+echo Starting proxy... Requests will use this device IP address.
+echo Use "Check Proxy" in the admin panel to verify the status.
 echo.
 node scripts\scraper-proxy.js
 pause

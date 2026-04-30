@@ -60,11 +60,27 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     )..repeat(reverse: true);
     _ctrl.addListener(_handleTextChanged);
     _initSpeech();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(chatSessionProvider.notifier)
+          .updatePageContext(widget.pageContext);
+    });
     // Auto-send initial query if provided
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _send(widget.initialQuery!);
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AIChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pageContext != widget.pageContext) {
+      ref
+          .read(chatSessionProvider.notifier)
+          .updatePageContext(widget.pageContext);
     }
   }
 

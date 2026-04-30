@@ -21,8 +21,8 @@
           <p>Admin Panel</p>
         </div>
       <div class="login-copy">
-        <h2>Yönetici Girişi</h2>
-        <p>Yalnızca yetkili GitHub hesabı ile giriş yap.</p>
+        <h2>Admin Sign In</h2>
+        <p>Continue with an authorized GitHub account.</p>
       </div>
       <div class="login-actions">
         <button type="button" id="loginBtn" class="btn-oauth btn-github" onclick="handleGitHubLogin()">
@@ -31,17 +31,17 @@
               <path d="M12 .5C5.65.5.5 5.66.5 12.02c0 5.09 3.29 9.41 7.86 10.94.57.11.78-.25.78-.55 0-.27-.01-.99-.02-1.95-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.69-1.28-1.69-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.19 1.18a11.1 11.1 0 0 1 5.8 0c2.22-1.49 3.18-1.18 3.18-1.18.63 1.59.24 2.77.12 3.06.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.68.42.37.78 1.09.78 2.2 0 1.59-.01 2.86-.01 3.24 0 .3.2.67.79.55A11.53 11.53 0 0 0 23.5 12C23.5 5.66 18.35.5 12 .5Z"/>
             </svg>
           </span>
-          <span>GitHub ile devam et</span>
+          <span>Continue with GitHub</span>
         </button>
         <div class="login-note">
-          <span>Bu panel yalnızca izinli GitHub kullanıcısı için açılır.</span>
-          <span>GitHub doğrulaması tamamlanınca oturum otomatik açılır.</span>
+          <span>This panel is restricted to approved GitHub accounts.</span>
+          <span>Your session opens automatically after GitHub verification.</span>
         </div>
       </div>
       <div id="loginError" class="login-error"></div>
       <div id="loginLoading" class="login-loading" style="display:none">
         <div class="spinner"></div>
-        <span>GitHub girişi yapılıyor...</span>
+        <span>Signing in with GitHub...</span>
       </div>
     </div>
   </div>
@@ -89,7 +89,7 @@
         </a>
         <a class="nav-link" data-view="activitylog" onclick="showView('activitylog')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <span>Aktivite Log</span>
+          <span>Activity Log</span>
         </a>
         <a class="nav-link" data-view="notifications" onclick="showView('notifications')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -97,7 +97,7 @@
         </a>
         <a class="nav-link" data-view="support" onclick="showView('support')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>Destek <span class="count-badge" id="supportBadge" style="display:none"></span></span>
+          <span>Contact Us <span class="count-badge" id="supportBadge" style="display:none"></span></span>
         </a>
         <a class="nav-link" data-view="settings" onclick="showView('settings')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -133,7 +133,7 @@
           <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Avg Score</div></div>
         </div>
         <div class="grid-2">
-          <div class="card"><div class="card-title">KATEGORİ DAĞILIMI</div><div class="card-body"><canvas id="categoryChart"></canvas></div></div>
+          <div class="card"><div class="card-title">Category Distribution</div><div class="card-body"><canvas id="categoryChart"></canvas></div></div>
           <div class="card"><div class="card-title">Products Added (30 Days)</div><div class="card-body"><canvas id="dailyTrendChart" height="280"></canvas></div></div>
         </div>
         <div class="grid-3">
@@ -149,14 +149,14 @@
           <h1>Products <span class="count-badge" id="productCount">0</span></h1>
           <div class="view-actions">
             <div class="dropdown" style="position:relative">
-              <button class="btn btn-ghost" onclick="this.nextElementSibling.classList.toggle('show')">📤 Dışa Aktar ▾</button>
+              <button class="btn btn-ghost" onclick="this.nextElementSibling.classList.toggle('show')">📤 Export ▾</button>
               <div class="dropdown-menu">
-                <button onclick="exportProductsJSON();this.parentElement.classList.remove('show')">JSON olarak indir</button>
-                <button onclick="exportProductsCSV();this.parentElement.classList.remove('show')">CSV olarak indir</button>
-                <button onclick="importProducts();this.parentElement.classList.remove('show')">📥 JSON içe aktar</button>
+                <button onclick="exportProductsJSON();this.parentElement.classList.remove('show')">Download JSON</button>
+                <button onclick="exportProductsCSV();this.parentElement.classList.remove('show')">Download CSV</button>
+                <button onclick="importProducts();this.parentElement.classList.remove('show')">📥 Import JSON</button>
               </div>
             </div>
-            <button class="btn btn-ghost" onclick="loadProducts()">Yenile</button>
+            <button class="btn btn-ghost" onclick="loadProducts()">Refresh</button>
           </div>
         </div>
         <div class="toolbar">
@@ -178,11 +178,11 @@
         </div>
         <div class="selection-bar" id="selectionBar" style="display:none">
           <span id="selectionCount">0 selected</span>
-          <button class="btn btn-sm" onclick="selectAll()">Tümünü Seç</button>
-          <button class="btn btn-sm" onclick="deselectAll()">Seçimi Kaldır</button>
-          <button class="btn btn-sm" onclick="bulkChangeCategory()">📂 Kategori Değiştir</button>
-          <button class="btn btn-sm" onclick="bulkChangeBrand()">🏷️ Marka Değiştir</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ Sil</button>
+          <button class="btn btn-sm" onclick="selectAll()">Select All</button>
+          <button class="btn btn-sm" onclick="deselectAll()">Clear Selection</button>
+          <button class="btn btn-sm" onclick="bulkChangeCategory()">📂 Change Category</button>
+          <button class="btn btn-sm" onclick="bulkChangeBrand()">🏷️ Change Brand</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ Delete</button>
         </div>
         <div class="product-grid" id="productGrid"></div>
         <div class="pagination" id="pagination"></div>
@@ -201,22 +201,22 @@
           <div class="stat-card-sm"><div class="stat-value-sm" id="usActiveCount">—</div><div class="stat-label-sm">Active 30d</div></div>
         </div>
         <div class="card" style="margin:0 0 16px;padding:16px">
-          <div class="card-title">🪙 Q Coin Kontrol</div>
+          <div class="card-title">🪙 Q Coin Control</div>
           <div class="form-grid" style="align-items:end">
             <div class="form-field">
-              <label>Global Günlük Q Coin Havuzu</label>
+              <label>Global Daily Q Coin Pool</label>
               <input class="input" type="number" id="usersDailyQCoinInput" min="0" value="10">
             </div>
             <div class="form-field">
-              <label>Hızlı İşlem</label>
+              <label>Quick Actions</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="saveUsersDailyQCoin()">Günlük Havuzu Kaydet</button>
-                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Tüm Extra Q'ları Sıfırla</button>
+                <button class="btn btn-primary" onclick="saveUsersDailyQCoin()">Save Daily Pool</button>
+                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Reset All Extra Q</button>
               </div>
             </div>
           </div>
-          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">Kullanıcı detayına girerek kişiye özel ekstra Q ekleyebilir veya sıfırlayabilirsin.</div>
-          <div class="text-muted" style="font-size:12px;margin-top:8px">Premium plan yönetimi ve DeepSeek kullanıcı portresi her kullanıcının detay modalında bulunur.</div>
+          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">Open a user detail view to add or reset personal extra Q.</div>
+          <div class="text-muted" style="font-size:12px;margin-top:8px">Premium plan controls and Qor AI user portraits live in each user detail modal.</div>
         </div>
         <div class="toolbar">
           <div class="search-field">
@@ -255,14 +255,14 @@
         </div>
         <div class="card" style="margin:0 0 20px;padding:16px">
           <div class="card-title">
-            <span>🧠 DeepSeek Segment Analizi</span>
+            <span>🧠 Qor AI Segment Analysis</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="generateBulkDeepSeekSegments()">Segmentleri Analiz Et</button>
-              <button class="btn btn-ghost btn-sm" onclick="loadStoredSegmentAnalysis()">Kaydı Yenile</button>
+              <button class="btn btn-primary btn-sm" onclick="generateBulkDeepSeekSegments()">Analyze Segments</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadStoredSegmentAnalysis()">Reload Saved Report</button>
             </div>
           </div>
-          <div id="deepSeekSegmentMeta" class="text-muted" style="font-size:12px;margin-bottom:12px">Henüz toplu segment analizi oluşturulmadı.</div>
-          <div id="deepSeekSegmentContent"><div class="placeholder">DeepSeek, kullanıcı kitlesini segmentlere ayırıp admin önerileri üretecek.</div></div>
+          <div id="deepSeekSegmentMeta" class="text-muted" style="font-size:12px;margin-bottom:12px">No saved segment analysis yet.</div>
+          <div id="deepSeekSegmentContent"><div class="placeholder">Qor AI will segment users and generate actionable admin recommendations.</div></div>
         </div>
         <div class="grid-3 intelligence-chart-grid">
           <div class="card">
@@ -390,14 +390,14 @@
         <!-- Proxy connection info -->
         <div class="card" id="proxyInfoCard" style="border-left:3px solid var(--amber)">
           <div class="card-title">⚡ Local Proxy Required</div>
-          <p class="text-muted" style="margin-bottom:8px">Proxy bu cihazda calisir ve scrape istekleri bu cihazin IP adresiyle gider.</p>
+          <p class="text-muted" style="margin-bottom:8px">The proxy runs on this device, so scrape requests use this device IP address.</p>
           <code class="code-block" id="proxyCommandBlock">npm run scraper:proxy</code>
           <div class="proxy-helper-actions">
             <button class="btn btn-primary btn-sm" onclick="copyProxyCommand()">Copy Start Command</button>
             <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Windows Launcher</a>
             <button class="btn btn-sm" onclick="openLocalProxyHealth()">Open Local Health</button>
           </div>
-          <p class="text-muted" style="margin-top:8px;font-size:11px">Proxy <b>localhost:3456</b> üzerinde çalışır. Tarayıcı butonu Node süreci başlatamaz; launcher bu yüzden eklendi. Sadece epey.com domainleri açıktır.</p>
+          <p class="text-muted" style="margin-top:8px;font-size:11px">The proxy runs on <b>localhost:3456</b>. Browsers cannot start the Node process directly, so the Windows launcher is provided. Only epey.com domains are allowed.</p>
         </div>
 
         <!-- Scraper Tabs -->
@@ -630,9 +630,9 @@
       <!-- ===== ACTIVITY LOG ===== -->
       <section id="activitylogView" class="view">
         <div class="view-header">
-          <h1>Aktivite Log</h1>
+          <h1>Activity Log</h1>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadActivityLog()">Yenile</button>
+            <button class="btn btn-ghost" onclick="loadActivityLog()">Refresh</button>
           </div>
         </div>
         <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
@@ -644,7 +644,7 @@
         <div class="toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="activitySearchInput" placeholder="Log detail ara..." oninput="renderActivityLog()">
+            <input type="text" id="activitySearchInput" placeholder="Search audit details..." oninput="renderActivityLog()">
           </div>
           <select id="activityTypeFilter" class="field-select" onchange="renderActivityLog()">
             <option value="">All Actions</option>
@@ -657,11 +657,11 @@
         </div>
         <div class="grid-2 intelligence-detail-grid">
           <div class="card">
-            <div class="card-title">Bu sayfa ne iş yapar?</div>
+            <div class="card-title">What this audit trail shows</div>
             <div id="activityPurpose" class="insight-stack">
-              <div class="insight-item"><div class="insight-label">AUDIT</div>Ürün, kullanıcı, algoritma, import/export ve sistem seviyesindeki admin değişikliklerini takip eder.</div>
-              <div class="insight-item"><div class="insight-label">OPERATIONS</div>Hangi aksiyonların ne sıklıkta tetiklendiği, hangi adminin ne yaptığı ve bugün sistemde neler olduğu burada izlenir.</div>
-              <div class="insight-item"><div class="insight-label">DEBUG</div>Liste boş ise log koleksiyonu henüz veri biriktirmemiş olabilir; yine de bu ekran denetim merkezi olarak kalır.</div>
+              <div class="insight-item"><div class="insight-label">AUDIT</div>Tracks product, user, algorithm, import/export, scraper, and system-level admin changes.</div>
+              <div class="insight-item"><div class="insight-label">OPERATIONS</div>Shows which actions run most often, which admin acted, and what changed today.</div>
+              <div class="insight-item"><div class="insight-label">DEBUG</div>If the list is empty, the log collection has not accumulated records yet.</div>
             </div>
           </div>
           <div class="card">
@@ -670,8 +670,8 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Son Aktiviteler</div>
-          <div id="activityLogList" class="activity-log-list"><div class="placeholder">Yükleniyor...</div></div>
+          <div class="card-title">Recent Activity</div>
+          <div id="activityLogList" class="activity-log-list"><div class="placeholder">Loading...</div></div>
         </div>
       </section>
 
@@ -757,11 +757,9 @@
               <div class="form-field">
                 <label>Notification Type</label>
                 <select class="input" id="notifType">
-                  <option value="system">⚙️ System</option>
-                  <option value="feature">🚀 Feature</option>
-                  <option value="promo">🎁 Promotion</option>
+                  <option value="transactional">✅ Transactional</option>
+                  <option value="marketing">📣 Marketing</option>
                   <option value="alert">🔔 Alert</option>
-                  <option value="tip">💡 Tip</option>
                 </select>
               </div>
               <div class="form-field" style="grid-column:1/-1">
@@ -818,21 +816,21 @@
       <!-- ===== SUPPORT MESSAGES ===== -->
       <section id="supportView" class="view">
         <div class="view-header">
-          <h1>Destek Mesajları <span class="count-badge" id="supportCount">0</span></h1>
+          <h1>Contact Us <span class="count-badge" id="supportCount">0</span></h1>
           <div class="view-actions">
             <select class="field-select" id="supportStatusFilter" onchange="renderSupportMessages()">
-              <option value="">Tümü</option>
-              <option value="open">Yanıt Bekleyen</option>
-              <option value="replied">Admin Yazmış</option>
-              <option value="closed">Kapalı</option>
+              <option value="">All</option>
+              <option value="open">Needs Reply</option>
+              <option value="replied">Admin Replied</option>
+              <option value="closed">Closed</option>
             </select>
-            <button class="btn btn-ghost" onclick="loadSupportMessages()">Yenile</button>
-            <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Tüm yanıtlanmış mesajları sil">🗑 Yanıtlananları Sil</button>
+            <button class="btn btn-ghost" onclick="loadSupportMessages()">Refresh</button>
+            <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Delete all replied messages">🗑 Delete Replied</button>
           </div>
         </div>
         <div class="card">
           <div class="card-body" id="supportMessagesList">
-            <div class="placeholder">Yükleniyor...</div>
+            <div class="placeholder">Loading...</div>
           </div>
         </div>
       </section>
@@ -849,27 +847,27 @@
         <div class="view-header">
           <h1>Settings</h1>
           <div class="view-actions">
-            <button class="btn btn-primary" onclick="saveRemoteConfig()">💾 Kaydet</button>
-            <button class="btn btn-ghost" onclick="loadRemoteConfig()">Yenile</button>
+            <button class="btn btn-primary" onclick="saveRemoteConfig()">💾 Save</button>
+            <button class="btn btn-ghost" onclick="loadRemoteConfig()">Refresh</button>
           </div>
         </div>
 
         <!-- Feature Flags -->
         <div class="card">
-          <div class="card-title">🚩 Özellik Bayrakları</div>
+          <div class="card-title">🚩 Feature Flags</div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Açılışta Paywall Göster</label>
+              <label>Show Paywall on Start</label>
               <select class="input" id="rc_show_paywall_on_start">
-                <option value="false">Devre Dışı</option>
-                <option value="true">Aktif</option>
+                <option value="false">Disabled</option>
+                <option value="true">Enabled</option>
               </select>
             </div>
             <div class="form-field">
-              <label>Link Paste Özelliği</label>
+              <label>Link Paste Feature</label>
               <select class="input" id="rc_feature_link_paste_enabled">
-                <option value="true">Aktif</option>
-                <option value="false">Devre Dışı</option>
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
               </select>
             </div>
           </div>
@@ -877,26 +875,26 @@
 
         <!-- Free Tier Limits -->
         <div class="card">
-          <div class="card-title">📊 Ücretsiz Plan Limitleri</div>
+          <div class="card-title">📊 Free Plan Limits</div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Günlük AI Karşılaştırma</label>
+              <label>Daily AI Comparisons</label>
               <input class="input" type="number" id="rc_ai_comparison_limit_free" min="0" value="3">
             </div>
             <div class="form-field">
-              <label>Günlük Q Coin Havuzu</label>
+              <label>Daily Q Coin Pool</label>
               <input class="input" type="number" id="rc_free_daily_ai_credit_limit" min="0" value="10">
             </div>
             <div class="form-field">
-              <label>Günlük AI Soru</label>
+              <label>Daily AI Questions</label>
               <input class="input" type="number" id="rc_free_ai_question_limit" min="0" value="15">
             </div>
             <div class="form-field">
-              <label>Haftalık Link Paste</label>
+              <label>Weekly Link Paste</label>
               <input class="input" type="number" id="rc_free_link_paste_limit" min="0" value="3">
             </div>
             <div class="form-field">
-              <label>Aylık Abonelik Analizi</label>
+              <label>Monthly Subscription Analysis</label>
               <input class="input" type="number" id="rc_free_subscription_analysis_limit" min="0" value="2">
             </div>
           </div>
@@ -904,12 +902,41 @@
 
         <!-- Display Text -->
         <div class="card">
-          <div class="card-title">💬 Metin Ayarları</div>
+          <div class="card-title">💬 Display Text</div>
           <div class="form-grid">
             <div class="form-field">
-              <label>Premium Fiyat Gösterim Metni</label>
+              <label>Premium Price Display Text</label>
               <input class="input" type="text" id="rc_premium_price_display" placeholder="₺199.99 / year">
             </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔑 API Keys</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Gemini API Key</label><input class="input" type="password" id="rc_gemini_api_key" placeholder="Stored in public_config for server-side hooks"></div>
+            <div class="form-field"><label>DeepSeek API Key</label><input class="input" type="password" id="rc_deepseek_api_key" placeholder="Stored in public_config for server-side hooks"></div>
+            <div class="form-field"><label>Typesense Host</label><input class="input" type="text" id="rc_typesense_host" placeholder="https://search.example.com"></div>
+            <div class="form-field"><label>Typesense API Key</label><input class="input" type="password" id="rc_typesense_api_key" placeholder="Search write/read key"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🕒 Scraper Automation</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Scraper Frequency</label><select class="input" id="rc_scraper_frequency"><option value="manual">Manual</option><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div>
+            <div class="form-field"><label>Scraper Max Products / Run</label><input class="input" type="number" id="rc_scraper_max_products" min="1" value="200"></div>
+            <div class="form-field"><label>Scraper Parallel Channels</label><input class="input" type="number" id="rc_scraper_channels" min="1" max="5" value="3"></div>
+            <div class="form-field"><label>Auto Map New Categories</label><select class="input" id="rc_scraper_auto_map_categories"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🛠 Maintenance</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Global Maintenance Mode</label><select class="input" id="rc_maintenance_mode"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
+            <div class="form-field"><label>Read-only Admin Mode</label><select class="input" id="rc_admin_readonly"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
+            <div class="form-field" style="grid-column:1/-1"><label>Maintenance Message</label><input class="input" type="text" id="rc_maintenance_message" placeholder="Short message shown in the app"></div>
           </div>
         </div>
 

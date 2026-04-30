@@ -1604,7 +1604,7 @@ async function loadUserQuizzes(uid){
     const onboardingEntries=buildUserOnboardingEntries(u,latestTrackedAnswers);
 
     if(!newQuizHistory.length&&!onboardingEntries.length&&!answerHistory.length){
-      el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>Henüz quiz çözülmemiş</div></div>`;
+      el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🧠</div><div>No quiz data yet.</div></div>`;
       el.dataset.loaded='1';
       return;
     }
@@ -1615,15 +1615,15 @@ async function loadUserQuizzes(uid){
     let html='';
 
     if(onboardingEntries.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Kullanıcı Tanıma Quiz Özeti</div>${renderUserSummaryGrid(onboardingEntries,'Henüz onboarding cevabı kaydedilmemiş.')}</div>`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">🧠 Onboarding Quiz Summary</div>${renderUserSummaryGrid(onboardingEntries,'No onboarding answers saved yet.')}</div>`;
     }
 
     if(latestTrackedAnswers.length){
-      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📝 Son Cevaplanan Quiz Soruları</div>${latestTrackedAnswers.map(answer=>`<div style="margin-bottom:6px;font-size:11px"><span style="color:var(--text2)">${escHtml(answer.question||answer.label||'Soru')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(answer.answer||answer.selectedOption||answer.value||'—')}</span></div>`).join('')}</div>`;
+      html+=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:12px">📝 Latest Quiz Answers</div>${latestTrackedAnswers.map(answer=>`<div style="margin-bottom:6px;font-size:11px"><span style="color:var(--text2)">${escHtml(answer.question||answer.label||'Question')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(answer.answer||answer.selectedOption||answer.value||'—')}</span></div>`).join('')}</div>`;
     }
 
     if(newQuizHistory.length){
-      html+=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${newQuizHistory.length}</div><div class="metric-tile-label">Oturum</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Ortalama Skor</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.mode==='compare')).length}</div><div class="metric-tile-label">Karşılaştırma Quiz</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.type==='subscription'||q.mode==='subscription')).length}</div><div class="metric-tile-label">Abonelik Quiz</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧠 Quiz Dağılımı</div><div class="chart-shell" style="height:220px"><canvas id="userQuizTypeChartCanvas"></canvas></div></div>`;
+      html+=`<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${newQuizHistory.length}</div><div class="metric-tile-label">Sessions</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Average Score</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.mode==='compare')).length}</div><div class="metric-tile-label">Compare Quizzes</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(newQuizHistory.filter(q=>q.type==='subscription'||q.mode==='subscription')).length}</div><div class="metric-tile-label">Subscription Quizzes</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🧠 Quiz Distribution</div><div class="chart-shell" style="height:220px"><canvas id="userQuizTypeChartCanvas"></canvas></div></div>`;
     }
 
     for(const d of newQuizHistory){
@@ -1632,14 +1632,22 @@ async function loadUserQuizzes(uid){
       const scoreColor=score>=80?'#22c55e':score>=60?'#f59e0b':'#ef4444';
       const answers=d.answers||[];
       const questions=safeArray(d.questions);
-      const mode=d.mode==='compare'?'🔀 Karşılaştırma':'🔍 Tekil';
-      const status=d.status==='generated'?'Hazırlandı':d.status==='completed'?'Tamamlandı':'Kaydedildi';
-      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${escHtml(d.category||'Quiz Oturumu')} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode} · ${escHtml(status)}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score==='—'?'—':score+'%'}</div></div>`;
+      const mode=d.mode==='onboarding'?'Onboarding':d.mode==='compare'?'Compare':'Single';
+      const status=d.status==='generated'?'Generated':d.status==='completed'?'Completed':'Saved';
+      html+=`<div class="card" style="margin:0 0 12px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-size:12px;font-weight:700">${escHtml(d.category||'Quiz Session')} <span style="font-size:10px;color:var(--text3);font-weight:400">${mode} · ${escHtml(status)}</span></div><div style="font-size:10px;color:var(--text3)">${date}</div></div><div style="background:${scoreColor}20;color:${scoreColor};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700">${score==='—'?'—':score+'%'}</div></div>`;
       if(d.productUrl)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.productUrl)}</div>`;
       if(d.productUrls&&d.productUrls.length)for(const url of d.productUrls)html+=`<div style="font-size:10px;color:var(--primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(url)}</div>`;
       if(questions.length){
         html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
         for(const q of questions)html+=`<div style="margin-bottom:7px;font-size:11px"><div style="color:var(--text2);font-weight:600">${escHtml(q.question||'—')}</div>${safeArray(q.options).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${safeArray(q.options).map(opt=>`<span class="feature-pill ghost">${escHtml(opt)}</span>`).join('')}</div>`:''}</div>`;
+        html+=`</div>`;
+      }
+      if(d.groupedAnswers&&Object.keys(safeMap(d.groupedAnswers)).length){
+        html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
+        for(const [group,items] of Object.entries(safeMap(d.groupedAnswers))){
+          html+=`<div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin:8px 0 4px">${escHtml(group.replace(/[_-]+/g,' '))}</div>`;
+          for(const a of safeArray(items))html+=`<div style="margin-bottom:4px;font-size:11px"><span style="color:var(--text2)">${escHtml(a.question||'—')}</span><span style="color:var(--primary);font-weight:600;margin-left:6px">${escHtml(a.answer||a.selectedOption||'—')}</span></div>`;
+        }
         html+=`</div>`;
       }
       if(answers.length){
@@ -2546,6 +2554,17 @@ const RC_KEYS = [
   { id: 'rc_free_link_paste_limit',            key: 'free_link_paste_limit',            type: 'int',    def: 3     },
   { id: 'rc_free_subscription_analysis_limit',key: 'free_subscription_analysis_limit', type: 'int',    def: 2     },
   { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
+  { id: 'rc_gemini_api_key',                  key: 'gemini_api_key',                   type: 'string', def: '' },
+  { id: 'rc_deepseek_api_key',                key: 'deepseek_api_key',                 type: 'string', def: '' },
+  { id: 'rc_typesense_host',                  key: 'typesense_host',                   type: 'string', def: '' },
+  { id: 'rc_typesense_api_key',               key: 'typesense_api_key',                type: 'string', def: '' },
+  { id: 'rc_scraper_frequency',               key: 'scraper_frequency',                type: 'string', def: 'manual' },
+  { id: 'rc_scraper_max_products',            key: 'scraper_max_products',             type: 'int',    def: 200 },
+  { id: 'rc_scraper_channels',                key: 'scraper_channels',                 type: 'int',    def: 3 },
+  { id: 'rc_scraper_auto_map_categories',     key: 'scraper_auto_map_categories',      type: 'bool',   def: true },
+  { id: 'rc_maintenance_mode',                key: 'maintenance_mode',                 type: 'bool',   def: false },
+  { id: 'rc_admin_readonly',                  key: 'admin_readonly',                   type: 'bool',   def: false },
+  { id: 'rc_maintenance_message',             key: 'maintenance_message',              type: 'string', def: '' },
 ];
 
 const AI_PROMPT_DEFS = [

@@ -605,8 +605,12 @@ class AuthRepository {
     required Map<String, dynamic> quizData,
   }) async {
     try {
+      final quizHistoryEntry = quizData.remove('quizHistoryEntry');
       quizData['quizCompleted'] = true;
       await _pbDS.updateUser(uid, quizData);
+      if (quizHistoryEntry is Map<String, dynamic>) {
+        await _pbDS.saveQuizHistory(uid, quizHistoryEntry);
+      }
 
       // Reflect quizCompleted=true in the local authStore so router redirect
       // does not loop back to /quiz after the user finishes.

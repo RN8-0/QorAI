@@ -14,8 +14,10 @@ onRecordAfterCreateSuccess(function (e) {
 
     const recipientId = record.get("recipientId");
     const title = record.get("title");
-    const body = record.get("body");
-    const type = record.get("type") || "system";
+    const body = record.get("body") || "";
+    const type = record.get("type") || "transactional";
+    const language = record.get("language") || "";
+    const referenceId = record.get("referenceId") || "";
     const notifId = record.id;
 
     if (!recipientId || !title) return;
@@ -62,8 +64,10 @@ onRecordAfterCreateSuccess(function (e) {
           body: body,
         },
         data: {
-          type: type,
-          notificationId: notifId,
+          type: String(type),
+          notificationId: String(notifId),
+          referenceId: String(referenceId),
+          language: String(language),
           click_action: "FLUTTER_NOTIFICATION_CLICK",
         },
         android: {
@@ -102,6 +106,17 @@ onRecordAfterCreateSuccess(function (e) {
       console.log("[notify_fcm] Sent to", recipientId, "- OK");
     } else {
       console.log("[notify_fcm] FCM error " + resp.statusCode + ":", resp.raw);
+      const raw = String(resp.raw || "");
+      if (raw.indexOf("UNREGISTERED") !== -1 || raw.indexOf("INVALID_ARGUMENT") !== -1 || raw.indexOf("NOT_FOUND") !== -1) {
+        try {
+          user.set("fcmToken", "");
+          user.set("fcmTokenUpdatedAt", "");
+          $app.save(user);
+          console.log("[notify_fcm] Cleared invalid FCM token for", recipientId);
+        } catch (clearErr) {
+          console.log("[notify_fcm] Failed to clear invalid token:", clearErr);
+        }
+      }
     }
   } catch (e) {
     console.log("[notify_fcm] Fatal error:", e);
@@ -125,8 +140,17 @@ onRecordAfterUpdateSuccess(function (e) {
     if (!userId) return;
 
     const isAdminMessage = status === 'admin_message';
-    const notifType = isAdminMessage ? 'admin_message' : 'support_reply';
+    const notifType = 'transactional';
     const notifBody = adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply;
+    let language = 'en';
+    try {
+      const user = $app.findRecordById('users', userId);
+      const rawLang = String(user.get('language') || user.get('locale') || '').toLowerCase();
+      language = rawLang.indexOf('tr') === 0 ? 'tr' : 'en';
+    } catch (_) {}
+    const notifTitle = language === 'tr'
+      ? (isAdminMessage ? 'Qor AI Destek yeni mesaj gönderdi' : 'Qor AI Destek mesajınızı yanıtladı')
+      : (isAdminMessage ? 'New message from Qor AI Support' : 'Qor AI Support replied to your message');
 
     const parseChatMessages = (value) => {
       try {
@@ -165,12 +189,13 @@ onRecordAfterUpdateSuccess(function (e) {
     const notif = new Record(notifCol);
     notif.set('recipientId', userId);
     notif.set('senderId', 'admin');
-    notif.set('senderName', 'Qor AI Destek');
+    notif.set('senderName', 'Qor AI Support');
     notif.set('type', notifType);
-    notif.set('title', isAdminMessage ? 'Qor AI Destek\'ten yeni mesaj' : 'Mesajınıza yanıt geldi');
+    notif.set('title', notifTitle);
     notif.set('body', notifBody);
     notif.set('referenceId', record.id);
     notif.set('read', false);
+    try { notif.set('language', language); } catch (_) {}
     $app.save(notif);
 
     console.log('[notify_fcm] Support reply notification created for user', userId);

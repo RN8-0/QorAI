@@ -2386,9 +2386,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           SizedBox(
             width: double.infinity,
             child: GestureDetector(
-              onTap: _isSubmitting || !canContinue
-                  ? null
-                  : _goNext,
+              onTap: _isSubmitting || !canContinue ? null : _goNext,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 18),
@@ -2396,23 +2394,27 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   gradient: canContinue ? AppTheme.primaryGradient : null,
                   color: canContinue ? null : _buttonDisabledBg,
                   borderRadius: BorderRadius.circular(22),
-                  boxShadow: canContinue ? [
-                    BoxShadow(
-                      color: AppTheme.brandCyan.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ] : null,
+                  boxShadow: canContinue
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.brandCyan.withValues(alpha: 0.35),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: _isSubmitting
-                    ? Center(child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                    ? Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         ),
-                      ))
+                      )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -2423,7 +2425,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: canContinue ? Colors.white : _buttonDisabledFg,
+                              color: canContinue
+                                  ? Colors.white
+                                  : _buttonDisabledFg,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -2432,7 +2436,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                 ? Icons.auto_awesome_rounded
                                 : Icons.arrow_forward_rounded,
                             size: 20,
-                            color: canContinue ? Colors.white : _buttonDisabledFg,
+                            color: canContinue
+                                ? Colors.white
+                                : _buttonDisabledFg,
                           ),
                         ],
                       ),
@@ -2605,6 +2611,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       return;
     }
 
+    final primaryCategory = _interestCategories.isNotEmpty
+        ? _interestCategories.first
+        : 'smartphones';
+    final answerSnapshot = _buildQuizAnswerSnapshot();
+    final submittedAt = DateTime.now().toIso8601String();
     final payload = <String, dynamic>{
       'ageRange': _ageRange,
       'ecosystem': _ecosystem,
@@ -2620,9 +2631,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       'interestCategories': _interestCategories,
       'usageIntent': _usageIntent ?? 'all',
       'profession': _profession,
-      'primaryCategory': _interestCategories.isNotEmpty
-          ? _interestCategories.first
-          : 'smartphones',
+      'primaryCategory': primaryCategory,
+      'profileVector': _buildOnboardingProfileVector(primaryCategory),
+      'quizHistoryEntry': {
+        'type': 'onboarding',
+        'mode': 'onboarding',
+        'category': primaryCategory,
+        'score': 100,
+        'timestamp': submittedAt,
+        'questionCount': answerSnapshot.length,
+        'answers': answerSnapshot,
+        'groupedAnswers': _buildGroupedQuizAnswers(answerSnapshot),
+      },
     };
 
     final result = await ref
@@ -2635,12 +2655,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
     switch (result) {
       case Success():
-        ref.read(behaviorTrackingProvider).trackQuizAnswers(
-          category: _interestCategories.isNotEmpty
-              ? _interestCategories.first
-              : 'smartphones',
-          answeredQuestions: _buildQuizAnswerSnapshot(),
-        );
+        ref
+            .read(behaviorTrackingProvider)
+            .trackQuizAnswers(
+              category: primaryCategory,
+              answeredQuestions: answerSnapshot,
+            );
         ref.invalidate(userProfileProvider);
         ref.invalidate(homeFeedProvider);
         ref.invalidate(categoryCoversProvider);
@@ -2718,6 +2738,66 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     }
 
     return answers;
+  }
+
+  Map<String, double> _buildOnboardingProfileVector(String primaryCategory) {
+    final vector = <String, double>{
+      'budget_score': switch (_budgetRange) {
+        'budget' => 0.2,
+        'mid' => 0.5,
+        'premium' => 0.8,
+        'luxury' => 1.0,
+        _ => 0.5,
+      },
+      'apple_affinity': _ecosystem == 'apple' ? 1.0 : 0.0,
+      'android_affinity': _ecosystem == 'android' || _ecosystem == 'samsung'
+          ? 1.0
+          : 0.0,
+      'windows_affinity': _ecosystem == 'windows' ? 1.0 : 0.0,
+      'google_affinity': _ecosystem == 'google' ? 1.0 : 0.0,
+      'primary_$primaryCategory': 1.0,
+    };
+
+    for (final category in _interestCategories) {
+      vector['category_$category'] = category == primaryCategory ? 1.0 : 0.75;
+    }
+    for (final priority in _priorities) {
+      vector['priority_$priority'] = 1.0;
+    }
+    for (final device in _currentDevices) {
+      vector['device_$device'] = 1.0;
+    }
+    for (final subscription in _subscriptions.where((item) => item != 'none')) {
+      vector['subscription_$subscription'] = 1.0;
+    }
+    if (_usageIntent != null) vector['usage_${_usageIntent!}'] = 1.0;
+    if (_profession != null) vector['profession_${_profession!}'] = 1.0;
+    if (_ageRange != null) vector['age_${_ageRange!}'] = 1.0;
+
+    return vector;
+  }
+
+  Map<String, List<Map<String, dynamic>>> _buildGroupedQuizAnswers(
+    List<Map<String, dynamic>> answers,
+  ) {
+    const groups = {
+      'interestCategories': 'interests',
+      'ecosystem': 'profile',
+      'budgetRange': 'profile',
+      'usageIntent': 'profile',
+      'ageRange': 'profile',
+      'profession': 'profile',
+      'priorities': 'preferences',
+      'currentDevices': 'devices',
+      'subscriptions': 'subscriptions',
+    };
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final answer in answers) {
+      final field = answer['field']?.toString() ?? '';
+      final group = groups[field] ?? 'other';
+      grouped.putIfAbsent(group, () => <Map<String, dynamic>>[]).add(answer);
+    }
+    return grouped;
   }
 
   String _quizAnswerLabel(_QuizStep step, String value) {
@@ -3481,14 +3561,10 @@ class _HomePreparationScreen extends StatefulWidget {
   final bool isTurkish;
   final VoidCallback onDone;
 
-  const _HomePreparationScreen({
-    required this.isTurkish,
-    required this.onDone,
-  });
+  const _HomePreparationScreen({required this.isTurkish, required this.onDone});
 
   @override
-  State<_HomePreparationScreen> createState() =>
-      _HomePreparationScreenState();
+  State<_HomePreparationScreen> createState() => _HomePreparationScreenState();
 }
 
 class _HomePreparationScreenState extends State<_HomePreparationScreen>
@@ -3522,12 +3598,15 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2800),
     );
-    _progress = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _progress = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
     _ctrl.addListener(() {
-      final idx = (_ctrl.value * (_steps.length - 1)).floor()
-          .clamp(0, _steps.length - 1);
+      final idx = (_ctrl.value * (_steps.length - 1)).floor().clamp(
+        0,
+        _steps.length - 1,
+      );
       if (idx != _stepIndex && mounted) {
         setState(() => _stepIndex = idx);
       }
@@ -3551,17 +3630,14 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF0A0F1E) : const Color(0xFFF0F4FF);
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
-    final textSecondary =
-        isDark ? Colors.white60 : const Color(0xFF475569);
+    final textSecondary = isDark ? Colors.white60 : const Color(0xFF475569);
 
     return Scaffold(
       backgroundColor: bg,
       body: Stack(
         children: [
           // Soft background glow
-          Positioned.fill(
-            child: CustomPaint(painter: _GlowPainter()),
-          ),
+          Positioned.fill(child: CustomPaint(painter: _GlowPainter())),
           SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -3645,10 +3721,7 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
                       ? 'Ana sayfa kişisel kullanım için hazırlanıyor'
                       : 'Preparing homepage for personal use',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 13, color: textSecondary),
                 ),
                 const Spacer(flex: 3),
                 // Qor AI brand mark
@@ -3657,8 +3730,11 @@ class _HomePreparationScreenState extends State<_HomePreparationScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.compare_arrows_rounded,
-                          size: 16, color: AppTheme.brandCyan),
+                      Icon(
+                        Icons.compare_arrows_rounded,
+                        size: 16,
+                        color: AppTheme.brandCyan,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Qor AI',
@@ -3692,10 +3768,7 @@ class _GlowPainter extends CustomPainter {
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      paint,
-    );
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
   }
 
   @override

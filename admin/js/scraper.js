@@ -100,6 +100,36 @@ function categorySlugFromUrl(url) {
   } catch { return ''; }
 }
 
+function normalizeCategoryToken(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\.html$/i, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function findCategoryByEpeyUrl(url) {
+  const cats = (typeof window !== 'undefined' && window.QorAiCategories)
+    ? window.QorAiCategories.getAll()
+    : [];
+  if (!cats.length) return null;
+
+  const categorySlug = normalizeCategoryToken(categorySlugFromUrl(url));
+  const productSlug = normalizeCategoryToken(slugFromUrl(url));
+  const matchTokens = new Set([categorySlug, productSlug].filter(Boolean));
+
+  return cats.find((cat) => {
+    const epeyPath = normalizeCategoryToken(cat.epeyPath || '');
+    const epeyRoot = normalizeCategoryToken(String(cat.epeyPath || '').split('/')[0] || '');
+    const id = normalizeCategoryToken(cat.id || '');
+    const name = normalizeCategoryToken(cat.name || '');
+    if (matchTokens.has(epeyPath) || matchTokens.has(epeyRoot) || matchTokens.has(id) || matchTokens.has(name)) return true;
+    if (categorySlug && (epeyPath.startsWith(categorySlug + '-') || categorySlug.startsWith(epeyRoot + '-'))) return true;
+    return false;
+  }) || null;
+}
+
 // ═══════════════════════════════════════
 //  3. PROXY FETCH WITH RETRY
 // ═══════════════════════════════════════
@@ -123,9 +153,9 @@ async function checkProxy() {
 async function copyProxyCommand() {
   try {
     await navigator.clipboard.writeText(PROXY_START_COMMAND);
-    toast('Proxy baslatma komutu panoya kopyalandi.', 's');
+    toast('Proxy start command copied to clipboard.', 's');
   } catch (_) {
-    toast(`Komutu elle calistir: ${PROXY_START_COMMAND}`, 'i', 6000);
+    toast(`Run this command manually: ${PROXY_START_COMMAND}`, 'i', 6000);
   }
 }
 
@@ -181,10 +211,10 @@ function switchScraperTab(btn) {
 function populateScraperCategories() {
   if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
 
-  // Build grouped options HTML for bulk scrape (value = epeyPath)
-  let bulkOpts = '<option value="">— Kategori Seçin —</option>';
+  // Build grouped options HTML for bulk scrape (value = category id)
+  let bulkOpts = '<option value="">Select Category</option>';
   // Build flat options for other dropdowns (value = category id)
-  let flatOpts = '<option value="">Tüm Kategoriler</option>';
+  let flatOpts = '<option value="">All Categories</option>';
 
   QorAiCategories.groups.forEach(group => {
     bulkOpts += `<optgroup label="${escHtml(group.name)}">`;
@@ -210,7 +240,7 @@ function populateScraperCategories() {
   // Score Engine v2 category (keep "All Categories" first option)
   const scoreEngSel = document.getElementById('scoreEngineCategory');
   if (scoreEngSel) {
-    scoreEngSel.innerHTML = '<option value="">Tüm Kategoriler</option>' + flatOpts;
+    scoreEngSel.innerHTML = flatOpts;
   }
 
   // Product update category
@@ -837,11 +867,8 @@ async function scrapeProductDetail(html, url, categoryId) {
   // ── Category ──
   let category = categoryId || '';
   if (!category) {
-    const catSlug = categorySlugFromUrl(url);
-    const cats = (typeof window !== 'undefined' && window.QorAiCategories)
-      ? window.QorAiCategories.getAll() : [];
-    const found = cats.find(c => c.epeyPath === catSlug || c.epeyPath.split('/')[0] === catSlug);
-    category = found ? found.id : catSlug;
+    const found = findCategoryByEpeyUrl(url);
+    category = found ? found.id : categorySlugFromUrl(url);
   }
 
   // ── Tech Score ──
@@ -1377,6 +1404,7 @@ async function startBulkScrape() {
 
 async function scrapeByUrl() {
   const urlInput = document.getElementById('scrapeUrl');
+  const selectedCategory = document.getElementById('singleUrlCategory')?.value || '';
   const url = urlInput ? urlInput.value.trim() : '';
   if (!url) { toast('Enter a URL', 'w'); return; }
   if (!url.includes('epey.com')) { toast('Only epey.com URLs are supported', 'e'); return; }
@@ -1395,7 +1423,9 @@ async function scrapeByUrl() {
       return;
     }
 
-    const product = await scrapeProductDetail(html, url);
+    const autoCategory = selectedCategory || findCategoryByEpeyUrl(url)?.id || '';
+    if (autoCategory) slog(`Category mapped: ${autoCategory}`, 'info');
+    const product = await scrapeProductDetail(html, url, autoCategory);
     if (!product) {
       slog('Failed to parse product. The page may have redirected or has no content.', 'error');
       toast('Failed to parse product', 'e');
