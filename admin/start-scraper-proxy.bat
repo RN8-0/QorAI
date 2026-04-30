@@ -16,6 +16,10 @@ if not exist "%ROOT%\scripts\scraper-proxy.js" (
 )
 
 if not exist "%ROOT%\scripts\scraper-proxy.js" (
+  if exist "%USERPROFILE%\Desktop\Qor AI\scripts\scraper-proxy.js" set "ROOT=%USERPROFILE%\Desktop\Qor AI"
+)
+
+if not exist "%ROOT%\scripts\scraper-proxy.js" (
   echo.
   echo Default project folder was not found: "%DEFAULT_ROOT%"
   set /p ROOT=Qor AI project folder path: 
