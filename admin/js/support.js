@@ -82,6 +82,7 @@ function _removeSupportMessage(id) {
 function _parseChatMessages(m) {
   let raw = m.chatMessages;
   if (typeof raw === 'string' && raw) { try { raw = JSON.parse(raw); } catch (_) { raw = []; } }
+  if (!Array.isArray(raw) && raw != null) { try { raw = JSON.parse(String(raw)); } catch (_) { raw = []; } }
   if (Array.isArray(raw) && raw.length) return raw;
   // Backwards compat
   const list = [];
@@ -390,23 +391,19 @@ async function sendSupportChatReply(messageId, userId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Gönderiliyor...'; }
 
   try {
-    // Mevcut chatMessages'a admin mesajı ekle
-    let chatMsgs = _parseChatMessages(m || {});
-    if (chatMsgs.length === 0 && m) {
-      // Eski kayıttan dönüştür
-      const msg = _normalizeSupportText(m.message);
-      if (msg) chatMsgs.push({ role: m.status === 'admin_message' ? 'admin' : 'user', text: msg, ts: m.created || '' });
-      const reply = _normalizeSupportText(m.adminReply);
-      if (reply) chatMsgs.push({ role: 'admin', text: reply, ts: m.repliedAt || m.created || '' });
-    }
-    chatMsgs.push({ role: 'admin', text: replyText, ts: new Date().toISOString() });
+    const latest = await getPb().collection('support_messages').getOne(messageId, { $autoCancel: false });
+    const base = latest || m || {};
+    const chatMsgs = _parseChatMessages(base);
+    const now = new Date().toISOString();
+    chatMsgs.push({ role: 'admin', text: replyText, ts: now });
 
     // DB güncelle
     await pbUpdateDoc('support_messages', messageId, {
-      chatMessages: JSON.stringify(chatMsgs),
+      chatMessages: chatMsgs,
       status: 'replied',
       adminReply: replyText,
-      repliedAt: new Date().toISOString(),
+      repliedAt: now,
+      userId: resolvedUserId,
     });
 
     // Local güncelle
@@ -414,10 +411,10 @@ async function sendSupportChatReply(messageId, userId) {
     if (idx !== -1) {
       _supportMessages[idx] = {
         ..._supportMessages[idx],
-        chatMessages: JSON.stringify(chatMsgs),
+        chatMessages: chatMsgs,
         status: 'replied',
         adminReply: replyText,
-        repliedAt: new Date().toISOString(),
+        repliedAt: now,
         userId: resolvedUserId,
       };
     }
@@ -492,7 +489,7 @@ async function _openNewAdminMessageForUser(uid) {
       userId: uid, displayName, email,
       message: text.trim(), status: 'admin_message',
       adminReply: '', repliedAt: new Date().toISOString(),
-      chatMessages: JSON.stringify([{ role: 'admin', text: text.trim(), ts: new Date().toISOString() }]),
+      chatMessages: [{ role: 'admin', text: text.trim(), ts: new Date().toISOString() }],
       banned: false,
     });
     await getPb().collection('notifications').create({

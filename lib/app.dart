@@ -62,10 +62,16 @@ class QorAiApp extends ConsumerWidget {
           child: Stack(
             children: [
               _NotificationOverlay(child: child ?? const SizedBox.shrink()),
-              const Positioned.fill(
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: FloatingAiAssistantOverlay(),
+              Positioned.fill(
+                child: Overlay(
+                  initialEntries: [
+                    OverlayEntry(
+                      builder: (_) => const Material(
+                        type: MaterialType.transparency,
+                        child: FloatingAiAssistantOverlay(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

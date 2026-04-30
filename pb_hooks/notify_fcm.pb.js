@@ -128,16 +128,38 @@ onRecordAfterUpdateSuccess(function (e) {
     const notifType = isAdminMessage ? 'admin_message' : 'support_reply';
     const notifBody = adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply;
 
-    // Skip only exact duplicates. A thread can receive multiple admin replies,
-    // and each distinct reply must notify the user.
-    try {
-      $app.findFirstRecordByFilter(
-        'notifications',
-        'referenceId = {:referenceId} && type = {:type} && body = {:body}',
-        { referenceId: record.id, type: notifType, body: notifBody },
-      );
-      return;
-    } catch (_) {}
+    const parseChatMessages = (value) => {
+      try {
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string' && value.trim()) {
+          const decoded = JSON.parse(value);
+          if (Array.isArray(decoded)) return decoded;
+        }
+        if (value != null) {
+          const decoded = JSON.parse(String(value));
+          if (Array.isArray(decoded)) return decoded;
+        }
+      } catch (_) {}
+      return [];
+    };
+    const lastAdminMessage = (rec) => {
+      if (!rec) return null;
+      const chat = parseChatMessages(rec.get('chatMessages'));
+      for (let i = chat.length - 1; i >= 0; i--) {
+        const item = chat[i] || {};
+        if (String(item.role || '').toLowerCase() === 'admin') return item;
+      }
+      const fallbackText = rec.getString('adminReply');
+      if (!fallbackText) return null;
+      return { role: 'admin', text: fallbackText, ts: rec.getString('repliedAt') || rec.get('updated') || '' };
+    };
+    const currentAdmin = lastAdminMessage(record);
+    const previousAdmin = lastAdminMessage(e.originalRecord);
+    if (previousAdmin && currentAdmin) {
+      const currentKey = String(currentAdmin.text || '') + '|' + String(currentAdmin.ts || '');
+      const previousKey = String(previousAdmin.text || '') + '|' + String(previousAdmin.ts || '');
+      if (currentKey === previousKey) return;
+    }
 
     const notifCol = $app.findCollectionByNameOrId('notifications');
     const notif = new Record(notifCol);
@@ -186,6 +208,10 @@ routerAdd('POST', '/api/support/contact', (e) => {
         if (Array.isArray(value)) return value;
         if (typeof value === 'string' && value.trim()) {
           const decoded = JSON.parse(value);
+          if (Array.isArray(decoded)) return decoded;
+        }
+        if (value != null) {
+          const decoded = JSON.parse(String(value));
           if (Array.isArray(decoded)) return decoded;
         }
       } catch (_) {}
@@ -247,7 +273,7 @@ routerAdd('POST', '/api/support/contact', (e) => {
       record.set('email', email);
       record.set('message', message);
       record.set('status', 'open');
-      record.set('chatMessages', JSON.stringify(chat));
+      record.set('chatMessages', chat);
       record.set('repliedAt', now);
       $app.save(record);
 
@@ -267,7 +293,7 @@ routerAdd('POST', '/api/support/contact', (e) => {
     record.set('message', message);
     record.set('status', 'open');
     record.set('adminReply', '');
-    record.set('chatMessages', JSON.stringify([{ role: 'user', text: message, ts: now }]));
+    record.set('chatMessages', [{ role: 'user', text: message, ts: now }]);
     $app.save(record);
 
     return e.json(200, {

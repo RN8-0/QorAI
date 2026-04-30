@@ -121,6 +121,7 @@ class PbDataSource {
     String topic = '*',
     required Future<T> Function() load,
     bool Function(RecordSubscriptionEvent event)? shouldReload,
+    Duration pollingInterval = const Duration(seconds: 45),
   }) {
     late final StreamController<T> controller;
     UnsubscribeFunc? unsubscribe;
@@ -139,7 +140,7 @@ class PbDataSource {
 
     void startPolling() {
       pollingTimer?.cancel();
-      pollingTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      pollingTimer = Timer.periodic(pollingInterval, (_) {
         unawaited(emitSnapshot());
       });
     }
@@ -1547,10 +1548,15 @@ class PbDataSource {
         final decoded = jsonDecode(rawChatMessages);
         if (decoded is List) raw = decoded;
       } catch (_) {}
+    } else if (rawChatMessages != null) {
+      try {
+        final decoded = jsonDecode(rawChatMessages.toString());
+        if (decoded is List) raw = decoded;
+      } catch (_) {}
     }
 
     if (raw.isNotEmpty) {
-      return raw
+      final parsed = raw
           .whereType<Map>()
           .map((message) {
             final role = _normalizeSupportRole(message['role']);
@@ -1560,9 +1566,30 @@ class PbDataSource {
           })
           .where((message) => message['text']!.isNotEmpty)
           .toList();
+      if (parsed.isNotEmpty) return parsed;
     }
 
-    return const [];
+    final messages = <Map<String, dynamic>>[];
+    final status = data['status']?.toString() ?? '';
+    final message = data['message']?.toString().trim() ?? '';
+    final adminReply = data['adminReply']?.toString().trim() ?? '';
+    final created = data['created']?.toString() ?? '';
+    final repliedAt = data['repliedAt']?.toString() ?? '';
+    if (message.isNotEmpty) {
+      messages.add({
+        'role': status == 'admin_message' ? 'admin' : 'user',
+        'text': message,
+        'ts': created,
+      });
+    }
+    if (adminReply.isNotEmpty) {
+      messages.add({
+        'role': 'admin',
+        'text': adminReply,
+        'ts': repliedAt.isNotEmpty ? repliedAt : created,
+      });
+    }
+    return messages;
   }
 
   String _normalizeSupportRole(dynamic rawRole) {
@@ -1595,21 +1622,12 @@ class PbDataSource {
           type == 'support_sent';
     }
 
-    final dismissedSupportIds = notifications
-        .where((item) => item['type'] == 'dismissed_support')
-        .map((item) => item['referenceId']?.toString().trim() ?? '')
-        .where((value) => value.isNotEmpty)
-        .toSet();
-
     final merged = <Map<String, dynamic>>[];
     final supportByReference = <String, Map<String, dynamic>>{};
 
     for (final item in [...notifications, ...supportFallbacks]) {
       if (item['type'] == 'dismissed_support') continue;
       final referenceId = item['referenceId']?.toString().trim() ?? '';
-      if (referenceId.isNotEmpty && dismissedSupportIds.contains(referenceId)) {
-        continue;
-      }
 
       if (referenceId.isNotEmpty && isSupportItem(item)) {
         final previous = supportByReference[referenceId];
@@ -1800,23 +1818,6 @@ class PbDataSource {
         for (final item in existing.items) {
           await _pb.collection('notifications').delete(item.id);
         }
-        final uid = _pb.authStore.record?.id ?? '';
-        if (uid.isNotEmpty) {
-          await _pb
-              .collection('notifications')
-              .create(
-                body: {
-                  'recipientId': uid,
-                  'senderId': uid,
-                  'senderName': 'Qor AI',
-                  'type': 'dismissed_support',
-                  'title': '',
-                  'body': '',
-                  'referenceId': supportId,
-                  'read': true,
-                },
-              );
-        }
       }
 
       if (notificationId.startsWith('support_')) {
@@ -1933,6 +1934,7 @@ class PbDataSource {
       collection: 'support_messages',
       topic: messageId,
       load: () => getSupportThread(messageId),
+      pollingInterval: const Duration(seconds: 3),
     );
   }
 

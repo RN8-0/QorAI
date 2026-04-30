@@ -568,6 +568,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                     textCapitalization: TextCapitalization.none,
                     autocorrect: false,
                     enableSuggestions: false,
+                    enableInteractiveSelection: false,
                     enableIMEPersonalizedLearning: false,
                     autofillHints: const <String>[],
                     smartDashesType: SmartDashesType.disabled,

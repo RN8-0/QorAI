@@ -85,7 +85,16 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
     setState(() {
       _sending = true;
       _errorText = null;
+      _pendingMessages.add(
+        _ChatMessage(
+          role: 'user',
+          text: text,
+          ts: DateTime.now().toIso8601String(),
+        ),
+      );
     });
+    _inputCtrl.clear();
+    _scrollToBottom();
 
     try {
       await ref
@@ -95,24 +104,16 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
             replyText: text,
             userId: uid,
           );
-      final optimistic = _ChatMessage(
-        role: 'user',
-        text: text,
-        ts: DateTime.now().toIso8601String(),
-      );
-      if (mounted) {
-        setState(() {
-          _pendingMessages.add(optimistic);
-        });
-      }
-      _inputCtrl.clear();
       ref.invalidate(notificationsProvider);
-      ref.invalidate(supportThreadProvider(widget.supportMessageId));
       _scrollToBottom();
     } catch (e) {
-      setState(
-        () => _errorText = e.toString().replaceFirst('ServerException: ', ''),
-      );
+      setState(() {
+        _pendingMessages.removeWhere(
+          (message) => message.role == 'user' && message.text == text,
+        );
+        _inputCtrl.text = text;
+        _errorText = e.toString().replaceFirst('ServerException: ', '');
+      });
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -460,6 +461,11 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
     } else if (rawChatMessages is String && rawChatMessages.isNotEmpty) {
       try {
         final decoded = jsonDecode(rawChatMessages);
+        if (decoded is List) raw = decoded;
+      } catch (_) {}
+    } else if (rawChatMessages != null) {
+      try {
+        final decoded = jsonDecode(rawChatMessages.toString());
         if (decoded is List) raw = decoded;
       } catch (_) {}
     }
