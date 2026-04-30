@@ -10,6 +10,8 @@
         android:maxSdkVersion="32" />
     <!-- Push notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Required for Firebase Messaging on Android 13+ (AD_ID policy declaration) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     <application
         android:label="Qor AI"
         android:name="${applicationName}"
