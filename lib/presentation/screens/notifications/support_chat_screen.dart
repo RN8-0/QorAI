@@ -8,7 +8,6 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
 /// Bir support_messages kaydını chat görünümünde gösterir.
-/// Kullanıcı yalnızca son mesaj admin'den geldiyse yanıt verebilir.
 class SupportChatScreen extends ConsumerStatefulWidget {
   final String supportMessageId;
   final String initialTitle;
@@ -26,6 +25,7 @@ class SupportChatScreen extends ConsumerStatefulWidget {
 class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
   late final TextEditingController _inputCtrl;
   final _scrollCtrl = ScrollController();
+  final List<_ChatMessage> _pendingMessages = [];
   bool _sending = false;
   String? _errorText;
 
@@ -95,7 +95,19 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
             replyText: text,
             userId: uid,
           );
+      final optimistic = _ChatMessage(
+        role: 'user',
+        text: text,
+        ts: DateTime.now().toIso8601String(),
+      );
+      if (mounted) {
+        setState(() {
+          _pendingMessages.add(optimistic);
+        });
+      }
       _inputCtrl.clear();
+      ref.invalidate(notificationsProvider);
+      ref.invalidate(supportThreadProvider(widget.supportMessageId));
       _scrollToBottom();
     } catch (e) {
       setState(
@@ -125,20 +137,48 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'Destek',
-              style: TextStyle(
-                color: context.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.24),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.support_agent_rounded,
+                color: Colors.white,
+                size: 18,
               ),
             ),
-            Text(
-              'Qor AI Destek Ekibi',
-              style: TextStyle(color: context.textTertiaryColor, fontSize: 11),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Qor AI Destek',
+                  style: TextStyle(
+                    color: context.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Hesabınıza bağlı destek sohbeti',
+                  style: TextStyle(
+                    color: context.textTertiaryColor,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -162,13 +202,13 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
             );
           }
 
-          final banned = record['banned'] as bool? ?? false;
-          final messages = _buildThread(record);
+          final closed = record['banned'] as bool? ?? false;
+          final messages = _mergeWithPending(_buildThread(record));
           _scrollToBottom();
 
           return Column(
             children: [
-              if (banned)
+              if (closed)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -196,34 +236,46 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                   ),
                 ),
               Expanded(
-                child: messages.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Henüz mesaj yok.',
-                          style: TextStyle(color: context.textTertiaryColor),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.accentCyan.withValues(alpha: 0.04),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: messages.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Henüz mesaj yok.',
+                            style: TextStyle(color: context.textTertiaryColor),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollCtrl,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          itemCount: messages.length,
+                          itemBuilder: (ctx, i) {
+                            final msg = messages[i];
+                            return _ChatBubble(
+                                  message: msg,
+                                  isFirst: i == 0,
+                                  isLast: i == messages.length - 1,
+                                )
+                                .animate()
+                                .fadeIn(duration: 200.ms, delay: (i * 30).ms)
+                                .slideY(begin: 0.05, end: 0);
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollCtrl,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        itemCount: messages.length,
-                        itemBuilder: (ctx, i) {
-                          final msg = messages[i];
-                          return _ChatBubble(
-                                message: msg,
-                                isFirst: i == 0,
-                                isLast: i == messages.length - 1,
-                              )
-                              .animate()
-                              .fadeIn(duration: 200.ms, delay: (i * 30).ms)
-                              .slideY(begin: 0.05, end: 0);
-                        },
-                      ),
+                ),
               ),
-              if (!banned) _buildInputBar(messages),
+              _buildInputBar(closed: closed),
             ],
           );
         },
@@ -231,15 +283,48 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
     );
   }
 
-  Widget _buildInputBar(List<_ChatMessage> messages) {
-    // Son mesaj user'dan geldiyse input disabled
-    final lastIsUser = messages.isNotEmpty && messages.last.isUser;
-    final canSend = !lastIsUser && !_sending;
+  List<_ChatMessage> _mergeWithPending(List<_ChatMessage> fetched) {
+    if (_pendingMessages.isEmpty) return fetched;
+
+    final merged = List<_ChatMessage>.from(fetched);
+    for (final pending in _pendingMessages) {
+      final exists = fetched.any(
+        (message) =>
+            message.role == pending.role &&
+            message.text.trim() == pending.text.trim(),
+      );
+      if (!exists) {
+        merged.add(pending);
+      }
+    }
+
+    _pendingMessages.removeWhere(
+      (pending) => fetched.any(
+        (message) =>
+            message.role == pending.role &&
+            message.text.trim() == pending.text.trim(),
+      ),
+    );
+
+    return merged;
+  }
+
+  Widget _buildInputBar({required bool closed}) {
+    final canSend = !closed && !_sending;
 
     return Container(
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
-        border: Border(top: BorderSide(color: context.dividerColor)),
+        border: Border(
+          top: BorderSide(color: context.dividerColor.withValues(alpha: 0.5)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, -6),
+          ),
+        ],
       ),
       padding: EdgeInsets.fromLTRB(
         16,
@@ -251,11 +336,11 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (lastIsUser)
+          if (closed)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                'Admin yanıt verene kadar yeni mesaj gönderemezsiniz.',
+                'Bu sohbet admin tarafından kapatıldı.',
                 style: TextStyle(
                   fontSize: 12,
                   color: context.textTertiaryColor,
@@ -287,9 +372,7 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                     fontSize: 14,
                   ),
                   decoration: InputDecoration(
-                    hintText: canSend
-                        ? 'Yanıtınızı yazın...'
-                        : 'Yanıt bekleyiniz...',
+                    hintText: canSend ? 'Yanıtınızı yazın...' : 'Sohbet kapalı',
                     hintStyle: TextStyle(
                       color: context.textTertiaryColor,
                       fontSize: 14,
@@ -305,13 +388,15 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                       borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: context.dividerColor),
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(
+                        color: context.dividerColor.withValues(alpha: 0.65),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(18),
                       borderSide: BorderSide(
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.accentCyan,
                         width: 1.5,
                       ),
                     ),
@@ -328,10 +413,20 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: canSend
-                          ? AppTheme.primaryBlue
-                          : context.textTertiaryColor,
                       shape: BoxShape.circle,
+                      gradient: canSend ? AppTheme.primaryGradient : null,
+                      color: canSend ? null : context.textTertiaryColor,
+                      boxShadow: canSend
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.accentCyan.withValues(
+                                  alpha: 0.22,
+                                ),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: _sending
                         ? const Padding(
@@ -374,7 +469,7 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
           .whereType<Map>()
           .map(
             (m) => _ChatMessage(
-              role: m['role']?.toString() ?? 'admin',
+              role: _normalizeRole(m['role']),
               text: m['text']?.toString() ?? '',
               ts: m['ts']?.toString() ?? '',
             ),
@@ -410,6 +505,12 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
       );
     }
     return messages;
+  }
+
+  String _normalizeRole(dynamic rawRole) {
+    final role = rawRole?.toString().trim().toLowerCase() ?? '';
+    if (role == 'user') return 'user';
+    return 'admin';
   }
 }
 
@@ -499,18 +600,19 @@ class _ChatBubble extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: isUser
-                        ? AppTheme.primaryBlue
-                        : context.surfaceVariantColor,
+                    gradient: isUser ? AppTheme.primaryGradient : null,
+                    color: isUser ? null : context.surfaceVariantColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 16 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 16),
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isUser ? 18 : 6),
+                      bottomRight: Radius.circular(isUser ? 6 : 18),
                     ),
                     border: isUser
                         ? null
-                        : Border.all(color: context.dividerColor),
+                        : Border.all(
+                            color: context.dividerColor.withValues(alpha: 0.7),
+                          ),
                   ),
                   child: Text(
                     message.text,

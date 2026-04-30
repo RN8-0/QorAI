@@ -1465,6 +1465,30 @@ class PbDataSource {
           final status = record.data['status']?.toString() ?? '';
           final createdAt = record.data['created']?.toString().trim() ?? '';
           final repliedAt = record.data['repliedAt']?.toString().trim() ?? '';
+          final thread = _supportChatMessagesFromRecord(record.data);
+          final last = thread.isNotEmpty ? thread.last : null;
+
+          if (last != null) {
+            final role = last['role']?.toString() ?? '';
+            final text = last['text']?.toString().trim() ?? '';
+            if (text.isEmpty) return null;
+            final isAdmin = role == 'admin';
+            return <String, dynamic>{
+              'id': 'support_${record.id}',
+              'read': true,
+              'title': isAdmin
+                  ? 'Qor AI Destek\'ten yeni mesaj'
+                  : 'Mesajınız gönderildi',
+              'body': text,
+              'senderName': isAdmin ? 'Qor AI Destek' : 'Siz',
+              'referenceId': record.id,
+              'type': isAdmin ? 'admin_message' : 'support_sent',
+              'created':
+                  last['ts']?.toString() ??
+                  (repliedAt.isNotEmpty ? repliedAt : createdAt),
+              '_source': 'support_messages',
+            };
+          }
 
           if (status == 'open' || status == 'pending') {
             final userMessage = record.data['message']?.toString().trim() ?? '';
@@ -1510,6 +1534,43 @@ class PbDataSource {
         .toList();
   }
 
+  List<Map<String, dynamic>> _supportChatMessagesFromRecord(
+    Map<String, dynamic> data,
+  ) {
+    final rawChatMessages = data['chatMessages'];
+    List<dynamic> raw = [];
+
+    if (rawChatMessages is List) {
+      raw = rawChatMessages;
+    } else if (rawChatMessages is String && rawChatMessages.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawChatMessages);
+        if (decoded is List) raw = decoded;
+      } catch (_) {}
+    }
+
+    if (raw.isNotEmpty) {
+      return raw
+          .whereType<Map>()
+          .map((message) {
+            final role = _normalizeSupportRole(message['role']);
+            final text = message['text']?.toString().trim() ?? '';
+            final ts = message['ts']?.toString() ?? '';
+            return {'role': role, 'text': text, 'ts': ts};
+          })
+          .where((message) => message['text']!.isNotEmpty)
+          .toList();
+    }
+
+    return const [];
+  }
+
+  String _normalizeSupportRole(dynamic rawRole) {
+    final role = rawRole?.toString().trim().toLowerCase() ?? '';
+    if (role == 'user') return 'user';
+    return 'admin';
+  }
+
   static DateTime? _notificationTimestamp(Map<String, dynamic> item) {
     for (final key in const ['created', 'repliedAt', 'updated']) {
       final raw = item[key]?.toString().trim() ?? '';
@@ -1525,16 +1586,54 @@ class PbDataSource {
     required List<Map<String, dynamic>> notifications,
     required List<Map<String, dynamic>> supportFallbacks,
   }) {
-    final referenceIds = notifications
+    bool isSupportItem(Map<String, dynamic> item) {
+      final type = item['type']?.toString() ?? '';
+      final source = item['_source']?.toString() ?? '';
+      return source == 'support_messages' ||
+          type == 'admin_message' ||
+          type == 'support_reply' ||
+          type == 'support_sent';
+    }
+
+    final dismissedSupportIds = notifications
+        .where((item) => item['type'] == 'dismissed_support')
         .map((item) => item['referenceId']?.toString().trim() ?? '')
         .where((value) => value.isNotEmpty)
         .toSet();
-    final merged = <Map<String, dynamic>>[
-      ...notifications,
-      ...supportFallbacks.where(
-        (item) => !referenceIds.contains(item['referenceId']),
-      ),
-    ];
+
+    final merged = <Map<String, dynamic>>[];
+    final supportByReference = <String, Map<String, dynamic>>{};
+
+    for (final item in [...notifications, ...supportFallbacks]) {
+      if (item['type'] == 'dismissed_support') continue;
+      final referenceId = item['referenceId']?.toString().trim() ?? '';
+      if (referenceId.isNotEmpty && dismissedSupportIds.contains(referenceId)) {
+        continue;
+      }
+
+      if (referenceId.isNotEmpty && isSupportItem(item)) {
+        final previous = supportByReference[referenceId];
+        if (previous == null ||
+            (_notificationTimestamp(item) ??
+                    DateTime.fromMillisecondsSinceEpoch(0))
+                .isAfter(
+                  _notificationTimestamp(previous) ??
+                      DateTime.fromMillisecondsSinceEpoch(0),
+                )) {
+          supportByReference[referenceId] = {...item};
+        }
+        if (item['read'] != true) {
+          supportByReference[referenceId] = {
+            ...supportByReference[referenceId]!,
+            'read': false,
+          };
+        }
+      } else {
+        merged.add(item);
+      }
+    }
+
+    merged.addAll(supportByReference.values);
     merged.sort((left, right) {
       final leftTime = _notificationTimestamp(left);
       final rightTime = _notificationTimestamp(right);
@@ -1688,6 +1787,64 @@ class PbDataSource {
     }
   }
 
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      Future<void> dismissSupportThread(String supportId) async {
+        final existing = await _pb
+            .collection('notifications')
+            .getList(
+              page: 1,
+              perPage: 50,
+              filter: 'referenceId = "$supportId"',
+            );
+        for (final item in existing.items) {
+          await _pb.collection('notifications').delete(item.id);
+        }
+        final uid = _pb.authStore.record?.id ?? '';
+        if (uid.isNotEmpty) {
+          await _pb
+              .collection('notifications')
+              .create(
+                body: {
+                  'recipientId': uid,
+                  'senderId': uid,
+                  'senderName': 'Qor AI',
+                  'type': 'dismissed_support',
+                  'title': '',
+                  'body': '',
+                  'referenceId': supportId,
+                  'read': true,
+                },
+              );
+        }
+      }
+
+      if (notificationId.startsWith('support_')) {
+        final supportId = notificationId.substring(8);
+        await dismissSupportThread(supportId);
+        return;
+      }
+      RecordModel? notification;
+      try {
+        notification = await _pb
+            .collection('notifications')
+            .getOne(notificationId);
+      } catch (_) {}
+      final type = notification?.data['type']?.toString() ?? '';
+      final referenceId = notification?.data['referenceId']?.toString() ?? '';
+      if (referenceId.isNotEmpty &&
+          (type == 'admin_message' ||
+              type == 'support_reply' ||
+              type == 'support_sent')) {
+        await dismissSupportThread(referenceId);
+        return;
+      }
+      await _pb.collection('notifications').delete(notificationId);
+    } catch (e) {
+      debugPrint('[PbDs] deleteNotification error: $e');
+    }
+  }
+
   Future<void> markAllNotificationsRead(String userId) async {
     try {
       final result = await _pb
@@ -1834,11 +1991,6 @@ class PbDataSource {
         }
       }
 
-      // Check last message is from admin
-      if (chatMessages.isNotEmpty && chatMessages.last['role'] == 'user') {
-        throw ServerException(message: 'Admin yanıt verene kadar bekleyiniz.');
-      }
-
       chatMessages.add({
         'role': 'user',
         'text': trimmed,
@@ -1851,7 +2003,9 @@ class PbDataSource {
             messageId,
             body: {
               'chatMessages': jsonEncode(chatMessages),
-              'status': 'replied',
+              'message': trimmed,
+              'status': 'open',
+              'repliedAt': DateTime.now().toIso8601String(),
             },
           );
     } catch (e) {

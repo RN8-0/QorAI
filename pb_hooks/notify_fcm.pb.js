@@ -124,21 +124,29 @@ onRecordAfterUpdateSuccess(function (e) {
     const userId = record.getString('userId');
     if (!userId) return;
 
-    // Skip if we already sent a notification for this support message
+    const isAdminMessage = status === 'admin_message';
+    const notifType = isAdminMessage ? 'admin_message' : 'support_reply';
+    const notifBody = adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply;
+
+    // Skip only exact duplicates. A thread can receive multiple admin replies,
+    // and each distinct reply must notify the user.
     try {
-      $app.findFirstRecordByData('notifications', 'referenceId', record.id);
+      $app.findFirstRecordByFilter(
+        'notifications',
+        'referenceId = {:referenceId} && type = {:type} && body = {:body}',
+        { referenceId: record.id, type: notifType, body: notifBody },
+      );
       return;
     } catch (_) {}
 
-    const isAdminMessage = status === 'admin_message';
     const notifCol = $app.findCollectionByNameOrId('notifications');
     const notif = new Record(notifCol);
     notif.set('recipientId', userId);
     notif.set('senderId', 'admin');
     notif.set('senderName', 'Qor AI Destek');
-    notif.set('type', isAdminMessage ? 'admin_message' : 'support_reply');
+    notif.set('type', notifType);
     notif.set('title', isAdminMessage ? 'Qor AI Destek\'ten yeni mesaj' : 'Mesajınıza yanıt geldi');
-    notif.set('body', adminReply.length > 200 ? adminReply.substring(0, 197) + '...' : adminReply);
+    notif.set('body', notifBody);
     notif.set('referenceId', record.id);
     notif.set('read', false);
     $app.save(notif);
@@ -171,6 +179,18 @@ routerAdd('POST', '/api/support/contact', (e) => {
     const displayName = normalize(bodyModel.displayName || requestBody?.displayName);
     const email = normalize(bodyModel.email || requestBody?.email).toLowerCase();
     const message = normalize(bodyModel.message || requestBody?.message);
+    const now = new Date().toISOString();
+
+    const parseChatMessages = (value) => {
+      try {
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string' && value.trim()) {
+          const decoded = JSON.parse(value);
+          if (Array.isArray(decoded)) return decoded;
+        }
+      } catch (_) {}
+      return [];
+    };
 
     if (!displayName || !email || !message) {
       return e.json(400, {
@@ -187,14 +207,67 @@ routerAdd('POST', '/api/support/contact', (e) => {
       });
     }
 
+    let record = null;
+    const findActiveByFilter = (filter, params) => {
+      try {
+        return $app.findFirstRecordByFilter('support_messages', filter, params);
+      } catch (_) {
+        return null;
+      }
+    };
+
+    if (userId) {
+      record = findActiveByFilter(
+        'userId = {:userId} && banned = false',
+        { userId: userId },
+      );
+    }
+    if (!record && email) {
+      record = findActiveByFilter(
+        'email = {:email} && banned = false',
+        { email: email },
+      );
+    }
+
+    if (record) {
+      const chat = parseChatMessages(record.get('chatMessages'));
+      if (chat.length === 0) {
+        const existingMessage = normalize(record.getString('message'));
+        const existingReply = normalize(record.getString('adminReply'));
+        if (existingMessage) {
+          chat.push({ role: 'user', text: existingMessage, ts: record.get('created') || now });
+        }
+        if (existingReply) {
+          chat.push({ role: 'admin', text: existingReply, ts: record.getString('repliedAt') || now });
+        }
+      }
+      chat.push({ role: 'user', text: message, ts: now });
+      record.set('userId', userId || record.getString('userId'));
+      record.set('displayName', displayName);
+      record.set('email', email);
+      record.set('message', message);
+      record.set('status', 'open');
+      record.set('chatMessages', JSON.stringify(chat));
+      record.set('repliedAt', now);
+      $app.save(record);
+
+      return e.json(200, {
+        success: true,
+        id: record.id,
+        status: 'open',
+        reused: true,
+      });
+    }
+
     const collection = $app.findCollectionByNameOrId('support_messages');
-    const record = new Record(collection);
+    record = new Record(collection);
     record.set('userId', userId);
     record.set('displayName', displayName);
     record.set('email', email);
     record.set('message', message);
     record.set('status', 'open');
     record.set('adminReply', '');
+    record.set('chatMessages', JSON.stringify([{ role: 'user', text: message, ts: now }]));
     $app.save(record);
 
     return e.json(200, {

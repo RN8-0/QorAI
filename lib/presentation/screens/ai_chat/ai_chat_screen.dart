@@ -42,9 +42,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
   final ValueNotifier<bool> _hasText = ValueNotifier(false);
-  int _inputRevision = 0;
-  String _lastInputText = '';
-  bool _normalizingInput = false;
+  bool _syncingController = false;
   late AnimationController _pulseCtrl;
 
   // Voice chat
@@ -71,29 +69,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   }
 
   void _handleTextChanged() {
-    if (_normalizingInput) return;
-
-    final text = _ctrl.text;
-    final wasCleared = text.isEmpty && _lastInputText.isNotEmpty;
-    if (text.isEmpty) {
-      _normalizingInput = true;
-      _ctrl.value = const TextEditingValue(
-        text: '',
-        selection: TextSelection.collapsed(offset: 0),
-        composing: TextRange.empty,
-      );
-      _normalizingInput = false;
-
-      if (wasCleared) {
-        setState(() => _inputRevision++);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted || !_focusNode.canRequestFocus) return;
-          _focusNode.requestFocus();
-        });
-      }
-    }
-    _lastInputText = _ctrl.text;
-
+    if (_syncingController) return;
     final nextHasText = _ctrl.text.trim().isNotEmpty;
     if (_hasText.value != nextHasText) {
       _hasText.value = nextHasText;
@@ -128,12 +104,15 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       await _speech.listen(
         onResult: (result) {
           if (!mounted || !_isListening || session != _speechSession) return;
+          _syncingController = true;
           _ctrl.value = TextEditingValue(
             text: result.recognizedWords,
             selection: TextSelection.collapsed(
               offset: result.recognizedWords.length,
             ),
+            composing: TextRange.empty,
           );
+          _syncingController = false;
           if (result.finalResult && result.recognizedWords.isNotEmpty) {
             final recognizedWords = result.recognizedWords;
             _speechSession++;
@@ -213,16 +192,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     HapticFeedback.lightImpact();
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);
 
-    _normalizingInput = true;
-    _ctrl.value = const TextEditingValue(
-      text: '',
-      selection: TextSelection.collapsed(offset: 0),
-      composing: TextRange.empty,
-    );
-    _ctrl.clearComposing();
-    _normalizingInput = false;
-    _lastInputText = '';
-    setState(() => _inputRevision++);
+    _syncingController = true;
+    _ctrl.clear();
+    _syncingController = false;
     _hasText.value = false;
 
     await ref
@@ -588,7 +560,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                         : [],
                   ),
                   child: TextField(
-                    key: ValueKey('qor-ai-input-$_inputRevision'),
                     controller: _ctrl,
                     focusNode: _focusNode,
                     maxLines: null,
@@ -601,6 +572,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                     autofillHints: const <String>[],
                     smartDashesType: SmartDashesType.disabled,
                     smartQuotesType: SmartQuotesType.disabled,
+                    onTapOutside: (_) => _focusNode.unfocus(),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       color: context.textPrimary,

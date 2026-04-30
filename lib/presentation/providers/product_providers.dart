@@ -120,10 +120,10 @@ final pcPickerProvider = StateNotifierProvider.autoDispose
 
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
-const int _homeFeedInitialCategoryCount = 14;
-// 50 → 15: UI'da sadece 8 kart görünüyor (_kHorizontalInitialItemLimit).
-// 15 item = 8 görünür + 7 buffer. Network ve heap maliyeti ~3.3x azalır.
-const int _homeFeedInitialPerCategory = 15;
+const int _homeFeedInitialCategoryCount = 24;
+// Home feed now exposes richer shelves: each visible shelf can keep scrolling
+// without needing an immediate refetch, while ListView.builder still renders lazily.
+const int _homeFeedInitialPerCategory = 28;
 
 /// All category aliases — shared between pcBuilder and category providers.
 const pcCategoryAliases = <String, List<String>>{
@@ -581,7 +581,7 @@ class HomeFeed {
   });
 }
 
-const _homeFeedReadyCacheVersion = 'v1';
+const _homeFeedReadyCacheVersion = 'v2';
 
 String _homeFeedReadyCacheKey(String country, UserEntity? user) {
   return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';
@@ -1756,7 +1756,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   await SchedulerBinding.instance.endOfFrame;
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v29_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v30_${user?.uid ?? "anon"}';
   _scheduleLegacyFeedCacheCleanup(cache, user);
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)

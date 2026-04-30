@@ -13,6 +13,7 @@ class NotificationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifsAsync = ref.watch(notificationsProvider);
     final notifs = notifsAsync.valueOrNull ?? const <Map<String, dynamic>>[];
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -28,7 +29,7 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Notifications',
+          isTr ? 'Bildirimler' : 'Notifications',
           style: TextStyle(
             color: context.textPrimary,
             fontSize: 18,
@@ -46,7 +47,7 @@ class NotificationsScreen extends ConsumerWidget {
                 }
               },
               child: Text(
-                'Mark all read',
+                isTr ? 'Okundu' : 'Mark read',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.primaryBlue,
@@ -70,7 +71,29 @@ class NotificationsScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 6),
             itemBuilder: (context, index) {
               final notif = items[index];
-              return _NotificationTile(notif: notif)
+              final id = notif['id']?.toString() ?? 'notification_$index';
+              return Dismissible(
+                    key: ValueKey('notification_$id'),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 18),
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppTheme.error,
+                      ),
+                    ),
+                    onDismissed: (_) {
+                      if (id.isNotEmpty) {
+                        ref.read(pbDataSourceProvider).deleteNotification(id);
+                      }
+                    },
+                    child: _NotificationTile(notif: notif),
+                  )
                   .animate()
                   .fadeIn(duration: 250.ms, delay: (index * 40).ms)
                   .slideX(begin: 0.03, end: 0);
@@ -96,7 +119,9 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No notifications yet',
+            Localizations.localeOf(context).languageCode == 'tr'
+                ? 'Henüz bildirim yok'
+                : 'No notifications yet',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -105,8 +130,11 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Admin mesajlari ve destek yanitlari burada gorunur',
+            Localizations.localeOf(context).languageCode == 'tr'
+                ? 'Destek yanıtları ve hesap bildirimleri burada görünür.'
+                : 'Support replies and account notifications appear here.',
             style: TextStyle(fontSize: 13, color: context.textTertiaryColor),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -137,11 +165,10 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
     final notifType = notif['type'] as String? ?? '';
     final referenceId = notif['referenceId']?.toString() ?? '';
 
-    // Chat-like types navigate to chat screen
-    final isChatType =
-        notifType == 'admin_message' ||
-        notifType == 'support_reply' ||
-        notifType == 'system';
+    final canReply =
+        referenceId.isNotEmpty &&
+        (notifType == 'admin_message' || notifType == 'support_reply');
+    final canOpenThread = canReply || notifType == 'support_sent';
 
     DateTime? createdAt;
     try {
@@ -152,7 +179,7 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
 
     IconData iconData;
     Color iconColor;
-    if (isChatType) {
+    if (canReply || notifType == 'support_sent') {
       iconData = Icons.support_agent_rounded;
       iconColor = AppTheme.primaryBlue;
     } else if (notifType == 'compare_reply') {
@@ -167,13 +194,13 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
       color: isRead
           ? context.surfaceVariantColor
           : AppTheme.primaryBlue.withValues(alpha: 0.06),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: () {
           if (!isRead) {
             ref.read(pbDataSourceProvider).markNotificationRead(id);
           }
-          if (isChatType && referenceId.isNotEmpty) {
+          if (canOpenThread && referenceId.isNotEmpty) {
             // Remove support_ prefix if present
             final cleanId = referenceId.startsWith('support_')
                 ? referenceId.substring(8)
@@ -193,9 +220,9 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
             setState(() => _expanded = !_expanded);
           }
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -205,7 +232,7 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
                 decoration: BoxDecoration(
                   color: isRead
                       ? context.textTertiaryColor.withValues(alpha: 0.1)
-                      : AppTheme.primaryBlue.withValues(alpha: 0.12),
+                      : AppTheme.accentCyan.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(iconData, size: 20, color: iconColor),
@@ -245,7 +272,49 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
                               shape: BoxShape.circle,
                             ),
                           ),
-                        if (!isChatType && body.isNotEmpty)
+                        PopupMenuButton<String>(
+                          tooltip: 'More',
+                          color: context.surfaceColor,
+                          onSelected: (value) {
+                            if (value == 'delete') {
+                              ref
+                                  .read(pbDataSourceProvider)
+                                  .deleteNotification(id);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 18,
+                                    color: AppTheme.error,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    Localizations.localeOf(
+                                              context,
+                                            ).languageCode ==
+                                            'tr'
+                                        ? 'Sil'
+                                        : 'Delete',
+                                    style: TextStyle(
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: Icon(
+                            Icons.more_horiz_rounded,
+                            size: 18,
+                            color: context.textTertiaryColor,
+                          ),
+                        ),
+                        if (!canOpenThread && body.isNotEmpty)
                           Icon(
                             _expanded
                                 ? Icons.keyboard_arrow_up_rounded
@@ -309,25 +378,25 @@ class _NotificationTileState extends ConsumerState<_NotificationTile> {
                             ),
                           ),
                         ],
-                        if (isChatType) ...[
+                        if (canReply) ...[
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 8,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryBlue.withValues(
+                              color: AppTheme.accentCyan.withValues(
                                 alpha: 0.12,
                               ),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               'Yanıtla →',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: AppTheme.primaryBlue,
+                                color: AppTheme.accentCyan,
                               ),
                             ),
                           ),

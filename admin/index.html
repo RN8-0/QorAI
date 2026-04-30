@@ -822,8 +822,9 @@
           <div class="view-actions">
             <select class="field-select" id="supportStatusFilter" onchange="renderSupportMessages()">
               <option value="">Tümü</option>
-              <option value="open">Açık</option>
-              <option value="replied">Yanıtlandı</option>
+              <option value="open">Yanıt Bekleyen</option>
+              <option value="replied">Admin Yazmış</option>
+              <option value="closed">Kapalı</option>
             </select>
             <button class="btn btn-ghost" onclick="loadSupportMessages()">Yenile</button>
             <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Tüm yanıtlanmış mesajları sil">🗑 Yanıtlananları Sil</button>

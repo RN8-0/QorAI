@@ -64,8 +64,8 @@ async function _hydrateSupportMessages(messages) {
 }
 function _sortSupportMessages(items) {
   return [...items].sort((a, b) => {
-    const tA = Date.parse(a?.repliedAt || a?.created || '') || 0;
-    const tB = Date.parse(b?.repliedAt || b?.created || '') || 0;
+    const tA = _supportLastActivityAt(a);
+    const tB = _supportLastActivityAt(b);
     return tB - tA;
   });
 }
@@ -90,6 +90,25 @@ function _parseChatMessages(m) {
   if (msg) list.push({ role: m.status === 'admin_message' ? 'admin' : 'user', text: msg, ts: m.created || '' });
   if (reply) list.push({ role: 'admin', text: reply, ts: m.repliedAt || m.created || '' });
   return list;
+}
+
+function _supportLastActivityAt(message) {
+  const chat = _parseChatMessages(message || {});
+  const last = chat[chat.length - 1];
+  return Date.parse(last?.ts || message?.repliedAt || message?.updated || message?.created || '') || 0;
+}
+
+function _isSupportClosed(message) { return message?.banned === true; }
+function _needsAdminReply(message) {
+  if (_isSupportClosed(message)) return false;
+  const chat = _parseChatMessages(message || {});
+  return chat.length > 0 && chat[chat.length - 1]?.role !== 'admin';
+}
+
+function _supportStatusBadge(message) {
+  if (_isSupportClosed(message)) return '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;font-size:10px">Kapalı</span>';
+  if (_needsAdminReply(message)) return '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:10px">Yanıt bekliyor</span>';
+  return '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Admin yazdı</span>';
 }
 
 function escapeHtml(str) {
@@ -157,16 +176,15 @@ async function disposeSupportInbox() {
    BADGE
 ────────────────────────────────────────────── */
 function updateSupportBadge() {
-  const visible = _supportMessages.filter(m => m.status !== 'admin_message');
-  const openCount = visible.filter(m => m.status === 'open').length;
+  const openCount = _supportMessages.filter(_needsAdminReply).length;
   const badge = document.getElementById('supportBadge');
   const countEl = document.getElementById('supportCount');
   if (badge) { badge.textContent = openCount; badge.style.display = openCount > 0 ? 'inline-block' : 'none'; }
-  if (countEl) countEl.textContent = visible.length;
+  if (countEl) countEl.textContent = _supportMessages.length;
 }
 
 /* ──────────────────────────────────────────────
-   RENDER LIST — Kullanıcıya göre gruplandırılmış
+   RENDER LIST — Tek kayıt, tek sohbet
 ────────────────────────────────────────────── */
 function renderSupportMessages() {
   const el = document.getElementById('supportMessagesList');
@@ -174,77 +192,52 @@ function renderSupportMessages() {
 
   const filterVal = (document.getElementById('supportStatusFilter')?.value || '').trim();
 
-  // Tüm mesajları filtrele
   let msgs = [..._supportMessages];
-  if (filterVal) msgs = msgs.filter(m => m.status === filterVal);
+  if (filterVal === 'open') msgs = msgs.filter(_needsAdminReply);
+  if (filterVal === 'replied') msgs = msgs.filter(m => !_isSupportClosed(m) && !_needsAdminReply(m));
+  if (filterVal === 'closed') msgs = msgs.filter(_isSupportClosed);
 
   if (!msgs.length) {
     el.innerHTML = '<div class="placeholder">Mesaj bulunamadı.</div>';
     return;
   }
 
-  // Kullanıcıya göre grupla
-  const groups = new Map();
-  for (const m of msgs) {
-    const key = m.userId || _preferredSupportEmail(m) || m.id;
-    if (!groups.has(key)) groups.set(key, { userId: m.userId, name: _preferredSupportName(m), email: _preferredSupportEmail(m), messages: [] });
-    groups.get(key).messages.push(m);
-  }
+  el.innerHTML = msgs.map(m => {
+    const chatMsgs = _parseChatMessages(m);
+    const lastMsg = chatMsgs[chatMsgs.length - 1];
+    const preferredName = _preferredSupportName(m);
+    const preferredEmail = _preferredSupportEmail(m);
+    const previewSource = lastMsg?.text || m.message || '';
+    const preview = previewSource.substring(0, 120) + (previewSource.length > 120 ? '…' : '');
+    const dateValue = _supportLastActivityAt(m);
+    const dateStr = dateValue ? new Date(dateValue).toLocaleString('tr-TR') : '—';
+    const initial = (preferredName || preferredEmail || '?').charAt(0).toUpperCase();
 
-  let html = '';
-  for (const [, group] of groups) {
-    const latest = group.messages[0];
-    const openCount = group.messages.filter(m => m.status === 'open').length;
-    const allReplied = openCount === 0;
-    const banned = group.messages.some(m => m.banned);
-    const dateStr = (latest.repliedAt || latest.created) ? new Date(latest.repliedAt || latest.created).toLocaleString('tr-TR') : '—';
-
-    html += `<div style="border-radius:10px;background:var(--surface-2);border:1px solid var(--border);margin-bottom:10px;overflow:hidden">
-      <!-- Grup Başlığı -->
-      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    return `<div style="border-radius:10px;background:var(--surface-2);border:1px solid var(--border);margin-bottom:10px;overflow:hidden;cursor:pointer" onclick="openSupportChatModal('${m.id}')" onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='var(--surface-2)'">
+      <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">${escapeHtml(group.name.charAt(0).toUpperCase())}</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;color:var(--text)">${escapeHtml(group.name)}</div>
-            <div style="font-size:11px;color:var(--text3)">${escapeHtml(group.email)}</div>
+          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">${escapeHtml(initial)}</div>
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text)">${escapeHtml(preferredName)}</div>
+            <div style="font-size:11px;color:var(--text3)">${escapeHtml(preferredEmail || 'E-posta yok')}${m.userId ? ` · ID: ${escapeHtml(m.userId)}` : ''}</div>
+            ${_supportIdentityCaption(m)}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          ${banned ? '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444">🚫 Banlı</span>' : ''}
-          ${openCount > 0 ? `<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b">${openCount} Açık</span>` : '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e">Yanıtlandı</span>'}
-          <span style="font-size:11px;color:var(--text3)">${group.messages.length} mesaj · ${dateStr}</span>
+          ${_supportStatusBadge(m)}
+          <span style="font-size:11px;color:var(--text3)">${chatMsgs.length} mesaj · ${dateStr}</span>
         </div>
       </div>
-      <!-- Konuşmalar -->
-      ${group.messages.map(m => {
-        const chatMsgs = _parseChatMessages(m);
-        const lastMsg = chatMsgs[chatMsgs.length - 1];
-        const preview = lastMsg ? lastMsg.text.substring(0, 80) + (lastMsg.text.length > 80 ? '…' : '') : (m.message || '').substring(0, 80);
-        const mDate = (m.repliedAt || m.created) ? new Date(m.repliedAt || m.created).toLocaleString('tr-TR') : '—';
-        const isOpen = m.status === 'open';
-        const isBanned = m.banned;
-        return `<div style="padding:10px 16px;cursor:pointer;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px" onclick="openSupportChatModal('${m.id}')" onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${escapeHtml(preview)}</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px">${chatMsgs.length} mesaj · ${mDate}</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
-            ${isBanned ? '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;font-size:10px">Banlı</span>' : ''}
-            <span class="badge" style="background:${isOpen ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.15)'};color:${isOpen ? '#f59e0b' : '#22c55e'};font-size:10px">${isOpen ? 'Açık' : 'Yanıtlandı'}</span>
-          </div>
-        </div>`;
-      }).join('')}
+      <div style="padding:0 16px 14px;color:var(--text2);font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(preview || 'Mesaj yok')}</div>
     </div>`;
-  }
-
-  el.innerHTML = html;
+  }).join('');
 }
 
 /* ──────────────────────────────────────────────
    BULK DELETE — Yanıtlanan mesajları toplu sil
 ────────────────────────────────────────────── */
 async function deleteRepliedSupportMessages() {
-  const replied = _supportMessages.filter(m => m.status === 'replied');
+  const replied = _supportMessages.filter(m => !_isSupportClosed(m) && !_needsAdminReply(m));
   if (!replied.length) { toast('Silinecek yanıtlanmış mesaj yok.', 'w'); return; }
 
   const ok = confirm(`${replied.length} adet yanıtlanmış destek mesajı silinsin mi? Bu işlem geri alınamaz.`);
@@ -294,7 +287,7 @@ function _renderChatModalThread(messageId) {
   const chatMsgs = _parseChatMessages(m);
   const preferredName = _preferredSupportName(m);
   const preferredEmail = _preferredSupportEmail(m);
-  const isBanned = m.banned || false;
+  const isClosed = _isSupportClosed(m);
   const lastIsUser = chatMsgs.length > 0 && chatMsgs[chatMsgs.length - 1].role === 'user';
 
   const titleEl = document.getElementById('supportChatModalTitle');
@@ -321,8 +314,8 @@ function _renderChatModalThread(messageId) {
         <div style="font-size:11px;color:var(--text3)">${escapeHtml(preferredEmail)} · ${m.userId ? `ID: ${escapeHtml(m.userId)}` : 'ID yok'}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${isBanned ? '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444">🚫 Banlı</span>' : ''}
-        <button class="btn btn-sm ${isBanned ? 'btn-ghost' : 'btn-danger'}" onclick="toggleSupportBan('${messageId}',${!isBanned})">${isBanned ? '🔓 Banı Kaldır' : '🚫 Banla'}</button>
+        ${_supportStatusBadge(m)}
+        <button class="btn btn-sm ${isClosed ? 'btn-ghost' : 'btn-danger'}" onclick="toggleSupportBan('${messageId}',${!isClosed})">${isClosed ? 'Yeniden Aç' : 'Sohbeti Kapat'}</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSupportMessage('${messageId}')">Sil</button>
       </div>
     </div>
@@ -330,7 +323,7 @@ function _renderChatModalThread(messageId) {
     <div id="supportChatThread" style="max-height:320px;overflow-y:auto;margin-bottom:16px;padding:4px">
       ${messagesHtml}
     </div>
-    ${isBanned ? `<div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:13px;color:#ef4444;text-align:center">Bu sohbet banlı — kullanıcı yanıt gönderemiyor.</div>` : `
+    ${isClosed ? `<div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:13px;color:#ef4444;text-align:center">Bu sohbet kapalı — kullanıcı bu kayıt üzerinden yanıt gönderemez.</div>` : `
     <!-- Admin Yanıt -->
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">${lastIsUser ? 'Kullanıcı mesajına yanıt ver' : 'Yeni mesaj gönder'}</label>
@@ -359,7 +352,7 @@ async function toggleSupportBan(messageId, ban) {
     if (idx !== -1) _supportMessages[idx].banned = ban;
     _renderChatModalThread(messageId);
     renderSupportMessages();
-    toast(ban ? 'Sohbet banlı.' : 'Ban kaldırıldı.', 's');
+    toast(ban ? 'Sohbet kapatıldı.' : 'Sohbet yeniden açıldı.', 's');
   } catch (e) {
     toast('İşlem başarısız: ' + (e.message || e), 'e');
   }
@@ -414,18 +407,6 @@ async function sendSupportChatReply(messageId, userId) {
       status: 'replied',
       adminReply: replyText,
       repliedAt: new Date().toISOString(),
-    });
-
-    // Bildirim oluştur → FCM push
-    await getPb().collection('notifications').create({
-      recipientId: resolvedUserId,
-      senderId: 'admin',
-      senderName: 'Qor AI Destek',
-      type: 'admin_message',
-      title: 'Qor AI Destek\'ten yeni mesaj',
-      body: replyText,
-      referenceId: messageId,
-      read: false,
     });
 
     // Local güncelle

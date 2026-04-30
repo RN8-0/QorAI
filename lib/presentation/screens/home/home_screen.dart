@@ -44,8 +44,8 @@ const double _kCardItemExtent = 167.0;
 // ignore: unused_element
 const int _kInitialCategoryChipLimit = 18;
 // Progressive category rendering — start light, add on scroll
-const int _kInitialVisibleCategories = 5;
-const int _kCategoryLoadIncrement = 4;
+const int _kInitialVisibleCategories = 10;
+const int _kCategoryLoadIncrement = 6;
 const int _kMaxVisibleCategories = 30;
 
 // ── Card widget BorderRadius constants — avoids per-build allocation ─────────
