@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
@@ -17,22 +18,27 @@ class CollectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userProfileProvider);
+    final favoriteIds =
+        userAsync.valueOrNull?.favorites ?? _favoriteIdsFromAuthStore();
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      body: userAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (user) {
-          final favoriteIds = user?.favorites ?? [];
-          if (favoriteIds.isEmpty) {
-            return const _EmptyState();
-          }
-          return _CollectionContent(productIds: favoriteIds);
-        },
-      ),
+      body: favoriteIds.isEmpty
+          ? const _EmptyState()
+          : _CollectionContent(productIds: favoriteIds),
     );
   }
+}
+
+List<String> _favoriteIdsFromAuthStore() {
+  final record = pb.authStore.record;
+  if (!pb.authStore.isValid || record == null) return const [];
+  final raw = record.data['favorites'];
+  if (raw is! List) return const [];
+  return raw
+      .map((item) => item.toString().trim())
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
 }
 
 class _CollectionContent extends StatelessWidget {
@@ -223,53 +229,60 @@ class _EmptyState extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.primaryBlue.withValues(alpha: 0.15),
-                      AppTheme.brandCyan.withValues(alpha: 0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(36),
-                  border: Border.all(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.favorite_rounded,
-                  size: 56,
-                  color: AppTheme.brandCyan,
-                ),
-              )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scaleXY(begin: 1, end: 1.08, duration: 1400.ms, curve: Curves.easeInOut),
-              const SizedBox(height: 28),
-              Text(
-                context.l10n?.noFavorites ?? 'No favorites yet',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
-              const SizedBox(height: 10),
-              Text(
-                context.l10n?.favoritesEmptySubtitle ??
-                    'Tap the heart icon on any product to save it here.',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: context.textSecondary,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ).animate(delay: 120.ms).fadeIn(duration: 400.ms),
+                    Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.primaryBlue.withValues(alpha: 0.15),
+                                AppTheme.brandCyan.withValues(alpha: 0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(36),
+                            border: Border.all(
+                              color: AppTheme.primaryBlue.withValues(
+                                alpha: 0.22,
+                              ),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            size: 56,
+                            color: AppTheme.brandCyan,
+                          ),
+                        )
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scaleXY(
+                          begin: 1,
+                          end: 1.08,
+                          duration: 1400.ms,
+                          curve: Curves.easeInOut,
+                        ),
+                    const SizedBox(height: 28),
+                    Text(
+                      context.l10n?.noFavorites ?? 'No favorites yet',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+                    const SizedBox(height: 10),
+                    Text(
+                      context.l10n?.favoritesEmptySubtitle ??
+                          'Tap the heart icon on any product to save it here.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: context.textSecondary,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ).animate(delay: 120.ms).fadeIn(duration: 400.ms),
                   ],
                 ),
               ),
@@ -287,6 +300,16 @@ class _CollectionProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cachedProduct = ref
+        .watch(homeFeedProvider)
+        .valueOrNull
+        ?.all
+        .where((product) => product.id == productId)
+        .firstOrNull;
+    if (cachedProduct != null) {
+      return _ProductCard(product: cachedProduct);
+    }
+
     final productAsync = ref.watch(productDetailProvider(productId));
 
     return productAsync.when(

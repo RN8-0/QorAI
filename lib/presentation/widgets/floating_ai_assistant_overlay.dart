@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
@@ -198,6 +199,11 @@ class _FloatingAiAssistantOverlayState
   @override
   Widget build(BuildContext context) {
     final route = _routePath(context);
+    final auth = ref.watch(authStateProvider);
+    final isLoggedIn = auth.valueOrNull != null || pb.authStore.isValid;
+    if (!isLoggedIn || route == '/' || route.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final padding = MediaQuery.of(context).padding;
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;

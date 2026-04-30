@@ -181,9 +181,19 @@ UserEntity? _buildAuthStoreFallbackUser() {
     email: auth.getStringValue('email'),
     displayName: _resolveAuthRecordDisplayName(auth),
     photoURL: _resolveAuthRecordPhotoUrl(auth),
+    favorites: _resolveAuthRecordStringList(auth, 'favorites'),
     createdAt: now,
     updatedAt: now,
   );
+}
+
+List<String> _resolveAuthRecordStringList(RecordModel auth, String field) {
+  final raw = auth.data[field];
+  if (raw is! List) return const [];
+  return raw
+      .map((item) => item.toString().trim())
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
 }
 
 String _resolveAuthRecordDisplayName(RecordModel auth) {
@@ -994,7 +1004,11 @@ class _ContentSection extends StatelessWidget {
   }
 }
 
-String _profileText(BuildContext context, {required String tr, required String en}) {
+String _profileText(
+  BuildContext context, {
+  required String tr,
+  required String en,
+}) {
   return Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
       ? tr
       : en;
@@ -1014,7 +1028,8 @@ String _humanizeProfileValue(BuildContext context, String value) {
   };
 
   final normalized = value.trim().toLowerCase();
-  final mapped = Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
+  final mapped =
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
       ? trMap[normalized]
       : null;
   if (mapped != null) return mapped;
@@ -1027,9 +1042,7 @@ String _humanizeProfileValue(BuildContext context, String value) {
       .toList();
   if (words.isEmpty) return value;
   return words
-      .map(
-        (item) => item[0].toUpperCase() + item.substring(1).toLowerCase(),
-      )
+      .map((item) => item[0].toUpperCase() + item.substring(1).toLowerCase())
       .join(' ');
 }
 
@@ -1101,10 +1114,8 @@ class _ProfileSignalsSection extends StatelessWidget {
             runSpacing: 8,
             children: facts
                 .map(
-                  (fact) => _ProfileSignalChip(
-                    label: fact.label,
-                    value: fact.value,
-                  ),
+                  (fact) =>
+                      _ProfileSignalChip(label: fact.label, value: fact.value),
                 )
                 .toList(),
           ),
@@ -1175,53 +1186,55 @@ class _ProfileSignalsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          ...vectorEntries.take(5).map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 96,
-                    child: Text(
-                      _humanizeProfileValue(context, entry.key),
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: context.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: entry.value.clamp(0, 1),
-                        minHeight: 8,
-                        backgroundColor: context.dividerColor.withValues(
-                          alpha: 0.4,
-                        ),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppTheme.brandCyan,
+          ...vectorEntries
+              .take(5)
+              .map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 96,
+                        child: Text(
+                          _humanizeProfileValue(context, entry.key),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: context.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: entry.value.clamp(0, 1),
+                            minHeight: 8,
+                            backgroundColor: context.dividerColor.withValues(
+                              alpha: 0.4,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              AppTheme.brandCyan,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        entry.value.toStringAsFixed(2),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    entry.value.toStringAsFixed(2),
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
         ],
       ],
     );
@@ -1508,7 +1521,9 @@ class _ProductListItem extends ConsumerWidget {
                             memCacheWidth: 168,
                             errorWidget: (_, _, _) => Icon(
                               Icons.devices,
-                              color: AppTheme.primaryBlue.withValues(alpha: 0.5),
+                              color: AppTheme.primaryBlue.withValues(
+                                alpha: 0.5,
+                              ),
                               size: 24,
                             ),
                           ),
@@ -1915,11 +1930,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.bolt_rounded,
-                size: 18,
-                color: AppTheme.premiumBase,
-              ),
+              Icon(Icons.bolt_rounded, size: 18, color: AppTheme.premiumBase),
               const SizedBox(width: 8),
               Text(
                 isTr ? 'Günlük AI Q' : 'Daily AI Q',
@@ -2005,7 +2016,9 @@ class _FreemiumUsageCard extends ConsumerWidget {
                   child: LinearProgressIndicator(
                     value: creditProgress,
                     minHeight: 7,
-                    backgroundColor: AppTheme.premiumBase.withValues(alpha: 0.14),
+                    backgroundColor: AppTheme.premiumBase.withValues(
+                      alpha: 0.14,
+                    ),
                     valueColor: const AlwaysStoppedAnimation(
                       AppTheme.premiumBase,
                     ),
@@ -2198,112 +2211,108 @@ class _MyReviewsList extends ConsumerWidget {
                     Icons.chevron_right_rounded,
                     size: 18,
                     color: AppTheme.slate400,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          }),
+            ),
+          );
+        }),
 
-          // Comparison reviews section
-          ...compareReviews.take(5).map((review) {
-            final reviewText = review['reviewText'] as String? ?? '';
-            final productIds =
-                (review['productIds'] as List?)?.cast<String>() ?? [];
-            final productNames = productIds
-                .map(
-                  (id) =>
-                      allProducts
-                          .where((p) => p.id == id)
-                          .firstOrNull
-                          ?.name ??
-                      id,
-                )
-                .take(2)
-                .join(' vs ');
+        // Comparison reviews section
+        ...compareReviews.take(5).map((review) {
+          final reviewText = review['reviewText'] as String? ?? '';
+          final productIds =
+              (review['productIds'] as List?)?.cast<String>() ?? [];
+          final productNames = productIds
+              .map(
+                (id) =>
+                    allProducts.where((p) => p.id == id).firstOrNull?.name ??
+                    id,
+              )
+              .take(2)
+              .join(' vs ');
 
-            return GestureDetector(
-              onTap: () {
-                if (productIds.isEmpty) {
-                  context.go('/compare');
-                  return;
-                }
-                final entity = ComparisonEntity(
-                  id: review['id'] as String? ?? '',
-                  userId: review['userId'] as String? ?? '',
-                  itemIds: productIds,
-                  category: '',
-                  createdAt: DateTime.tryParse(
-                        review['timestamp']?.toString() ?? '',
-                      ) ??
-                      DateTime.now(),
-                );
-                context.push(AppRoutes.comparisonResult, extra: entity);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: context.surfaceVariantColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.dividerColor),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.compare_arrows_rounded,
-                        size: 18,
-                        color: AppTheme.brandBlue,
-                      ),
+          return GestureDetector(
+            onTap: () {
+              if (productIds.isEmpty) {
+                context.go('/compare');
+                return;
+              }
+              final entity = ComparisonEntity(
+                id: review['id'] as String? ?? '',
+                userId: review['userId'] as String? ?? '',
+                itemIds: productIds,
+                category: '',
+                createdAt:
+                    DateTime.tryParse(review['timestamp']?.toString() ?? '') ??
+                    DateTime.now(),
+              );
+              context.push(AppRoutes.comparisonResult, extra: entity);
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    child: const Icon(
+                      Icons.compare_arrows_rounded,
+                      size: 18,
+                      color: AppTheme.brandBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productNames.isNotEmpty
+                              ? productNames
+                              : 'Karşılaştırma Yorumu',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (reviewText.isNotEmpty)
                           Text(
-                            productNames.isNotEmpty
-                                ? productNames
-                                : 'Karşılaştırma Yorumu',
+                            reviewText,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: context.textPrimary,
+                              fontSize: 11,
+                              color: context.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (reviewText.isNotEmpty)
-                            Text(
-                              reviewText,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                color: context.textSecondary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: AppTheme.slate400,
-                    ),
-                  ],
-                ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppTheme.slate400,
+                  ),
+                ],
               ),
-            );
-          }),
-        ],
-      );
+            ),
+          );
+        }),
+      ],
+    );
   }
 }

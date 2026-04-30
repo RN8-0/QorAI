@@ -42,6 +42,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
   final ValueNotifier<bool> _hasText = ValueNotifier(false);
+  int _inputRevision = 0;
+  String _lastInputText = '';
+  bool _normalizingInput = false;
   late AnimationController _pulseCtrl;
 
   // Voice chat
@@ -68,13 +71,29 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   }
 
   void _handleTextChanged() {
-    if (_ctrl.text.isEmpty && !_ctrl.value.composing.isCollapsed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _ctrl.text.isEmpty) {
-          _ctrl.clearComposing();
-        }
-      });
+    if (_normalizingInput) return;
+
+    final text = _ctrl.text;
+    final wasCleared = text.isEmpty && _lastInputText.isNotEmpty;
+    if (text.isEmpty) {
+      _normalizingInput = true;
+      _ctrl.value = const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+        composing: TextRange.empty,
+      );
+      _normalizingInput = false;
+
+      if (wasCleared) {
+        setState(() => _inputRevision++);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_focusNode.canRequestFocus) return;
+          _focusNode.requestFocus();
+        });
+      }
     }
+    _lastInputText = _ctrl.text;
+
     final nextHasText = _ctrl.text.trim().isNotEmpty;
     if (_hasText.value != nextHasText) {
       _hasText.value = nextHasText;
@@ -194,12 +213,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     HapticFeedback.lightImpact();
     ref.read(behaviorTrackingProvider).trackAIChatQuery(trimmed);
 
+    _normalizingInput = true;
     _ctrl.value = const TextEditingValue(
       text: '',
       selection: TextSelection.collapsed(offset: 0),
       composing: TextRange.empty,
     );
     _ctrl.clearComposing();
+    _normalizingInput = false;
+    _lastInputText = '';
+    setState(() => _inputRevision++);
     _hasText.value = false;
 
     await ref
@@ -565,6 +588,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
                         : [],
                   ),
                   child: TextField(
+                    key: ValueKey('qor-ai-input-$_inputRevision'),
                     controller: _ctrl,
                     focusNode: _focusNode,
                     maxLines: null,

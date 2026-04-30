@@ -203,6 +203,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _continueAsGuest() async {
+    setState(() => _isLoading = true);
+    final result = await ref.read(authRepositoryProvider).signInAnonymously();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    switch (result) {
+      case Success():
+        context.go(AppRoutes.home);
+      case Failure(error: final error):
+        _showError(error.message);
+    }
+  }
+
   Future<void> _signInWithEmail() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       _showError(
@@ -660,7 +674,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 16),
                   // Guest
                   GestureDetector(
-                    onTap: () => context.go(AppRoutes.home),
+                    onTap: _isLoading ? null : _continueAsGuest,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         vertical: 12,
