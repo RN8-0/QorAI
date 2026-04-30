@@ -201,7 +201,7 @@ class _FloatingAiAssistantOverlayState
     final route = _routePath(context);
     final auth = ref.watch(authStateProvider);
     final isLoggedIn = auth.valueOrNull != null || pb.authStore.isValid;
-    if (!isLoggedIn || route == '/' || route.isEmpty) {
+    if (!isLoggedIn || route == '/') {
       return const SizedBox.shrink();
     }
     final padding = MediaQuery.of(context).padding;

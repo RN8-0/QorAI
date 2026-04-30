@@ -466,16 +466,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = pb.authStore.isValid;
       final record = pb.authStore.record;
 
-      // Public routes (no auth required). Keep app content behind auth so a
-      // cold launch or deep link cannot bypass the login screen.
+      // Public routes (no auth required)
       const publicRoutes = [
         AppRoutes.login,
+        AppRoutes.onboarding,
+        AppRoutes.quiz,
+        AppRoutes.home,
+        AppRoutes.search,
+        AppRoutes.productDetail,
+        AppRoutes.comparisons,
+        AppRoutes.collection,
+        AppRoutes.browse,
         AppRoutes.privacyPolicy,
         AppRoutes.termsOfService,
         AppRoutes.faq,
-        AppRoutes.emailVerify,
+        AppRoutes.premium,
+        AppRoutes.pcBuilder,
+        AppRoutes.pcBuilderStart,
       ];
-      final isPublicRoute = publicRoutes.contains(location);
+      final isPublicRoute =
+          publicRoutes.contains(location) || location.startsWith('/product/');
 
       // Not logged in user trying to access a protected route
       if (!isLoggedIn && !isPublicRoute) {
