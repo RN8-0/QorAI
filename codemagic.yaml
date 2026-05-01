@@ -1,6 +1,6 @@
 workflows:
   ios-release:
-    name: iOS Release
+    name: iOS App Store Release
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -10,10 +10,10 @@ workflows:
       cocoapods: default
       groups:
         - app_store_credentials   # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY
-        - ios_signing             # CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD, CM_PROVISIONING_PROFILE
+      integrations:
+        app_store_connect: qorai_asc_key   # Apple Developer bağlantısı (Codemagic Teams'te tanımla)
       vars:
         BUNDLE_ID: "com.qorai.app"
-        XCODE_PROJECT: "ios/Runner.xcodeproj"
         XCODE_SCHEME: "Runner"
 
     triggering:
@@ -27,31 +27,35 @@ workflows:
       - name: Set up keychain
         script: keychain initialize
 
-      - name: Fetch signing files
+      - name: Fetch signing files from Apple
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
 
-      - name: Add certs to keychain
+      - name: Add certificates to keychain
         script: keychain add-certificates
 
-      - name: Set up code signing settings
+      - name: Apply code signing settings
         script: xcode-project use-profiles
 
       - name: Get Flutter packages
         script: flutter pub get
 
-      - name: Build IPA
+      - name: Run Flutter analyze (lint)
+        script: flutter analyze --no-fatal-infos || true
+
+      - name: Build iOS IPA
         script: |
           flutter build ipa \
             --release \
+            --build-name=$(echo $CM_TAG | sed 's/^v//') \
+            --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
 
     publishing:
       app_store_connect:
@@ -59,5 +63,13 @@ workflows:
         issuer_id: $ASC_ISSUER_ID
         key: $ASC_PRIVATE_KEY
         submit_to_testflight: true
+        submit_to_app_store: false   # ilk onaydan sonra true yap
         beta_groups:
           - "Internal Testers"
+
+      email:
+        recipients:
+          - $CM_SUBMITTER_EMAIL
+        notify:
+          success: true
+          failure: true

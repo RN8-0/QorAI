@@ -9,9 +9,10 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/errors.dart';
-import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/core/pb_client.dart' show pb, kPbBaseUrl;
 import 'package:qor_ai/data/datasources/hive_ds.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/data/models/user_model.dart';
@@ -21,6 +22,7 @@ import 'package:qor_ai/services/cache_service.dart';
 const String _kGoogleWebClientId =
     '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
 
+const String _kPbBaseUrl = kPbBaseUrl;
 /// Yeni kayıt sonucu — kullanıcı + verification mail gönderim durumu.
 class SignUpOutcome {
   final UserEntity user;
@@ -330,8 +332,118 @@ class AuthRepository {
     }
   }
 
+  /// Native Sign In with Apple — App Store zorunluluğu (Guideline 4.8).
+  /// sign_in_with_apple paketi üzerinden native iOS sheet gösterilir,
+  /// ardından identityToken PocketBase custom hook'a gönderilerek
+  /// PB auth token alınır.
   Future<Result<UserEntity>> signInWithApple() async {
-    return _signInWithOAuth2('apple', scopes: ['name', 'email']);
+    try {
+      // iOS 13+ zorunlu; eski cihazlarda fallback browser akışı
+      final isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        return _signInWithOAuth2('apple', scopes: ['name', 'email']);
+      }
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        return const Failure(
+          AuthException(message: 'Apple authentication failed (no identity token)'),
+        );
+      }
+
+      final givenName = credential.givenName ?? '';
+      final familyName = credential.familyName ?? '';
+
+      final httpResp = await http
+          .post(
+            Uri.parse('$_kPbBaseUrl/api/auth/apple'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'identityToken': identityToken,
+              'givenName': givenName,
+              'familyName': familyName,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => throw Exception(
+              'Server did not respond (timeout). Please check your connection.',
+            ),
+          );
+
+      debugPrint('[auth] Apple PB response ${httpResp.statusCode}: ${httpResp.body}');
+
+      if (httpResp.statusCode != 200) {
+        final errBody =
+            jsonDecode(httpResp.body) as Map<String, dynamic>? ?? {};
+        final msg =
+            errBody['message']?.toString() ??
+            errBody['error']?.toString() ??
+            'Apple sign-in failed (${httpResp.statusCode})';
+        return Failure(AuthException(message: msg));
+      }
+
+      final resp = jsonDecode(httpResp.body) as Map<String, dynamic>;
+      final token = resp['token'] as String?;
+      final record = (resp['record'] as Map?)?.cast<String, dynamic>();
+      if (token == null || record == null) {
+        return const Failure(
+          AuthException(message: 'Invalid response from server'),
+        );
+      }
+
+      final appleDisplayName = [givenName, familyName]
+          .where((s) => s.isNotEmpty)
+          .join(' ')
+          .trim();
+
+      final recJson = <String, dynamic>{
+        'id': record['id'],
+        'collectionId': '_pb_users_auth_',
+        'collectionName': 'users',
+        'created': record['created'] ?? DateTime.now().toIso8601String(),
+        'updated': record['updated'] ?? DateTime.now().toIso8601String(),
+        ...record,
+        if (appleDisplayName.isNotEmpty) 'name': appleDisplayName,
+        if (appleDisplayName.isNotEmpty) 'displayName': appleDisplayName,
+      };
+      final recModel = RecordModel.fromJson(recJson);
+      _pb.authStore.save(token, recModel);
+      return Success(UserModel.fromPb(recModel));
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return const Failure(AuthException(message: 'Sign in cancelled'));
+      }
+      return Failure(
+        AuthException(
+          message: 'Apple sign-in failed: ${e.message}',
+          originalError: e,
+        ),
+      );
+    } on ClientException catch (e) {
+      return Failure(
+        AuthException(message: _getPbErrorMsg(e), originalError: e),
+      );
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel') || msg.contains('dismiss')) {
+        return const Failure(AuthException(message: 'Sign in cancelled'));
+      }
+      debugPrint('[auth] signInWithApple error: $e');
+      return Failure(
+        AuthException(
+          message: 'Apple sign-in failed. Please try again.',
+          originalError: e,
+        ),
+      );
+    }
   }
 
   Future<Result<UserEntity>> signInWithX() async {

@@ -53,6 +53,12 @@
 	<string>Qor AI uses the microphone for voice search so you can find products by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Qor AI uses speech recognition to convert your voice into search queries for finding products.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Qor AI uses Face ID to securely sign you in with Apple.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Qor AI needs permission to save photos to your library.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>GIDClientID</key>
 	<string>116725106228-hs29d4gh4vldofj3a0aegfr4ootopr9q.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
