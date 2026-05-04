@@ -51,7 +51,7 @@ workflows:
             --release \
             --build-name=$(echo $CM_TAG | sed 's/^v//') \
             --build-number=$BUILD_NUMBER \
-            --export-options-plist=/Users/builder/export_options.plist
+            --export-options-plist=$HOME/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa

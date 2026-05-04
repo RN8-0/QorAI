@@ -2,6 +2,8 @@
 /// Blueprint Section 3.1, 7.1, 11.1
 library;
 
+import 'package:flutter/foundation.dart';
+
 /// AI model tier: heavy tasks use the full Flash model,
 /// light tasks use the cheaper Flash-Lite model.
 enum AiTier { heavy, lite }
@@ -121,9 +123,30 @@ class AppConstants {
   static const double yearlyProPrice = 19.99;
   static const int trialDays = 3;
 
-  // Play Console Subscription Product IDs
-  static const String monthlySubscriptionId = 'aylik_abonelik';
-  static const String yearlySubscriptionId = 'yillik_abonelik';
+  // App Store (iOS) Subscription Product IDs — must match App Store Connect exactly
+  static const String _iosMonthlySubscriptionId = 'com.qorai.app.monthly';
+  static const String _iosYearlySubscriptionId = 'com.qorai.app.yearly';
+
+  // Google Play Console Subscription Product IDs
+  static const String _androidMonthlySubscriptionId = 'aylik_abonelik';
+  static const String _androidYearlySubscriptionId = 'yillik_abonelik';
+
+  // Platform-aware subscription product IDs
+  static String get monthlySubscriptionId {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return _iosMonthlySubscriptionId;
+    }
+    return _androidMonthlySubscriptionId;
+  }
+
+  static String get yearlySubscriptionId {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return _iosYearlySubscriptionId;
+    }
+    return _androidYearlySubscriptionId;
+  }
 
   // Collection names
   static const String usersCollection = 'users';
