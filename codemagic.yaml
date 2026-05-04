@@ -5,13 +5,11 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      flutter: 3.32.0
+      flutter: stable
       xcode: latest
       cocoapods: default
-      groups:
-        - app_store_credentials   # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY
       integrations:
-        app_store_connect: qorai_asc_key   # Apple Developer bağlantısı (Codemagic Teams'te tanımla)
+        app_store_connect: qorai_asc_key   # Codemagic Teams → Integrations'ta tanımlı
       vars:
         BUNDLE_ID: "com.qorai.app"
         XCODE_SCHEME: "Runner"
@@ -59,11 +57,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: $ASC_KEY_ID
-        issuer_id: $ASC_ISSUER_ID
-        key: $ASC_PRIVATE_KEY
+        auth: integration          # qorai_asc_key integration'ını kullan
         submit_to_testflight: true
-        submit_to_app_store: false   # ilk onaydan sonra true yap
+        submit_to_app_store: false  # TestFlight onayından sonra true yap
         beta_groups:
           - "Internal Testers"
 
