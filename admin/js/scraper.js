@@ -111,7 +111,10 @@ function normalizeCategoryToken(value) {
     .replace(/\.html$/i, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-|-$/g, GeizhalsUrl(url) {
+    .replace(/^-|-$/g, '');
+}
+
+function findCategoryByGeizhalsUrl(url) {
   if (!url) return null;
   // geizhals.eu category URL pattern: https://geizhals.eu/<cat-slug>
   try {
@@ -1121,76 +1124,6 @@ async function translateScrapedProduct(product) {
   }
 
   return product;
-}
-
-  // ── Category ──
-  let category = categoryId || '';
-  if (!category) {
-    const found = findCategoryByGeizhalsUrl(url);
-    category = found ? found.id : categorySlugFromUrl(url);
-  }
-
-  // ── Tech Score ──
-  const techScore = extractTechScore(doc);
-
-  // ── Price ──
-  const price_raw = extractPrice(doc);
-
-  // ── Images ──
-  let images = extractImages(doc, productSlug);
-  // Try gallery page for extra images
-  if (images.length < 4 && productSlug) {
-    try {
-      const galleryImgs = await fetchGalleryImages(productSlug);
-      const seenKeys = new Set(images.map(u => (u || '').toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0]));
-      for (const giRaw of galleryImgs) {
-        if (images.length >= 8) break;
-        const gi = (giRaw || '').split(/[?#]/)[0];
-        const key = gi.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          images.push(gi);
-        }
-      }
-    } catch {}
-  }
-
-  // ── Variant Group ──
-  const variantGroup = normalizeVariantGroupFromSlug(productSlug);
-
-  // ── Collect untranslated Turkish terms for free backlog sync ──
-  if (dict && dict.collectUntranslatedTerms) {
-    dict.collectUntranslatedTerms({
-      name: originalName,
-      specs: rawSpecs,
-      specSections: rawSections,
-      keySpecs: rawKeySpecs
-    });
-  }
-
-  return {
-    id,
-    slug: productSlug || id,
-    name: name || 'Unknown Product',
-    brand,
-    category,
-    source: 'geizhals.eu',
-    sourceUrl: url,
-    imageUrl: images[0] || '',
-    images,
-    specs: finalSpecs,
-    specSections: finalSections,
-    keySpecs: translatedKeySpecs,
-    techScore: techScore || null,
-    price_raw: price_raw || null,
-    specsCount: Object.keys(finalSpecs).length,
-    variantGroup,
-    scrapedAt: new Date().toISOString(),
-    _originalName: originalName,
-    _originalSpecs: rawSpecs,
-    _originalSections: rawSections,
-    _originalKeySpecs: rawKeySpecs,
-  };
 }
 
 // ═══════════════════════════════════════
