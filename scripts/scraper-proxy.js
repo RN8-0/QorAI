@@ -23,8 +23,18 @@ const StealthPlugin = require(path.join(rootDir, 'node_modules', 'puppeteer-extr
 puppeteerExtra.use(StealthPlugin());
 
 const PORT = parseInt(process.argv[2]) || 3456;
+const ADMIN_DIR = path.join(rootDir, 'admin');
+const MIME = {
+  '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8',
+  '.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png',
+  '.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.svg':'image/svg+xml',
+  '.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf',
+  '.bat':'text/plain','.txt':'text/plain'
+};
 const ALLOWED_ORIGINS = [
   'https://z1221ae58okr865xdquykps8.46.225.95.201.sslip.io',
+  'http://localhost:3456',
+  'http://127.0.0.1:3456',
   'http://localhost:5000',
   'http://localhost:5002',
   'http://127.0.0.1:5000',
@@ -229,13 +239,39 @@ function setCORSHeaders(res, origin) {
 
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || '';
-  setCORSHeaders(res, origin);
 
   if (req.method === 'OPTIONS') {
+    setCORSHeaders(res, origin);
     res.writeHead(204);
     res.end();
     return;
   }
+
+  // ── Admin Panel Static Files ──
+  if (req.url === '/' || req.url === '/admin' || req.url.startsWith('/admin/') || req.url.startsWith('/js/') || req.url.startsWith('/css/') || req.url === '/index.html' || req.url.match(/\.(html|js|css|png|jpg|svg|ico|json|bat|txt)$/)) {
+    let filePath = req.url;
+    // Remove /admin prefix if present
+    if (filePath.startsWith('/admin/')) filePath = filePath.slice(6);
+    else if (filePath === '/admin') filePath = '/index.html';
+    if (filePath === '/') filePath = '/index.html';
+    // Remove leading slash and query string
+    filePath = filePath.split('?')[0].replace(/^\//, '');
+    const fullPath = path.join(ADMIN_DIR, filePath);
+    // Security: prevent directory traversal
+    if (!fullPath.startsWith(ADMIN_DIR)) { res.writeHead(403); res.end('Forbidden'); return; }
+    try {
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        const ext = path.extname(fullPath).toLowerCase();
+        const mime = MIME[ext] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+        res.end(fs.readFileSync(fullPath));
+        return;
+      }
+    } catch {}
+    // Fall through to other routes
+  }
+
+  setCORSHeaders(res, origin);
 
   // Health check
   if (req.url === '/health') {
@@ -351,7 +387,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v3.0 (Stealth) — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v3.1 — http://localhost:${PORT}`);
+  console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 Requests use your local IP address`);
   console.log(`  🔒 Only geizhals.eu domains are allowed\n`);
