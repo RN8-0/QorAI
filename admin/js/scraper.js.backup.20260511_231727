@@ -416,6 +416,13 @@ function extractListingTechScore(cardEl) {
 function extractPrice(doc) {
   if (typeof doc === 'string') doc = parseHTML(doc);
 
+  // geizhals.eu uses € prices, typically in elements with class containing "price"
+  const PRICE_SELECTORS = [
+    '.price', '[class*="price"]', '.product-price', '.current-price',
+    '.gh_price', '.offer-price', '.price-value',
+    '.buyPrice', '[data-price]',
+  ];
+
   function parsePrice(text) {
     if (!text) return null;
     // European format: € 1.234,56 or 1.234,56 € or 1,234.56
@@ -432,26 +439,15 @@ function extractPrice(doc) {
     return num;
   }
 
-  // PRIMARY: geizhals.eu gh_price class
-  const ghPriceEl = doc.querySelector('.gh_price');
-  if (ghPriceEl) {
-    const p = parsePrice(ghPriceEl.textContent);
-    if (p) return p;
-  }
-
-  // Fallback: title-based price extraction (geizhals puts price in title)
-  const titleEl = doc.querySelector('title');
-  if (titleEl) {
-    const titleText = titleEl.textContent;
-    // Pattern: "ab € 209,99" or "ab €&nbsp;209,99"
-    const titleMatch = titleText.match(/ab\s*€\s*(?:&nbsp;)?\s*([\d.,]+)/);
-    if (titleMatch) {
-      const p = parsePrice(titleMatch[1]);
+  for (const sel of PRICE_SELECTORS) {
+    const el = doc.querySelector(sel);
+    if (el) {
+      const p = parsePrice(el.textContent);
       if (p) return p;
     }
   }
 
-  // Fallback: scan for € symbol in page
+  // Fallback: scan all leaf text nodes for €
   const walker = doc.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) {
@@ -471,55 +467,140 @@ function extractPrice(doc) {
 
 function extractImages(doc, productSlug) {
   if (typeof doc === 'string') doc = parseHTML(doc);
+  const seen = new Set();
+  const images = [];
+
+  function isValid(url) {
+    if (!url || typeof url !== 'string') return false;
+    if (!url.includes('gzhls.at/pix/')) return false;
+    if (url.includes('/tema/') || url.includes('/marka/') || url.includes('/kategori/')) return false;
+    return true;
+  }
 
   function upgradeSize(url) {
     // Replace size prefixes: /k_, /s_, /m_, /t_, /c_ → /-n.webp
     return url.replace(/\/[ksmtc]_/g, '/-n.webp');
   }
 
-  // Find the FIRST product image from gzhls.at/pix/
-  // Priority: og:image > first img[src*="gzhls.at/pix/"]
-  let firstImage = '';
+  function addImage(url) {
+    if (!url) return;
+    let u = url.trim();
+    if (u.startsWith('//')) u = 'https:' + u;
+    if (!u.startsWith('http')) return;
+    u = upgradeSize(u).split(/[?#]/)[0];
+    if (!isValid(u)) return;
+    const key = u.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+    if (seen.has(key)) return;
+    if (images.length >= 8) return;
+    seen.add(key);
+    images.push(u);
+  }
 
-  // 1. Try og:image first
+  function extractDataAttrs(el) {
+    for (const attr of ['data-src', 'data-zoom', 'data-big', 'data-full',
+      'data-image', 'data-url', 'data-original', 'data-lazy', 'src', 'href']) {
+      const val = el.getAttribute(attr);
+      if (val && val.includes('gzhls.at/pix/')) addImage(val);
+    }
+  }
+
+  // 1. Main images: all img tags with gzhls.at/pix in product area
+  doc.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
+    const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+    if (src) addImage(src);
+  });
+
+  // 2. Also check picture > source elements (webp variants)
+  doc.querySelectorAll('source[srcset*="gzhls.at/pix/"]').forEach(source => {
+    const srcset = source.getAttribute('srcset') || '';
+    srcset.split(',').forEach(s => {
+      const url = s.trim().split(/\s+/)[0];
+      if (url && url.includes('gzhls.at/pix/')) addImage(url);
+    });
+  });
+
+  // 3. Gallery links (geizhals uses a[href*="gzhls.at/pix/"])
+  doc.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (href) addImage(href);
+  });
+
+  // 3. Page-wide data attributes with slug filter
+  const dataSelectors = '[data-zoom], [data-big], [data-full], [data-src], [data-image], [data-url]';
+  doc.querySelectorAll(dataSelectors).forEach(el => {
+    for (const attr of ['data-zoom', 'data-big', 'data-full', 'data-src', 'data-image', 'data-url']) {
+      const val = el.getAttribute(attr);
+      if (val && val.includes('gzhls.at/pix')) {
+        if (!productSlug || val.toLowerCase().includes(productSlug.toLowerCase().replace(/\.html$/i, ''))) {
+          addImage(val);
+        }
+      }
+    }
+  });
+
+  // 4. All <img> with lazy attributes
+  doc.querySelectorAll('img').forEach(img => {
+    for (const attr of ['data-src', 'data-lazy', 'data-original', 'src']) {
+      const val = img.getAttribute(attr);
+      if (val && val.includes('gzhls.at/pix')) {
+        if (!productSlug || val.toLowerCase().includes(productSlug.toLowerCase().replace(/\.html$/i, ''))) {
+          addImage(val);
+        }
+      }
+    }
+  });
+
+  // 5. og:image fallback
   const ogImg = doc.querySelector('meta[property="og:image"]');
   if (ogImg) {
     const content = ogImg.getAttribute('content');
     if (content && content.includes('gzhls.at/pix')) {
-      firstImage = upgradeSize(content.trim().split(/[?#]/)[0]);
-    }
-  }
-
-  // 2. Fallback to first img with gzhls.at/pix/
-  if (!firstImage) {
-    const img = doc.querySelector('img[src*="gzhls.at/pix/"]');
-    if (img) {
-      const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
-      if (src) firstImage = upgradeSize(src.trim().split(/[?#]/)[0]);
-    }
-  }
-
-  // 3. Fallback to any img with gzhls.at/pix in any attribute
-  if (!firstImage) {
-    const allImgs = doc.querySelectorAll('img');
-    for (const img of allImgs) {
-      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
-        const val = img.getAttribute(attr);
-        if (val && val.includes('gzhls.at/pix')) {
-          firstImage = upgradeSize(val.trim().split(/[?#]/)[0]);
-          break;
-        }
+      // Insert at front if not already present
+      const upgraded = upgradeSize(content.trim().split(/[?#]/)[0]);
+      const key = upgraded.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+      if (!seen.has(key) && images.length < 8) {
+        images.unshift(upgraded);
+        seen.add(key);
       }
-      if (firstImage) break;
     }
   }
 
-  return firstImage;
+  // Carousel guard: drop last if it matches first
+  if (images.length > 1 && images[images.length - 1] === images[0]) {
+    images.pop();
+  }
+
+  return images.slice(0, 8);
 }
 
 async function fetchGalleryImages(productSlug) {
-  // No longer needed - we only use the first image
-  return [];
+  if (!productSlug) return [];
+  // geizhals.eu doesn't have a separate gallery page; images are on the product page
+  // Try variant pages as fallback
+  const variantUrls = [
+    `${GEIZHALS_BASE}/${productSlug}.html`,
+  ];
+  const imgs = [];
+  const seen = new Set();
+  for (const url of variantUrls) {
+    if (imgs.length >= 8) break;
+    try {
+      const html = await proxyFetch(url);
+      if (!html) continue;
+      const doc = parseHTML(html);
+      doc.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
+        if (imgs.length >= 8) return;
+        const src = (img.getAttribute('src') || '').replace(/\/[ksmtc]_/g, '/-n.webp');
+        if (!src.includes('/-n.webp')) return;
+        const key = src.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0];
+        if (!seen.has(key)) {
+          seen.add(key);
+          imgs.push(src);
+        }
+      });
+    } catch { continue; }
+  }
+  return imgs;
 }
 
 // ═══════════════════════════════════════
@@ -532,21 +613,134 @@ function parseSpecs(doc) {
   const keySpecs = {};
 
   // ── PRIMARY: geizhals.eu dl.specs-grid ──
-  // Only extract the FIRST specs-grid to avoid duplicate variants
-  const firstGrid = doc.querySelector('dl.specs-grid');
-  if (firstGrid) {
-    const sectionName = 'General';
-    specSections[sectionName] = {};
+  const grids = doc.querySelectorAll('dl.specs-grid');
+  if (grids.length > 0) {
+    grids.forEach(grid => {
+      // Find section header (preceding h3 or similar)
+      let sectionName = 'General';
+      let prev = grid.previousElementSibling;
+      while (prev) {
+        const tag = prev.tagName;
+        if (tag === 'H2' || tag === 'H3' || tag === 'H4') {
+          sectionName = prev.textContent.trim();
+          break;
+        }
+        prev = prev.previousElementSibling;
+      }
+      if (!specSections[sectionName]) specSections[sectionName] = {};
 
-    firstGrid.querySelectorAll('.specs-grid__item').forEach(item => {
-      const dt = item.querySelector('dt');
-      const dd = item.querySelector('dd');
-      if (!dt || !dd) return;
-      const key = dt.textContent.trim();
-      let value = dd.textContent.trim().replace(/\s+/g, ' ');
-      if (key && value && key.length < 200 && value.length < 1000) {
-        specs[key] = value;
-        specSections[sectionName][key] = value;
+      grid.querySelectorAll('.specs-grid__item').forEach(item => {
+        const dt = item.querySelector('dt');
+        const dd = item.querySelector('dd');
+        if (!dt || !dd) return;
+        const key = dt.textContent.trim();
+        let value = dd.textContent.trim().replace(/\s+/g, ' ');
+        if (key && value && key.length < 200 && value.length < 1000) {
+          specs[key] = value;
+          specSections[sectionName][key] = value;
+        }
+      });
+    });
+  }
+
+  // ── FALLBACK: #ozellikler (epey legacy) ──
+  if (Object.keys(specs).length === 0) {
+    const ozellikler = doc.querySelector('#ozellikler');
+    if (ozellikler) {
+      function parseLiList(ul, sectionName) {
+        if (!specSections[sectionName]) specSections[sectionName] = {};
+        ul.querySelectorAll('li').forEach(li => {
+          const strong = li.querySelector('strong');
+          if (!strong) return;
+          const key = strong.textContent.trim();
+          if (!key) return;
+          let value = '';
+          const cellSpan = li.querySelector('span.cell');
+          if (cellSpan) {
+            const anchors = cellSpan.querySelectorAll('a');
+            if (anchors.length > 0) {
+              value = Array.from(anchors).map(a => a.textContent.trim()).filter(Boolean).join('\n');
+            }
+            if (!value) {
+              const innerSpans = cellSpan.querySelectorAll('span');
+              if (innerSpans.length > 1) {
+                value = Array.from(innerSpans).map(s => s.textContent.trim()).filter(Boolean).join('\n');
+              }
+            }
+            if (!value) value = cellSpan.textContent.trim();
+          } else {
+            const clone = li.cloneNode(true);
+            const sc = clone.querySelector('strong');
+            if (sc) sc.remove();
+            value = clone.textContent.trim();
+          }
+          if (key && value && key.length < 200 && value.length < 1000) {
+            specs[key] = value;
+            specSections[sectionName][key] = value;
+          }
+        });
+      }
+
+      const bricks = ozellikler.querySelectorAll('.masonry-brick');
+      if (bricks.length > 0) {
+        bricks.forEach(brick => {
+          const h3 = brick.querySelector('h3');
+          const sectionName = h3
+            ? (h3.querySelector('span')?.textContent.trim() || h3.textContent.trim())
+            : 'General';
+          const ul = brick.querySelector('ul');
+          if (ul) parseLiList(ul, sectionName);
+        });
+      }
+
+      if (Object.keys(specs).length === 0) {
+        let currentSection = 'General';
+        const walk = (parent) => {
+          for (const child of parent.children) {
+            if (child.tagName === 'H3') {
+              currentSection = child.querySelector('span')?.textContent.trim()
+                || child.textContent.trim();
+              if (!specSections[currentSection]) specSections[currentSection] = {};
+            } else if (child.tagName === 'UL') {
+              parseLiList(child, currentSection);
+            } else if (child.children.length > 0) {
+              for (const sub of child.children) {
+                if (sub.tagName === 'H3') {
+                  currentSection = sub.querySelector('span')?.textContent.trim()
+                    || sub.textContent.trim();
+                  if (!specSections[currentSection]) specSections[currentSection] = {};
+                } else if (sub.tagName === 'UL') {
+                  parseLiList(sub, currentSection);
+                }
+              }
+            }
+          }
+        };
+        walk(ozellikler);
+      }
+    }
+  }
+
+  // ── FALLBACK: table-based specs ──
+  if (Object.keys(specs).length === 0) {
+    const tables = doc.querySelectorAll('#bilgiler tr, .spec-table tr, table.specs tr, table tr');
+    let currentSection = 'General';
+    tables.forEach(tr => {
+      const th = tr.querySelector('th');
+      if (th && tr.querySelectorAll('td').length === 0) {
+        currentSection = th.textContent.trim();
+        if (!specSections[currentSection]) specSections[currentSection] = {};
+        return;
+      }
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 2) {
+        const key = tds[0].textContent.trim();
+        const val = tds[1].textContent.trim();
+        if (key && val && key.length < 200 && val.length < 1000) {
+          specs[key] = val;
+          if (!specSections[currentSection]) specSections[currentSection] = {};
+          specSections[currentSection][key] = val;
+        }
       }
     });
   }
@@ -817,13 +1011,6 @@ async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
 
 async function scrapeProductDetail(html, url, categoryId) {
   if (!html) return null;
-
-  // Detect Cloudflare challenge pages
-  if (isChallengePage(html)) {
-    slog(`Challenge page detected, skipping: ${url}`, 'warn');
-    return null;
-  }
-
   const doc = parseHTML(html);
 
   // Detect garbage / redirect pages
@@ -865,8 +1052,23 @@ async function scrapeProductDetail(html, url, categoryId) {
   const price_raw = extractPrice(doc);
 
   // ── Images ──
-  // Single image: first product image from gzhls.at/pix/ in -n.webp format
-  const imageUrl = extractImages(doc, productSlug);
+  let images = extractImages(doc, productSlug);
+  // Try gallery page for extra images
+  if (images.length < 4 && productSlug) {
+    try {
+      const galleryImgs = await fetchGalleryImages(productSlug);
+      const seenKeys = new Set(images.map(u => (u || '').toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0]));
+      for (const giRaw of galleryImgs) {
+        if (images.length >= 8) break;
+        const gi = (giRaw || '').split(/[?#]/)[0];
+        const key = gi.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          images.push(gi);
+        }
+      }
+    } catch {}
+  }
 
   // ── Variant Group ──
   const variantGroup = normalizeVariantGroupFromSlug(productSlug);
@@ -879,8 +1081,8 @@ async function scrapeProductDetail(html, url, categoryId) {
     category,
     source: 'geizhals.eu',
     sourceUrl: url,
-    imageUrl: imageUrl || '',
-    images: imageUrl ? [imageUrl] : [],
+    imageUrl: images[0] || '',
+    images,
     specs: rawSpecs,          // German specs
     specSections: rawSections, // German sections
     keySpecs: rawKeySpecs,
@@ -923,24 +1125,9 @@ async function translateScrapedProduct(product) {
 //  14. PRODUCT URL COLLECTION
 // ═══════════════════════════════════════
 
-function isChallengePage(html) {
-  if (!html) return true;
-  return html.includes('Nur einen Moment') ||
-    html.includes('Just a moment') ||
-    html.includes('Checking your browser') ||
-    html.includes('Sichere Verbindung wird überprüft') ||
-    html.includes('challenge-form') ||
-    html.includes('turnstile');
-}
-
-function extractProductLinksFromDoc(doc, html) {
+function extractProductLinksFromDoc(doc) {
   const results = [];
   const seen = new Set();
-
-  // Detect challenge page
-  if (isChallengePage(html)) {
-    return results;
-  }
 
   // geizhals.eu product links: /path/product-name-a1234567.html
   const productLinkRe = /-a\d+\.html$/i;
@@ -974,25 +1161,19 @@ function extractProductLinksFromDoc(doc, html) {
 }
 
 async function collectProductUrls(categoryPath, maxPages = 50) {
-  // Use search-based discovery since ?cat= pages are blocked by Cloudflare
-  // Map category to search terms
-  const catDef = (typeof QorAiCategories !== 'undefined')
-    ? QorAiCategories.getAll().find(c => c.id === categoryPath || c.geizhalsSlug === categoryPath)
-    : null;
-  const searchTerm = catDef ? catDef.name : categoryPath;
-
-  const baseUrl = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(searchTerm)}`;
-  slog(`Collecting product URLs from search: "${searchTerm}"`);
+  // geizhals.eu category listing URL
+  const baseUrl = `${GEIZHALS_BASE}/?cat=${categoryPath}`;
+  slog(`Collecting product URLs from: geizhals.eu/?cat=${categoryPath}`);
 
   const allItems = [];
   const seenUrls = new Set();
   let emptyCount = 0;
   let dupePages = 0;
-  let challengeCount = 0;
 
-  for (let page = 1; page <= maxPages && !scraperAbort; page++) {
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&page=${page}`;
-    updateProgress(page, maxPages, 'Search pages');
+  for (let page = 0; page < maxPages && !scraperAbort; page++) {
+    // geizhals pagination: ?cat=X&page=N (0-indexed or 1-indexed? try both)
+    const pageUrl = page === 0 ? baseUrl : `${baseUrl}&page=${page}`;
+    updateProgress(page + 1, maxPages, 'Listing pages');
 
     try {
       const html = await proxyFetch(pageUrl);
@@ -1005,25 +1186,19 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
         continue;
       }
 
-      // Detect challenge page
-      if (isChallengePage(html)) {
-        challengeCount++;
-        slog(`Page ${page}: Cloudflare challenge detected (${challengeCount}/3)`, 'warn');
-        if (challengeCount >= 3) {
-          slog('Too many challenge pages, stopping search', 'error');
-          break;
-        }
-        await sleep(5000 + Math.random() * 5000);
-        continue;
-      }
-
-      challengeCount = 0;
       const doc = parseHTML(html);
-      const items = extractProductLinksFromDoc(doc, html);
+      const items = extractProductLinksFromDoc(doc);
 
-      if (items.length === 0 && page === 1) {
+      // Debug: log page structure info on first page if no results
+      if (items.length === 0 && page === 0) {
+        const allLinks = doc.querySelectorAll('a[href]').length;
+        const htmlLinks = doc.querySelectorAll('a[href$=".html"]').length;
         const title = doc.querySelector('title')?.textContent || '';
-        slog(`Debug: search for "${searchTerm}" returned 0 results. Title: "${title.slice(0,60)}"`, 'warn');
+        slog(`Debug: ${allLinks} links total, ${htmlLinks} .html links, title: "${title.slice(0,60)}"`, 'warn');
+        // Check if it's a Cloudflare challenge
+        if (title.includes('Just a moment') || title.includes('Checking') || html.length < 2000) {
+          slog('⚠️ Cloudflare challenge not bypassed. Proxy may need update.', 'error');
+        }
       }
 
       if (items.length === 0) {
@@ -1032,6 +1207,28 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
           slog(`2 consecutive empty pages, stopping at page ${page}`, 'info');
           break;
         }
+        // Try alternate URL pattern
+        const filterUrl = `${GEIZHALS_BASE}/${categoryPath}/?page=${page}`;
+        try {
+          const filterHtml = await proxyFetch(filterUrl);
+          if (filterHtml) {
+            const filterDoc = parseHTML(filterHtml);
+            const filterItems = extractProductLinksFromDoc(filterDoc);
+            if (filterItems.length > 0) {
+              emptyCount = 0;
+              let newCount = 0;
+              for (const item of filterItems) {
+                if (!seenUrls.has(item.url)) {
+                  seenUrls.add(item.url);
+                  allItems.push(item);
+                  newCount++;
+                }
+              }
+              slog(`Page ${page} (filter): ${filterItems.length} products (${newCount} new)`, 'success');
+              continue;
+            }
+          }
+        } catch {}
         continue;
       }
 
@@ -1047,19 +1244,19 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
 
       if (newCount === 0) {
         dupePages++;
-        slog(`Page ${page}: all ${items.length} duplicates (${dupePages}/3)`, 'warn');
+        slog(`Page ${page+1}: all ${items.length} duplicates (${dupePages}/3)`, 'warn');
         if (dupePages >= 3) {
           slog('3 all-duplicate pages, stopping pagination', 'info');
           break;
         }
       } else {
         dupePages = 0;
-        slog(`Page ${page}: ${items.length} products (${newCount} new, ${allItems.length} total)`, 'success');
+        slog(`Page ${page+1}: ${items.length} products (${newCount} new, ${allItems.length} total)`, 'success');
       }
 
-      if (page < maxPages) await sleep(2000 + Math.random() * 2000);
+      if (page < maxPages) await sleep(1500 + Math.random() * 1000);
     } catch (e) {
-      slog(`Page ${page} error: ${e.message}`, 'error');
+      slog(`Page ${page+1} error: ${e.message}`, 'error');
       emptyCount++;
       if (emptyCount >= 2) break;
     }
@@ -1104,12 +1301,6 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         const html = await proxyFetch(item.url);
         if (!html) {
           slog(`  → 404/gone: ${slug}`, 'warn');
-          results.skipped++;
-          continue;
-        }
-
-        if (isChallengePage(html)) {
-          slog(`  → Challenge page, skipping: ${slug}`, 'warn');
           results.skipped++;
           continue;
         }
@@ -1355,53 +1546,31 @@ async function scrapeByUrl() {
       // Direct URL scrape via proxy
       const html = await proxyFetch(url);
       if (!html) { slog('❌ Page not found or blocked', 'error'); return; }
-      if (isChallengePage(html)) { slog('❌ Cloudflare challenge, cannot scrape this URL', 'error'); return; }
-
       const product = await scrapeProductDetail(html, url, cat);
       if (!product) { slog('❌ Could not parse product data', 'error'); return; }
 
       slog(`✅ ${product.name}`, 'success');
       slog(`  Specs: ${product.specsCount}`, 'info');
-      slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
+      slog(`  Images: ${product.images.length}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
       await pbSetDoc('products', product.slug || product.id, product);
       slog(`💾 Saved: ${product.id?.substring(0,10)}`, 'success');
     } else {
-      // Product name search via geizhals search page
-      slog(`Searching geizhals.eu for: ${name}`);
-      const searchUrl = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(name)}`;
-      const searchHtml = await proxyFetch(searchUrl);
-      if (!searchHtml || isChallengePage(searchHtml)) {
-        slog('❌ Search blocked or no results', 'error');
-        return;
-      }
+      // Product name search via proxy /scrape-product
+      const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${cat}`);
+      const data = await r.json();
+      if (data.error) { slog(`❌ ${data.error}`, 'error'); return; }
 
-      const searchDoc = parseHTML(searchHtml);
-      const links = extractProductLinksFromDoc(searchDoc, searchHtml);
-      if (links.length === 0) {
-        slog('❌ No products found for this search', 'error');
-        return;
-      }
+      slog(`✅ ${data.name}`, 'success');
+      slog(`  Specs: ${Object.keys(data.specs).length}`, 'info');
+      slog(`  Images: ${data.imgs.length}`, 'info');
+      Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
-      slog(`Found ${links.length} products, scraping first...`, 'info');
-      const firstUrl = links[0].url;
-      const productHtml = await proxyFetch(firstUrl);
-      if (!productHtml || isChallengePage(productHtml)) {
-        slog('❌ Product page blocked', 'error');
-        return;
-      }
-
-      const product = await scrapeProductDetail(productHtml, firstUrl, cat);
-      if (!product) { slog('❌ Could not parse product data', 'error'); return; }
-
-      slog(`✅ ${product.name}`, 'success');
-      slog(`  Specs: ${product.specsCount}`, 'info');
-      slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
-      Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
-
-      await pbSetDoc('products', product.slug || product.id, product);
-      slog(`💾 Saved: ${product.id?.substring(0,10)}`, 'success');
+      const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
+      const body = {name:data.name, category:cat, slug, specs:data.specs, imageUrl: data.imgs && data.imgs.length > 0 ? data.imgs[0] : '', images: data.imgs || [], source:'geizhals.eu', isActive:true};
+      const saveR = await pbAddDoc('products', body);
+      slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
     }
   } catch(e) { slog(`Error: ${e.message}`, 'error'); }
 }
@@ -1453,11 +1622,6 @@ async function startScoreUpdate() {
       const html = await proxyFetch(p.sourceUrl);
       if (!html) {
         slog(`${p.name || p.id}: page not found`, 'warn');
-        failed++;
-        continue;
-      }
-      if (isChallengePage(html)) {
-        slog(`${p.name || p.id}: challenge page, skipping`, 'warn');
         failed++;
         continue;
       }
@@ -1552,12 +1716,6 @@ async function startProductUpdate() {
             if (idx >= 0) allProducts.splice(idx, 1);
           }
         } catch {}
-        continue;
-      }
-
-      if (isChallengePage(html)) {
-        slog(`  → Challenge page, skipping update: ${existing.name || existing.id}`, 'warn');
-        failed++;
         continue;
       }
 
