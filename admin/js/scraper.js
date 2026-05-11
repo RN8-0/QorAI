@@ -1309,21 +1309,63 @@ function triggerAITranslation() {
 
 async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
+  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   const catSelect = document.getElementById('scrapeCategory');
   const catValue = catSelect ? catSelect.value : '';
   if (!catValue) { toast('Select a category', 'w'); return; }
 
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 100;
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 10;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
 
+  scraperRunning = true; scraperAbort = false;
+  document.getElementById('btnBulkScrape').style.display = 'none';
+  document.getElementById('btnStopScrape').style.display = '';
+
   clearScraperLog();
-  slog('geizhals.eu CLI scraper kullanin:', 'info');
-  slog(`  node scripts/geizhals_scraper.js --category=${catValue} --limit=${maxProducts}`, 'success');
-  slog('', 'info');
-  slog('Bu komutu PowerShell terminalinde calistirin.', 'warn');
-  slog('Scraper Puppeteer ile calisir, admin panel uzerinden degil.', 'warn');
+  slog(`geizhals.eu scrape: ${catValue}, max ${maxProducts}`, 'info');
+
+  // Popular product names per category for testing
+  const productLists = {
+    smartphones: ['iPhone 16','Samsung Galaxy S25 Ultra','Xiaomi 14','Google Pixel 9 Pro','OnePlus 12'],
+    tablets: ['iPad Air M2','Samsung Galaxy Tab S9','Xiaomi Pad 7'],
+    laptops: ['MacBook Air M4','Dell XPS 15','Lenovo Yoga 9i'],
+    gpus: ['RTX 5090','RX 9070 XT','RTX 5080'],
+    cpus: ['Intel i9-14900K','AMD Ryzen 7 9800X3D'],
+    monitors: ['LG C4 OLED','Samsung Odyssey G9','Dell UltraSharp 32'],
+    headphones: ['AirPods Pro 3','Sony WH-1000XM6','Bose QC Ultra'],
+    smartwatches: ['Apple Watch Ultra 2','Samsung Watch 7','Garmin Venu 4'],
+    cameras: ['Canon EOS R6 III','Sony A7 V','GoPro Hero 14'],
+    consoles: ['PlayStation 5','Nintendo Switch 2'],
+    keyboards: ['Corsair K70','Logitech G915'],
+  };
+  const names = productLists[catValue] || ['iPhone 16'];
+  const toScrape = names.slice(0, maxProducts);
+
+  let added = 0, skipped = 0, errors = 0;
+  for (let i = 0; i < toScrape.length && !scraperAbort; i++) {
+    const name = toScrape[i];
+    slog(`[${i+1}/${toScrape.length}] ${name}`);
+    try {
+      const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${catValue}`);
+      const data = await r.json();
+      if (data.error) { slog(`  ❌ ${data.error}`, 'error'); errors++; }
+      else {
+        slog(`  ✅ ${data.name} | ${Object.keys(data.specs).length} specs | ${data.imgs.length} images`);
+        // Save to PB
+        const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
+        const body = {name:data.name,category:catValue,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
+        const saveR = await pbAddDoc('products', body);
+        if (saveR?.id) { slog(`  💾 Saved: ${saveR.id.substring(0,10)}`); added++; }
+        else { slog(`  Save failed`, 'warn'); errors++; }
+      }
+    } catch(e) { slog(`  Error: ${e.message}`, 'error'); errors++; }
+    await new Promise(r => setTimeout(r, delay));
+  }
+
+  slog(`\nDone: ${added} added | ${skipped} skipped | ${errors} errors`, 'success');
   finishScraping();
+}
 }
 
 // ═══════════════════════════════════════

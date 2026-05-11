@@ -252,7 +252,59 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Get target URL
+  // Scrape product from geizhals by name
+  if (req.url.startsWith('/scrape-product')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const productName = urlObj.searchParams.get('name') || '';
+    const category = urlObj.searchParams.get('cat') || 'smartphones';
+    if (!productName) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing ?name=...' }));
+      return;
+    }
+    try {
+      console.log(`  🔍 Searching: ${productName}`);
+      const page = await getPage();
+      await page.goto('https://geizhals.eu/?fs=' + encodeURIComponent(productName), { waitUntil: 'domcontentloaded', timeout: 15000 });
+      const productUrl = await page.evaluate(() => {
+        for (const a of document.querySelectorAll('a[href*="-a"][href*=".html"]')) {
+          const h = a.getAttribute('href') || '';
+          if (h.match(/-a\d+\.html$/)) return h;
+        }
+        return null;
+      });
+      if (!productUrl) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+
+      const fullUrl = productUrl.startsWith('http') ? productUrl : 'https://geizhals.eu' + productUrl;
+      await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await _humanDelay(500, 1000);
+
+      const data = await page.evaluate(() => {
+        const r = { name: '', imgs: [], specs: {} };
+        r.name = (document.querySelector('h1')?.textContent || '').trim();
+        document.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
+          const s = img.src || '';
+          if (s.includes('-n.webp')) r.imgs.push(s);
+        });
+        document.querySelectorAll('dl.specs-grid').forEach(grid => {
+          grid.querySelectorAll('.specs-grid__item').forEach(item => {
+            const k = (item.querySelector('dt') || item).textContent.trim();
+            const vEl = item.querySelector('dd');
+            let v = vEl ? vEl.textContent.trim().replace(/\s+/g, ' ') : '';
+            if (k && v && k.length > 1 && k.length < 80 && v.length < 800) r.specs[k] = v;
+          });
+        });
+        return r;
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
   const urlObj = new URL(req.url, `http://localhost:${PORT}`);
   const targetUrl = req.headers['x-target-url'] || urlObj.searchParams.get('url');
 
