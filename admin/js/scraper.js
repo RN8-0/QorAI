@@ -1090,11 +1090,6 @@ async function scrapeProductDetail(html, url, categoryId) {
     price_raw: price_raw || null,
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
-    scrapedAt: new Date().toISOString(),
-    originalNameDe: originalName,
-    originalSpecsDe: rawSpecs,
-    originalSectionsDe: rawSections,
-    originalKeySpecsDe: rawKeySpecs,
   };
 }
 
@@ -1110,7 +1105,7 @@ async function translateScrapedProduct(product) {
     product.multiLangSpecs = multiLangSpecs;
 
     // Translate product name
-    const names = await translateGermanName(product.originalNameDe || product.name);
+    const names = await translateGermanName(product.name);
     product.nameTranslated = names;
 
     // Use English as primary display spec
@@ -1573,7 +1568,7 @@ async function scrapeByUrl() {
       Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
       const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
-      const body = {name:data.name, category:cat, slug, specs:data.specs, imageUrl: data.imgs && data.imgs.length > 0 ? data.imgs[0] : '', images: data.imgs || [], source:'geizhals.eu', lastUpdated:new Date().toISOString(), isActive:true};
+      const body = {name:data.name, category:cat, slug, specs:data.specs, imageUrl: data.imgs && data.imgs.length > 0 ? data.imgs[0] : '', images: data.imgs || [], source:'geizhals.eu', isActive:true};
       const saveR = await pbAddDoc('products', body);
       slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
     }
@@ -1748,8 +1743,7 @@ async function startProductUpdate() {
       }
 
       // Deep compare objects
-      const objFields = ['specs', 'specSections', 'keySpecs', 'images',
-        'originalSpecsDe', 'originalSectionsDe', 'originalKeySpecsDe'];
+      const objFields = ['specs', 'specSections', 'keySpecs', 'images'];
       for (const field of objFields) {
         if (freshProduct[field] !== undefined &&
           JSON.stringify(freshProduct[field]) !== JSON.stringify(existing[field])) {
@@ -1759,7 +1753,6 @@ async function startProductUpdate() {
 
       if (Object.keys(changes).length > 0) {
         changes.updatedAt = new Date().toISOString();
-        changes.originalNameDe = freshProduct.originalNameDe;
         await pbUpdateDoc('products', existing.id, changes);
         const changedKeys = Object.keys(changes).filter(k => !k.startsWith('_') && k !== 'updatedAt');
         slog(`  → Updated: ${changedKeys.join(', ')}`, 'success');
