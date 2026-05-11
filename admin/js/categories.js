@@ -8,107 +8,107 @@ window.QorAiCategories = {
     {
       name: 'Mobile',
       categories: [
-        { id: 'smartphones', name: 'Smartphones' },
-        { id: 'tablets', name: 'Tablets' }
+        { id: 'smartphones', name: 'Smartphones', geizhalsSlug: 'handys' },
+        { id: 'tablets', name: 'Tablets', geizhalsSlug: 'tablets' }
       ]
     },
     {
       name: 'Computers',
       categories: [
-        { id: 'laptops', name: 'Laptops' },
-        { id: 'desktops', name: 'Desktops' }
+        { id: 'laptops', name: 'Laptops', geizhalsSlug: 'notebooks' },
+        { id: 'desktops', name: 'Desktops', geizhalsSlug: 'pcs' }
       ]
     },
     {
       name: 'PC Components',
       categories: [
-        { id: 'cpus', name: 'CPUs' },
-        { id: 'gpus', name: 'Graphics Cards' },
-        { id: 'ram', name: 'RAM' },
-        { id: 'ssd', name: 'SSDs' },
-        { id: 'motherboards', name: 'Motherboards' },
-        { id: 'psu', name: 'Power Supplies' },
-        { id: 'cases', name: 'Cases' },
-        { id: 'coolers', name: 'Coolers' }
+        { id: 'cpus', name: 'CPUs', geizhalsSlug: 'cpus' },
+        { id: 'gpus', name: 'Graphics Cards', geizhalsSlug: 'grafikkarten' },
+        { id: 'ram', name: 'RAM', geizhalsSlug: 'ram' },
+        { id: 'ssd', name: 'SSDs', geizhalsSlug: 'ssds' },
+        { id: 'motherboards', name: 'Motherboards', geizhalsSlug: 'mainboards' },
+        { id: 'psu', name: 'Power Supplies', geizhalsSlug: 'netzteile' },
+        { id: 'cases', name: 'Cases', geizhalsSlug: 'gehaeuse' },
+        { id: 'coolers', name: 'Coolers', geizhalsSlug: 'cpu-kuehler' }
       ]
     },
     {
       name: 'Display',
       categories: [
-        { id: 'tvs', name: 'TVs' },
-        { id: 'monitors', name: 'Monitors' },
-        { id: 'projectors', name: 'Projectors' },
-        { id: 'media-players', name: 'Media Players' }
+        { id: 'tvs', name: 'TVs', geizhalsSlug: 'fernseher' },
+        { id: 'monitors', name: 'Monitors', geizhalsSlug: 'monitore' },
+        { id: 'projectors', name: 'Projectors', geizhalsSlug: 'projektoren' },
+        { id: 'media-players', name: 'Media Players', geizhalsSlug: 'media-player' }
       ]
     },
     {
       name: 'Audio',
       categories: [
-        { id: 'headphones', name: 'Headphones' },
-        { id: 'speakers', name: 'Speakers' },
-        { id: 'soundbars', name: 'Soundbars' },
-        { id: 'microphones', name: 'Microphones' }
+        { id: 'headphones', name: 'Headphones', geizhalsSlug: 'kopfhoerer' },
+        { id: 'speakers', name: 'Speakers', geizhalsSlug: 'lautsprecher' },
+        { id: 'soundbars', name: 'Soundbars', geizhalsSlug: 'soundbars' },
+        { id: 'microphones', name: 'Microphones', geizhalsSlug: 'mikrofone' }
       ]
     },
     {
       name: 'Wearables',
       categories: [
-        { id: 'smartwatches', name: 'Smartwatches' },
-        { id: 'smart-rings', name: 'Smart Rings' }
+        { id: 'smartwatches', name: 'Smartwatches', geizhalsSlug: 'smartwatches' },
+        { id: 'smart-rings', name: 'Smart Rings', geizhalsSlug: 'smart-ringe' }
       ]
     },
     {
       name: 'Cameras',
       categories: [
-        { id: 'cameras', name: 'Cameras' },
-        { id: 'action-cameras', name: 'Action Cameras' },
-        { id: 'ip-cameras', name: 'IP Cameras' },
-        { id: 'dashcams', name: 'Dashcams' },
-        { id: 'gimbals', name: 'Gimbals' },
-        { id: 'tripods', name: 'Tripods' },
-        { id: 'lenses', name: 'Lenses' }
+        { id: 'cameras', name: 'Cameras', geizhalsSlug: 'digitalkameras' },
+        { id: 'action-cameras', name: 'Action Cameras', geizhalsSlug: 'actioncams' },
+        { id: 'ip-cameras', name: 'IP Cameras', geizhalsSlug: 'ip-kameras' },
+        { id: 'dashcams', name: 'Dashcams', geizhalsSlug: 'dashcams' },
+        { id: 'gimbals', name: 'Gimbals', geizhalsSlug: 'gimbals' },
+        { id: 'tripods', name: 'Tripods', geizhalsSlug: 'stative' },
+        { id: 'lenses', name: 'Lenses', geizhalsSlug: 'objektive' }
       ]
     },
     {
       name: 'Gaming',
       categories: [
-        { id: 'consoles', name: 'Gaming Consoles' },
-        { id: 'gamepads', name: 'Gamepads' },
-        { id: 'vr-headsets', name: 'VR Headsets' }
+        { id: 'consoles', name: 'Gaming Consoles', geizhalsSlug: 'spielkonsolen' },
+        { id: 'gamepads', name: 'Gamepads', geizhalsSlug: 'gamepads' },
+        { id: 'vr-headsets', name: 'VR Headsets', geizhalsSlug: 'vr-brillen' }
       ]
     },
     {
       name: 'Peripherals',
       categories: [
-        { id: 'keyboards', name: 'Keyboards' },
-        { id: 'mice', name: 'Mice' },
-        { id: 'printers', name: 'Printers' },
-        { id: 'webcams', name: 'Webcams' }
+        { id: 'keyboards', name: 'Keyboards', geizhalsSlug: 'tastaturen' },
+        { id: 'mice', name: 'Mice', geizhalsSlug: 'maeuse' },
+        { id: 'printers', name: 'Printers', geizhalsSlug: 'drucker' },
+        { id: 'webcams', name: 'Webcams', geizhalsSlug: 'webcams' }
       ]
     },
     {
       name: 'Networking',
       categories: [
-        { id: 'routers', name: 'Routers & Modems' }
+        { id: 'routers', name: 'Routers & Modems', geizhalsSlug: 'router' }
       ]
     },
     {
       name: 'Smart Home',
       categories: [
-        { id: 'robot-vacuums', name: 'Robot Vacuums' }
+        { id: 'robot-vacuums', name: 'Robot Vacuums', geizhalsSlug: 'saugroboter' }
       ]
     },
     {
       name: 'Accessories',
       categories: [
-        { id: 'powerbanks', name: 'Power Banks' },
-        { id: 'e-readers', name: 'E-Readers' }
+        { id: 'powerbanks', name: 'Power Banks', geizhalsSlug: 'powerbanks' },
+        { id: 'e-readers', name: 'E-Readers', geizhalsSlug: 'ebook-reader' }
       ]
     },
     {
       name: 'Drones',
       categories: [
-        { id: 'drones', name: 'Drones' }
+        { id: 'drones', name: 'Drones', geizhalsSlug: 'drohnen' }
       ]
     }
   ],

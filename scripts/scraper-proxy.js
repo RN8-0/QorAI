@@ -83,7 +83,7 @@ async function getBrowser() {
       '--disable-blink-features=AutomationControlled',
       '--disable-infobars',
       '--disable-notifications',
-      '--lang=tr-TR,tr',
+      '--lang=de-DE,de',
       // Realistic GPU flags (not disabling GPU helps look more real)
       '--ignore-gpu-blocklist',
       '--enable-gpu-rasterization',
@@ -94,17 +94,17 @@ async function getBrowser() {
 
   console.log('  ✅ Chrome started with stealth mode enabled');
 
-  // Pre-warm: visit epey.com homepage to get valid session cookies
-  console.log('  🍪 Preparing epey.com session...');
+  // Pre-warm: visit geizhals.eu homepage to get valid session cookies
+  console.log('  🍪 Preparing geizhals.eu session...');
   try {
     const warmPage = await browser.newPage();
     await warmPage.setUserAgent(currentUA);
     await warmPage.setExtraHTTPHeaders({
-      'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
+      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'DNT': '1',
     });
-    await warmPage.goto('https://www.epey.com/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await warmPage.goto('https://geizhals.eu/', { waitUntil: 'domcontentloaded', timeout: 20000 });
     await _humanDelay(1000, 2500);
     sessionCookies = await warmPage.cookies();
     await warmPage.close();
@@ -130,7 +130,7 @@ async function getPage() {
   activePage = await b.newPage();
   await activePage.setUserAgent(currentUA);
   await activePage.setExtraHTTPHeaders({
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'DNT': '1',
     'Upgrade-Insecure-Requests': '1',
@@ -354,7 +354,7 @@ server.listen(PORT, async () => {
   console.log(`\n  ⚡ Qor AI Scraper Proxy v3.0 (Stealth) — http://localhost:${PORT}`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 Requests use your local IP address`);
-  console.log(`  🔒 Only epey.com is allowed\n`);
+  console.log(`  🔒 Only geizhals.eu domains are allowed\n`);
   try {
     await getBrowser();
     console.log(`  ✅ Proxy ready. Test: http://localhost:${PORT}/health\n`);

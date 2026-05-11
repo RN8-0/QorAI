@@ -93,10 +93,111 @@ async function downloadImage(url) {
     if (!r.ok) return null;
     const ab = await r.arrayBuffer();
     const input = Buffer.from(ab);
-    // Resize + PNG (no bg removal for now — test sizes first)
-    const png = await sharp(input).resize(800, null, { fit: 'inside', withoutEnlargement: true }).png().toBuffer();
+
+    // 1. Get metadata & resize
+    const meta = await sharp(input).metadata();
+    const resized = await sharp(input)
+      .resize(800, null, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { data, info } = resized;
+    const { width, height, channels } = info;
+
+    // 2. Remove white/light background → transparent
+    // Threshold: pixels with R,G,B all > 240 become transparent
+    // Border pixels: threshold lowered to 200 to catch off-white product backgrounds
+    const THRESH = 240;
+    const BORDER_THRESH = 200;
+    const FEATHER = 2; // feather radius in pixels
+
+    // Create a copy of alpha channel to calculate feathered alpha
+    const newAlpha = new Uint8Array(width * height);
+
+    // First pass: mark pixels as transparent (0) or opaque (255)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * channels;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        // Check if near edge (border pixel)
+        const isBorder = x < 10 || y < 10 || x >= width - 10 || y >= height - 10;
+        const threshold = isBorder ? BORDER_THRESH : THRESH;
+
+        // White/light background detection
+        if (r > threshold && g > threshold && b > threshold) {
+          newAlpha[y * width + x] = 0; // transparent
+        } else {
+          newAlpha[y * width + x] = 255; // opaque
+        }
+      }
+    }
+
+    // Feather pass: soften edges (dilate transparency slightly)
+    const featheredAlpha = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        if (newAlpha[idx] === 0) {
+          featheredAlpha[idx] = 0;
+          continue;
+        }
+        // Check neighboring pixels within FEATHER radius
+        let minNeighbor = 255;
+        for (let dy = -FEATHER; dy <= FEATHER; dy++) {
+          for (let dx = -FEATHER; dx <= FEATHER; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const nAlpha = newAlpha[ny * width + nx];
+              if (nAlpha < minNeighbor) minNeighbor = nAlpha;
+            }
+          }
+        }
+        // Blend: if any neighbor is transparent, soften this pixel
+        if (minNeighbor === 0) {
+          const dist = Math.min(FEATHER, Math.sqrt(
+            (() => {
+              let minDist = FEATHER + 1;
+              for (let dy = -FEATHER; dy <= FEATHER; dy++) {
+                for (let dx = -FEATHER; dx <= FEATHER; dx++) {
+                  const nx = x + dx, ny = y + dy;
+                  if (nx >= 0 && nx < width && ny >= 0 && ny < height && newAlpha[ny * width + nx] === 0) {
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < minDist) minDist = d;
+                  }
+                }
+              }
+              return minDist;
+            })()
+          ));
+          featheredAlpha[idx] = Math.round(255 * Math.min(1, dist / FEATHER));
+        } else {
+          featheredAlpha[idx] = 255;
+        }
+      }
+    }
+
+    // Apply new alpha channel
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * channels;
+        data[idx + 3] = featheredAlpha[y * width + x];
+      }
+    }
+
+    // 3. Output as PNG with transparency
+    const png = await sharp(data, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+
     return { buffer: png, contentType: 'image/png', size: png.length };
-  } catch { return null; }
+  } catch (e) {
+    console.warn('  img err:', e.message?.substring(0, 60));
+    return null;
+  }
 }
 
 async function saveToPB(product, imgData, category) {

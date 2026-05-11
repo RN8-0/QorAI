@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  QOR AI SCRAPER MODULE — geizhals.eu Scraper
 //  Scrapes products from geizhals.eu via local Puppeteer proxy.
-//  Translates German → 12 languages using DeepSeek.
+//  Translates German → 12 languages using DeepSeek v3 + dictionary cache.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
@@ -10,7 +10,10 @@ const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const DEEPSEEK_URL = '/api/ai/deepseek';
+const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// Languages to translate German specs into (skip de since source is German)
+const TARGET_LANGS = ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -108,10 +111,24 @@ function normalizeCategoryToken(value) {
     .replace(/\.html$/i, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/^-|-$/g, GeizhalsUrl(url) {
+  if (!url) return null;
+  // geizhals.eu category URL pattern: https://geizhals.eu/<cat-slug>
+  try {
+    const path = new URL(url).pathname;
+    const parts = path.split('/').filter(Boolean);
+    const catSlug = parts[0] || '';
+    // Map geizhals slugs to QorAi category IDs
+    if (typeof QorAiCategories !== 'undefined') {
+      const all = QorAiCategories.getAll();
+      const found = all.find(c => c.id === catSlug || (c.geizhalsSlug && c.geizhalsSlug === catSlug));
+      if (found) return found;
+    }
+    return null;
+  } catch { return null; }
+
 }
 
-function findCategoryByEpeyUrl(url) { return null; }
 
 // ═══════════════════════════════════════
 //  3. PROXY FETCH WITH RETRY
@@ -351,44 +368,11 @@ function extractTechScore(doc) {
     return null;
   }
 
-  // Priority 1: #puan element
-  const puan = doc.querySelector('#puan');
-  if (puan) {
-    const s = parseScore(puan.textContent);
+  // geizhals.eu doesn't have native tech scores; check for rating elements
+  const ratingEl = doc.querySelector('[class*="rating"], [class*="score"], [class*="bewertung"]');
+  if (ratingEl) {
+    const s = parseScore(ratingEl.textContent);
     if (s) return s;
-  }
-
-  // Priority 2: .circliful
-  const circ = doc.querySelector('.circliful');
-  if (circ) {
-    const s = parseScore(circ.textContent);
-    if (s) return s;
-  }
-
-  // Priority 3: data attributes
-  const attrEl = doc.querySelector('[data-teknikpuan]') || doc.querySelector('[data-tpuan]');
-  if (attrEl) {
-    const val = attrEl.getAttribute('data-teknikpuan') || attrEl.getAttribute('data-tpuan');
-    const s = parseScore(val);
-    if (s) return s;
-  }
-
-  // Priority 4: ID-based elements
-  for (const id of ['teknikpuan', 'tekpuan', 'tpuan']) {
-    const el = doc.getElementById(id);
-    if (el) {
-      const s = parseScore(el.textContent);
-      if (s) return s;
-    }
-  }
-
-  // Priority 5: class-based
-  for (const sel of ['.teknikpuan', '.puan_deger', '.puan', '.teknik-puan']) {
-    const el = doc.querySelector(sel);
-    if (el) {
-      const s = parseScore(el.textContent);
-      if (s) return s;
-    }
   }
 
   return null;
@@ -429,33 +413,29 @@ function extractListingTechScore(cardEl) {
 function extractPrice(doc) {
   if (typeof doc === 'string') doc = parseHTML(doc);
 
+  // geizhals.eu uses € prices, typically in elements with class containing "price"
   const PRICE_SELECTORS = [
-    '.fiyat', '.price', '[data-price]', '.urun-fiyat',
-    '.urun-fiyat strong', '.epey-fiyat', '.en-dusuk-fiyat',
-    '.product-price', '.current-price', '.sale-price',
-    '#fiyat', '#price', '.fiyat-bilgi'
+    '.price', '[class*="price"]', '.product-price', '.current-price',
+    '.gh_price', '.offer-price', '.price-value',
+    '.buyPrice', '[data-price]',
   ];
 
   function parsePrice(text) {
     if (!text) return null;
-    let cleaned = text
-      .replace(/\s/g, '')
-      .replace(/\./g, '')
-      .replace(/,/g, '.')
-      .replace(/[^\d.]/g, '');
+    // European format: € 1.234,56 or 1.234,56 € or 1,234.56
+    let cleaned = text.replace(/\s/g, '');
+    // Check if it's Euro format (comma as decimal separator)
+    if (cleaned.includes(',') && (cleaned.includes('€') || cleaned.includes('EUR'))) {
+      cleaned = cleaned.replace(/€|EUR/gi, '').replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      cleaned = cleaned.replace(/€|EUR|\$/gi, '').replace(/,/g, '');
+    }
+    cleaned = cleaned.replace(/[^\d.]/g, '');
     const num = parseFloat(cleaned);
-    if (isNaN(num) || num <= 0 || num >= 1000000000) return null;
+    if (isNaN(num) || num <= 0 || num >= 10000000) return null;
     return num;
   }
 
-  // data-price attribute
-  const dpEl = doc.querySelector('[data-price]');
-  if (dpEl) {
-    const p = parsePrice(dpEl.getAttribute('data-price'));
-    if (p) return p;
-  }
-
-  // CSS selectors
   for (const sel of PRICE_SELECTORS) {
     const el = doc.querySelector(sel);
     if (el) {
@@ -464,12 +444,12 @@ function extractPrice(doc) {
     }
   }
 
-  // Fallback: scan all leaf text nodes for TL / ₺
+  // Fallback: scan all leaf text nodes for €
   const walker = doc.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) {
     const text = node.textContent.trim();
-    if ((text.includes('TL') || text.includes('₺')) && text.length < 50) {
+    if ((text.includes('€') || text.includes('EUR')) && text.length < 50) {
       const p = parsePrice(text);
       if (p) return p;
     }
@@ -521,25 +501,26 @@ function extractImages(doc, productSlug) {
     }
   }
 
-  // 1. Main image: #resimBuyuk
-  const mainImg = doc.querySelector('#resimBuyuk');
-  if (mainImg) {
-    extractDataAttrs(mainImg);
-    // Also check child img/a
-    mainImg.querySelectorAll('img, a').forEach(child => extractDataAttrs(child));
-  }
+  // 1. Main images: all img tags with gzhls.at/pix in product area
+  doc.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
+    const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+    if (src) addImage(src);
+  });
 
-  // 2. Thumbnails: #resimk
-  const thumbContainer = doc.querySelector('#resimk');
-  if (thumbContainer) {
-    thumbContainer.querySelectorAll('*').forEach(el => {
-      extractDataAttrs(el);
-      // onclick URL extraction
-      const onclick = el.getAttribute('onclick') || '';
-      const onclickMatch = onclick.match(/['"]([^'"]*resim\.epey\.com[^'"]*)['"]/);
-      if (onclickMatch) addImage(onclickMatch[1]);
+  // 2. Also check picture > source elements (webp variants)
+  doc.querySelectorAll('source[srcset*="gzhls.at/pix/"]').forEach(source => {
+    const srcset = source.getAttribute('srcset') || '';
+    srcset.split(',').forEach(s => {
+      const url = s.trim().split(/\s+/)[0];
+      if (url && url.includes('gzhls.at/pix/')) addImage(url);
     });
-  }
+  });
+
+  // 3. Gallery links (geizhals uses a[href*="gzhls.at/pix/"])
+  doc.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (href) addImage(href);
+  });
 
   // 3. Page-wide data attributes with slug filter
   const dataSelectors = '[data-zoom], [data-big], [data-full], [data-src], [data-image], [data-url]';
@@ -591,24 +572,32 @@ function extractImages(doc, productSlug) {
 
 async function fetchGalleryImages(productSlug) {
   if (!productSlug) return [];
-  const galleryUrl = `${GEIZHALS_BASE}/${productSlug}-resimleri.html`;
-  try {
-    const html = await proxyFetch(galleryUrl);
-    if (!html) return [];
-    const doc = parseHTML(html);
-    const imgs = [];
-    doc.querySelectorAll('img[src*="gzhls.at/pix"]').forEach(img => {
-      const src = img.getAttribute('src') || '';
-      if (src.includes('/-n.webp')) imgs.push(src);
-      else {
-        const upgraded = src.replace(/\/[ksmtc]_/g, '/-n.webp');
-        if (upgraded.includes('/-n.webp')) imgs.push(upgraded);
-      }
-    });
-    return imgs;
-  } catch {
-    return [];
+  // geizhals.eu doesn't have a separate gallery page; images are on the product page
+  // Try variant pages as fallback
+  const variantUrls = [
+    `${GEIZHALS_BASE}/${productSlug}.html`,
+  ];
+  const imgs = [];
+  const seen = new Set();
+  for (const url of variantUrls) {
+    if (imgs.length >= 8) break;
+    try {
+      const html = await proxyFetch(url);
+      if (!html) continue;
+      const doc = parseHTML(html);
+      doc.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
+        if (imgs.length >= 8) return;
+        const src = (img.getAttribute('src') || '').replace(/\/[ksmtc]_/g, '/-n.webp');
+        if (!src.includes('/-n.webp')) return;
+        const key = src.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0];
+        if (!seen.has(key)) {
+          seen.add(key);
+          imgs.push(src);
+        }
+      });
+    } catch { continue; }
   }
+  return imgs;
 }
 
 // ═══════════════════════════════════════
@@ -620,87 +609,112 @@ function parseSpecs(doc) {
   const specSections = {};
   const keySpecs = {};
 
-  // ── PRIMARY: #ozellikler section ──
-  const ozellikler = doc.querySelector('#ozellikler');
-  if (ozellikler) {
-
-    // Helper: parse all li items from a UL and add to specs
-    function parseLiList(ul, sectionName) {
-      if (!specSections[sectionName]) specSections[sectionName] = {};
-      ul.querySelectorAll('li').forEach(li => {
-        const strong = li.querySelector('strong');
-        if (!strong) return;
-        const key = strong.textContent.trim();
-        if (!key) return;
-
-        let value = '';
-        const cellSpan = li.querySelector('span.cell');
-        if (cellSpan) {
-          const anchors = cellSpan.querySelectorAll('a');
-          if (anchors.length > 0) {
-            value = Array.from(anchors).map(a => a.textContent.trim()).filter(Boolean).join('\n');
-          }
-          if (!value) {
-            const innerSpans = cellSpan.querySelectorAll('span');
-            if (innerSpans.length > 1) {
-              value = Array.from(innerSpans).map(s => s.textContent.trim()).filter(Boolean).join('\n');
-            }
-          }
-          if (!value) value = cellSpan.textContent.trim();
-        } else {
-          const clone = li.cloneNode(true);
-          const sc = clone.querySelector('strong');
-          if (sc) sc.remove();
-          value = clone.textContent.trim();
+  // ── PRIMARY: geizhals.eu dl.specs-grid ──
+  const grids = doc.querySelectorAll('dl.specs-grid');
+  if (grids.length > 0) {
+    grids.forEach(grid => {
+      // Find section header (preceding h3 or similar)
+      let sectionName = 'General';
+      let prev = grid.previousElementSibling;
+      while (prev) {
+        const tag = prev.tagName;
+        if (tag === 'H2' || tag === 'H3' || tag === 'H4') {
+          sectionName = prev.textContent.trim();
+          break;
         }
+        prev = prev.previousElementSibling;
+      }
+      if (!specSections[sectionName]) specSections[sectionName] = {};
 
+      grid.querySelectorAll('.specs-grid__item').forEach(item => {
+        const dt = item.querySelector('dt');
+        const dd = item.querySelector('dd');
+        if (!dt || !dd) return;
+        const key = dt.textContent.trim();
+        let value = dd.textContent.trim().replace(/\s+/g, ' ');
         if (key && value && key.length < 200 && value.length < 1000) {
           specs[key] = value;
           specSections[sectionName][key] = value;
         }
       });
-    }
+    });
+  }
 
-    // Strategy 1: masonry-brick layout (e.g. geizhals.eu)
-    // Each brick contains one h3 (section) + one ul (specs list)
-    const bricks = ozellikler.querySelectorAll('.masonry-brick');
-    if (bricks.length > 0) {
-      bricks.forEach(brick => {
-        const h3 = brick.querySelector('h3');
-        const sectionName = h3
-          ? (h3.querySelector('span')?.textContent.trim() || h3.textContent.trim())
-          : 'General';
-        const ul = brick.querySelector('ul');
-        if (ul) parseLiList(ul, sectionName);
-      });
-    }
+  // ── FALLBACK: #ozellikler (epey legacy) ──
+  if (Object.keys(specs).length === 0) {
+    const ozellikler = doc.querySelector('#ozellikler');
+    if (ozellikler) {
+      function parseLiList(ul, sectionName) {
+        if (!specSections[sectionName]) specSections[sectionName] = {};
+        ul.querySelectorAll('li').forEach(li => {
+          const strong = li.querySelector('strong');
+          if (!strong) return;
+          const key = strong.textContent.trim();
+          if (!key) return;
+          let value = '';
+          const cellSpan = li.querySelector('span.cell');
+          if (cellSpan) {
+            const anchors = cellSpan.querySelectorAll('a');
+            if (anchors.length > 0) {
+              value = Array.from(anchors).map(a => a.textContent.trim()).filter(Boolean).join('\n');
+            }
+            if (!value) {
+              const innerSpans = cellSpan.querySelectorAll('span');
+              if (innerSpans.length > 1) {
+                value = Array.from(innerSpans).map(s => s.textContent.trim()).filter(Boolean).join('\n');
+              }
+            }
+            if (!value) value = cellSpan.textContent.trim();
+          } else {
+            const clone = li.cloneNode(true);
+            const sc = clone.querySelector('strong');
+            if (sc) sc.remove();
+            value = clone.textContent.trim();
+          }
+          if (key && value && key.length < 200 && value.length < 1000) {
+            specs[key] = value;
+            specSections[sectionName][key] = value;
+          }
+        });
+      }
 
-    // Strategy 2: flat children walk (h3 followed by ul as siblings)
-    if (Object.keys(specs).length === 0) {
-      let currentSection = 'General';
-      const walk = (parent) => {
-        for (const child of parent.children) {
-          if (child.tagName === 'H3') {
-            currentSection = child.querySelector('span')?.textContent.trim()
-              || child.textContent.trim();
-            if (!specSections[currentSection]) specSections[currentSection] = {};
-          } else if (child.tagName === 'UL') {
-            parseLiList(child, currentSection);
-          } else if (child.children.length > 0) {
-            // Recurse one level into wrapper divs
-            for (const sub of child.children) {
-              if (sub.tagName === 'H3') {
-                currentSection = sub.querySelector('span')?.textContent.trim()
-                  || sub.textContent.trim();
-                if (!specSections[currentSection]) specSections[currentSection] = {};
-              } else if (sub.tagName === 'UL') {
-                parseLiList(sub, currentSection);
+      const bricks = ozellikler.querySelectorAll('.masonry-brick');
+      if (bricks.length > 0) {
+        bricks.forEach(brick => {
+          const h3 = brick.querySelector('h3');
+          const sectionName = h3
+            ? (h3.querySelector('span')?.textContent.trim() || h3.textContent.trim())
+            : 'General';
+          const ul = brick.querySelector('ul');
+          if (ul) parseLiList(ul, sectionName);
+        });
+      }
+
+      if (Object.keys(specs).length === 0) {
+        let currentSection = 'General';
+        const walk = (parent) => {
+          for (const child of parent.children) {
+            if (child.tagName === 'H3') {
+              currentSection = child.querySelector('span')?.textContent.trim()
+                || child.textContent.trim();
+              if (!specSections[currentSection]) specSections[currentSection] = {};
+            } else if (child.tagName === 'UL') {
+              parseLiList(child, currentSection);
+            } else if (child.children.length > 0) {
+              for (const sub of child.children) {
+                if (sub.tagName === 'H3') {
+                  currentSection = sub.querySelector('span')?.textContent.trim()
+                    || sub.textContent.trim();
+                  if (!specSections[currentSection]) specSections[currentSection] = {};
+                } else if (sub.tagName === 'UL') {
+                  parseLiList(sub, currentSection);
+                }
               }
             }
           }
-        }
-      };
-      walk(ozellikler);
+        };
+        walk(ozellikler);
+      }
     }
   }
 
@@ -708,16 +722,13 @@ function parseSpecs(doc) {
   if (Object.keys(specs).length === 0) {
     const tables = doc.querySelectorAll('#bilgiler tr, .spec-table tr, table.specs tr, table tr');
     let currentSection = 'General';
-
     tables.forEach(tr => {
-      // Section header row (th spanning columns or single th)
       const th = tr.querySelector('th');
       if (th && tr.querySelectorAll('td').length === 0) {
         currentSection = th.textContent.trim();
         if (!specSections[currentSection]) specSections[currentSection] = {};
         return;
       }
-
       const tds = tr.querySelectorAll('td');
       if (tds.length >= 2) {
         const key = tds[0].textContent.trim();
@@ -730,19 +741,6 @@ function parseSpecs(doc) {
       }
     });
   }
-
-  // ── KEY SPECS: "Temel Özellikler" box ──
-  // .cell .row1 (label) + .cell .row2 (value) outside #ozellikler
-  doc.querySelectorAll('.cell').forEach(cell => {
-    if (ozellikler && ozellikler.contains(cell)) return;
-    const row1 = cell.querySelector('.row1');
-    const row2 = cell.querySelector('.row2');
-    if (row1 && row2) {
-      const k = row1.textContent.trim();
-      const v = row2.textContent.trim();
-      if (k && v) keySpecs[k] = v;
-    }
-  });
 
   return { specs, specSections, keySpecs };
 }
@@ -802,55 +800,333 @@ function filterSpecs(specs, sections) {
 }
 
 // ═══════════════════════════════════════
+//  12b. GERMAN → MULTI-LANG TRANSLATION (DeepSeek v3 + Dictionary Cache)
+// ═══════════════════════════════════════
+
+// In-memory DE→target dictionary cache (lazy-loaded from PB)
+const _deDictCache = {}; // { 'some german text': { en: '...', tr: '...', ... } }
+let _deDictLoaded = false;
+let _deDictDirty = false;
+const DE_DICT_PB_KEY = 'de_translation_dict';
+
+async function _loadDeDict() {
+  if (_deDictLoaded) return;
+  try {
+    const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
+    if (doc.exists) {
+      const data = typeof doc.data === 'function' ? doc.data() : doc;
+      const stored = data?.value || data || {};
+      if (typeof stored === 'object' && !Array.isArray(stored)) {
+        Object.assign(_deDictCache, stored);
+      }
+    }
+  } catch (e) {
+    console.warn('[de-dict] load failed:', e.message);
+  }
+  _deDictLoaded = true;
+}
+
+async function _saveDeDict() {
+  if (!_deDictDirty) return;
+  _deDictDirty = false;
+  try {
+    await pbSetDoc('public_config', DE_DICT_PB_KEY, {
+      key: DE_DICT_PB_KEY,
+      value: _deDictCache,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('[de-dict] save failed:', e.message);
+    _deDictDirty = true; // retry next time
+  }
+}
+
+// Lookup German text in cache for a specific target language
+function _deDictLookup(germanText, targetLang) {
+  const key = germanText.toLowerCase().trim();
+  const entry = _deDictCache[key];
+  if (entry && entry[targetLang]) return entry[targetLang];
+  return null;
+}
+
+// Store translation in cache
+function _deDictStore(germanText, targetLang, translation) {
+  const key = germanText.toLowerCase().trim();
+  if (!_deDictCache[key]) _deDictCache[key] = {};
+  if (_deDictCache[key][targetLang] !== translation) {
+    _deDictCache[key][targetLang] = translation;
+    _deDictDirty = true;
+  }
+}
+
+// Batch translate German texts → target language using DeepSeek v3
+async function _deepSeekBatchTranslate(germanTexts, targetLang) {
+  const token = getPb()?.authStore?.token;
+  if (!token) {
+    console.warn('[de-translate] No auth token');
+    return {};
+  }
+
+  // Filter out already-cached texts
+  const uncached = germanTexts.filter(t => !_deDictLookup(t, targetLang));
+  if (!uncached.length) {
+    // All cached — return from cache
+    const result = {};
+    germanTexts.forEach(t => { result[t] = _deDictLookup(t, targetLang); });
+    return result;
+  }
+
+  const langNames = {
+    en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
+    ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
+  };
+
+  try {
+    // DeepSeek v3 batch translation — send up to 50 texts at once
+    const batch = uncached.slice(0, 50);
+    const textsJson = JSON.stringify(batch);
+
+    const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: token },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a technical product specification translator. Translate German tech specs to ${langNames[targetLang] || targetLang}.
+Rules:
+- Keep numbers, units, and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
+- Product names/brands stay as-is.
+- Return ONLY a JSON object mapping each German text to its ${langNames[targetLang] || targetLang} translation.
+- Format: {"original german text": "translated text", ...}`
+          },
+          {
+            role: 'user',
+            content: `Translate these German product specification terms to ${langNames[targetLang] || targetLang}:\n${textsJson}\n\nReturn only the JSON object.`
+          }
+        ],
+        max_tokens: 4000,
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) {
+      throw new Error(data.message || data.error || 'DeepSeek API error');
+    }
+
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let translations;
+    try {
+      translations = JSON.parse(content);
+    } catch {
+      const match = String(content).match(/\{[\s\S]*\}/);
+      translations = match ? JSON.parse(match[0]) : {};
+    }
+
+    // Store in cache
+    const result = {};
+    for (const t of germanTexts) {
+      const cached = _deDictLookup(t, targetLang);
+      if (cached) {
+        result[t] = cached;
+      } else if (translations[t]) {
+        _deDictStore(t, targetLang, translations[t]);
+        result[t] = translations[t];
+      } else {
+        // Fallback: keep original German text
+        result[t] = t;
+      }
+    }
+
+    // Save cache to PB after batch
+    await _saveDeDict();
+    return result;
+  } catch (e) {
+    console.warn(`[de-translate] ${targetLang} error:`, e.message);
+    // Return cached + fallback
+    const result = {};
+    germanTexts.forEach(t => {
+      result[t] = _deDictLookup(t, targetLang) || t;
+    });
+    return result;
+  }
+}
+
+// Main function: translate German specs → all target languages
+// Returns: { en: {specs}, tr: {specs}, ... }
+async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
+  await _loadDeDict();
+
+  const allGermanTexts = new Set();
+  for (const [k, v] of Object.entries(germanSpecs)) {
+    if (k) allGermanTexts.add(k);
+    if (v) allGermanTexts.add(String(v));
+  }
+  const germanTexts = [...allGermanTexts].filter(t => t.length > 0);
+
+  const results = {};
+  // Process languages sequentially to avoid rate limiting
+  for (const lang of targetLangs) {
+    slog(`Translating specs → ${lang.toUpperCase()}...`, 'info');
+    results[lang] = await _deepSeekBatchTranslate(germanTexts, lang);
+  }
+
+  // Build multi-lang specs objects
+  const multiLangSpecs = {};
+  for (const lang of targetLangs) {
+    multiLangSpecs[lang] = {};
+    for (const [k, v] of Object.entries(germanSpecs)) {
+      const translatedKey = results[lang]?.[k] || k;
+      const translatedVal = results[lang]?.[String(v)] || v;
+      multiLangSpecs[lang][translatedKey] = translatedVal;
+    }
+  }
+
+  // Save dictionary after all translations
+  await _saveDeDict();
+  return multiLangSpecs;
+}
+
+// Translate single German product name to all languages
+async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
+  await _loadDeDict();
+  const names = {};
+  for (const lang of targetLangs) {
+    const result = await _deepSeekBatchTranslate([germanName], lang);
+    names[lang] = result[germanName] || germanName;
+  }
+  await _saveDeDict();
+  return names;
+}
+
+// ═══════════════════════════════════════
 //  13. PRODUCT DETAIL SCRAPING
 // ═══════════════════════════════════════
 
 async function scrapeProductDetail(html, url, categoryId) {
   if (!html) return null;
   const doc = parseHTML(html);
-  const dict = getDict();
 
   // Detect garbage / redirect pages
   const bodyText = (doc.body ? doc.body.textContent : '').trim();
   if (bodyText.length < 100) return null;
 
-  // ── Name ──
+  // ── Name (German original) ──
   let originalName = '';
-  const h1a = doc.querySelector('h1 > a');
-  if (h1a) {
-    originalName = h1a.textContent.trim();
-  } else {
-    const h1 = doc.querySelector('h1');
-    if (h1) originalName = h1.textContent.trim();
+  const h1 = doc.querySelector('h1');
+  if (h1) {
+    // geizhals.eu: product name is in h1, sometimes with nested spans
+    const clone = h1.cloneNode(true);
+    clone.querySelectorAll('small, .subtitle, .variant').forEach(el => el.remove());
+    originalName = clone.textContent.trim();
   }
   if (!originalName) return null;
-
-  const name = dict ? dict.translateProductName(originalName) : originalName;
 
   // ── URL slug & ID ──
   const productSlug = slugFromUrl(url);
   const id = generateProductId(productSlug);
 
-  // ── Specs ──
+  // ── Specs (German) ──
   const { specs: rawSpecs, specSections: rawSections, keySpecs: rawKeySpecs } = parseSpecs(doc);
 
-  // Translate
-  const translatedSpecs = translateSpecsObject(rawSpecs);
-  const translatedSections = translateSections(rawSections);
-  const translatedKeySpecs = translateKeySpecs(rawKeySpecs);
-
-  // Filter Turkish-language specs
-  const filtered = filterSpecs(translatedSpecs, translatedSections);
-  const finalSpecs = filtered.specs || translatedSpecs;
-  const finalSections = filtered.sections || translatedSections;
-
   // ── Brand ──
-  const brand = extractBrand(name, { ...rawSpecs, ...finalSpecs });
+  const brand = extractBrand(originalName, rawSpecs);
 
   // ── Category ──
   let category = categoryId || '';
   if (!category) {
-    const found = findCategoryByEpeyUrl(url);
+    const found = findCategoryByGeizhalsUrl(url);
+    category = found ? found.id : categorySlugFromUrl(url);
+  }
+
+  // ── Tech Score ──
+  const techScore = extractTechScore(doc);
+
+  // ── Price ──
+  const price_raw = extractPrice(doc);
+
+  // ── Images ──
+  let images = extractImages(doc, productSlug);
+  // Try gallery page for extra images
+  if (images.length < 4 && productSlug) {
+    try {
+      const galleryImgs = await fetchGalleryImages(productSlug);
+      const seenKeys = new Set(images.map(u => (u || '').toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '').split(/[?#]/)[0]));
+      for (const giRaw of galleryImgs) {
+        if (images.length >= 8) break;
+        const gi = (giRaw || '').split(/[?#]/)[0];
+        const key = gi.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          images.push(gi);
+        }
+      }
+    } catch {}
+  }
+
+  // ── Variant Group ──
+  const variantGroup = normalizeVariantGroupFromSlug(productSlug);
+
+  return {
+    id,
+    slug: productSlug || id,
+    name: originalName || 'Unknown Product', // German original
+    brand,
+    category,
+    source: 'geizhals.eu',
+    sourceUrl: url,
+    imageUrl: images[0] || '',
+    images,
+    specs: rawSpecs,          // German specs
+    specSections: rawSections, // German sections
+    keySpecs: rawKeySpecs,
+    techScore: techScore || null,
+    price_raw: price_raw || null,
+    specsCount: Object.keys(rawSpecs).length,
+    variantGroup,
+    scrapedAt: new Date().toISOString(),
+    _originalName: originalName,
+    _originalSpecs: rawSpecs,
+    _originalSections: rawSections,
+    _originalKeySpecs: rawKeySpecs,
+  };
+}
+
+// After scraping, translate specs to all target languages using DeepSeek v3
+async function translateScrapedProduct(product) {
+  if (!product || !product.specs || !Object.keys(product.specs).length) return product;
+
+  slog(`Translating German specs for: ${product.name?.substring(0, 50)}...`, 'info');
+
+  try {
+    // Translate specs to all languages
+    const multiLangSpecs = await translateGermanSpecs(product.specs);
+    product.multiLangSpecs = multiLangSpecs;
+
+    // Translate product name
+    const names = await translateGermanName(product._originalName || product.name);
+    product.nameTranslated = names;
+
+    // Use English as primary display spec
+    if (multiLangSpecs.en) {
+      product.specsEn = multiLangSpecs.en;
+    }
+
+    slog(`✅ Translated to ${Object.keys(multiLangSpecs).length} languages`, 'success');
+  } catch (e) {
+    slog(`⚠️ Translation skipped: ${e.message}`, 'warn');
+  }
+
+  return product;
+}
+
+  // ── Category ──
+  let category = categoryId || '';
+  if (!category) {
+    const found = findCategoryByGeizhalsUrl(url);
     category = found ? found.id : categorySlugFromUrl(url);
   }
 
@@ -898,7 +1174,7 @@ async function scrapeProductDetail(html, url, categoryId) {
     name: name || 'Unknown Product',
     brand,
     category,
-    source: 'epey',
+    source: 'geizhals.eu',
     sourceUrl: url,
     imageUrl: images[0] || '',
     images,
@@ -925,77 +1201,51 @@ function extractProductLinksFromDoc(doc) {
   const results = [];
   const seen = new Set();
 
-  // Try #listele container first, then other known containers
-  let container = doc.querySelector('#listele') || doc.querySelector('.urunler') || doc.querySelector('.listele') || doc.querySelector('.urun-listesi');
-  const searchRoot = container || doc;
+  // geizhals.eu product links: /path/product-name-a1234567.html
+  const productLinkRe = /-a\d+\.html$/i;
 
-  // Relaxed pattern: any link with a category-like path and .html ending
-  const productLinkRe = /^\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i;
-
-  // Strategy 1: Standard .html links
-  searchRoot.querySelectorAll('a[href]').forEach(a => {
+  // Search ALL links on page, filter by geizhals product pattern
+  doc.querySelectorAll('a[href]').forEach(a => {
     let href = a.getAttribute('href') || '';
     if (!href) return;
 
     // Handle absolute URLs from geizhals.eu
-    if (href.startsWith('https://www.geizhals.eu/') || href.startsWith('http://www.geizhals.eu/')) {
+    if (href.startsWith('https://geizhals.eu/') || href.startsWith('http://geizhals.eu/') ||
+        href.startsWith('https://www.geizhals.eu/') || href.startsWith('https://geizhals.at/') ||
+        href.startsWith('https://geizhals.de/')) {
       try { href = new URL(href).pathname; } catch { return; }
     }
 
-    // Must end with .html and match product pattern
-    if (!href.endsWith('.html')) return;
+    // Must match product pattern: ends with -aDIGITS.html
     if (!productLinkRe.test(href)) return;
-    if (href.includes('/en/') || href.includes('/sayfa/') || href.includes('/karsilastir/')) return;
-    // Skip non-product pages (about, contact, etc)
-    if (href.startsWith('/yardim') || href.startsWith('/hakkimizda') || href.startsWith('/iletisim')) return;
+    // Skip non-product pages
+    if (href.includes('/en/') || href.includes('/about') || href.includes('/contact')) return;
 
+    if (!href.startsWith('/')) href = '/' + href;
     const fullUrl = GEIZHALS_BASE + href;
     if (seen.has(fullUrl)) return;
     seen.add(fullUrl);
 
-    // Try extracting tech score from parent card
-    let techScore = null;
-    const card = a.closest('.urun, .urun-k, .liste-urun, [class*="product"], [class*="urun"], li, div.row, tr');
-    if (card) techScore = extractListingTechScore(card);
-
-    results.push({ url: fullUrl, techScore });
+    results.push({ url: fullUrl, techScore: null });
   });
-
-  // Strategy 2: data-href or onclick links (some pages use JS for navigation)
-  if (results.length === 0) {
-    searchRoot.querySelectorAll('[data-href], [data-url], [onclick]').forEach(el => {
-      let href = el.getAttribute('data-href') || el.getAttribute('data-url') || '';
-      if (!href) {
-        const onclick = el.getAttribute('onclick') || '';
-        const m = onclick.match(/['"](\/?[a-z0-9-]+\/[a-z0-9-]+\.html)['"]/i);
-        if (m) href = m[1];
-      }
-      if (!href || !href.endsWith('.html')) return;
-      if (!href.startsWith('/')) href = '/' + href;
-      if (!productLinkRe.test(href)) return;
-      const fullUrl = GEIZHALS_BASE + href;
-      if (seen.has(fullUrl)) return;
-      seen.add(fullUrl);
-      results.push({ url: fullUrl, techScore: null });
-    });
-  }
 
   return results;
 }
 
-async function collectProductUrls(epeyPath, maxPages = 50) {
-  const baseUrl = `${GEIZHALS_BASE}/${epeyPath}/`;
-  slog(`Collecting product URLs from: ${epeyPath}`);
+async function collectProductUrls(categoryPath, maxPages = 50) {
+  // geizhals.eu category listing URL
+  const baseUrl = `${GEIZHALS_BASE}/?cat=${categoryPath}`;
+  slog(`Collecting product URLs from: geizhals.eu/?cat=${categoryPath}`);
 
   const allItems = [];
   const seenUrls = new Set();
   let emptyCount = 0;
   let dupePages = 0;
 
-  for (let page = 1; page <= maxPages && !scraperAbort; page++) {
-    // Try ?sayfa=N parameter
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}?sayfa=${page}`;
-    updateProgress(page, maxPages, 'Listing pages');
+  for (let page = 0; page < maxPages && !scraperAbort; page++) {
+    // geizhals pagination: ?cat=X&page=N (0-indexed or 1-indexed? try both)
+    const pageUrl = page === 0 ? baseUrl : `${baseUrl}&page=${page}`;
+    updateProgress(page + 1, maxPages, 'Listing pages');
 
     try {
       const html = await proxyFetch(pageUrl);
@@ -1012,12 +1262,11 @@ async function collectProductUrls(epeyPath, maxPages = 50) {
       const items = extractProductLinksFromDoc(doc);
 
       // Debug: log page structure info on first page if no results
-      if (items.length === 0 && page === 1) {
+      if (items.length === 0 && page === 0) {
         const allLinks = doc.querySelectorAll('a[href]').length;
         const htmlLinks = doc.querySelectorAll('a[href$=".html"]').length;
-        const hasListele = !!doc.querySelector('#listele');
         const title = doc.querySelector('title')?.textContent || '';
-        slog(`Debug: ${allLinks} links total, ${htmlLinks} .html links, #listele: ${hasListele}, title: "${title.slice(0,60)}"`, 'warn');
+        slog(`Debug: ${allLinks} links total, ${htmlLinks} .html links, title: "${title.slice(0,60)}"`, 'warn');
         // Check if it's a Cloudflare challenge
         if (title.includes('Just a moment') || title.includes('Checking') || html.length < 2000) {
           slog('⚠️ Cloudflare challenge not bypassed. Proxy may need update.', 'error');
@@ -1030,8 +1279,8 @@ async function collectProductUrls(epeyPath, maxPages = 50) {
           slog(`2 consecutive empty pages, stopping at page ${page}`, 'info');
           break;
         }
-        // Try filter URL pattern
-        const filterUrl = `${GEIZHALS_BASE}/e/${epeyPath}/${page}/`;
+        // Try alternate URL pattern
+        const filterUrl = `${GEIZHALS_BASE}/${categoryPath}/?page=${page}`;
         try {
           const filterHtml = await proxyFetch(filterUrl);
           if (filterHtml) {
@@ -1067,19 +1316,19 @@ async function collectProductUrls(epeyPath, maxPages = 50) {
 
       if (newCount === 0) {
         dupePages++;
-        slog(`Page ${page}: all ${items.length} duplicates (${dupePages}/3)`, 'warn');
+        slog(`Page ${page+1}: all ${items.length} duplicates (${dupePages}/3)`, 'warn');
         if (dupePages >= 3) {
           slog('3 all-duplicate pages, stopping pagination', 'info');
           break;
         }
       } else {
         dupePages = 0;
-        slog(`Page ${page}: ${items.length} products (${newCount} new, ${allItems.length} total)`, 'success');
+        slog(`Page ${page+1}: ${items.length} products (${newCount} new, ${allItems.length} total)`, 'success');
       }
 
       if (page < maxPages) await sleep(1500 + Math.random() * 1000);
     } catch (e) {
-      slog(`Page ${page} error: ${e.message}`, 'error');
+      slog(`Page ${page+1} error: ${e.message}`, 'error');
       emptyCount++;
       if (emptyCount >= 2) break;
     }
@@ -1296,57 +1545,46 @@ async function startBulkScrape() {
   const catValue = catSelect ? catSelect.value : '';
   if (!catValue) { toast('Select a category', 'w'); return; }
 
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 10;
-  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
+
+  // Get geizhals slug for this category
+  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
+  const catDef = cats.find(c => c.id === catValue);
+  const geizhalsSlug = catDef ? (catDef.geizhalsSlug || catDef.id) : catValue;
 
   scraperRunning = true; scraperAbort = false;
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
 
   clearScraperLog();
-  slog(`geizhals.eu scrape: ${catValue}, max ${maxProducts}`, 'info');
+  slog(`Bulk scrape: ${catValue} (geizhals.eu/${geizhalsSlug}), max ${maxProducts}`, 'info');
 
-  // Popular product names per category for testing
-  const productLists = {
-    smartphones: ['iPhone 16','Samsung Galaxy S25 Ultra','Xiaomi 14','Google Pixel 9 Pro','OnePlus 12'],
-    tablets: ['iPad Air M2','Samsung Galaxy Tab S9','Xiaomi Pad 7'],
-    laptops: ['MacBook Air M4','Dell XPS 15','Lenovo Yoga 9i'],
-    gpus: ['RTX 5090','RX 9070 XT','RTX 5080'],
-    cpus: ['Intel i9-14900K','AMD Ryzen 7 9800X3D'],
-    monitors: ['LG C4 OLED','Samsung Odyssey G9','Dell UltraSharp 32'],
-    headphones: ['AirPods Pro 3','Sony WH-1000XM6','Bose QC Ultra'],
-    smartwatches: ['Apple Watch Ultra 2','Samsung Watch 7','Garmin Venu 4'],
-    cameras: ['Canon EOS R6 III','Sony A7 V','GoPro Hero 14'],
-    consoles: ['PlayStation 5','Nintendo Switch 2'],
-    keyboards: ['Corsair K70','Logitech G915'],
-  };
-  const names = productLists[catValue] || ['iPhone 16'];
-  const toScrape = names.slice(0, maxProducts);
+  try {
+    // Phase 1: Collect product URLs from geizhals category listing
+    slog('── Phase 1: Collecting product URLs ──', 'info');
+    const urlItems = await collectProductUrls(geizhalsSlug, 5); // 5 pages max
+    slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
-  let added = 0, skipped = 0, errors = 0;
-  for (let i = 0; i < toScrape.length && !scraperAbort; i++) {
-    const name = toScrape[i];
-    slog(`[${i+1}/${toScrape.length}] ${name}`);
-    try {
-      const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${catValue}`);
-      const data = await r.json();
-      if (data.error) { slog(`  ❌ ${data.error}`, 'error'); errors++; }
-      else {
-        slog(`  ✅ ${data.name} | ${Object.keys(data.specs).length} specs | ${data.imgs.length} images`);
-        // Save to PB
-        const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
-        const body = {name:data.name,category:catValue,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
-        const saveR = await pbAddDoc('products', body);
-        if (saveR?.id) { slog(`  💾 Saved: ${saveR.id.substring(0,10)}`); added++; }
-        else { slog(`  Save failed`, 'warn'); errors++; }
-      }
-    } catch(e) { slog(`  Error: ${e.message}`, 'error'); errors++; }
-    await new Promise(r => setTimeout(r, delay));
+    if (!urlItems.length || scraperAbort) {
+      slog('No product URLs found. Check the category path.', 'error');
+      finishScraping();
+      return;
+    }
+
+    // Limit to maxProducts
+    const toScrape = urlItems.slice(0, maxProducts);
+    slog(`── Phase 2: Scraping ${toScrape.length} products ──`, 'info');
+
+    // Phase 2: Scrape products in parallel (2 channels for bulk)
+    const results = await parallelScrape(toScrape, catValue, delay, 2);
+
+    slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
+  } catch (e) {
+    slog(`Fatal error: ${e.message}`, 'error');
   }
 
-  slog(`\nDone: ${added} added | ${skipped} skipped | ${errors} errors`, 'success');
   finishScraping();
-}
 }
 
 // ═══════════════════════════════════════
@@ -1355,39 +1593,62 @@ async function startBulkScrape() {
 
 async function scrapeByUrl() {
   const nameInput = document.getElementById('scrapeUrl');
-  const name = nameInput ? nameInput.value.trim() : '';
-  if (!name) { toast('Enter a product name', 'w'); return; }
+  const inputVal = nameInput ? nameInput.value.trim() : '';
+  if (!inputVal) { toast('Enter a product name or geizhals.eu URL', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   clearScraperLog();
-  slog(`Searching: ${name}`);
+
+  // Check if input is a URL or a product name
+  let url, name;
+  if (inputVal.startsWith('http')) {
+    // Direct URL mode
+    url = inputVal;
+    slog(`Fetching URL: ${url}`);
+  } else {
+    // Product name search mode
+    name = inputVal;
+    slog(`Searching: ${name}`);
+  }
 
   try {
     const cat = document.getElementById('singleUrlCategory')?.value || 'smartphones';
-    const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${cat}`);
-    const data = await r.json();
-    if (data.error) { slog(`❌ ${data.error}`, 'error'); return; }
 
-    slog(`✅ ${data.name}`, 'success');
-    slog(`  Specs: ${Object.keys(data.specs).length}`, 'info');
-    slog(`  Images: ${data.imgs.length}`, 'info');
-    Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${v.substring(0,100)}`));
+    if (url) {
+      // Direct URL scrape via proxy
+      const html = await proxyFetch(url);
+      if (!html) { slog('❌ Page not found or blocked', 'error'); return; }
+      const product = await scrapeProductDetail(html, url, cat);
+      if (!product) { slog('❌ Could not parse product data', 'error'); return; }
 
-    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
-    const body = {name:data.name,category:cat,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
-    const saveR = await pbAddDoc('products', body);
-    slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
+      slog(`✅ ${product.name}`, 'success');
+      slog(`  Specs: ${product.specsCount}`, 'info');
+      slog(`  Images: ${product.images.length}`, 'info');
+      Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
+
+      await pbSetDoc('products', product.slug || product.id, product);
+      slog(`💾 Saved: ${product.id?.substring(0,10)}`, 'success');
+    } else {
+      // Product name search via proxy /scrape-product
+      const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${cat}`);
+      const data = await r.json();
+      if (data.error) { slog(`❌ ${data.error}`, 'error'); return; }
+
+      slog(`✅ ${data.name}`, 'success');
+      slog(`  Specs: ${Object.keys(data.specs).length}`, 'info');
+      slog(`  Images: ${data.imgs.length}`, 'info');
+      Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
+
+      const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
+      const body = {name:data.name,category:cat,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
+      const saveR = await pbAddDoc('products', body);
+      slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
+    }
   } catch(e) { slog(`Error: ${e.message}`, 'error'); }
 }
 
 // ═══════════════════════════════════════
 //  20. UPDATE PRODUCTS
-    toast('Scrape failed: ' + e.message, 'e');
-  }
-}
-
-// ═══════════════════════════════════════
-//  20. SCORE UPDATE
 // ═══════════════════════════════════════
 
 async function startScoreUpdate() {
@@ -1410,7 +1671,7 @@ async function startScoreUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
     } else {
-      const items = await pbGetAll('products', { filter: `source="epey" || source="geizhals.eu"` });
+      const items = await pbGetAll('products', { filter: `source="geizhals.eu"` });
       products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
@@ -1491,7 +1752,7 @@ async function startProductUpdate() {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
       products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
     } else {
-      const items = await pbGetAll('products', { filter: `source="epey" || source="geizhals.eu"` });
+      const items = await pbGetAll('products', { filter: `source="geizhals.eu"` });
       products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
@@ -1608,8 +1869,8 @@ async function startInventoryScan() {
   if (!catValue) { toast('Select a category', 'w'); return; }
 
   const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
-  const catDef = cats.find(c => c.id === catValue || c.epeyPath === catValue);
-  const epeyPath = catDef ? catDef.epeyPath : catValue;
+  const catDef = cats.find(c => c.id === catValue || c.geizhalsSlug === catValue);
+  const geizhalsPath = catDef ? (catDef.geizhalsSlug || catDef.id) : catValue;
   const categoryId = catDef ? catDef.id : catValue;
 
   const pages = parseInt(document.getElementById('inventoryPages')?.value) || 30;
@@ -1618,7 +1879,7 @@ async function startInventoryScan() {
   scraperAbort = false;
   clearScraperLog();
 
-  slog(`Scanning inventory: ${categoryId} (${epeyPath}), up to ${pages} pages`);
+  slog(`Scanning inventory: ${categoryId} (${geizhalsPath}), up to ${pages} pages`);
 
   // Get existing source URLs
   const existingUrls = new Set();
@@ -1638,7 +1899,7 @@ async function startInventoryScan() {
   slog(`Existing products in DB: ${existingUrls.size}`);
 
   // Crawl category pages
-  const urlItems = await collectProductUrls(epeyPath, pages);
+  const urlItems = await collectProductUrls(geizhalsPath, pages);
 
   if (scraperAbort) {
     slog('Scan stopped by user', 'warn');
