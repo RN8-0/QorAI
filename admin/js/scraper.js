@@ -1309,94 +1309,20 @@ function triggerAITranslation() {
 
 async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   const catSelect = document.getElementById('scrapeCategory');
   const catValue = catSelect ? catSelect.value : '';
   if (!catValue) { toast('Select a category', 'w'); return; }
 
-  // Parse category: catValue can be a category ID or an epeyPath
-  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
-  const catDef = cats.find(c => c.id === catValue || c.epeyPath === catValue);
-  const epeyPath = catDef ? catDef.epeyPath : catValue;
-  const categoryId = catDef ? catDef.id : catValue;
-
-  const pageStart = parseInt(document.getElementById('scrapePageStart')?.value) || 1;
-  const pageEnd = parseInt(document.getElementById('scrapePageEnd')?.value) || 50;
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 500;
-  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
-  const channelCount = parseInt(document.getElementById('scrapeChannels')?.value) || 3;
-
-  scraperRunning = true;
-  scraperAbort = false;
-  const btnBulk = document.getElementById('btnBulkScrape');
-  const btnStop = document.getElementById('btnStopScrape');
-  if (btnBulk) btnBulk.style.display = 'none';
-  if (btnStop) btnStop.style.display = '';
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 100;
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
 
   clearScraperLog();
-  slog(`Bulk scrape: ${categoryId} (${epeyPath}), pages 1-${pageEnd}, max ${maxProducts}, ${channelCount} channels`, 'info');
-
-  // Load learned translations at start
-  await loadLearnedTranslations();
-
-  // Phase 1: Collect product URLs
-  slog('── Phase 1: Collecting product URLs ──', 'info');
-  const urlItems = await collectProductUrls(epeyPath, pageEnd);
-
-  if (scraperAbort) {
-    slog('Scrape stopped by user during URL collection', 'warn');
-    finishScraping();
-    return;
-  }
-
-  if (urlItems.length === 0) {
-    slog('No product URLs found. Check the category path.', 'error');
-    finishScraping();
-    return;
-  }
-
-  // Check existing products
-  const existingUrls = new Set();
-  if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-    allProducts.forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
-  } else {
-    try {
-      const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
-      items.forEach(d => {
-        const data = d.data();
-        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
-      });
-    } catch {}
-  }
-
-  const newItems= urlItems.filter(item => !existingUrls.has(item.url));
-  slog(`Found ${urlItems.length} total, ${newItems.length} new (${urlItems.length - newItems.length} existing)`);
-
-  const toScrape = newItems.slice(0, maxProducts);
-  if (toScrape.length === 0) {
-    slog('No new products to scrape', 'info');
-    finishScraping();
-    return;
-  }
-
-  // Phase 2: Parallel scrape
-  slog(`── Phase 2: Scraping ${toScrape.length} products (${channelCount} channels) ──`, 'info');
-  const results = await parallelScrape(toScrape, categoryId, delay, channelCount);
-
-  // Phase 3: Price segments
-  if (results.added > 0) {
-    slog('── Phase 3: Computing price segments ──', 'info');
-    await computePriceSegments(categoryId);
-  }
-
-  // Final untranslated backlog flush
-  triggerAITranslation();
-
-  slog(`\n═══ Bulk scrape complete ═══`, 'success');
-  slog(`Added: ${results.added} | Skipped: ${results.skipped} | Errors: ${results.errors}${scraperAbort ? ' | STOPPED BY USER' : ''}`,
-    results.added > 0 ? 'success' : 'warn');
-
+  slog('geizhals.eu CLI scraper kullanin:', 'info');
+  slog(`  node scripts/geizhals_scraper.js --category=${catValue} --limit=${maxProducts}`, 'success');
+  slog('', 'info');
+  slog('Bu komutu PowerShell terminalinde calistirin.', 'warn');
+  slog('Scraper Puppeteer ile calisir, admin panel uzerinden degil.', 'warn');
   finishScraping();
 }
 

@@ -447,33 +447,12 @@
                 <select class="input" id="scrapeCategory"></select>
               </div>
               <div class="form-field">
-                <label>Page Range</label>
-                <div style="display:flex;gap:8px">
-                  <input class="input" type="number" id="scrapePageStart" value="1" min="1" placeholder="From" style="width:80px">
-                  <span style="align-self:center">—</span>
-                  <input class="input" type="number" id="scrapePageEnd" value="5" min="1" placeholder="To" style="width:80px">
-                </div>
-              </div>
-              <div class="form-field">
-                <label>Channels (parallel)</label>
-                <select class="input" id="scrapeChannels">
-                  <option value="1">1 — Safe</option>
-                  <option value="2">2 — Normal</option>
-                  <option value="3" selected>3 — Fast</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Max Products</label>
+                <label>Products per Batch</label>
                 <input class="input" type="number" id="scrapeMaxProducts" value="200" min="1">
               </div>
               <div class="form-field">
                 <label>Delay (ms)</label>
-                <input class="input" type="number" id="scrapeDelay" value="2000" min="500" step="500">
-              </div>
-              <div class="form-field" style="display:flex;align-items:end">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="scrapeFetchGallery" checked> Fetch gallery images
-                </label>
+                <input class="input" type="number" id="scrapeDelay" value="3000" min="1000" step="500">
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px">
