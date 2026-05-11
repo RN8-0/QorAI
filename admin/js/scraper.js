@@ -1573,7 +1573,7 @@ async function scrapeByUrl() {
       Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
       const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
-      const body = {name:data.name,category:cat,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
+      const body = {name:data.name, category:cat, slug, specs:data.specs, imageUrl: data.imgs && data.imgs.length > 0 ? data.imgs[0] : '', images: data.imgs || [], source:'geizhals.eu', lastUpdated:new Date().toISOString(), isActive:true};
       const saveR = await pbAddDoc('products', body);
       slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
     }
