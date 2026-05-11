@@ -1,187 +1,171 @@
 /**
- * geizhals.eu Scraper — 10 Ürün Testi
- * Puppeteer search + axios product detail + comma-split specs
+ * geizhals.eu → PocketBase Scraper
+ * Scrapes: name, price, specs (comma-split), images → PB
  */
 const axios = require('axios');
+const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
+const envFile = fs.readFileSync(path.join(__dirname, '..', 'migration', '.env'), 'utf8');
+const env = Object.fromEntries(envFile.split(/\r?\n/).filter(l => l && !l.startsWith('#')).map(l => {
+  const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
+}));
+const PB = env.POCKETBASE_URL;
+const FIELD = 'productImages';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
-// Puppeteer setup (from existing scraper-proxy structure)
 const rootDir = path.resolve(__dirname, '..');
-const puppeteerExtra = require(path.join(rootDir, 'node_modules', 'puppeteer-extra'));
-const StealthPlugin = require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stealth'));
-puppeteerExtra.use(StealthPlugin());
-
-const chromePaths = [
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-];
+const pptr = require(path.join(rootDir, 'node_modules', 'puppeteer-extra'));
+pptr.use(require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stealth'))());
+const chromePaths = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'];
 const chromePath = chromePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
 
-// Product names to search for
-const PRODUCTS = [
-  'iPhone 16', 'Samsung Galaxy S25 Ultra', 'Xiaomi 14', 'Google Pixel 9 Pro',
-  'OnePlus 12', 'Sony Xperia 1 VI', 'Nothing Phone 2', 'iPad Air M2',
-  'Samsung Galaxy Tab S9', 'Apple Watch Ultra 2'
-];
-
+const PRODUCTS = ['iPhone 16', 'Samsung Galaxy S25 Ultra', 'Xiaomi 14', 'Google Pixel 9 Pro', 'OnePlus 12', 'Sony Xperia 1 VI', 'Nothing Phone 2', 'iPad Air M2', 'Samsung Galaxy Tab S9', 'Apple Watch Ultra 2'];
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let pbTok = null;
+async function pbAuth() {
+  const r = await fetch(`${PB}/api/collections/_superusers/auth-with-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity: env.POCKETBASE_ADMIN_EMAIL, password: env.POCKETBASE_ADMIN_PASSWORD }) });
+  pbTok = (await r.json()).token;
+}
+async function pbFetch(p, o = {}) {
+  if (!pbTok) await pbAuth();
+  let r = await fetch(`${PB}${p}`, { ...o, headers: { ...o.headers, 'Authorization': pbTok } });
+  if (r.status === 401) { await pbAuth(); r = await fetch(`${PB}${p}`, { ...o, headers: { ...o.headers, 'Authorization': pbTok } }); }
+  return r;
+}
 
 async function searchGeizhals(browser, query) {
   const page = await browser.newPage();
   await page.setUserAgent(UA);
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8' });
-
-  // Block images/fonts for speed
   await page.setRequestInterception(true);
-  page.on('request', req => {
-    if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort();
-    else req.continue();
-  });
-
-  const searchUrl = 'https://geizhals.eu/?fs=' + encodeURIComponent(query);
-  console.log('  Searching:', searchUrl.substring(0, 80));
-  await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-
-  // Wait for product list to render
-  try {
-    await page.waitForSelector('a[href*="-a"][href*=".html"]', { timeout: 10000 });
-  } catch {
-    console.log('  No product links found on search page');
-    await page.close();
-    return null;
-  }
-
-  // Extract first product URL
-  const productUrl = await page.evaluate(() => {
-    const links = document.querySelectorAll('a[href*="-a"][href*=".html"]');
-    for (const a of links) {
-      const href = a.getAttribute('href') || '';
-      if (href.match(/-a\d+\.html$/)) return href;
+  page.on('request', req => { if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort(); else req.continue(); });
+  await page.goto('https://geizhals.eu/?fs=' + encodeURIComponent(query), { waitUntil: 'domcontentloaded', timeout: 20000 });
+  try { await page.waitForSelector('a[href*="-a"][href*=".html"]', { timeout: 10000 }); } catch { await page.close(); return null; }
+  const url = await page.evaluate(() => {
+    for (const a of document.querySelectorAll('a[href*="-a"][href*=".html"]')) {
+      const h = a.getAttribute('href') || '';
+      if (h.match(/-a\d+\.html$/)) return h;
     }
     return null;
   });
-
   await page.close();
-  return productUrl ? (productUrl.startsWith('http') ? productUrl : 'https://geizhals.eu' + productUrl) : null;
+  return url ? (url.startsWith('http') ? url : 'https://geizhals.eu' + url) : null;
 }
 
 async function scrapeProduct(browser, url) {
   const page = await browser.newPage();
   await page.setUserAgent(UA);
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8' });
-
   await page.setRequestInterception(true);
-  page.on('request', req => {
-    if (['stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort();
-    else req.continue(); // Allow images now!
-  });
-
+  page.on('request', req => { if (['stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort(); else req.continue(); });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-
-  // Wait for specs to load
   await new Promise(r => setTimeout(r, 3000));
 
   const data = await page.evaluate(() => {
-    const result = { name: '', price: '', images: [], specs: [] };
-
-    // Name
-    result.name = (document.querySelector('h1')?.textContent || document.title || '').trim();
-
-    // Price — .gh_price span
-    const priceEl = document.querySelector('.gh_price');
-    if (priceEl) {
-      result.price = priceEl.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
-    }
-
-    // Images — main product images (unique by hash)
+    const r = { name: '', price: '', imgs: [], specs: {} };
+    r.name = (document.querySelector('h1')?.textContent || '').trim();
+    const pe = document.querySelector('.gh_price');
+    if (pe) r.price = pe.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
     const seen = new Set();
     document.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
-      const src = img.src || '';
-      if (src.includes('-n.webp')) {
-        const hash = src.split('/').pop()?.split('-')[0] || '';
-        if (!seen.has(hash)) { seen.add(hash); result.images.push(src); }
-      }
+      const s = img.src || '';
+      if (s.includes('-n.webp')) { const h = s.split('/').pop()?.split('-')[0] || ''; if (!seen.has(h)) { seen.add(h); r.imgs.push(s); } }
     });
-
-    // Specs — dl.specs-grid with div.specs-grid__item > dt/dd
-    const specGrid = document.querySelector('dl.specs-grid');
-    if (specGrid) {
-      specGrid.querySelectorAll('.specs-grid__item, dt').forEach(row => {
-        // Try to find key-value pair
-        const keyEl = row.querySelector('dt') || row.querySelector('.specs-grid__label');
-        const valEl = row.querySelector('dd') || row.querySelector('.specs-grid__value');
-        // Or if the row itself is a dt/dd pair
-        const key = keyEl ? keyEl.textContent.trim() : (row.tagName === 'DT' ? row.textContent.trim() : '');
-        const val = valEl ? valEl.textContent.trim().replace(/\s+/g, ' ') : (row.tagName === 'DD' ? row.textContent.trim().replace(/\s+/g, ' ') : '');
-        if (key && val && key.length > 1 && key.length < 80 && val.length < 500) {
-          result.specs.push({ key, val });
-        }
+    const grid = document.querySelector('dl.specs-grid');
+    if (grid) {
+      grid.querySelectorAll('.specs-grid__item').forEach(item => {
+        const k = (item.querySelector('dt') || item).textContent.trim();
+        const vEl = item.querySelector('dd');
+        let v = vEl ? vEl.textContent.trim().replace(/\s+/g, ' ') : '';
+        if (k && v && k.length > 1 && k.length < 80 && v.length < 500) r.specs[k] = v;
       });
     }
-
-    return result;
+    return r;
   });
-
   await page.close();
   return data;
 }
 
+async function downloadImage(url) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) return null;
+    const ab = await r.arrayBuffer();
+    return await sharp(Buffer.from(ab)).resize(800, null, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+  } catch { return null; }
+}
+
+async function saveToPB(product, imgBuf, category) {
+  const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const body = {
+    name: product.name, brand: '', category: category, subcategory: '', imageURL: '',
+    slug: slug,
+    price_raw: parseFloat(product.price) || 0,
+    specs: product.specs,
+    lastUpdated: new Date().toISOString(), isActive: true, source: 'geizhals.eu',
+  };
+  const cr = await pbFetch('/api/collections/products/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await cr.json();
+  if (!cr.ok) { console.log('  PB create err:', JSON.stringify(data).substring(0, 150)); return null; }
+  const pid = data.id;
+  console.log('  Created:', pid.substring(0, 12));
+
+  if (imgBuf) {
+    const b = '----GH' + Date.now(); const crlf = '\r\n';
+    const h = `--${b}${crlf}Content-Disposition: form-data; name="${FIELD}"; filename="geizhals.webp"${crlf}Content-Type: image/webp${crlf}${crlf}`;
+    const mb = Buffer.concat([Buffer.from(h), imgBuf, Buffer.from(`${crlf}--${b}--${crlf}`)]);
+    const ir = await pbFetch(`/api/collections/products/records/${pid}`, { method: 'PATCH', headers: { 'Content-Type': `multipart/form-data; boundary=${b}` }, body: mb });
+    if (ir.ok) {
+      const rec = await ir.json();
+      const rf = rec[FIELD] || [];
+      const files = Array.isArray(rf) ? rf : [rf];
+      const up = files.find(f => f?.includes('.webp'));
+      if (up) {
+        const imgUrl = `${PB}/api/files/products/${pid}/${up}`;
+        await pbFetch(`/api/collections/products/records/${pid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageURL: imgUrl, imageUrl: imgUrl, images: [imgUrl] }) });
+      }
+    }
+  }
+  return pid;
+}
+
+function guessCategory(name) {
+  const n = name.toLowerCase();
+  if (n.includes('watch') || n.includes('ultra')) return 'smartwatches';
+  if (n.includes('ipad') || n.includes('tab')) return 'tablets';
+  return 'smartphones';
+}
+
 (async () => {
-  if (!chromePath) { console.log('Chrome/Edge bulunamadi!'); process.exit(1); }
-
-  console.log('geizhals.eu Scraper — Test');
-  console.log('='.repeat(60));
-
-  const browser = await puppeteerExtra.launch({
-    executablePath: chromePath,
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled', '--lang=de-DE'],
-    defaultViewport: { width: 1366, height: 768 },
-  });
-
-  let ok = 0, fail = 0;
+  if (!chromePath) { console.log('Chrome yok!'); process.exit(1); }
+  console.log('geizhals.eu → PocketBase\n' + '='.repeat(50));
+  const browser = await pptr.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled', '--lang=de-DE'], defaultViewport: { width: 1366, height: 768 } });
 
   for (let i = 0; i < PRODUCTS.length; i++) {
-    const query = PRODUCTS[i];
-    console.log(`\n[${i + 1}/${PRODUCTS.length}] Araniyor: ${query}`);
-
+    const q = PRODUCTS[i];
+    console.log(`\n[${i + 1}/${PRODUCTS.length}] ${q}`);
     try {
-      const url = await searchGeizhals(browser, query);
-      if (!url) { fail++; console.log('  URL bulunamadi'); await sleep(3000); continue; }
+      const url = await searchGeizhals(browser, q);
+      if (!url) { console.log('  Bulunamadi'); continue; }
+      console.log('  Scraping:', url.substring(0, 70));
+      const p = await scrapeProduct(browser, url);
+      console.log('  Name:', p.name.substring(0, 60));
+      console.log('  Price: €' + (p.price || '?'));
+      console.log('  Images:', p.imgs.length, 'Specs:', Object.keys(p.specs).length);
 
-      console.log('  URL:', url.substring(0, 80));
-      const product = await scrapeProduct(browser, url);
+      let buf = null;
+      if (p.imgs[0]) { buf = await downloadImage(p.imgs[0]); console.log('  Img:', buf ? Math.round(buf.length / 1024) + 'KB' : 'FAIL'); }
 
-      console.log('  İsim:', product.name.substring(0, 70));
-      console.log('  Fiyat:', product.price ? '€' + product.price : '?');
-      console.log('  Görsel:', product.images.length, 'adet');
-      if (product.images[0]) console.log('    ', product.images[0].substring(0, 80));
-      console.log('  Spesifikasyonlar (' + product.specs.length + '):');
-      product.specs.slice(0, 20).forEach(s => {
-        const valLines = s.val.split(/,\s*/).filter(Boolean);
-        if (valLines.length > 1) {
-          console.log(`    ${s.key}:`);
-          valLines.forEach(l => console.log('      • ' + l));
-        } else {
-          console.log(`    ${s.key}: ${s.val.substring(0, 120)}`);
-        }
-      });
-      if (product.specs.length > 20) console.log(`    ... ve ${product.specs.length - 20} daha`);
-      ok++;
-    } catch (e) {
-      console.log('  HATA:', e.message.substring(0, 80));
-      fail++;
-    }
-
-    await sleep(3000 + Math.random() * 2000);
+      const cat = guessCategory(p.name);
+      const pid = await saveToPB(p, buf, cat);
+      if (pid) console.log('  ⭐ Admin panelde gorunecek');
+    } catch (e) { console.log('  ❌', e.message.substring(0, 60)); }
+    await sleep(4000 + Math.random() * 2000);
   }
 
   await browser.close();
-  console.log('\n' + '='.repeat(60));
-  console.log(`Bitti: ${ok} basarili, ${fail} hatali`);
+  console.log('\nDone ✅ Admin paneli yenile');
 })();
