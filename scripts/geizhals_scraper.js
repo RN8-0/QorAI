@@ -62,27 +62,25 @@ async function scrapeProduct(browser, url) {
   await page.setRequestInterception(true);
   page.on('request', req => { if (['stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort(); else req.continue(); });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 1500)); // faster, no need to wait for price widgets
 
   const data = await page.evaluate(() => {
-    const r = { name: '', price: '', imgs: [], specs: {} };
+    const r = { name: '', imgs: [], specs: {} };
     r.name = (document.querySelector('h1')?.textContent || '').trim();
-    const pe = document.querySelector('.gh_price');
-    if (pe) r.price = pe.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
     const seen = new Set();
     document.querySelectorAll('img[src*="gzhls.at/pix/"]').forEach(img => {
       const s = img.src || '';
       if (s.includes('-n.webp')) { const h = s.split('/').pop()?.split('-')[0] || ''; if (!seen.has(h)) { seen.add(h); r.imgs.push(s); } }
     });
-    const grid = document.querySelector('dl.specs-grid');
-    if (grid) {
+    // ALL spec grids (not just the first one!)
+    document.querySelectorAll('dl.specs-grid').forEach(grid => {
       grid.querySelectorAll('.specs-grid__item').forEach(item => {
         const k = (item.querySelector('dt') || item).textContent.trim();
         const vEl = item.querySelector('dd');
         let v = vEl ? vEl.textContent.trim().replace(/\s+/g, ' ') : '';
-        if (k && v && k.length > 1 && k.length < 80 && v.length < 500) r.specs[k] = v;
+        if (k && v && k.length > 1 && k.length < 80 && v.length < 800) r.specs[k] = v;
       });
-    }
+    });
     return r;
   });
   await page.close();
@@ -99,11 +97,11 @@ async function downloadImage(url) {
 }
 
 async function saveToPB(product, imgBuf, category) {
-  const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
   const body = {
     name: product.name, brand: '', category: category, subcategory: '', imageURL: '',
     slug: slug,
-    price_raw: parseFloat(product.price) || 0,
+    price_raw: 0,
     specs: product.specs,
     lastUpdated: new Date().toISOString(), isActive: true, source: 'geizhals.eu',
   };
@@ -153,7 +151,6 @@ function guessCategory(name) {
       console.log('  Scraping:', url.substring(0, 70));
       const p = await scrapeProduct(browser, url);
       console.log('  Name:', p.name.substring(0, 60));
-      console.log('  Price: €' + (p.price || '?'));
       console.log('  Images:', p.imgs.length, 'Specs:', Object.keys(p.specs).length);
 
       let buf = null;
@@ -163,7 +160,7 @@ function guessCategory(name) {
       const pid = await saveToPB(p, buf, cat);
       if (pid) console.log('  ⭐ Admin panelde gorunecek');
     } catch (e) { console.log('  ❌', e.message.substring(0, 60)); }
-    await sleep(4000 + Math.random() * 2000);
+    await sleep(2500 + Math.random() * 1500);
   }
 
   await browser.close();
