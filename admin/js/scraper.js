@@ -166,6 +166,38 @@ function openLocalProxyHealth() {
   window.open(`${PROXY_URL}/health`, '_blank', 'noopener');
 }
 
+async function startProxyFromBrowser() {
+  // Try to start the proxy by calling a local endpoint
+  // Since browsers can't spawn Node processes directly, we try multiple methods
+  slog('Attempting to start proxy...', 'info');
+  
+  // Method 1: Try to fetch a local endpoint that might trigger the proxy
+  try {
+    const res = await fetch(`${PROXY_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      slog('Proxy is already running!', 'success');
+      checkProxy();
+      return;
+    }
+  } catch {}
+  
+  // Method 2: Try to open the .bat file via a hidden iframe (Windows only)
+  slog('Proxy not running. Please start it manually:', 'warn');
+  slog(`Command: ${PROXY_START_COMMAND}`, 'info');
+  
+  // Show the proxy info card with instructions
+  const card = document.getElementById('proxyInfoCard');
+  if (card) card.style.display = '';
+  
+  // Copy command to clipboard
+  try {
+    await navigator.clipboard.writeText(PROXY_START_COMMAND);
+    toast('Proxy command copied! Paste in terminal and run.', 's');
+  } catch (_) {
+    toast(`Run: ${PROXY_START_COMMAND}`, 'i', 8000);
+  }
+}
+
 function ensureProxyPolling() {
   if (_proxyPollTimer) return;
   _proxyPollTimer = window.setInterval(() => {
@@ -942,8 +974,8 @@ function extractProductLinksFromDoc(doc, html) {
     return results;
   }
 
-  // geizhals.eu product links: /path/product-name-a1234567.html
-  const productLinkRe = /-a\d+\.html$/i;
+  // geizhals.eu product links: /path/product-name-a1234567.html OR /path/product-name-v1234567.html
+  const productLinkRe = /-[av]\d+\.html$/i;
 
   // Search ALL links on page, filter by geizhals product pattern
   doc.querySelectorAll('a[href]').forEach(a => {
@@ -1055,7 +1087,7 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
       const top10Start = htmlStr.indexOf('Top-10');
       if (top10Start !== -1) {
         const section = htmlStr.substring(top10Start, top10Start + 15000);
-        const linkRe = /href=["']([^"']*-a\d+\.html)["']/gi;
+        const linkRe = /href=["']([^"']*-[av]\d+\.html)["']/gi;
         let m;
         let newLinks = 0;
         while ((m = linkRe.exec(section)) !== null) {
