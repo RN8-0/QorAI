@@ -276,9 +276,9 @@ function _clean(data) {
   for (const key of ['id', 'collectionId', 'collectionName', 'expand']) {
     delete clean[key];
   }
-  // Remove undefined values
+  // Remove undefined/null values (PocketBase rejects null on most field types)
   for (const [k, v] of Object.entries(clean)) {
-    if (v === undefined) delete clean[k];
+    if (v === undefined || v === null) delete clean[k];
     // Convert FieldValue sentinels
     if (v && v._methodName === 'serverTimestamp') clean[k] = new Date().toISOString();
   }

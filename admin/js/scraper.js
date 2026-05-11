@@ -1431,8 +1431,25 @@ async function scrapeByUrl() {
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
-      await pbSetDoc('products', product.slug || product.id, product);
-      slog(`💾 Saved: ${product.id?.substring(0,10)}`, 'success');
+      // DEBUG: Direct PocketBase create to bypass pbSetDoc and see exact error
+      try {
+        const pb = getPb();
+        const payload = { ...product, slug: product.slug || product.id };
+        delete payload.id; // let PB auto-generate
+        console.log('DEBUG product payload:', JSON.stringify(payload, null, 2));
+        slog(`Sending to PocketBase...`, 'info');
+        const record = await pb.collection('products').create(payload, { $autoCancel: false });
+        slog(`💾 Saved: ${record.id}`, 'success');
+      } catch(saveErr) {
+        const details = saveErr.response?.data || saveErr.data || {};
+        slog(`❌ Save failed: ${saveErr.message}`, 'error');
+        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
+        Object.entries(details).forEach(([k,v]) => {
+          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
+        });
+        console.error('[scrapeByUrl] Full save error:', saveErr);
+        return;
+      }
     } else {
       // Product name search via geizhals search page
       slog(`Searching geizhals.eu for: ${name}`);
@@ -1466,10 +1483,30 @@ async function scrapeByUrl() {
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
-      await pbSetDoc('products', product.slug || product.id, product);
-      slog(`💾 Saved: ${product.id?.substring(0,10)}`, 'success');
+      // DEBUG: Direct PocketBase create to bypass pbSetDoc and see exact error
+      try {
+        const pb = getPb();
+        const payload = { ...product, slug: product.slug || product.id };
+        delete payload.id; // let PB auto-generate
+        console.log('DEBUG product payload:', JSON.stringify(payload, null, 2));
+        slog(`Sending to PocketBase...`, 'info');
+        const record = await pb.collection('products').create(payload, { $autoCancel: false });
+        slog(`💾 Saved: ${record.id}`, 'success');
+      } catch(saveErr) {
+        const details = saveErr.response?.data || saveErr.data || {};
+        slog(`❌ Save failed: ${saveErr.message}`, 'error');
+        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
+        Object.entries(details).forEach(([k,v]) => {
+          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
+        });
+        console.error('[scrapeByUrl] Full save error:', saveErr);
+        return;
+      }
     }
-  } catch(e) { slog(`Error: ${e.message}`, 'error'); }
+  } catch(e) {
+    slog(`Error: ${e.message}`, 'error');
+    console.error('[scrapeByUrl] Outer catch:', e);
+  }
 }
 
 // ═══════════════════════════════════════
