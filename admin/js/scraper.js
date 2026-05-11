@@ -916,8 +916,8 @@ async function scrapeProductDetail(html, url, categoryId) {
     specs: rawSpecs,          // German specs
     specSections: rawSections, // German sections
     keySpecs: rawKeySpecs,
-    techScore: techScore || null,
-    price_raw: price_raw || null,
+    techScore: techScore ?? undefined,
+    price_raw: price_raw || undefined,
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
   };
@@ -1198,7 +1198,8 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         }
 
         // Save to PocketBase
-        await pbSetDoc('products', product.slug || product.id, product);
+        const clean = typeof _clean === 'function' ? _clean(product) : product;
+        await pbSetDoc('products', clean.slug || clean.id, clean);
         results.added++;
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
@@ -1210,7 +1211,11 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
       } catch (e) {
         results.errors++;
         errorStreak++;
+        const details = e.response?.data || e.data || {};
         slog(`  → Error: ${slug} — ${e.message}`, 'error');
+        Object.entries(details).forEach(([k,v]) => {
+          slog(`     ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
+        });
 
         // Exponential backoff on error streak
         if (errorStreak >= 3) {
@@ -1431,15 +1436,10 @@ async function scrapeByUrl() {
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
-      // DEBUG: Direct PocketBase create to bypass pbSetDoc and see exact error
       try {
-        const pb = getPb();
-        const payload = { ...product, slug: product.slug || product.id };
-        delete payload.id; // let PB auto-generate
-        console.log('DEBUG product payload:', JSON.stringify(payload, null, 2));
-        slog(`Sending to PocketBase...`, 'info');
-        const record = await pb.collection('products').create(payload, { $autoCancel: false });
-        slog(`💾 Saved: ${record.id}`, 'success');
+        const clean = typeof _clean === 'function' ? _clean(product) : product;
+        await pbSetDoc('products', clean.slug || clean.id, clean);
+        slog(`💾 Saved: ${clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};
         slog(`❌ Save failed: ${saveErr.message}`, 'error');
@@ -1483,15 +1483,10 @@ async function scrapeByUrl() {
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
-      // DEBUG: Direct PocketBase create to bypass pbSetDoc and see exact error
       try {
-        const pb = getPb();
-        const payload = { ...product, slug: product.slug || product.id };
-        delete payload.id; // let PB auto-generate
-        console.log('DEBUG product payload:', JSON.stringify(payload, null, 2));
-        slog(`Sending to PocketBase...`, 'info');
-        const record = await pb.collection('products').create(payload, { $autoCancel: false });
-        slog(`💾 Saved: ${record.id}`, 'success');
+        const clean = typeof _clean === 'function' ? _clean(product) : product;
+        await pbSetDoc('products', clean.slug || clean.id, clean);
+        slog(`💾 Saved: ${clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};
         slog(`❌ Save failed: ${saveErr.message}`, 'error');
