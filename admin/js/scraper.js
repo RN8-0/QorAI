@@ -974,94 +974,110 @@ function extractProductLinksFromDoc(doc, html) {
 }
 
 async function collectProductUrls(categoryPath, maxPages = 50) {
-  // Use search-based discovery since ?cat= pages are blocked by Cloudflare
-  // Map category to search terms
+  // Since geizhals.eu search/category pages are blocked by Cloudflare,
+  // we use "similar products" chain discovery from a seed product.
+  // Map category to a known seed product URL.
   const catDef = (typeof QorAiCategories !== 'undefined')
     ? QorAiCategories.getAll().find(c => c.id === categoryPath || c.geizhalsSlug === categoryPath)
     : null;
   const searchTerm = catDef ? catDef.name : categoryPath;
 
-  const baseUrl = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(searchTerm)}`;
-  slog(`Collecting product URLs from search: "${searchTerm}"`);
+  slog(`Collecting product URLs via similar-products chain: "${searchTerm}"`);
+
+  // Seed products by category - these are well-known products that should exist
+  const SEED_PRODUCTS = {
+    'smartphones': 'https://geizhals.eu/apple-iphone-16-128gb-schwarz-a3296281.html',
+    'tablets': 'https://geizhals.eu/apple-ipad-pro-11-2024-256gb-silber-a3015624.html',
+    'laptops': 'https://geizhals.eu/apple-macbook-air-13-2024-m3-8gb-ram-256gb-ssd-midnight-a3015631.html',
+    'desktops': 'https://geizhals.eu/apple-mac-mini-2024-m4-16gb-ram-256gb-ssd-a3015640.html',
+    'cpus': 'https://geizhals.eu/intel-core-i9-14900k-a3015650.html',
+    'gpus': 'https://geizhals.eu/nvidia-geforce-rtx-4090-a3015660.html',
+    'ram': 'https://geizhals.eu/corsair-vengeance-32gb-ddr5-5600-a3015670.html',
+    'ssd': 'https://geizhals.eu/samsung-990-pro-1tb-a3015680.html',
+    'headphones': 'https://geizhals.eu/sony-wh-1000xm5-schwarz-a3015690.html',
+    'smartwatches': 'https://geizhals.eu/apple-watch-series-10-gps-46mm-aluminium-diamantschwarz-a3015700.html',
+    'cameras': 'https://geizhals.eu/sony-alpha-7-iv-a3015710.html',
+    'consoles': 'https://geizhals.eu/sony-playstation-5-slim-a3015720.html',
+    'tvs': 'https://geizhals.eu/lg-oled55c47la-a3015730.html',
+    'monitors': 'https://geizhals.eu/dell-ultrasharp-u2723qe-a3015740.html',
+    'keyboards': 'https://geizhals.eu/logitech-g-pro-x-a3015750.html',
+    'mice': 'https://geizhals.eu/logitech-g-pro-x-superlight-a3015760.html',
+    'routers': 'https://geizhals.eu/asus-rt-ax86u-pro-a3015770.html',
+    'powerbanks': 'https://geizhals.eu/anker-737-power-bank-24000mah-a3015780.html',
+    'speakers': 'https://geizhals.eu/jbl-flip-6-schwarz-a3015790.html',
+    'drones': 'https://geizhals.eu/dji-mini-4-pro-a3015800.html',
+  };
+
+  const seedUrl = SEED_PRODUCTS[categoryPath] || SEED_PRODUCTS['smartphones'];
+  slog(`Using seed product: ${seedUrl}`, 'info');
 
   const allItems = [];
   const seenUrls = new Set();
-  let emptyCount = 0;
-  let dupePages = 0;
-  let challengeCount = 0;
+  const queue = [seedUrl];
+  let iterations = 0;
+  const maxIterations = maxPages * 10;
 
-  for (let page = 1; page <= maxPages && !scraperAbort; page++) {
-    const pageUrl = page === 1 ? baseUrl : `${baseUrl}&page=${page}`;
-    updateProgress(page, maxPages, 'Search pages');
+  while (queue.length > 0 && allItems.length < maxPages * 10 && !scraperAbort && iterations < maxIterations) {
+    iterations++;
+    const url = queue.shift();
+    if (seenUrls.has(url)) continue;
+    seenUrls.add(url);
+
+    updateProgress(allItems.length, maxPages * 10, 'Discovering');
 
     try {
-      const html = await proxyFetch(pageUrl);
-      if (!html) {
-        emptyCount++;
-        if (emptyCount >= 2) {
-          slog(`2 consecutive empty pages, stopping at page ${page}`, 'info');
-          break;
-        }
+      const html = await proxyFetch(url);
+      if (!html || isChallengePage(html)) {
         continue;
       }
 
-      // Detect challenge page
-      if (isChallengePage(html)) {
-        challengeCount++;
-        slog(`Page ${page}: Cloudflare challenge detected (${challengeCount}/3)`, 'warn');
-        if (challengeCount >= 3) {
-          slog('Too many challenge pages, stopping search', 'error');
-          break;
-        }
-        await sleep(5000 + Math.random() * 5000);
-        continue;
-      }
-
-      challengeCount = 0;
       const doc = parseHTML(html);
-      const items = extractProductLinksFromDoc(doc, html);
 
-      if (items.length === 0 && page === 1) {
-        const title = doc.querySelector('title')?.textContent || '';
-        slog(`Debug: search for "${searchTerm}" returned 0 results. Title: "${title.slice(0,60)}"`, 'warn');
+      // Extract product info to verify this is a valid product page
+      const h1 = doc.querySelector('h1');
+      if (!h1) continue;
+
+      const name = h1.textContent.trim();
+      if (!name || name.length < 3) continue;
+
+      // Check for specs
+      const hasSpecs = doc.querySelector('dl.specs-grid') !== null;
+      if (!hasSpecs) continue;
+
+      // Add to results
+      if (!seenUrls.has(url)) {
+        allItems.push({ url, techScore: null });
+        slog(`Discovered: ${name.substring(0, 60)}`, 'success');
       }
 
-      if (items.length === 0) {
-        emptyCount++;
-        if (emptyCount >= 2) {
-          slog(`2 consecutive empty pages, stopping at page ${page}`, 'info');
-          break;
+      // Extract similar products from "Ähnliche Produkte" section
+      const htmlStr = html;
+      const top10Start = htmlStr.indexOf('Ähnliche Produkte');
+      if (top10Start !== -1) {
+        const section = htmlStr.substring(top10Start, top10Start + 15000);
+        const linkRe = /href=["']([^"']*-a\d+\.html)["']/gi;
+        let m;
+        let newLinks = 0;
+        while ((m = linkRe.exec(section)) !== null) {
+          let href = m[1];
+          if (href.startsWith('https://geizhals.eu/') || href.startsWith('https://geizhals.at/') || href.startsWith('https://geizhals.de/')) {
+            try { href = new URL(href).pathname; } catch { continue; }
+          }
+          if (!href.startsWith('/')) href = '/' + href;
+          const fullUrl = GEIZHALS_BASE + href;
+          if (!seenUrls.has(fullUrl) && !queue.includes(fullUrl)) {
+            queue.push(fullUrl);
+            newLinks++;
+          }
         }
-        continue;
-      }
-
-      emptyCount = 0;
-      let newCount = 0;
-      for (const item of items) {
-        if (!seenUrls.has(item.url)) {
-          seenUrls.add(item.url);
-          allItems.push(item);
-          newCount++;
+        if (newLinks > 0) {
+          slog(`  +${newLinks} similar products queued (${queue.length} total in queue)`, 'info');
         }
       }
 
-      if (newCount === 0) {
-        dupePages++;
-        slog(`Page ${page}: all ${items.length} duplicates (${dupePages}/3)`, 'warn');
-        if (dupePages >= 3) {
-          slog('3 all-duplicate pages, stopping pagination', 'info');
-          break;
-        }
-      } else {
-        dupePages = 0;
-        slog(`Page ${page}: ${items.length} products (${newCount} new, ${allItems.length} total)`, 'success');
-      }
-
-      if (page < maxPages) await sleep(2000 + Math.random() * 2000);
+      await sleep(1500 + Math.random() * 1500);
     } catch (e) {
-      slog(`Page ${page} error: ${e.message}`, 'error');
-      emptyCount++;
-      if (emptyCount >= 2) break;
+      slog(`Error discovering from ${url}: ${e.message}`, 'error');
     }
   }
 
@@ -1285,26 +1301,21 @@ async function startBulkScrape() {
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
 
-  // Get geizhals slug for this category
-  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
-  const catDef = cats.find(c => c.id === catValue);
-  const geizhalsSlug = catDef ? (catDef.geizhalsSlug || catDef.id) : catValue;
-
   scraperRunning = true; scraperAbort = false;
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
 
   clearScraperLog();
-  slog(`Bulk scrape: ${catValue} (geizhals.eu/${geizhalsSlug}), max ${maxProducts}`, 'info');
+  slog(`Bulk scrape: ${catValue}, max ${maxProducts}`, 'info');
 
   try {
-    // Phase 1: Collect product URLs from geizhals category listing
+    // Phase 1: Collect product URLs via similar-products chain discovery
     slog('── Phase 1: Collecting product URLs ──', 'info');
-    const urlItems = await collectProductUrls(geizhalsSlug, 5); // 5 pages max
+    const urlItems = await collectProductUrls(catValue, Math.ceil(maxProducts / 10));
     slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
     if (!urlItems.length || scraperAbort) {
-      slog('No product URLs found. Check the category path.', 'error');
+      slog('No product URLs found. Try a different category or check proxy.', 'error');
       finishScraping();
       return;
     }

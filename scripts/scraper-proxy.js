@@ -198,17 +198,15 @@ async function fetchWithPuppeteer(url) {
     const isChallenge = title.includes('Just a moment') ||
       title.includes('Checking') ||
       title.includes('DDoS-Guard') ||
-      title.includes('Please Wait');
+      title.includes('Please Wait') ||
+      title.includes('Nur einen Moment') ||
+      title.includes('Sichere Verbindung') ||
+      title.includes('Sichere Verbindung wird überprüft');
 
     if (isChallenge) {
-      console.log(`  ⏳ Bot koruması tespit edildi, bekleniyor...`);
-      await page.waitForFunction(
-        () => !document.title.includes('Just a moment') &&
-              !document.title.includes('Checking') &&
-              !document.title.includes('Please Wait'),
-        { timeout: 20000 }
-      ).catch(() => {});
-      await _humanDelay(2000, 4000);
+      console.log(`  ⏳ Bot korumasi tespit edildi: "${title.substring(0, 50)}", 5sn bekleniyor...`);
+      // Short wait then return challenge page HTML - let caller handle it
+      await _humanDelay(5000, 8000);
     }
 
     // Simulate human interaction
