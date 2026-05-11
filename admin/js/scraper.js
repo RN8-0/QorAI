@@ -111,26 +111,7 @@ function normalizeCategoryToken(value) {
     .replace(/^-|-$/g, '');
 }
 
-function findCategoryByEpeyUrl(url) {
-  const cats = (typeof window !== 'undefined' && window.QorAiCategories)
-    ? window.QorAiCategories.getAll()
-    : [];
-  if (!cats.length) return null;
-
-  const categorySlug = normalizeCategoryToken(categorySlugFromUrl(url));
-  const productSlug = normalizeCategoryToken(slugFromUrl(url));
-  const matchTokens = new Set([categorySlug, productSlug].filter(Boolean));
-
-  return cats.find((cat) => {
-    const epeyPath = normalizeCategoryToken(cat.epeyPath || '');
-    const epeyRoot = normalizeCategoryToken(String(cat.epeyPath || '').split('/')[0] || '');
-    const id = normalizeCategoryToken(cat.id || '');
-    const name = normalizeCategoryToken(cat.name || '');
-    if (matchTokens.has(epeyPath) || matchTokens.has(epeyRoot) || matchTokens.has(id) || matchTokens.has(name)) return true;
-    if (categorySlug && (epeyPath.startsWith(categorySlug + '-') || categorySlug.startsWith(epeyRoot + '-'))) return true;
-    return false;
-  }) || null;
-}
+function findCategoryByEpeyUrl(url) { return null; }
 
 // ═══════════════════════════════════════
 //  3. PROXY FETCH WITH RETRY
@@ -1373,123 +1354,34 @@ async function startBulkScrape() {
 // ═══════════════════════════════════════
 
 async function scrapeByUrl() {
-  const urlInput = document.getElementById('scrapeUrl');
-  const selectedCategory = document.getElementById('singleUrlCategory')?.value || '';
-  const url = urlInput ? urlInput.value.trim() : '';
-  if (!url) { toast('Enter a URL', 'w'); return; }
-  if (!url.includes('geizhals.eu')) { toast('Only geizhals.eu URLs are supported', 'e'); return; }
+  const nameInput = document.getElementById('scrapeUrl');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) { toast('Enter a product name', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   clearScraperLog();
-  slog(`Scraping: ${url}`);
+  slog(`Searching: ${name}`);
 
   try {
-    await loadLearnedTranslations();
+    const cat = document.getElementById('singleUrlCategory')?.value || 'smartphones';
+    const r = await fetch(`${PROXY_URL}/scrape-product?name=${encodeURIComponent(name)}&cat=${cat}`);
+    const data = await r.json();
+    if (data.error) { slog(`❌ ${data.error}`, 'error'); return; }
 
-    const html = await proxyFetch(url);
-    if (!html) {
-      slog('Page not found (404)', 'error');
-      toast('Page not found', 'e');
-      return;
-    }
+    slog(`✅ ${data.name}`, 'success');
+    slog(`  Specs: ${Object.keys(data.specs).length}`, 'info');
+    slog(`  Images: ${data.imgs.length}`, 'info');
+    Object.entries(data.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${v.substring(0,100)}`));
 
-    const autoCategory = selectedCategory || findCategoryByEpeyUrl(url)?.id || '';
-    if (autoCategory) slog(`Category mapped: ${autoCategory}`, 'info');
-    const product = await scrapeProductDetail(html, url, autoCategory);
-    if (!product) {
-      slog('Failed to parse product. The page may have redirected or has no content.', 'error');
-      toast('Failed to parse product', 'e');
-      return;
-    }
+    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now().toString(36);
+    const body = {name:data.name,category:cat,slug,specs:data.specs,source:'geizhals.eu',lastUpdated:new Date().toISOString(),isActive:true};
+    const saveR = await pbAddDoc('products', body);
+    slog(saveR?.id ? `💾 Saved: ${saveR.id}` : 'Save failed', saveR?.id ? 'success' : 'error');
+  } catch(e) { slog(`Error: ${e.message}`, 'error'); }
+}
 
-    if (product.specsCount === 0) {
-      slog('No specs found. The page might have a different structure.', 'warn');
-    }
-
-    slog(`Name: ${product.name}`);
-    slog(`Brand: ${product.brand} | Category: ${product.category}`);
-    slog(`Specs: ${product.specsCount} | Score: ${product.techScore || '-'}`);
-    slog(`Images: ${product.images.length} | Price: ${product.price_raw || '-'}`);
-    slog(`ID: ${product.id}`);
-
-    // Check if product already exists — merge missing data
-    const lookupKey = product.slug || product.id;
-    const existingDoc = await pbGetDoc('products', lookupKey);
-    if (existingDoc.exists) {
-      const existing = existingDoc.data();
-      slog('⚡ Product already exists — merging missing data...', 'info');
-
-      // Merge images: normalize URLs (upgrade size prefix) before dedup
-      const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/-n.webp').trim() : u;
-      const existingImages = (existing.images || []).map(_normImg).filter(Boolean);
-      const newImages = (product.images || []).map(_normImg).filter(Boolean);
-      const seenImgs = new Set(existingImages);
-      const mergedImages = [...existingImages];
-      for (const img of newImages) {
-        if (!seenImgs.has(img)) { seenImgs.add(img); mergedImages.push(img); }
-      }
-      const mergedSliced = mergedImages.slice(0, 8);
-      product.images = mergedSliced;
-      if (product.imageUrl) product.imageUrl = _normImg(product.imageUrl);
-      if (product.imageURL) product.imageURL = _normImg(product.imageURL);
-      if (mergedImages.length > existingImages.length) {
-        slog(`  + ${mergedImages.length - existingImages.length} new images added (total: ${mergedImages.length})`, 'success');
-      }
-
-      // Merge specs: add new specs that don't exist
-      const existingSpecs = existing.specs || {};
-      const newSpecs = product.specs || {};
-      const mergedSpecs = { ...existingSpecs };
-      let addedSpecs = 0;
-      for (const [k, v] of Object.entries(newSpecs)) {
-        if (!mergedSpecs[k]) { mergedSpecs[k] = v; addedSpecs++; }
-      }
-      product.specs = mergedSpecs;
-      product.specsCount = Object.keys(mergedSpecs).length;
-      if (addedSpecs > 0) slog(`  + ${addedSpecs} new specs added (total: ${product.specsCount})`, 'success');
-
-      // Merge specSections
-      const existingSections = existing.specSections || {};
-      const newSections = product.specSections || {};
-      const mergedSections = { ...existingSections };
-      for (const [sec, specObj] of Object.entries(newSections)) {
-        if (!mergedSections[sec]) { mergedSections[sec] = specObj; }
-        else {
-          for (const [k, v] of Object.entries(specObj)) {
-            if (!mergedSections[sec][k]) mergedSections[sec][k] = v;
-          }
-        }
-      }
-      product.specSections = mergedSections;
-
-      // Keep existing fields that new scrape might miss
-      if (!product.techScore && existing.techScore) product.techScore = existing.techScore;
-      if (!product.price_raw && existing.price_raw) product.price_raw = existing.price_raw;
-      if (!product.brand && existing.brand) product.brand = existing.brand;
-
-      // Keep first scrape date
-      if (existing.scrapedAt) product.firstScrapedAt = existing.scrapedAt;
-
-      slog('Merging complete — saving updated product', 'info');
-    }
-
-    const saved = await pbSetDoc('products', lookupKey, product);
-    if (saved?.id) product.id = saved.id;
-    if (saved?.slug) product.slug = saved.slug;
-    slog('Product saved to PocketBase!', 'success');
-    toast(`${existingDoc?.exists ? 'Updated' : 'Added'}: ${product.name}`, 's');
-
-    // Persist untranslated terms after single-item scrape
-    triggerAITranslation();
-
-    // Refresh in-memory list
-    if (typeof allProducts !== 'undefined') {
-      const idx = allProducts.findIndex(p => p.id === product.id);
-      if (idx >= 0) allProducts[idx] = product;
-      else allProducts.push(product);
-    }
-  } catch (e) {
-    slog(`Error: ${e.message}`, 'error');
+// ═══════════════════════════════════════
+//  20. UPDATE PRODUCTS
     toast('Scrape failed: ' + e.message, 'e');
   }
 }
