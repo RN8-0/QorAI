@@ -1091,10 +1091,10 @@ async function scrapeProductDetail(html, url, categoryId) {
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
     scrapedAt: new Date().toISOString(),
-    _originalName: originalName,
-    _originalSpecs: rawSpecs,
-    _originalSections: rawSections,
-    _originalKeySpecs: rawKeySpecs,
+    originalNameDe: originalName,
+    originalSpecsDe: rawSpecs,
+    originalSectionsDe: rawSections,
+    originalKeySpecsDe: rawKeySpecs,
   };
 }
 
@@ -1110,7 +1110,7 @@ async function translateScrapedProduct(product) {
     product.multiLangSpecs = multiLangSpecs;
 
     // Translate product name
-    const names = await translateGermanName(product._originalName || product.name);
+    const names = await translateGermanName(product.originalNameDe || product.name);
     product.nameTranslated = names;
 
     // Use English as primary display spec
@@ -1749,7 +1749,7 @@ async function startProductUpdate() {
 
       // Deep compare objects
       const objFields = ['specs', 'specSections', 'keySpecs', 'images',
-        '_originalSpecs', '_originalSections', '_originalKeySpecs'];
+        'originalSpecsDe', 'originalSectionsDe', 'originalKeySpecsDe'];
       for (const field of objFields) {
         if (freshProduct[field] !== undefined &&
           JSON.stringify(freshProduct[field]) !== JSON.stringify(existing[field])) {
@@ -1759,7 +1759,7 @@ async function startProductUpdate() {
 
       if (Object.keys(changes).length > 0) {
         changes.updatedAt = new Date().toISOString();
-        changes._originalName = freshProduct._originalName;
+        changes.originalNameDe = freshProduct.originalNameDe;
         await pbUpdateDoc('products', existing.id, changes);
         const changedKeys = Object.keys(changes).filter(k => !k.startsWith('_') && k !== 'updatedAt');
         slog(`  → Updated: ${changedKeys.join(', ')}`, 'success');
