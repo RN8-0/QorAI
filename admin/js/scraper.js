@@ -957,12 +957,18 @@ async function translateScrapedProduct(product) {
 
 function isChallengePage(html) {
   if (!html) return true;
-  return html.includes('Nur einen Moment') ||
-    html.includes('Just a moment') ||
-    html.includes('Checking your browser') ||
-    html.includes('Sichere Verbindung wird überprüft') ||
-    html.includes('challenge-form') ||
-    html.includes('turnstile');
+  // Only flag as challenge if the title clearly indicates a challenge page
+  // Proxy now auto-solves challenges, so most pages should be real content
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+  const title = titleMatch ? titleMatch[1] : '';
+  const isCh = title.includes('Nur einen Moment') ||
+    title.includes('Just a moment') ||
+    title.includes('Checking your browser') ||
+    title.includes('Sichere Verbindung wird überprüft');
+  if (isCh) {
+    slog(`Challenge detected in title: "${title.substring(0, 50)}"`, 'warn');
+  }
+  return isCh;
 }
 
 function extractProductLinksFromDoc(doc, html) {
@@ -1058,8 +1064,16 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
     updateProgress(allItems.length, maxPages * 10, 'Discovering');
 
     try {
+      slog(`Fetching: ${url.substring(0, 80)}...`, 'info');
       const html = await proxyFetch(url);
-      if (!html || isChallengePage(html)) {
+      
+      if (!html) {
+        slog(`  → Empty response from proxy`, 'warn');
+        continue;
+      }
+      
+      if (isChallengePage(html)) {
+        slog(`  → Challenge page detected, skipping`, 'warn');
         continue;
       }
 
@@ -1067,20 +1081,27 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
 
       // Extract product info to verify this is a valid product page
       const h1 = doc.querySelector('h1');
-      if (!h1) continue;
+      if (!h1) {
+        slog(`  → No h1 found, not a product page`, 'warn');
+        continue;
+      }
 
       const name = h1.textContent.trim();
-      if (!name || name.length < 3) continue;
+      if (!name || name.length < 3) {
+        slog(`  → Invalid product name`, 'warn');
+        continue;
+      }
 
       // Check for specs
       const hasSpecs = doc.querySelector('dl.specs-grid') !== null;
-      if (!hasSpecs) continue;
+      if (!hasSpecs) {
+        slog(`  → No specs found, skipping`, 'warn');
+        continue;
+      }
 
       // Add to results
-      if (!seenUrls.has(url)) {
-        allItems.push({ url, techScore: null });
-        slog(`Discovered: ${name.substring(0, 60)}`, 'success');
-      }
+      allItems.push({ url, techScore: null });
+      slog(`Discovered: ${name.substring(0, 60)}`, 'success');
 
       // Extract similar products from "Top-10" section
       const htmlStr = html;
@@ -1105,6 +1126,8 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
         if (newLinks > 0) {
           slog(`  +${newLinks} similar products queued (${queue.length} total in queue)`, 'info');
         }
+      } else {
+        slog(`  → No Top-10 section found`, 'warn');
       }
 
       await sleep(1500 + Math.random() * 1500);
