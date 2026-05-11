@@ -88,20 +88,32 @@ const axiosInst = axios.create({
 
 /**
  * Search GSMArena and extract the first product page URL.
- * Returns the product page path (e.g. "apple_iphone_13-11103.php") or null.
+ * Retries on 429 with exponential backoff.
  */
 async function searchGsmarena(query) {
-  try {
-    const res = await axiosInst.get('https://www.gsmarena.com/results.php3', {
-      params: { sQuickSearch: 'yes', sName: query },
-    });
-    const $ = cheerio.load(res.data);
-    const link = $('.makers a').first().attr('href');
-    return link || null;
-  } catch (e) {
-    log(`GSMArena arama hatası: ${e.message}`, 'w');
-    return null;
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      const wait = (attempt + 1) * 15000; // 15, 30 sec backoff
+      log(`429 backoff: ${wait / 1000}s bekleniyor...`, 'w');
+      await sleep(wait);
+    }
+    try {
+      const res = await axiosInst.get('https://www.gsmarena.com/results.php3', {
+        params: { sQuickSearch: 'yes', sName: query },
+      });
+      const $ = cheerio.load(res.data);
+      const link = $('.makers a').first().attr('href');
+      return link || null;
+    } catch (e) {
+      lastErr = e;
+      if (e.response?.status === 429) continue;
+      log(`GSMArena arama hatası: ${e.message}`, 'w');
+      return null;
+    }
   }
+  log(`GSMArena arama hatası (3 deneme): ${lastErr.message}`, 'w');
+  return null;
 }
 
 /**
@@ -223,6 +235,12 @@ async function main() {
   console.log('═══════════════════════════════════');
   log(`Limit: ${LIMIT} | Dry-run: ${DRY_RUN ? 'EVET' : 'HAYIR'}`);
 
+  // Initial cooldown for GSMArena rate-limit
+  if (!DRY_RUN) {
+    log('⏳ GSMArena soguma: 120 saniye bekleniyor...', 'w');
+    await sleep(120000);
+  }
+
   const CATEGORIES = ['smartphones', 'tablets'];
   let done = 0, ok = 0, skip = 0, err = 0;
 
@@ -281,8 +299,8 @@ async function main() {
           err++;
         }
 
-        // Anti-ban: 5-8 sn bekleme
-        await sleep(5000 + Math.random() * 3000);
+        // Anti-ban: 8-12 sn bekleme
+        await sleep(8000 + Math.random() * 4000);
       }
 
       if (data.items.length < 50) break;
