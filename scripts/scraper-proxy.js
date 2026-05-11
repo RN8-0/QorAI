@@ -151,11 +151,12 @@ async function getPage() {
     await activePage.setCookie(...sessionCookies);
   }
 
-  // Block unnecessary resources to speed up scraping
+  // NOTE: We do NOT block CSS/JS here because Cloudflare challenge pages
+  // need them to solve the challenge. Only block images/media.
   await activePage.setRequestInterception(true);
   activePage.on('request', (req) => {
     const type = req.resourceType();
-    if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+    if (['image', 'font', 'media'].includes(type)) {
       req.abort();
     } else {
       req.continue();
@@ -186,31 +187,66 @@ async function fetchWithPuppeteer(url) {
   requestCount++;
 
   try {
+    // First navigation - use networkidle0 to let Cloudflare JS run
     const response = await page.goto(url, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
+      waitUntil: 'networkidle0',
+      timeout: 45000,
     });
 
     const status = response ? response.status() : 0;
 
-    // Handle Cloudflare challenge
-    const title = await page.title();
-    const isChallenge = title.includes('Just a moment') ||
+    // Handle Cloudflare challenge - wait for it to solve itself
+    let title = await page.title();
+    let isChallenge = title.includes('Just a moment') ||
       title.includes('Checking') ||
       title.includes('DDoS-Guard') ||
       title.includes('Please Wait') ||
       title.includes('Nur einen Moment') ||
-      title.includes('Sichere Verbindung') ||
-      title.includes('Sichere Verbindung wird überprüft');
+      title.includes('Sichere Verbindung');
 
     if (isChallenge) {
-      console.log(`  ⏳ Bot korumasi tespit edildi: "${title.substring(0, 50)}", 5sn bekleniyor...`);
-      // Short wait then return challenge page HTML - let caller handle it
-      await _humanDelay(5000, 8000);
+      console.log(`  ⏳ Challenge detected: "${title.substring(0, 50)}". Waiting 12s for auto-solve...`);
+      
+      // Wait for challenge to auto-solve (Cloudflare Turnstile needs time)
+      await _humanDelay(12000, 12000);
+      
+      // Re-check title
+      title = await page.title();
+      isChallenge = title.includes('Just a moment') ||
+        title.includes('Checking') ||
+        title.includes('DDoS-Guard') ||
+        title.includes('Please Wait') ||
+        title.includes('Nur einen Moment') ||
+        title.includes('Sichere Verbindung');
+      
+      if (isChallenge) {
+        console.log(`  ⏳ Still challenging. Waiting another 10s...`);
+        await _humanDelay(10000, 10000);
+        
+        // Final check
+        title = await page.title();
+        isChallenge = title.includes('Just a moment') ||
+          title.includes('Checking') ||
+          title.includes('DDoS-Guard') ||
+          title.includes('Please Wait') ||
+          title.includes('Nur einen Moment') ||
+          title.includes('Sichere Verbindung');
+      }
+      
+      if (!isChallenge) {
+        console.log(`  ✅ Challenge solved! New title: "${title.substring(0, 50)}"`);
+      } else {
+        console.log(`  ⚠️ Challenge still present after 22s. Returning challenge page.`);
+      }
     }
 
-    // Simulate human interaction
+    // Simulate human interaction - scroll to trigger any lazy JS
     await _humanScroll(page);
+    await _humanDelay(500, 500);
+    await page.evaluate(() => {
+      window.scrollBy(0, Math.floor(Math.random() * 200 - 100));
+    });
+    await _humanDelay(500, 500);
 
     // Handle 404
     if (status === 404) {
