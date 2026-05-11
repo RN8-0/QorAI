@@ -21,7 +21,7 @@ pptr.use(require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stea
 const chromePaths = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'];
 const chromePath = chromePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
 
-const PRODUCTS = ['iPhone 16', 'Samsung Galaxy S25 Ultra', 'Xiaomi 14', 'Google Pixel 9 Pro', 'OnePlus 12', 'Sony Xperia 1 VI', 'Nothing Phone 2', 'iPad Air M2', 'Samsung Galaxy Tab S9', 'Apple Watch Ultra 2'];
+const PRODUCTS = ['iPhone 16', 'Samsung Galaxy S25 Ultra', 'Xiaomi 14', 'Google Pixel 9 Pro', 'OnePlus 12', 'Sony Xperia 1 VI', 'Nothing Phone 2', 'iPad Air M2', 'Samsung Galaxy Tab S9', 'Apple Watch Ultra 2', 'MacBook Air M4', 'Dell XPS 15', 'RTX 5090', 'PlayStation 5', 'AirPods Pro 3', 'Samsung 990 Pro', 'LG C4 OLED', 'Intel i9-14900K', 'AMD Ryzen 7 9800X3D', 'Nintendo Switch 2', 'Xiaomi 15', 'Samsung Galaxy S24', 'iPhone 15 Pro', 'Google Pixel 8', 'OnePlus 11', 'Xiaomi 13', 'Honor Magic 6', 'Motorola Edge 50', 'Asus ROG Phone 9', 'Nothing Phone 3', 'Huawei P70', 'Oppo Find X8', 'Realme GT 7', 'Vivo X100', 'Samsung A55', 'Xiaomi Redmi Note 14', 'Xiaomi Poco X7', 'OnePlus Nord 4', 'Samsung M55', 'Realme 13 Pro', 'Samsung Tab S10', 'Xiaomi Pad 7', 'Lenovo Tab P12', 'Samsung Watch 7', 'Huawei Watch GT 5', 'Garmin Venu 4', 'Fitbit Charge 7', 'Apple Watch SE 3', 'Xiaomi Band 9', 'Samsung Buds 3', 'Sony WH-1000XM6', 'JBL Tour Pro 3', 'Bose QC Ultra', 'Sony WF-1000XM6', 'Canon EOS R6 III', 'Sony A7 V', 'Nikon Z6 III', 'GoPro Hero 14', 'DJI Mini 5 Pro', 'DJI Osmo Pocket 4', 'Kindle Scribe 2', 'Samsung Odyssey G9', 'LG UltraGear 45', 'Asus ROG Swift OLED', 'Dell UltraSharp 32', 'Razer Blade 16', 'MSI Titan 18', 'ASUS Zenbook 14', 'HP Spectre x360', 'Lenovo Yoga 9i', 'Framework 16', 'Surface Pro 11', 'Apple Mac Mini M4', 'Intel NUC 14', 'Corsair K70', 'Logitech G915', 'Razer DeathAdder V4', 'SteelSeries Arctis Nova Pro', 'Elgato Stream Deck', 'Samsung T9 SSD', 'WD Black SN850X', 'Crucial T700', 'Seagate FireCuda', 'Corsair RM1000x', 'NZXT H7', 'Fractal North', 'Lian Li O11', 'Noctua NH-D16', 'Arctic Liquid Freezer III', 'ASUS ROG Strix X870E', 'MSI MAG Z890', 'Gigabyte Aorus Master', 'ASRock Taichi', 'TP-Link Archer BE900', 'Netgear Orbi 970', 'Synology DS923+', 'QNAP TS-464', 'Ubiquiti Dream Machine SE'];
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 let pbTok = null;
@@ -60,9 +60,9 @@ async function scrapeProduct(browser, url) {
   await page.setUserAgent(UA);
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8' });
   await page.setRequestInterception(true);
-  page.on('request', req => { if (['stylesheet', 'font', 'media'].includes(req.resourceType())) req.abort(); else req.continue(); });
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await new Promise(r => setTimeout(r, 1500)); // faster, no need to wait for price widgets
+  page.on('request', req => { if (['image','stylesheet','font','media'].includes(req.resourceType())) req.abort(); else req.continue(); });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await new Promise(r => setTimeout(r, 600)); // faster, no need to wait for price widgets
 
   const data = await page.evaluate(() => {
     const r = { name: '', imgs: [], specs: {} };
@@ -153,14 +153,14 @@ function guessCategory(name) {
       console.log('  Name:', p.name.substring(0, 60));
       console.log('  Images:', p.imgs.length, 'Specs:', Object.keys(p.specs).length);
 
-      let buf = null;
-      if (p.imgs[0]) { buf = await downloadImage(p.imgs[0]); console.log('  Img:', buf ? Math.round(buf.length / 1024) + 'KB' : 'FAIL'); }
+      if (p.imgs[0]) { buf = await downloadImage(p.imgs[0]); }
+      else { console.log('  (no img, saving specs only)'); }
 
       const cat = guessCategory(p.name);
       const pid = await saveToPB(p, buf, cat);
-      if (pid) console.log('  ⭐ Admin panelde gorunecek');
+      if (pid) console.log('  ⭐', pid.substring(0, 10));
     } catch (e) { console.log('  ❌', e.message.substring(0, 60)); }
-    await sleep(2500 + Math.random() * 1500);
+    await sleep(1500 + Math.random() * 1000);
   }
 
   await browser.close();
