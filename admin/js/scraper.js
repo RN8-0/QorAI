@@ -1050,9 +1050,9 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
         slog(`Discovered: ${name.substring(0, 60)}`, 'success');
       }
 
-      // Extract similar products from "Ähnliche Produkte" section
+      // Extract similar products from "Top-10" section
       const htmlStr = html;
-      const top10Start = htmlStr.indexOf('Ähnliche Produkte');
+      const top10Start = htmlStr.indexOf('Top-10');
       if (top10Start !== -1) {
         const section = htmlStr.substring(top10Start, top10Start + 15000);
         const linkRe = /href=["']([^"']*-a\d+\.html)["']/gi;
