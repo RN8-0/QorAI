@@ -21,7 +21,7 @@ pptr.use(require(path.join(rootDir, 'node_modules', 'puppeteer-extra-plugin-stea
 const chromePaths = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'];
 const chromePath = chromePaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
 
-const PRODUCTS = ['iPhone 16', 'Samsung Galaxy S25 Ultra', 'Xiaomi 14', 'Google Pixel 9 Pro', 'OnePlus 12', 'Sony Xperia 1 VI', 'Nothing Phone 2', 'iPad Air M2', 'Samsung Galaxy Tab S9', 'Apple Watch Ultra 2', 'MacBook Air M4', 'Dell XPS 15', 'RTX 5090', 'PlayStation 5', 'AirPods Pro 3', 'Samsung 990 Pro', 'LG C4 OLED', 'Intel i9-14900K', 'AMD Ryzen 7 9800X3D', 'Nintendo Switch 2', 'Xiaomi 15', 'Samsung Galaxy S24', 'iPhone 15 Pro', 'Google Pixel 8', 'OnePlus 11', 'Xiaomi 13', 'Honor Magic 6', 'Motorola Edge 50', 'Asus ROG Phone 9', 'Nothing Phone 3', 'Huawei P70', 'Oppo Find X8', 'Realme GT 7', 'Vivo X100', 'Samsung A55', 'Xiaomi Redmi Note 14', 'Xiaomi Poco X7', 'OnePlus Nord 4', 'Samsung M55', 'Realme 13 Pro', 'Samsung Tab S10', 'Xiaomi Pad 7', 'Lenovo Tab P12', 'Samsung Watch 7', 'Huawei Watch GT 5', 'Garmin Venu 4', 'Fitbit Charge 7', 'Apple Watch SE 3', 'Xiaomi Band 9', 'Samsung Buds 3', 'Sony WH-1000XM6', 'JBL Tour Pro 3', 'Bose QC Ultra', 'Sony WF-1000XM6', 'Canon EOS R6 III', 'Sony A7 V', 'Nikon Z6 III', 'GoPro Hero 14', 'DJI Mini 5 Pro', 'DJI Osmo Pocket 4', 'Kindle Scribe 2', 'Samsung Odyssey G9', 'LG UltraGear 45', 'Asus ROG Swift OLED', 'Dell UltraSharp 32', 'Razer Blade 16', 'MSI Titan 18', 'ASUS Zenbook 14', 'HP Spectre x360', 'Lenovo Yoga 9i', 'Framework 16', 'Surface Pro 11', 'Apple Mac Mini M4', 'Intel NUC 14', 'Corsair K70', 'Logitech G915', 'Razer DeathAdder V4', 'SteelSeries Arctis Nova Pro', 'Elgato Stream Deck', 'Samsung T9 SSD', 'WD Black SN850X', 'Crucial T700', 'Seagate FireCuda', 'Corsair RM1000x', 'NZXT H7', 'Fractal North', 'Lian Li O11', 'Noctua NH-D16', 'Arctic Liquid Freezer III', 'ASUS ROG Strix X870E', 'MSI MAG Z890', 'Gigabyte Aorus Master', 'ASRock Taichi', 'TP-Link Archer BE900', 'Netgear Orbi 970', 'Synology DS923+', 'QNAP TS-464', 'Ubiquiti Dream Machine SE'];
+const PRODUCTS = ['iPhone 16', 'Samsung Galaxy S25 Ultra', 'MacBook Air M4', 'iPad Air M2', 'Apple Watch Ultra 2', 'AirPods Pro 3', 'RTX 5090', 'LG C4 OLED', 'Samsung 990 Pro', 'Corsair K70'];
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 let pbTok = null;
@@ -92,39 +92,32 @@ async function downloadImage(url) {
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
     if (!r.ok) return null;
     const ab = await r.arrayBuffer();
-    return await sharp(Buffer.from(ab)).resize(800, null, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+    const input = Buffer.from(ab);
+    // Resize + PNG (no bg removal for now — test sizes first)
+    const png = await sharp(input).resize(800, null, { fit: 'inside', withoutEnlargement: true }).png().toBuffer();
+    return { buffer: png, contentType: 'image/png', size: png.length };
   } catch { return null; }
 }
 
-async function saveToPB(product, imgBuf, category) {
+async function saveToPB(product, imgData, category) {
   const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
-  const body = {
-    name: product.name, brand: '', category: category, subcategory: '', imageURL: '',
-    slug: slug,
-    price_raw: 0,
-    specs: product.specs,
-    lastUpdated: new Date().toISOString(), isActive: true, source: 'geizhals.eu',
-  };
+  const ext = imgData?.contentType === 'image/png' ? 'png' : 'webp';
+  const ct = imgData?.contentType || 'image/webp';
+  const body = { name: product.name, brand: '', category, subcategory: '', imageURL: '', slug, price_raw: 0, specs: product.specs, lastUpdated: new Date().toISOString(), isActive: true, source: 'geizhals.eu' };
   const cr = await pbFetch('/api/collections/products/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await cr.json();
-  if (!cr.ok) { console.log('  PB create err:', JSON.stringify(data).substring(0, 150)); return null; }
-  const pid = data.id;
-  console.log('  Created:', pid.substring(0, 12));
+  const rec = await cr.json();
+  if (!cr.ok) { console.log('  err:', JSON.stringify(rec).substring(0, 100)); return null; }
+  const pid = rec.id;
 
-  if (imgBuf) {
-    const b = '----GH' + Date.now(); const crlf = '\r\n';
-    const h = `--${b}${crlf}Content-Disposition: form-data; name="${FIELD}"; filename="geizhals.webp"${crlf}Content-Type: image/webp${crlf}${crlf}`;
-    const mb = Buffer.concat([Buffer.from(h), imgBuf, Buffer.from(`${crlf}--${b}--${crlf}`)]);
+  if (imgData?.buffer) {
+    const b = '----GH' + Date.now(), crlf = '\r\n';
+    const h = `--${b}${crlf}Content-Disposition: form-data; name="${FIELD}"; filename="g.${ext}"${crlf}Content-Type: ${ct}${crlf}${crlf}`;
+    const mb = Buffer.concat([Buffer.from(h), imgData.buffer, Buffer.from(`${crlf}--${b}--${crlf}`)]);
     const ir = await pbFetch(`/api/collections/products/records/${pid}`, { method: 'PATCH', headers: { 'Content-Type': `multipart/form-data; boundary=${b}` }, body: mb });
     if (ir.ok) {
-      const rec = await ir.json();
-      const rf = rec[FIELD] || [];
-      const files = Array.isArray(rf) ? rf : [rf];
-      const up = files.find(f => f?.includes('.webp'));
-      if (up) {
-        const imgUrl = `${PB}/api/files/products/${pid}/${up}`;
-        await pbFetch(`/api/collections/products/records/${pid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageURL: imgUrl, imageUrl: imgUrl, images: [imgUrl] }) });
-      }
+      const r2 = await ir.json();
+      const rf = r2[FIELD] || []; const files = Array.isArray(rf) ? rf : [rf]; const up = files.find(f => f?.includes(`.${ext}`));
+      if (up) { const u = `${PB}/api/files/products/${pid}/${up}`; await pbFetch(`/api/collections/products/records/${pid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageURL: u, imageUrl: u, images: [u] }) }); }
     }
   }
   return pid;
@@ -153,11 +146,14 @@ function guessCategory(name) {
       console.log('  Name:', p.name.substring(0, 60));
       console.log('  Images:', p.imgs.length, 'Specs:', Object.keys(p.specs).length);
 
-      if (p.imgs[0]) { buf = await downloadImage(p.imgs[0]); }
-      else { console.log('  (no img, saving specs only)'); }
+      // First image only, background removal
+      let imgData = null;
+      if (p.imgs[0]) { imgData = await downloadImage(p.imgs[0]); }
+      const sizeKB = imgData ? Math.round(imgData.size / 1024) : 0;
+      console.log('  Img:', imgData ? `${sizeKB}KB ${imgData.contentType}` : 'none');
 
       const cat = guessCategory(p.name);
-      const pid = await saveToPB(p, buf, cat);
+      const pid = await saveToPB(p, imgData, cat);
       if (pid) console.log('  ⭐', pid.substring(0, 10));
     } catch (e) { console.log('  ❌', e.message.substring(0, 60)); }
     await sleep(1500 + Math.random() * 1000);

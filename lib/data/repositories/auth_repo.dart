@@ -23,6 +23,7 @@ const String _kGoogleWebClientId =
     '116725106228-tlnou1m838rhu2nhmj45360o5q5ltsgb.apps.googleusercontent.com';
 
 const String _kPbBaseUrl = kPbBaseUrl;
+
 /// Yeni kayıt sonucu — kullanıcı + verification mail gönderim durumu.
 class SignUpOutcome {
   final UserEntity user;
@@ -354,7 +355,9 @@ class AuthRepository {
       final identityToken = credential.identityToken;
       if (identityToken == null || identityToken.isEmpty) {
         return const Failure(
-          AuthException(message: 'Apple authentication failed (no identity token)'),
+          AuthException(
+            message: 'Apple authentication failed (no identity token)',
+          ),
         );
       }
 
@@ -378,7 +381,9 @@ class AuthRepository {
             ),
           );
 
-      debugPrint('[auth] Apple PB response ${httpResp.statusCode}: ${httpResp.body}');
+      debugPrint(
+        '[auth] Apple PB response ${httpResp.statusCode}: ${httpResp.body}',
+      );
 
       if (httpResp.statusCode != 200) {
         final errBody =
@@ -399,10 +404,10 @@ class AuthRepository {
         );
       }
 
-      final appleDisplayName = [givenName, familyName]
-          .where((s) => s.isNotEmpty)
-          .join(' ')
-          .trim();
+      final appleDisplayName = [
+        givenName,
+        familyName,
+      ].where((s) => s.isNotEmpty).join(' ').trim();
 
       final recJson = <String, dynamic>{
         'id': record['id'],
