@@ -1,14 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════
-//  QOR AI SCRAPER MODULE — Full-Featured Browser Scraper
-//  Scrapes products from epey.com via local CORS proxy.
-//  Translates Turkish → English using QorAiDict (dictionary.js).
+//  QOR AI SCRAPER MODULE — geizhals.eu Scraper
+//  Scrapes products from geizhals.eu via local Puppeteer proxy.
+//  Translates German → 12 languages using DeepSeek.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
 
 const PROXY_URL = 'http://localhost:3456';
-const EPEY_BASE = 'https://www.epey.com';
+const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
+const DEEPSEEK_URL = '/api/ai/deepseek';
+const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -506,14 +508,14 @@ function extractImages(doc, productSlug) {
 
   function isValid(url) {
     if (!url || typeof url !== 'string') return false;
-    if (!url.includes('resim.epey.com')) return false;
+    if (!url.includes('gzhls.at/pix/')) return false;
     if (url.includes('/tema/') || url.includes('/marka/') || url.includes('/kategori/')) return false;
     return true;
   }
 
   function upgradeSize(url) {
-    // Replace size prefixes: /k_, /s_, /m_, /t_, /c_ → /b_
-    return url.replace(/\/[ksmtc]_/g, '/b_');
+    // Replace size prefixes: /k_, /s_, /m_, /t_, /c_ → /-n.webp
+    return url.replace(/\/[ksmtc]_/g, '/-n.webp');
   }
 
   function addImage(url) {
@@ -534,7 +536,7 @@ function extractImages(doc, productSlug) {
     for (const attr of ['data-src', 'data-zoom', 'data-big', 'data-full',
       'data-image', 'data-url', 'data-original', 'data-lazy', 'src', 'href']) {
       const val = el.getAttribute(attr);
-      if (val && val.includes('resim.epey.com')) addImage(val);
+      if (val && val.includes('gzhls.at/pix/')) addImage(val);
     }
   }
 
@@ -563,7 +565,7 @@ function extractImages(doc, productSlug) {
   doc.querySelectorAll(dataSelectors).forEach(el => {
     for (const attr of ['data-zoom', 'data-big', 'data-full', 'data-src', 'data-image', 'data-url']) {
       const val = el.getAttribute(attr);
-      if (val && val.includes('resim.epey.com')) {
+      if (val && val.includes('gzhls.at/pix')) {
         if (!productSlug || val.toLowerCase().includes(productSlug.toLowerCase().replace(/\.html$/i, ''))) {
           addImage(val);
         }
@@ -575,7 +577,7 @@ function extractImages(doc, productSlug) {
   doc.querySelectorAll('img').forEach(img => {
     for (const attr of ['data-src', 'data-lazy', 'data-original', 'src']) {
       const val = img.getAttribute(attr);
-      if (val && val.includes('resim.epey.com')) {
+      if (val && val.includes('gzhls.at/pix')) {
         if (!productSlug || val.toLowerCase().includes(productSlug.toLowerCase().replace(/\.html$/i, ''))) {
           addImage(val);
         }
@@ -587,7 +589,7 @@ function extractImages(doc, productSlug) {
   const ogImg = doc.querySelector('meta[property="og:image"]');
   if (ogImg) {
     const content = ogImg.getAttribute('content');
-    if (content && content.includes('resim.epey.com')) {
+    if (content && content.includes('gzhls.at/pix')) {
       // Insert at front if not already present
       const upgraded = upgradeSize(content.trim().split(/[?#]/)[0]);
       const key = upgraded.toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
@@ -608,18 +610,18 @@ function extractImages(doc, productSlug) {
 
 async function fetchGalleryImages(productSlug) {
   if (!productSlug) return [];
-  const galleryUrl = `${EPEY_BASE}/${productSlug}-resimleri.html`;
+  const galleryUrl = `${GEIZHALS_BASE}/${productSlug}-resimleri.html`;
   try {
     const html = await proxyFetch(galleryUrl);
     if (!html) return [];
     const doc = parseHTML(html);
     const imgs = [];
-    doc.querySelectorAll('img[src*="resim.epey.com"]').forEach(img => {
+    doc.querySelectorAll('img[src*="gzhls.at/pix"]').forEach(img => {
       const src = img.getAttribute('src') || '';
-      if (src.includes('/b_')) imgs.push(src);
+      if (src.includes('/-n.webp')) imgs.push(src);
       else {
-        const upgraded = src.replace(/\/[ksmtc]_/g, '/b_');
-        if (upgraded.includes('/b_')) imgs.push(upgraded);
+        const upgraded = src.replace(/\/[ksmtc]_/g, '/-n.webp');
+        if (upgraded.includes('/-n.webp')) imgs.push(upgraded);
       }
     });
     return imgs;
@@ -678,7 +680,7 @@ function parseSpecs(doc) {
       });
     }
 
-    // Strategy 1: masonry-brick layout (e.g. epey.com)
+    // Strategy 1: masonry-brick layout (e.g. geizhals.eu)
     // Each brick contains one h3 (section) + one ul (specs list)
     const bricks = ozellikler.querySelectorAll('.masonry-brick');
     if (bricks.length > 0) {
@@ -954,8 +956,8 @@ function extractProductLinksFromDoc(doc) {
     let href = a.getAttribute('href') || '';
     if (!href) return;
 
-    // Handle absolute URLs from epey.com
-    if (href.startsWith('https://www.epey.com/') || href.startsWith('http://www.epey.com/')) {
+    // Handle absolute URLs from geizhals.eu
+    if (href.startsWith('https://www.geizhals.eu/') || href.startsWith('http://www.geizhals.eu/')) {
       try { href = new URL(href).pathname; } catch { return; }
     }
 
@@ -966,7 +968,7 @@ function extractProductLinksFromDoc(doc) {
     // Skip non-product pages (about, contact, etc)
     if (href.startsWith('/yardim') || href.startsWith('/hakkimizda') || href.startsWith('/iletisim')) return;
 
-    const fullUrl = EPEY_BASE + href;
+    const fullUrl = GEIZHALS_BASE + href;
     if (seen.has(fullUrl)) return;
     seen.add(fullUrl);
 
@@ -990,7 +992,7 @@ function extractProductLinksFromDoc(doc) {
       if (!href || !href.endsWith('.html')) return;
       if (!href.startsWith('/')) href = '/' + href;
       if (!productLinkRe.test(href)) return;
-      const fullUrl = EPEY_BASE + href;
+      const fullUrl = GEIZHALS_BASE + href;
       if (seen.has(fullUrl)) return;
       seen.add(fullUrl);
       results.push({ url: fullUrl, techScore: null });
@@ -1001,7 +1003,7 @@ function extractProductLinksFromDoc(doc) {
 }
 
 async function collectProductUrls(epeyPath, maxPages = 50) {
-  const baseUrl = `${EPEY_BASE}/${epeyPath}/`;
+  const baseUrl = `${GEIZHALS_BASE}/${epeyPath}/`;
   slog(`Collecting product URLs from: ${epeyPath}`);
 
   const allItems = [];
@@ -1048,7 +1050,7 @@ async function collectProductUrls(epeyPath, maxPages = 50) {
           break;
         }
         // Try filter URL pattern
-        const filterUrl = `${EPEY_BASE}/e/${epeyPath}/${page}/`;
+        const filterUrl = `${GEIZHALS_BASE}/e/${epeyPath}/${page}/`;
         try {
           const filterHtml = await proxyFetch(filterUrl);
           if (filterHtml) {
@@ -1407,7 +1409,7 @@ async function scrapeByUrl() {
   const selectedCategory = document.getElementById('singleUrlCategory')?.value || '';
   const url = urlInput ? urlInput.value.trim() : '';
   if (!url) { toast('Enter a URL', 'w'); return; }
-  if (!url.includes('epey.com')) { toast('Only epey.com URLs are supported', 'e'); return; }
+  if (!url.includes('geizhals.eu')) { toast('Only geizhals.eu URLs are supported', 'e'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   clearScraperLog();
@@ -1450,7 +1452,7 @@ async function scrapeByUrl() {
       slog('⚡ Product already exists — merging missing data...', 'info');
 
       // Merge images: normalize URLs (upgrade size prefix) before dedup
-      const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/b_').trim() : u;
+      const _normImg = u => u ? u.replace(/\/[ksmtc]_/g, '/-n.webp').trim() : u;
       const existingImages = (existing.images || []).map(_normImg).filter(Boolean);
       const newImages = (product.images || []).map(_normImg).filter(Boolean);
       const seenImgs = new Set(existingImages);
@@ -1546,9 +1548,9 @@ async function startScoreUpdate() {
   let products;
   try {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
+      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
     } else {
-      const items = await pbGetAll('products', { filter: `source="epey" || source="epey.com"` });
+      const items = await pbGetAll('products', { filter: `source="epey" || source="geizhals.eu"` });
       products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
@@ -1627,9 +1629,9 @@ async function startProductUpdate() {
   let products;
   try {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('epey.com'));
+      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
     } else {
-      const items = await pbGetAll('products', { filter: `source="epey" || source="epey.com"` });
+      const items = await pbGetAll('products', { filter: `source="epey" || source="geizhals.eu"` });
       products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
@@ -1789,7 +1791,7 @@ async function startInventoryScan() {
   const missingUrls = [...existingUrls].filter(u => !allUrls.includes(u));
 
   slog(`\n═══ Inventory scan complete ═══`, 'success');
-  slog(`Total on epey.com: ${allUrls.length}`);
+  slog(`Total on geizhals.eu: ${allUrls.length}`);
   slog(`Already in database: ${allUrls.length - newUrls.length}`);
   slog(`New products found: ${newUrls.length}`, newUrls.length > 0 ? 'success' : 'info');
   if (missingUrls.length > 0) {
@@ -1926,7 +1928,7 @@ function _qualityIssues(p, minSpecs, minImages) {
 // We keep the actual URL but use a canonical key for de-duplication.
 function _normImgUrl(u) {
   if (!u) return u;
-  return u.replace(/\/[ksmtc]_/g, '/b_').split(/[?#]/)[0].trim();
+  return u.replace(/\/[ksmtc]_/g, '/-n.webp').split(/[?#]/)[0].trim();
 }
 function _imgDedupKey(u) {
   if (!u) return '';
