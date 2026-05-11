@@ -424,7 +424,7 @@
             <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Windows Launcher</a>
             <button class="btn btn-sm" onclick="openLocalProxyHealth()">Open Local Health</button>
           </div>
-          <p class="text-muted" style="margin-top:8px;font-size:11px">The proxy runs on <b>localhost:3456</b>. Browsers cannot start the Node process directly, so the Windows launcher is provided. Only epey.com domains are allowed.</p>
+          <p class="text-muted" style="margin-top:8px;font-size:11px">The proxy runs on <b>localhost:3456</b>. Browsers cannot start the Node process directly, so the Windows launcher is provided. Requests use this device IP address.</p>
         </div>
 
         <!-- Scraper Tabs -->
@@ -440,7 +440,7 @@
         <!-- Bulk Scrape -->
         <div class="scraper-panel active" id="bulkScrapePanel">
           <div class="card">
-            <div class="card-title">Bulk Scrape from epey.com</div>
+            <div class="card-title">Bulk Scrape from geizhals.eu</div>
             <div class="form-grid">
               <div class="form-field">
                 <label>Category</label>
@@ -488,8 +488,8 @@
           <div class="card">
             <div class="card-title">Add Product by URL</div>
             <div class="form-field">
-              <label>Epey.com Product URL</label>
-              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/akilli-telefonlar/samsung-galaxy-s25-ultra.html">
+              <label>geizhals.eu Product Search</label>
+              <input class="input" id="scrapeUrl" placeholder="iPhone 16, Samsung Galaxy S25, RTX 5090...">
             </div>
             <div class="form-field">
               <label>Category (auto-detected from URL)</label>
@@ -569,7 +569,7 @@
         <div class="scraper-panel" id="inventoryScanPanel">
           <div class="card">
             <div class="card-title">Inventory Scan</div>
-            <p class="text-muted" style="margin-bottom:12px">Scan epey.com for new products not yet in the database.</p>
+            <p class="text-muted" style="margin-bottom:12px">Search geizhals.eu for new products not yet in the database.</p>
             <div class="form-grid">
               <div class="form-field">
                 <label>Category</label>

@@ -58,7 +58,7 @@ function findChromePath() {
 let browser = null;
 let activePage = null;
 let requestCount = 0;
-let sessionCookies = null; // Cached cookies from epey.com homepage
+let sessionCookies = null; // Cached cookies from geizhals.eu homepage
 const currentUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
 async function getBrowser() {
@@ -271,9 +271,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (!parsed.hostname.endsWith('epey.com')) {
+  if (!parsed.hostname.endsWith('geizhals.eu') && !parsed.hostname.endsWith('geizhals.at') && !parsed.hostname.endsWith('geizhals.de')) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Only epey.com URLs are allowed.' }));
+    res.end(JSON.stringify({ error: 'Only geizhals.eu domains are allowed.' }));
     return;
   }
 

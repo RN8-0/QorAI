@@ -8,107 +8,107 @@ window.QorAiCategories = {
     {
       name: 'Mobile',
       categories: [
-        { id: 'smartphones', name: 'Smartphones', epeyPath: 'akilli-telefonlar' },
-        { id: 'tablets', name: 'Tablets', epeyPath: 'tablet' }
+        { id: 'smartphones', name: 'Smartphones' },
+        { id: 'tablets', name: 'Tablets' }
       ]
     },
     {
       name: 'Computers',
       categories: [
-        { id: 'laptops', name: 'Laptops', epeyPath: 'laptop' },
-        { id: 'desktops', name: 'Desktops', epeyPath: 'masaustu-bilgisayar' }
+        { id: 'laptops', name: 'Laptops' },
+        { id: 'desktops', name: 'Desktops' }
       ]
     },
     {
       name: 'PC Components',
       categories: [
-        { id: 'cpus', name: 'CPUs', epeyPath: 'islemci' },
-        { id: 'gpus', name: 'Graphics Cards', epeyPath: 'ekran-karti' },
-        { id: 'ram', name: 'RAM', epeyPath: 'bellek-ram' },
-        { id: 'ssd', name: 'SSDs', epeyPath: 'depolama/cihaz-sinifi/ssd' },
-        { id: 'motherboards', name: 'Motherboards', epeyPath: 'anakart' },
-        { id: 'psu', name: 'Power Supplies', epeyPath: 'power-supply-psu' },
-        { id: 'cases', name: 'Cases', epeyPath: 'bilgisayar-kasasi' },
-        { id: 'coolers', name: 'Coolers', epeyPath: 'islemci-sogutucu' }
+        { id: 'cpus', name: 'CPUs' },
+        { id: 'gpus', name: 'Graphics Cards' },
+        { id: 'ram', name: 'RAM' },
+        { id: 'ssd', name: 'SSDs' },
+        { id: 'motherboards', name: 'Motherboards' },
+        { id: 'psu', name: 'Power Supplies' },
+        { id: 'cases', name: 'Cases' },
+        { id: 'coolers', name: 'Coolers' }
       ]
     },
     {
       name: 'Display',
       categories: [
-        { id: 'tvs', name: 'TVs', epeyPath: 'televizyon' },
-        { id: 'monitors', name: 'Monitors', epeyPath: 'monitor' },
-        { id: 'projectors', name: 'Projectors', epeyPath: 'projeksiyon-makinesi' },
-        { id: 'media-players', name: 'Media Players', epeyPath: 'medya-oynatici' }
+        { id: 'tvs', name: 'TVs' },
+        { id: 'monitors', name: 'Monitors' },
+        { id: 'projectors', name: 'Projectors' },
+        { id: 'media-players', name: 'Media Players' }
       ]
     },
     {
       name: 'Audio',
       categories: [
-        { id: 'headphones', name: 'Headphones', epeyPath: 'kulaklik' },
-        { id: 'speakers', name: 'Speakers', epeyPath: 'ses-sistemi/urun-tipi/bluetooth-hoparlor' },
-        { id: 'soundbars', name: 'Soundbars', epeyPath: 'ses-sistemi/urun-tipi/soundbar' },
-        { id: 'microphones', name: 'Microphones', epeyPath: 'mikrofon' }
+        { id: 'headphones', name: 'Headphones' },
+        { id: 'speakers', name: 'Speakers' },
+        { id: 'soundbars', name: 'Soundbars' },
+        { id: 'microphones', name: 'Microphones' }
       ]
     },
     {
       name: 'Wearables',
       categories: [
-        { id: 'smartwatches', name: 'Smartwatches', epeyPath: 'akilli-saat' },
-        { id: 'smart-rings', name: 'Smart Rings', epeyPath: 'akilli-yuzuk' }
+        { id: 'smartwatches', name: 'Smartwatches' },
+        { id: 'smart-rings', name: 'Smart Rings' }
       ]
     },
     {
       name: 'Cameras',
       categories: [
-        { id: 'cameras', name: 'Cameras', epeyPath: 'fotograf-kamera' },
-        { id: 'action-cameras', name: 'Action Cameras', epeyPath: 'aksiyon-kamera' },
-        { id: 'ip-cameras', name: 'IP Cameras', epeyPath: 'ip-kamera' },
-        { id: 'dashcams', name: 'Dashcams', epeyPath: 'arac-ici-kamera' },
-        { id: 'gimbals', name: 'Gimbals', epeyPath: 'gimbal' },
-        { id: 'tripods', name: 'Tripods', epeyPath: 'tripod' },
-        { id: 'lenses', name: 'Lenses', epeyPath: 'lens' }
+        { id: 'cameras', name: 'Cameras' },
+        { id: 'action-cameras', name: 'Action Cameras' },
+        { id: 'ip-cameras', name: 'IP Cameras' },
+        { id: 'dashcams', name: 'Dashcams' },
+        { id: 'gimbals', name: 'Gimbals' },
+        { id: 'tripods', name: 'Tripods' },
+        { id: 'lenses', name: 'Lenses' }
       ]
     },
     {
       name: 'Gaming',
       categories: [
-        { id: 'consoles', name: 'Gaming Consoles', epeyPath: 'oyun-konsolu' },
-        { id: 'gamepads', name: 'Gamepads', epeyPath: 'oyun-kolu' },
-        { id: 'vr-headsets', name: 'VR Headsets', epeyPath: 'sanal-gerceklik' }
+        { id: 'consoles', name: 'Gaming Consoles' },
+        { id: 'gamepads', name: 'Gamepads' },
+        { id: 'vr-headsets', name: 'VR Headsets' }
       ]
     },
     {
       name: 'Peripherals',
       categories: [
-        { id: 'keyboards', name: 'Keyboards', epeyPath: 'klavye-mouse/urun-tipi/klavye' },
-        { id: 'mice', name: 'Mice', epeyPath: 'klavye-mouse/urun-tipi/mouse' },
-        { id: 'printers', name: 'Printers', epeyPath: 'yazici' },
-        { id: 'webcams', name: 'Webcams', epeyPath: 'webcam' }
+        { id: 'keyboards', name: 'Keyboards' },
+        { id: 'mice', name: 'Mice' },
+        { id: 'printers', name: 'Printers' },
+        { id: 'webcams', name: 'Webcams' }
       ]
     },
     {
       name: 'Networking',
       categories: [
-        { id: 'routers', name: 'Routers & Modems', epeyPath: 'modem' }
+        { id: 'routers', name: 'Routers & Modems' }
       ]
     },
     {
       name: 'Smart Home',
       categories: [
-        { id: 'robot-vacuums', name: 'Robot Vacuums', epeyPath: 'robot-supurge' }
+        { id: 'robot-vacuums', name: 'Robot Vacuums' }
       ]
     },
     {
       name: 'Accessories',
       categories: [
-        { id: 'powerbanks', name: 'Power Banks', epeyPath: 'powerbank' },
-        { id: 'e-readers', name: 'E-Readers', epeyPath: 'e-kitap-okuyucu' }
+        { id: 'powerbanks', name: 'Power Banks' },
+        { id: 'e-readers', name: 'E-Readers' }
       ]
     },
     {
       name: 'Drones',
       categories: [
-        { id: 'drones', name: 'Drones', epeyPath: 'drone' }
+        { id: 'drones', name: 'Drones' }
       ]
     }
   ],
@@ -125,11 +125,6 @@ window.QorAiCategories = {
   getByGroup(groupName) {
     const g = this.groups.find(g => g.name === groupName);
     return g ? g.categories : [];
-  },
-
-  getEpeyUrl(categoryId) {
-    const cat = this.getById(categoryId);
-    return cat ? 'https://www.epey.com/' + cat.epeyPath + '/' : null;
   }
 };
 
