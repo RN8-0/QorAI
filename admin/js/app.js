@@ -1048,23 +1048,10 @@ let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selected
 let dashSampleProducts=null,dashProductTotal=0;
 let totalProductCount=0;
 let _productRefreshTimer=null;
-const PER=50;
+const PER=100;
 
 function productListKey(p){
   return String(p?.sourceUrl||p?.id||p?.slug||`${p?.category||''}:${p?.name||''}`).toLowerCase().trim();
-}
-
-function productDuplicateKey(p){
-  const base=String(p?.name||p?.variantGroup||p?.slug||'')
-    .toLowerCase()
-    .replace(/\b\d+\s*(?:gb|tb|mb)\b/g,'')
-    .replace(/\b\d+\s*\/\s*\d+\b/g,'')
-    .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/g,'')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/g,'')
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/-+/g,'-')
-    .replace(/^-|-$/g,'');
-  return base?`${String(p?.category||'').toLowerCase()}:${base}`:'';
 }
 
 function mergeProductLists(existing,incoming){
@@ -1078,14 +1065,10 @@ function mergeProductLists(existing,incoming){
   });
   const out=[];
   const seen=new Set();
-  const seenDup=new Set();
   [...incoming,...existing].forEach(p=>{
     const idKey=productListKey(p);
-    const dupKey=productDuplicateKey(p);
     if(!idKey||seen.has(idKey))return;
-    if(dupKey&&seenDup.has(dupKey))return;
     seen.add(idKey);
-    if(dupKey)seenDup.add(dupKey);
     out.push(byId.get(idKey)||p);
   });
   return out;
@@ -1197,10 +1180,10 @@ async function loadPage(direction,pageOverride){
       return;
     }
 
-    allProducts=mergeProductLists([],result.items).slice(0,PER);
+    allProducts=result.items;
     displayProducts=allProducts;
 
-    totalProductCount=result.totalItems||totalProductCount;
+    totalProductCount=result.totalItems||allProducts.length;
 
     // Client-side search filter
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
@@ -1221,6 +1204,8 @@ async function loadPage(direction,pageOverride){
 
 function renderProductsPage(){
   const g=document.getElementById('productGrid');
+  const countEl=document.getElementById('productCount');
+  if(countEl)countEl.textContent=String(totalProductCount||allProducts.length||displayProducts.length);
   if(!displayProducts.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
   g.innerHTML=displayProducts.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
