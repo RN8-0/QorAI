@@ -1050,6 +1050,47 @@ let totalProductCount=0;
 let _productRefreshTimer=null;
 const PER=50;
 
+function productListKey(p){
+  return String(p?.id||p?.slug||p?.sourceUrl||`${p?.category||''}:${p?.name||''}`).toLowerCase().trim();
+}
+
+function productDuplicateKey(p){
+  return String(p?.variantGroup||p?.slug||p?.sourceUrl||`${p?.category||''}:${p?.name||''}`)
+    .toLowerCase()
+    .replace(/\b\d+\s*(?:gb|tb|mb)\b/g,'')
+    .replace(/\b\d+\s*\/\s*\d+\b/g,'')
+    .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/g,'')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/g,'')
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/-+/g,'-')
+    .replace(/^-|-$/g,'');
+}
+
+function mergeProductLists(existing,incoming){
+  const byId=new Map();
+  const byDup=new Map();
+  [...incoming,...existing].forEach(p=>{
+    if(!p)return;
+    const idKey=productListKey(p);
+    const dupKey=productDuplicateKey(p);
+    const current=(idKey&&byId.get(idKey))||(dupKey&&byDup.get(dupKey));
+    const merged=current?{...current,...p}:p;
+    if(idKey)byId.set(idKey,merged);
+    if(dupKey)byDup.set(dupKey,merged);
+  });
+  const out=[];
+  const seen=new Set();
+  [...incoming,...existing].forEach(p=>{
+    const idKey=productListKey(p);
+    const dupKey=productDuplicateKey(p);
+    const key=dupKey||idKey;
+    if(!key||seen.has(key))return;
+    seen.add(key);
+    out.push(byDup.get(dupKey)||byId.get(idKey)||p);
+  });
+  return out;
+}
+
 async function loadProducts(){
   const g=document.getElementById('productGrid');
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading products...</div>';
@@ -1070,20 +1111,21 @@ function queueProductsRefresh(){
   clearTimeout(_productRefreshTimer);
   _productRefreshTimer=setTimeout(async()=>{
     if(!document.getElementById('productsView')?.classList.contains('active'))return;
-    try{await loadPage()}catch(e){console.error('queued product refresh failed:',e)}
-  },250);
+    const page=currentPage;
+    try{await loadPage(null,page)}catch(e){console.error('queued product refresh failed:',e)}
+  },900);
 }
 
 window.addEventListener('qorai:product-saved',e=>{
   const p=e.detail?.product;
   if(p&&Array.isArray(allProducts)){
     const item={id:e.detail?.id||p.id||p.slug,...p};
-    const existingIndex=allProducts.findIndex(x=>x.id===item.id||x.slug===item.slug);
-    if(existingIndex>=0)allProducts[existingIndex]={...allProducts[existingIndex],...item};
-    else allProducts.unshift(item);
-    displayProducts=allProducts;
-    totalProductCount=Math.max(totalProductCount||0,allProducts.length);
-    if(document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
+    const before=allProducts.length;
+    allProducts=mergeProductLists(allProducts,[item]).slice(0,PER);
+    totalProductCount=Math.max(totalProductCount||0,totalProductCount+(allProducts.length>before?1:0),allProducts.length);
+    const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
+    displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||(x.category||'').toLowerCase().includes(searchQ)):allProducts;
+    if(currentPage===1&&document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
   }
   queueProductsRefresh();
 });
@@ -1137,12 +1179,13 @@ function buildQuery(){
   return{filter,sort:pbSort};
 }
 
-async function loadPage(direction){
+async function loadPage(direction,pageOverride){
   const g=document.getElementById('productGrid');
   try{
     const {filter,sort}=buildQuery();
 
-    if(direction==='next')currentPage++;
+    if(Number.isInteger(pageOverride)&&pageOverride>0)currentPage=pageOverride;
+    else if(direction==='next')currentPage++;
     else if(direction==='prev'&&currentPage>1)currentPage--;
 
     const result=await pbGetList('products',currentPage,PER,{filter,sort});
@@ -1154,7 +1197,7 @@ async function loadPage(direction){
       return;
     }
 
-    allProducts=result.items;
+    allProducts=mergeProductLists([],result.items).slice(0,PER);
     displayProducts=allProducts;
 
     totalProductCount=result.totalItems||totalProductCount;

@@ -66,6 +66,16 @@ async function _findRecord(collection, identifier, data = {}) {
     if (slug) filters.push(`slug="${_escapeFilterValue(slug)}"`);
   }
 
+  if (collection === 'products') {
+    const sourceUrl = String(data.sourceUrl || '').trim();
+    const variantGroup = String(data.variantGroup || '').trim();
+    const name = String(data.name || '').trim();
+    const category = String(data.category || '').trim();
+    if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
+    if (variantGroup) filters.push(`variantGroup="${_escapeFilterValue(variantGroup)}"`);
+    if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
+  }
+
   if (!filters.length) return null;
 
   const result = await getPb().collection(collection).getList(1, 1, {

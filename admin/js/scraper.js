@@ -325,10 +325,31 @@ function generateProductId(slug) {
   return id || `product-${Date.now()}`;
 }
 
+function normalizeProductDedupText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
+    .replace(/\b\d+\s*\/\s*\d+\b/g, '')
+    .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/gi, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 140);
+}
+
+function productDedupKey(product) {
+  const variant = normalizeProductDedupText(product?.variantGroup);
+  if (variant) return variant;
+  const name = normalizeProductDedupText(product?.name);
+  if (name) return name;
+  return generateProductId(slugFromUrl(product?.sourceUrl || product?.slug || ''));
+}
+
 function prepareProductPayload(product) {
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
   const payload = {
-    slug: String(product.slug || product.id || '').trim().slice(0, 200),
+    slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
     name: String(product.name || '').trim().slice(0, 500),
     brand: String(product.brand || '').trim().slice(0, 200),
     category: String(product.category || '').trim().slice(0, 100),
@@ -341,7 +362,7 @@ function prepareProductPayload(product) {
     keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
     specsCount: Object.keys(sanitized.specs).length,
-    variantGroup: String(product.variantGroup || '').trim().slice(0, 200),
+    variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
 
@@ -1269,17 +1290,6 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         // Save to PocketBase
         const clean = prepareProductPayload(product);
         const saved = await pbSetDoc('products', clean.slug || clean.id, clean);
-        if (typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
-          const item = { id: saved?.id || clean.slug, ...clean };
-          const existingIndex = allProducts.findIndex(p => p.id === item.id || p.slug === item.slug);
-          if (existingIndex >= 0) allProducts[existingIndex] = { ...allProducts[existingIndex], ...item };
-          else allProducts.unshift(item);
-          totalProductCount = Math.max(totalProductCount || 0, allProducts.length);
-          if (typeof displayProducts !== 'undefined') displayProducts = allProducts;
-          if (typeof renderProductsPage === 'function') renderProductsPage();
-          const countEl = document.getElementById('productCount');
-          if (countEl) countEl.textContent = String(totalProductCount || allProducts.length);
-        }
         window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
         results.added++;
         errorStreak = 0;
