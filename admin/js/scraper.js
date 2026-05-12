@@ -1079,43 +1079,50 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
           const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(listingUrl)}`, {
             signal: AbortSignal.timeout(45000)
           });
-          if (res.ok) {
+
+          // Check Content-Type before parsing — Cloudflare HTML will NOT be application/json
+          const contentType = res.headers.get('content-type') || '';
+          const isJson = contentType.includes('application/json');
+
+          if (res.ok && isJson) {
             let data;
             try {
               data = await res.json();
             } catch (jsonErr) {
-              // HTML returned instead of JSON = Cloudflare challenge
-              slog(`  → Proxy returned HTML instead of JSON (Cloudflare challenge)`, 'error');
+              slog(`  → JSON parse failed (Cloudflare HTML?)`, 'error');
               cloudflareBlocked = true;
             }
             if (data) {
               if (data.error === 'cloudflare_challenge') {
-                slog(`  → Cloudflare challenge could not be solved`, 'error');
+                slog(`  → Cloudflare aşılamadı.`, 'error');
                 cloudflareBlocked = true;
               } else {
                 links = (data.links || []).map(url => ({ url, techScore: null }));
               }
             }
+          } else if (!isJson) {
+            // Response is NOT JSON — likely Cloudflare HTML challenge page
+            slog(`  → Proxy returned non-JSON response (Cloudflare HTML)`, 'error');
+            cloudflareBlocked = true;
           } else if (res.status === 503) {
             // 503 = cloudflare_challenge from proxy
             try {
               const errData = await res.json();
               if (errData.error === 'cloudflare_challenge') {
-                slog(`  → Cloudflare challenge could not be solved (503)`, 'error');
+                slog(`  → Cloudflare aşılamadı. (503)`, 'error');
                 cloudflareBlocked = true;
               }
             } catch {}
           } else {
-            slog(`  → Proxy /category-links returned ${res.status}, using fallback`, 'warn');
+            slog(`  → Proxy /category-links returned ${res.status}`, 'warn');
           }
         } catch (proxyErr) {
-          // Network error or timeout — could be Cloudflare blocking
           slog(`  → Proxy /category-links error: ${proxyErr.message}`, 'warn');
         }
 
         // FAIL-FAST: if Cloudflare blocked, stop immediately — don't paginate
         if (cloudflareBlocked) {
-          slog(`🛑 Cloudflare geçilemedi, işlem durduruldu.`, 'error');
+          slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
           scraperAbort = true;
           return allItems;
         }
@@ -1125,7 +1132,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
           const html = await proxyFetch(listingUrl);
           if (!html) { emptyCount++; page++; continue; }
           if (isChallengePage(html)) {
-            slog(`🛑 Cloudflare geçilemedi (fallback), işlem durduruldu.`, 'error');
+            slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
             scraperAbort = true;
             return allItems;
           }
@@ -1172,6 +1179,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
   let errorStreak = 0;
+  let challengeStreak = 0;
 
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
@@ -1198,10 +1206,18 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       }
 
       if (isChallengePage(html)) {
-        slog(`  → Challenge page, skipping: ${slug}`, 'warn');
+        challengeStreak++;
+        slog(`  → Challenge page: ${slug}`, 'warn');
+        if (challengeStreak >= 3) {
+          slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
+          scraperAbort = true;
+          results.skipped++;
+          break;
+        }
         results.skipped++;
         continue;
       }
+      challengeStreak = 0;
 
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {

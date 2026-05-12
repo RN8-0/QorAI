@@ -53,9 +53,16 @@ const ALLOWED_ORIGINS = [
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 ];
+
+function _randomUA() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
 
 function findChromePath() {
   const candidates = [
@@ -77,7 +84,7 @@ let browser = null;
 let activePage = null;
 let requestCount = 0;
 let sessionCookies = null;
-const currentUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+let currentUA = _randomUA();
 
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
@@ -121,6 +128,8 @@ async function getBrowser() {
 
 async function getPage() {
   const b = await getBrowser();
+  // Rotate UA every 20 requests
+  if (requestCount % 20 === 0) currentUA = _randomUA();
   if (activePage && !activePage.isClosed() && requestCount % 80 !== 0) return activePage;
   if (activePage && !activePage.isClosed()) {
     await activePage.close().catch(() => {});
@@ -375,19 +384,19 @@ const server = http.createServer(async (req, res) => {
 
       // If Cloudflare challenge is still active, wait for product list to appear
       if (isChallenge) {
-        console.log(`  🔄 Challenge detected. Waiting up to 30s for product list...`);
+        console.log(`  🔄 Challenge detected. Waiting up to 25s for product list...`);
         try {
           await page.waitForSelector(
             '.productlist, #productlist, .offer-list, [data-testid="product-list"]',
-            { timeout: 30000 }
+            { timeout: 25000 }
           );
           console.log(`  ✅ Product list appeared.`);
         } catch {
-          console.log(`  ❌ 30s timeout — Cloudflare not solved.`);
+          console.log(`  ❌ 25s timeout — Cloudflare aşılamadı.`);
           res.writeHead(503, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             error: 'cloudflare_challenge',
-            message: 'Cloudflare challenge could not be solved'
+            message: 'Cloudflare aşılamadı.'
           }));
           return;
         }
@@ -399,7 +408,7 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(503, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             error: 'cloudflare_challenge',
-            message: 'Cloudflare challenge still active after wait'
+            message: 'Cloudflare aşılamadı.'
           }));
           return;
         }
