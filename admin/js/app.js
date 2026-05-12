@@ -1047,6 +1047,7 @@ function updateCategoryChart(catCounts){
 let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selectedIds=new Set(),viewMode='grid';
 let dashSampleProducts=null,dashProductTotal=0;
 let totalProductCount=0;
+let _productRefreshTimer=null;
 const PER=50;
 
 async function loadProducts(){
@@ -1064,6 +1065,28 @@ async function loadProducts(){
     populateFiltersFromData();
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
 }
+
+function queueProductsRefresh(){
+  clearTimeout(_productRefreshTimer);
+  _productRefreshTimer=setTimeout(async()=>{
+    if(!document.getElementById('productsView')?.classList.contains('active'))return;
+    try{await loadPage()}catch(e){console.error('queued product refresh failed:',e)}
+  },250);
+}
+
+window.addEventListener('qorai:product-saved',e=>{
+  const p=e.detail?.product;
+  if(p&&Array.isArray(allProducts)){
+    const item={id:e.detail?.id||p.id||p.slug,...p};
+    const existingIndex=allProducts.findIndex(x=>x.id===item.id||x.slug===item.slug);
+    if(existingIndex>=0)allProducts[existingIndex]={...allProducts[existingIndex],...item};
+    else allProducts.unshift(item);
+    displayProducts=allProducts;
+    totalProductCount=Math.max(totalProductCount||0,allProducts.length);
+    if(document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
+  }
+  queueProductsRefresh();
+});
 
 function populateFiltersFromData(){
   // Use QorAiCategories if available (from categories.js)
@@ -1250,11 +1273,9 @@ function openProduct(id){
   function fmtSpecVal(s){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
-    // Split multi-value specs on newlines into separate lines
-    if(s.includes('\n')){
-      return s.split('\n').filter(Boolean).map(line=>`<div class="pm-v-line">${escHtml(line.trim())}</div>`).join('');
-    }
-    return escHtml(s);
+    const lines=String(s).replace(/\s*,\s*/g,'\n').split('\n').map(x=>x.trim()).filter(Boolean);
+    if(lines.length>1)return`<div class="pm-v-list">${lines.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
+    return escHtml(lines[0]||s);
   }
   function specRow(k,v){
     const s=String(v),y=s==='Yes'||s==='Var',n=s==='No'||s==='Yok';
@@ -1272,7 +1293,6 @@ function openProduct(id){
         <div class="form-field"><label>Name</label><input class="input" id="editName" value="${escHtml(p.name||'')}"></div>
         <div class="form-field"><label>Brand</label><input class="input" id="editBrand" value="${escHtml(p.brand||'')}"></div>
         <div class="form-field"><label>Category</label><select class="input" id="editCategory">${catOpts}</select></div>
-        <div class="form-field"><label>Price (TL)</label><input class="input" type="number" id="editPrice" value="${p.price_raw||''}"></div>
         <div class="form-field"><label>Tech Score</label><input class="input" type="number" id="editScore" value="${p.techScore||''}" min="0" max="100"></div>
         <div class="form-field"><label>Image URL</label><input class="input" id="editImageUrl" value="${escHtml(p.imageUrl||p.images?.[0]||'')}"></div>
       </div>
@@ -1292,13 +1312,11 @@ async function saveProductEdit(id){
   const name=document.getElementById('editName')?.value?.trim();
   const brand=document.getElementById('editBrand')?.value?.trim();
   const category=document.getElementById('editCategory')?.value;
-  const price=parseFloat(document.getElementById('editPrice')?.value);
   const score=parseInt(document.getElementById('editScore')?.value);
   const imageUrl=document.getElementById('editImageUrl')?.value?.trim();
   if(name)updates.name=name;
   if(brand)updates.brand=brand;
   if(category)updates.category=category;
-  if(!isNaN(price)&&price>0)updates.price_raw=price;
   if(!isNaN(score)&&score>=0&&score<=100)updates.techScore=score;
   if(imageUrl){updates.imageUrl=imageUrl;const existing=allProducts.find(p=>p.id===id)?.images||[];if(!existing.includes(imageUrl))updates.images=[...existing,imageUrl]}
   updates.updatedAt=serverTimestamp();
@@ -1307,7 +1325,7 @@ async function saveProductEdit(id){
     await pbUpdateDoc('products',id,updates);
     logActivity('product_edit',`Product edited: ${name||id}`,{productId:id,changes:Object.keys(updates)});
     const mem=allProducts.find(p=>p.id===id);
-    if(mem)Object.assign(mem,{name,brand,category,price_raw:price,techScore:score});
+    if(mem)Object.assign(mem,{name,brand,category,techScore:score});
     toast('Product updated','s');closeModal();renderProductsPage();
   }catch(e){toast('Error: '+e.message,'e')}
 }
@@ -1344,7 +1362,7 @@ async function rescrapeProduct(id) {
       toast('Invalid scrape result', 'e'); return;
     }
     const changes = {};
-    const fields = ['name','brand','price_raw','imageUrl','specsCount','variantGroup','specs','specSections','keySpecs','images','_originalSpecs','_originalSections','_originalKeySpecs','_originalName'];
+    const fields = ['name','brand','imageUrl','specsCount','variantGroup','specs','specSections','keySpecs','images','_originalSpecs','_originalSections','_originalKeySpecs','_originalName'];
     for (const f of fields) {
       if (fresh[f] !== undefined && JSON.stringify(fresh[f]) !== JSON.stringify(p[f])) changes[f] = fresh[f];
     }
@@ -2521,7 +2539,7 @@ async function exportProductsCSV(){
       if(page>=result.totalPages)break;
       page++;
     }
-    const fields=['id','name','brand','category','techScore','price_raw','specsCount','scrapedAt','sourceUrl','imageUrl'];
+    const fields=['id','name','brand','category','techScore','specsCount','scrapedAt','sourceUrl','imageUrl'];
     const header=fields.join(',');
     const rows=all.map(p=>fields.map(f=>{const v=p[f]??'';return typeof v==='string'&&(v.includes(',')||v.includes('"'))?`"${v.replace(/"/g,'""')}"`:v}).join(','));
     const csv=header+'\n'+rows.join('\n');

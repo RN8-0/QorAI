@@ -200,18 +200,20 @@ textarea.input{resize:vertical}
 .pm-score-circle{position:relative;width:56px;height:56px;flex-shrink:0}
 .pm-score-svg{width:56px;height:56px;transform:rotate(-90deg)}
 .pm-score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900}
-.pm-masonry{column-count:2;column-gap:12px}
-.pm-brick{break-inside:avoid;margin-bottom:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;display:inline-block;width:100%}
+.pm-masonry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.pm-brick{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:12px;overflow:hidden;width:100%;box-shadow:0 10px 24px rgba(0,0,0,.12)}
 .pm-brick-head{padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:linear-gradient(135deg,var(--accent),#6d28d9);display:flex;align-items:center;gap:6px}
-.pm-spec-tbl{width:100%;border-collapse:collapse}
-.pm-spec-tbl tr:nth-child(even){background:var(--bg3)}
-.pm-spec-tbl tr:nth-child(odd){background:var(--bg)}
+.pm-spec-tbl{width:100%;border-collapse:separate;border-spacing:0}
+.pm-spec-tbl tr:nth-child(even){background:rgba(255,255,255,.015)}
+.pm-spec-tbl tr:nth-child(odd){background:rgba(0,0,0,.10)}
 .pm-spec-tbl tr:hover{background:var(--accent3)}
-.pm-spec-tbl td{padding:6px 10px;font-size:11px;border-bottom:1px solid var(--border)}
+.pm-spec-tbl td{padding:9px 10px;font-size:11px;border-bottom:1px solid var(--border);vertical-align:top}
 .pm-spec-tbl tr:last-child td{border-bottom:none}
-.pm-k{color:var(--text2);width:45%}
-.pm-v{color:var(--text);font-weight:600;text-align:right;word-break:break-word}
-.pm-v-line{padding:1px 0;border-bottom:1px solid rgba(255,255,255,.05)}.pm-v-line:last-child{border-bottom:none}
+.pm-k{color:var(--text2);width:34%;font-weight:700;letter-spacing:.1px}
+.pm-v{color:var(--text);font-weight:650;text-align:left;word-break:break-word;line-height:1.55}
+.pm-v-list{display:flex;flex-direction:column;gap:5px}
+.pm-v-line{position:relative;padding:5px 8px 5px 18px;border:1px solid rgba(255,255,255,.06);border-radius:7px;background:rgba(255,255,255,.025)}
+.pm-v-line::before{content:'';position:absolute;left:7px;top:12px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
 .pm-v.yes{color:var(--green)}.pm-v.no{color:var(--red)}
 
 /* ── USERS ── */

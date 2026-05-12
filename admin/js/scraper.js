@@ -326,6 +326,7 @@ function generateProductId(slug) {
 }
 
 function prepareProductPayload(product) {
+  const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
   const payload = {
     slug: String(product.slug || product.id || '').trim().slice(0, 200),
     name: String(product.name || '').trim().slice(0, 500),
@@ -335,11 +336,11 @@ function prepareProductPayload(product) {
     sourceUrl: product.sourceUrl || undefined,
     imageUrl: product.imageUrl || undefined,
     images: Array.isArray(product.images) ? product.images.filter(Boolean) : [],
-    specs: product.specs && typeof product.specs === 'object' ? product.specs : {},
-    specSections: product.specSections && typeof product.specSections === 'object' ? product.specSections : {},
+    specs: sanitized.specs,
+    specSections: sanitized.sections,
     keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
-    specsCount: Number.isFinite(Number(product.specsCount)) ? Number(product.specsCount) : 0,
+    specsCount: Object.keys(sanitized.specs).length,
     variantGroup: String(product.variantGroup || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
@@ -348,6 +349,60 @@ function prepareProductPayload(product) {
   if (!payload.name) throw new Error('Product name is empty');
 
   return typeof _clean === 'function' ? _clean(payload) : payload;
+}
+
+function isBlockedSpec(key, value) {
+  const text = `${key || ''} ${value || ''}`.toLowerCase();
+  return [
+    'letztes preisupdate',
+    'preisupdate',
+    'price update',
+    'last price',
+    'preisvergleich',
+    'preise',
+    'angebote',
+    'shops',
+    'händler',
+    'lieferzeit',
+    'versand',
+    'ean',
+    'mpn',
+  ].some(term => text.includes(term));
+}
+
+function normalizeSpecValue(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, '\n')
+    .split('\n')
+    .map(v => v.trim())
+    .filter(Boolean)
+    .filter(v => !isBlockedSpec('', v))
+    .join('\n');
+}
+
+function sanitizeProductSpecs(rawSpecs, rawSections) {
+  const specs = {};
+  const sections = {};
+  const add = (section, key, value) => {
+    const cleanKey = String(key || '').trim();
+    if (!cleanKey || cleanKey.length > 120 || isBlockedSpec(cleanKey, value)) return;
+    const cleanValue = normalizeSpecValue(value);
+    if (!cleanValue || cleanValue.length > 1200) return;
+    specs[cleanKey] = cleanValue;
+    const sec = String(section || 'General').trim() || 'General';
+    if (!sections[sec]) sections[sec] = {};
+    sections[sec][cleanKey] = cleanValue;
+  };
+  if (rawSections && typeof rawSections === 'object' && Object.keys(rawSections).length) {
+    Object.entries(rawSections).forEach(([section, values]) => {
+      if (!values || typeof values !== 'object') return;
+      Object.entries(values).forEach(([key, value]) => add(section, key, value));
+    });
+  } else if (rawSpecs && typeof rawSpecs === 'object') {
+    Object.entries(rawSpecs).forEach(([key, value]) => add('General', key, value));
+  }
+  return { specs, sections };
 }
 
 // ═══════════════════════════════════════
@@ -566,8 +621,8 @@ function parseSpecs(doc) {
       const dd = item.querySelector('dd');
       if (!dt || !dd) return;
       const key = dt.textContent.trim();
-      let value = dd.textContent.trim().replace(/\s+/g, ' ');
-      if (key && value && key.length < 200 && value.length < 1000) {
+      let value = normalizeSpecValue(dd.textContent);
+      if (key && value && key.length < 200 && value.length < 1000 && !isBlockedSpec(key, value)) {
         specs[key] = value;
         specSections[sectionName][key] = value;
       }
@@ -1225,6 +1280,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
           const countEl = document.getElementById('productCount');
           if (countEl) countEl.textContent = String(totalProductCount || allProducts.length);
         }
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
         results.added++;
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
