@@ -307,6 +307,32 @@ function generateProductId(slug) {
   return id || `product-${Date.now()}`;
 }
 
+function prepareProductPayload(product) {
+  const payload = {
+    slug: String(product.slug || product.id || '').trim().slice(0, 200),
+    name: String(product.name || '').trim().slice(0, 500),
+    brand: String(product.brand || '').trim().slice(0, 200),
+    category: String(product.category || '').trim().slice(0, 100),
+    source: String(product.source || 'geizhals.eu').trim().slice(0, 100),
+    sourceUrl: product.sourceUrl || undefined,
+    imageUrl: product.imageUrl || undefined,
+    images: Array.isArray(product.images) ? product.images.filter(Boolean) : [],
+    specs: product.specs && typeof product.specs === 'object' ? product.specs : {},
+    specSections: product.specSections && typeof product.specSections === 'object' ? product.specSections : {},
+    keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
+    techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
+    price_raw: product.price_raw === undefined || product.price_raw === null ? undefined : String(product.price_raw).slice(0, 200),
+    specsCount: Number.isFinite(Number(product.specsCount)) ? Number(product.specsCount) : 0,
+    variantGroup: String(product.variantGroup || '').trim().slice(0, 200),
+    scrapedAt: product.scrapedAt || new Date().toISOString(),
+  };
+
+  if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
+  if (!payload.name) throw new Error('Product name is empty');
+
+  return typeof _clean === 'function' ? _clean(payload) : payload;
+}
+
 // ═══════════════════════════════════════
 //  6. VARIANT GROUPING
 // ═══════════════════════════════════════
@@ -1205,8 +1231,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
         }
 
         // Save to PocketBase
-        const clean = typeof _clean === 'function' ? _clean(product) : product;
-        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
+        const clean = prepareProductPayload(product);
         await pbSetDoc('products', clean.slug || clean.id, clean);
         results.added++;
         errorStreak = 0;
@@ -1274,7 +1299,7 @@ async function computePriceSegments(categoryId) {
     else if (percentile < 0.85) segment = 'premium';
     else segment = 'flagship';
 
-    if (products[i].priceSegment !== segment) {
+    if (products[i].price_segment !== segment) {
       toUpdate.push({ id: products[i].id, segment });
       updated++;
     }
@@ -1282,7 +1307,7 @@ async function computePriceSegments(categoryId) {
 
   if (updated > 0) {
     try {
-      await Promise.all(toUpdate.map(({ id, segment }) => pbUpdateDoc('products', id, { priceSegment: segment })));
+      await Promise.all(toUpdate.map(({ id, segment }) => pbUpdateDoc('products', id, { price_segment: segment })));
       slog(`Updated ${updated} price segments (${products.length} products)`, 'success');
     } catch (e) {
       slog(`Failed to update price segments: ${e.message}`, 'error');
@@ -1451,9 +1476,7 @@ async function scrapeByUrl() {
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
       try {
-        const clean = typeof _clean === 'function' ? _clean(product) : product;
-        // Ensure scrapedAt is set
-        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
+        const clean = prepareProductPayload(product);
         await pbSetDoc('products', clean.slug || clean.id, clean);
         slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
@@ -1507,8 +1530,7 @@ async function scrapeByUrl() {
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
 
       try {
-        const clean = typeof _clean === 'function' ? _clean(product) : product;
-        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
+        const clean = prepareProductPayload(product);
         await pbSetDoc('products', clean.slug || clean.id, clean);
         slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
@@ -1591,10 +1613,7 @@ async function startScoreUpdate() {
       }
       const score = extractTechScore(html);
       if (score !== null && score !== p.techScore) {
-        await pbUpdateDoc('products', p.id, {
-          techScore: score,
-          scoreUpdatedAt: new Date().toISOString()
-        });
+        await pbUpdateDoc('products', p.id, { techScore: score });
         slog(`${p.name || p.id}: ${p.techScore || 0} → ${score}`, 'success');
         updated++;
         // Update in-memory
