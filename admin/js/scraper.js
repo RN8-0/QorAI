@@ -903,6 +903,12 @@ async function scrapeProductDetail(html, url, categoryId) {
   // ── Variant Group ──
   const variantGroup = normalizeVariantGroupFromSlug(productSlug);
 
+  // Ensure price_raw is stored as string (PocketBase schema: text field)
+  let priceRawStr;
+  if (price_raw != null && !isNaN(price_raw) && price_raw > 0) {
+    priceRawStr = String(price_raw);
+  }
+
   return {
     id,
     slug: productSlug || id,
@@ -917,9 +923,10 @@ async function scrapeProductDetail(html, url, categoryId) {
     specSections: rawSections, // German sections
     keySpecs: rawKeySpecs,
     techScore: techScore ?? undefined,
-    price_raw: price_raw || undefined,
+    price_raw: priceRawStr || undefined,
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
+    scrapedAt: new Date().toISOString(),
   };
 }
 
@@ -1199,6 +1206,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
 
         // Save to PocketBase
         const clean = typeof _clean === 'function' ? _clean(product) : product;
+        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
         await pbSetDoc('products', clean.slug || clean.id, clean);
         results.added++;
         errorStreak = 0;
@@ -1243,7 +1251,7 @@ async function computePriceSegments(categoryId) {
     const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
     products = items
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p.price_raw && p.price_raw > 0);
+      .filter(p => p.price_raw && parseFloat(p.price_raw) > 0);
   } catch (e) {
     slog(`Failed to load products for segments: ${e.message}`, 'error');
     return;
@@ -1254,7 +1262,7 @@ async function computePriceSegments(categoryId) {
     return;
   }
 
-  products.sort((a, b) => a.price_raw - b.price_raw);
+  products.sort((a, b) => parseFloat(a.price_raw) - parseFloat(b.price_raw));
   let updated = 0;
   const toUpdate = [];
 
@@ -1374,7 +1382,13 @@ async function startBulkScrape() {
     const urlItems = await collectProductUrls(catValue, Math.ceil(maxProducts / 10));
     slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
-    if (!urlItems.length || scraperAbort) {
+    if (scraperAbort) {
+      slog(`Scraping stopped by user. ${urlItems.length} URLs were collected.`, 'warn');
+      finishScraping();
+      return;
+    }
+
+    if (!urlItems.length) {
       slog('No product URLs found. Try a different category or check proxy.', 'error');
       finishScraping();
       return;
@@ -1438,12 +1452,21 @@ async function scrapeByUrl() {
 
       try {
         const clean = typeof _clean === 'function' ? _clean(product) : product;
+        // Ensure scrapedAt is set
+        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
         await pbSetDoc('products', clean.slug || clean.id, clean);
-        slog(`💾 Saved: ${clean.id?.substring(0,10)}`, 'success');
+        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};
         slog(`❌ Save failed: ${saveErr.message}`, 'error');
         slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
+        // Log the problematic fields to help debug
+        if (product) {
+          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
+          slog(`   Category: ${product.category}`, 'error');
+          slog(`   Specs count: ${product.specsCount}`, 'error');
+          slog(`   Price type: ${typeof product.price_raw} = ${product.price_raw}`, 'error');
+        }
         Object.entries(details).forEach(([k,v]) => {
           slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
         });
@@ -1485,12 +1508,19 @@ async function scrapeByUrl() {
 
       try {
         const clean = typeof _clean === 'function' ? _clean(product) : product;
+        if (!clean.scrapedAt) clean.scrapedAt = new Date().toISOString();
         await pbSetDoc('products', clean.slug || clean.id, clean);
-        slog(`💾 Saved: ${clean.id?.substring(0,10)}`, 'success');
+        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};
         slog(`❌ Save failed: ${saveErr.message}`, 'error');
         slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
+        if (product) {
+          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
+          slog(`   Category: ${product.category}`, 'error');
+          slog(`   Specs count: ${product.specsCount}`, 'error');
+          slog(`   Price type: ${typeof product.price_raw} = ${product.price_raw}`, 'error');
+        }
         Object.entries(details).forEach(([k,v]) => {
           slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
         });
