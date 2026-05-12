@@ -1316,15 +1316,16 @@ function openProduct(id){
   function fmtSpecVal(s){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
-    const lines=String(s).replace(/\s*,\s*/g,'\n').split('\n').map(x=>x.trim()).filter(Boolean);
+    const normalized=String(s).replace(/\s*,\s*/g,'\n').replace(/\s+(?=(?:\d+\s*x\s*)?\d+(?:[.,]\d+)?\s*(?:GHz|MHz|GB|TB|MB|MP|mm|cm|Hz|kHz|W|Wh|mAh|ppi|Nit|Nits|Pixel|Jahre|Updates|Zoom)\b)/gi,'\n').replace(/\s+(?=(?:Android|iOS|Windows|Bluetooth|WLAN|Wi-Fi|USB|HDMI|DisplayPort|Thunderbolt|NFC|GPS|LTE|5G|4G|3G|2G|IP\d{2}|Gorilla|Kamera|Stereo|Satelliten|OLED|AMOLED|LCD|IPS|Mini-LED|HDR|Dolby|AMD|Intel|NVIDIA|GeForce|Radeon|Ryzen|Core|Cortex|Snapdragon|Dimensity|Exynos|Apple)\b)/g,'\n');
+    const lines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
     if(lines.length>1)return`<div class="pm-v-list">${lines.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
     return escHtml(lines[0]||s);
   }
   function specRow(k,v){
     const s=String(v),y=s==='Yes'||s==='Var',n=s==='No'||s==='Yok';
-    return`<tr><td class="pm-k">${escHtml(k)}</td><td class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</td></tr>`;
+    return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><table class="pm-spec-tbl"><tbody>${rows.map(([k,v])=>specRow(k,v)).join('')}</tbody></table></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
