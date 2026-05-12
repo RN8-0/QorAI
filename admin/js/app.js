@@ -1304,8 +1304,10 @@ function openProduct(id){
   function fmtSpecVal(s){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
-    const normalized=String(s).replace(/\s*,\s*/g,'\n').replace(/\s+(?=(?:\d+\s*x\s*)?\d+(?:[.,]\d+)?\s*(?:GHz|MHz|GB|TB|MB|MP|mm|cm|Hz|kHz|W|Wh|mAh|ppi|Nit|Nits|Pixel|Jahre|Updates|Zoom)\b)/gi,'\n').replace(/\s+(?=(?:Android|iOS|Windows|Bluetooth|WLAN|Wi-Fi|USB|HDMI|DisplayPort|Thunderbolt|NFC|GPS|LTE|5G|4G|3G|2G|IP\d{2}|Gorilla|Kamera|Stereo|Satelliten|OLED|AMOLED|LCD|IPS|Mini-LED|HDR|Dolby|AMD|Intel|NVIDIA|GeForce|Radeon|Ryzen|Core|Cortex|Snapdragon|Dimensity|Exynos|Apple)\b)/g,'\n');
-    const lines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
+    const normalized=String(s).replace(/\s*,\s*/g,'\n');
+    const rawLines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
+    const lines=[];
+    for(let i=0;i<rawLines.length;i++){const line=rawLines[i];if(/^\d+x$/i.test(line)&&rawLines[i+1]){lines.push(`${line} ${rawLines[++i]}`)}else lines.push(line)}
     if(lines.length>1)return`<div class="pm-v-list">${lines.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
     return escHtml(lines[0]||s);
   }

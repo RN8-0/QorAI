@@ -426,12 +426,9 @@ function isBlockedSpec(key, value) {
 }
 
 function normalizeSpecValue(value) {
-  const compact = String(value || '')
+  return String(value || '')
     .replace(/\s+/g, ' ')
     .replace(/\s*,\s*/g, '\n')
-    .replace(/\s+(?=(?:\d+\s*x\s*)?\d+(?:[.,]\d+)?\s*(?:GHz|MHz|GB|TB|MB|MP|mm|cm|Hz|kHz|W|Wh|mAh|ppi|Nit|Nits|Pixel|Jahre|Updates|Zoom)\b)/gi, '\n')
-    .replace(/\s+(?=(?:Android|iOS|Windows|Bluetooth|WLAN|Wi-Fi|USB|HDMI|DisplayPort|Thunderbolt|NFC|GPS|LTE|5G|4G|3G|2G|IP\d{2}|Gorilla|Kamera|Stereo|Satelliten|OLED|AMOLED|LCD|IPS|Mini-LED|HDR|Dolby|AMD|Intel|NVIDIA|GeForce|Radeon|Ryzen|Core|Cortex|Snapdragon|Dimensity|Exynos|Apple)\b)/g, '\n');
-  return compact
     .split('\n')
     .map(v => v.trim())
     .filter(Boolean)
