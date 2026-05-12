@@ -152,7 +152,12 @@ async function _humanScroll(page) {
   } catch {}
 }
 
-async function fetchWithPuppeteer(url) {
+function _isChallengeTitle(title) {
+  return /Just a moment|Checking|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung/i.test(title || '');
+}
+
+async function fetchWithPuppeteer(url, opts = {}) {
+  const { waitChallenge = true } = opts;
   const page = await getPage();
   requestCount++;
   try {
@@ -160,31 +165,33 @@ async function fetchWithPuppeteer(url) {
     const status = response ? response.status() : 0;
 
     let title = await page.title();
-    let isChallenge = /Just a moment|Checking|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung/i.test(title);
+    let isChallenge = _isChallengeTitle(title);
 
-    if (isChallenge) {
+    if (isChallenge && waitChallenge) {
       console.log(`  ⏳ Challenge detected: "${title.substring(0, 50)}". Waiting 12s...`);
       await _humanDelay(12000, 12000);
       title = await page.title();
-      isChallenge = /Just a moment|Checking|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung/i.test(title);
+      isChallenge = _isChallengeTitle(title);
       if (isChallenge) {
         console.log(`  ⏳ Still challenging. Waiting another 10s...`);
         await _humanDelay(10000, 10000);
         title = await page.title();
-        isChallenge = /Just a moment|Checking|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung/i.test(title);
+        isChallenge = _isChallengeTitle(title);
       }
       if (!isChallenge) console.log(`  ✅ Challenge solved: "${title.substring(0, 50)}"`);
       else console.log(`  ⚠️ Challenge still present after 22s.`);
     }
 
-    await _humanScroll(page);
-    await _humanDelay(500, 500);
-    await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 200 - 100)); });
-    await _humanDelay(500, 500);
+    if (!isChallenge) {
+      await _humanScroll(page);
+      await _humanDelay(500, 500);
+      await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 200 - 100)); });
+      await _humanDelay(500, 500);
+    }
 
-    if (status === 404) return { html: null, status: 404 };
+    if (status === 404) return { html: null, status: 404, isChallenge: false };
     const html = await page.content();
-    return { html, status: status || 200 };
+    return { html, status: status || 200, isChallenge };
   } catch (err) {
     console.error(`  ❌ Fetch error: ${err.message}`);
     throw err;
@@ -355,12 +362,28 @@ const server = http.createServer(async (req, res) => {
     try {
       console.log(`  🔗 Category links: ${targetUrl}`);
       const page = await getPage();
-      const { html, status } = await fetchWithPuppeteer(targetUrl);
+      const { html, status, isChallenge } = await fetchWithPuppeteer(targetUrl);
       if (!html) {
         res.writeHead(502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to load category page', status }));
         return;
       }
+
+      // If Cloudflare challenge is still active, try waiting for product list to appear
+      if (isChallenge) {
+        console.log(`  🔄 Challenge page detected. Waiting for product list to load...`);
+        try {
+          await page.waitForSelector('.productlist, #productlist, .offer-list, [data-testid="product-list"]', { timeout: 30000 });
+          console.log(`  ✅ Product list appeared — challenge solved.`);
+        } catch {
+          // 30s timeout — challenge failed
+          console.log(`  ❌ Cloudflare challenge could not be solved after 30s.`);
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'cloudflare_challenge', message: 'Cloudflare challenge could not be solved' }));
+          return;
+        }
+      }
+
       const links = await extractCategoryLinks(page);
       console.log(`  ✅ ${links.length} product links extracted (strict)`);
       res.writeHead(200, { 'Content-Type': 'application/json' });

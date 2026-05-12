@@ -1074,25 +1074,61 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       try {
         // PRIMARY: use proxy's strict /category-links endpoint (prevents Kaykay bug)
         let links = [];
+        let cloudflareBlocked = false;
         try {
           const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(listingUrl)}`, {
             signal: AbortSignal.timeout(45000)
           });
           if (res.ok) {
-            const data = await res.json();
-            links = (data.links || []).map(url => ({ url, techScore: null }));
+            let data;
+            try {
+              data = await res.json();
+            } catch (jsonErr) {
+              // HTML returned instead of JSON = Cloudflare challenge
+              slog(`  → Proxy returned HTML instead of JSON (Cloudflare challenge)`, 'error');
+              cloudflareBlocked = true;
+            }
+            if (data) {
+              if (data.error === 'cloudflare_challenge') {
+                slog(`  → Cloudflare challenge could not be solved`, 'error');
+                cloudflareBlocked = true;
+              } else {
+                links = (data.links || []).map(url => ({ url, techScore: null }));
+              }
+            }
+          } else if (res.status === 503) {
+            // 503 = cloudflare_challenge from proxy
+            try {
+              const errData = await res.json();
+              if (errData.error === 'cloudflare_challenge') {
+                slog(`  → Cloudflare challenge could not be solved (503)`, 'error');
+                cloudflareBlocked = true;
+              }
+            } catch {}
           } else {
             slog(`  → Proxy /category-links returned ${res.status}, using fallback`, 'warn');
           }
         } catch (proxyErr) {
-          slog(`  → Proxy /category-links error: ${proxyErr.message}, using fallback`, 'warn');
+          // Network error or timeout — could be Cloudflare blocking
+          slog(`  → Proxy /category-links error: ${proxyErr.message}`, 'warn');
+        }
+
+        // FAIL-FAST: if Cloudflare blocked, stop immediately — don't paginate
+        if (cloudflareBlocked) {
+          slog(`🛑 Cloudflare geçilemedi, işlem durduruldu.`, 'error');
+          scraperAbort = true;
+          return allItems;
         }
 
         // FALLBACK: strict client-side parsing if proxy endpoint fails
-        if (links.length === 0) {
+        if (links.length === 0 && !cloudflareBlocked) {
           const html = await proxyFetch(listingUrl);
           if (!html) { emptyCount++; page++; continue; }
-          if (isChallengePage(html)) { emptyCount++; page++; continue; }
+          if (isChallengePage(html)) {
+            slog(`🛑 Cloudflare geçilemedi (fallback), işlem durduruldu.`, 'error');
+            scraperAbort = true;
+            return allItems;
+          }
           const doc = parseHTML(html);
           links = extractProductLinksFromDoc(doc, html);
         }
