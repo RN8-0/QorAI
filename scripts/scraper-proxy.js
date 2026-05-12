@@ -87,7 +87,7 @@ async function getBrowser() {
   console.log(`  🚀 Starting Chrome: ${chromePath}`);
   browser = await puppeteerExtra.launch({
     executablePath: chromePath,
-    headless: true,
+    headless: false,
     args: [
       '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
       '--window-size=1366,768','--disable-blink-features=AutomationControlled',
@@ -352,16 +352,20 @@ const server = http.createServer(async (req, res) => {
 
   // ── Category Links (strict, no detail) ──
   if (req.url.startsWith('/category-links')) {
-    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
-    const targetUrl = urlObj.searchParams.get('url');
-    if (!targetUrl) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Missing ?url=...' }));
-      return;
-    }
+    // Wrap EVERYTHING so this endpoint NEVER falls through to HTML
     try {
+      const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+      const targetUrl = urlObj.searchParams.get('url');
+      if (!targetUrl) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing ?url=...' }));
+        return;
+      }
+
       console.log(`  🔗 Category links: ${targetUrl}`);
       const page = await getPage();
+
+      // Navigate to the category page
       const { html, status, isChallenge } = await fetchWithPuppeteer(targetUrl);
       if (!html) {
         res.writeHead(502, { 'Content-Type': 'application/json' });
@@ -369,29 +373,63 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // If Cloudflare challenge is still active, try waiting for product list to appear
+      // If Cloudflare challenge is still active, wait for product list to appear
       if (isChallenge) {
-        console.log(`  🔄 Challenge page detected. Waiting for product list to load...`);
+        console.log(`  🔄 Challenge detected. Waiting up to 30s for product list...`);
         try {
-          await page.waitForSelector('.productlist, #productlist, .offer-list, [data-testid="product-list"]', { timeout: 30000 });
-          console.log(`  ✅ Product list appeared — challenge solved.`);
+          await page.waitForSelector(
+            '.productlist, #productlist, .offer-list, [data-testid="product-list"]',
+            { timeout: 30000 }
+          );
+          console.log(`  ✅ Product list appeared.`);
         } catch {
-          // 30s timeout — challenge failed
-          console.log(`  ❌ Cloudflare challenge could not be solved after 30s.`);
+          console.log(`  ❌ 30s timeout — Cloudflare not solved.`);
           res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'cloudflare_challenge', message: 'Cloudflare challenge could not be solved' }));
+          res.end(JSON.stringify({
+            error: 'cloudflare_challenge',
+            message: 'Cloudflare challenge could not be solved'
+          }));
+          return;
+        }
+
+        // Double-check: is the page title still a challenge?
+        const titleAfter = await page.title();
+        if (_isChallengeTitle(titleAfter)) {
+          console.log(`  ❌ Title still shows challenge after waitForSelector.`);
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'cloudflare_challenge',
+            message: 'Cloudflare challenge still active after wait'
+          }));
           return;
         }
       }
 
-      const links = await extractCategoryLinks(page);
-      console.log(`  ✅ ${links.length} product links extracted (strict)`);
+      // Extract links from the now-clean page
+      let links;
+      try {
+        links = await extractCategoryLinks(page);
+      } catch (extractErr) {
+        console.error(`  ❌ extractCategoryLinks threw: ${extractErr.message}`);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'extraction_failed',
+          message: extractErr.message
+        }));
+        return;
+      }
+
+      console.log(`  ✅ ${links.length} product links extracted`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ count: links.length, links }));
     } catch (err) {
-      console.error(`  ❌ category-links error: ${err.message}`);
+      // FINAL safety net — ALWAYS return JSON, NEVER HTML
+      console.error(`  ❌ /category-links fatal: ${err.message}`);
       res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
+      res.end(JSON.stringify({
+        error: 'category_links_failed',
+        message: err.message
+      }));
     }
     return;
   }
