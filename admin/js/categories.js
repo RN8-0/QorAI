@@ -1,119 +1,69 @@
 /**
  * Qor AI Category & Brand Definitions
- * 40 categories across 13 groups, 68 brands
+ * Aligned with geizhals.eu technology categories
  */
 
 window.QorAiCategories = {
   groups: [
     {
-      name: 'Mobile',
+      name: 'Hardware',
       categories: [
-        { id: 'smartphones', name: 'Smartphones', geizhalsSlug: 'handys' },
-        { id: 'tablets', name: 'Tablets', geizhalsSlug: 'tablets' }
+        { id: 'grafikkarten', name: 'Grafikkarten (GPUs)', geizhalsSlug: 'gra16_512' },
+        { id: 'monitore', name: 'Monitore', geizhalsSlug: 'monitore' },
+        { id: 'festplatten-ssds', name: 'Festplatten & SSDs', geizhalsSlug: 'festplatten' },
+        { id: 'notebooks', name: 'Notebooks', geizhalsSlug: 'notebooks' },
+        { id: 'cpus', name: 'Prozessoren (CPUs)', geizhalsSlug: 'cpu' },
+        { id: 'mainboards', name: 'Mainboards', geizhalsSlug: 'mainboards' },
+        { id: 'eingabegeraete', name: 'Eingabegeräte', geizhalsSlug: 'eingabegeraete' },
+        { id: 'gehaeuse', name: 'Gehäuse', geizhalsSlug: 'gehaeuse' },
+        { id: 'tablets', name: 'Tablets', geizhalsSlug: 'tablets' },
+        { id: 'arbeitsspeicher', name: 'Arbeitsspeicher (RAM)', geizhalsSlug: 'ramddr3' },
+        { id: 'netzwerk', name: 'Netzwerk', geizhalsSlug: 'netzwerk' },
+        { id: 'luftkuehlung', name: 'Luftkühlung', geizhalsSlug: 'luftkuehlung' },
+        { id: 'netzteile-usv', name: 'Netzteile & USV', geizhalsSlug: 'netzteile' },
+        { id: 'systeme', name: 'Systeme', geizhalsSlug: 'systeme' },
+        { id: 'wasserkuehlung', name: 'Wasserkühlung', geizhalsSlug: 'wasserkuehlung' },
       ]
     },
     {
-      name: 'Computers',
+      name: 'Telefon',
       categories: [
-        { id: 'laptops', name: 'Laptops', geizhalsSlug: 'notebooks' },
-        { id: 'desktops', name: 'Desktops', geizhalsSlug: 'pcs' }
-      ]
-    },
-    {
-      name: 'PC Components',
-      categories: [
-        { id: 'cpus', name: 'CPUs', geizhalsSlug: 'cpus' },
-        { id: 'gpus', name: 'Graphics Cards', geizhalsSlug: 'grafikkarten' },
-        { id: 'ram', name: 'RAM', geizhalsSlug: 'ram' },
-        { id: 'ssd', name: 'SSDs', geizhalsSlug: 'ssds' },
-        { id: 'motherboards', name: 'Motherboards', geizhalsSlug: 'mainboards' },
-        { id: 'psu', name: 'Power Supplies', geizhalsSlug: 'netzteile' },
-        { id: 'cases', name: 'Cases', geizhalsSlug: 'gehaeuse' },
-        { id: 'coolers', name: 'Coolers', geizhalsSlug: 'cpu-kuehler' }
-      ]
-    },
-    {
-      name: 'Display',
-      categories: [
-        { id: 'tvs', name: 'TVs', geizhalsSlug: 'fernseher' },
-        { id: 'monitors', name: 'Monitors', geizhalsSlug: 'monitore' },
-        { id: 'projectors', name: 'Projectors', geizhalsSlug: 'projektoren' },
-        { id: 'media-players', name: 'Media Players', geizhalsSlug: 'media-player' }
-      ]
-    },
-    {
-      name: 'Audio',
-      categories: [
-        { id: 'headphones', name: 'Headphones', geizhalsSlug: 'kopfhoerer' },
-        { id: 'speakers', name: 'Speakers', geizhalsSlug: 'lautsprecher' },
-        { id: 'soundbars', name: 'Soundbars', geizhalsSlug: 'soundbars' },
-        { id: 'microphones', name: 'Microphones', geizhalsSlug: 'mikrofone' }
-      ]
-    },
-    {
-      name: 'Wearables',
-      categories: [
+        { id: 'handys', name: 'Handy & Smartphones', geizhalsSlug: 'handys' },
         { id: 'smartwatches', name: 'Smartwatches', geizhalsSlug: 'smartwatches' },
-        { id: 'smart-rings', name: 'Smart Rings', geizhalsSlug: 'smart-ringe' }
       ]
     },
     {
-      name: 'Cameras',
+      name: 'Video, Foto & TV',
       categories: [
-        { id: 'cameras', name: 'Cameras', geizhalsSlug: 'digitalkameras' },
-        { id: 'action-cameras', name: 'Action Cameras', geizhalsSlug: 'actioncams' },
-        { id: 'ip-cameras', name: 'IP Cameras', geizhalsSlug: 'ip-kameras' },
-        { id: 'dashcams', name: 'Dashcams', geizhalsSlug: 'dashcams' },
-        { id: 'gimbals', name: 'Gimbals', geizhalsSlug: 'gimbals' },
-        { id: 'tripods', name: 'Tripods', geizhalsSlug: 'stative' },
-        { id: 'lenses', name: 'Lenses', geizhalsSlug: 'objektive' }
+        { id: 'fernseher', name: 'Fernseher', geizhalsSlug: 'fernseher' },
+        { id: 'fotografie', name: 'Fotografie', geizhalsSlug: 'fotografie' },
+        { id: 'foto-video-zubehoer', name: 'Foto-/Videozubehör', geizhalsSlug: 'foto-video-zubehoer' },
       ]
     },
     {
-      name: 'Gaming',
+      name: 'Audio & HiFi',
       categories: [
-        { id: 'consoles', name: 'Gaming Consoles', geizhalsSlug: 'spielkonsolen' },
-        { id: 'gamepads', name: 'Gamepads', geizhalsSlug: 'gamepads' },
-        { id: 'vr-headsets', name: 'VR Headsets', geizhalsSlug: 'vr-brillen' }
+        { id: 'kopfhoerer-headsets', name: 'Kopfhörer & Headsets', geizhalsSlug: 'kopfhoerer' },
+        { id: 'hifi-komponenten', name: 'HiFi-Komponenten', geizhalsSlug: 'hifi-komponenten' },
+        { id: 'professional-audio', name: 'Professional Audio', geizhalsSlug: 'professional-audio' },
       ]
     },
     {
-      name: 'Peripherals',
+      name: 'Spiele & Konsolen',
       categories: [
-        { id: 'keyboards', name: 'Keyboards', geizhalsSlug: 'tastaturen' },
-        { id: 'mice', name: 'Mice', geizhalsSlug: 'maeuse' },
-        { id: 'printers', name: 'Printers', geizhalsSlug: 'drucker' },
-        { id: 'webcams', name: 'Webcams', geizhalsSlug: 'webcams' }
+        { id: 'playstation-5', name: 'PlayStation 5 (PS5)', geizhalsSlug: 'playstation-5' },
+        { id: 'nintendo-switch', name: 'Nintendo Switch', geizhalsSlug: 'nintendo-switch' },
+        { id: 'xbox-series', name: 'Xbox Series X & S', geizhalsSlug: 'xbox-series' },
       ]
     },
     {
-      name: 'Networking',
+      name: 'Büro & Schule',
       categories: [
-        { id: 'routers', name: 'Routers & Modems', geizhalsSlug: 'router' }
+        { id: 'drucker-scanner', name: 'Drucker & Scanner', geizhalsSlug: 'drucker' },
       ]
     },
-    {
-      name: 'Smart Home',
-      categories: [
-        { id: 'robot-vacuums', name: 'Robot Vacuums', geizhalsSlug: 'saugroboter' }
-      ]
-    },
-    {
-      name: 'Accessories',
-      categories: [
-        { id: 'powerbanks', name: 'Power Banks', geizhalsSlug: 'powerbanks' },
-        { id: 'e-readers', name: 'E-Readers', geizhalsSlug: 'ebook-reader' }
-      ]
-    },
-    {
-      name: 'Drones',
-      categories: [
-        { id: 'drones', name: 'Drones', geizhalsSlug: 'drohnen' }
-      ]
-    }
   ],
 
-  // Flat lookup helpers
   getAll() {
     return this.groups.flatMap(g => g.categories);
   },
