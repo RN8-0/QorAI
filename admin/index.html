@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Qor AI Admin</title>
-    <link rel="icon" type="image/png" href="qorai_logo.png?v=20260424b">
-    <link rel="shortcut icon" type="image/png" href="qorai_logo.png?v=20260424b">
-    <link rel="apple-touch-icon" href="qorai_logo.png?v=20260424b">
-    <link rel="stylesheet" href="css/style.css?v=20260430b">
+    <link rel="icon" type="image/png" href="qorai_logo.png">
+    <link rel="shortcut icon" type="image/png" href="qorai_logo.png">
+    <link rel="apple-touch-icon" href="qorai_logo.png">
+    <link rel="stylesheet" href="css/style.css">
   </head>
 <body>
 
@@ -967,18 +967,45 @@
     <div id="toastContainer" class="toast-wrap"></div>
   </div>
 
-  <!-- PocketBase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="js/pb_client.js?v=20260512c"></script>
-  <script src="js/ts_client.js?v=20260511a"></script>
-  <script src="js/scoring/score_engine.js?v=20260511a"></script>
-  <script src="js/scoring/score_runner.js?v=20260511a"></script>
-  <script src="js/dictionary.js?v=20260511a"></script>
-  <script src="js/categories.js?v=20260512c"></script>
-  <script src="js/scraper.js?v=20260512e"></script>
-  <script src="js/notifications.js?v=20260511a"></script>
-  <script src="js/support.js?v=20260511a"></script>
-  <script src="js/app.js?v=20260512e"></script>
+  <!-- Cache-busted loader — prevents stale assets after deploys -->
+  <script>
+    (function() {
+      var v = Date.now();
+      // Bust CSS cache
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(function(l) {
+        if (l.href && !l.href.match(/[?&]v=\d+/)) {
+          l.href += (l.href.indexOf('?') === -1 ? '?' : '&') + 'v=' + v;
+        }
+      });
+      // Bust icon cache
+      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(function(l) {
+        if (l.href && !l.href.match(/[?&]v=\d+/)) {
+          l.href += (l.href.indexOf('?') === -1 ? '?' : '&') + 'v=' + v;
+        }
+      });
+      // Load JS sequentially with cache-buster
+      var scripts = [
+        'https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js',
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+        'js/pb_client.js',
+        'js/ts_client.js',
+        'js/scoring/score_engine.js',
+        'js/scoring/score_runner.js',
+        'js/dictionary.js',
+        'js/categories.js',
+        'js/scraper.js',
+        'js/notifications.js',
+        'js/support.js',
+        'js/app.js'
+      ];
+      var head = document.head;
+      scripts.forEach(function(src) {
+        var s = document.createElement('script');
+        s.async = false;
+        s.src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'v=' + v;
+        head.appendChild(s);
+      });
+    })();
+  </script>
 </body>
 </html>

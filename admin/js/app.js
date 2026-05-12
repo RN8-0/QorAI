@@ -161,7 +161,7 @@ function showView(name){
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='prompts')loadAiPromptManager();
-  if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories()}
+  if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories().catch(()=>{})}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
   if(name==='support')initSupportInbox({ forceReload: true });
