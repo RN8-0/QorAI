@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260512d-url-guard-fix';
+const SCRAPER_BUILD = '20260512e-category-pages';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -131,38 +131,6 @@ function findCategoryByGeizhalsUrl(url) {
     return null;
   } catch { return null; }
 
-}
-
-const CATEGORY_RULES = {
-  smartphones: { include: ['iphone', 'galaxy s', 'pixel', 'smartphone', 'handy'], exclude: ['powerbank', 'netzteil', 'grafikkarte'] },
-  tablets: { include: ['ipad', 'tablet', 'galaxy tab', 'matepad', 'xiaomi pad', 'surface pro'], exclude: ['powerbank', 'netzteil', 'grafikkarte'] },
-  smartwatches: { include: ['watch', 'garmin', 'forerunner', 'fenix', 'pace', 'smartwatch'], exclude: ['powerbank', 'grafikkarte'] },
-  powerbanks: { include: ['powerbank', 'power bank', 'mah', 'akku-typ', 'kapazität'], exclude: ['grafikkarte', 'geforce', 'radeon', 'netzteil'] },
-  gpus: { include: ['grafikkarte', 'graphics card', 'geforce', 'rtx', 'gtx', 'radeon', 'rx ', 'arc ', 'gddr', 'gpu', 'nvidia', 'amd'], exclude: ['powerbank', 'power bank', 'mah', 'akku', 'netzteil', 'smartphone', 'tablet', 'watch'] },
-  psu: { include: ['netzteil', 'power supply', 'atx', 'watt', '80 plus', 'pcie'], exclude: ['powerbank', 'grafikkarte', 'smartphone'] },
-  cpus: { include: ['prozessor', 'cpu', 'ryzen', 'core i', 'threadripper', 'lga', 'am5', 'am4'], exclude: ['powerbank', 'grafikkarte'] },
-  ram: { include: ['ddr4', 'ddr5', 'arbeitsspeicher', 'ram', 'dimm', 'so-dimm'], exclude: ['powerbank', 'grafikkarte'] },
-  ssd: { include: ['ssd', 'nvme', 'm.2', 'sata', 'speicherkapazität'], exclude: ['powerbank', 'grafikkarte'] },
-  motherboards: { include: ['mainboard', 'motherboard', 'am5', 'lga', 'chipsatz', 'b650', 'x670', 'z790'], exclude: ['powerbank', 'grafikkarte'] },
-  cases: { include: ['gehäuse', 'gehaeuse', 'case', 'formfaktor'], exclude: ['powerbank', 'grafikkarte'] },
-  coolers: { include: ['kühler', 'kuehler', 'cooler', 'radiator', 'lüfter', 'aio'], exclude: ['powerbank', 'grafikkarte'] },
-  monitors: { include: ['monitor', 'display', 'auflösung', 'bildwiederholfrequenz', 'hz'], exclude: ['powerbank', 'smartphone'] },
-  tvs: { include: ['fernseher', 'tv', 'oled', 'qled', 'diagonale'], exclude: ['powerbank', 'grafikkarte'] },
-};
-
-function productMatchesCategory(product, categoryId) {
-  if (!product || !categoryId) return true;
-  const specs = product.specs && typeof product.specs === 'object' ? product.specs : {};
-  const haystack = [
-    product.sourceUrl,
-    product.name,
-    Object.keys(specs).join(' '),
-    Object.values(specs).join(' '),
-  ].join(' ').toLowerCase();
-  const rule = CATEGORY_RULES[categoryId];
-  if (!rule) return true;
-  if (rule.exclude?.some(term => haystack.includes(term))) return false;
-  return rule.include.some(term => haystack.includes(term));
 }
 
 function productUrlMatchesCategory(url, categoryId) {
@@ -610,48 +578,45 @@ function extractImages(doc, productSlug) {
     return url.replace(/\/[ksmtc]_/g, '/-n.webp');
   }
 
-  // Find the FIRST product image from gzhls.at/pix/
-  // Priority: og:image > first img[src*="gzhls.at/pix/"]
-  let firstImage = '';
+  const images = [];
+  const seen = new Set();
+  function addImg(url) {
+    if (!url) return;
+    const u = upgradeSize(url.trim().split(/[?#]/)[0]);
+    if (!seen.has(u)) {
+      seen.add(u);
+      images.push(u);
+    }
+  }
 
-  // 1. Try og:image first
+  // 1. og:image
   const ogImg = doc.querySelector('meta[property="og:image"]');
   if (ogImg) {
     const content = ogImg.getAttribute('content');
-    if (content && content.includes('gzhls.at/pix')) {
-      firstImage = upgradeSize(content.trim().split(/[?#]/)[0]);
-    }
+    if (content && content.includes('gzhls.at/pix')) addImg(content);
   }
 
-  // 2. Fallback to first img with gzhls.at/pix/
-  if (!firstImage) {
-    const img = doc.querySelector('img[src*="gzhls.at/pix/"]');
-    if (img) {
-      const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
-      if (src) firstImage = upgradeSize(src.trim().split(/[?#]/)[0]);
-    }
-  }
-
-  // 3. Fallback to any img with gzhls.at/pix in any attribute
-  if (!firstImage) {
-    const allImgs = doc.querySelectorAll('img');
-    for (const img of allImgs) {
-      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
-        const val = img.getAttribute(attr);
-        if (val && val.includes('gzhls.at/pix')) {
-          firstImage = upgradeSize(val.trim().split(/[?#]/)[0]);
-          break;
-        }
+  // 2. All img tags with gzhls.at/pix/ (product gallery images)
+  doc.querySelectorAll('img').forEach(img => {
+    for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
+      const val = img.getAttribute(attr);
+      if (val && val.includes('gzhls.at/pix')) {
+        addImg(val);
+        break;
       }
-      if (firstImage) break;
     }
-  }
+  });
 
-  return firstImage;
+  // 3. Links to larger images (gallery anchors)
+  doc.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href) addImg(href);
+  });
+
+  return images;
 }
 
 async function fetchGalleryImages(productSlug) {
-  // No longer needed - we only use the first image
   return [];
 }
 
@@ -995,8 +960,8 @@ async function scrapeProductDetail(html, url, categoryId) {
   const techScore = extractTechScore(doc);
 
   // ── Images ──
-  // Single image: first product image from gzhls.at/pix/ in -n.webp format
-  const imageUrl = extractImages(doc, productSlug);
+  // All product images from gzhls.at/pix/ in -n.webp format
+  const images = extractImages(doc, productSlug);
 
   // ── Variant Group ──
   const variantGroup = normalizeVariantGroupFromSlug(productSlug);
@@ -1009,8 +974,8 @@ async function scrapeProductDetail(html, url, categoryId) {
     category,
     source: 'geizhals.eu',
     sourceUrl: url,
-    imageUrl: imageUrl || undefined,
-    images: imageUrl ? [imageUrl] : [],
+    imageUrl: images[0] || undefined,
+    images,
     specs: rawSpecs,          // German specs
     specSections: rawSections, // German sections
     keySpecs: rawKeySpecs,
@@ -1109,165 +1074,87 @@ function extractProductLinksFromDoc(doc, html) {
   return results;
 }
 
-async function collectProductUrls(categoryPath, maxPages = 50) {
-  // Since geizhals.eu search/category pages are blocked by Cloudflare,
-  // we use "similar products" chain discovery from a seed product.
-  // Map category to a known seed product URL.
+async function collectProductUrls(categoryPath, maxProducts = 200) {
   const catDef = (typeof QorAiCategories !== 'undefined')
     ? QorAiCategories.getAll().find(c => c.id === categoryPath || c.geizhalsSlug === categoryPath)
     : null;
-  const searchTerm = catDef ? catDef.name : categoryPath;
   const categoryId = catDef?.id || categoryPath;
   const geizhalsSlug = catDef?.geizhalsSlug || categoryPath;
 
-  slog(`Collecting product URLs via similar-products chain: "${searchTerm}"`);
-
-  // Seed products by category - these are well-known products that should exist
-  const SEED_PRODUCTS = {
-    'smartphones': 'https://geizhals.eu/apple-iphone-16-128gb-schwarz-a3296281.html',
-    'tablets': 'https://geizhals.eu/apple-ipad-air-11-2025-128gb-space-grau-a3458383.html',
-    'laptops': 'https://geizhals.eu/apple-macbook-air-13-2024-m3-8gb-ram-256gb-ssd-midnight-a3015631.html',
-    'desktops': 'https://geizhals.eu/apple-mac-mini-2024-m4-16gb-ram-256gb-ssd-a3015640.html',
-    'cpus': 'https://geizhals.eu/intel-core-i9-14900k-a3015650.html',
-    'gpus': 'https://geizhals.eu/gigabyte-geforce-rtx-5080-gaming-oc-16g-a3353269.html',
-    'ram': 'https://geizhals.eu/corsair-vengeance-32gb-ddr5-5600-a3015670.html',
-    'ssd': 'https://geizhals.eu/samsung-990-pro-1tb-a3015680.html',
-    'motherboards': 'https://geizhals.eu/asus-rog-strix-b650e-f-gaming-wifi-a2824307.html',
-    'psu': 'https://geizhals.eu/be-quiet-straight-power-12-850w-atx-3-0-bn336-a2884016.html',
-    'cases': 'https://geizhals.eu/fractal-design-north-charcoal-black-tg-dark-fd-c-nor1c-02-a2861685.html',
-    'coolers': 'https://geizhals.eu/arctic-liquid-freezer-iii-360-acfre00136a-a3128757.html',
-    'headphones': 'https://geizhals.eu/sony-wh-1000xm5-schwarz-a3015690.html',
-    'soundbars': 'https://geizhals.eu/samsung-hw-q995gc-a2910894.html',
-    'microphones': 'https://geizhals.eu/rode-nt-usb-mini-a2221815.html',
-    'smartwatches': 'https://geizhals.eu/apple-watch-series-10-gps-46mm-aluminium-diamantschwarz-a3015700.html',
-    'smart-rings': 'https://geizhals.eu/samsung-galaxy-ring-titanium-black-a3244177.html',
-    'cameras': 'https://geizhals.eu/sony-alpha-7-iv-a3015710.html',
-    'action-cameras': 'https://geizhals.eu/dji-osmo-action-4-standard-combo-a2992034.html',
-    'ip-cameras': 'https://geizhals.eu/reolink-rlc-810a-a2478796.html',
-    'dashcams': 'https://geizhals.eu/garmin-dash-cam-mini-2-a2516357.html',
-    'gimbals': 'https://geizhals.eu/dji-osmo-mobile-6-a2825965.html',
-    'tripods': 'https://geizhals.eu/manfrotto-befree-advanced-mkbfrta4bk-bh-a1827088.html',
-    'lenses': 'https://geizhals.eu/sony-fe-24-70mm-2-8-gm-ii-sel2470gm2-a2711925.html',
-    'consoles': 'https://geizhals.eu/sony-playstation-5-slim-a3015720.html',
-    'gamepads': 'https://geizhals.eu/microsoft-xbox-wireless-controller-carbon-black-a2363416.html',
-    'vr-headsets': 'https://geizhals.eu/meta-quest-3-128gb-a3033464.html',
-    'tvs': 'https://geizhals.eu/lg-oled55c47la-a3015730.html',
-    'monitors': 'https://geizhals.eu/dell-ultrasharp-u2723qe-a3015740.html',
-    'projectors': 'https://geizhals.eu/benq-w2710i-a2914901.html',
-    'media-players': 'https://geizhals.eu/apple-tv-4k-2022-128gb-mn893fd-a2818262.html',
-    'keyboards': 'https://geizhals.eu/logitech-g-pro-x-a3015750.html',
-    'mice': 'https://geizhals.eu/logitech-g-pro-x-superlight-a3015760.html',
-    'printers': 'https://geizhals.eu/brother-mfc-l3770cdw-a1897282.html',
-    'webcams': 'https://geizhals.eu/logitech-brio-4k-ultra-hd-pro-webcam-a1565066.html',
-    'routers': 'https://geizhals.eu/asus-rt-ax86u-pro-a3015770.html',
-    'robot-vacuums': 'https://geizhals.eu/roborock-s8-pro-ultra-schwarz-a2908213.html',
-    'powerbanks': 'https://geizhals.eu/anker-737-power-bank-24000mah-a3015780.html',
-    'e-readers': 'https://geizhals.eu/amazon-kindle-paperwhite-2024-16gb-schwarz-a3297997.html',
-    'speakers': 'https://geizhals.eu/jbl-flip-6-schwarz-a3015790.html',
-    'drones': 'https://geizhals.eu/dji-mini-4-pro-a3015800.html',
-  };
-
-  const seedUrl = SEED_PRODUCTS[categoryId] || `${GEIZHALS_BASE}/${geizhalsSlug}/`;
-  slog(`Using seed product: ${seedUrl}`, 'info');
+  slog(`Collecting product URLs from category: "${categoryId}" (geizhals: ${geizhalsSlug})`);
 
   const allItems = [];
   const seenUrls = new Set();
-  const queue = [seedUrl];
-  let iterations = 0;
-  const maxIterations = maxPages * 10;
 
-  while (queue.length > 0 && allItems.length < maxPages * 10 && !scraperAbort && iterations < maxIterations) {
-    iterations++;
-    const url = normalizeGeizhalsProductUrl(queue.shift());
-    if (!url) continue;
-    // geizhals.eu product URLs are /product-name-a1234567.html (no category segment).
-    // Skip URL-level category guard for product pages; category is verified later
-    // by scrapeProductDetail + productMatchesCategory using specs/name.
-    const isProductUrl = /-[av]\d+\.html$/i.test(url);
-    if (!isProductUrl && !productUrlMatchesCategory(url, categoryId)) {
-      slog(`  → Skipped URL outside ${geizhalsSlug}: ${url}`, 'warn');
-      continue;
+  // Build category listing URL. Geizhals uses ?cat=<slug> for category pages.
+  const baseCategoryUrl = `${GEIZHALS_BASE}/?cat=${encodeURIComponent(geizhalsSlug)}`;
+
+  // Try pagination parameters: pg, p, page, seite
+  const pageParams = ['pg', 'p', 'page', 'seite'];
+  let currentPage = 1;
+  let consecutiveEmpty = 0;
+  const maxConsecutiveEmpty = 2;
+  const maxPages = Math.ceil(maxProducts / 20) + 3;
+
+  while (currentPage <= maxPages && allItems.length < maxProducts && !scraperAbort) {
+    let pageUrl = baseCategoryUrl;
+    if (currentPage > 1) {
+      // Rotate through pagination params if one fails
+      const param = pageParams[(currentPage - 2) % pageParams.length];
+      pageUrl = `${baseCategoryUrl}&${param}=${currentPage}`;
     }
-    if (seenUrls.has(url)) continue;
-    seenUrls.add(url);
-
-    updateProgress(allItems.length, maxPages * 10, 'Discovering');
 
     try {
-      slog(`Fetching: ${url.substring(0, 80)}...`, 'info');
-      const html = await proxyFetch(url);
-      
-      if (!html) {
-        slog(`  → Empty response from proxy`, 'warn');
-        continue;
-      }
-      
-      if (isChallengePage(html)) {
-        slog(`  → Challenge page detected, skipping`, 'warn');
-        continue;
+      slog(`Fetching category page ${currentPage}: ${pageUrl.substring(0, 90)}...`, 'info');
+      const html = await proxyFetch(pageUrl);
+
+      if (!html || isChallengePage(html)) {
+        slog(`Page ${currentPage} empty/challenge, stopping pagination.`, 'warn');
+        break;
       }
 
       const doc = parseHTML(html);
+      const links = extractProductLinksFromDoc(doc, html);
 
-      // Extract product info to verify this is a valid product page
-      const h1 = doc.querySelector('h1');
-      if (!h1) {
-        slog(`  → No h1 found, not a product page`, 'warn');
-        continue;
-      }
-
-      const name = h1.textContent.trim();
-      if (!name || name.length < 3) {
-        slog(`  → Invalid product name`, 'warn');
-        continue;
-      }
-
-      const probe = await scrapeProductDetail(html, url, categoryId);
-      if (!probe || !probe.specsCount || !productMatchesCategory(probe, categoryId)) {
-        slog(`  → Skipped mismatch for ${searchTerm}: ${name.substring(0, 60)}`, 'warn');
-      } else {
-        allItems.push({ url, techScore: null });
-        slog(`Discovered: ${name.substring(0, 60)}`, 'success');
-      }
-
-      // Extract similar products from "Top-10" section
-      const htmlStr = html;
-      const top10Start = htmlStr.indexOf('Top-10');
-      if (top10Start !== -1) {
-        const section = htmlStr.substring(top10Start, top10Start + 15000);
-        const linkRe = /href=["']([^"']*-[av]\d+\.html)["']/gi;
-        let m;
-        let newLinks = 0;
-        while ((m = linkRe.exec(section)) !== null) {
-          let href = m[1];
-          if (href.startsWith('https://geizhals.eu/') || href.startsWith('https://geizhals.at/') || href.startsWith('https://geizhals.de/')) {
-            try { href = new URL(href).pathname; } catch { continue; }
-          }
-          if (!href.startsWith('/')) href = '/' + href;
-          const fullUrl = normalizeGeizhalsProductUrl(GEIZHALS_BASE + href);
-          // Product URLs have no category segment on geizhals.eu; defer category check to scrape time.
-          const isProdUrl = /-[av]\d+\.html$/i.test(fullUrl);
-          if (!isProdUrl && !productUrlMatchesCategory(fullUrl, categoryId)) continue;
-          if (!seenUrls.has(fullUrl) && !queue.includes(fullUrl)) {
-            queue.push(fullUrl);
-            newLinks++;
-          }
+      let newCount = 0;
+      for (const link of links) {
+        if (!seenUrls.has(link.url)) {
+          seenUrls.add(link.url);
+          allItems.push(link);
+          newCount++;
         }
-        if (newLinks > 0) {
-          slog(`  +${newLinks} similar products queued (${queue.length} total in queue)`, 'info');
+      }
+
+      updateProgress(allItems.length, maxProducts, 'Discovering');
+      slog(`Page ${currentPage}: +${newCount} products (${allItems.length} total)`, newCount > 0 ? 'success' : 'warn');
+
+      if (newCount === 0) {
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= maxConsecutiveEmpty) {
+          slog(`No products on ${consecutiveEmpty} consecutive pages, stopping.`, 'info');
+          break;
         }
       } else {
-        slog(`  → No Top-10 section found`, 'warn');
+        consecutiveEmpty = 0;
       }
 
-      await sleep(1500 + Math.random() * 1500);
+      // Also look for explicit pagination links to confirm there are more pages
+      const hasNext = doc.querySelector('a[href*="pg="], a[href*="&p="], a[href*="page="], a[href*="seite="], .pagination a, .seiten a');
+      if (!hasNext && newCount === 0) {
+        slog(`No pagination / no products, stopping.`, 'info');
+        break;
+      }
+
+      await sleep(2000 + Math.random() * 1500);
+      currentPage++;
     } catch (e) {
-      slog(`Error discovering from ${url}: ${e.message}`, 'error');
+      slog(`Error on page ${currentPage}: ${e.message}`, 'error');
+      break;
     }
   }
 
   slog(`URL collection complete: ${allItems.length} unique product URLs`, 'success');
-  return allItems;
+  return allItems.slice(0, maxProducts);
 }
 
 // ═══════════════════════════════════════
@@ -1321,12 +1208,6 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
           results.skipped++;
           continue;
         }
-        if (!productMatchesCategory(product, categoryId)) {
-          slog(`  → Skipped (category mismatch): ${product.name}`, 'warn');
-          results.skipped++;
-          continue;
-        }
-
         // Use listing-page tech score if page didn't have one
         if (!product.techScore && item.techScore) {
           product.techScore = item.techScore;
@@ -1463,7 +1344,7 @@ async function startBulkScrape() {
   try {
     // Phase 1: Collect product URLs via similar-products chain discovery
     slog('── Phase 1: Collecting product URLs ──', 'info');
-    const urlItems = await collectProductUrls(catValue, Math.ceil(maxProducts / 10));
+    const urlItems = await collectProductUrls(catValue, maxProducts);
     slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
     if (scraperAbort) {
@@ -1876,7 +1757,7 @@ async function startInventoryScan() {
   slog(`Existing products in DB: ${existingUrls.size}`);
 
   // Crawl category pages
-  const urlItems = await collectProductUrls(geizhalsPath, pages);
+  const urlItems = await collectProductUrls(geizhalsPath, pages * 25);
 
   if (scraperAbort) {
     slog('Scan stopped by user', 'warn');
