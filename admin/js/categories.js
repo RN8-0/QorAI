@@ -1,6 +1,6 @@
 /**
  * Qor AI Category & Brand Definitions
- * Aligned with geizhals.eu technology categories
+ * Real geizhals.eu ?cat= IDs discovered from homepage
  */
 
 window.QorAiCategories = {
@@ -8,58 +8,33 @@ window.QorAiCategories = {
     {
       name: 'Hardware',
       categories: [
-        { id: 'grafikkarten', name: 'Grafikkarten (GPUs)', geizhalsSlug: 'gra16_512' },
-        { id: 'monitore', name: 'Monitore', geizhalsSlug: 'monitore' },
-        { id: 'festplatten-ssds', name: 'Festplatten & SSDs', geizhalsSlug: 'festplatten' },
-        { id: 'notebooks', name: 'Notebooks', geizhalsSlug: 'notebooks' },
-        { id: 'cpus', name: 'Prozessoren (CPUs)', geizhalsSlug: 'cpu' },
+        { id: 'gra16_512', name: 'Grafikkarten (GPUs)', geizhalsSlug: 'gra16_512' },
+        { id: 'monlcd19wide', name: 'Monitore', geizhalsSlug: 'monlcd19wide' },
+        { id: 'ramddr3', name: 'Arbeitsspeicher (RAM)', geizhalsSlug: 'ramddr3' },
         { id: 'mainboards', name: 'Mainboards', geizhalsSlug: 'mainboards' },
-        { id: 'eingabegeraete', name: 'Eingabegeräte', geizhalsSlug: 'eingabegeraete' },
-        { id: 'gehaeuse', name: 'Gehäuse', geizhalsSlug: 'gehaeuse' },
-        { id: 'tablets', name: 'Tablets', geizhalsSlug: 'tablets' },
-        { id: 'arbeitsspeicher', name: 'Arbeitsspeicher (RAM)', geizhalsSlug: 'ramddr3' },
-        { id: 'netzwerk', name: 'Netzwerk', geizhalsSlug: 'netzwerk' },
-        { id: 'luftkuehlung', name: 'Luftkühlung', geizhalsSlug: 'luftkuehlung' },
-        { id: 'netzteile-usv', name: 'Netzteile & USV', geizhalsSlug: 'netzteile' },
-        { id: 'systeme', name: 'Systeme', geizhalsSlug: 'systeme' },
-        { id: 'wasserkuehlung', name: 'Wasserkühlung', geizhalsSlug: 'wasserkuehlung' },
+        { id: 'gehps', name: 'Netzteile (PSU)', geizhalsSlug: 'gehps' },
+        { id: 'gehatx', name: 'PC-Gehäuse', geizhalsSlug: 'gehatx' },
       ]
     },
     {
-      name: 'Telefon',
+      name: 'Computer & Mobile',
       categories: [
-        { id: 'handys', name: 'Handy & Smartphones', geizhalsSlug: 'handys' },
-        { id: 'smartwatches', name: 'Smartwatches', geizhalsSlug: 'smartwatches' },
+        { id: 'nb', name: 'Notebooks', geizhalsSlug: 'nb' },
+        { id: 'nbtabl', name: 'Tablets', geizhalsSlug: 'nbtabl' },
+        { id: 'umtsover', name: 'Handy & Smartphones', geizhalsSlug: 'umtsover' },
+        { id: 'uhrpm', name: 'Smartwatches', geizhalsSlug: 'uhrpm' },
       ]
     },
     {
       name: 'Video, Foto & TV',
       categories: [
-        { id: 'fernseher', name: 'Fernseher', geizhalsSlug: 'fernseher' },
-        { id: 'fotografie', name: 'Fotografie', geizhalsSlug: 'fotografie' },
-        { id: 'foto-video-zubehoer', name: 'Foto-/Videozubehör', geizhalsSlug: 'foto-video-zubehoer' },
+        { id: 'tvlcd', name: 'Fernseher', geizhalsSlug: 'tvlcd' },
       ]
     },
     {
-      name: 'Audio & HiFi',
+      name: 'Audio',
       categories: [
-        { id: 'kopfhoerer-headsets', name: 'Kopfhörer & Headsets', geizhalsSlug: 'kopfhoerer' },
-        { id: 'hifi-komponenten', name: 'HiFi-Komponenten', geizhalsSlug: 'hifi-komponenten' },
-        { id: 'professional-audio', name: 'Professional Audio', geizhalsSlug: 'professional-audio' },
-      ]
-    },
-    {
-      name: 'Spiele & Konsolen',
-      categories: [
-        { id: 'playstation-5', name: 'PlayStation 5 (PS5)', geizhalsSlug: 'playstation-5' },
-        { id: 'nintendo-switch', name: 'Nintendo Switch', geizhalsSlug: 'nintendo-switch' },
-        { id: 'xbox-series', name: 'Xbox Series X & S', geizhalsSlug: 'xbox-series' },
-      ]
-    },
-    {
-      name: 'Büro & Schule',
-      categories: [
-        { id: 'drucker-scanner', name: 'Drucker & Scanner', geizhalsSlug: 'drucker' },
+        { id: 'sphd', name: 'Kopfhörer & Headsets', geizhalsSlug: 'sphd' },
       ]
     },
   ],
