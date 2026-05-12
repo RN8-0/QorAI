@@ -114,12 +114,35 @@ async function pbSetDoc(collection, id, data) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const clean = _clean(data);
-  const existing = await _findRecord(collection, id, clean);
+  let existing;
+  try {
+    existing = await _findRecord(collection, id, clean);
+  } catch (e) {
+    console.error('[pbSetDoc] _findRecord failed:', { collection, id, error: e.message, status: e.status, data: e.data });
+    throw e;
+  }
   let record;
-  if (existing) {
-    record = await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
-  } else {
-    record = await getPb().collection(collection).create(_prepareCreateData(collection, id, clean), { $autoCancel: false });
+  try {
+    if (existing) {
+      record = await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
+    } else {
+      const createData = _prepareCreateData(collection, id, clean);
+      record = await getPb().collection(collection).create(createData, { $autoCancel: false });
+    }
+  } catch (e) {
+    // Log full error details for debugging
+    console.error('[pbSetDoc] Save failed:', {
+      collection,
+      id,
+      isUpdate: !!existing,
+      status: e.status,
+      message: e.message,
+      data: e.data,
+      responseData: e.response?.data,
+      sentFields: Object.keys(clean).join(', '),
+      sentSizes: Object.entries(clean).map(([k,v]) => `${k}:${typeof v === 'string' ? v.length : typeof v === 'object' ? JSON.stringify(v).length : String(v).length}`).join(' | '),
+    });
+    throw e;
   }
   _syncToTypesense(collection, record);
   return record;
@@ -279,6 +302,10 @@ function _clean(data) {
   // Remove undefined/null values (PocketBase rejects null on most field types)
   for (const [k, v] of Object.entries(clean)) {
     if (v === undefined || v === null) delete clean[k];
+    // Remove empty strings from URL fields (PocketBase rejects empty URL)
+    if (v === '' && (k === 'imageUrl' || k === 'sourceUrl' || k === 'imageURL' || k === 'websiteUrl' || k === 'website' || k === 'logo' || k === 'affiliateUrl')) {
+      delete clean[k];
+    }
     // Convert FieldValue sentinels
     if (v && v._methodName === 'serverTimestamp') clean[k] = new Date().toISOString();
   }

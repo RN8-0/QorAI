@@ -917,7 +917,7 @@ async function scrapeProductDetail(html, url, categoryId) {
     category,
     source: 'geizhals.eu',
     sourceUrl: url,
-    imageUrl: imageUrl || '',
+    imageUrl: imageUrl || undefined,
     images: imageUrl ? [imageUrl] : [],
     specs: rawSpecs,          // German specs
     specSections: rawSections, // German sections
