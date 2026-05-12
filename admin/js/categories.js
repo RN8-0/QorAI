@@ -1,6 +1,6 @@
 /**
  * Qor AI Category & Brand Definitions
- * Real geizhals.eu ?cat= IDs discovered from site + verified slugs
+ * geizhalsSlug values are search terms for ?fs= (geizhals search)
  */
 
 window.QorAiCategories = {
@@ -8,69 +8,68 @@ window.QorAiCategories = {
     {
       name: 'Hardware',
       categories: [
-        { id: 'gra16_512', name: 'Grafikkarten (GPUs)', geizhalsSlug: 'gra16_512' },
-        { id: 'monlcd19wide', name: 'Monitore', geizhalsSlug: 'monlcd19wide' },
-        { id: 'ramddr3', name: 'Arbeitsspeicher (RAM)', geizhalsSlug: 'ramddr3' },
-        { id: 'mainboards', name: 'Mainboards', geizhalsSlug: 'mainboards' },
-        { id: 'gehps', name: 'Netzteile (PSU)', geizhalsSlug: 'gehps' },
-        { id: 'gehatx', name: 'PC-Gehäuse', geizhalsSlug: 'gehatx' },
+        { id: 'grafikkarten', name: 'Grafikkarten (GPUs)', geizhalsSlug: 'grafikkarte' },
+        { id: 'monitore', name: 'Monitore', geizhalsSlug: 'monitor' },
+        { id: 'arbeitsspeicher', name: 'Arbeitsspeicher (RAM)', geizhalsSlug: 'ram' },
+        { id: 'mainboards', name: 'Mainboards', geizhalsSlug: 'mainboard' },
+        { id: 'netzteile', name: 'Netzteile (PSU)', geizhalsSlug: 'netzteil' },
+        { id: 'gehaeuse', name: 'PC-Gehäuse', geizhalsSlug: 'gehäuse' },
         { id: 'cpus', name: 'Prozessoren (CPUs)', geizhalsSlug: 'cpu' },
-        { id: 'ssds', name: 'Festplatten & SSDs', geizhalsSlug: 'festplatten' },
-        { id: 'eingabegeraete', name: 'Eingabegeräte', geizhalsSlug: 'eingabegeraete' },
-        { id: 'netzwerk', name: 'Netzwerk', geizhalsSlug: 'netzwerk' },
-        { id: 'luftkuehlung', name: 'Luftkühlung', geizhalsSlug: 'luftkuehlung' },
-        { id: 'wasserkuehlung', name: 'Wasserkühlung', geizhalsSlug: 'wasserkuehlung' },
-        { id: 'systeme', name: 'Systeme', geizhalsSlug: 'systeme' },
+        { id: 'ssds', name: 'Festplatten & SSDs', geizhalsSlug: 'ssd' },
+        { id: 'eingabegeraete', name: 'Eingabegeräte', geizhalsSlug: 'tastatur' },
+        { id: 'netzwerk', name: 'Netzwerk', geizhalsSlug: 'router' },
+        { id: 'luftkuehlung', name: 'Luftkühlung', geizhalsSlug: 'lüfter' },
+        { id: 'wasserkuehlung', name: 'Wasserkühlung', geizhalsSlug: 'wasserkühlung' },
+        { id: 'systeme', name: 'Systeme', geizhalsSlug: 'pc' },
       ]
     },
     {
       name: 'Computer & Mobile',
       categories: [
-        { id: 'nb', name: 'Notebooks', geizhalsSlug: 'nb' },
-        { id: 'nbtabl', name: 'Tablets', geizhalsSlug: 'nbtabl' },
-        { id: 'umtsover', name: 'Handy & Smartphones', geizhalsSlug: 'umtsover' },
-        { id: 'uhrpm', name: 'Smartwatches', geizhalsSlug: 'uhrpm' },
+        { id: 'notebooks', name: 'Notebooks', geizhalsSlug: 'notebook' },
+        { id: 'tablets', name: 'Tablets', geizhalsSlug: 'tablet' },
+        { id: 'handys', name: 'Handy & Smartphones', geizhalsSlug: 'handy' },
+        { id: 'smartwatches', name: 'Smartwatches', geizhalsSlug: 'smartwatch' },
       ]
     },
     {
       name: 'Video, Foto & TV',
       categories: [
-        { id: 'tvlcd', name: 'Fernseher', geizhalsSlug: 'tvlcd' },
-        { id: 'fotografie', name: 'Fotografie', geizhalsSlug: 'fotografie' },
-        { id: 'foto-video-zubehoer', name: 'Foto-/Videozubehör', geizhalsSlug: 'foto-video-zubehoer' },
-        { id: 'projektoren', name: 'Projektoren', geizhalsSlug: 'projektoren' },
+        { id: 'fernseher', name: 'Fernseher', geizhalsSlug: 'fernseher' },
+        { id: 'fotografie', name: 'Fotografie', geizhalsSlug: 'kamera' },
+        { id: 'projektoren', name: 'Projektoren', geizhalsSlug: 'beamer' },
       ]
     },
     {
       name: 'Audio & HiFi',
       categories: [
-        { id: 'sphd', name: 'Kopfhörer & Headsets', geizhalsSlug: 'sphd' },
+        { id: 'kopfhoerer', name: 'Kopfhörer & Headsets', geizhalsSlug: 'kopfhörer' },
         { id: 'lautsprecher', name: 'Lautsprecher', geizhalsSlug: 'lautsprecher' },
-        { id: 'soundbars', name: 'Soundbars', geizhalsSlug: 'soundbars' },
-        { id: 'mikrofone', name: 'Mikrofone', geizhalsSlug: 'mikrofone' },
+        { id: 'soundbars', name: 'Soundbars', geizhalsSlug: 'soundbar' },
+        { id: 'mikrofone', name: 'Mikrofone', geizhalsSlug: 'mikrofon' },
       ]
     },
     {
       name: 'Spiele & Konsolen',
       categories: [
-        { id: 'spielkonsolen', name: 'Spielkonsolen', geizhalsSlug: 'spielkonsolen' },
-        { id: 'gamepads', name: 'Gamepads', geizhalsSlug: 'gamepads' },
+        { id: 'spielkonsolen', name: 'Spielkonsolen', geizhalsSlug: 'konsole' },
+        { id: 'gamepads', name: 'Gamepads', geizhalsSlug: 'gamepad' },
       ]
     },
     {
       name: 'Büro & Schule',
       categories: [
         { id: 'drucker', name: 'Drucker & Scanner', geizhalsSlug: 'drucker' },
-        { id: 'webcams', name: 'Webcams', geizhalsSlug: 'webcams' },
+        { id: 'webcams', name: 'Webcams', geizhalsSlug: 'webcam' },
       ]
     },
     {
       name: 'Smart Home & Zubehör',
       categories: [
         { id: 'saugroboter', name: 'Saugroboter', geizhalsSlug: 'saugroboter' },
-        { id: 'powerbanks', name: 'Powerbanks', geizhalsSlug: 'powerbanks' },
-        { id: 'ebook-reader', name: 'E-Book Reader', geizhalsSlug: 'ebook-reader' },
-        { id: 'drohnen', name: 'Drohnen', geizhalsSlug: 'drohnen' },
+        { id: 'powerbanks', name: 'Powerbanks', geizhalsSlug: 'powerbank' },
+        { id: 'ebook-reader', name: 'E-Book Reader', geizhalsSlug: 'ebook reader' },
+        { id: 'drohnen', name: 'Drohnen', geizhalsSlug: 'drohne' },
       ]
     },
   ],

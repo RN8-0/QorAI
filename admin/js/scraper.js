@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260512h-images-limit';
+const SCRAPER_BUILD = '20260512i-search-fs';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -1086,23 +1086,19 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
   const allItems = [];
   const seenUrls = new Set();
 
-  // Build category listing URL. Geizhals uses ?cat=<slug> for category pages.
-  const baseCategoryUrl = `${GEIZHALS_BASE}/?cat=${encodeURIComponent(geizhalsSlug)}`;
+  // Build search URL. Geizhals search pages (?fs=) bypass category ID issues
+  // and return relevant products for the given slug/term.
+  const baseSearchUrl = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(geizhalsSlug)}`;
 
-  // Try pagination parameters: pg, p, page, seite
-  const pageParams = ['pg', 'p', 'page', 'seite'];
   let currentPage = 1;
   let consecutiveEmpty = 0;
   const maxConsecutiveEmpty = 2;
-  const maxPages = Math.ceil(maxProducts / 20) + 3;
+  const maxPages = Math.ceil(maxProducts / 25) + 3;
 
   while (currentPage <= maxPages && allItems.length < maxProducts && !scraperAbort) {
-    let pageUrl = baseCategoryUrl;
-    if (currentPage > 1) {
-      // Rotate through pagination params if one fails
-      const param = pageParams[(currentPage - 2) % pageParams.length];
-      pageUrl = `${baseCategoryUrl}&${param}=${currentPage}`;
-    }
+    const pageUrl = currentPage === 1
+      ? baseSearchUrl
+      : `${baseSearchUrl}&pg=${currentPage}`;
 
     try {
       slog(`Fetching category page ${currentPage}: ${pageUrl.substring(0, 90)}...`, 'info');
