@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260512g-real-cat-ids';
+const SCRAPER_BUILD = '20260512h-images-limit';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -613,7 +613,7 @@ function extractImages(doc, productSlug) {
     if (href) addImg(href);
   });
 
-  return images;
+  return images.slice(0, 3);
 }
 
 async function fetchGalleryImages(productSlug) {
