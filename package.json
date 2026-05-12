@@ -11,6 +11,8 @@
     "deploy:admin": "node scripts/deploy_coolify_static.js admin",
     "deploy:website": "node scripts/deploy_coolify_static.js website",
     "deploy:web": "node scripts/deploy_coolify_static.js all",
+    "scraper:repair-products-schema": "node scripts/repair_products_schema.js",
+    "scraper:test-pb": "node scripts/test_scraper_pb.js 10",
     "scraper:proxy": "node scripts/scraper-proxy.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
