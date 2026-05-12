@@ -72,7 +72,7 @@ async function _findRecord(collection, identifier, data = {}) {
     const name = String(data.name || '').trim();
     const category = String(data.category || '').trim();
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
-    if (variantGroup) filters.push(`variantGroup="${_escapeFilterValue(variantGroup)}"`);
+    if (variantGroup && category) filters.push(`variantGroup="${_escapeFilterValue(variantGroup)}" && category="${_escapeFilterValue(category)}"`);
     if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
   }
 

@@ -132,6 +132,23 @@ function findCategoryByGeizhalsUrl(url) {
 
 }
 
+const CATEGORY_RULES = {
+  smartphones: { include: ['iphone', 'galaxy s', 'pixel', 'smartphone', 'handy'], exclude: ['powerbank', 'netzteil', 'grafikkarte'] },
+  tablets: { include: ['ipad', 'tablet', 'galaxy tab', 'matepad', 'xiaomi pad', 'surface pro'], exclude: ['powerbank', 'netzteil', 'grafikkarte'] },
+  smartwatches: { include: ['watch', 'garmin', 'forerunner', 'fenix', 'pace', 'smartwatch'], exclude: ['powerbank', 'grafikkarte'] },
+  powerbanks: { include: ['powerbank', 'power bank', 'mah', 'akku-typ', 'kapazität'], exclude: ['grafikkarte', 'geforce', 'radeon', 'netzteil'] },
+  gpus: { include: ['grafikkarte', 'graphics card', 'geforce', 'rtx', 'gtx', 'radeon', 'rx ', 'arc ', 'gddr', 'gpu', 'nvidia', 'amd'], exclude: ['powerbank', 'power bank', 'mah', 'akku', 'netzteil', 'smartphone', 'tablet', 'watch'] },
+  psu: { include: ['netzteil', 'power supply', 'atx', 'watt', '80 plus', 'pcie'], exclude: ['powerbank', 'grafikkarte', 'smartphone'] },
+  cpus: { include: ['prozessor', 'cpu', 'ryzen', 'core i', 'threadripper', 'lga', 'am5', 'am4'], exclude: ['powerbank', 'grafikkarte'] },
+  ram: { include: ['ddr4', 'ddr5', 'arbeitsspeicher', 'ram', 'dimm', 'so-dimm'], exclude: ['powerbank', 'grafikkarte'] },
+  ssd: { include: ['ssd', 'nvme', 'm.2', 'sata', 'speicherkapazität'], exclude: ['powerbank', 'grafikkarte'] },
+  motherboards: { include: ['mainboard', 'motherboard', 'am5', 'lga', 'chipsatz', 'b650', 'x670', 'z790'], exclude: ['powerbank', 'grafikkarte'] },
+  cases: { include: ['gehäuse', 'gehaeuse', 'case', 'formfaktor'], exclude: ['powerbank', 'grafikkarte'] },
+  coolers: { include: ['kühler', 'kuehler', 'cooler', 'radiator', 'lüfter', 'aio'], exclude: ['powerbank', 'grafikkarte'] },
+  monitors: { include: ['monitor', 'display', 'auflösung', 'bildwiederholfrequenz', 'hz'], exclude: ['powerbank', 'smartphone'] },
+  tvs: { include: ['fernseher', 'tv', 'oled', 'qled', 'diagonale'], exclude: ['powerbank', 'grafikkarte'] },
+};
+
 function productMatchesCategory(product, categoryId) {
   if (!product || !categoryId) return true;
   const specs = product.specs && typeof product.specs === 'object' ? product.specs : {};
@@ -141,13 +158,29 @@ function productMatchesCategory(product, categoryId) {
     Object.keys(specs).join(' '),
     Object.values(specs).join(' '),
   ].join(' ').toLowerCase();
-  const rules = {
-    tablets: ['ipad', 'tablet', 'galaxy tab', 'matepad', 'xiaomi pad', 'surface pro'],
-    smartwatches: ['watch', 'garmin', 'forerunner', 'fenix', 'pace', 'smartwatch'],
-    smartphones: ['iphone', 'galaxy s', 'pixel', 'smartphone', 'handy'],
-  };
-  const required = rules[categoryId];
-  return !required || required.some(term => haystack.includes(term));
+  const rule = CATEGORY_RULES[categoryId];
+  if (!rule) return true;
+  if (rule.exclude?.some(term => haystack.includes(term))) return false;
+  return rule.include.some(term => haystack.includes(term));
+}
+
+function productUrlMatchesCategory(url, categoryId) {
+  if (!url || !categoryId) return false;
+  const slug = categorySlugFromUrl(url);
+  const catDef = (typeof QorAiCategories !== 'undefined')
+    ? QorAiCategories.getAll().find(c => c.id === categoryId || c.geizhalsSlug === categoryId)
+    : null;
+  const expected = catDef?.geizhalsSlug || categoryId;
+  return slug === expected;
+}
+
+function normalizeGeizhalsProductUrl(url) {
+  try {
+    const u = new URL(url, GEIZHALS_BASE);
+    return `${GEIZHALS_BASE}${u.pathname}`;
+  } catch {
+    return '';
+  }
 }
 
 
@@ -1086,6 +1119,8 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
     ? QorAiCategories.getAll().find(c => c.id === categoryPath || c.geizhalsSlug === categoryPath)
     : null;
   const searchTerm = catDef ? catDef.name : categoryPath;
+  const categoryId = catDef?.id || categoryPath;
+  const geizhalsSlug = catDef?.geizhalsSlug || categoryPath;
 
   slog(`Collecting product URLs via similar-products chain: "${searchTerm}"`);
 
@@ -1096,7 +1131,7 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
     'laptops': 'https://geizhals.eu/apple-macbook-air-13-2024-m3-8gb-ram-256gb-ssd-midnight-a3015631.html',
     'desktops': 'https://geizhals.eu/apple-mac-mini-2024-m4-16gb-ram-256gb-ssd-a3015640.html',
     'cpus': 'https://geizhals.eu/intel-core-i9-14900k-a3015650.html',
-    'gpus': 'https://geizhals.eu/nvidia-geforce-rtx-4090-a3015660.html',
+    'gpus': 'https://geizhals.eu/gigabyte-geforce-rtx-5080-gaming-oc-16g-a3353269.html',
     'ram': 'https://geizhals.eu/corsair-vengeance-32gb-ddr5-5600-a3015670.html',
     'ssd': 'https://geizhals.eu/samsung-990-pro-1tb-a3015680.html',
     'motherboards': 'https://geizhals.eu/asus-rog-strix-b650e-f-gaming-wifi-a2824307.html',
@@ -1134,7 +1169,7 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
     'drones': 'https://geizhals.eu/dji-mini-4-pro-a3015800.html',
   };
 
-  const seedUrl = SEED_PRODUCTS[categoryPath] || SEED_PRODUCTS['smartphones'];
+  const seedUrl = SEED_PRODUCTS[categoryId] || `${GEIZHALS_BASE}/${geizhalsSlug}/`;
   slog(`Using seed product: ${seedUrl}`, 'info');
 
   const allItems = [];
@@ -1145,7 +1180,11 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
 
   while (queue.length > 0 && allItems.length < maxPages * 10 && !scraperAbort && iterations < maxIterations) {
     iterations++;
-    const url = queue.shift();
+    const url = normalizeGeizhalsProductUrl(queue.shift());
+    if (!url || (!productUrlMatchesCategory(url, categoryId) && /-[av]\d+\.html$/i.test(url))) {
+      slog(`  → Skipped URL outside ${geizhalsSlug}: ${url}`, 'warn');
+      continue;
+    }
     if (seenUrls.has(url)) continue;
     seenUrls.add(url);
 
@@ -1180,16 +1219,13 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
         continue;
       }
 
-      // Check for specs
-      const hasSpecs = doc.querySelector('dl.specs-grid') !== null;
-      if (!hasSpecs) {
-        slog(`  → No specs found, skipping`, 'warn');
-        continue;
+      const probe = await scrapeProductDetail(html, url, categoryId);
+      if (!probe || !probe.specsCount || !productMatchesCategory(probe, categoryId)) {
+        slog(`  → Skipped mismatch for ${searchTerm}: ${name.substring(0, 60)}`, 'warn');
+      } else {
+        allItems.push({ url, techScore: null });
+        slog(`Discovered: ${name.substring(0, 60)}`, 'success');
       }
-
-      // Add to results
-      allItems.push({ url, techScore: null });
-      slog(`Discovered: ${name.substring(0, 60)}`, 'success');
 
       // Extract similar products from "Top-10" section
       const htmlStr = html;
@@ -1205,7 +1241,8 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
             try { href = new URL(href).pathname; } catch { continue; }
           }
           if (!href.startsWith('/')) href = '/' + href;
-          const fullUrl = GEIZHALS_BASE + href;
+          const fullUrl = normalizeGeizhalsProductUrl(GEIZHALS_BASE + href);
+          if (!productUrlMatchesCategory(fullUrl, categoryId)) continue;
           if (!seenUrls.has(fullUrl) && !queue.includes(fullUrl)) {
             queue.push(fullUrl);
             newLinks++;
@@ -1292,7 +1329,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
 
         // Save to PocketBase
         const clean = prepareProductPayload(product);
-        const saved = await pbSetDoc('products', clean.slug || clean.id, clean);
+        const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
         window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
         results.added++;
         errorStreak = 0;
@@ -1497,7 +1534,8 @@ async function scrapeByUrl() {
 
       try {
         const clean = prepareProductPayload(product);
-        await pbSetDoc('products', clean.slug || clean.id, clean);
+        const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
         slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};
@@ -1549,7 +1587,8 @@ async function scrapeByUrl() {
 
       try {
         const clean = prepareProductPayload(product);
-        await pbSetDoc('products', clean.slug || clean.id, clean);
+        const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
         slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
       } catch(saveErr) {
         const details = saveErr.response?.data || saveErr.data || {};

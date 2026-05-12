@@ -1051,11 +1051,11 @@ let _productRefreshTimer=null;
 const PER=50;
 
 function productListKey(p){
-  return String(p?.id||p?.slug||p?.sourceUrl||`${p?.category||''}:${p?.name||''}`).toLowerCase().trim();
+  return String(p?.sourceUrl||p?.id||p?.slug||`${p?.category||''}:${p?.name||''}`).toLowerCase().trim();
 }
 
 function productDuplicateKey(p){
-  return String(p?.variantGroup||p?.slug||p?.sourceUrl||`${p?.category||''}:${p?.name||''}`)
+  const base=String(p?.name||p?.variantGroup||p?.slug||'')
     .toLowerCase()
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/g,'')
     .replace(/\b\d+\s*\/\s*\d+\b/g,'')
@@ -1064,29 +1064,29 @@ function productDuplicateKey(p){
     .replace(/[^a-z0-9]+/g,'-')
     .replace(/-+/g,'-')
     .replace(/^-|-$/g,'');
+  return base?`${String(p?.category||'').toLowerCase()}:${base}`:'';
 }
 
 function mergeProductLists(existing,incoming){
   const byId=new Map();
-  const byDup=new Map();
   [...incoming,...existing].forEach(p=>{
     if(!p)return;
     const idKey=productListKey(p);
-    const dupKey=productDuplicateKey(p);
-    const current=(idKey&&byId.get(idKey))||(dupKey&&byDup.get(dupKey));
+    const current=idKey&&byId.get(idKey);
     const merged=current?{...current,...p}:p;
     if(idKey)byId.set(idKey,merged);
-    if(dupKey)byDup.set(dupKey,merged);
   });
   const out=[];
   const seen=new Set();
+  const seenDup=new Set();
   [...incoming,...existing].forEach(p=>{
     const idKey=productListKey(p);
     const dupKey=productDuplicateKey(p);
-    const key=dupKey||idKey;
-    if(!key||seen.has(key))return;
-    seen.add(key);
-    out.push(byDup.get(dupKey)||byId.get(idKey)||p);
+    if(!idKey||seen.has(idKey))return;
+    if(dupKey&&seenDup.has(dupKey))return;
+    seen.add(idKey);
+    if(dupKey)seenDup.add(dupKey);
+    out.push(byId.get(idKey)||p);
   });
   return out;
 }
@@ -1121,7 +1121,7 @@ window.addEventListener('qorai:product-saved',e=>{
   if(p&&Array.isArray(allProducts)){
     const item={id:e.detail?.id||p.id||p.slug,...p};
     const before=allProducts.length;
-    allProducts=mergeProductLists(allProducts,[item]).slice(0,PER);
+    allProducts=mergeProductLists(allProducts,[item]);
     totalProductCount=Math.max(totalProductCount||0,totalProductCount+(allProducts.length>before?1:0),allProducts.length);
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
     displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||(x.category||'').toLowerCase().includes(searchQ)):allProducts;
@@ -1248,6 +1248,9 @@ function renderProductsPage(){
 
 async function nextPage(){await loadPage('next');scrollTop()}
 async function prevPage(){await loadPage('prev');scrollTop()}
+window.loadProducts=loadProducts;
+window.nextPage=nextPage;
+window.prevPage=prevPage;
 
 async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
