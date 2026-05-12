@@ -132,6 +132,24 @@ function findCategoryByGeizhalsUrl(url) {
 
 }
 
+function productMatchesCategory(product, categoryId) {
+  if (!product || !categoryId) return true;
+  const specs = product.specs && typeof product.specs === 'object' ? product.specs : {};
+  const haystack = [
+    product.sourceUrl,
+    product.name,
+    Object.keys(specs).join(' '),
+    Object.values(specs).join(' '),
+  ].join(' ').toLowerCase();
+  const rules = {
+    tablets: ['ipad', 'tablet', 'galaxy tab', 'matepad', 'xiaomi pad', 'surface pro'],
+    smartwatches: ['watch', 'garmin', 'forerunner', 'fenix', 'pace', 'smartwatch'],
+    smartphones: ['iphone', 'galaxy s', 'pixel', 'smartphone', 'handy'],
+  };
+  const required = rules[categoryId];
+  return !required || required.some(term => haystack.includes(term));
+}
+
 
 // ═══════════════════════════════════════
 //  3. PROXY FETCH WITH RETRY
@@ -321,7 +339,6 @@ function prepareProductPayload(product) {
     specSections: product.specSections && typeof product.specSections === 'object' ? product.specSections : {},
     keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
-    price_raw: product.price_raw === undefined || product.price_raw === null ? undefined : String(product.price_raw).slice(0, 200),
     specsCount: Number.isFinite(Number(product.specsCount)) ? Number(product.specsCount) : 0,
     variantGroup: String(product.variantGroup || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
@@ -470,58 +487,6 @@ function extractListingTechScore(cardEl) {
 // ═══════════════════════════════════════
 //  9. PRICE EXTRACTION
 // ═══════════════════════════════════════
-
-function extractPrice(doc) {
-  if (typeof doc === 'string') doc = parseHTML(doc);
-
-  function parsePrice(text) {
-    if (!text) return null;
-    // European format: € 1.234,56 or 1.234,56 € or 1,234.56
-    let cleaned = text.replace(/\s/g, '');
-    // Check if it's Euro format (comma as decimal separator)
-    if (cleaned.includes(',') && (cleaned.includes('€') || cleaned.includes('EUR'))) {
-      cleaned = cleaned.replace(/€|EUR/gi, '').replace(/\./g, '').replace(/,/g, '.');
-    } else {
-      cleaned = cleaned.replace(/€|EUR|\$/gi, '').replace(/,/g, '');
-    }
-    cleaned = cleaned.replace(/[^\d.]/g, '');
-    const num = parseFloat(cleaned);
-    if (isNaN(num) || num <= 0 || num >= 10000000) return null;
-    return num;
-  }
-
-  // PRIMARY: geizhals.eu gh_price class
-  const ghPriceEl = doc.querySelector('.gh_price');
-  if (ghPriceEl) {
-    const p = parsePrice(ghPriceEl.textContent);
-    if (p) return p;
-  }
-
-  // Fallback: title-based price extraction (geizhals puts price in title)
-  const titleEl = doc.querySelector('title');
-  if (titleEl) {
-    const titleText = titleEl.textContent;
-    // Pattern: "ab € 209,99" or "ab €&nbsp;209,99"
-    const titleMatch = titleText.match(/ab\s*€\s*(?:&nbsp;)?\s*([\d.,]+)/);
-    if (titleMatch) {
-      const p = parsePrice(titleMatch[1]);
-      if (p) return p;
-    }
-  }
-
-  // Fallback: scan for € symbol in page
-  const walker = doc.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_TEXT);
-  let node;
-  while ((node = walker.nextNode())) {
-    const text = node.textContent.trim();
-    if ((text.includes('€') || text.includes('EUR')) && text.length < 50) {
-      const p = parsePrice(text);
-      if (p) return p;
-    }
-  }
-
-  return null;
-}
 
 // ═══════════════════════════════════════
 //  10. IMAGE EXTRACTION
@@ -919,21 +884,12 @@ async function scrapeProductDetail(html, url, categoryId) {
   // ── Tech Score ──
   const techScore = extractTechScore(doc);
 
-  // ── Price ──
-  const price_raw = extractPrice(doc);
-
   // ── Images ──
   // Single image: first product image from gzhls.at/pix/ in -n.webp format
   const imageUrl = extractImages(doc, productSlug);
 
   // ── Variant Group ──
   const variantGroup = normalizeVariantGroupFromSlug(productSlug);
-
-  // Ensure price_raw is stored as string (PocketBase schema: text field)
-  let priceRawStr;
-  if (price_raw != null && !isNaN(price_raw) && price_raw > 0) {
-    priceRawStr = String(price_raw);
-  }
 
   return {
     id,
@@ -949,7 +905,6 @@ async function scrapeProductDetail(html, url, categoryId) {
     specSections: rawSections, // German sections
     keySpecs: rawKeySpecs,
     techScore: techScore ?? undefined,
-    price_raw: priceRawStr || undefined,
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
     scrapedAt: new Date().toISOString(),
@@ -1058,23 +1013,44 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
   // Seed products by category - these are well-known products that should exist
   const SEED_PRODUCTS = {
     'smartphones': 'https://geizhals.eu/apple-iphone-16-128gb-schwarz-a3296281.html',
-    'tablets': 'https://geizhals.eu/apple-ipad-pro-11-2024-256gb-silber-a3015624.html',
+    'tablets': 'https://geizhals.eu/apple-ipad-air-11-2025-128gb-space-grau-a3458383.html',
     'laptops': 'https://geizhals.eu/apple-macbook-air-13-2024-m3-8gb-ram-256gb-ssd-midnight-a3015631.html',
     'desktops': 'https://geizhals.eu/apple-mac-mini-2024-m4-16gb-ram-256gb-ssd-a3015640.html',
     'cpus': 'https://geizhals.eu/intel-core-i9-14900k-a3015650.html',
     'gpus': 'https://geizhals.eu/nvidia-geforce-rtx-4090-a3015660.html',
     'ram': 'https://geizhals.eu/corsair-vengeance-32gb-ddr5-5600-a3015670.html',
     'ssd': 'https://geizhals.eu/samsung-990-pro-1tb-a3015680.html',
+    'motherboards': 'https://geizhals.eu/asus-rog-strix-b650e-f-gaming-wifi-a2824307.html',
+    'psu': 'https://geizhals.eu/be-quiet-straight-power-12-850w-atx-3-0-bn336-a2884016.html',
+    'cases': 'https://geizhals.eu/fractal-design-north-charcoal-black-tg-dark-fd-c-nor1c-02-a2861685.html',
+    'coolers': 'https://geizhals.eu/arctic-liquid-freezer-iii-360-acfre00136a-a3128757.html',
     'headphones': 'https://geizhals.eu/sony-wh-1000xm5-schwarz-a3015690.html',
+    'soundbars': 'https://geizhals.eu/samsung-hw-q995gc-a2910894.html',
+    'microphones': 'https://geizhals.eu/rode-nt-usb-mini-a2221815.html',
     'smartwatches': 'https://geizhals.eu/apple-watch-series-10-gps-46mm-aluminium-diamantschwarz-a3015700.html',
+    'smart-rings': 'https://geizhals.eu/samsung-galaxy-ring-titanium-black-a3244177.html',
     'cameras': 'https://geizhals.eu/sony-alpha-7-iv-a3015710.html',
+    'action-cameras': 'https://geizhals.eu/dji-osmo-action-4-standard-combo-a2992034.html',
+    'ip-cameras': 'https://geizhals.eu/reolink-rlc-810a-a2478796.html',
+    'dashcams': 'https://geizhals.eu/garmin-dash-cam-mini-2-a2516357.html',
+    'gimbals': 'https://geizhals.eu/dji-osmo-mobile-6-a2825965.html',
+    'tripods': 'https://geizhals.eu/manfrotto-befree-advanced-mkbfrta4bk-bh-a1827088.html',
+    'lenses': 'https://geizhals.eu/sony-fe-24-70mm-2-8-gm-ii-sel2470gm2-a2711925.html',
     'consoles': 'https://geizhals.eu/sony-playstation-5-slim-a3015720.html',
+    'gamepads': 'https://geizhals.eu/microsoft-xbox-wireless-controller-carbon-black-a2363416.html',
+    'vr-headsets': 'https://geizhals.eu/meta-quest-3-128gb-a3033464.html',
     'tvs': 'https://geizhals.eu/lg-oled55c47la-a3015730.html',
     'monitors': 'https://geizhals.eu/dell-ultrasharp-u2723qe-a3015740.html',
+    'projectors': 'https://geizhals.eu/benq-w2710i-a2914901.html',
+    'media-players': 'https://geizhals.eu/apple-tv-4k-2022-128gb-mn893fd-a2818262.html',
     'keyboards': 'https://geizhals.eu/logitech-g-pro-x-a3015750.html',
     'mice': 'https://geizhals.eu/logitech-g-pro-x-superlight-a3015760.html',
+    'printers': 'https://geizhals.eu/brother-mfc-l3770cdw-a1897282.html',
+    'webcams': 'https://geizhals.eu/logitech-brio-4k-ultra-hd-pro-webcam-a1565066.html',
     'routers': 'https://geizhals.eu/asus-rt-ax86u-pro-a3015770.html',
+    'robot-vacuums': 'https://geizhals.eu/roborock-s8-pro-ultra-schwarz-a2908213.html',
     'powerbanks': 'https://geizhals.eu/anker-737-power-bank-24000mah-a3015780.html',
+    'e-readers': 'https://geizhals.eu/amazon-kindle-paperwhite-2024-16gb-schwarz-a3297997.html',
     'speakers': 'https://geizhals.eu/jbl-flip-6-schwarz-a3015790.html',
     'drones': 'https://geizhals.eu/dji-mini-4-pro-a3015800.html',
   };
@@ -1224,6 +1200,11 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
           results.skipped++;
           continue;
         }
+        if (!productMatchesCategory(product, categoryId)) {
+          slog(`  → Skipped (category mismatch): ${product.name}`, 'warn');
+          results.skipped++;
+          continue;
+        }
 
         // Use listing-page tech score if page didn't have one
         if (!product.techScore && item.techScore) {
@@ -1232,7 +1213,18 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
 
         // Save to PocketBase
         const clean = prepareProductPayload(product);
-        await pbSetDoc('products', clean.slug || clean.id, clean);
+        const saved = await pbSetDoc('products', clean.slug || clean.id, clean);
+        if (typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
+          const item = { id: saved?.id || clean.slug, ...clean };
+          const existingIndex = allProducts.findIndex(p => p.id === item.id || p.slug === item.slug);
+          if (existingIndex >= 0) allProducts[existingIndex] = { ...allProducts[existingIndex], ...item };
+          else allProducts.unshift(item);
+          totalProductCount = Math.max(totalProductCount || 0, allProducts.length);
+          if (typeof displayProducts !== 'undefined') displayProducts = allProducts;
+          if (typeof renderProductsPage === 'function') renderProductsPage();
+          const countEl = document.getElementById('productCount');
+          if (countEl) countEl.textContent = String(totalProductCount || allProducts.length);
+        }
         results.added++;
         errorStreak = 0;
         slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
@@ -1269,52 +1261,7 @@ async function parallelScrape(urlItems, categoryId, delayMs = 2000, channels = 3
 // ═══════════════════════════════════════
 
 async function computePriceSegments(categoryId) {
-  slog(`Computing price segments for: ${categoryId}`);
-
-  let products;
-  try {
-    const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
-    products = items
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p.price_raw && parseFloat(p.price_raw) > 0);
-  } catch (e) {
-    slog(`Failed to load products for segments: ${e.message}`, 'error');
-    return;
-  }
-
-  if (products.length < 2) {
-    slog(`Not enough products with prices (${products.length}) for segments`, 'warn');
-    return;
-  }
-
-  products.sort((a, b) => parseFloat(a.price_raw) - parseFloat(b.price_raw));
-  let updated = 0;
-  const toUpdate = [];
-
-  for (let i = 0; i < products.length; i++) {
-    const percentile = i / (products.length - 1);
-    let segment;
-    if (percentile < 0.25) segment = 'budget';
-    else if (percentile < 0.60) segment = 'mid_range';
-    else if (percentile < 0.85) segment = 'premium';
-    else segment = 'flagship';
-
-    if (products[i].price_segment !== segment) {
-      toUpdate.push({ id: products[i].id, segment });
-      updated++;
-    }
-  }
-
-  if (updated > 0) {
-    try {
-      await Promise.all(toUpdate.map(({ id, segment }) => pbUpdateDoc('products', id, { price_segment: segment })));
-      slog(`Updated ${updated} price segments (${products.length} products)`, 'success');
-    } catch (e) {
-      slog(`Failed to update price segments: ${e.message}`, 'error');
-    }
-  } else {
-    slog('Price segments unchanged', 'info');
-  }
+  slog(`Price segment computation skipped for ${categoryId}: prices are not scraped.`, 'info');
 }
 
 // ═══════════════════════════════════════
@@ -1427,6 +1374,10 @@ async function startBulkScrape() {
     const results = await parallelScrape(toScrape, catValue, delay, 2);
 
     slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
+    if (results.added > 0 && typeof loadProducts === 'function') {
+      await loadProducts();
+      slog('Products view refreshed.', 'success');
+    }
   } catch (e) {
     slog(`Fatal error: ${e.message}`, 'error');
   }
@@ -1483,12 +1434,10 @@ async function scrapeByUrl() {
         const details = saveErr.response?.data || saveErr.data || {};
         slog(`❌ Save failed: ${saveErr.message}`, 'error');
         slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
-        // Log the problematic fields to help debug
         if (product) {
           slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
           slog(`   Category: ${product.category}`, 'error');
           slog(`   Specs count: ${product.specsCount}`, 'error');
-          slog(`   Price type: ${typeof product.price_raw} = ${product.price_raw}`, 'error');
         }
         Object.entries(details).forEach(([k,v]) => {
           slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
@@ -1541,7 +1490,6 @@ async function scrapeByUrl() {
           slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
           slog(`   Category: ${product.category}`, 'error');
           slog(`   Specs count: ${product.specsCount}`, 'error');
-          slog(`   Price type: ${typeof product.price_raw} = ${product.price_raw}`, 'error');
         }
         Object.entries(details).forEach(([k,v]) => {
           slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
@@ -1721,7 +1669,7 @@ async function startProductUpdate() {
       // Compare fields and build update object
       const changes = {};
       const compareFields = [
-        'name', 'brand', 'techScore', 'price_raw', 'imageUrl',
+        'name', 'brand', 'techScore', 'imageUrl',
         'specsCount', 'variantGroup'
       ];
       for (const field of compareFields) {

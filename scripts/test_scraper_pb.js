@@ -2,7 +2,10 @@ const { req } = require('../migration/pb');
 
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
-const SEED_URL = 'https://geizhals.eu/apple-iphone-16-128gb-schwarz-a3296281.html';
+const SEED_PRODUCTS = {
+  smartphones: 'https://geizhals.eu/apple-iphone-16-128gb-schwarz-a3296281.html',
+  tablets: 'https://geizhals.eu/apple-ipad-air-11-2025-128gb-space-grau-a3458383.html',
+};
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -28,19 +31,6 @@ function generateProductId(slug) {
     .replace(/^-|-$/g, '')
     .slice(0, 120);
   return id || `product-${Date.now()}`;
-}
-
-function parsePrice(text) {
-  if (!text) return null;
-  let cleaned = String(text).replace(/\s/g, '');
-  if (cleaned.includes(',') && (cleaned.includes('€') || cleaned.includes('EUR'))) {
-    cleaned = cleaned.replace(/€|EUR/gi, '').replace(/\./g, '').replace(/,/g, '.');
-  } else {
-    cleaned = cleaned.replace(/€|EUR|\$/gi, '').replace(/,/g, '');
-  }
-  cleaned = cleaned.replace(/[^\d.]/g, '');
-  const num = parseFloat(cleaned);
-  return Number.isFinite(num) && num > 0 && num < 10000000 ? num : null;
 }
 
 async function proxyFetch(url) {
@@ -110,6 +100,21 @@ function extractBrand(name, specs) {
   return String(name || '').split(/\s+/)[0] || '';
 }
 
+function productMatchesCategory(product, category) {
+  const haystack = [
+    product.sourceUrl,
+    product.name,
+    Object.keys(product.specs || {}).join(' '),
+    Object.values(product.specs || {}).join(' '),
+  ].join(' ').toLowerCase();
+  const rules = {
+    tablets: ['ipad', 'tablet', 'galaxy tab', 'matepad', 'xiaomi pad', 'surface pro'],
+    smartphones: ['iphone', 'galaxy s', 'pixel', 'smartphone', 'handy'],
+  };
+  const required = rules[category];
+  return !required || required.some(term => haystack.includes(term));
+}
+
 function prepareProductPayload(raw) {
   const payload = {
     slug: String(raw.slug || raw.id || '').trim().slice(0, 200),
@@ -123,7 +128,6 @@ function prepareProductPayload(raw) {
     specs: raw.specs && typeof raw.specs === 'object' ? raw.specs : {},
     specSections: {},
     keySpecs: {},
-    price_raw: raw.price_raw === undefined || raw.price_raw === null ? undefined : String(raw.price_raw).slice(0, 200),
     specsCount: Number.isFinite(Number(raw.specsCount)) ? Number(raw.specsCount) : 0,
     variantGroup: String(raw.variantGroup || '').trim().slice(0, 200),
     scrapedAt: new Date().toISOString(),
@@ -136,23 +140,20 @@ function prepareProductPayload(raw) {
   return payload;
 }
 
-function parseProduct(html, url) {
+function parseProduct(html, url, category) {
   const slug = slugFromUrl(url);
   const name = extractTitle(html);
   const specs = extractSpecs(html);
-  const priceMatch = html.match(/(?:ab\s*)?€\s*(?:&nbsp;)?\s*([\d.,]+)/i);
-  const price = priceMatch ? parsePrice(priceMatch[0]) : null;
   const imageUrl = extractImage(html);
   return prepareProductPayload({
     slug: slug || generateProductId(slug),
     name,
     brand: extractBrand(name, specs),
-    category: 'smartphones',
+    category,
     sourceUrl: url,
     imageUrl,
     images: imageUrl ? [imageUrl] : [],
     specs,
-    price_raw: price,
     specsCount: Object.keys(specs).length,
     variantGroup: slug,
   });
@@ -166,23 +167,30 @@ async function upsertProduct(product) {
 
 async function main() {
   const limit = Number(process.argv[2] || 10);
-  const seedHtml = await proxyFetch(SEED_URL);
-  const urls = [SEED_URL, ...extractLinks(seedHtml)].filter((url, index, arr) => arr.indexOf(url) === index).slice(0, limit);
+  const category = process.argv[3] || 'smartphones';
+  const seedUrl = SEED_PRODUCTS[category] || SEED_PRODUCTS.smartphones;
+  const seedHtml = await proxyFetch(seedUrl);
+  const urls = [seedUrl, ...extractLinks(seedHtml)].filter((url, index, arr) => arr.indexOf(url) === index).slice(0, limit);
   if (urls.length < limit) throw new Error(`Only found ${urls.length} URLs`);
   let saved = 0;
   for (const [index, url] of urls.entries()) {
     console.log(`[${index + 1}/${urls.length}] fetch ${url}`);
     const html = index === 0 ? seedHtml : await proxyFetch(url);
-    const product = parseProduct(html, url);
+    const product = parseProduct(html, url, category);
     if (!product.name || product.specsCount <= 0) throw new Error(`Invalid parsed product: ${url}`);
+    if (!productMatchesCategory(product, category)) {
+      console.log(`  skipped category mismatch: ${product.name}`);
+      continue;
+    }
+    if ('price_raw' in product || 'price_segment' in product) throw new Error(`Price field leaked into payload: ${url}`);
     const result = await upsertProduct(product);
     saved++;
     console.log(`  ${result.action}: ${product.slug} | ${product.name} | specs=${product.specsCount}`);
     await sleep(1200);
   }
-  const verify = await req('GET', `/api/collections/products/records?filter=${encodeURIComponent('category="smartphones" && source="geizhals.eu"')}&perPage=1`);
+  const verify = await req('GET', `/api/collections/products/records?filter=${encodeURIComponent(`category="${category}" && source="geizhals.eu"`)}&perPage=1`);
   if (verify.status !== 200 || verify.body.totalItems < saved) throw new Error(`Verify failed: ${JSON.stringify(verify.body)}`);
-  console.log(`OK saved=${saved} totalSmartphoneGeizhals=${verify.body.totalItems}`);
+  console.log(`OK saved=${saved} category=${category} totalGeizhals=${verify.body.totalItems}`);
 }
 
 main().catch(error => {
