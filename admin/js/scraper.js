@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260512c-category-guard';
+const SCRAPER_BUILD = '20260512d-url-guard-fix';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -1179,7 +1179,12 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
   while (queue.length > 0 && allItems.length < maxPages * 10 && !scraperAbort && iterations < maxIterations) {
     iterations++;
     const url = normalizeGeizhalsProductUrl(queue.shift());
-    if (!url || (!productUrlMatchesCategory(url, categoryId) && /-[av]\d+\.html$/i.test(url))) {
+    if (!url) continue;
+    // geizhals.eu product URLs are /product-name-a1234567.html (no category segment).
+    // Skip URL-level category guard for product pages; category is verified later
+    // by scrapeProductDetail + productMatchesCategory using specs/name.
+    const isProductUrl = /-[av]\d+\.html$/i.test(url);
+    if (!isProductUrl && !productUrlMatchesCategory(url, categoryId)) {
       slog(`  → Skipped URL outside ${geizhalsSlug}: ${url}`, 'warn');
       continue;
     }
@@ -1240,7 +1245,9 @@ async function collectProductUrls(categoryPath, maxPages = 50) {
           }
           if (!href.startsWith('/')) href = '/' + href;
           const fullUrl = normalizeGeizhalsProductUrl(GEIZHALS_BASE + href);
-          if (!productUrlMatchesCategory(fullUrl, categoryId)) continue;
+          // Product URLs have no category segment on geizhals.eu; defer category check to scrape time.
+          const isProdUrl = /-[av]\d+\.html$/i.test(fullUrl);
+          if (!isProdUrl && !productUrlMatchesCategory(fullUrl, categoryId)) continue;
           if (!seenUrls.has(fullUrl) && !queue.includes(fullUrl)) {
             queue.push(fullUrl);
             newLinks++;
