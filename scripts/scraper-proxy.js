@@ -327,6 +327,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Discover geizhals category IDs from homepage
+  if (req.url === '/discover-categories') {
+    try {
+      console.log('  🔍 Discovering geizhals.eu categories...');
+      const page = await getPage();
+      await page.goto('https://geizhals.eu/', { waitUntil: 'networkidle0', timeout: 30000 });
+      await _humanDelay(2000, 4000);
+      
+      const categories = await page.evaluate(() => {
+        const map = new Map();
+        document.querySelectorAll('a[href*="?cat="], a[href*="&cat="]').forEach(a => {
+          const href = a.getAttribute('href') || '';
+          const m = href.match(/[?&]cat=([^&#]+)/);
+          if (m) {
+            const id = decodeURIComponent(m[1]);
+            const name = (a.textContent || '').trim().replace(/\s+/g, ' ');
+            if (name && name.length > 1 && name.length < 80 && !map.has(id)) {
+              map.set(id, name);
+            }
+          }
+        });
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ count: categories.length, categories }));
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // Scrape product from geizhals by name
   if (req.url.startsWith('/scrape-product')) {
     const urlObj = new URL(req.url, `http://localhost:${PORT}`);
