@@ -1462,10 +1462,19 @@ async function startCategoryTranslation(){
     await window.QorAiBulkTranslate.loadDict();
 
     _xlateProgress(0, 0, 'Fetching products…');
-    const allDocs = await pbGetAll('products', {});
-    const products = (allDocs || []).filter(p => p && p.category === categoryId && p.specs && Object.keys(p.specs).length);
+    // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
+    // Unwrap so we can access fields directly. Filter server-side by
+    // category for efficiency.
+    const filter = `category="${String(categoryId).replace(/"/g, '\\"')}"`;
+    const rawDocs = await pbGetAll('products', { filter });
+    const products = (rawDocs || [])
+      .map(d => {
+        const body = (typeof d.data === 'function') ? d.data() : d;
+        return { id: d.id || body.id, ...body };
+      })
+      .filter(p => p && p.specs && Object.keys(p.specs).length);
     if (!products.length) {
-      _xlateLog('No products with specs in this category.', 'warn');
+      _xlateLog(`No products with specs in this category (raw docs: ${rawDocs?.length || 0}).`, 'warn');
       toast('Bu kategoride çevrilecek ürün yok', 'w');
       return;
     }
@@ -1701,7 +1710,14 @@ function _renderProductModal(p){
   // Build the language picker chip. Every language is selectable; when a
   // translation is missing the renderer silently falls back to German so the
   // UI never goes blank. We only annotate "(fallback)" so the admin knows.
-  const has = (code) => code === 'de' || (p.multiLangSpecs && p.multiLangSpecs[code]);
+  // True when at least one German spec key was actually translated for this
+  // language. An empty `{}` payload still counts as "fallback" so the admin
+  // can see at a glance which langs are missing translations.
+  const has = (code) => {
+    if (code === 'de') return true;
+    const m = p.multiLangSpecs && p.multiLangSpecs[code];
+    return !!m && Object.keys(m).length > 0;
+  };
   const langOptions = MODAL_LANGS
     .map(([code, label]) => {
       const ok = has(code);
