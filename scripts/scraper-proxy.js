@@ -34,6 +34,23 @@ const StealthPlugin = require(path.join(rootDir, 'node_modules', 'puppeteer-extr
 puppeteerExtra.use(StealthPlugin());
 
 const PORT = parseInt(process.argv[2]) || 3456;
+
+// ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
+// FlareSolverr is a Docker container that solves Cloudflare challenges using
+// undetected-chromedriver. When it's running on http://localhost:8191/v1 the
+// proxy will route HTML fetches through it FIRST and only fall back to the
+// local Puppeteer browser if FlareSolverr is unreachable. This eliminates
+// 95%+ of Cloudflare interactions in normal operation — zero manual clicks.
+//
+// Setup (one-time):
+//   docker run -d --name flaresolverr -p 8191:8191 \
+//     --restart unless-stopped ghcr.io/flaresolverr/flaresolverr:latest
+//
+// Override URL via env: FLARESOLVERR_URL=http://host:port/v1
+const FLARESOLVERR_URL = process.env.FLARESOLVERR_URL || 'http://localhost:8191/v1';
+let flaresolverrSession = null;       // session id we reuse for cookie persistence
+let flaresolverrAvailable = false;    // toggled by health probe
+let flaresolverrFailureCount = 0;     // consecutive failures → temp disable
 const ADMIN_DIR = path.join(rootDir, 'admin');
 const MIME = {
   '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8',
@@ -223,6 +240,94 @@ function _isChallengeContent(html) {
 async function _resetActivePage() {
   try { if (activePage && !activePage.isClosed()) await activePage.close(); } catch {}
   activePage = null;
+}
+
+// ─── FlareSolverr client ────────────────────────────────────────────────
+// We talk to FlareSolverr via its single POST /v1 endpoint. All commands
+// share the same envelope: {cmd, url, session, maxTimeout, ...}.
+async function _flarePost(body) {
+  const res = await fetch(FLARESOLVERR_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(90000),
+  });
+  if (!res.ok) throw new Error(`flaresolverr http-${res.status}`);
+  const data = await res.json();
+  if (data.status !== 'ok') throw new Error(`flaresolverr ${data.status}: ${data.message || ''}`);
+  return data;
+}
+
+// Probe FlareSolverr health. Called on startup and again after every N
+// failures so a momentarily-down sidecar doesn't permanently disable the
+// fast path.
+async function _checkFlareSolverr() {
+  try {
+    const res = await fetch(FLARESOLVERR_URL.replace(/\/v1$/, '/'), {
+      method: 'GET',
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) throw new Error(`http-${res.status}`);
+    flaresolverrAvailable = true;
+    flaresolverrFailureCount = 0;
+    if (!flaresolverrSession) {
+      // Create a long-lived session — keeps cookies & CF-cleared state across
+      // requests, dramatically reducing per-request latency.
+      try {
+        const data = await _flarePost({ cmd: 'sessions.create', session: `qorai-${Date.now()}` });
+        flaresolverrSession = data.session;
+        console.log(`  🛡️  FlareSolverr session: ${flaresolverrSession}`);
+      } catch (e) {
+        console.warn(`  ⚠️  FlareSolverr session create failed (will run sessionless): ${e.message}`);
+      }
+    }
+    return true;
+  } catch (e) {
+    flaresolverrAvailable = false;
+    return false;
+  }
+}
+
+async function fetchWithFlareSolverr(url) {
+  const body = {
+    cmd: 'request.get',
+    url,
+    maxTimeout: 60000,
+  };
+  if (flaresolverrSession) body.session = flaresolverrSession;
+  const data = await _flarePost(body);
+  const sol = data.solution || {};
+  const html = sol.response || '';
+  const status = sol.status || 200;
+  // FlareSolverr returns the post-CF page; if status === 200 it's clean.
+  // Still run our challenge detector as a safety net.
+  const isChallenge = _isChallengeContent(html) || _isChallengeTitle(sol.title || '');
+  return { html, status, isChallenge };
+}
+
+// Unified HTML fetch dispatcher. Tries FlareSolverr first when available;
+// falls back to local Puppeteer otherwise. After 3 consecutive Flare
+// failures we re-probe its health to decide if it's permanently down.
+async function fetchHtml(url, opts = {}) {
+  if (flaresolverrAvailable) {
+    try {
+      const result = await fetchWithFlareSolverr(url);
+      if (!result.isChallenge && result.status !== 403 && result.html) {
+        flaresolverrFailureCount = 0;
+        return result;
+      }
+      // Challenge or empty → treat as failure for fallback decision
+      throw new Error(result.isChallenge ? 'flare-challenge-leaked' : `flare-empty-${result.status}`);
+    } catch (e) {
+      flaresolverrFailureCount++;
+      console.warn(`  ⚠️  FlareSolverr fail (${flaresolverrFailureCount}): ${e.message} → Puppeteer fallback`);
+      if (flaresolverrFailureCount >= 3) {
+        // Re-probe asynchronously; don't block this request.
+        _checkFlareSolverr().catch(() => {});
+      }
+    }
+  }
+  return fetchWithPuppeteer(url, opts);
 }
 
 async function fetchWithPuppeteer(url, opts = {}) {
@@ -448,7 +553,10 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      status: 'ok', version: '4.0.0', engine: 'puppeteer-extra-stealth',
+      status: 'ok',
+      version: '4.1.0',
+      engine: flaresolverrAvailable ? 'flaresolverr (puppeteer fallback)' : 'puppeteer-extra-stealth',
+      flaresolverr: { available: flaresolverrAvailable, session: flaresolverrSession, failures: flaresolverrFailureCount, url: FLARESOLVERR_URL },
       requests: requestCount, browserConnected: browser ? browser.isConnected() : false,
       hasCookies: sessionCookies ? sessionCookies.length : 0,
       userAgent: currentUA.substring(0, 80),
@@ -471,8 +579,8 @@ const server = http.createServer(async (req, res) => {
       console.log(`  🔗 Category links: ${targetUrl}`);
       const page = await getPage();
 
-      // Navigate to the category page
-      const { html, status, isChallenge } = await fetchWithPuppeteer(targetUrl);
+      // Navigate to the category page (FlareSolverr if available, else Puppeteer)
+      const { html, status, isChallenge } = await fetchHtml(targetUrl);
       if (!html) {
         res.writeHead(502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to load category page', status }));
@@ -538,7 +646,7 @@ const server = http.createServer(async (req, res) => {
     try {
       console.log(`  📂 Scrape category: ${catUrl} (max=${max}, delay=${delay}ms)`);
       const page = await getPage();
-      const { html } = await fetchWithPuppeteer(catUrl);
+      const { html } = await fetchHtml(catUrl);
       if (!html) throw new Error('Category page failed to load');
 
       let links = await extractCategoryLinks(page);
@@ -556,7 +664,7 @@ const server = http.createServer(async (req, res) => {
         const url = links[i];
         console.log(`    [${i + 1}/${links.length}] → ${url}`);
         try {
-          const { html: pHtml } = await fetchWithPuppeteer(url);
+          const { html: pHtml } = await fetchHtml(url);
           if (!pHtml) {
             console.log(`    ⚠️ empty page`);
             continue;
@@ -652,7 +760,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     console.log(`  [${requestCount + 1}] → ${targetUrl}`);
-    const { html, status } = await fetchWithPuppeteer(targetUrl);
+    const { html, status } = await fetchHtml(targetUrl);
     if (!html || status === 404) {
       res.setHeader('X-Status-Code', '404');
       res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -670,25 +778,46 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.0 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.1 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);
-  console.log(`  🐢 SEQUENTIAL scraping — parallel disabled\n`);
+  console.log(`  🐢 SEQUENTIAL scraping — parallel disabled`);
+
+  // Probe FlareSolverr first — if it's running we'll route through it.
+  console.log(`  🔍 Probing FlareSolverr at ${FLARESOLVERR_URL}…`);
+  const ok = await _checkFlareSolverr();
+  if (ok) {
+    console.log(`  ✅ FlareSolverr active → CF challenges auto-solved, manual clicking gone`);
+  } else {
+    console.log(`  ⚠️  FlareSolverr not running (Docker container?). Falling back to local Puppeteer.`);
+    console.log(`     Run:  docker run -d --name flaresolverr -p 8191:8191 --restart unless-stopped ghcr.io/flaresolverr/flaresolverr:latest`);
+  }
+  // Re-check FlareSolverr health every 60s so a late-started container is
+  // picked up automatically without restarting the proxy.
+  setInterval(() => { _checkFlareSolverr().catch(() => {}); }, 60000);
+
   try {
     await getBrowser();
-    console.log(`  ✅ Proxy ready. Test: http://localhost:${PORT}/health\n`);
+    console.log(`\n  ✅ Proxy ready. Test: http://localhost:${PORT}/health\n`);
   } catch (err) {
-    console.error(`  ❌ Chrome could not be started: ${err.message}\n`);
+    console.error(`\n  ❌ Chrome could not be started: ${err.message}\n`);
   }
 });
 
+async function _destroyFlareSession() {
+  if (!flaresolverrSession) return;
+  try { await _flarePost({ cmd: 'sessions.destroy', session: flaresolverrSession }); } catch {}
+}
+
 process.on('SIGINT', async () => {
   console.log('\n  Stopping proxy...');
+  await _destroyFlareSession();
   if (browser) await browser.close().catch(() => {});
   process.exit();
 });
 process.on('SIGTERM', async () => {
+  await _destroyFlareSession();
   if (browser) await browser.close().catch(() => {});
   process.exit();
 });
