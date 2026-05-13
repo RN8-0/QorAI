@@ -624,12 +624,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get searchProducts2 => '37K+製品を検索...';
 
   @override
-  String get pcBuilder => 'PCビルダー';
-
-  @override
-  String get buildDreamPc => 'AIと一緒に理想のPCを作ろう';
-
-  @override
   String get compareNowSmall => '今すぐ比較';
 
   @override
@@ -1558,15 +1552,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get basedOnProfilePrefs => 'プロフィール、クイズの回答、設定に基づく';
-
-  @override
-  String get pcBuilderTitle => 'PCビルダー';
-
-  @override
-  String get aiAnalyzingCompatibility => 'AIが互換性を分析中...';
-
-  @override
-  String get yourPcBuild => 'あなたのPCビルド';
 
   @override
   String get totalCost => '合計コスト';
@@ -2932,9 +2917,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'AI分析';
 
   @override
-  String get pcBuild => 'PCビルド';
-
-  @override
   String get linkPaste => 'リンク貼り付け';
 
   @override
@@ -3170,9 +3152,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get choose => '選択';
-
-  @override
-  String get pcBuilderDesc => 'PCのコンポーネントを選択してください';
 
   @override
   String get sortByName => '名前';

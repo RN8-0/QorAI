@@ -40,7 +40,6 @@ class UsageCounter {
   final int aiQuestions;
   final int compareAi;
   final int detailAi;
-  final int pcBuilderAi;
   final int linkPastes;
   final int linkCompare;
   final int subscriptionAnalyses;
@@ -50,7 +49,6 @@ class UsageCounter {
   final String aiPeriodKey;
   final String compareAiPeriodKey;
   final String detailAiPeriodKey;
-  final String pcBuilderAiPeriodKey;
   final String linkPeriodKey;
   final String linkComparePeriodKey;
   final String subscriptionPeriodKey;
@@ -62,7 +60,6 @@ class UsageCounter {
     this.aiQuestions = 0,
     this.compareAi = 0,
     this.detailAi = 0,
-    this.pcBuilderAi = 0,
     this.linkPastes = 0,
     this.linkCompare = 0,
     this.subscriptionAnalyses = 0,
@@ -72,7 +69,6 @@ class UsageCounter {
     required this.aiPeriodKey,
     required this.compareAiPeriodKey,
     required this.detailAiPeriodKey,
-    required this.pcBuilderAiPeriodKey,
     required this.linkPeriodKey,
     required this.linkComparePeriodKey,
     required this.subscriptionPeriodKey,
@@ -85,7 +81,6 @@ class UsageCounter {
     int? aiQuestions,
     int? compareAi,
     int? detailAi,
-    int? pcBuilderAi,
     int? linkPastes,
     int? linkCompare,
     int? subscriptionAnalyses,
@@ -95,7 +90,6 @@ class UsageCounter {
     String? aiPeriodKey,
     String? compareAiPeriodKey,
     String? detailAiPeriodKey,
-    String? pcBuilderAiPeriodKey,
     String? linkPeriodKey,
     String? linkComparePeriodKey,
     String? subscriptionPeriodKey,
@@ -107,7 +101,6 @@ class UsageCounter {
       aiQuestions: aiQuestions ?? this.aiQuestions,
       compareAi: compareAi ?? this.compareAi,
       detailAi: detailAi ?? this.detailAi,
-      pcBuilderAi: pcBuilderAi ?? this.pcBuilderAi,
       linkPastes: linkPastes ?? this.linkPastes,
       linkCompare: linkCompare ?? this.linkCompare,
       subscriptionAnalyses: subscriptionAnalyses ?? this.subscriptionAnalyses,
@@ -117,7 +110,6 @@ class UsageCounter {
       aiPeriodKey: aiPeriodKey ?? this.aiPeriodKey,
       compareAiPeriodKey: compareAiPeriodKey ?? this.compareAiPeriodKey,
       detailAiPeriodKey: detailAiPeriodKey ?? this.detailAiPeriodKey,
-      pcBuilderAiPeriodKey: pcBuilderAiPeriodKey ?? this.pcBuilderAiPeriodKey,
       linkPeriodKey: linkPeriodKey ?? this.linkPeriodKey,
       linkComparePeriodKey: linkComparePeriodKey ?? this.linkComparePeriodKey,
       subscriptionPeriodKey:
@@ -169,7 +161,6 @@ class SubscriptionService extends ChangeNotifier {
   int get aiQuestionsUsed => _normalizedUsage().aiQuestions;
   int get compareAiUsed => _normalizedUsage().compareAi;
   int get detailAiUsed => _normalizedUsage().detailAi;
-  int get pcBuilderAiUsed => _normalizedUsage().pcBuilderAi;
   int get linkPastesUsed => _normalizedUsage().linkPastes;
   int get linkCompareUsed => _normalizedUsage().linkCompare;
   int get subscriptionAnalysesUsed => _normalizedUsage().subscriptionAnalyses;
@@ -440,7 +431,6 @@ class SubscriptionService extends ChangeNotifier {
         'aiQuestions': _usage.aiQuestions,
         'compareAi': _usage.compareAi,
         'detailAi': _usage.detailAi,
-        'pcBuilderAi': _usage.pcBuilderAi,
         'linkPastes': _usage.linkPastes,
         'linkCompare': _usage.linkCompare,
         'subscriptionAnalyses': _usage.subscriptionAnalyses,
@@ -449,7 +439,6 @@ class SubscriptionService extends ChangeNotifier {
         'aiPeriodKey': _usage.aiPeriodKey,
         'compareAiPeriodKey': _usage.compareAiPeriodKey,
         'detailAiPeriodKey': _usage.detailAiPeriodKey,
-        'pcBuilderAiPeriodKey': _usage.pcBuilderAiPeriodKey,
         'linkPeriodKey': _usage.linkPeriodKey,
         'linkComparePeriodKey': _usage.linkComparePeriodKey,
         'subscriptionPeriodKey': _usage.subscriptionPeriodKey,
@@ -588,7 +577,6 @@ class SubscriptionService extends ChangeNotifier {
         aiQuestions: data['aiQuestions'] as int? ?? 0,
         compareAi: data['compareAi'] as int? ?? 0,
         detailAi: data['detailAi'] as int? ?? 0,
-        pcBuilderAi: data['pcBuilderAi'] as int? ?? 0,
         linkPastes: data['linkPastes'] as int? ?? 0,
         linkCompare: data['linkCompare'] as int? ?? 0,
         subscriptionAnalyses: data['subscriptionAnalyses'] as int? ?? 0,
@@ -601,8 +589,6 @@ class SubscriptionService extends ChangeNotifier {
             data['compareAiPeriodKey'] as String? ?? _dailyPeriodKey(),
         detailAiPeriodKey:
             data['detailAiPeriodKey'] as String? ?? _dailyPeriodKey(),
-        pcBuilderAiPeriodKey:
-            data['pcBuilderAiPeriodKey'] as String? ?? _dailyPeriodKey(),
         linkPeriodKey: data['linkPeriodKey'] as String? ?? _dailyPeriodKey(),
         linkComparePeriodKey:
             data['linkComparePeriodKey'] as String? ?? _dailyPeriodKey(),
@@ -726,7 +712,6 @@ class SubscriptionService extends ChangeNotifier {
       aiPeriodKey: dk,
       compareAiPeriodKey: dk,
       detailAiPeriodKey: dk,
-      pcBuilderAiPeriodKey: dk,
       linkPeriodKey: dk,
       linkComparePeriodKey: dk,
       subscriptionPeriodKey: dk,
@@ -859,10 +844,6 @@ class SubscriptionService extends ChangeNotifier {
       next = next.copyWith(detailAi: 0, detailAiPeriodKey: dailyKey);
       changed = true;
     }
-    if (next.pcBuilderAiPeriodKey != dailyKey) {
-      next = next.copyWith(pcBuilderAi: 0, pcBuilderAiPeriodKey: dailyKey);
-      changed = true;
-    }
     if (next.linkPeriodKey != dailyKey) {
       next = next.copyWith(linkPastes: 0, linkPeriodKey: dailyKey);
       changed = true;
@@ -908,7 +889,6 @@ class SubscriptionService extends ChangeNotifier {
         usage.compareAi * AppConstants.compareAiCreditCost +
         usage.detailAi * AppConstants.detailAiCreditCost +
         usage.detailMatchAi * AppConstants.detailMatchAiCreditCost +
-        usage.pcBuilderAi * AppConstants.pcBuilderAiCreditCost +
         usage.linkPastes * AppConstants.linkAnalysisCreditCost +
         usage.linkCompare * AppConstants.linkCompareCreditCost +
         usage.subscriptionAnalyses *
@@ -964,11 +944,6 @@ class SubscriptionService extends ChangeNotifier {
   /// Can a premium AI feature be used? (product detail screen)
   bool get canUseDetailAi {
     return _canSpendCredits('detail_ai');
-  }
-
-  /// Can PC Builder AI analysis be used?
-  bool get canUsePcBuilderAi {
-    return _canSpendCredits('pc_builder_ai');
   }
 
   /// Can a link be pasted? (single analysis)
@@ -1055,18 +1030,6 @@ class SubscriptionService extends ChangeNotifier {
     return const Success(null);
   }
 
-  /// Record PC Builder AI usage
-  Result<void> recordPcBuilderAi() {
-    final currentUsage = _normalizedUsage();
-    if (!canUsePcBuilderAi) {
-      return _creditLimitFailure('pc_builder_ai', currentUsage);
-    }
-    _usage = currentUsage.copyWith(pcBuilderAi: currentUsage.pcBuilderAi + 1);
-    _reserveSyncedCredits('pc_builder_ai');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
 
   /// Record link paste usage
   Result<void> recordLinkPaste() {
@@ -1136,10 +1099,6 @@ class SubscriptionService extends ChangeNotifier {
   int get remainingDetailAi => isPremium
       ? -1
       : (remainingDailyCredits / AppConstants.detailAiCreditCost).floor();
-
-  int get remainingPcBuilderAi => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.pcBuilderAiCreditCost).floor();
 
   int get remainingLinkPastes => isPremium
       ? -1

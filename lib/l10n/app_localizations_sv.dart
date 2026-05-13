@@ -629,12 +629,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get searchProducts2 => 'Sök bland 37K+ produkter...';
 
   @override
-  String get pcBuilder => 'PC-bygge';
-
-  @override
-  String get buildDreamPc => 'Bygg din dröm-PC med AI';
-
-  @override
   String get compareNowSmall => 'Jämför nu';
 
   @override
@@ -1583,15 +1577,6 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get basedOnProfilePrefs =>
       'Baserat på din profil, quizsvar och preferenser';
-
-  @override
-  String get pcBuilderTitle => 'PC-byggare';
-
-  @override
-  String get aiAnalyzingCompatibility => 'AI analyserar kompatibilitet...';
-
-  @override
-  String get yourPcBuild => 'Din PC-konfiguration';
 
   @override
   String get totalCost => 'Total kostnad';
@@ -2971,9 +2956,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'AI-analys';
 
   @override
-  String get pcBuild => 'PC-bygge';
-
-  @override
   String get linkPaste => 'Klistra in länk';
 
   @override
@@ -3211,9 +3193,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get choose => 'Välj';
-
-  @override
-  String get pcBuilderDesc => 'Välj komponenter för din PC';
 
   @override
   String get sortByName => 'Namn';

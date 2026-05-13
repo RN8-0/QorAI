@@ -1342,18 +1342,6 @@ abstract class AppLocalizations {
   /// **'Search 37K+ products...'**
   String get searchProducts2;
 
-  /// No description provided for @pcBuilder.
-  ///
-  /// In en, this message translates to:
-  /// **'PC Builder'**
-  String get pcBuilder;
-
-  /// No description provided for @buildDreamPc.
-  ///
-  /// In en, this message translates to:
-  /// **'Build your dream PC with AI guidance'**
-  String get buildDreamPc;
-
   /// No description provided for @compareNowSmall.
   ///
   /// In en, this message translates to:
@@ -3147,24 +3135,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Based on your profile, quiz answers & preferences'**
   String get basedOnProfilePrefs;
-
-  /// No description provided for @pcBuilderTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'PC Builder'**
-  String get pcBuilderTitle;
-
-  /// No description provided for @aiAnalyzingCompatibility.
-  ///
-  /// In en, this message translates to:
-  /// **'AI analyzing compatibility...'**
-  String get aiAnalyzingCompatibility;
-
-  /// No description provided for @yourPcBuild.
-  ///
-  /// In en, this message translates to:
-  /// **'Your PC Build'**
-  String get yourPcBuild;
 
   /// No description provided for @totalCost.
   ///
@@ -5788,12 +5758,6 @@ abstract class AppLocalizations {
   /// **'AI Analysis'**
   String get comparisonBadgeAiAnalysis;
 
-  /// No description provided for @pcBuild.
-  ///
-  /// In en, this message translates to:
-  /// **'PC Build'**
-  String get pcBuild;
-
   /// No description provided for @linkPaste.
   ///
   /// In en, this message translates to:
@@ -6267,12 +6231,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose'**
   String get choose;
-
-  /// No description provided for @pcBuilderDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose components to build your PC'**
-  String get pcBuilderDesc;
 
   /// No description provided for @sortByName.
   ///

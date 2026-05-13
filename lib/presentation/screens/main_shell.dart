@@ -126,8 +126,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   int _indexFromLocation(String location) {
     // Branch indices match StatefulShellRoute definition:
-    // 0=pcBuilder 1=compare 2=home(+browse+aiChat) 3=linkPaste 4=subscriptions
-    return widget.navigationShell.currentIndex.clamp(0, 4);
+    // 0=compare 1=home(+browse+aiChat) 2=linkPaste
+    // Subscriptions is reachable from the Home screen CTA card; it is not
+    // a shell branch anymore so no index maps to it.
+    return widget.navigationShell.currentIndex.clamp(0, 2);
   }
 
   void _onNavTap(int index) {
@@ -333,14 +335,9 @@ class _NavItem {
 
 List<_NavItem> _buildNavItems(BuildContext context) {
   final l10n = AppLocalizations.of(context);
-  final isTr = Localizations.localeOf(context).languageCode == 'tr';
   // Use short labels in the nav bar to prevent overflow on small screens.
+  // Layout: Compare — Home (center, gradient pill) — Link AI.
   return [
-    _NavItem(
-      Icons.memory_outlined,
-      Icons.memory_rounded,
-      isTr ? 'PC Topla' : 'PC Build',
-    ),
     _NavItem(
       Icons.compare_arrows_outlined,
       Icons.compare_arrows_rounded,
@@ -352,7 +349,6 @@ List<_NavItem> _buildNavItems(BuildContext context) {
       l10n?.home ?? 'Home',
     ), // center — featured
     _NavItem(Icons.link_rounded, Icons.link_rounded, 'Link AI'),
-    _NavItem(Icons.subscriptions_outlined, Icons.subscriptions_rounded, 'Subs'),
   ];
 }
 
@@ -434,7 +430,7 @@ class _FloatingNavBar extends StatelessWidget {
         children: List.generate(items.length, (index) {
           final item = items[index];
           final isSelected = index == currentIndex;
-          final isCenter = index == 2; // Home — featured center button
+          final isCenter = index == 1; // Home — featured center button
 
           if (isCenter) {
             return Expanded(
@@ -546,7 +542,7 @@ class _FloatingNavBar extends StatelessWidget {
                                       color: AppTheme.slate500,
                                     ),
                             ),
-                            if (index == 3 && isLinkAiAnalyzing)
+                            if (index == 2 && isLinkAiAnalyzing)
                               Positioned(
                                 right: -4,
                                 top: -4,
@@ -911,8 +907,6 @@ class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
       pageDesc = 'product comparison page';
     } else if (route.contains('product')) {
       pageDesc = 'product detail page';
-    } else if (route.contains('pc-builder')) {
-      pageDesc = 'PC Builder wizard';
     } else if (route.contains('link-paste')) {
       pageDesc = 'Link Analysis page';
     } else if (route.contains('subscriptions')) {

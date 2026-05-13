@@ -631,12 +631,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get searchProducts2 => 'Pesquisar 37K+ produtos...';
 
   @override
-  String get pcBuilder => 'Configurador de PC';
-
-  @override
-  String get buildDreamPc => 'Monte seu PC ideal com IA';
-
-  @override
   String get compareNowSmall => 'Comparar agora';
 
   @override
@@ -1593,15 +1587,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get basedOnProfilePrefs =>
       'Baseado no seu perfil, respostas do questionário e preferências';
-
-  @override
-  String get pcBuilderTitle => 'Montador de PC';
-
-  @override
-  String get aiAnalyzingCompatibility => 'IA analisando compatibilidade...';
-
-  @override
-  String get yourPcBuild => 'Sua configuração de PC';
 
   @override
   String get totalCost => 'Custo total';
@@ -2980,9 +2965,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'Análise IA';
 
   @override
-  String get pcBuild => 'Montagem de PC';
-
-  @override
   String get linkPaste => 'Colar link';
 
   @override
@@ -3220,9 +3202,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get choose => 'Escolher';
-
-  @override
-  String get pcBuilderDesc => 'Escolha componentes para seu PC';
 
   @override
   String get sortByName => 'Nome';

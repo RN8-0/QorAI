@@ -125,7 +125,7 @@ const int _homeFeedInitialCategoryCount = 24;
 // without needing an immediate refetch, while ListView.builder still renders lazily.
 const int _homeFeedInitialPerCategory = 28;
 
-/// All category aliases — shared between pcBuilder and category providers.
+/// All category aliases — used by category browse providers.
 const pcCategoryAliases = <String, List<String>>{
   'cpus': [
     'cpus',
@@ -3041,7 +3041,6 @@ class FreemiumLimits {
   static int get aiChatsPerDay => AppConstants.freeAiQuestionLimit;
   static int get compareAiPerDay => AppConstants.freeCompareAiLimit;
   static int get detailAiPerDay => AppConstants.freeDetailAiLimit;
-  static int get pcBuilderAiPerDay => AppConstants.freePcBuilderAiLimit;
   static int get linkAnalysesPerDay => AppConstants.freeLinkPasteLimit;
   static int get linkComparePerDay => AppConstants.freeLinkCompareLimit;
   static int get subscriptionAnalysesPerDay =>
@@ -3060,7 +3059,6 @@ final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
     'ai_chat' => subscription.aiQuestionsUsed,
     'compare_ai' => subscription.compareAiUsed,
     'detail_ai' => subscription.detailAiUsed,
-    'pc_builder_ai' => subscription.pcBuilderAiUsed,
     'link_analysis' => subscription.linkPastesUsed,
     'link_compare' => subscription.linkCompareUsed,
     'subscription_analysis' => subscription.subscriptionAnalysesUsed,
@@ -3077,7 +3075,6 @@ Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
     'ai_chat' => subscription.recordAIQuestion(),
     'compare_ai' => subscription.recordCompareAi(),
     'detail_ai' => subscription.recordDetailAi(),
-    'pc_builder_ai' => subscription.recordPcBuilderAi(),
     'link_analysis' => subscription.recordLinkPaste(),
     'link_compare' => subscription.recordLinkCompare(),
     'subscription_analysis' => subscription.recordSubscriptionAnalysis(),

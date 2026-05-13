@@ -2572,7 +2572,7 @@ class PbDataSource {
     }
   }
 
-  /// Paginated Typesense query for a category. Used by PCBuilder / category browse.
+  /// Paginated Typesense query for a category. Used by category browse.
   /// Returns all products in a category (up to maxTotal) using Typesense pagination.
   Future<List<ProductModel>> getAllProductsInCategoryTs({
     required String category,

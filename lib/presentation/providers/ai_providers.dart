@@ -408,9 +408,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       if (pageContext['compareProducts'] != null) {
         pageCtxStr.add('Compared products: ${pageContext['compareProducts']}');
       }
-      if (pageContext['pcBuilderParts'] != null) {
-        pageCtxStr.add('PC build parts: ${pageContext['pcBuilderParts']}');
-      }
       if (pageContext['recentChatMessages'] != null &&
           pageContext['recentChatMessages'].toString().trim().isNotEmpty) {
         pageCtxStr.add(
@@ -428,7 +425,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
           'techScore',
           'matchScore',
           'compareProducts',
-          'pcBuilderParts',
           'recentChatMessages',
         }.contains(key)) {
           continue;
@@ -444,12 +440,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
       if (compared != null && compared.isNotEmpty) {
         pageCtxStr.add(
           'Active comparison: ${compared.map((p) => '${p.name} (${p.techScore.round()}/100)').take(4).join(' vs ')}',
-        );
-      }
-      final pcBuild = _ref.read(pcBuilderSessionProvider);
-      if (pcBuild.isNotEmpty) {
-        pageCtxStr.add(
-          'Current PC build: ${pcBuild.entries.map((e) => '${e.key}: ${e.value.name}').take(8).join(' | ')}',
         );
       }
     } catch (_) {}

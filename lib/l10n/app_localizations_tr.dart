@@ -633,12 +633,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get searchProducts2 => '37K+ ürün ara...';
 
   @override
-  String get pcBuilder => 'PC Toplama';
-
-  @override
-  String get buildDreamPc => 'AI ile hayalinizdeki PC\'yi oluşturun';
-
-  @override
   String get compareNowSmall => 'Şimdi karşılaştır';
 
   @override
@@ -1595,15 +1589,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get basedOnProfilePrefs =>
       'Profilinize, quiz cevaplarınıza ve tercihlerinize göre';
-
-  @override
-  String get pcBuilderTitle => 'PC Toplama';
-
-  @override
-  String get aiAnalyzingCompatibility => 'AI uyumluluk analiz ediyor...';
-
-  @override
-  String get yourPcBuild => 'PC Yapılandırmanız';
 
   @override
   String get totalCost => 'Toplam Maliyet';
@@ -2984,9 +2969,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'AI Analizi';
 
   @override
-  String get pcBuild => 'PC Toplama';
-
-  @override
   String get linkPaste => 'Link Yapıştır';
 
   @override
@@ -3224,10 +3206,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get choose => 'Seç';
-
-  @override
-  String get pcBuilderDesc =>
-      'Bilgisayarınızı oluşturmak için bileşenleri seçin';
 
   @override
   String get sortByName => 'İsim';

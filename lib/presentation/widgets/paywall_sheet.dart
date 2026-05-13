@@ -1638,7 +1638,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         true,
         Icons.category_rounded,
       ),
-      _TableRow(l?.pcBuilder ?? 'PC Builder', true, true, Icons.build_rounded),
       _TableRow(
         l?.prioritySupport ?? 'Priority Support',
         false,

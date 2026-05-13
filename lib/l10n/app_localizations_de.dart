@@ -634,12 +634,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get searchProducts2 => '37K+ Produkte suchen...';
 
   @override
-  String get pcBuilder => 'PC-Konfigurator';
-
-  @override
-  String get buildDreamPc => 'Bauen Sie Ihren Traumcomputer mit KI';
-
-  @override
   String get compareNowSmall => 'Jetzt vergleichen';
 
   @override
@@ -1593,15 +1587,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get basedOnProfilePrefs =>
       'Basierend auf Ihrem Profil, Quiz-Antworten und Vorlieben';
-
-  @override
-  String get pcBuilderTitle => 'PC Zusammenstellen';
-
-  @override
-  String get aiAnalyzingCompatibility => 'KI analysiert Kompatibilität...';
-
-  @override
-  String get yourPcBuild => 'Ihre PC-Konfiguration';
 
   @override
   String get totalCost => 'Gesamtkosten';
@@ -2984,9 +2969,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'KI-Analyse';
 
   @override
-  String get pcBuild => 'PC Zusammenstellen';
-
-  @override
   String get linkPaste => 'Link einfügen';
 
   @override
@@ -3224,9 +3206,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get choose => 'Wählen';
-
-  @override
-  String get pcBuilderDesc => 'Wählen Sie Komponenten für Ihren PC';
 
   @override
   String get sortByName => 'Name';

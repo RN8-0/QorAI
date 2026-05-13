@@ -71,7 +71,6 @@ class AppConstants {
   static const int compareAiCreditCost = 2;
   static const int detailAiCreditCost = 1;
   static const int detailMatchAiCreditCost = 1;
-  static const int pcBuilderAiCreditCost = 2;
   static const int linkAnalysisCreditCost = 2;
   static const int linkCompareCreditCost = 3;
   static const int subscriptionAnalysisCreditCost = 2;
@@ -80,7 +79,6 @@ class AppConstants {
   static const int freeCompareAiLimit = 2; // per day (compare premium AI tabs)
   static const int freeDetailAiLimit =
       2; // per day per tab (product detail premium AI)
-  static const int freePcBuilderAiLimit = 3; // per day (PC builder AI analysis)
   static const int freeDetailMatchAiLimit =
       2; // per day (AI match score on product detail; ücretsiz 2× sonra algoritma)
   static const int freeDetailAiSharedLimit =
@@ -89,8 +87,6 @@ class AppConstants {
   static const int freeLinkCompareLimit = 2; // per day (link compare tab)
   static const int freeSubscriptionAnalysisLimit = 3; // per day
   static const int freeProductScanLimit = 2; // per day (product scan)
-  static const int freePcBuilderSlots =
-      9999; // unlimited — free tier has no component cap
   static const int freeCollectionLimit = 10; // max saved products
   static const int freePriceHistoryDays = 7;
   static const int proPriceHistoryDays = 90;
@@ -101,7 +97,6 @@ class AppConstants {
       'compare_ai' => compareAiCreditCost,
       'detail_ai' => detailAiCreditCost,
       'detail_match_ai' || 'detail_match' => detailMatchAiCreditCost,
-      'pc_builder_ai' => pcBuilderAiCreditCost,
       'link_paste' || 'link_analysis' => linkAnalysisCreditCost,
       'link_compare' => linkCompareCreditCost,
       'subscription_analysis' => subscriptionAnalysisCreditCost,

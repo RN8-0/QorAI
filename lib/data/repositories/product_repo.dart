@@ -97,7 +97,7 @@ class ProductRepository {
     }
   }
 
-  /// Typesense: all products in a category (for PCBuilder / full category loads)
+  /// Typesense: all products in a category (for full category loads).
   Future<Result<List<ProductEntity>>> getAllProductsInCategoryTs(
     String category, {
     int maxTotal = 5000,

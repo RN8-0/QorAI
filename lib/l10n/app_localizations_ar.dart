@@ -625,12 +625,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchProducts2 => 'ابحث عن 37K+ منتج...';
 
   @override
-  String get pcBuilder => 'منشئ الكمبيوتر';
-
-  @override
-  String get buildDreamPc => 'ابن كمبيوتر أحلامك بمساعدة الذكاء الاصطناعي';
-
-  @override
   String get compareNowSmall => 'قارن الآن';
 
   @override
@@ -1571,15 +1565,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get basedOnProfilePrefs =>
       'بناءً على ملفك الشخصي وإجابات الاختبار وتفضيلاتك';
-
-  @override
-  String get pcBuilderTitle => 'تجميع الحاسوب';
-
-  @override
-  String get aiAnalyzingCompatibility => 'الذكاء الاصطناعي يحلل التوافق...';
-
-  @override
-  String get yourPcBuild => 'تجميعة حاسوبك';
 
   @override
   String get totalCost => 'التكلفة الإجمالية';
@@ -2955,9 +2940,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get comparisonBadgeAiAnalysis => 'تحليل الذكاء الاصطناعي';
 
   @override
-  String get pcBuild => 'تجميع الحاسوب';
-
-  @override
   String get linkPaste => 'لصق الرابط';
 
   @override
@@ -3195,9 +3177,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get choose => 'اختر';
-
-  @override
-  String get pcBuilderDesc => 'اختر المكونات لبناء حاسوبك';
 
   @override
   String get sortByName => 'الاسم';

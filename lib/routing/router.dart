@@ -30,9 +30,6 @@ import 'package:qor_ai/presentation/screens/browse/category_browse_screen.dart';
 import 'package:qor_ai/presentation/screens/profile/behavior_report_screen.dart';
 import 'package:qor_ai/presentation/screens/profile/recently_viewed_screen.dart';
 import 'package:qor_ai/presentation/screens/notifications/notifications_screen.dart';
-import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_screen.dart';
-import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_history_screen.dart';
-import 'package:qor_ai/presentation/screens/pc_builder/pc_builder_landing_screen.dart';
 import 'package:qor_ai/presentation/screens/visual_scanner/visual_scanner_screen.dart';
 import 'package:qor_ai/presentation/screens/settings/contact_us_screen.dart';
 import 'package:qor_ai/presentation/screens/settings/email_verify_screen.dart';
@@ -65,11 +62,6 @@ class AppRoutes {
   static const String faq = '/faq';
   // Browse
   static const String browse = '/browse';
-  // PC Builder
-  static const String pcBuilder = '/pc-builder';
-  // PC Builder — aktif build ekranı (shell dışı, bottom bar yok)
-  static const String pcBuilderStart = '/pc-builder-start';
-  static const String pcBuilderHistory = '/pc-builder-history';
   // Behavior Report
   static const String behaviorReport = '/behavior-report';
   // Premium Paywall
@@ -135,22 +127,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Main application shell (5 persistent tabs + browse/aiChat branches)
+      // Main application shell (3 persistent tabs + browse/aiChat sub-branches).
+      // Subscriptions used to be a 5th tab; it now opens as a normal pushed
+      // route triggered from a Home-screen CTA (see /subscriptions GoRoute
+      // declared at the top level below).
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             shell.MainShell(navigationShell: navigationShell),
         branches: [
-          // Branch 0: PC Builder landing
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.pcBuilder,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: PcBuilderLandingScreen()),
-              ),
-            ],
-          ),
-          // Branch 1: Compare
+          // Branch 0: Compare
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -167,7 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 2: Home (+ Browse as sub-route so bottom bar stays)
+          // Branch 1: Home (+ Browse as sub-route so bottom bar stays)
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -241,23 +226,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 3: Link AI
+          // Branch 2: Link AI
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.linkPaste,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: LinkPasteScreen()),
-              ),
-            ],
-          ),
-          // Branch 4: Subscriptions
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.subscriptions,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SubscriptionsScreen()),
               ),
             ],
           ),
@@ -289,21 +264,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-      // PC Builder aktif ekranı — shell dışında (bottom bar görünmüyor)
+      // Subscriptions — was a shell branch in the 5-tab layout; now opens
+      // as a pushed route from the Home screen's Subs CTA card.
       GoRoute(
-        path: AppRoutes.pcBuilderStart,
+        path: AppRoutes.subscriptions,
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) => CustomTransitionPage(
-          child: const PcBuilderScreen(),
-          transitionsBuilder: _slideUpTransition,
-          transitionDuration: AppConstants.pageTransitionDuration,
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.pcBuilderHistory,
-        parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          child: const PcBuilderHistoryScreen(),
+          child: const SubscriptionsScreen(),
           transitionsBuilder: _slideTransition,
           transitionDuration: AppConstants.pageTransitionDuration,
         ),

@@ -294,6 +294,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               SliverToBoxAdapter(child: _buildPersonalizedSection()),
+              SliverToBoxAdapter(child: _buildSubscriptionsCta()),
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.trendingToday ?? 'Trending Today',
@@ -2589,6 +2590,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   // === SUBSCRIPTION INTELLIGENCE BANNER =======================================
+  //
+  // Replaces the old Subscriptions bottom-nav tab (we collapsed the nav from
+  // 5 → 3 tabs). The CTA card sits between the "For You" and "Trending Today"
+  // shelves so the feature remains discoverable on every Home visit; tapping
+  // it pushes the standalone /subscriptions route.
+
+  Widget _buildSubscriptionsCta() {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final title = isTr
+        ? 'Abonelik Analizi'
+        : 'Subscription Intelligence';
+    final subtitle = isTr
+        ? 'Netflix, Spotify, ChatGPT… aboneliklerini AI ile optimize et.'
+        : 'Optimise your Netflix, Spotify, ChatGPT subscriptions with AI.';
+    final cta = isTr ? 'Aç' : 'Open';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(AppRoutes.subscriptions),
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF0EA5E9), // sky-500
+                  Color(0xFF6366F1), // indigo-500
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.22),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.subscriptions_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cta,
+                          style: const TextStyle(
+                            color: Color(0xFF1E3A8A),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // === SKELETON ==============================================================
 

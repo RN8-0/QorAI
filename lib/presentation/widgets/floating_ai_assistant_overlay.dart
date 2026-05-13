@@ -330,7 +330,6 @@ class _FloatingAiAssistantOverlayState
       ref.watch(aiPageContextProvider),
     );
     final compare = ref.watch(compareSessionProvider);
-    final pcBuild = ref.watch(pcBuilderSessionProvider);
     final chatState = ref.read(chatSessionProvider);
 
     return {
@@ -346,11 +345,6 @@ class _FloatingAiAssistantOverlayState
             .map((p) => '${p.name} (${p.techScore.round()}/100)')
             .take(4)
             .join(' vs '),
-      if (pcBuild.isNotEmpty)
-        'pcBuilderParts': pcBuild.entries
-            .map((e) => '${e.key}: ${e.value.name}')
-            .take(8)
-            .join(' | '),
       'recentChatMessages': chatState.messages
           .where((m) => m.id != 'welcome')
           .take(6)

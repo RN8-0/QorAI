@@ -1932,21 +1932,6 @@ final compareSessionProvider = StateProvider<CompareSessionData>((ref) {
   return const CompareSessionData();
 });
 
-// ════════════════════════════════════════════════════
-// ─── PC BUILDER SESSION STATE ───
-// ════════════════════════════════════════════════════
-
-/// Persists PC Builder selections across tab switches.
-/// Keys are PcComponent.name strings, values are ProductEntity.
-final pcBuilderSessionProvider = StateProvider<Map<String, ProductEntity>>((
-  ref,
-) {
-  return {};
-});
-
-/// Persists PC Builder AI analysis across tab switches.
-final pcBuilderAiProvider = StateProvider<String?>((ref) => null);
-
 /// Screens use linkAnalysisNotifierProvider
 final linkAnalysisNotifierProvider = linkAnalysisProvider;
 
