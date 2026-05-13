@@ -1489,10 +1489,40 @@ async function startCategoryTranslation(){
     if (_catXlateAbort) throw new Error('aborted');
 
     if (missing.length > 0) {
-      const chunks = Math.ceil(missing.length / (window.QorAiBulkTranslate.CHUNK_SIZE || 30));
+      const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 30;
+      const chunks = Math.ceil(missing.length / chunkSize);
       _xlateProgress(0, chunks, `Translating ${missing.length} new atoms × ${targets.length} langs (${chunks} DeepSeek call${chunks > 1 ? 's' : ''})…`);
-      // _deepSeekAllLangsBatch handles chunking internally; we report start/end only
-      await window.QorAiBulkTranslate.translateAtoms(missing, targets);
+      _xlateLog(`⚙ DeepSeek plan: ${chunks} chunks × ≤${chunkSize} atoms × ${targets.length} langs`);
+
+      // Heartbeat: every 2s while waiting for the current chunk we print an
+      // elapsed-time hint so the admin knows the network call is still alive.
+      let currentChunkStart = Date.now();
+      let currentChunkIdx = -1;
+      const heartbeat = setInterval(() => {
+        if (currentChunkIdx < 0) return;
+        const sec = ((Date.now() - currentChunkStart) / 1000).toFixed(0);
+        _xlateProgress(currentChunkIdx, chunks, `Chunk ${currentChunkIdx + 1}/${chunks} waiting for DeepSeek… ${sec}s`);
+      }, 2000);
+
+      try {
+        await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
+          if (ev.phase === 'chunk-start') {
+            currentChunkIdx = ev.chunkIndex;
+            currentChunkStart = Date.now();
+            const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
+            _xlateLog(`→ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+            _xlateProgress(ev.chunkIndex, ev.totalChunks, `Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} sending…`);
+          } else if (ev.phase === 'chunk-done') {
+            const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
+            _xlateLog(`✓ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} done · ${ev.stored} translations · ${sec}s`, 'success');
+            _xlateProgress(ev.chunkIndex + 1, ev.totalChunks, `Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} done`);
+          } else if (ev.phase === 'chunk-error') {
+            _xlateLog(`✗ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+          }
+        });
+      } finally {
+        clearInterval(heartbeat);
+      }
       _xlateProgress(chunks, chunks, 'Saving dictionary…');
       await window.QorAiBulkTranslate.saveDict();
       _xlateLog(`✓ Dictionary updated (+${missing.length} terms)`, 'success');
@@ -1523,13 +1553,14 @@ async function startCategoryTranslation(){
         }
         await pbUpdateDoc('products', p.id, patch);
         done++;
+        if (done <= 3 || done % 10 === 0 || done === products.length) {
+          _xlateLog(`✓ ${done}/${products.length} · ${p.name?.substring(0, 50) || p.id}`, 'success');
+        }
       } catch (e) {
         failed++;
         _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${e.message}`, 'error');
       }
-      if ((done + failed) % 5 === 0 || (done + failed) === products.length) {
-        _xlateProgress(done + failed, products.length, `Patching products (${done} ok, ${failed} fail)…`);
-      }
+      _xlateProgress(done + failed, products.length, `Patching products (${done} ok, ${failed} fail)…`);
     }
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);

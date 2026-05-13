@@ -1052,7 +1052,7 @@ const _LANG_NAMES = {
   ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
 };
 
-async function _deepSeekAllLangsBatch(germanTexts, targetLangs) {
+async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   const token = getPb()?.authStore?.token;
   if (!token) {
     console.warn('[de-translate] No auth token');
@@ -1071,8 +1071,16 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs) {
   // DeepSeek context cap safety: split into chunks of 30 terms × 11 langs
   // (each chunk ≈ 4-6KB JSON request, ~10-20KB response, well under 64K)
   const CHUNK = 30;
+  const totalChunks = Math.ceil(uncached.length / CHUNK);
+  const report = (phase, idx, extra) => {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress({ phase, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+  };
   for (let i = 0; i < uncached.length; i += CHUNK) {
+    const chunkIdx = Math.floor(i / CHUNK);
     const batch = uncached.slice(i, i + CHUNK);
+    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+    const chunkStart = Date.now();
     const textsJson = JSON.stringify(batch);
     const langCodes = targetLangs.join(',');
 
@@ -1120,17 +1128,25 @@ Rules:
       }
 
       // Store every returned translation in cache
+      let storedForChunk = 0;
       for (const t of batch) {
         const entry = translations[t];
         if (!entry || typeof entry !== 'object') continue;
         for (const lang of targetLangs) {
           if (typeof entry[lang] === 'string' && entry[lang].trim()) {
             _deDictStore(t, lang, entry[lang]);
+            storedForChunk++;
           }
         }
       }
+      report('chunk-done', chunkIdx, {
+        batchSize: batch.length,
+        stored: storedForChunk,
+        elapsedMs: Date.now() - chunkStart,
+      });
     } catch (e) {
       console.warn('[de-translate] all-langs batch error:', e.message);
+      report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
       // Don't break the loop — cache misses will fall back to original text
     }
   }
@@ -1327,8 +1343,10 @@ window.QorAiBulkTranslate = {
     return atoms.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
   },
   // Hit DeepSeek for the supplied (already filtered) atoms. Chunked & batched.
-  translateAtoms(atoms, targetLangs = TARGET_LANGS) {
-    return _deepSeekAllLangsBatch(atoms, targetLangs);
+  // `onProgress` receives { phase, chunkIndex, totalChunks, ... } per chunk so
+  // the UI can render a live progress bar and ETA.
+  translateAtoms(atoms, targetLangs = TARGET_LANGS, onProgress) {
+    return _deepSeekAllLangsBatch(atoms, targetLangs, onProgress);
   },
   // Build the per-product translation payload from dict only (no API calls).
   buildPayload(product, targetLangs = TARGET_LANGS) {
