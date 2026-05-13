@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v9-ref-link-skip-compact';
+const SCRAPER_BUILD = '20260513v10-flat-translation-map';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -1065,15 +1065,25 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   // ONE API call covers all 11 languages
   await _deepSeekAllLangsBatch(germanTexts, targetLangs);
 
-  // Build per-language spec object from cache only (no further API hits)
+  // Build a FLAT german→localized lookup map per language. The renderer
+  // does `ml[germanKey]` and `ml[germanValue]` so the keys here MUST stay
+  // as the original German text, not the translated text.
+  //
+  // Previous (buggy) layout stored `{ translatedKey: translatedVal }`,
+  // which made the lookup miss every time and the modal silently fell back
+  // to German for every locale — looking exactly like the translation
+  // pipeline had never run.
   const multiLangSpecs = {};
   for (const lang of targetLangs) {
-    multiLangSpecs[lang] = {};
+    const map = {};
     for (const [k, v] of Object.entries(germanSpecs)) {
-      const translatedKey = _deDictLookup(k, lang) || k;
-      const translatedVal = _deDictLookup(String(v), lang) || v;
-      multiLangSpecs[lang][translatedKey] = translatedVal;
+      const tk = _deDictLookup(k, lang);
+      if (tk && tk !== k) map[k] = tk;
+      const vs = String(v);
+      const tv = _deDictLookup(vs, lang);
+      if (tv && tv !== vs) map[vs] = tv;
     }
+    multiLangSpecs[lang] = map;
   }
   return multiLangSpecs;
 }
