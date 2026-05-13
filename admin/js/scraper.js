@@ -1157,14 +1157,17 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
     if (typeof onProgress !== 'function') return;
     try { onProgress({ phase, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
   };
-  for (let i = 0; i < uncached.length; i += CHUNK) {
-    const chunkIdx = Math.floor(i / CHUNK);
-    const batch = uncached.slice(i, i + CHUNK);
+  const langCodes = targetLangs.join(',');
+
+  // Process a single chunk: send → parse → store. Self-contained so we can
+  // run multiple chunks concurrently without races (each chunk owns its own
+  // Date.now() timer and writes to the shared dict via the idempotent
+  // _deDictStore — last-write-wins, but identical inputs produce identical
+  // output so this is safe).
+  async function processChunk(chunkIdx, batch) {
     report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
     const chunkStart = Date.now();
     const textsJson = JSON.stringify(batch);
-    const langCodes = targetLangs.join(',');
-
     try {
       const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
         method: 'POST',
@@ -1201,17 +1204,9 @@ Rules:
 
       const content = data.choices?.[0]?.message?.content || '{}';
       let translations;
-      try {
-        translations = JSON.parse(content);
-      } catch {
-        // Partial recovery: DeepSeek sometimes truncates the JSON when it hits
-        // max_tokens mid-output. Salvage every complete top-level "key": {…}
-        // pair we can find so the chunk still contributes its already-emitted
-        // translations instead of being thrown away entirely.
-        translations = _salvageTruncatedJson(content);
-      }
+      try { translations = JSON.parse(content); }
+      catch { translations = _salvageTruncatedJson(content); }
 
-      // Store every returned translation in cache
       let storedForChunk = 0;
       for (const t of batch) {
         const entry = translations[t];
@@ -1231,9 +1226,28 @@ Rules:
     } catch (e) {
       console.warn('[de-translate] all-langs batch error:', e.message);
       report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
-      // Don't break the loop — cache misses will fall back to original text
     }
   }
+
+  // Build the list of (chunkIdx, batch) jobs.
+  const jobs = [];
+  for (let i = 0; i < uncached.length; i += CHUNK) {
+    jobs.push({ chunkIdx: Math.floor(i / CHUNK), batch: uncached.slice(i, i + CHUNK) });
+  }
+
+  // Concurrency-limited worker pool. DeepSeek's standard tier accepts ~60
+  // req/min — at 4 in-flight requests with ~15-30s latency we stay well
+  // below that ceiling. End-to-end runtime drops from N×latency to
+  // (N/CONCURRENCY)×latency, so a 9-chunk run goes from ~225s → ~60s.
+  const CONCURRENCY = 4;
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
+    while (cursor < jobs.length) {
+      const job = jobs[cursor++];
+      await processChunk(job.chunkIdx, job.batch);
+    }
+  });
+  await Promise.all(workers);
 
   await _saveDeDict();
 }
@@ -1440,7 +1454,8 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 30,
+  CHUNK_SIZE: 12,
+  CONCURRENCY: 4,
 };
 
 // ═══════════════════════════════════════

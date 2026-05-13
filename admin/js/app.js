@@ -1489,43 +1489,50 @@ async function startCategoryTranslation(){
     if (_catXlateAbort) throw new Error('aborted');
 
     if (missing.length > 0) {
-      const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 30;
+      const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 12;
       const chunks = Math.ceil(missing.length / chunkSize);
-      _xlateProgress(0, chunks, `Translating ${missing.length} new atoms × ${targets.length} langs (${chunks} DeepSeek call${chunks > 1 ? 's' : ''})…`);
-      _xlateLog(`⚙ DeepSeek plan: ${chunks} chunks × ≤${chunkSize} atoms × ${targets.length} langs`);
+      const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 4;
+      _xlateProgress(0, chunks, `Translating ${missing.length} new atoms × ${targets.length} langs (${chunks} DeepSeek call${chunks > 1 ? 's' : ''}, ${concurrency} parallel)…`);
+      _xlateLog(`⚙ DeepSeek plan: ${chunks} chunks × ≤${chunkSize} atoms × ${targets.length} langs · concurrency=${concurrency}`);
 
-      // Heartbeat: every 2s while waiting for the current chunk we print an
-      // elapsed-time hint so the admin knows the network call is still alive.
-      let currentChunkStart = Date.now();
-      let currentChunkIdx = -1;
+      // With parallel chunks we track aggregate state, not "the" current
+      // chunk. inFlight = number of API calls awaiting a response right now.
+      // doneCount = chunks that have finished (success OR error).
+      const startedAt = Date.now();
+      const inFlight = new Map(); // chunkIdx → start ms
+      let doneCount = 0;
       const heartbeat = setInterval(() => {
-        if (currentChunkIdx < 0) return;
-        const sec = ((Date.now() - currentChunkStart) / 1000).toFixed(0);
-        _xlateProgress(currentChunkIdx, chunks, `Chunk ${currentChunkIdx + 1}/${chunks} waiting for DeepSeek… ${sec}s`);
-      }, 2000);
+        if (inFlight.size === 0) return;
+        const oldest = Math.min(...inFlight.values());
+        const sec = ((Date.now() - oldest) / 1000).toFixed(0);
+        _xlateProgress(doneCount, chunks, `${doneCount}/${chunks} done · ${inFlight.size} in flight · oldest ${sec}s`);
+      }, 1000);
 
       try {
         await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
           if (ev.phase === 'chunk-start') {
-            currentChunkIdx = ev.chunkIndex;
-            currentChunkStart = Date.now();
+            inFlight.set(ev.chunkIndex, Date.now());
             const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
             _xlateLog(`→ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
-            _xlateProgress(ev.chunkIndex, ev.totalChunks, `Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} sending…`);
           } else if (ev.phase === 'chunk-done') {
+            inFlight.delete(ev.chunkIndex);
+            doneCount++;
             const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
             _xlateLog(`✓ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} done · ${ev.stored} translations · ${sec}s`, 'success');
-            _xlateProgress(ev.chunkIndex + 1, ev.totalChunks, `Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} done`);
+            _xlateProgress(doneCount, chunks, `${doneCount}/${chunks} done · ${inFlight.size} in flight`);
           } else if (ev.phase === 'chunk-error') {
+            inFlight.delete(ev.chunkIndex);
+            doneCount++;
             _xlateLog(`✗ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
           }
         });
       } finally {
         clearInterval(heartbeat);
       }
+      const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
       _xlateProgress(chunks, chunks, 'Saving dictionary…');
       await window.QorAiBulkTranslate.saveDict();
-      _xlateLog(`✓ Dictionary updated (+${missing.length} terms)`, 'success');
+      _xlateLog(`✓ Dictionary updated (+${missing.length} terms · ${totalSec}s wall-clock)`, 'success');
     } else {
       _xlateLog('All atoms already in dictionary — no API call needed', 'success');
     }
