@@ -1,16 +1,31 @@
 /**
- * Qor AI — Wipe Legacy (non-Geizhals) Products
+ * Qor AI — Wipe Legacy / Broken Products
  *
- * Removes every product that was NOT scraped from Geizhals — i.e. the leftover
- * epey.com / gsmarena / manual imports that are now stale and cause the
- * "Could not load product data" errors in the app.
+ * Two cleanup modes (combinable):
+ *
+ *   1. Default — drops every product whose `source` is NOT 'geizhals'
+ *      (i.e. leftover epey.com / gsmarena / manual imports).
+ *   2. --no-image — drops every product with no usable artwork
+ *      (`imageURL` empty AND `images` array empty), regardless of source.
+ *      This catches the broken cards visible in the Home feed where the
+ *      product still loads but the image slot is blank.
+ *
+ * Pass --only-no-image to run ONLY the no-image sweep and leave non-Geizhals
+ * Geizhals-sourced products alone (typical follow-up after the legacy wipe).
  *
  * Usage:
- *   node scripts/wipe_old_products.js --dry-run     # report only, no writes
- *   node scripts/wipe_old_products.js --confirm     # actually delete
+ *   node scripts/wipe_old_products.js --dry-run
+ *       # default sweep (non-Geizhals), report only
+ *   node scripts/wipe_old_products.js --confirm
+ *       # default sweep, actually delete
+ *   node scripts/wipe_old_products.js --no-image --dry-run
+ *       # default sweep + image sweep, report only
+ *   node scripts/wipe_old_products.js --only-no-image --confirm
+ *       # delete only products that have no image
  *   node scripts/wipe_old_products.js --confirm --cascade
  *       # also purge stale references in recently_viewed, favorites,
- *       # collection_items, and any comparison that references a deleted product.
+ *       # collection_items, and any comparison that references a deleted
+ *       # product. Works with any combination of the modes above.
  *
  * Required env (process.env or .env file):
  *   POCKETBASE_URL              e.g. https://pb.qorai.com
@@ -19,10 +34,10 @@
  *
  * Safety:
  *   - Runs read-only unless --confirm is passed.
- *   - Prints a category/source breakdown BEFORE deleting anything.
+ *   - Prints a source / category / image-state breakdown BEFORE deleting.
  *   - Deletes in pages of 200 with a 50ms throttle between requests.
- *   - On any HTTP failure the script aborts cleanly — partial deletes are safe
- *     because each iteration re-queries the next page.
+ *   - On any HTTP failure the script aborts cleanly — partial deletes are
+ *     safe because each iteration re-queries the next page.
  */
 
 'use strict';
@@ -43,6 +58,18 @@ if (!PB_URL || !PB_EMAIL || !PB_PASSWORD) {
 const args = new Set(process.argv.slice(2));
 const DRY_RUN = !args.has('--confirm');
 const CASCADE = args.has('--cascade');
+const ONLY_NO_IMAGE = args.has('--only-no-image');
+// --no-image runs the image sweep alongside the default source sweep.
+// --only-no-image implicitly enables image sweep AND disables source sweep.
+const RUN_NO_IMAGE_SWEEP = ONLY_NO_IMAGE || args.has('--no-image');
+const RUN_SOURCE_SWEEP = !ONLY_NO_IMAGE;
+
+function hasUsableImage(item) {
+  const url = (item.imageURL || item.imageUrl || '').toString().trim();
+  if (url) return true;
+  const arr = Array.isArray(item.images) ? item.images : [];
+  return arr.some((entry) => typeof entry === 'string' && entry.trim().length > 0);
+}
 
 // ─── PB client ────────────────────────────────────────────────────────────
 let _authToken = null;
@@ -97,30 +124,43 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function buildInventory() {
   console.log('\n── Phase 1: Building inventory ──');
-  const breakdown = { bySource: {}, byCategory: {} };
+  const bySource = {};
+  const byCategoryDel = {};
+  const noImageBySource = {};
   let totalCount = 0;
-  let toDeleteCount = 0;
-  const toDeleteIds = [];
+  let nonGeizhalsCount = 0;
+  let noImageCount = 0;
+  const toDeleteIds = new Set();
 
   let page = 1;
   while (true) {
     const res = await pbList('products', {
       page,
       perPage: 200,
-      fields: 'id,source,category',
+      fields: 'id,source,category,imageURL,imageUrl,images',
     });
     if (!res.items || res.items.length === 0) break;
 
     for (const item of res.items) {
       totalCount++;
       const source = (item.source || '').trim().toLowerCase() || '(empty)';
-      breakdown.bySource[source] = (breakdown.bySource[source] || 0) + 1;
+      bySource[source] = (bySource[source] || 0) + 1;
 
-      if (source !== 'geizhals') {
-        toDeleteCount++;
-        toDeleteIds.push(item.id);
-        const cat = (item.category || '').trim().toLowerCase() || '(uncategorised)';
-        breakdown.byCategory[cat] = (breakdown.byCategory[cat] || 0) + 1;
+      const isNonGeizhals = source !== 'geizhals';
+      const imageOk = hasUsableImage(item);
+
+      if (RUN_SOURCE_SWEEP && isNonGeizhals) {
+        nonGeizhalsCount++;
+        toDeleteIds.add(item.id);
+        const cat =
+          (item.category || '').trim().toLowerCase() || '(uncategorised)';
+        byCategoryDel[cat] = (byCategoryDel[cat] || 0) + 1;
+      }
+
+      if (RUN_NO_IMAGE_SWEEP && !imageOk) {
+        noImageCount++;
+        toDeleteIds.add(item.id);
+        noImageBySource[source] = (noImageBySource[source] || 0) + 1;
       }
     }
 
@@ -128,23 +168,40 @@ async function buildInventory() {
     page++;
   }
 
-  console.log(`Total products in DB:        ${totalCount}`);
-  console.log(`  Geizhals (KEEP):           ${breakdown.bySource.geizhals || 0}`);
-  console.log(`  Non-Geizhals (DELETE):     ${toDeleteCount}`);
-  console.log('\nNon-Geizhals breakdown by source:');
-  for (const [source, count] of Object.entries(breakdown.bySource)) {
-    if (source === 'geizhals') continue;
-    console.log(`  ${source.padEnd(24)} ${count}`);
-  }
-  console.log('\nNon-Geizhals breakdown by category (top 15):');
-  const topCats = Object.entries(breakdown.byCategory)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15);
-  for (const [cat, count] of topCats) {
-    console.log(`  ${cat.padEnd(24)} ${count}`);
+  console.log(`Total products in DB:           ${totalCount}`);
+  console.log(`  Geizhals-sourced:             ${bySource.geizhals || 0}`);
+
+  if (RUN_SOURCE_SWEEP) {
+    console.log(`  Non-Geizhals (DELETE):        ${nonGeizhalsCount}`);
+    console.log('\nNon-Geizhals breakdown by source:');
+    for (const [source, count] of Object.entries(bySource)) {
+      if (source === 'geizhals') continue;
+      console.log(`  ${source.padEnd(24)} ${count}`);
+    }
+    console.log('\nNon-Geizhals breakdown by category (top 15):');
+    const topCats = Object.entries(byCategoryDel)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15);
+    for (const [cat, count] of topCats) {
+      console.log(`  ${cat.padEnd(24)} ${count}`);
+    }
   }
 
-  return toDeleteIds;
+  if (RUN_NO_IMAGE_SWEEP) {
+    console.log(
+      `\n  Image-less (DELETE):          ${noImageCount}` +
+        (RUN_SOURCE_SWEEP ? '   (overlap with non-Geizhals counted once)' : '')
+    );
+    console.log('Image-less breakdown by source:');
+    for (const [source, count] of Object.entries(noImageBySource).sort(
+      (a, b) => b[1] - a[1]
+    )) {
+      console.log(`  ${source.padEnd(24)} ${count}`);
+    }
+  }
+
+  console.log(`\nUnique products to delete:    ${toDeleteIds.size}`);
+  return Array.from(toDeleteIds);
 }
 
 // ─── Phase 2: Product deletion ────────────────────────────────────────────
@@ -272,10 +329,14 @@ async function purgeComparisons(deletedSet) {
 // ─── main ────────────────────────────────────────────────────────────────
 
 (async () => {
-  console.log('Qor AI — wipe legacy products');
-  console.log(`  PB: ${PB_URL}`);
-  console.log(`  mode: ${DRY_RUN ? 'DRY-RUN (no writes)' : 'CONFIRMED — will delete'}`);
-  console.log(`  cascade: ${CASCADE ? 'YES' : 'no'}`);
+  const sweeps = [];
+  if (RUN_SOURCE_SWEEP) sweeps.push('non-Geizhals source');
+  if (RUN_NO_IMAGE_SWEEP) sweeps.push('image-less');
+  console.log('Qor AI — wipe legacy / broken products');
+  console.log(`  PB:       ${PB_URL}`);
+  console.log(`  sweeps:   ${sweeps.join(' + ')}`);
+  console.log(`  mode:     ${DRY_RUN ? 'DRY-RUN (no writes)' : 'CONFIRMED — will delete'}`);
+  console.log(`  cascade:  ${CASCADE ? 'YES' : 'no'}`);
 
   await pbAuth();
   console.log('  auth: ok');

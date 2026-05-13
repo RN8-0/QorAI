@@ -449,32 +449,32 @@ class _FloatingNavBar extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
                           gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(11),
                           boxShadow: [
                             BoxShadow(
                               color: AppTheme.brandCyan.withValues(
-                                alpha: isSelected ? 0.55 : 0.22,
+                                alpha: isSelected ? 0.5 : 0.18,
                               ),
-                              blurRadius: isSelected ? 18 : 8,
-                              offset: const Offset(0, 3),
+                              blurRadius: isSelected ? 14 : 6,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: Icon(
                           isSelected ? item.activeIcon : item.icon,
-                          size: 22,
+                          size: 18,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         item.label,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
+                          fontSize: 9.5,
                           height: 1.0,
                           fontWeight: FontWeight.w700,
                           color: isSelected
@@ -506,8 +506,8 @@ class _FloatingNavBar extends StatelessWidget {
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOutCubic,
                     padding: EdgeInsets.symmetric(
-                      horizontal: isSelected ? 10 : 6,
-                      vertical: 4,
+                      horizontal: isSelected ? 9 : 6,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
@@ -531,24 +531,24 @@ class _FloatingNavBar extends StatelessWidget {
                                       blendMode: BlendMode.srcIn,
                                       child: Icon(
                                         item.activeIcon,
-                                        size: 22,
+                                        size: 19,
                                         color: Colors.white,
                                       ),
                                     )
                                   : Icon(
                                       item.icon,
                                       key: ValueKey('inactive_$index'),
-                                      size: 22,
+                                      size: 19,
                                       color: AppTheme.slate500,
                                     ),
                             ),
                             if (index == 2 && isLinkAiAnalyzing)
                               Positioned(
-                                right: -4,
-                                top: -4,
+                                right: -3,
+                                top: -3,
                                 child: SizedBox(
-                                  width: 10,
-                                  height: 10,
+                                  width: 9,
+                                  height: 9,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1.5,
                                     valueColor: const AlwaysStoppedAnimation(
@@ -559,11 +559,11 @@ class _FloatingNavBar extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: isSelected ? 10 : 9.5,
+                            fontSize: isSelected ? 9.5 : 9,
                             height: 1.0,
                             fontWeight: isSelected
                                 ? FontWeight.w700

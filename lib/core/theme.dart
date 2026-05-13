@@ -513,12 +513,12 @@ class AppTheme {
   // FLOATING NAV BAR
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double navBarHeight = 64.0;
+  static const double navBarHeight = 52.0;
   static const double navBarBottomMargin =
-      10.0; // floating gap above system nav
-  static const double navBarHMargin = 16.0; // pill horizontal margin
+      8.0; // floating gap above system nav
+  static const double navBarHMargin = 18.0; // pill horizontal margin
   static const double navBarTotalClearance =
-      navBarHeight + 26.0; // 64+26=90, accounts for float
+      navBarHeight + 22.0; // 52+22=74, accounts for float
 
   // Branded 3-layer card shadow (blue tinted) — used in compare & premium surfaces
   static const List<BoxShadow> cardShadowBrand = [
