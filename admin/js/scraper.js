@@ -12,7 +12,11 @@ const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260513v11-perline-atoms-dictui';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
-const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
+// `sort=t` forces a stable alphabetical-by-title ordering. Without it Geizhals
+// defaults to popularity-by-view-count which is reordered on every request,
+// causing the same product to appear on 2-3 consecutive pages and dropping
+// our effective per-page yield from 30 down to 10-12 unique URLs.
+const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -1675,103 +1679,122 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     let page = 1;
     let emptyCount = 0;
 
+    // Fetch a single listing page through the proxy, returning either
+    // { ok: true, links: [...] } or { ok: false, cloudflare: bool, reason }.
+    // Self-contained so the outer loop can decide between retry / skip / abort.
+    async function fetchListingPage(url) {
+      let links = [];
+      let cloudflareBlocked = false;
+      let reason = '';
+      try {
+        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
+          signal: AbortSignal.timeout(90000)
+        });
+        const contentType = res.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        if (res.ok && isJson) {
+          let data;
+          try { data = await res.json(); }
+          catch { cloudflareBlocked = true; reason = 'json-parse'; }
+          if (data) {
+            if (data.error === 'cloudflare_challenge') { cloudflareBlocked = true; reason = 'cf-challenge'; }
+            else links = (data.links || []).map(u => ({ url: u, techScore: null }));
+          }
+        } else if (!isJson) {
+          cloudflareBlocked = true; reason = 'non-json-response';
+        } else if (res.status === 503) {
+          cloudflareBlocked = true; reason = 'cf-503';
+        } else {
+          reason = `http-${res.status}`;
+        }
+      } catch (e) {
+        reason = `network-${e.message}`;
+      }
+      // Client-side fallback if proxy returned 0 links without a CF flag.
+      if (!cloudflareBlocked && links.length === 0) {
+        try {
+          const html = await proxyFetch(url);
+          if (html) {
+            if (isChallengePage(html)) { cloudflareBlocked = true; reason = 'cf-fallback-html'; }
+            else {
+              const doc = parseHTML(html);
+              links = extractProductLinksFromDoc(doc, html);
+            }
+          }
+        } catch (e) {
+          reason = reason || `fallback-${e.message}`;
+        }
+      }
+      return { ok: !cloudflareBlocked, cloudflare: cloudflareBlocked, reason, links };
+    }
+
+    // Per-page retry budget (Cloudflare gives transient blocks; a 30-60s
+    // breather usually clears them). Only after THIS budget is exhausted
+    // do we count the page as a hard failure against `consecCloudflareFails`.
+    const MAX_RETRIES_PER_PAGE = 3;
+    const RETRY_BACKOFF_MS = [20000, 45000, 90000]; // 20s, 45s, 90s
+    // Stop scraping only after 3 consecutive pages have BOTH exhausted their
+    // retry budget AND still failed. This means a long but recoverable CF wave
+    // (e.g. 2 pages in a row + 90s sleep) no longer kills a 5K-URL run.
+    let consecCloudflareFails = 0;
+    const MAX_CONSEC_FAILS = 3;
+
     while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2) {
       const listingUrl = `${GEIZHALS_BASE}/?cat=${catParam}&${GEIZHALS_LISTING_EXTRA}&${pageParam}=${page}`;
       slog(`Fetching listing [${pageParam}=${page}]: ${listingUrl.substring(0, 80)}...`, 'info');
 
-      try {
-        // PRIMARY: use proxy's strict /category-links endpoint (prevents Kaykay bug)
-        let links = [];
-        let cloudflareBlocked = false;
-        try {
-          const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(listingUrl)}`, {
-            // 90s: proxy nav (45s) + challenge wait (15s) + selector wait (10s) + overhead
-            signal: AbortSignal.timeout(90000)
-          });
-
-          // Check Content-Type before parsing — Cloudflare HTML will NOT be application/json
-          const contentType = res.headers.get('content-type') || '';
-          const isJson = contentType.includes('application/json');
-
-          if (res.ok && isJson) {
-            let data;
-            try {
-              data = await res.json();
-            } catch (jsonErr) {
-              slog(`  → JSON parse failed (Cloudflare HTML?)`, 'error');
-              cloudflareBlocked = true;
-            }
-            if (data) {
-              if (data.error === 'cloudflare_challenge') {
-                slog(`  → Cloudflare aşılamadı.`, 'error');
-                cloudflareBlocked = true;
-              } else {
-                links = (data.links || []).map(url => ({ url, techScore: null }));
-              }
-            }
-          } else if (!isJson) {
-            // Response is NOT JSON — likely Cloudflare HTML challenge page
-            slog(`  → Proxy returned non-JSON response (Cloudflare HTML)`, 'error');
-            cloudflareBlocked = true;
-          } else if (res.status === 503) {
-            // 503 = cloudflare_challenge from proxy
-            try {
-              const errData = await res.json();
-              if (errData.error === 'cloudflare_challenge') {
-                slog(`  → Cloudflare aşılamadı. (503)`, 'error');
-                cloudflareBlocked = true;
-              }
-            } catch {}
-          } else {
-            slog(`  → Proxy /category-links returned ${res.status}`, 'warn');
-          }
-        } catch (proxyErr) {
-          slog(`  → Proxy /category-links error: ${proxyErr.message}`, 'warn');
+      let pageResult = null;
+      for (let attempt = 0; attempt <= MAX_RETRIES_PER_PAGE && !scraperAbort; attempt++) {
+        pageResult = await fetchListingPage(listingUrl);
+        if (pageResult.ok) break;
+        if (!pageResult.cloudflare) {
+          // Non-CF failure (network, http-500…): one retry, no backoff
+          if (attempt === 0) { slog(`  → ${pageResult.reason}, quick retry…`, 'warn'); continue; }
+          break;
         }
-
-        // FAIL-FAST: if Cloudflare blocked, stop immediately — don't paginate
-        if (cloudflareBlocked) {
-          slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
-          scraperAbort = true;
-          return allItems;
-        }
-
-        // FALLBACK: strict client-side parsing if proxy endpoint fails
-        if (links.length === 0 && !cloudflareBlocked) {
-          const html = await proxyFetch(listingUrl);
-          if (!html) { emptyCount++; page++; continue; }
-          if (isChallengePage(html)) {
-            slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
-            scraperAbort = true;
-            return allItems;
-          }
-          const doc = parseHTML(html);
-          links = extractProductLinksFromDoc(doc, html);
-        }
-
-        if (links.length === 0) {
-          emptyCount++;
-          slog(`  → No products on page ${page} (param: ${pageParam})`, 'warn');
-        } else {
-          emptyCount = 0;
-          let newCount = 0;
-          for (const item of links) {
-            if (!seenUrls.has(item.url)) {
-              seenUrls.add(item.url);
-              allItems.push({ url: item.url, techScore: item.techScore, category: categoryId });
-              newCount++;
-            }
-          }
-          slog(`  +${newCount} products (total unique: ${allItems.length})`, 'success');
-        }
-
-        page++;
-        await sleep(2000 + Math.random() * 1500);
-      } catch (e) {
-        slog(`Error fetching listing: ${e.message}`, 'error');
-        emptyCount++;
-        page++;
+        if (attempt >= MAX_RETRIES_PER_PAGE) break;
+        const wait = RETRY_BACKOFF_MS[Math.min(attempt, RETRY_BACKOFF_MS.length - 1)];
+        slog(`  → Cloudflare engeli (${pageResult.reason}). ${(wait / 1000)|0}s bekleyip tekrar deneyeceğim (deneme ${attempt + 1}/${MAX_RETRIES_PER_PAGE})…`, 'warn');
+        await sleep(wait);
       }
+
+      if (scraperAbort) break;
+
+      if (!pageResult || !pageResult.ok) {
+        consecCloudflareFails++;
+        slog(`  ✗ Sayfa ${page} ${MAX_RETRIES_PER_PAGE} denemeden sonra geçilemedi (${pageResult?.reason || 'unknown'}). Ardışık fail: ${consecCloudflareFails}/${MAX_CONSEC_FAILS}.`, 'error');
+        if (consecCloudflareFails >= MAX_CONSEC_FAILS) {
+          slog(`🛑 ${MAX_CONSEC_FAILS} sayfa üst üste Cloudflare'i geçemedi. Şimdiye kadar toplanan ${allItems.length} URL ile devam edebilirsin — Resume desteğiyle daha sonra kaldığın yerden çekersin.`, 'error');
+          break;
+        }
+        // Skip this page and try the next one — sort=t is stable so we lose
+        // ~30 URLs but the run continues.
+        page++;
+        await sleep(5000);
+        continue;
+      }
+
+      // Page fetched successfully — reset the consecutive-fail counter.
+      consecCloudflareFails = 0;
+      const links = pageResult.links;
+      if (links.length === 0) {
+        emptyCount++;
+        slog(`  → No products on page ${page} (param: ${pageParam})`, 'warn');
+      } else {
+        emptyCount = 0;
+        let newCount = 0;
+        for (const item of links) {
+          if (!seenUrls.has(item.url)) {
+            seenUrls.add(item.url);
+            allItems.push({ url: item.url, techScore: item.techScore, category: categoryId });
+            newCount++;
+          }
+        }
+        slog(`  +${newCount} products (total unique: ${allItems.length})`, 'success');
+      }
+
+      page++;
+      await sleep(2000 + Math.random() * 1500);
     }
   }
 
