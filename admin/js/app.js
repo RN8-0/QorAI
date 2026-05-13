@@ -1289,22 +1289,64 @@ document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementBy
 // ── PRODUCT MODAL ──
 const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','AI / Performance':'🧠','Memory':'💾','Storage':'💿','Design':'📐','Dimensions':'📐','Network':'📡','Connectivity':'🔌','Connectivity / I/O':'🔌','Operating System':'💻','Software / OS':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Chip / Processor':'🧠','Graphics':'🎮','Power':'⚡','Cooling':'❄️','Release & Pricing':'📅','General':'ℹ️'};
 
+// Map of UI language → display label (used by the in-modal language picker).
+const MODAL_LANGS = [
+  ['de','🇩🇪 Deutsch (orig.)'], ['en','🇬🇧 English'], ['tr','🇹🇷 Türkçe'],
+  ['es','🇪🇸 Español'], ['fr','🇫🇷 Français'], ['it','🇮🇹 Italiano'],
+  ['ja','🇯🇵 日本語'], ['nl','🇳🇱 Nederlands'], ['pl','🇵🇱 Polski'],
+  ['pt','🇵🇹 Português'], ['sv','🇸🇪 Svenska'], ['ar','🇸🇦 العربية'],
+];
+let _modalLang = 'de';
+
 function openProduct(id){
   const p=allProducts.find(x=>x.id===id);if(!p)return;
-  document.getElementById('modalTitle').textContent=p.name;
+  // Default to user's saved preference (else German source)
+  _modalLang = localStorage.getItem('qorai_modal_lang') || 'de';
+  _renderProductModal(p);
+}
+
+function _renderProductModal(p){
+  const id = p.id;
+  // Pick the localized payload based on chosen language. If translation
+  // missing for that language we silently fall back to the German source.
+  const lang = _modalLang || 'de';
+  const ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
+  const localizedName = (lang !== 'de' && p.nameTranslated && p.nameTranslated[lang]) ? p.nameTranslated[lang] : p.name;
+  document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
-  const sections=p.specSections&&Object.keys(p.specSections).length?p.specSections:null;
-  const safeId=escJs(p.id);
+  // Build localized sections on the fly: keep the original German section
+  // grouping (Chip / Processor, Camera, …) but translate the key+value
+  // inside via the cached multiLangSpecs lookup.
+  let sections = p.specSections && Object.keys(p.specSections).length ? p.specSections : null;
+  if (sections && ml) {
+    const localized = {};
+    for (const [sec, obj] of Object.entries(sections)) {
+      if (!obj || typeof obj !== 'object') continue;
+      localized[sec] = {};
+      for (const [k, v] of Object.entries(obj)) {
+        const tk = ml[k] || k;
+        const tv = ml[String(v)] || v;
+        localized[sec][tk] = tv;
+      }
+    }
+    sections = localized;
+  }
+  const safeId=escJs(id);
   const safeBrand=escHtml(p.brand||'');
-  const safeName=escHtml(p.name||'');
+  const safeName=escHtml(localizedName||'');
   const safeCategory=escHtml(p.category||'');
   const safeSourceUrl=safeUrl(p.sourceUrl);
   let bricks='';
   function fmtSpecVal(s){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
-    const normalized=String(s).replace(/\s*,\s*/g,'\n');
+    // Values arrive already \n-split from the scraper. We additionally split
+    // on commas and semicolons that the user marked as fact separators so
+    // each fact occupies its own line — but we DON'T break decimals like "1,5".
+    const normalized=String(s)
+      .replace(/\r/g,'\n')
+      .replace(/(?<!\d)\s*[,;]\s*(?!\d)/g,'\n');
     const rawLines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
     const lines=[];
     for(let i=0;i<rawLines.length;i++){const line=rawLines[i];if(/^\d+x$/i.test(line)&&rawLines[i+1]){lines.push(`${line} ${rawLines[++i]}`)}else lines.push(line)}
@@ -1319,7 +1361,16 @@ function openProduct(id){
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
-  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
+  // Build the language picker chip. Only languages that actually have a
+  // multiLangSpecs entry are listed (plus German as the always-available source).
+  const availableLangs = new Set(['de']);
+  if (p.multiLangSpecs) for (const l of Object.keys(p.multiLangSpecs)) availableLangs.add(l);
+  const langOptions = MODAL_LANGS
+    .filter(([code]) => availableLangs.has(code))
+    .map(([code, label]) => `<option value="${code}"${code===_modalLang?' selected':''}>${label}</option>`)
+    .join('');
+  const langChip = `<span class="pm-chip" style="padding:2px 6px"><select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit">${langOptions}</select></span>`;
+  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
       <div class="card-title">✏️ Edit Product</div>
@@ -1341,6 +1392,15 @@ function openProduct(id){
 }
 function toggleEditForm(){const el=document.getElementById('editFormContainer');if(el)el.style.display=el.style.display==='none'?'':'none'}
 function closeModal(){document.getElementById('modalOverlay').style.display='none'}
+// Switch the modal to a different language WITHOUT any API call:
+// the translations have been pre-baked into `multiLangSpecs` during scrape.
+function switchModalLang(id, lang){
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+  _modalLang = lang;
+  try { localStorage.setItem('qorai_modal_lang', lang); } catch {}
+  _renderProductModal(p);
+}
 async function saveProductEdit(id){
   const updates={};
   const name=document.getElementById('editName')?.value?.trim();

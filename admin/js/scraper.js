@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v6-stable-multilang';
+const SCRAPER_BUILD = '20260513v7-fast-multilang-single-call';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -386,14 +386,39 @@ function isBlockedSpec(key, value) {
 }
 
 function normalizeSpecValue(value) {
+  // The DOM tree comes in pre-broken as raw HTML — caller now passes a
+  // string that already has \n between sibling block elements (parseSpecs
+  // does this with a <br>/<li>/<p> → \n preprocessor). On top of that we
+  // also break on commas / semicolons / explicit pipe separators so the
+  // admin & app UIs can render one fact per line.
   return String(value || '')
-    .replace(/\s+/g, ' ')
-    .replace(/\s*,\s*/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    // Split on commas and semicolons that separate distinct facts (keep
+    // numeric decimals like "1,5" intact via lookaround).
+    .replace(/(?<!\d)\s*[,;]\s*(?!\d)/g, '\n')
     .split('\n')
-    .map(v => v.trim())
+    .map(v => v.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .filter(v => !isBlockedSpec('', v))
     .join('\n');
+}
+
+// Convert an HTML element to plain text while preserving line breaks for
+// the common block-level / list separators Geizhals uses.
+function _htmlToLinedText(el) {
+  if (!el) return '';
+  const clone = el.cloneNode(true);
+  // Hard newline markers
+  clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+  // Block-level separators (treat as line break before AND after)
+  clone.querySelectorAll('li, p, div, dd > span').forEach(node => {
+    node.insertAdjacentText('beforebegin', '\n');
+    node.insertAdjacentText('afterend', '\n');
+  });
+  return clone.textContent || '';
 }
 
 function sanitizeProductSpecs(rawSpecs, rawSections) {
@@ -695,7 +720,9 @@ function parseSpecs(doc) {
       const dd = item.querySelector('dd');
       if (!dt || !dd) return;
       const key = dt.textContent.trim();
-      const value = normalizeSpecValue(dd.textContent);
+      // Use the line-preserving extractor so <br>, <li>, <p> become \n
+      // BEFORE normalizeSpecValue runs its comma/semicolon split.
+      const value = normalizeSpecValue(_htmlToLinedText(dd));
       if (!key || !value || key.length >= 200 || value.length >= 1000) return;
       if (isBlockedSpec(key, value)) return;
 
@@ -823,100 +850,100 @@ function _deDictStore(germanText, targetLang, translation) {
   }
 }
 
-// Batch translate German texts → target language using DeepSeek v3
-async function _deepSeekBatchTranslate(germanTexts, targetLang) {
+// Batch translate German texts → ALL target languages in ONE DeepSeek call.
+// Response shape: { "german text": { en: "...", tr: "...", ... }, ... }
+// This collapses what used to be 11 sequential API hits per product into a
+// single round-trip: ~11x faster AND ~11x cheaper (token overlap on the
+// system prompt + single network latency).
+const _LANG_NAMES = {
+  en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
+  ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
+};
+
+async function _deepSeekAllLangsBatch(germanTexts, targetLangs) {
   const token = getPb()?.authStore?.token;
   if (!token) {
     console.warn('[de-translate] No auth token');
     return {};
   }
 
-  // Filter out already-cached texts
-  const uncached = germanTexts.filter(t => !_deDictLookup(t, targetLang));
-  if (!uncached.length) {
-    // All cached — return from cache
-    const result = {};
-    germanTexts.forEach(t => { result[t] = _deDictLookup(t, targetLang); });
-    return result;
+  // Build the set of (text, lang) pairs that are NOT in cache yet
+  const missingByText = new Map(); // text → Set<lang>
+  for (const t of germanTexts) {
+    const missing = targetLangs.filter(l => !_deDictLookup(t, l));
+    if (missing.length) missingByText.set(t, missing);
   }
+  if (missingByText.size === 0) return; // everything cached — no API hit
 
-  const langNames = {
-    en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
-    ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
-  };
-
-  try {
-    // DeepSeek v3 batch translation — send up to 50 texts at once
-    const batch = uncached.slice(0, 50);
+  const uncached = [...missingByText.keys()];
+  // DeepSeek context cap safety: split into chunks of 30 terms × 11 langs
+  // (each chunk ≈ 4-6KB JSON request, ~10-20KB response, well under 64K)
+  const CHUNK = 30;
+  for (let i = 0; i < uncached.length; i += CHUNK) {
+    const batch = uncached.slice(i, i + CHUNK);
     const textsJson = JSON.stringify(batch);
+    const langCodes = targetLangs.join(',');
 
-    const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: token },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a technical product specification translator. Translate German tech specs to ${langNames[targetLang] || targetLang}.
-Rules:
-- Keep numbers, units, and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
-- Product names/brands stay as-is.
-- Return ONLY a JSON object mapping each German text to its ${langNames[targetLang] || targetLang} translation.
-- Format: {"original german text": "translated text", ...}`
-          },
-          {
-            role: 'user',
-            content: `Translate these German product specification terms to ${langNames[targetLang] || targetLang}:\n${textsJson}\n\nReturn only the JSON object.`
-          }
-        ],
-        max_tokens: 4000,
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error) {
-      throw new Error(data.message || data.error || 'DeepSeek API error');
-    }
-
-    const content = data.choices?.[0]?.message?.content || '{}';
-    let translations;
     try {
-      translations = JSON.parse(content);
-    } catch {
-      const match = String(content).match(/\{[\s\S]*\}/);
-      translations = match ? JSON.parse(match[0]) : {};
-    }
+      const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: token },
+        body: JSON.stringify({
+          model: DEEPSEEK_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a technical product specification translator. For each German tech spec term, return a JSON object mapping the original German text to translations in the following languages: ${langCodes}.
+Rules:
+- Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
+- Product names / brand names stay as-is.
+- Preserve newlines (\\n) inside multi-line values.
+- Return ONLY a single JSON object of the form:
+  {"<german text>": {"en":"...", "tr":"...", "es":"...", ...}, ...}
+- The inner object MUST contain exactly these language codes: ${langCodes}.`
+            },
+            {
+              role: 'user',
+              content: `Translate these ${batch.length} German product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
+            }
+          ],
+          max_tokens: 6000,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        })
+      });
 
-    // Store in cache
-    const result = {};
-    for (const t of germanTexts) {
-      const cached = _deDictLookup(t, targetLang);
-      if (cached) {
-        result[t] = cached;
-      } else if (translations[t]) {
-        _deDictStore(t, targetLang, translations[t]);
-        result[t] = translations[t];
-      } else {
-        // Fallback: keep original German text
-        result[t] = t;
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        throw new Error(data.message || data.error || 'DeepSeek API error');
       }
-    }
 
-    // Save cache to PB after batch
-    await _saveDeDict();
-    return result;
-  } catch (e) {
-    console.warn(`[de-translate] ${targetLang} error:`, e.message);
-    // Return cached + fallback
-    const result = {};
-    germanTexts.forEach(t => {
-      result[t] = _deDictLookup(t, targetLang) || t;
-    });
-    return result;
+      const content = data.choices?.[0]?.message?.content || '{}';
+      let translations;
+      try {
+        translations = JSON.parse(content);
+      } catch {
+        const match = String(content).match(/\{[\s\S]*\}/);
+        translations = match ? JSON.parse(match[0]) : {};
+      }
+
+      // Store every returned translation in cache
+      for (const t of batch) {
+        const entry = translations[t];
+        if (!entry || typeof entry !== 'object') continue;
+        for (const lang of targetLangs) {
+          if (typeof entry[lang] === 'string' && entry[lang].trim()) {
+            _deDictStore(t, lang, entry[lang]);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[de-translate] all-langs batch error:', e.message);
+      // Don't break the loop — cache misses will fall back to original text
+    }
   }
+
+  await _saveDeDict();
 }
 
 // Main function: translate German specs → all target languages
@@ -939,58 +966,53 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   }
   const germanTexts = [...allGermanTexts].filter(t => t.length > 0);
 
-  const results = {};
-  for (const lang of targetLangs) {
-    // Counts cache hits to keep the log readable on big runs
-    const missing = germanTexts.filter(t => !_deDictLookup(t, lang));
-    if (missing.length > 0) {
-      slog(`  · ${lang.toUpperCase()}: ${missing.length} new terms → DeepSeek (cached: ${germanTexts.length - missing.length})`, 'info');
-    }
-    results[lang] = await _deepSeekBatchTranslate(germanTexts, lang);
+  // Cache-aware logging
+  const newTerms = germanTexts.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (newTerms.length > 0) {
+    slog(`  · ${newTerms.length}/${germanTexts.length} new terms → DeepSeek (1 call · all langs)`, 'info');
+  } else {
+    slog(`  · ${germanTexts.length}/${germanTexts.length} cached — no API call`, 'success');
   }
 
-  // Build per-language spec object from cache (atomic lookups, no API hit)
+  // ONE API call covers all 11 languages
+  await _deepSeekAllLangsBatch(germanTexts, targetLangs);
+
+  // Build per-language spec object from cache only (no further API hits)
   const multiLangSpecs = {};
   for (const lang of targetLangs) {
     multiLangSpecs[lang] = {};
     for (const [k, v] of Object.entries(germanSpecs)) {
-      const translatedKey = results[lang]?.[k] || k;
-      const translatedVal = results[lang]?.[String(v)] || v;
+      const translatedKey = _deDictLookup(k, lang) || k;
+      const translatedVal = _deDictLookup(String(v), lang) || v;
       multiLangSpecs[lang][translatedKey] = translatedVal;
     }
   }
-
-  // Persist dictionary growth so the next product reuses it
-  await _saveDeDict();
   return multiLangSpecs;
 }
 
-// Translate the spec section names (German → 12 langs) once and cache.
-// Section names are small set (~15 strings); this hits DeepSeek only once
-// per language per app boot.
+// Translate the spec section names (German/EN → 12 langs) once and cache.
+// Section names are a tiny set (~15 strings); first product fills the cache.
 async function translateSpecSections(specSections, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
   const sectionNames = Object.keys(specSections || {});
   if (!sectionNames.length) return {};
+  await _deepSeekAllLangsBatch(sectionNames, targetLangs);
   const out = {};
   for (const lang of targetLangs) {
     out[lang] = {};
-    const translations = await _deepSeekBatchTranslate(sectionNames, lang);
-    for (const sn of sectionNames) out[lang][sn] = translations[sn] || sn;
+    for (const sn of sectionNames) out[lang][sn] = _deDictLookup(sn, lang) || sn;
   }
-  await _saveDeDict();
   return out;
 }
 
-// Translate single German product name to all languages
+// Translate single German product name to all languages (single API call)
 async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
+  await _deepSeekAllLangsBatch([germanName], targetLangs);
   const names = {};
   for (const lang of targetLangs) {
-    const result = await _deepSeekBatchTranslate([germanName], lang);
-    names[lang] = result[germanName] || germanName;
+    names[lang] = _deDictLookup(germanName, lang) || germanName;
   }
-  await _saveDeDict();
   return names;
 }
 
