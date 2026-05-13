@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v7-fast-multilang-single-call';
+const SCRAPER_BUILD = '20260513v8-skip-existing-prefetch';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -679,22 +679,47 @@ async function fetchGalleryImages(productSlug) {
 // first match wins. Falls back to 'General' for unmatched keys.
 // Section names are kept short & language-neutral so the dictionary layer
 // can localise them later without breaking lookups.
+// Order matters: first match wins. Most specific rules MUST come first.
+// CRITICAL: 'Battery / Power' must precede 'AI / Performance' because
+// "Leistungsaufnahme" starts with "Leistung" and we want it to land in
+// Battery, not Performance.
 const _SPEC_SECTION_RULES = [
-  ['Chip / Processor',   /^(chip|cpu|prozessor|prozessoren|sockel|kern|thread|takt|boost|tdp|tgp|cache|fertigung|architektur|vcn|transcoding|encoding|decoding)/i],
-  ['Graphics',           /^(grafik|gpu|grafikspeicher|raytracing|api[- ]unterstützung|shader|directx|vulkan|opengl|opencl|multi[- ]gpu|slotblende|bauform|anbindung)/i],
-  ['AI / Performance',   /^(ai[- ]?rechenleistung|ai[- ]?leistung|tops|tflops|fp\d|int\d|benchmark|punkte|leistung)/i],
-  ['Memory',             /^(speicher|memory|ram|gddr|ddr|bandbreite|bus|speichertyp|speichergeschwindigkeit)/i],
+  // Power-related — covers everything that talks about consumption / supply
+  ['Battery / Power',    /^(akku|batterie|stromverbrauch|leistungsaufnahme|leistungsa|netzteil|netzanschluss|wattzahl|^watt$|laden|ladegerät|usv|effizienz|energieeffizienz|energieverbrauch)/i],
+
+  // Chip-internal specs — match BEFORE AI / Performance to avoid "Chip-Funktionen"
+  // accidentally falling into Features.
+  ['Chip / Processor',   /^(chip|cpu|prozessor|prozessoren|sockel|kern|thread|takt|boost|tdp|tgp|cache|fertigung|architektur|vcn|transcoding|encoding|decoding|temel tempo)/i],
+
+  ['Graphics',           /^(grafik|gpu|grafikspeicher|raytracing|api[- ]unterstützung|shader|directx|vulkan|opengl|opencl|multi[- ]gpu|slotblende|bauform)/i],
+
+  // Be strict about AI: only the explicit AI compute keys, not anything
+  // starting with "Leistung".
+  ['AI / Performance',   /^(ai[- ]?rechenleistung|ai[- ]?leistung|tops|tflops|fp\d|int\d|benchmark|punkte|yapay zeka)/i],
+
+  // Display — heavily expanded for monitors, TVs and phones
+  ['Display',            /^(display|bildschirm|auflösung|bildwiederhol|helligkeit|kontrast|hdr|reaktionszeit|panel|seitenverhältnis|pixeldichte|zoll|diagonale|blickwinkel|farbtiefe|farbraum|dci[- ]p3|rec\.?\s*2020|srgb|adobe[- ]?rgb|lut|hintergrundbeleuchtung|variable synchronisierung|screen[- ]to[- ]body|krümmung|curvature|backlight|gamut|color depth)/i],
+
+  ['Memory',             /^(speicher|memory|ram|gddr|ddr|speichertyp|speichergeschwindigkeit|hafıza)/i],
   ['Storage',            /^(festplatte|ssd|hdd|nvme|m\.2|sata|kapazität|lese|schreib|iops)/i],
-  ['Display',            /^(display|bildschirm|auflösung|bildwiederhol|helligkeit|kontrast|hdr|reaktionszeit|panel|seitenverhältnis|pixeldichte|größe \(zoll\)|zoll)/i],
-  ['Connectivity / I/O', /^(anschlüsse|anschluss|hdmi|displayport|usb|thunderbolt|stromanschluss|netzwerk|lan|ethernet|wlan|wi[- ]?fi|bluetooth|nfc|gps|antenne)/i],
+
+  // Connectivity / I/O — also catches monitor signal bandwidth like "Bandbreite"
+  // and bus interfaces like "Anbindung", "PCIe", since those are usually I/O.
+  ['Connectivity / I/O', /^(anschlüsse|anschluss|hdmi|displayport|usb|thunderbolt|stromanschluss|netzwerk|lan|ethernet|wlan|wi[- ]?fi|bluetooth|nfc|gps|antenne|bandbreite|anbindung|pcie|bus|signal|bağlantı|bağlantılar)/i],
+
   ['Audio',              /^(audio|lautsprecher|kopfhörer|mikrofon|klang|sound|dolby|dts)/i],
   ['Camera',             /^(kamera|sensor|objektiv|optisch|fokus|blende|brennweite|iso|video[- ]aufnahme)/i],
-  ['Battery / Power',    /^(akku|batterie|stromverbrauch|leistungsaufnahme|netzteil|watt|wattzahl|laden|ladegerät|usv|effizienz)/i],
-  ['Software / OS',      /^(betriebssystem|software|os|treiber|firmware)/i],
-  ['Dimensions',         /^(abmessungen|größe|gewicht|breite|höhe|länge|tiefe|maße)/i],
-  ['Cooling',            /^(kühlung|lüfter|lüftergröße|lüfterzahl|wasserkühlung|radiator)/i],
-  ['Features',           /^(funktionen|features|chip[- ]funktionen|chip[- ]größe|chip[- ]konfiguration|chip[- ]ausbau|chip[- ]bezeichnung)/i],
-  ['Release & Pricing',  /^(veröffentlichung|ankündigung|uvp|garantie|hersteller|ean|upc|modell|marke|serie|typ)/i],
+  ['Software / OS',      /^(betriebssystem|software|os|treiber|firmware|ohne smart)/i],
+
+  // Physical / mechanical — VESA mount, color, stand, ergonomic adjustability
+  ['Dimensions',         /^(abmessungen|gewicht|breite|höhe|länge|tiefe|maße|vesa|^farbe$|standfuß|^form$|ergonomie|verstellbarkeit|pivot|drehbar|neigbar|halterung)/i],
+
+  ['Cooling',            /^(kühlung|lüfter|wasserkühlung|radiator)/i],
+
+  // Catch-all for "extras / certifications / control method"
+  ['Features',           /^(funktionen|features|bedienung|besonderheiten|funktion$|zertifizierungen|chip[- ]funktionen|extras)/i],
+
+  ['Release & Pricing',  /^(veröffentlichung|ankündigung|uvp|garantie|hersteller|ean|upc|modell|marke|serie|^typ$|gelistet|listed since|veröffentl)/i],
 ];
 
 function _classifySpecKey(key) {
@@ -1414,6 +1439,28 @@ function updateResumeUI() {
 }
 window.updateResumeUI = updateResumeUI;
 
+// ── Skip-existing: pull every product URL already stored in PB for this
+// category and drop them from the scrape list. This makes resume "free":
+// even after a PC restart, the next run skips everything already saved
+// and continues with brand-new URLs.
+async function _loadExistingSourceUrls(categoryId) {
+  try {
+    const docs = await pbGetAll('products', {
+      filter: `category="${String(categoryId).replace(/"/g, '\\"')}"`,
+      sort: '-created',
+    });
+    const set = new Set();
+    for (const d of docs) {
+      const data = typeof d.data === 'function' ? d.data() : (d.data || d);
+      if (data?.sourceUrl) set.add(String(data.sourceUrl).trim());
+    }
+    return set;
+  } catch (e) {
+    slog(`  (existing-URL preload failed: ${e.message})`, 'warn');
+    return new Set();
+  }
+}
+
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
   let errorStreak = 0;
@@ -1423,8 +1470,41 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const recent = []; // 'ok' | 'err' | 'cf'
   const _MAX_CONSEC_ERRORS = 10; // hard abort threshold
 
+  // PRE-PASS: drop URLs that are already in the database.
+  // This is the durable "resume" — survives full PC shutdown because the
+  // truth lives in PB, not localStorage.
+  slog(`Preloading existing products for category "${categoryId}"...`, 'info');
+  const existingUrls = await _loadExistingSourceUrls(categoryId);
+  const beforeCount = urlItems.length;
+  urlItems = urlItems.filter(it => !existingUrls.has(it.url));
+  const skippedCount = beforeCount - urlItems.length;
+  if (skippedCount > 0) {
+    slog(`⏭  Skipped ${skippedCount} already-saved products → ${urlItems.length} new to scrape`, 'success');
+    results.skipped += skippedCount;
+  } else {
+    slog(`No existing products for this category — scraping all ${urlItems.length}`, 'info');
+  }
+  if (urlItems.length === 0) {
+    slog('Nothing new to scrape — category is fully up to date.', 'success');
+    return results;
+  }
+
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
+
+  // PRE-FETCH OVERLAP: while product i is being translated (heavy CPU on
+  // server + DeepSeek round-trip, ~30-60s) the local browser sits idle.
+  // We use it to fetch product i+1's HTML in the background, so by the
+  // time the translation finishes the next HTML is already in hand.
+  // This roughly cuts wall-clock by 30-40% on translation-heavy batches.
+  let nextHtmlPromise = null;
+  const prefetchNext = (idx) => {
+    if (idx >= urlItems.length || scraperAbort) return null;
+    return proxyFetch(urlItems[idx].url).catch(err => {
+      // Keep the rejection so the consumer can react; we don't want to lose it.
+      return { __error: err };
+    });
+  };
 
   for (let i = 0; i < urlItems.length && !scraperAbort; i++) {
     const item = urlItems[i];
@@ -1433,22 +1513,36 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
     const slug = slugFromUrl(item.url);
     updateProgress(productNum, urlItems.length, 'Products');
 
-    // Apply user delay BEFORE each fetch (except the very first)
-    if (i > 0) {
-      // Adaptive delay: if recent success rate is low, double the wait
+    // Apply user delay BEFORE each fetch (except the very first).
+    // If we already have a prefetched HTML in flight we keep the delay
+    // shorter — the browser has been working in the background.
+    if (i > 0 && !nextHtmlPromise) {
       const recentSlice = recent.slice(-20);
       const okCount = recentSlice.filter(x => x === 'ok').length;
       const successRate = recentSlice.length ? okCount / recentSlice.length : 1;
       const adaptiveDelay = successRate < 0.6 ? delayMs * 2 : delayMs;
       await sleep(adaptiveDelay);
+    } else if (i > 0) {
+      // Light delay even with prefetch to be polite to Cloudflare
+      await sleep(Math.min(delayMs, 500));
     }
 
     try {
       slog(`[${productNum}/${urlItems.length}] ${slug}`);
-      const html = await proxyFetch(item.url);
+      // Take prefetched HTML if available, otherwise fetch now
+      let html;
+      if (nextHtmlPromise) {
+        const res = await nextHtmlPromise;
+        nextHtmlPromise = null;
+        if (res && res.__error) throw res.__error;
+        html = res;
+      } else {
+        html = await proxyFetch(item.url);
+      }
       if (!html) {
         slog(`  → 404/gone: ${slug}`, 'warn');
         results.skipped++;
+        nextHtmlPromise = prefetchNext(i + 1);
         continue;
       }
 
@@ -1464,6 +1558,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
           continue;
         }
         results.skipped++;
+        nextHtmlPromise = prefetchNext(i + 1);
         continue;
       }
       challengeStreak = 0;
@@ -1472,15 +1567,19 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
         slog(`  → Skipped (no data): ${slug}`, 'warn');
         results.skipped++;
+        nextHtmlPromise = prefetchNext(i + 1);
         continue;
       }
       if (!product.techScore && item.techScore) {
         product.techScore = item.techScore;
       }
 
+      // ── Kick off prefetch of the NEXT product's HTML in parallel with
+      // translation. The proxy & DeepSeek hit different servers so they
+      // don't contend for the same resource. ──
+      nextHtmlPromise = prefetchNext(i + 1);
+
       // ── Phase D: Translate German specs → 12 languages (dict-cached) ──
-      // This runs INLINE so the saved product is already multilingual.
-      // Atom dict makes subsequent products virtually free.
       try {
         await translateScrapedProduct(product);
       } catch (txErr) {

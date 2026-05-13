@@ -1282,6 +1282,38 @@ function deselectAll(){selectedIds.clear();renderProductsPage();document.getElem
 async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
+// DANGER: wipes every product in the PocketBase `products` collection. Two
+// confirmation prompts (text + count) protect from misclicks.
+async function wipeAllProducts(){
+  if (!confirm('⚠️  TÜM ürünler silinecek (PocketBase products koleksiyonu).\n\nBu işlem geri alınamaz. Mobil uygulamadaki eski veriler de kaybolur.\n\nDevam etmek istediğine emin misin?')) return;
+  const phrase = prompt('Onaylamak için aşağıdaki kelimeyi tam olarak yaz:\n\nWIPE');
+  if (phrase !== 'WIPE') { toast('İptal edildi', 'w'); return; }
+  toast('Tüm ürünler siliniyor...', 'i', 60000);
+  try {
+    // Fetch every product ID (in batches handled by SDK), then parallel-delete in
+    // chunks of 25 to keep PB happy.
+    const docs = await pbGetAll('products', {});
+    const ids = docs.map(d => d.id).filter(Boolean);
+    let done = 0;
+    const CHUNK = 25;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      await Promise.all(slice.map(id => pbDeleteDoc('products', id).catch(() => null)));
+      done += slice.length;
+      toast(`Silindi: ${done}/${ids.length}`, 'i', 2000);
+    }
+    logActivity('product_wipe', `${ids.length} products wiped from DB`);
+    allProducts = [];
+    totalProductCount = 0;
+    selectedIds.clear();
+    document.getElementById('selectionBar').style.display = 'none';
+    renderProductsPage();
+    toast(`✅ ${ids.length} ürün silindi`, 's');
+  } catch (e) {
+    toast('Hata: ' + e.message, 'e');
+  }
+}
+
 // Search debounce — server-side search with cancellation
 let sTimer;
 document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementById('searchInput');if(si)si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,800)})});
@@ -1290,11 +1322,13 @@ document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementBy
 const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','AI / Performance':'🧠','Memory':'💾','Storage':'💿','Design':'📐','Dimensions':'📐','Network':'📡','Connectivity':'🔌','Connectivity / I/O':'🔌','Operating System':'💻','Software / OS':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Chip / Processor':'🧠','Graphics':'🎮','Power':'⚡','Cooling':'❄️','Release & Pricing':'📅','General':'ℹ️'};
 
 // Map of UI language → display label (used by the in-modal language picker).
+// Plain-text labels — Windows doesn't render flag emojis correctly inside
+// <select> elements, which previously made every option look identical.
 const MODAL_LANGS = [
-  ['de','🇩🇪 Deutsch (orig.)'], ['en','🇬🇧 English'], ['tr','🇹🇷 Türkçe'],
-  ['es','🇪🇸 Español'], ['fr','🇫🇷 Français'], ['it','🇮🇹 Italiano'],
-  ['ja','🇯🇵 日本語'], ['nl','🇳🇱 Nederlands'], ['pl','🇵🇱 Polski'],
-  ['pt','🇵🇹 Português'], ['sv','🇸🇪 Svenska'], ['ar','🇸🇦 العربية'],
+  ['de','German (orig.)'], ['en','English'], ['tr','Türkçe'],
+  ['es','Español'],         ['fr','Français'], ['it','Italiano'],
+  ['ja','日本語'],          ['nl','Nederlands'], ['pl','Polski'],
+  ['pt','Português'],       ['sv','Svenska'],   ['ar','العربية'],
 ];
 let _modalLang = 'de';
 
@@ -1361,15 +1395,17 @@ function _renderProductModal(p){
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
-  // Build the language picker chip. Only languages that actually have a
-  // multiLangSpecs entry are listed (plus German as the always-available source).
-  const availableLangs = new Set(['de']);
-  if (p.multiLangSpecs) for (const l of Object.keys(p.multiLangSpecs)) availableLangs.add(l);
+  // Build the language picker chip. Always list every supported language;
+  // if a translation is missing for the chosen language we fall back to the
+  // German source automatically inside _renderProductModal.
+  const has = (code) => code === 'de' || (p.multiLangSpecs && p.multiLangSpecs[code]);
   const langOptions = MODAL_LANGS
-    .filter(([code]) => availableLangs.has(code))
-    .map(([code, label]) => `<option value="${code}"${code===_modalLang?' selected':''}>${label}</option>`)
+    .map(([code, label]) => {
+      const ok = has(code);
+      return `<option value="${code}"${code===_modalLang?' selected':''}${ok?'':' disabled'}>${label}${ok?'':' — N/A'}</option>`;
+    })
     .join('');
-  const langChip = `<span class="pm-chip" style="padding:2px 6px"><select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit">${langOptions}</select></span>`;
+  const langChip = `<span class="pm-chip" style="padding:2px 8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4)">🌐 <select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit;font-weight:600">${langOptions}</select></span>`;
   body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
