@@ -385,25 +385,58 @@ function isBlockedSpec(key, value) {
   ].some(term => text.includes(term));
 }
 
+// Split a string on commas / semicolons, but ONLY at depth 0 — i.e. ignore
+// any separator that sits inside parentheses, brackets or braces. This way
+// "1x DisplayPort 1.4 (240Hz@2560x1440), 2x HDMI 2.1 (240Hz@2560x1440)" is
+// split into 2 facts, while "Adaptive Sync (40-240Hz via DP, 40-240Hz via
+// HDMI)" stays as ONE fact.
+function _splitTopLevel(str, separators = /[,;]/) {
+  const out = [];
+  let depth = 0;
+  let buf = '';
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '(' || ch === '[' || ch === '{') depth++;
+    else if (ch === ')' || ch === ']' || ch === '}') depth = Math.max(0, depth - 1);
+    if (depth === 0 && separators.test(ch)) {
+      // Numeric decimal protection: don't break "1,5" or "12.5,3"
+      const prev = str[i - 1], next = str[i + 1];
+      if (/\d/.test(prev || '') && /\d/.test(next || '')) {
+        buf += ch;
+        continue;
+      }
+      out.push(buf);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
 function normalizeSpecValue(value) {
   // The DOM tree comes in pre-broken as raw HTML — caller now passes a
   // string that already has \n between sibling block elements (parseSpecs
   // does this with a <br>/<li>/<p> → \n preprocessor). On top of that we
-  // also break on commas / semicolons / explicit pipe separators so the
-  // admin & app UIs can render one fact per line.
-  return String(value || '')
+  // also break on TOP-LEVEL commas / semicolons so each fact gets its own
+  // line — parenthesised qualifications stay attached to the parent fact.
+  const cleaned = String(value || '')
     .replace(/\r/g, '\n')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
-    .replace(/\n{2,}/g, '\n')
-    // Split on commas and semicolons that separate distinct facts (keep
-    // numeric decimals like "1,5" intact via lookaround).
-    .replace(/(?<!\d)\s*[,;]\s*(?!\d)/g, '\n')
-    .split('\n')
-    .map(v => v.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .filter(v => !isBlockedSpec('', v))
-    .join('\n');
+    .replace(/\n{2,}/g, '\n');
+
+  // Process each existing line separately so the \n boundaries are respected,
+  // then expand top-level commas inside each line.
+  const lines = [];
+  for (const ln of cleaned.split('\n')) {
+    for (const part of _splitTopLevel(ln)) {
+      const trimmed = part.replace(/\s+/g, ' ').trim();
+      if (trimmed && !isBlockedSpec('', trimmed)) lines.push(trimmed);
+    }
+  }
+  return lines.join('\n');
 }
 
 // Convert an HTML element to plain text while preserving line breaks for

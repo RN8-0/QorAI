@@ -1376,12 +1376,30 @@ function _renderProductModal(p){
     if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
     if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
     // Values arrive already \n-split from the scraper. We additionally split
-    // on commas and semicolons that the user marked as fact separators so
-    // each fact occupies its own line — but we DON'T break decimals like "1,5".
-    const normalized=String(s)
-      .replace(/\r/g,'\n')
-      .replace(/(?<!\d)\s*[,;]\s*(?!\d)/g,'\n');
-    const rawLines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
+    // on TOP-LEVEL commas / semicolons — separators inside parens/brackets
+    // stay attached to their parent fact (e.g. "Adaptive Sync (40-240Hz, HDMI)"
+    // stays one line, "1x HDMI (..), 2x DP (..)" splits into 2).
+    function splitTop(str){
+      const out=[]; let depth=0, buf='';
+      for(let i=0;i<str.length;i++){
+        const ch=str[i];
+        if(ch==='('||ch==='['||ch==='{') depth++;
+        else if(ch===')'||ch===']'||ch==='}') depth=Math.max(0,depth-1);
+        if(depth===0&&(ch===','||ch===';')){
+          const prev=str[i-1], next=str[i+1];
+          if(/\d/.test(prev||'')&&/\d/.test(next||'')){ buf+=ch; continue; }
+          out.push(buf); buf='';
+        } else buf+=ch;
+      }
+      if(buf) out.push(buf);
+      return out;
+    }
+    const rawLines=[];
+    for(const ln of String(s).replace(/\r/g,'\n').split('\n')){
+      for(const part of splitTop(ln)){
+        const t=part.trim(); if(t) rawLines.push(t);
+      }
+    }
     const lines=[];
     for(let i=0;i<rawLines.length;i++){const line=rawLines[i];if(/^\d+x$/i.test(line)&&rawLines[i+1]){lines.push(`${line} ${rawLines[++i]}`)}else lines.push(line)}
     if(lines.length>1)return`<div class="pm-v-list">${lines.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
