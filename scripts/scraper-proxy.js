@@ -86,6 +86,11 @@ let requestCount = 0;
 let sessionCookies = null;
 let currentUA = _randomUA();
 
+// Auto-restart browser every N successful navigations to prevent the slow
+// Chromium memory leak that crashes long scrape sessions around 1-2k requests.
+const BROWSER_RESTART_AFTER = 200;
+let _browserCycle = 0;
+
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
   const chromePath = findChromePath();
@@ -111,7 +116,21 @@ async function getBrowser() {
   return browser;
 }
 
+async function _restartBrowser() {
+  console.log(`  ♻️  Auto-restarting browser after ${requestCount} requests to release memory...`);
+  try { if (activePage && !activePage.isClosed()) await activePage.close(); } catch {}
+  activePage = null;
+  try { if (browser) await browser.close(); } catch {}
+  browser = null;
+  _browserCycle = 0;
+  // sessionCookies stay — re-applied to the fresh page below
+}
+
 async function getPage() {
+  // Trigger full browser restart cycle if threshold reached
+  if (_browserCycle >= BROWSER_RESTART_AFTER) {
+    await _restartBrowser();
+  }
   const b = await getBrowser();
   // Rotate UA every 20 requests
   if (requestCount % 20 === 0) currentUA = _randomUA();
@@ -175,6 +194,7 @@ async function fetchWithPuppeteer(url, opts = {}) {
   const { waitChallenge = true, _attempt = 0 } = opts;
   const page = await getPage();
   requestCount++;
+  _browserCycle++;
   try {
     // FIX: Use 'domcontentloaded' instead of 'networkidle0'.
     // 'networkidle0' hangs on Cloudflare challenge pages because CF keeps

@@ -161,7 +161,7 @@ function showView(name){
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
   if(name==='prompts')loadAiPromptManager();
-  if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories().catch(()=>{});if(typeof renderCustomCategoriesList==='function')renderCustomCategoriesList();}
+  if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories().catch(()=>{});if(typeof renderCustomCategoriesList==='function')renderCustomCategoriesList();if(typeof updateResumeUI==='function')updateResumeUI();}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
   if(name==='support')initSupportInbox({ forceReload: true });
@@ -1287,7 +1287,7 @@ let sTimer;
 document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementById('searchInput');if(si)si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,800)})});
 
 // ── PRODUCT MODAL ──
-const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','Memory':'💾','Storage':'💿','Design':'📐','Network':'📡','Connectivity':'🔌','Operating System':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Power':'⚡','General':'ℹ️'};
+const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','AI / Performance':'🧠','Memory':'💾','Storage':'💿','Design':'📐','Dimensions':'📐','Network':'📡','Connectivity':'🔌','Connectivity / I/O':'🔌','Operating System':'💻','Software / OS':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Chip / Processor':'🧠','Graphics':'🎮','Power':'⚡','Cooling':'❄️','Release & Pricing':'📅','General':'ℹ️'};
 
 function openProduct(id){
   const p=allProducts.find(x=>x.id===id);if(!p)return;

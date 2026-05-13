@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v5-eu-hloc-robust';
+const SCRAPER_BUILD = '20260513v6-stable-multilang';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -313,6 +313,22 @@ function productDedupKey(product) {
 
 function prepareProductPayload(product) {
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
+
+  // Enforce hard cap of 4 product images, dedup, all in -l.webp tier
+  const rawImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  const seenImg = new Set();
+  const images = [];
+  for (const url of rawImages) {
+    const mid = typeof imgMedium === 'function' ? imgMedium(url) : url;
+    const key = mid.replace(/-[a-z]\.webp$/i, '').toLowerCase();
+    if (mid && !seenImg.has(key)) {
+      seenImg.add(key);
+      images.push(mid);
+    }
+    if (images.length >= 4) break;
+  }
+  const primary = images[0] || product.imageUrl || '';
+
   const payload = {
     slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
     name: String(product.name || '').trim().slice(0, 500),
@@ -320,8 +336,10 @@ function prepareProductPayload(product) {
     category: String(product.category || '').trim().slice(0, 100),
     source: String(product.source || 'geizhals.eu').trim().slice(0, 100),
     sourceUrl: product.sourceUrl || undefined,
-    imageUrl: product.imageUrl || undefined,
-    images: Array.isArray(product.images) ? product.images.filter(Boolean) : [],
+    imageUrl: primary || undefined,            // medium tier (-l.webp)
+    imageUrlThumb: primary ? imgThumb(primary) : undefined, // -m.webp
+    imageUrlHQ: primary ? imgHQ(primary) : undefined,       // -n.webp
+    images,
     specs: sanitized.specs,
     specSections: sanitized.sections,
     keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
@@ -330,6 +348,17 @@ function prepareProductPayload(product) {
     variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
+
+  // Multilingual payload (only if translation pipeline ran inline)
+  if (product.multiLangSpecs && typeof product.multiLangSpecs === 'object') {
+    payload.multiLangSpecs = product.multiLangSpecs;
+  }
+  if (product.multiLangSections && typeof product.multiLangSections === 'object') {
+    payload.multiLangSections = product.multiLangSections;
+  }
+  if (product.nameTranslated && typeof product.nameTranslated === 'object') {
+    payload.nameTranslated = product.nameTranslated;
+  }
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
   if (!payload.name) throw new Error('Product name is empty');
@@ -533,50 +562,84 @@ function extractListingTechScore(cardEl) {
 //  10. IMAGE EXTRACTION
 // ═══════════════════════════════════════
 
-function extractImages(doc, productSlug) {
+// Max images per product (user requirement: first 4 product-only images)
+const MAX_IMAGES_PER_PRODUCT = 4;
+
+// Geizhals CDN exposes the same image in multiple sizes via prefix:
+//   /-n.webp = original (~1280px, 80-120 KB)
+//   /-l.webp = large    (~640px,  40-60 KB)  ← default product view
+//   /-m.webp = medium   (~320px,  15 KB)     ← list / thumbnail
+// We keep the medium URL as canonical and derive the others on the fly.
+function _imgTier(url, tier /* 'm' | 'l' | 'n' */) {
+  if (!url) return '';
+  // Replace any -k.webp, -s.webp, -m.webp, -l.webp, -n.webp suffix or
+  // /[ksmt]_ prefix path with the requested tier.
+  return url
+    .replace(/\/[ksmtc]_/g, `/-${tier}.webp`)
+    .replace(/-(?:k|s|m|t|c|l|n)\.webp(\.\w+)?$/i, `-${tier}.webp`);
+}
+function imgThumb(url) { return _imgTier(url, 'm'); }
+function imgMedium(url) { return _imgTier(url, 'l'); }
+function imgHQ(url)     { return _imgTier(url, 'n'); }
+
+function extractImages(doc /*, productSlug */) {
   if (typeof doc === 'string') doc = parseHTML(doc);
 
-  function upgradeSize(url) {
-    // Replace size prefixes: /k_, /s_, /m_, /t_, /c_ → /-n.webp
-    return url.replace(/\/[ksmtc]_/g, '/-n.webp');
+  // Canonical form: -l.webp (mid-quality, web/mobile-friendly).
+  // Storing only the medium URL keeps the DB lean; the app can derive
+  // thumb / HQ on demand by string replacement.
+  function canonicalize(url) {
+    return _imgTier(url.trim().split(/[?#]/)[0], 'l');
   }
 
   const images = [];
   const seen = new Set();
   function addImg(url) {
     if (!url) return;
-    const u = upgradeSize(url.trim().split(/[?#]/)[0]);
-    if (!seen.has(u)) {
-      seen.add(u);
+    const u = canonicalize(url);
+    // Dedup on a key that ignores the size tier so we don't keep the same
+    // image in 3 different sizes
+    const key = u.replace(/-[a-z]\.webp$/i, '').toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
       images.push(u);
     }
   }
 
-  // 1. og:image
+  // 1. og:image (always the product's hero image)
   const ogImg = doc.querySelector('meta[property="og:image"]');
   if (ogImg) {
     const content = ogImg.getAttribute('content');
     if (content && content.includes('gzhls.at/pix')) addImg(content);
   }
 
-  // 2. All img tags with gzhls.at/pix/ (product gallery images)
-  doc.querySelectorAll('img').forEach(img => {
-    for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
-      const val = img.getAttribute(attr);
-      if (val && val.includes('gzhls.at/pix')) {
-        addImg(val);
-        break;
+  // 2. <img> tags inside the product gallery only
+  //    Geizhals wraps gallery images in `.product-gallery`, `.gallery`,
+  //    `#productGallery` containers; restricting to these avoids carousel
+  //    "related products" leaking in.
+  const galleryScopes = doc.querySelectorAll(
+    '.product-gallery, .productgallery, .gallery, #productGallery, [data-testid="product-gallery"], .swiper-wrapper'
+  );
+  const imgScopes = galleryScopes.length ? Array.from(galleryScopes) : [doc];
+  for (const scope of imgScopes) {
+    scope.querySelectorAll('img').forEach(img => {
+      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
+        const val = img.getAttribute(attr);
+        if (val && val.includes('gzhls.at/pix')) {
+          addImg(val);
+          break;
+        }
       }
-    }
-  });
+    });
+  }
 
-  // 3. Links to larger images (gallery anchors)
+  // 3. Direct anchors to the original-size image (lightbox links)
   doc.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
     const href = a.getAttribute('href');
     if (href) addImg(href);
   });
 
-  return images.slice(0, 3);
+  return images.slice(0, MAX_IMAGES_PER_PRODUCT);
 }
 
 async function fetchGalleryImages(productSlug) {
@@ -587,28 +650,59 @@ async function fetchGalleryImages(productSlug) {
 //  11. SPEC PARSING
 // ═══════════════════════════════════════
 
+// Categorize a raw German spec key into a logical section. Order matters:
+// first match wins. Falls back to 'General' for unmatched keys.
+// Section names are kept short & language-neutral so the dictionary layer
+// can localise them later without breaking lookups.
+const _SPEC_SECTION_RULES = [
+  ['Chip / Processor',   /^(chip|cpu|prozessor|prozessoren|sockel|kern|thread|takt|boost|tdp|tgp|cache|fertigung|architektur|vcn|transcoding|encoding|decoding)/i],
+  ['Graphics',           /^(grafik|gpu|grafikspeicher|raytracing|api[- ]unterstützung|shader|directx|vulkan|opengl|opencl|multi[- ]gpu|slotblende|bauform|anbindung)/i],
+  ['AI / Performance',   /^(ai[- ]?rechenleistung|ai[- ]?leistung|tops|tflops|fp\d|int\d|benchmark|punkte|leistung)/i],
+  ['Memory',             /^(speicher|memory|ram|gddr|ddr|bandbreite|bus|speichertyp|speichergeschwindigkeit)/i],
+  ['Storage',            /^(festplatte|ssd|hdd|nvme|m\.2|sata|kapazität|lese|schreib|iops)/i],
+  ['Display',            /^(display|bildschirm|auflösung|bildwiederhol|helligkeit|kontrast|hdr|reaktionszeit|panel|seitenverhältnis|pixeldichte|größe \(zoll\)|zoll)/i],
+  ['Connectivity / I/O', /^(anschlüsse|anschluss|hdmi|displayport|usb|thunderbolt|stromanschluss|netzwerk|lan|ethernet|wlan|wi[- ]?fi|bluetooth|nfc|gps|antenne)/i],
+  ['Audio',              /^(audio|lautsprecher|kopfhörer|mikrofon|klang|sound|dolby|dts)/i],
+  ['Camera',             /^(kamera|sensor|objektiv|optisch|fokus|blende|brennweite|iso|video[- ]aufnahme)/i],
+  ['Battery / Power',    /^(akku|batterie|stromverbrauch|leistungsaufnahme|netzteil|watt|wattzahl|laden|ladegerät|usv|effizienz)/i],
+  ['Software / OS',      /^(betriebssystem|software|os|treiber|firmware)/i],
+  ['Dimensions',         /^(abmessungen|größe|gewicht|breite|höhe|länge|tiefe|maße)/i],
+  ['Cooling',            /^(kühlung|lüfter|lüftergröße|lüfterzahl|wasserkühlung|radiator)/i],
+  ['Features',           /^(funktionen|features|chip[- ]funktionen|chip[- ]größe|chip[- ]konfiguration|chip[- ]ausbau|chip[- ]bezeichnung)/i],
+  ['Release & Pricing',  /^(veröffentlichung|ankündigung|uvp|garantie|hersteller|ean|upc|modell|marke|serie|typ)/i],
+];
+
+function _classifySpecKey(key) {
+  for (const [section, re] of _SPEC_SECTION_RULES) {
+    if (re.test(key)) return section;
+  }
+  return 'General';
+}
+
 function parseSpecs(doc) {
   const specs = {};
   const specSections = {};
   const keySpecs = {};
 
   // ── PRIMARY: geizhals.eu dl.specs-grid ──
-  // Only extract the FIRST specs-grid to avoid duplicate variants
+  // Only extract the FIRST specs-grid to avoid duplicate variants.
+  // Each spec is auto-classified into a logical section so admin/app
+  // can render organised accordions instead of one giant flat list.
   const firstGrid = doc.querySelector('dl.specs-grid');
   if (firstGrid) {
-    const sectionName = 'General';
-    specSections[sectionName] = {};
-
     firstGrid.querySelectorAll('.specs-grid__item').forEach(item => {
       const dt = item.querySelector('dt');
       const dd = item.querySelector('dd');
       if (!dt || !dd) return;
       const key = dt.textContent.trim();
-      let value = normalizeSpecValue(dd.textContent);
-      if (key && value && key.length < 200 && value.length < 1000 && !isBlockedSpec(key, value)) {
-        specs[key] = value;
-        specSections[sectionName][key] = value;
-      }
+      const value = normalizeSpecValue(dd.textContent);
+      if (!key || !value || key.length >= 200 || value.length >= 1000) return;
+      if (isBlockedSpec(key, value)) return;
+
+      specs[key] = value;
+      const section = _classifySpecKey(key);
+      if (!specSections[section]) specSections[section] = {};
+      specSections[section][key] = value;
     });
   }
 
@@ -827,6 +921,14 @@ Rules:
 
 // Main function: translate German specs → all target languages
 // Returns: { en: {specs}, tr: {specs}, ... }
+//
+// EFFICIENCY MODEL (atom + product-patch):
+//   1) All German texts → looked up in the shared `_deDictCache` (atom dict).
+//   2) Only MISSING atoms hit DeepSeek (batched, 1 call per language max 50 atoms).
+//   3) New translations are stored back in the atom dict for reuse.
+//   4) Final per-product multiLangSpecs is built from dict lookups only.
+// On a category with repeating spec keys, a 5K product run will hit DeepSeek
+// only a few hundred times instead of 5K × 24 × 11 ≈ 1.3M.
 async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
 
@@ -838,13 +940,16 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   const germanTexts = [...allGermanTexts].filter(t => t.length > 0);
 
   const results = {};
-  // Process languages sequentially to avoid rate limiting
   for (const lang of targetLangs) {
-    slog(`Translating specs → ${lang.toUpperCase()}...`, 'info');
+    // Counts cache hits to keep the log readable on big runs
+    const missing = germanTexts.filter(t => !_deDictLookup(t, lang));
+    if (missing.length > 0) {
+      slog(`  · ${lang.toUpperCase()}: ${missing.length} new terms → DeepSeek (cached: ${germanTexts.length - missing.length})`, 'info');
+    }
     results[lang] = await _deepSeekBatchTranslate(germanTexts, lang);
   }
 
-  // Build multi-lang specs objects
+  // Build per-language spec object from cache (atomic lookups, no API hit)
   const multiLangSpecs = {};
   for (const lang of targetLangs) {
     multiLangSpecs[lang] = {};
@@ -855,9 +960,26 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
     }
   }
 
-  // Save dictionary after all translations
+  // Persist dictionary growth so the next product reuses it
   await _saveDeDict();
   return multiLangSpecs;
+}
+
+// Translate the spec section names (German → 12 langs) once and cache.
+// Section names are small set (~15 strings); this hits DeepSeek only once
+// per language per app boot.
+async function translateSpecSections(specSections, targetLangs = TARGET_LANGS) {
+  await _loadDeDict();
+  const sectionNames = Object.keys(specSections || {});
+  if (!sectionNames.length) return {};
+  const out = {};
+  for (const lang of targetLangs) {
+    out[lang] = {};
+    const translations = await _deepSeekBatchTranslate(sectionNames, lang);
+    for (const sn of sectionNames) out[lang][sn] = translations[sn] || sn;
+  }
+  await _saveDeDict();
+  return out;
 }
 
 // Translate single German product name to all languages
@@ -1197,10 +1319,87 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
 //  15. SEQUENTIAL SCRAPING (NO parallel / NO Promise.all)
 // ═══════════════════════════════════════
 
+// ── Checkpoint helpers (Resume after interruption) ──
+const _CHECKPOINT_KEY = 'qorai_scraper_checkpoint_v1';
+function _saveCheckpoint(urlItems, nextIndex, categoryId, results) {
+  try {
+    localStorage.setItem(_CHECKPOINT_KEY, JSON.stringify({
+      ts: Date.now(),
+      categoryId,
+      nextIndex,
+      total: urlItems.length,
+      results,
+      // Save URLs only — re-collecting links can pick fresh prices but loses
+      // resume position; instead reuse what we already discovered.
+      remainingUrls: urlItems.slice(nextIndex).map(u => ({ url: u.url, techScore: u.techScore })),
+    }));
+  } catch (e) {
+    console.warn('[checkpoint] save failed:', e.message);
+  }
+}
+function _clearCheckpoint() {
+  try { localStorage.removeItem(_CHECKPOINT_KEY); } catch {}
+}
+function getScraperCheckpoint() {
+  try {
+    const raw = localStorage.getItem(_CHECKPOINT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+window.getScraperCheckpoint = getScraperCheckpoint;
+window.clearScraperCheckpoint = _clearCheckpoint;
+
+// Resume from a previously interrupted bulk scrape
+async function resumeBulkScrape() {
+  const cp = getScraperCheckpoint();
+  if (!cp || !Array.isArray(cp.remainingUrls) || cp.remainingUrls.length === 0) {
+    toast('Devam edilecek aktif scrape bulunamadı', 'w');
+    return;
+  }
+  if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
+  if (!(await checkProxy())) { toast('Önce proxy başlat', 'e'); return; }
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
+  scraperRunning = true; scraperAbort = false;
+  const btn = document.getElementById('btnBulkScrape'); if (btn) btn.style.display = 'none';
+  const stp = document.getElementById('btnStopScrape'); if (stp) stp.style.display = '';
+  clearScraperLog();
+  slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (category: ${cp.categoryId})`, 'info');
+  const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay);
+  slog(`═══ Resume done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
+  _clearCheckpoint();
+  finishScraping();
+}
+window.resumeBulkScrape = resumeBulkScrape;
+
+// Show/hide Resume button + hint based on stored checkpoint
+function updateResumeUI() {
+  const cp = getScraperCheckpoint();
+  const btn = document.getElementById('btnResumeScrape');
+  const clr = document.getElementById('btnClearCheckpoint');
+  const hint = document.getElementById('resumeHint');
+  if (!btn || !hint) return;
+  if (cp && cp.remainingUrls?.length) {
+    btn.style.display = '';
+    if (clr) clr.style.display = '';
+    const when = new Date(cp.ts).toLocaleString();
+    hint.style.display = '';
+    hint.textContent = `📌 Kaydedilmiş scrape: ${cp.categoryId} · ${cp.remainingUrls.length}/${cp.total} kaldı · ${when}`;
+  } else {
+    btn.style.display = 'none';
+    if (clr) clr.style.display = 'none';
+    hint.style.display = 'none';
+  }
+}
+window.updateResumeUI = updateResumeUI;
+
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
   let errorStreak = 0;
   let challengeStreak = 0;
+  // Adaptive rate-limit: track last 20 outcomes; if success rate drops below
+  // 60% we pause for a long cool-down and slow down per-product delay.
+  const recent = []; // 'ok' | 'err' | 'cf'
+  const _MAX_CONSEC_ERRORS = 10; // hard abort threshold
 
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
@@ -1214,7 +1413,12 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
 
     // Apply user delay BEFORE each fetch (except the very first)
     if (i > 0) {
-      await sleep(delayMs);
+      // Adaptive delay: if recent success rate is low, double the wait
+      const recentSlice = recent.slice(-20);
+      const okCount = recentSlice.filter(x => x === 'ok').length;
+      const successRate = recentSlice.length ? okCount / recentSlice.length : 1;
+      const adaptiveDelay = successRate < 0.6 ? delayMs * 2 : delayMs;
+      await sleep(adaptiveDelay);
     }
 
     try {
@@ -1228,12 +1432,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
 
       if (isChallengePage(html)) {
         challengeStreak++;
+        recent.push('cf');
         slog(`  → Challenge page: ${slug}`, 'warn');
         if (challengeStreak >= 3) {
-          slog(`🛑 Hata: Cloudflare güvenlik duvarı geçilemedi. İşlem güvenli bir şekilde durduruldu.`, 'error');
-          scraperAbort = true;
-          results.skipped++;
-          break;
+          // Cool-down before hard abort: many CF blocks are transient
+          slog(`⏸  3 ardışık CF — 60 saniye soğuma...`, 'warn');
+          await sleep(60000);
+          challengeStreak = 0;
+          continue;
         }
         results.skipped++;
         continue;
@@ -1250,24 +1456,47 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         product.techScore = item.techScore;
       }
 
+      // ── Phase D: Translate German specs → 12 languages (dict-cached) ──
+      // This runs INLINE so the saved product is already multilingual.
+      // Atom dict makes subsequent products virtually free.
+      try {
+        await translateScrapedProduct(product);
+      } catch (txErr) {
+        slog(`  → Translation skipped: ${txErr.message}`, 'warn');
+      }
+
       const clean = prepareProductPayload(product);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
       errorStreak = 0;
+      recent.push('ok');
       slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
 
+      // Adaptive checkpoint every 25 products
+      if (results.added > 0 && results.added % 25 === 0) {
+        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+      }
       if (results.added > 0 && results.added % 5 === 0) {
         triggerAITranslation();
       }
     } catch (e) {
       results.errors++;
       errorStreak++;
+      recent.push('err');
       const details = e.response?.data || e.data || {};
       slog(`  → Error: ${slug} — ${e.message}`, 'error');
       Object.entries(details).forEach(([k,v]) => {
         slog(`     ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
       });
+
+      // HARD ABORT: too many consecutive errors → likely IP-banned / browser dead
+      if (errorStreak >= _MAX_CONSEC_ERRORS) {
+        slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık hata. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
+        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+        scraperAbort = true;
+        break;
+      }
 
       if (errorStreak >= 3) {
         const backoff = Math.min(10000 * Math.pow(2, errorStreak - 3), 120000);
@@ -1277,6 +1506,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
     }
   }
 
+  // Final checkpoint clear (success path)
+  if (!scraperAbort) _clearCheckpoint();
   return results;
 }
 

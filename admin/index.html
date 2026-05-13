@@ -456,10 +456,13 @@
                 <input class="input" type="number" id="scrapeDelay" value="3000" min="1000" step="500">
               </div>
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
+              <button class="btn" id="btnResumeScrape" onclick="resumeBulkScrape()" style="display:none;background:#0891b2;color:#fff">▶ Resume</button>
+              <button class="btn btn-ghost btn-sm" id="btnClearCheckpoint" onclick="clearScraperCheckpoint();updateResumeUI();" style="display:none">Checkpoint sil</button>
               <button class="btn btn-danger" id="btnStopScrape" onclick="stopScraping()" style="display:none">Stop</button>
             </div>
+            <div id="resumeHint" class="text-muted" style="margin-top:8px;font-size:12px;display:none"></div>
           </div>
 
           <!-- Custom Categories Manager -->
