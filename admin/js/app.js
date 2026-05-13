@@ -1282,14 +1282,120 @@ function deselectAll(){selectedIds.clear();renderProductsPage();document.getElem
 async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
-// Backfill missing translations onto existing products WITHOUT re-scraping.
-// Re-runs the DeepSeek translation pipeline on the German `specs` we already
-// have in PocketBase, then patches `multiLangSpecs` + `nameTranslated` back
-// onto the record. Atom-level dict cache keeps the API cost low.
+// ─── DICTIONARY MANAGEMENT (Scraper → 📚 Dictionary tab) ──────────────────
 //
-// Idempotent: products that already have `multiLangSpecs` populated for all
-// TARGET_LANGS are skipped.
-async function backfillTranslations(){
+// Editable view onto the shared atomic translation cache stored at
+// PocketBase `public_config.de_translation_dict`. Add new German terms,
+// override DeepSeek output, or fix wrong translations — the next scrape
+// run automatically uses these values via _deDictLookup.
+const DICT_VIEW_LANGS = ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+
+async function openDictionaryPanel(){
+  if (!window.QorAiDict) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
+  try {
+    await window.QorAiDict.load();
+    renderDictionaryTable();
+  } catch (e) {
+    toast('Sözlük yüklenemedi: ' + e.message, 'e');
+  }
+}
+
+function renderDictionaryTable(){
+  const head = document.getElementById('dictHead');
+  const body = document.getElementById('dictBody');
+  const stats = document.getElementById('dictStats');
+  if (!head || !body) return;
+
+  // Build header once per render (cheap, keeps things idempotent)
+  head.innerHTML =
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:200px;background:var(--bg2)">German term</th>' +
+    DICT_VIEW_LANGS.map(l =>
+      `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:140px;background:var(--bg2);text-transform:uppercase;font-size:10px">${l}</th>`
+    ).join('') +
+    '<th style="padding:6px 8px;border-bottom:1px solid var(--border);background:var(--bg2);width:50px"></th>';
+
+  const cache = window.QorAiDict.cache();
+  const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
+  const allKeys = Object.keys(cache).sort();
+  const keys = q ? allKeys.filter(k => k.includes(q) || DICT_VIEW_LANGS.some(l => String(cache[k]?.[l] || '').toLowerCase().includes(q))) : allKeys;
+
+  if (stats) stats.textContent = `${keys.length} / ${allKeys.length} term`;
+
+  const escAttr = (s) => String(s).replace(/"/g, '&quot;');
+  body.innerHTML = keys.slice(0, 500).map(k => {
+    const entry = cache[k] || {};
+    const cells = DICT_VIEW_LANGS.map(l => {
+      const v = entry[l] || '';
+      return `<td style="padding:4px;border-bottom:1px solid var(--border)"><input class="input" data-dict-key="${escAttr(k)}" data-dict-lang="${l}" value="${escAttr(v)}" style="width:100%;padding:4px 6px;font-size:12px;background:transparent" oninput="markDictDirty()"></td>`;
+    }).join('');
+    return `<tr>
+      <td style="padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text-2)">${escHtml(k)}</td>
+      ${cells}
+      <td style="padding:4px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-sm btn-ghost" title="Sil" onclick="deleteDictRow('${escAttr(k).replace(/'/g, "\\'")}')">×</button></td>
+    </tr>`;
+  }).join('');
+
+  if (keys.length > 500) {
+    body.insertAdjacentHTML('beforeend', `<tr><td colspan="${DICT_VIEW_LANGS.length + 2}" style="padding:10px;text-align:center;color:var(--text-2);font-style:italic">… ${keys.length - 500} more — narrow the search</td></tr>`);
+  }
+}
+
+let _dictDirty = false;
+function markDictDirty(){ _dictDirty = true; }
+
+function addDictionaryRow(){
+  const term = (prompt('Yeni Almanca terim:') || '').trim();
+  if (!term) return;
+  const cache = window.QorAiDict.cache();
+  const k = term.toLowerCase();
+  if (!cache[k]) cache[k] = {};
+  _dictDirty = true;
+  // Populate the search box so the new row is visible immediately
+  const s = document.getElementById('dictSearch');
+  if (s) s.value = k;
+  renderDictionaryTable();
+}
+
+function deleteDictRow(key){
+  if (!confirm(`"${key}" terimi silinsin mi?`)) return;
+  window.QorAiDict.remove(key);
+  _dictDirty = true;
+  renderDictionaryTable();
+}
+
+async function saveDictionary(){
+  // Push every <input> value back into the cache before saving — covers all
+  // edits the user made since the last render.
+  const inputs = document.querySelectorAll('#dictBody input[data-dict-key]');
+  inputs.forEach(inp => {
+    const k = inp.getAttribute('data-dict-key');
+    const l = inp.getAttribute('data-dict-lang');
+    const v = inp.value.trim();
+    if (!k || !l) return;
+    if (v) window.QorAiDict.set(k, l, v);
+    else {
+      // Empty value → drop that lang entry so the renderer falls back to German
+      const cache = window.QorAiDict.cache();
+      if (cache[k] && cache[k][l]) { delete cache[k][l]; _dictDirty = true; }
+    }
+  });
+
+  if (!_dictDirty) { toast('Değişiklik yok', 'i'); return; }
+  try {
+    await window.QorAiDict.save();
+    _dictDirty = false;
+    toast('✅ Sözlük kaydedildi', 's');
+    logActivity('dictionary_save', `${inputs.length} cells persisted`);
+  } catch (e) {
+    toast('Kayıt hatası: ' + e.message, 'e');
+  }
+}
+
+// Legacy backfill helper retained as an internal utility — exposed only via
+// the browser console for emergencies. The scraper now translates every
+// product inline during `translateScrapedProduct`, so a manual button is no
+// longer needed.
+async function _legacyBackfillTranslations(){
   if (typeof translateScrapedProduct !== 'function') {
     toast('Scraper modülü yüklenmemiş', 'e');
     return;
@@ -1499,8 +1605,16 @@ function _renderProductModal(p){
     }
     const lines=[];
     for(let i=0;i<rawLines.length;i++){const line=rawLines[i];if(/^\d+x$/i.test(line)&&rawLines[i+1]){lines.push(`${line} ${rawLines[++i]}`)}else lines.push(line)}
-    if(lines.length>1)return`<div class="pm-v-list">${lines.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
-    return escHtml(lines[0]||s);
+    // Per-line localization fallback: even if the whole-block translation is
+    // missing from `ml`, we may still have an atomic translation for an
+    // individual bullet (e.g. "fest verbaut" → "sabit takılı"). The scraper's
+    // translateGermanSpecs now stores both block- and line-level entries, so
+    // this lookup typically succeeds for unrelated locales as well.
+    const localized = (ml && lang !== 'de')
+      ? lines.map(line => (typeof ml[line] === 'string' && ml[line]) ? ml[line] : line)
+      : lines;
+    if(localized.length>1)return`<div class="pm-v-list">${localized.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
+    return escHtml(localized[0]||s);
   }
   function specRow(k,v){
     const s=String(v),y=s==='Yes'||s==='Var',n=s==='No'||s==='Yok';

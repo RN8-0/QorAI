@@ -202,8 +202,7 @@
           <button class="btn btn-ghost btn-icon" onclick="toggleViewMode()" title="Toggle view">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <button class="btn btn-sm" onclick="backfillTranslations()" title="Çeviri olmayan ürünleri DeepSeek ile 11 dile çevirir" style="margin-left:auto;background:#7c3aed;color:#fff">🌐 Backfill Translations</button>
-          <button class="btn btn-sm btn-danger" onclick="wipeAllProducts()" title="Tüm legacy ürünleri sil — geri alınamaz">🗑️ Wipe All</button>
+          <button class="btn btn-sm btn-danger" onclick="wipeAllProducts()" title="Tüm legacy ürünleri sil — geri alınamaz" style="margin-left:auto">🗑️ Wipe All</button>
         </div>
         <div class="selection-bar" id="selectionBar" style="display:none">
           <span id="selectionCount">0 selected</span>
@@ -435,9 +434,7 @@
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v6</button>
-          <button class="scraper-tab" data-tab="productUpdate" onclick="switchScraperTab(this)">🔄 Update Products</button>
-          <button class="scraper-tab" data-tab="inventoryScan" onclick="switchScraperTab(this)">🔍 Inventory Scan</button>
-          <button class="scraper-tab" data-tab="qualityScan" onclick="switchScraperTab(this)">🔬 Quality Scan</button>
+          <button class="scraper-tab" data-tab="dictionary" onclick="switchScraperTab(this); openDictionaryPanel()">� Dictionary</button>
         </div>
 
         <!-- Bulk Scrape -->
@@ -560,100 +557,33 @@
           </div>
         </div>
 
-        <!-- Product Update -->
-        <div class="scraper-panel" id="productUpdatePanel">
+        <!-- Dictionary Management -->
+        <div class="scraper-panel" id="dictionaryPanel">
           <div class="card">
-            <div class="card-title">Update Existing Products</div>
-            <p class="text-muted" style="margin-bottom:12px">Re-scrape and update changed fields (specs, price, images, score) for existing products.</p>
-            <div class="form-grid">
-              <div class="form-field">
-                <label>Category (empty = all)</label>
-                <select class="input" id="updateCategory">
-                  <option value="">All Categories</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Limit (empty = all)</label>
-                <input class="input" type="number" id="updateLimit" placeholder="All products" min="1">
-              </div>
-              <div class="form-field" style="display:flex;align-items:end">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="updateDeleteGarbage" checked> Auto-delete garbage entries
-                </label>
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="startProductUpdate()" style="margin-top:8px">Update Products</button>
-          </div>
-        </div>
-
-        <!-- Inventory Scan -->
-        <div class="scraper-panel" id="inventoryScanPanel">
-          <div class="card">
-            <div class="card-title">Inventory Scan</div>
-            <p class="text-muted" style="margin-bottom:12px">Search geizhals.eu for new products not yet in the database.</p>
-            <div class="form-grid">
-              <div class="form-field">
-                <label>Category</label>
-                <select class="input" id="inventoryCategory"></select>
-              </div>
-              <div class="form-field">
-                <label>Pages to Scan</label>
-                <input class="input" type="number" id="inventoryPages" value="10" min="1">
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="startInventoryScan()" style="margin-top:8px">Scan</button>
-          </div>
-        </div>
-
-        <!-- Quality Scan -->
-        <div class="scraper-panel" id="qualityScanPanel">
-          <div class="card">
-            <div class="card-title">🔬 Two-Layer Quality Scan</div>
+            <div class="card-title">📚 Translation Dictionary</div>
             <p class="text-muted" style="margin-bottom:12px">
-              <strong>Layer 1 — Quality Control:</strong> Detects products with broken images or too few specs and re-scrapes them.<br>
-              <strong>Layer 2 — Deduplication:</strong> Finds duplicate product records, keeps the best-quality one, and deletes the rest.
+              Atomic German → 11-language translation cache used by the scraper. Add or edit entries here to override DeepSeek output and lock in correct translations.
+              <span id="dictStats" style="float:right;font-size:11px"></span>
             </p>
-            <div class="form-grid">
+            <div class="form-grid" style="grid-template-columns:1.5fr auto auto;gap:8px;align-items:end">
               <div class="form-field">
-                <label>Category (empty = all)</label>
-                <select class="input" id="qualityScanCategory">
-                  <option value="">All Categories</option>
-                </select>
+                <label>Search</label>
+                <input class="input" id="dictSearch" type="text" placeholder="German term, e.g. Akku, fest verbaut, kabelloses Laden" oninput="renderDictionaryTable()">
               </div>
-              <div class="form-field">
-                <label>Min. Spec Count (below = re-scrape)</label>
-                <input class="input" type="number" id="qualityMinSpecs" value="5" min="1" max="100">
-              </div>
-              <div class="form-field">
-                <label>Min. Image Count (below = re-scrape)</label>
-                <input class="input" type="number" id="qualityMinImages" value="1" min="0" max="20">
-              </div>
-              <div class="form-field">
-                <label>Delay (ms)</label>
-                <input class="input" type="number" id="qualityScanDelay" value="2000" min="500" step="500">
-              </div>
-              <div class="form-field" style="display:flex;align-items:end">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityRescrape" checked> Re-scrape bad products
-                </label>
-              </div>
-              <div class="form-field" style="display:flex;align-items:end">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityDedupe" checked> Delete duplicates
-                </label>
-              </div>
-              <div class="form-field" style="display:flex;align-items:end">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="qualityCheckImages" checked> Test broken image URLs (parallel batch)
-                </label>
-              </div>
+              <button class="btn btn-primary" onclick="addDictionaryRow()">+ Add Term</button>
+              <button class="btn" style="background:#0891b2;color:#fff" onclick="saveDictionary()">💾 Save All</button>
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnQualityScan" onclick="startQualityScan()">🔬 Start Full Scan</button>
-              <button class="btn" style="background:#e67e22;color:#fff" onclick="startDeduplicateOnly()">🗑️ Deduplicate Only</button>
-              <button class="btn" style="background:#0891b2;color:#fff" id="btnFixImages" onclick="fixAllImages()">🖼️ Clean Images (max 8)</button>
-              <button class="btn btn-danger" id="btnStopQuality" onclick="stopScraping()" style="display:none">Stop</button>
+            <div style="margin-top:12px;overflow:auto;max-height:65vh;border:1px solid var(--border);border-radius:8px">
+              <table id="dictTable" style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
+                  <tr id="dictHead"></tr>
+                </thead>
+                <tbody id="dictBody"></tbody>
+              </table>
             </div>
+            <p class="text-muted" style="margin-top:10px;font-size:11px">
+              Tip: empty cells in a row will use the German term verbatim at render time. Changes are saved to PocketBase <code>public_config.de_translation_dict</code> on click.
+            </p>
           </div>
         </div>
 

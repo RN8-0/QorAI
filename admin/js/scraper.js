@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v10-flat-translation-map';
+const SCRAPER_BUILD = '20260513v11-perline-atoms-dictui';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -938,6 +938,24 @@ function _deDictStore(germanText, targetLang, translation) {
   }
 }
 
+// ── Public dictionary API (used by the Dictionary admin tab) ────────────
+//
+// Browser globals — keep them lean and explicit so the UI module doesn't
+// reach into private internals. `forceSave` bypasses the dirty flag so the
+// admin can persist edits even if no _deDictStore call was made (e.g. the
+// admin only edited an existing entry).
+window.QorAiDict = {
+  load:    () => _loadDeDict(),
+  cache:   () => _deDictCache,
+  set:     (germanText, lang, translation) => _deDictStore(germanText, lang, translation),
+  remove:  (germanText) => {
+    const key = String(germanText || '').toLowerCase().trim();
+    if (_deDictCache[key]) { delete _deDictCache[key]; _deDictDirty = true; }
+  },
+  save:    () => { _deDictDirty = true; return _saveDeDict(); },
+  langs:   () => SUPPORTED_LANGS,
+};
+
 // Batch translate German texts → ALL target languages in ONE DeepSeek call.
 // Response shape: { "german text": { en: "...", tr: "...", ... }, ... }
 // This collapses what used to be 11 sequential API hits per product into a
@@ -1047,10 +1065,26 @@ Rules:
 async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
 
+  // Atomize EVERY translatable string. Spec values often arrive as multi-line
+  // bullet blobs ("3692mAh\nfest verbaut\nkabelloses Laden") — DeepSeek does
+  // a poor job translating them as one chunk, so we additionally enqueue each
+  // individual line as its own atom. The renderer can then resolve any line
+  // independently of the whole-block lookup.
   const allGermanTexts = new Set();
+  function _enqueue(text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    allGermanTexts.add(t);
+    if (t.includes('\n')) {
+      for (const line of t.split('\n')) {
+        const tl = line.trim();
+        if (tl) allGermanTexts.add(tl);
+      }
+    }
+  }
   for (const [k, v] of Object.entries(germanSpecs)) {
-    if (k) allGermanTexts.add(k);
-    if (v) allGermanTexts.add(String(v));
+    _enqueue(k);
+    _enqueue(v);
   }
   const germanTexts = [...allGermanTexts].filter(t => t.length > 0);
 
@@ -1076,12 +1110,21 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   const multiLangSpecs = {};
   for (const lang of targetLangs) {
     const map = {};
+    function _add(text) {
+      const t = String(text || '').trim();
+      if (!t) return;
+      const tx = _deDictLookup(t, lang);
+      if (tx && tx !== t) map[t] = tx;
+    }
     for (const [k, v] of Object.entries(germanSpecs)) {
-      const tk = _deDictLookup(k, lang);
-      if (tk && tk !== k) map[k] = tk;
+      _add(k);
       const vs = String(v);
-      const tv = _deDictLookup(vs, lang);
-      if (tv && tv !== vs) map[vs] = tv;
+      _add(vs);
+      // Per-line atoms so the renderer can localize bullet rows even when
+      // the whole-block translation is missing or incomplete.
+      if (vs.includes('\n')) {
+        for (const line of vs.split('\n')) _add(line);
+      }
     }
     multiLangSpecs[lang] = map;
   }
@@ -2039,218 +2082,6 @@ async function startScoreUpdate() {
 }
 
 // ═══════════════════════════════════════
-//  21. PRODUCT UPDATE (Full Re-scrape)
-// ═══════════════════════════════════════
-
-async function startProductUpdate() {
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
-
-  const cat = document.getElementById('updateCategory')?.value || '';
-  const limitRaw = document.getElementById('updateLimit')?.value;
-  const limit = limitRaw && limitRaw.trim() ? parseInt(limitRaw) : 0; // 0 = no limit
-  const delay = parseInt(document.getElementById('updateDelay')?.value) || 2000;
-
-  scraperRunning = true;
-  scraperAbort = false;
-  clearScraperLog();
-
-  await loadLearnedTranslations();
-  slog('Loading products for update...');
-
-  let products;
-  try {
-    if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
-    } else {
-      const items = await pbGetAll('products', { filter: `source="geizhals.eu"` });
-      products = items.map(d => ({ id: d.id, ...d.data() }));
-    }
-  } catch (e) {
-    slog(`Failed to load products: ${e.message}`, 'error');
-    finishScraping();
-    return;
-  }
-
-  if (cat) products = products.filter(p => p.category === cat);
-  if (limit > 0) products = products.slice(0, limit);
-
-  slog(`Updating ${products.length} products...`);
-  _scrapeStartTime = Date.now();
-
-  let updated = 0, unchanged = 0, deleted = 0, failed = 0;
-
-  for (let i = 0; i < products.length && !scraperAbort; i++) {
-    const existing = products[i];
-    try {
-      updateProgress(i + 1, products.length, 'Updating');
-      slog(`[${i + 1}/${products.length}] ${existing.name || existing.id}`);
-
-      const html = await proxyFetch(existing.sourceUrl);
-
-      // Detect garbage/redirect pages — auto-delete
-      if (!html) {
-        slog(`  → Page gone (404). Deleting from DB.`, 'warn');
-        try {
-          await pbDeleteDoc('products', existing.id);
-          deleted++;
-          if (typeof allProducts !== 'undefined') {
-            const idx = allProducts.findIndex(p => p.id === existing.id);
-            if (idx >= 0) allProducts.splice(idx, 1);
-          }
-        } catch {}
-        continue;
-      }
-
-      if (isChallengePage(html)) {
-        slog(`  → Challenge page, skipping update: ${existing.name || existing.id}`, 'warn');
-        failed++;
-        continue;
-      }
-
-      const freshProduct = await scrapeProductDetail(html, existing.sourceUrl, existing.category);
-      if (!freshProduct || freshProduct.name === 'Unknown Product' || freshProduct.specsCount === 0) {
-        slog(`  → Garbage page detected. Deleting from DB.`, 'warn');
-        try {
-          await pbDeleteDoc('products', existing.id);
-          deleted++;
-        } catch {}
-        continue;
-      }
-
-      // Compare fields and build update object
-      const changes = {};
-      const compareFields = [
-        'name', 'brand', 'techScore', 'imageUrl',
-        'specsCount', 'variantGroup'
-      ];
-      for (const field of compareFields) {
-        if (freshProduct[field] !== undefined &&
-          JSON.stringify(freshProduct[field]) !== JSON.stringify(existing[field])) {
-          changes[field] = freshProduct[field];
-        }
-      }
-
-      // Deep compare objects
-      const objFields = ['specs', 'specSections', 'keySpecs', 'images'];
-      for (const field of objFields) {
-        if (freshProduct[field] !== undefined &&
-          JSON.stringify(freshProduct[field]) !== JSON.stringify(existing[field])) {
-          changes[field] = freshProduct[field];
-        }
-      }
-
-      if (Object.keys(changes).length > 0) {
-        changes.updatedAt = new Date().toISOString();
-        await pbUpdateDoc('products', existing.id, changes);
-        const changedKeys = Object.keys(changes).filter(k => !k.startsWith('_') && k !== 'updatedAt');
-        slog(`  → Updated: ${changedKeys.join(', ')}`, 'success');
-        updated++;
-
-        // Update in-memory
-        if (typeof allProducts !== 'undefined') {
-          const mem = allProducts.find(p => p.id === existing.id);
-          if (mem) Object.assign(mem, changes);
-        }
-      } else {
-        unchanged++;
-      }
-
-      await sleep(delay);
-    } catch (e) {
-      slog(`  → Error: ${e.message}`, 'error');
-      failed++;
-    }
-  }
-
-  triggerAITranslation();
-
-  slog(`\n═══ Product update complete ═══`, 'success');
-  slog(`Updated: ${updated} | Unchanged: ${unchanged} | Deleted: ${deleted} | Failed: ${failed}${scraperAbort ? ' | STOPPED' : ''}`,
-    updated > 0 ? 'success' : 'info');
-  finishScraping();
-}
-
-// ═══════════════════════════════════════
-//  22. INVENTORY SCAN
-// ═══════════════════════════════════════
-
-async function startInventoryScan() {
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
-
-  const catSelect = document.getElementById('inventoryCategory');
-  const catValue = catSelect ? catSelect.value : '';
-  if (!catValue) { toast('Select a category', 'w'); return; }
-
-  const cats = (window.QorAiCategories) ? window.QorAiCategories.getAll() : [];
-  const catDef = cats.find(c => c.id === catValue || c.geizhalsSlug === catValue);
-  const categoryId = catDef ? catDef.id : catValue;
-
-  const pages = parseInt(document.getElementById('inventoryPages')?.value) || 30;
-  const maxProducts = pages * 30;
-
-  scraperRunning = true;
-  scraperAbort = false;
-  clearScraperLog();
-
-  slog(`Scanning inventory: ${categoryId}, up to ${pages} listing pages (~${maxProducts} products)`);
-
-  // Get existing source URLs
-  const existingUrls = new Set();
-  if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-    allProducts.filter(p => p.category === categoryId)
-      .forEach(p => { if (p.sourceUrl) existingUrls.add(p.sourceUrl); });
-  } else {
-    try {
-      const items = await pbGetAll('products', { filter: `category="${categoryId}"` });
-      items.forEach(d => {
-        const data = d.data();
-        if (data.sourceUrl) existingUrls.add(data.sourceUrl);
-      });
-    } catch {}
-  }
-
-  slog(`Existing products in DB: ${existingUrls.size}`);
-
-  // Crawl category listing pages
-  const urlItems = await collectProductUrls(categoryId, maxProducts);
-
-  if (scraperAbort) {
-    slog('Scan stopped by user', 'warn');
-    finishScraping();
-    return;
-  }
-
-  const allUrls = urlItems.map(item => item.url);
-  const newUrls = allUrls.filter(u => !existingUrls.has(u));
-  const missingUrls = [...existingUrls].filter(u => !allUrls.includes(u));
-
-  slog(`\n═══ Inventory scan complete ═══`, 'success');
-  slog(`Total on geizhals.eu: ${allUrls.length}`);
-  slog(`Already in database: ${allUrls.length - newUrls.length}`);
-  slog(`New products found: ${newUrls.length}`, newUrls.length > 0 ? 'success' : 'info');
-  if (missingUrls.length > 0) {
-    slog(`Products in DB but not on site: ${missingUrls.length}`, 'warn');
-  }
-
-  if (newUrls.length > 0 && newUrls.length <= 50) {
-    slog(`\nNew product URLs:`);
-    newUrls.forEach(u => slog(`  → ${u}`));
-  } else if (newUrls.length > 50) {
-    slog(`\nShowing first 50 of ${newUrls.length} new URLs:`);
-    newUrls.slice(0, 50).forEach(u => slog(`  → ${u}`));
-    slog(`  ... and ${newUrls.length - 50} more`);
-  }
-
-  if (newUrls.length > 0) {
-    slog(`\nUse Bulk Scrape to add these ${newUrls.length} products.`);
-  }
-
-  finishScraping();
-}
-
-// ═══════════════════════════════════════
 //  23. CONTROL FUNCTIONS
 // ═══════════════════════════════════════
 
@@ -2293,494 +2124,3 @@ function downloadScraperLog() {
   URL.revokeObjectURL(url);
 }
 
-// ═══════════════════════════════════════
-//  24. UTILITY: DEEP DIFF FOR LOGGING
-// ═══════════════════════════════════════
-
-function shallowDiff(oldObj, newObj) {
-  const changes = {};
-  const allKeys = new Set([...Object.keys(oldObj || {}), ...Object.keys(newObj || {})]);
-  for (const key of allKeys) {
-    if (JSON.stringify(oldObj?.[key]) !== JSON.stringify(newObj?.[key])) {
-      changes[key] = { old: oldObj?.[key], new: newObj?.[key] };
-    }
-  }
-  return changes;
-}
-
-// ═══════════════════════════════════════
-//  25. QUALITY SCAN (Çift Katman Tarama)
-// ═══════════════════════════════════════
-
-// Normalize a product name for duplicate detection:
-// removes storage/RAM sizes and trailing serial codes
-function _normalizeForDedup(name) {
-  if (!name) return '';
-  return name
-    .toLowerCase()
-    .replace(/\b\d+\s*gb(\s*ram)?\b/gi, '')
-    .replace(/\b\d+\s*tb\b/gi, '')
-    .replace(/\b\d+\s*mb\b/gi, '')
-    .replace(/\b\d+\s*gb\s*\/\s*\d+\s*gb\b/gi, '')
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// Score a product's data quality (higher = better)
-function _qualityScore(p) {
-  return (p.specsCount || Object.keys(p.specs || {}).length) * 3
-    + ((p.images || []).length) * 2
-    + (p.techScore ? 10 : 0)
-    + (p.brand ? 5 : 0)
-    + (p.imageUrl || p.imageURL ? 5 : 0);
-}
-
-// Test whether an image URL is actually loadable (returns a visible image)
-function testImageUrl(url) {
-  return new Promise((resolve) => {
-    if (!url || typeof url !== 'string' || !url.startsWith('http')) { resolve(false); return; }
-    const img = new Image();
-    const timer = setTimeout(() => { img.src = ''; resolve(false); }, 6000);
-    img.onload = () => { clearTimeout(timer); resolve(img.naturalWidth > 0); };
-    img.onerror = () => { clearTimeout(timer); resolve(false); };
-    img.src = url;
-  });
-}
-
-// Detect quality issues for a single product
-function _qualityIssues(p, minSpecs, minImages) {
-  const issues = [];
-  const specCount = p.specsCount || Object.keys(p.specs || {}).length;
-  const hasImage = !!(p.imageUrl || p.imageURL || (p.images && p.images.length > 0));
-  const imageCount = (p.images || []).length + (hasImage ? 1 : 0);
-  if (!hasImage) issues.push('görsel yok');
-  else if (imageCount < minImages) issues.push(`sadece ${imageCount} görsel`);
-  if (specCount < minSpecs) issues.push(`sadece ${specCount} spec`);
-  return issues;
-}
-
-// Normalize a single image URL (upgrade size prefix + strip querystring + lowercase + drop extension for dedup key).
-// We keep the actual URL but use a canonical key for de-duplication.
-function _normImgUrl(u) {
-  if (!u) return u;
-  return u.replace(/\/[ksmtc]_/g, '/-n.webp').split(/[?#]/)[0].trim();
-}
-function _imgDedupKey(u) {
-  if (!u) return '';
-  // Lowercase + strip extension so .jpg/.webp/.jpeg of the same file collapse
-  return _normImgUrl(u).toLowerCase().replace(/\.(jpe?g|png|webp|gif|avif)$/, '');
-}
-
-// Deduplicate + normalize + cap at 8 for a product's image list
-function _cleanImgList(imgs) {
-  const seen = new Set();
-  const out = [];
-  for (const raw of (imgs || [])) {
-    const u = _normImgUrl(raw);
-    const key = _imgDedupKey(u);
-    if (u && key && !seen.has(key)) { seen.add(key); out.push(u); }
-    if (out.length >= 8) break;
-  }
-  return out;
-}
-
-// One-shot bulk image cleanup: normalize URLs, remove duplicates, cap at 8
-async function fixAllImages() {
-  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
-  scraperRunning = true;
-  scraperAbort = false;
-  document.getElementById('btnFixImages').style.display = 'none';
-  document.getElementById('btnStopQuality').style.display = '';
-  clearScraperLog();
-  slog('══ Image Cleanup Started ══', 'info');
-  slog('Scanning all products: normalize URLs + remove duplicates + max 8...', 'info');
-
-  let products = [];
-  try {
-    const total = (await getPb().collection('products').getList(1, 1, {})).totalItems;
-    const pages = Math.ceil(total / 500);
-    slog(`Total ${total} products, ${pages} pages`, 'info');
-    for (let page = 1; page <= pages && !scraperAbort; page++) {
-      const r = await getPb().collection('products').getList(page, 500, {});
-      products.push(...r.items);
-      updateProgress(page, pages, 'Loading');
-    }
-  } catch(e) { slog('Load error: ' + e.message, 'error'); _finishQualityScan(); return; }
-
-  slog(`✓ ${products.length} products loaded. Cleaning...`, 'success');
-
-  let fixed = 0, skipped = 0;
-  for (let i = 0; i < products.length && !scraperAbort; i++) {
-    const p = products[i];
-    updateProgress(i + 1, products.length, 'Cleaning');
-
-    const cleaned = _cleanImgList(p.images);
-    const cleanedUrl = _normImgUrl(p.imageUrl || p.imageURL || cleaned[0] || '');
-
-    // Only update if something changed
-    const needsUpdate = (cleaned.length !== (p.images || []).length)
-      || cleaned.some((v, idx) => v !== (p.images || [])[idx])
-      || cleanedUrl !== (p.imageUrl || p.imageURL || '');
-
-    if (!needsUpdate) { skipped++; continue; }
-
-    try {
-      await pbUpdateDoc('products', p.id, {
-        images: cleaned,
-        imageUrl: cleanedUrl,
-        imageURL: cleanedUrl,
-      });
-      fixed++;
-      if (fixed <= 20 || fixed % 100 === 0) {
-        slog(`  ✓ ${p.name || p.id}: ${(p.images||[]).length} → ${cleaned.length} images`, 'success');
-      }
-    } catch(e) {
-      slog(`  ✗ ${p.name || p.id}: ${e.message}`, 'error');
-    }
-  }
-
-  slog(`\n══ Completed ══`, 'success');
-  slog(`✓ Fixed: ${fixed} | Already clean: ${skipped}`, 'success');
-  _finishQualityScan();
-  document.getElementById('btnFixImages').style.display = '';
-}
-
-async function startQualityScan() {
-  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the proxy first', 'e'); return; }
-
-  const cat = document.getElementById('qualityScanCategory')?.value || '';
-  const minSpecs = parseInt(document.getElementById('qualityMinSpecs')?.value) || 5;
-  const minImages = parseInt(document.getElementById('qualityMinImages')?.value) || 1;
-  const doRescrape = document.getElementById('qualityRescrape')?.checked !== false;
-  const doDedupe = document.getElementById('qualityDedupe')?.checked !== false;
-  const doCheckImages = document.getElementById('qualityCheckImages')?.checked === true;
-  const delay = parseInt(document.getElementById('qualityScanDelay')?.value) || 2000;
-
-  scraperRunning = true;
-  scraperAbort = false;
-  document.getElementById('btnQualityScan').style.display = 'none';
-  document.getElementById('btnStopQuality').style.display = '';
-  clearScraperLog();
-  await loadLearnedTranslations();
-
-  slog('══ Quality Scan Started ══', 'info');
-  slog(`Category: ${cat || 'All'} | Min specs: ${minSpecs} | Min images: ${minImages}`, 'info');
-
-  // ── Load all products via pagination (PB perPage capped at 500) ──
-  slog('\n[1/4] Loading products from PocketBase...', 'info');
-  let products = [];
-  try {
-    const filter = cat ? `category="${cat}"` : '';
-    const PER_PAGE = 500;
-    const first = await getPb().collection('products').getList(1, PER_PAGE, { filter, sort: '-techScore' });
-    const total = first.totalItems;
-    const pages = Math.ceil(total / PER_PAGE);
-    products.push(...first.items.map(d => ({ _docId: d.id, ...d })));
-    slog(`Total ${total} products, ${pages} pages`, 'info');
-    updateProgress(1, pages, 'Loading');
-    for (let page = 2; page <= pages && !scraperAbort; page++) {
-      const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
-      products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
-      updateProgress(page, pages, 'Loading');
-    }
-    slog(`✓ ${products.length} products loaded`, 'success');
-  } catch (e) {
-    slog(`Products could not be loaded: ${e.message}`, 'error');
-    _finishQualityScan();
-    return;
-  }
-
-  // ── Phase 1: Detect quality issues ──
-  slog(`\n[2/4] Running quality checks...`, 'info');
-  const badProducts = [];
-  const goodProducts = [];
-
-  for (const p of products) {
-    const issues = _qualityIssues(p, minSpecs, minImages);
-    if (issues.length > 0 && p.sourceUrl) {
-      badProducts.push({ ...p, _issues: issues });
-    } else {
-      goodProducts.push(p);
-    }
-  }
-
-  slog(`✓ Clean: ${goodProducts.length} | ⚠️ Problematic: ${badProducts.length}`, badProducts.length > 0 ? 'warn' : 'success');
-  if (badProducts.length > 0) {
-    slog('Problematic products (first 30):', 'warn');
-    badProducts.slice(0, 30).forEach(p => slog(`  ⚠️ ${p.name || p._docId}: ${p._issues.join(', ')}`, 'warn'));
-    if (badProducts.length > 30) slog(`  ... and ${badProducts.length - 30} more products`, 'warn');
-  }
-
-  // ── Phase 1b: Broken image URL check (optional, parallel batched) ──
-  if (doCheckImages && !scraperAbort) {
-    slog(`\n[2b/4] Testing image URL reachability (${goodProducts.length + badProducts.length} products)...`, 'info');
-    slog('Testing in parallel batches of 20...', 'info');
-    let brokenCount = 0;
-    const allToCheck = [...goodProducts];
-    const BATCH = 20;
-    let processed = 0;
-    for (let i = 0; i < allToCheck.length && !scraperAbort; i += BATCH) {
-      const slice = allToCheck.slice(i, i + BATCH);
-      const results = await Promise.all(slice.map(p => {
-        const url = p.imageUrl || p.imageURL || (p.images && p.images[0]) || '';
-        if (!url) return Promise.resolve({ p, ok: true, skip: true });
-        return testImageUrl(url).then(ok => ({ p, ok }));
-      }));
-      for (const { p, ok, skip } of results) {
-        if (skip || ok) continue;
-        if (!p.sourceUrl) continue;
-        slog(`  🔴 Broken image: ${p.name || p._docId}`, 'warn');
-        const alreadyBad = badProducts.some(b => b._docId === p._docId);
-        if (!alreadyBad) {
-          badProducts.push({ ...p, _issues: ['broken image URL'] });
-          const idx = goodProducts.findIndex(g => g._docId === p._docId);
-          if (idx !== -1) goodProducts.splice(idx, 1);
-        } else {
-          const existing = badProducts.find(b => b._docId === p._docId);
-          if (existing && !existing._issues.includes('broken image URL')) {
-            existing._issues.push('broken image URL');
-          }
-        }
-        brokenCount++;
-      }
-      processed += slice.length;
-      updateProgress(processed, allToCheck.length, 'Image Test');
-    }
-    slog(`✓ Broken image URL test complete: ${brokenCount} broken images found`, brokenCount > 0 ? 'warn' : 'success');
-  }
-
-  // ── Phase 1b: Re-scrape bad products ──
-  if (doRescrape && badProducts.length > 0 && !scraperAbort) {
-    slog(`\n[3/4] Re-scraping ${badProducts.length} problematic products...`, 'info');
-    _scrapeStartTime = Date.now();
-    let fixed = 0, failed = 0, deleted = 0;
-
-    for (let i = 0; i < badProducts.length && !scraperAbort; i++) {
-      const p = badProducts[i];
-      updateProgress(i + 1, badProducts.length, 'Re-scrape');
-      slog(`[${i + 1}/${badProducts.length}] ${p.name || p._docId} (${p._issues.join(', ')})`);
-
-      try {
-        const html = await proxyFetch(p.sourceUrl);
-        if (!html) {
-          slog(`  → 404/missing. Deleting...`, 'warn');
-          await pbDeleteDoc('products', p._docId);
-          deleted++;
-          continue;
-        }
-
-        const fresh = await scrapeProductDetail(html, p.sourceUrl, p.category || cat);
-        if (!fresh || (fresh.specsCount || 0) === 0) {
-          slog(`  → Invalid page. Skipping.`, 'warn');
-          failed++;
-          continue;
-        }
-
-        const update = { qualityFixedAt: new Date().toISOString() };
-
-        // Images: use helper to normalize + deduplicate + cap at 8
-        const mergedSliced = _cleanImgList([...(fresh.images || []), ...(p.images || [])]);
-        update.images = mergedSliced;
-        update.imageUrl = mergedSliced[0] || '';
-        update.imageURL = mergedSliced[0] || '';
-
-        // Specs: use whichever has more
-        const existingSpecCount = p.specsCount || Object.keys(p.specs || {}).length;
-        const freshSpecCount = fresh.specsCount || 0;
-        if (freshSpecCount >= existingSpecCount) {
-          update.specs = fresh.specs;
-          update.specSections = fresh.specSections;
-          update.keySpecs = fresh.keySpecs;
-          update.specsCount = freshSpecCount;
-        }
-
-        if (!p.techScore && fresh.techScore) update.techScore = fresh.techScore;
-        if (!p.brand && fresh.brand) update.brand = fresh.brand;
-
-        await pbUpdateDoc('products', p._docId, update);
-
-        const improvements = [];
-        if (update.images) improvements.push(`${mergedSliced.length} images`);
-        if (update.specs) improvements.push(`${freshSpecCount} spec`);
-        slog(`  → Fixed: ${improvements.join(', ')}`, 'success');
-        fixed++;
-      } catch (e) {
-        slog(`  → Error: ${e.message}`, 'error');
-        failed++;
-      }
-
-      await sleep(delay);
-    }
-
-    slog(`\nRe-scrape complete: Fixed ${fixed} | Failed ${failed} | Deleted ${deleted}`, 'success');
-  } else if (!doRescrape) {
-    slog('\n[3/4] Re-scrape skipped (option disabled)', 'info');
-  }
-
-  // ── Phase 2: Deduplication ──
-  if (doDedupe && !scraperAbort) {
-    slog('\n[4/4] Starting deduplication scan...', 'info');
-    await _runDeduplication(products, cat);
-  } else if (!doDedupe) {
-    slog('\n[4/4] Deduplication scan skipped (option disabled)', 'info');
-  }
-
-  slog('\n═══ Quality Scan Complete ═══', 'success');
-  triggerAITranslation();
-  _finishQualityScan();
-}
-
-async function startDeduplicateOnly() {
-  if (scraperRunning) { toast('Scraper is already running', 'w'); return; }
-
-  const cat = document.getElementById('qualityScanCategory')?.value || '';
-
-  scraperRunning = true;
-  scraperAbort = false;
-  document.getElementById('btnQualityScan').style.display = 'none';
-  document.getElementById('btnStopQuality').style.display = '';
-  clearScraperLog();
-
-  slog('══ Deduplication Cleanup Started ══', 'info');
-  slog(`Category: ${cat || 'All'}`, 'info');
-
-  slog('\nLoading products from PocketBase...', 'info');
-  let products = [];
-  try {
-    const filter = cat ? `category="${cat}"` : '';
-    const PER_PAGE = 500;
-    const first = await getPb().collection('products').getList(1, PER_PAGE, { filter, sort: '-techScore' });
-    const total = first.totalItems;
-    const pages = Math.ceil(total / PER_PAGE);
-    products.push(...first.items.map(d => ({ _docId: d.id, ...d })));
-    for (let page = 2; page <= pages && !scraperAbort; page++) {
-      const r = await getPb().collection('products').getList(page, PER_PAGE, { filter, sort: '-techScore' });
-      products.push(...r.items.map(d => ({ _docId: d.id, ...d })));
-      updateProgress(page, pages, 'Loading');
-    }
-    slog(`✓ ${products.length} products loaded`, 'success');
-  } catch (e) {
-    slog(`Could not load: ${e.message}`, 'error');
-    _finishQualityScan();
-    return;
-  }
-
-  await _runDeduplication(products, cat);
-
-  slog('\n═══ Deduplication Cleanup Complete ═══', 'success');
-  _finishQualityScan();
-}
-
-async function _runDeduplication(products, categoryFilter) {
-  // Step 1: Group by exact same sourceUrl (definitive duplicates)
-  slog('\n— Checking duplicates with the same source URL...', 'info');
-  const byUrl = new Map();
-  for (const p of products) {
-    if (categoryFilter && p.category !== categoryFilter) continue;
-    const url = (p.sourceUrl || '').replace(/\?.*$/, '').replace(/\/$/, '').toLowerCase();
-    if (!url) continue;
-    if (!byUrl.has(url)) byUrl.set(url, []);
-    byUrl.get(url).push(p);
-  }
-
-  const urlDups = [...byUrl.values()].filter(g => g.length > 1);
-  slog(`${urlDups.length} duplicate groups found by same URL`, urlDups.length > 0 ? 'warn' : 'success');
-
-  let totalDeleted = 0;
-
-  for (const group of urlDups) {
-    if (scraperAbort) break;
-    const sorted = group.slice().sort((a, b) => _qualityScore(b) - _qualityScore(a));
-    const keeper = sorted[0];
-    const toDelete = sorted.slice(1);
-    slog(`\n[URL Dup] "${keeper.name || keeper._docId}"`, 'warn');
-    slog(`  ✓ KEPT: ${keeper._docId} (score: ${_qualityScore(keeper)})`, 'success');
-    for (const dup of toDelete) {
-      slog(`  🗑️ DELETED: ${dup._docId} (score: ${_qualityScore(dup)})`, 'warn');
-      try {
-        await _mergeAndDelete(keeper, dup);
-        totalDeleted++;
-      } catch (e) {
-        slog(`    Error: ${e.message}`, 'error');
-      }
-    }
-  }
-
-  // Step 2: Group by normalized name within category
-  slog('\n— Checking duplicates by name similarity...', 'info');
-  const byName = new Map();
-  for (const p of products) {
-    if (categoryFilter && p.category !== categoryFilter) continue;
-    const normName = _normalizeForDedup(p.name);
-    if (!normName || normName.length < 5) continue;
-    const key = `${p.category || ''}::${normName}`;
-    if (!byName.has(key)) byName.set(key, []);
-    byName.get(key).push(p);
-  }
-
-  const nameDups = [...byName.entries()].filter(([, g]) => g.length > 1);
-  slog(`${nameDups.length} potential duplicate groups found by name`, nameDups.length > 0 ? 'warn' : 'success');
-
-  for (const [key, group] of nameDups) {
-    if (scraperAbort) break;
-
-    // Skip if these products clearly differ (different spec counts by large margin = variants, not dups)
-    const specCounts = group.map(p => p.specsCount || Object.keys(p.specs || {}).length);
-    const maxSpec = Math.max(...specCounts);
-    const minSpec = Math.min(...specCounts);
-    // If specs vary greatly, they're likely different variants — keep all
-    if (maxSpec > 0 && minSpec > 0 && maxSpec / minSpec > 2.5) continue;
-
-    const sorted = group.slice().sort((a, b) => _qualityScore(b) - _qualityScore(a));
-    const keeper = sorted[0];
-    const toDelete = sorted.slice(1);
-
-    slog(`\n[Name Dup] "${key.split('::')[1]}"`, 'warn');
-    slog(`  ✓ KEPT: ${keeper.name || keeper._docId} (score: ${_qualityScore(keeper)}, specs: ${keeper.specsCount || 0})`, 'success');
-    for (const dup of toDelete) {
-      slog(`  🗑️ DELETED: ${dup.name || dup._docId} (score: ${_qualityScore(dup)}, specs: ${dup.specsCount || 0})`, 'warn');
-      try {
-        await _mergeAndDelete(keeper, dup);
-        totalDeleted++;
-      } catch (e) {
-        slog(`    Error: ${e.message}`, 'error');
-      }
-    }
-  }
-
-  slog(`\nDeduplication complete: ${totalDeleted} records deleted`, 'success');
-}
-
-// Merge images from dup into keeper, then delete dup
-async function _mergeAndDelete(keeper, dup) {
-  const keeperImages = keeper.images || [];
-  const dupImages = dup.images || [];
-  const mergedImages = [...new Set([...keeperImages, ...dupImages])].filter(Boolean);
-
-  if (mergedImages.length > keeperImages.length) {
-    await pbUpdateDoc('products', keeper._docId, {
-      images: mergedImages,
-      imageUrl: mergedImages[0] || keeper.imageUrl || '',
-      imageURL: mergedImages[0] || keeper.imageURL || '',
-    });
-    keeper.images = mergedImages;
-    slog(`    + ${mergedImages.length - keeperImages.length} görsel taşındı`, 'info');
-  }
-
-  await pbDeleteDoc('products', dup._docId);
-}
-
-function _finishQualityScan() {
-  scraperRunning = false;
-  scraperAbort = false;
-  _scrapeStartTime = null;
-  _scrapeProductCount = 0;
-  const pg = document.getElementById('scraperProgress');
-  if (pg) pg.textContent = '';
-  const btnStart = document.getElementById('btnQualityScan');
-  const btnStop = document.getElementById('btnStopQuality');
-  if (btnStart) btnStart.style.display = '';
-  if (btnStop) btnStop.style.display = 'none';
-}
