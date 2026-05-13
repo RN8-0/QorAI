@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v8-skip-existing-prefetch';
+const SCRAPER_BUILD = '20260513v9-ref-link-skip-compact';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
@@ -439,6 +439,30 @@ function normalizeSpecValue(value) {
   return lines.join('\n');
 }
 
+// Reference-only spec detector. Geizhals occasionally emits rows like
+//   <dt>USB-Schreibweise</dt><dd><a href="...">Link</a></dd>
+// pointing to an external Wikipedia / standards article. These rows are
+// not real product specs and just pollute the modal — drop them.
+const _REFERENCE_WORDS = /^(link|liste|mehr|details|more|see|show|info|wikipedia|datenblatt|spec[- ]?sheet)$/i;
+
+function _isReferenceLinkDd(dd) {
+  if (!dd) return false;
+  // Strip whitespace-only children
+  const meaningfulChildren = Array.from(dd.childNodes).filter(n => {
+    if (n.nodeType === 3) return n.textContent.trim().length > 0; // text node
+    return n.nodeType === 1; // element node
+  });
+  // dd that contains nothing but a single anchor with a reference word
+  if (meaningfulChildren.length === 1) {
+    const only = meaningfulChildren[0];
+    if (only.nodeType === 1 && only.tagName && only.tagName.toLowerCase() === 'a') {
+      const text = (only.textContent || '').trim();
+      if (_REFERENCE_WORDS.test(text)) return true;
+    }
+  }
+  return false;
+}
+
 // Convert an HTML element to plain text while preserving line breaks for
 // the common block-level / list separators Geizhals uses.
 function _htmlToLinedText(el) {
@@ -778,11 +802,17 @@ function parseSpecs(doc) {
       const dd = item.querySelector('dd');
       if (!dt || !dd) return;
       const key = dt.textContent.trim();
+      // Skip reference-only rows: when the <dd> wraps a single anchor like
+      // <a>Link</a> (e.g. "USB-Schreibweise: Link" pointing to a Wikipedia
+      // page) — these are NOT real spec data, just a footnote link.
+      if (_isReferenceLinkDd(dd)) return;
       // Use the line-preserving extractor so <br>, <li>, <p> become \n
       // BEFORE normalizeSpecValue runs its comma/semicolon split.
       const value = normalizeSpecValue(_htmlToLinedText(dd));
       if (!key || !value || key.length >= 200 || value.length >= 1000) return;
       if (isBlockedSpec(key, value)) return;
+      // Final safety: drop values that resolve to bare reference words.
+      if (_REFERENCE_WORDS.test(value)) return;
 
       specs[key] = value;
       const section = _classifySpecKey(key);

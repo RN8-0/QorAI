@@ -204,7 +204,7 @@ textarea.input{resize:vertical}
 .pm-brick{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:12px;overflow:hidden;width:100%;box-shadow:0 10px 24px rgba(0,0,0,.12)}
 .pm-brick-head{padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:linear-gradient(135deg,var(--accent),#6d28d9);display:flex;align-items:center;gap:6px}
 .pm-spec-list{display:flex;flex-direction:column}
-.pm-spec-row{display:grid;grid-template-columns:minmax(120px,34%) 1fr;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015)}
+.pm-spec-row{display:grid;grid-template-columns:minmax(120px,34%) 1fr;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);font-size:12px}
 .pm-spec-row:nth-child(odd){background:rgba(0,0,0,.10)}
 .pm-spec-row:last-child{border-bottom:none}
 .pm-spec-row:hover{background:var(--accent3)}
@@ -212,13 +212,13 @@ textarea.input{resize:vertical}
 .pm-spec-tbl tr:nth-child(even){background:rgba(255,255,255,.015)}
 .pm-spec-tbl tr:nth-child(odd){background:rgba(0,0,0,.10)}
 .pm-spec-tbl tr:hover{background:var(--accent3)}
-.pm-spec-tbl td{padding:9px 10px;font-size:11px;border-bottom:1px solid var(--border);vertical-align:top}
+.pm-spec-tbl td{padding:6px 8px;font-size:11.5px;border-bottom:1px solid var(--border);vertical-align:top}
 .pm-spec-tbl tr:last-child td{border-bottom:none}
-.pm-k{color:var(--text2);font-weight:700;letter-spacing:.1px}
-.pm-v{color:var(--text);font-weight:650;text-align:left;word-break:break-word;line-height:1.55}
-.pm-v-list{display:flex;flex-direction:column;gap:5px}
-.pm-v-line{position:relative;padding:5px 8px 5px 18px;border:1px solid rgba(255,255,255,.06);border-radius:7px;background:rgba(255,255,255,.025)}
-.pm-v-line::before{content:'';position:absolute;left:7px;top:12px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.pm-k{color:var(--text2);font-weight:600;letter-spacing:.1px;font-size:12px;line-height:1.4}
+.pm-v{color:var(--text);font-weight:600;text-align:left;word-break:break-word;line-height:1.4;font-size:12px}
+.pm-v-list{display:flex;flex-direction:column;gap:2px}
+.pm-v-line{position:relative;padding:1px 6px 1px 14px;line-height:1.35}
+.pm-v-line::before{content:'';position:absolute;left:4px;top:9px;width:3px;height:3px;border-radius:50%;background:var(--accent)}
 .pm-v.yes{color:var(--green)}.pm-v.no{color:var(--red)}
 
 /* ── USERS ── */

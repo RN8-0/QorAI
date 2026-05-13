@@ -1413,14 +1413,14 @@ function _renderProductModal(p){
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
-  // Build the language picker chip. Always list every supported language;
-  // if a translation is missing for the chosen language we fall back to the
-  // German source automatically inside _renderProductModal.
+  // Build the language picker chip. Every language is selectable; when a
+  // translation is missing the renderer silently falls back to German so the
+  // UI never goes blank. We only annotate "(fallback)" so the admin knows.
   const has = (code) => code === 'de' || (p.multiLangSpecs && p.multiLangSpecs[code]);
   const langOptions = MODAL_LANGS
     .map(([code, label]) => {
       const ok = has(code);
-      return `<option value="${code}"${code===_modalLang?' selected':''}${ok?'':' disabled'}>${label}${ok?'':' — N/A'}</option>`;
+      return `<option value="${code}"${code===_modalLang?' selected':''}>${label}${ok?'':' (fallback)'}</option>`;
     })
     .join('');
   const langChip = `<span class="pm-chip" style="padding:2px 8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4)">🌐 <select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit;font-weight:600">${langOptions}</select></span>`;
