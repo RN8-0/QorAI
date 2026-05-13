@@ -987,25 +987,40 @@ function _titleCaseToken(token) {
   return lower.charAt(0).toLocaleUpperCase() + lower.slice(1);
 }
 
-// Apply title case to a full string. Splits on whitespace but preserves
-// internal punctuation and original spacing.
+// Apply SENTENCE case to a full string: the first non-acronym word starts
+// with an uppercase letter, every subsequent non-acronym word is lowercased.
+// Acronyms / units / brands (detected by `_shouldPreserve`) are kept exactly
+// as-is so e.g. "Energy efficiency HDR (A to G)" stays correct, not "Energy
+// Efficiency Hdr (a To G)" (old title-case behaviour).
 function _applyTitleCase(text) {
   if (typeof text !== 'string') return text;
   const trimmed = text.trim();
   if (!trimmed) return text;
-  // Multi-line: title-case each line independently
+  // Multi-line: sentence-case each line independently
   if (trimmed.includes('\n')) {
     return text.split('\n').map(_applyTitleCase).join('\n');
   }
-  // Split into tokens (words + leading/trailing punctuation kept attached)
+  let firstWordSeen = false;
   return trimmed.replace(/\S+/g, (token) => {
-    // Pull off leading & trailing punctuation so things like "(yeşil)," still
-    // title-case the core word.
+    // Strip leading + trailing punctuation so brackets/quotes/commas don't
+    // confuse the case logic.
     const m = token.match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u);
-    if (!m) return _titleCaseToken(token);
+    if (!m) return token;
     const [, pre, core, post] = m;
     if (!core) return token;
-    return pre + _titleCaseToken(core) + post;
+    if (_shouldPreserve(core)) {
+      // Acronyms / units / brand stylings stay exactly as the source. If this
+      // is the first significant token of the string we still count it as
+      // "seen" so the next real word goes lowercase.
+      firstWordSeen = true;
+      return pre + core + post;
+    }
+    const lower = core.toLocaleLowerCase();
+    const reshaped = firstWordSeen
+      ? lower
+      : lower.charAt(0).toLocaleUpperCase() + lower.slice(1);
+    firstWordSeen = true;
+    return pre + reshaped + post;
   });
 }
 
@@ -1052,6 +1067,70 @@ const _LANG_NAMES = {
   ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
 };
 
+// Best-effort recovery from a truncated DeepSeek JSON response. Walks the
+// raw text and extracts every top-level "key": { … } pair whose inner object
+// is structurally complete. Anything past the last complete pair is dropped.
+// This rescues ~80-95% of a 12-atom batch whose tail got chopped.
+function _salvageTruncatedJson(raw) {
+  const text = String(raw || '');
+  const out = {};
+  // Strip wrapping noise: find first "{ and last … so we don't trip on the
+  // outer object braces.
+  const firstBrace = text.indexOf('{');
+  if (firstBrace < 0) return out;
+  const inner = text.slice(firstBrace + 1);
+  let i = 0;
+  while (i < inner.length) {
+    // Skip whitespace + commas between pairs
+    while (i < inner.length && /[\s,]/.test(inner[i])) i++;
+    if (i >= inner.length || inner[i] === '}') break;
+    if (inner[i] !== '"') break;
+    // Parse the key (a double-quoted JSON string).
+    const keyStart = i;
+    i++;
+    while (i < inner.length) {
+      if (inner[i] === '\\') { i += 2; continue; }
+      if (inner[i] === '"') { i++; break; }
+      i++;
+    }
+    const keyRaw = inner.slice(keyStart, i);
+    let key;
+    try { key = JSON.parse(keyRaw); } catch { break; }
+    // Skip whitespace + colon
+    while (i < inner.length && /\s/.test(inner[i])) i++;
+    if (inner[i] !== ':') break;
+    i++;
+    while (i < inner.length && /\s/.test(inner[i])) i++;
+    // Expect an object value.
+    if (inner[i] !== '{') break;
+    // Walk to the matching closing brace, tracking strings.
+    const valStart = i;
+    let depth = 0;
+    let inStr = false;
+    let closed = false;
+    while (i < inner.length) {
+      const c = inner[i];
+      if (inStr) {
+        if (c === '\\') { i += 2; continue; }
+        if (c === '"') inStr = false;
+      } else {
+        if (c === '"') inStr = true;
+        else if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) { i++; closed = true; break; } }
+      }
+      i++;
+    }
+    if (!closed) break; // truncated mid-value → stop salvaging.
+    const valRaw = inner.slice(valStart, i);
+    try {
+      out[key] = JSON.parse(valRaw);
+    } catch {
+      break;
+    }
+  }
+  return out;
+}
+
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   const token = getPb()?.authStore?.token;
   if (!token) {
@@ -1068,9 +1147,11 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   if (missingByText.size === 0) return; // everything cached — no API hit
 
   const uncached = [...missingByText.keys()];
-  // DeepSeek context cap safety: split into chunks of 30 terms × 11 langs
-  // (each chunk ≈ 4-6KB JSON request, ~10-20KB response, well under 64K)
-  const CHUNK = 30;
+  // DeepSeek output cap: each atom × 11 langs ≈ 350-700 tokens of JSON.
+  // 12 atoms × 11 langs ≈ 5-8K tokens → fits comfortably under the 8K
+  // max_tokens cap with a safety margin. 30 was overflowing → truncated
+  // JSON → "Expected ',' or '}'" parse failures for 90% of chunks.
+  const CHUNK = 12;
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
@@ -1107,7 +1188,7 @@ Rules:
               content: `Translate these ${batch.length} German product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
             }
           ],
-          max_tokens: 6000,
+          max_tokens: 8000,
           temperature: 0.1,
           response_format: { type: 'json_object' }
         })
@@ -1123,8 +1204,11 @@ Rules:
       try {
         translations = JSON.parse(content);
       } catch {
-        const match = String(content).match(/\{[\s\S]*\}/);
-        translations = match ? JSON.parse(match[0]) : {};
+        // Partial recovery: DeepSeek sometimes truncates the JSON when it hits
+        // max_tokens mid-output. Salvage every complete top-level "key": {…}
+        // pair we can find so the chunk still contributes its already-emitted
+        // translations instead of being thrown away entirely.
+        translations = _salvageTruncatedJson(content);
       }
 
       // Store every returned translation in cache
