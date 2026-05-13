@@ -1308,11 +1308,28 @@ async function backfillTranslations(){
     return;
   }
 
-  // Filter: keep products that need work (missing any target language)
+  // Detects records that were saved by the OLD buggy translateGermanSpecs
+  // (keyed by translated text). The new flat-map format has the original
+  // German spec keys as object keys, so we check whether any german key
+  // from `specs` actually appears as a key in multiLangSpecs[lang]. If
+  // none overlap, the record is still in the legacy format and the modal
+  // can't resolve it → treat it as "needs work" so the backfill rebuilds.
+  function _isLegacyOrEmpty(specs, langMap) {
+    if (!langMap || typeof langMap !== 'object') return true;
+    const langKeys = Object.keys(langMap);
+    if (!langKeys.length) return true;
+    const germanKeys = Object.keys(specs || {});
+    if (!germanKeys.length) return false;
+    // If at least ONE German key resolves through the map we consider it
+    // valid. Old-format records won't have a single matching key.
+    return !germanKeys.some(k => Object.prototype.hasOwnProperty.call(langMap, k));
+  }
+
+  // Filter: keep products that need work (missing OR legacy-format payload)
   const needsWork = docs.filter(p => {
     if (!p || !p.specs || !Object.keys(p.specs).length) return false;
     const ml = p.multiLangSpecs || {};
-    return targets.some(l => !ml[l] || !Object.keys(ml[l] || {}).length);
+    return targets.some(l => _isLegacyOrEmpty(p.specs, ml[l]));
   });
 
   if (!needsWork.length) {
@@ -1415,7 +1432,16 @@ function _renderProductModal(p){
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the German source.
   const lang = _modalLang || 'de';
-  const ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
+  // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
+  // German keys, so we treat it as missing instead of pretending to localize.
+  let ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
+  if (ml && lang !== 'de' && p.specs) {
+    const germanKeys = Object.keys(p.specs);
+    if (germanKeys.length && !germanKeys.some(k => Object.prototype.hasOwnProperty.call(ml, k))) {
+      console.warn('[modal] legacy multiLangSpecs format for', p.id, lang, '— ignoring');
+      ml = null;
+    }
+  }
   const localizedName = (lang !== 'de' && p.nameTranslated && p.nameTranslated[lang]) ? p.nameTranslated[lang] : p.name;
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
