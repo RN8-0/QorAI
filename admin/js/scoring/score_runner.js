@@ -54,16 +54,26 @@
   function _distribution(scored) {
     const buckets = { flagship: 0, 'upper-mid': 0, mid: 0, entry: 0, budget: 0, '?': 0 };
     let sum = 0, max = 0, min = 100, missingTotal = 0;
+    let noAnchorCount = 0, bayesianTouchCount = 0;
     for (const s of scored) {
       buckets[s.tier || '?'] = (buckets[s.tier || '?'] || 0) + 1;
       sum += s.score;
       if (s.score > max) max = s.score;
       if (s.score < min) min = s.score;
       missingTotal += (s.missing || []).length;
+      if (s.noAnchorCapped) noAnchorCount++;
+      // Bayesian "touched" = pull strong enough to actually move the score >0.5pt
+      if (s.bayesianBefore != null && s.cappedBase != null &&
+          Math.abs(s.bayesianBefore - s.cappedBase) >= 0.5) {
+        bayesianTouchCount++;
+      }
     }
     const avg = scored.length ? +(sum / scored.length).toFixed(1) : 0;
     const avgMissing = scored.length ? +(missingTotal / scored.length).toFixed(1) : 0;
-    return { buckets, avg, max, min, avgMissing, count: scored.length };
+    return {
+      buckets, avg, max, min, avgMissing, count: scored.length,
+      noAnchorCount, bayesianTouchCount,
+    };
   }
   function _topN(scored, n) {
     return [...scored].sort((a, b) => b.score - a.score).slice(0, n);
@@ -154,10 +164,18 @@
       const scored = ScoreEngine.scoreCategory(groups[cat]);
       const dist = _distribution(scored);
       const bk = dist.buckets;
+      const calibTags = [];
+      if (dist.noAnchorCount > 0) {
+        calibTags.push(`no-anchor cap: ${dist.noAnchorCount}`);
+      }
+      if (dist.bayesianTouchCount > 0) {
+        calibTags.push(`bayes pull: ${dist.bayesianTouchCount}`);
+      }
       _slog(
         `  • ${cat}: ${dist.count} products — max ${dist.max}, avg ${dist.avg}, min ${dist.min} ` +
         `| flagship:${bk.flagship||0} upper:${bk['upper-mid']||0} mid:${bk.mid||0} entry:${bk.entry||0} budget:${bk.budget||0}` +
-        (dist.avgMissing > 0 ? ` | avg missing specs: ${dist.avgMissing}` : '')
+        (dist.avgMissing > 0 ? ` | avg missing specs: ${dist.avgMissing}` : '') +
+        (calibTags.length ? ` | ${calibTags.join(' · ')}` : '')
       );
       allComputed.push(...scored.map(s => ({ ...s, category: cat })));
       // Yield to UI thread between heavy categories

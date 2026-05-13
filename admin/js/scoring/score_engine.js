@@ -429,6 +429,32 @@
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  CALIBRATION — anchor-less cap + Bayesian smoothing
+  //
+  //  Bug fix (2026-05): "Top Rated" was showing low-credibility brands
+  //  (Zyxel modems, no-name routers) with score 100 because
+  //    1. ANCHOR_KEY_BY_CAT has no entry for modems / routers / networking
+  //       gear, so the flagship tier cap never fires for them.
+  //    2. Pass-3 numeric normalization uses the 95th-percentile of THIS
+  //       category as the upper bound, so the best-spec product in any
+  //       small / sparse category ends up at the top of the 0-100 range
+  //       regardless of its absolute spec quality.
+  //
+  //  We patch this in two minimally invasive ways without touching the
+  //  per-spec scoring logic:
+  //    - NO_ANCHOR_CAP: hard ceiling for products whose category has no
+  //      anchor key (CPU / GPU / chipset benchmark to compare against).
+  //    - Bayesian smoothing: pull each product's score toward the
+  //      category's *median* in proportion to how few specs it has.
+  //      Products with full spec sheets are barely touched; sparse ones
+  //      collapse toward the middle and can no longer "win" their
+  //      category by default.
+  // ─────────────────────────────────────────────────────────────
+  const NO_ANCHOR_CAP = 75;          // hard ceiling when no anchor benchmark exists
+  const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
+  const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
+
+  // ─────────────────────────────────────────────────────────────
   //  BRAND MODIFIER (epey/versus parity)
   //  Applies a multiplicative bonus/penalty to the final score
   //  based on brand reputation per category. Apple flagships (iPhone Pro,
@@ -1162,6 +1188,14 @@
           break;
         }
       }
+      // No-anchor cap: when the category has no benchmark anchor (e.g. modems,
+      // routers, smart-home accessories) we have no global reference to call
+      // a product "flagship", so cap the score at NO_ANCHOR_CAP. Without this,
+      // small / niche categories produce 100-scored Zyxel-class products.
+      if (!anchorKey) {
+        cappedBase = Math.min(cappedBase, NO_ANCHOR_CAP);
+        tierCap = Math.min(tierCap, NO_ANCHOR_CAP);
+      }
 
       return {
         row: r,
@@ -1173,6 +1207,38 @@
         sumW,
       };
     });
+
+    // Pass 3.5: Bayesian smoothing — pull each product's score toward the
+    // category's median in proportion to how few of its specs we actually
+    // have data for. Trust is sumW (sum of weights that landed on a real
+    // value) divided by the category's total possible weight, so it lives
+    // in [0..1]; a product with only 30% of its weights filled in can move
+    // up to BAYESIAN_K * (1 - 0.30) ≈ 31% of the way toward the median.
+    // Products with full spec sheets keep their score essentially unchanged.
+    {
+      const totalCatWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+      const baseSeries = computed
+        .map(c => c.cappedBase)
+        .filter(v => isFinite(v) && v > 0)
+        .sort((a, b) => a - b);
+      const median = baseSeries.length
+        ? (_percentile(baseSeries, 50) || baseSeries[Math.floor(baseSeries.length / 2)])
+        : 50;
+      for (const c of computed) {
+        const ratio = (c.sumW || 0) / totalCatWeight;
+        const trust = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, ratio));
+        const pull = BAYESIAN_K * (1 - trust); // 0..0.315
+        if (pull <= 0) continue;
+        const before = c.cappedBase;
+        const after = before * (1 - pull) + median * pull;
+        // Only ever pull *down* below the tier cap, never inflate above it.
+        c.cappedBase = +Math.min(c.tierCap, after).toFixed(2);
+        c.bayesianMedian = +median.toFixed(2);
+        c.bayesianPull = +pull.toFixed(3);
+        c.bayesianBefore = +before.toFixed(2);
+        c.bayesianTrust = +trust.toFixed(3);
+      }
+    }
 
     // Pass 4: category-wide stretch — pull the top flagship up to 100 so the
     // distribution actually uses the full 1-100 range. Only stretches *within*
@@ -1201,6 +1267,12 @@
         brandReason: bm.reason,
         year: c.row.year,
         tier: c.tier, tierCap: c.tierCap, anchorKey: c.anchorKey, anchorScore: c.anchorScore,
+        // Calibration diagnostics (handy in admin panel + score_runner logs).
+        noAnchorCapped: !c.anchorKey,
+        bayesianMedian: c.bayesianMedian,
+        bayesianPull: c.bayesianPull,
+        bayesianBefore: c.bayesianBefore,
+        bayesianTrust: c.bayesianTrust,
         missing: c.row.missing,
         breakdown: c.finalBreakdown,
         sumW: c.sumW,
@@ -1235,5 +1307,6 @@
     GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,
     _matchRank, _matchLookup, _lookupRaw,
     NUMERIC_REFS, TIER_CAPS, ANCHOR_KEY_BY_CAT,
+    NO_ANCHOR_CAP, BAYESIAN_K, BAYESIAN_MIN_TRUST,
   };
 });
