@@ -9,7 +9,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v11-perline-atoms-dictui';
+const SCRAPER_BUILD = '20260513v12-cf-fingerprint-reset';
 // EU-wide listing: matches kategoriler.txt format, maximises inventory and
 // reduces per-country Cloudflare gatekeeping that was causing 502 loops.
 // `sort=t` forces a stable alphabetical-by-title ordering. Without it Geizhals
@@ -1738,6 +1738,25 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     // (e.g. 2 pages in a row + 90s sleep) no longer kills a 5K-URL run.
     let consecCloudflareFails = 0;
     const MAX_CONSEC_FAILS = 3;
+    // Cloudflare stops flagging this session token only when we hand it a
+    // brand-new fingerprint. The proxy's /reset-session endpoint kills the
+    // browser, drops cookies, and rotates the UA. We hit it (a) after every
+    // N successful pages as a proactive cooldown, and (b) whenever a page
+    // burns its retry budget so the next page starts fresh.
+    const PROACTIVE_RESET_EVERY = 30; // pages
+    const PROACTIVE_COOLDOWN_MS = 45000; // 45s after each reset
+    const POST_RESET_RECOVERY_MS = 60000; // 60s after a forced reset
+    let pagesSinceReset = 0;
+
+    async function resetProxySession(reason) {
+      try {
+        slog(`🧹 Resetting proxy session (${reason}) — fresh browser + cookies + UA`, 'warn');
+        const r = await fetch(`${PROXY_URL}/reset-session`, { signal: AbortSignal.timeout(30000) });
+        if (!r.ok) slog(`  ⚠️ reset-session HTTP ${r.status}`, 'warn');
+      } catch (e) {
+        slog(`  ⚠️ reset-session failed: ${e.message}`, 'warn');
+      }
+    }
 
     while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2) {
       const listingUrl = `${GEIZHALS_BASE}/?cat=${catParam}&${GEIZHALS_LISTING_EXTRA}&${pageParam}=${page}`;
@@ -1767,15 +1786,21 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
           slog(`🛑 ${MAX_CONSEC_FAILS} sayfa üst üste Cloudflare'i geçemedi. Şimdiye kadar toplanan ${allItems.length} URL ile devam edebilirsin — Resume desteğiyle daha sonra kaldığın yerden çekersin.`, 'error');
           break;
         }
+        // Force a fingerprint reset before the next page — retrying with the
+        // same flagged session is what kept us looping in the previous build.
+        await resetProxySession(`page ${page} burned retry budget`);
+        pagesSinceReset = 0;
+        slog(`  💤 Cooldown ${(POST_RESET_RECOVERY_MS / 1000) | 0}s before page ${page + 1}…`, 'info');
+        await sleep(POST_RESET_RECOVERY_MS);
         // Skip this page and try the next one — sort=t is stable so we lose
         // ~30 URLs but the run continues.
         page++;
-        await sleep(5000);
         continue;
       }
 
       // Page fetched successfully — reset the consecutive-fail counter.
       consecCloudflareFails = 0;
+      pagesSinceReset++;
       const links = pageResult.links;
       if (links.length === 0) {
         emptyCount++;
@@ -1794,7 +1819,20 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       }
 
       page++;
-      await sleep(2000 + Math.random() * 1500);
+      // Proactive cooldown: every N successful pages we throw away the
+      // browser fingerprint before Cloudflare gets a chance to flag it.
+      // This is the single biggest win against the ~50-page wall we used
+      // to hit on long bulk runs.
+      if (pagesSinceReset >= PROACTIVE_RESET_EVERY && allItems.length < maxProducts && !scraperAbort) {
+        await resetProxySession(`proactive after ${PROACTIVE_RESET_EVERY} pages`);
+        pagesSinceReset = 0;
+        slog(`  ❄️ Proactive cooldown ${(PROACTIVE_COOLDOWN_MS / 1000) | 0}s…`, 'info');
+        await sleep(PROACTIVE_COOLDOWN_MS);
+      } else {
+        // Per-page delay widened from 2-3.5s → 4-6s. Geizhals' Cloudflare
+        // edge gets noisier when requests come in faster than ~12/min.
+        await sleep(4000 + Math.random() * 2000);
+      }
     }
   }
 

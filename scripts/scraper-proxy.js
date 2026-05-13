@@ -116,9 +116,12 @@ let requestCount = 0;
 let sessionCookies = null;
 let currentUA = _randomUA();
 
-// Auto-restart browser every N successful navigations to prevent the slow
-// Chromium memory leak that crashes long scrape sessions around 1-2k requests.
-const BROWSER_RESTART_AFTER = 200;
+// Auto-restart browser every N successful navigations.
+// Lowered from 200 → 80 because Cloudflare starts flagging the session
+// fingerprint (cookies + TLS + behaviour) much earlier than memory becomes
+// an issue. Restarting at 80 gives us a fresh `__cf_bm` token before the
+// flag turns into a hard challenge wall.
+const BROWSER_RESTART_AFTER = 80;
 let _browserCycle = 0;
 
 // The engine label is exposed via /health for debugging. Toggled when the
@@ -604,6 +607,38 @@ const server = http.createServer(async (req, res) => {
   }
 
   setCORSHeaders(res, origin);
+
+  // ── Reset Session ──
+  // Hard-wipes the Cloudflare-flagged fingerprint: drops cookies, rotates
+  // the user-agent, and kills the browser so the next /category-links call
+  // boots a brand-new Chrome instance with zero accumulated state.
+  // Called by admin/js/scraper.js whenever a page exhausts its retry budget
+  // or after every N successful pages as a proactive cooldown.
+  if (req.url === '/reset-session') {
+    try {
+      console.log('  🧹 /reset-session — wiping cookies, UA, and browser');
+      sessionCookies = null;
+      currentUA = _randomUA();
+      try { if (activePage && !activePage.isClosed()) await activePage.close(); } catch {}
+      activePage = null;
+      try { if (browser) await browser.close(); } catch {}
+      browser = null;
+      _browserCycle = 0;
+      // Reset FlareSolverr session too, if we have one.
+      if (flaresolverrSession) {
+        try {
+          await _flarePost({ cmd: 'sessions.destroy', session: flaresolverrSession });
+        } catch (_) {}
+        flaresolverrSession = null;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ua: currentUA.substring(0, 80) }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
 
   // ── Health ──
   if (req.url === '/health') {
