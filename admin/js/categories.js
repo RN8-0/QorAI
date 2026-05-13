@@ -320,6 +320,7 @@ async function populateScraperCategories() {
   setSel('singleUrlCategory', flatOpts);
   setSel('scoreCategory', flatOpts);
   setSel('scoreEngineCategory', flatOpts);
+  setSel('dictXlateCategory', bulkOpts);
   setSel('updateCategory', flatOpts);
   setSel('inventoryCategory', flatOpts);
   setSel('qualityScanCategory', flatOpts);

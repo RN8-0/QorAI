@@ -559,6 +559,35 @@
 
         <!-- Dictionary Management -->
         <div class="scraper-panel" id="dictionaryPanel">
+          <!-- Category Translator: batch translates every product in a category
+               using dictionary-first + DeepSeek-fill. Decoupled from scrape. -->
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-title">🌍 Translate Category (Bulk)</div>
+            <p class="text-muted" style="margin-bottom:12px">
+              Pick a category and translate every product into 11 languages.
+              Terms already in the dictionary are reused (zero API cost); only
+              new atoms hit DeepSeek and are then learned for the next run.
+            </p>
+            <div class="form-grid" style="grid-template-columns:2fr auto auto;gap:8px;align-items:end">
+              <div class="form-field">
+                <label>Category</label>
+                <select class="input" id="dictXlateCategory"></select>
+              </div>
+              <button class="btn btn-primary" id="btnDictXlateStart" onclick="startCategoryTranslation()">▶ Translate</button>
+              <button class="btn" style="background:#dc2626;color:#fff;display:none" id="btnDictXlateStop" onclick="stopCategoryTranslation()">Stop</button>
+            </div>
+            <div id="dictXlateProgress" style="margin-top:12px;display:none">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-bottom:4px">
+                <span id="dictXlateStatus">Preparing…</span>
+                <span id="dictXlateCounter"></span>
+              </div>
+              <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">
+                <div id="dictXlateBar" style="height:100%;background:linear-gradient(90deg,#8b5cf6,#06b6d4);width:0%;transition:width .2s"></div>
+              </div>
+            </div>
+            <div id="dictXlateLog" style="margin-top:10px;max-height:180px;overflow:auto;font-family:ui-monospace,monospace;font-size:11px;background:var(--bg2);border-radius:6px;padding:8px;display:none"></div>
+          </div>
+
           <div class="card">
             <div class="card-title">📚 Translation Dictionary</div>
             <p class="text-muted" style="margin-bottom:12px">

@@ -928,12 +928,98 @@ function _deDictLookup(germanText, targetLang) {
   return null;
 }
 
-// Store translation in cache
+// ── Title-Case post-processing ─────────────────────────────────────────
+// DeepSeek output is inconsistent in capitalization. We normalize every
+// stored translation so the UI shows consistently capitalized text across
+// languages: first letter of every word uppercase, while keeping units,
+// brands and technical abbreviations untouched.
+const _ACRONYMS = new Set([
+  'AF','AI','AMOLED','ANC','AOSS','API','APP','ARM','BLE','CPU','DDR','DLNA',
+  'DNS','DSP','EU','FHD','GHZ','GPS','GPU','HDD','HDMI','HDR','HSPA','HZ','IO',
+  'IP','IP54','IP55','IP65','IP66','IP67','IP68','IP69','IPS','IR','ISO','LCD',
+  'LED','LTE','MAH','MEMS','MIMO','MP','MS','NFC','OIS','OLED','OS','PD','PWM',
+  'QHD','QLED','RAM','RGB','ROM','SIM','SD','SDR','SOC','SSD','SSID','TFT','TPU',
+  'UFS','UHD','USB','USB-C','UV','UWB','VPN','VR','WAN','WI-FI','WLAN','WPA',
+  'WPA2','WPA3','WUXGA','YUV','3D','4G','5G','6E','8K','4K','2K','HD','LDAC',
+  'AAC','LDAC','SBC','APT-X','APTX','EDR','BT','CCT','HDR10','HDR10+','XDR',
+  'PIN','UV','IPX','IPX4','IPX5','IPX7','IPX8','RTX','GTX','AMD','MTK','SOC',
+  'F','G','MB','GB','TB','KB','KHZ','MHZ','BAR','DPI','TDP','TBW','PCIE','PCI',
+  'M.2','M2','MM','CM','SDXC','SDHC','VA','W','V','A','KW','KWH'
+]);
+
+// Pattern fragments worth keeping as-is (units stuck to numbers, ratios, etc.)
+const _PRESERVE_PATTERNS = [
+  /^\d+(\.\d+)?(mm|cm|m|kg|g|mg|mah|wh|w|v|a|hz|khz|mhz|ghz|mp|gb|tb|mb|kb|nm|bar|°c|°f|fps|dpi|ms|s|h|x)$/i,
+  /^\d+(\.\d+)?$/,                                  // pure numbers
+  /^f\/\d+(\.\d+)?$/i,                              // aperture f/1.6
+  /^\d+x\d+$/,                                      // 2340x1080
+  /^\d+x$/,                                         // 3x, 1000x
+  /^\d+x\d+(\.\d+)?(mm|cm|m)?$/i,                   // 146.9x70.5x7.2mm
+  /^@\d+/,                                          // @60fps etc.
+  /^\d+(\.\d+)?(p|i)$/i,                            // 2160p, 1080i
+  /^[A-Z]+-?\d+[A-Z0-9-]*$/,                        // model codes
+];
+
+function _shouldPreserve(token) {
+  if (!token) return true;
+  if (_ACRONYMS.has(token.toUpperCase())) return true;
+  for (const re of _PRESERVE_PATTERNS) if (re.test(token)) return true;
+  // Tokens containing digits and letters (e.g. 4320p, 12.0MP, IP68): preserve
+  if (/\d/.test(token) && /[a-zA-Z]/.test(token)) return true;
+  return false;
+}
+
+// Title-case a single token while keeping acronyms / units intact.
+function _titleCaseToken(token) {
+  if (!token) return token;
+  if (_shouldPreserve(token)) return token;
+  // Hyphenated word: title-case each part (e.g. "wi-fi" → "Wi-Fi" via acronym
+  // table; "phasenvergleich-af" → "Phasenvergleich-AF").
+  if (token.includes('-')) {
+    return token.split('-').map(_titleCaseToken).join('-');
+  }
+  // Slashed word: same idea ("on/off" → "On/Off")
+  if (token.includes('/')) {
+    return token.split('/').map(_titleCaseToken).join('/');
+  }
+  // Lowercase first, then capitalize first letter (handles "GYROSKOP" → "Gyroskop")
+  const lower = token.toLocaleLowerCase();
+  return lower.charAt(0).toLocaleUpperCase() + lower.slice(1);
+}
+
+// Apply title case to a full string. Splits on whitespace but preserves
+// internal punctuation and original spacing.
+function _applyTitleCase(text) {
+  if (typeof text !== 'string') return text;
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+  // Multi-line: title-case each line independently
+  if (trimmed.includes('\n')) {
+    return text.split('\n').map(_applyTitleCase).join('\n');
+  }
+  // Split into tokens (words + leading/trailing punctuation kept attached)
+  return trimmed.replace(/\S+/g, (token) => {
+    // Pull off leading & trailing punctuation so things like "(yeşil)," still
+    // title-case the core word.
+    const m = token.match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u);
+    if (!m) return _titleCaseToken(token);
+    const [, pre, core, post] = m;
+    if (!core) return token;
+    return pre + _titleCaseToken(core) + post;
+  });
+}
+
+// Expose for tests / dictionary tab "Reformat" button
+window._qorAiTitleCase = _applyTitleCase;
+
+// Store translation in cache (normalized via title-case)
 function _deDictStore(germanText, targetLang, translation) {
   const key = germanText.toLowerCase().trim();
+  const normalized = _applyTitleCase(String(translation || '').trim());
+  if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};
-  if (_deDictCache[key][targetLang] !== translation) {
-    _deDictCache[key][targetLang] = translation;
+  if (_deDictCache[key][targetLang] !== normalized) {
+    _deDictCache[key][targetLang] = normalized;
     _deDictDirty = true;
   }
 }
@@ -1156,6 +1242,104 @@ async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
   }
   return names;
 }
+
+// ── Bulk Category Translation API ───────────────────────────────────────
+// Atomize every translatable string across a list of products, hit DeepSeek
+// ONCE for the union of missing atoms (chunked), persist the dictionary, then
+// build per-product multiLangSpecs / nameTranslated / multiLangSections from
+// dictionary lookups only — no further API calls. This is the engine behind
+// the Dictionary tab's "Translate Category" panel.
+function _collectAtomsFromProduct(p, sink) {
+  const add = (t) => {
+    const s = String(t || '').trim();
+    if (!s) return;
+    sink.add(s);
+    if (s.includes('\n')) {
+      for (const line of s.split('\n')) {
+        const l = line.trim();
+        if (l) sink.add(l);
+      }
+    }
+  };
+  if (p.name) add(p.name);
+  const specs = p.specs || {};
+  for (const [k, v] of Object.entries(specs)) { add(k); add(v); }
+  const sections = p.specSections || {};
+  for (const [secName, body] of Object.entries(sections)) {
+    add(secName);
+    if (body && typeof body === 'object') {
+      for (const [k, v] of Object.entries(body)) { add(k); add(v); }
+    }
+  }
+  const keySpecs = p.keySpecs || {};
+  for (const [k, v] of Object.entries(keySpecs)) { add(k); add(v); }
+}
+
+function _buildProductTranslations(p, targetLangs) {
+  // For each lang, build flat german→localized map covering specs keys/values
+  // and atomized sub-lines, plus product name + section names.
+  const multiLangSpecs = {};
+  const multiLangSections = {};
+  const nameTranslated = {};
+
+  for (const lang of targetLangs) {
+    const map = {};
+    const addToMap = (text) => {
+      const t = String(text || '').trim();
+      if (!t) return;
+      const tx = _deDictLookup(t, lang);
+      if (tx && tx !== t) map[t] = tx;
+    };
+    for (const [k, v] of Object.entries(p.specs || {})) {
+      addToMap(k);
+      const vs = String(v);
+      addToMap(vs);
+      if (vs.includes('\n')) for (const line of vs.split('\n')) addToMap(line);
+    }
+    for (const [k, v] of Object.entries(p.keySpecs || {})) {
+      addToMap(k); addToMap(v);
+    }
+    multiLangSpecs[lang] = map;
+
+    const secMap = {};
+    for (const secName of Object.keys(p.specSections || {})) {
+      secMap[secName] = _deDictLookup(secName, lang) || secName;
+    }
+    multiLangSections[lang] = secMap;
+
+    nameTranslated[lang] = _deDictLookup(p.name, lang) || p.name;
+  }
+  return { multiLangSpecs, multiLangSections, nameTranslated };
+}
+
+// Public API consumed by app.js category translator panel
+window.QorAiBulkTranslate = {
+  // Pre-load dictionary
+  loadDict: () => _loadDeDict(),
+  // Collect unique atoms across a batch of products
+  collectAtoms(products) {
+    const sink = new Set();
+    for (const p of products || []) _collectAtomsFromProduct(p, sink);
+    return [...sink];
+  },
+  // Return only the atoms that are missing for at least one target lang
+  missingAtoms(atoms, targetLangs = TARGET_LANGS) {
+    return atoms.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  },
+  // Hit DeepSeek for the supplied (already filtered) atoms. Chunked & batched.
+  translateAtoms(atoms, targetLangs = TARGET_LANGS) {
+    return _deepSeekAllLangsBatch(atoms, targetLangs);
+  },
+  // Build the per-product translation payload from dict only (no API calls).
+  buildPayload(product, targetLangs = TARGET_LANGS) {
+    return _buildProductTranslations(product, targetLangs);
+  },
+  // Persist the dictionary cache to PocketBase (force-save)
+  saveDict() { _deDictDirty = true; return _saveDeDict(); },
+  targetLangs: () => TARGET_LANGS.slice(),
+  // Estimated chunk count for progress reporting
+  CHUNK_SIZE: 30,
+};
 
 // ═══════════════════════════════════════
 //  13. PRODUCT DETAIL SCRAPING
@@ -1608,11 +1792,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
 
-  // PRE-FETCH OVERLAP: while product i is being translated (heavy CPU on
-  // server + DeepSeek round-trip, ~30-60s) the local browser sits idle.
-  // We use it to fetch product i+1's HTML in the background, so by the
-  // time the translation finishes the next HTML is already in hand.
-  // This roughly cuts wall-clock by 30-40% on translation-heavy batches.
+  // PRE-FETCH OVERLAP: while product i is being parsed + persisted to PB,
+  // we fetch product i+1's HTML in the background so the next iteration
+  // does not pay the proxy round-trip cost again. Translation is no longer
+  // in this loop (see Dictionary → "Translate Category"), so this overlap
+  // mostly hides the PB write + parse cost (~200-400ms).
   let nextHtmlPromise = null;
   const prefetchNext = (idx) => {
     if (idx >= urlItems.length || scraperAbort) return null;
@@ -1691,16 +1875,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       }
 
       // ── Kick off prefetch of the NEXT product's HTML in parallel with
-      // translation. The proxy & DeepSeek hit different servers so they
-      // don't contend for the same resource. ──
+      // PocketBase save. Translation is intentionally DECOUPLED from the
+      // scrape loop — products are persisted with German specs only, and
+      // the admin runs the Dictionary → "Translate Category" action when
+      // ready. This keeps scrape at network-bound speed (~1-2s/product). ──
       nextHtmlPromise = prefetchNext(i + 1);
-
-      // ── Phase D: Translate German specs → 12 languages (dict-cached) ──
-      try {
-        await translateScrapedProduct(product);
-      } catch (txErr) {
-        slog(`  → Translation skipped: ${txErr.message}`, 'warn');
-      }
 
       const clean = prepareProductPayload(product);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
@@ -1713,9 +1892,6 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       // Adaptive checkpoint every 25 products
       if (results.added > 0 && results.added % 25 === 0) {
         _saveCheckpoint(urlItems, i + 1, categoryId, results);
-      }
-      if (results.added > 0 && results.added % 5 === 0) {
-        triggerAITranslation();
       }
     } catch (e) {
       results.errors++;

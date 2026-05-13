@@ -1295,6 +1295,10 @@ async function openDictionaryPanel(){
   try {
     await window.QorAiDict.load();
     renderDictionaryTable();
+    // Ensure the category dropdown for the bulk translator is populated.
+    if (typeof populateScraperCategories === 'function') {
+      try { await populateScraperCategories(); } catch {}
+    }
   } catch (e) {
     toast('Sözlük yüklenemedi: ' + e.message, 'e');
   }
@@ -1391,90 +1395,158 @@ async function saveDictionary(){
   }
 }
 
-// Legacy backfill helper retained as an internal utility — exposed only via
-// the browser console for emergencies. The scraper now translates every
-// product inline during `translateScrapedProduct`, so a manual button is no
-// longer needed.
-async function _legacyBackfillTranslations(){
-  if (typeof translateScrapedProduct !== 'function') {
-    toast('Scraper modülü yüklenmemiş', 'e');
-    return;
-  }
-  const targets = (typeof TARGET_LANGS !== 'undefined' && Array.isArray(TARGET_LANGS))
-    ? TARGET_LANGS : ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// ─── BULK CATEGORY TRANSLATION (Dictionary tab) ──────────────────────────
+// Decoupled from the scrape loop. Pick a category → load every product →
+// collect unique atoms across the whole batch → translate ONLY the atoms
+// missing from the dictionary (one DeepSeek batch for all 11 langs) → save
+// dictionary → write per-product `multiLangSpecs`, `multiLangSections`,
+// `nameTranslated` patches via dict lookups (no further API calls).
+//
+// Why this layout: aircraft-carrier rule — the heavy work (DeepSeek) runs
+// EXACTLY ONCE per unique term across the whole catalog. The 100th product
+// in a category usually triggers zero new API calls because every atom
+// already lives in the dictionary.
+let _catXlateAbort = false;
+let _catXlateRunning = false;
 
-  if (!confirm(`Tüm ürünlerde eksik çeviriler DeepSeek üzerinden tamamlanacak.\n\n• Hedef diller: ${targets.length}\n• Atom-cache sayesinde aynı terim tekrar tekrar API'ye gitmez\n• Bu işlem maliyetli olabilir, sürebilir\n\nDevam edilsin mi?`)) return;
-
-  toast('Ürünler yükleniyor...', 'i', 60000);
-  let docs;
-  try {
-    docs = await pbGetAll('products', {});
-  } catch (e) {
-    toast('Ürün listesi alınamadı: ' + e.message, 'e');
-    return;
-  }
-
-  // Detects records that were saved by the OLD buggy translateGermanSpecs
-  // (keyed by translated text). The new flat-map format has the original
-  // German spec keys as object keys, so we check whether any german key
-  // from `specs` actually appears as a key in multiLangSpecs[lang]. If
-  // none overlap, the record is still in the legacy format and the modal
-  // can't resolve it → treat it as "needs work" so the backfill rebuilds.
-  function _isLegacyOrEmpty(specs, langMap) {
-    if (!langMap || typeof langMap !== 'object') return true;
-    const langKeys = Object.keys(langMap);
-    if (!langKeys.length) return true;
-    const germanKeys = Object.keys(specs || {});
-    if (!germanKeys.length) return false;
-    // If at least ONE German key resolves through the map we consider it
-    // valid. Old-format records won't have a single matching key.
-    return !germanKeys.some(k => Object.prototype.hasOwnProperty.call(langMap, k));
-  }
-
-  // Filter: keep products that need work (missing OR legacy-format payload)
-  const needsWork = docs.filter(p => {
-    if (!p || !p.specs || !Object.keys(p.specs).length) return false;
-    const ml = p.multiLangSpecs || {};
-    return targets.some(l => _isLegacyOrEmpty(p.specs, ml[l]));
-  });
-
-  if (!needsWork.length) {
-    toast('✅ Tüm ürünler zaten çevirili', 's');
-    return;
-  }
-
-  toast(`${needsWork.length} ürün çevrilecek...`, 'i', 8000);
-
-  let done = 0, failed = 0;
-  for (const p of needsWork) {
-    try {
-      // translateScrapedProduct mutates the object in place and returns it
-      const working = { ...p };
-      await translateScrapedProduct(working);
-      const patch = {};
-      if (working.multiLangSpecs)   patch.multiLangSpecs   = working.multiLangSpecs;
-      if (working.nameTranslated)   patch.nameTranslated   = working.nameTranslated;
-      if (working.multiLangSections) patch.multiLangSections = working.multiLangSections;
-      if (working.specsEn)          patch.specsEn          = working.specsEn;
-      if (!Object.keys(patch).length) { failed++; continue; }
-
-      await pbUpdateDoc('products', p.id, patch);
-      done++;
-      if (done % 5 === 0 || done === needsWork.length) {
-        toast(`Çevriliyor: ${done}/${needsWork.length}`, 'i', 2000);
-      }
-    } catch (e) {
-      console.warn('[backfill] failed for', p.id, e.message);
-      failed++;
-    }
-  }
-
-  logActivity('product_backfill', `${done} translated, ${failed} failed`);
-  toast(`✅ Backfill tamam: ${done} başarılı, ${failed} hatalı`, done ? 's' : 'w');
-
-  // Refresh the in-memory list so the modal picks up the new translations
-  try { await loadProducts?.(); } catch {}
+function _xlateLog(msg, level = 'info'){
+  const box = document.getElementById('dictXlateLog');
+  if (!box) return;
+  box.style.display = '';
+  const color = level === 'error' ? '#ef4444' : level === 'success' ? '#22c55e' : level === 'warn' ? '#f59e0b' : 'var(--text-2)';
+  const line = document.createElement('div');
+  line.style.color = color;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
 }
+
+function _xlateProgress(done, total, status){
+  const wrap = document.getElementById('dictXlateProgress');
+  const bar  = document.getElementById('dictXlateBar');
+  const cnt  = document.getElementById('dictXlateCounter');
+  const stat = document.getElementById('dictXlateStatus');
+  if (wrap) wrap.style.display = '';
+  if (bar) bar.style.width = total > 0 ? `${Math.min(100, (done / total) * 100)}%` : '0%';
+  if (cnt) cnt.textContent = total > 0 ? `${done} / ${total}` : '';
+  if (stat && status) stat.textContent = status;
+}
+
+function stopCategoryTranslation(){
+  _catXlateAbort = true;
+  _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
+}
+
+async function startCategoryTranslation(){
+  if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
+  if (!window.QorAiBulkTranslate) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
+
+  const sel = document.getElementById('dictXlateCategory');
+  const categoryId = sel ? sel.value : '';
+  if (!categoryId) { toast('Kategori seç', 'w'); return; }
+
+  const startBtn = document.getElementById('btnDictXlateStart');
+  const stopBtn  = document.getElementById('btnDictXlateStop');
+  const logBox   = document.getElementById('dictXlateLog');
+  if (logBox) logBox.innerHTML = '';
+  if (startBtn) startBtn.disabled = true;
+  if (stopBtn)  stopBtn.style.display = '';
+
+  _catXlateRunning = true;
+  _catXlateAbort = false;
+  const startedAt = Date.now();
+
+  try {
+    _xlateProgress(0, 0, 'Loading dictionary…');
+    _xlateLog(`▶ Translating category: ${categoryId}`);
+    await window.QorAiBulkTranslate.loadDict();
+
+    _xlateProgress(0, 0, 'Fetching products…');
+    const allDocs = await pbGetAll('products', {});
+    const products = (allDocs || []).filter(p => p && p.category === categoryId && p.specs && Object.keys(p.specs).length);
+    if (!products.length) {
+      _xlateLog('No products with specs in this category.', 'warn');
+      toast('Bu kategoride çevrilecek ürün yok', 'w');
+      return;
+    }
+    _xlateLog(`Found ${products.length} products`);
+
+    _xlateProgress(0, 0, 'Collecting atoms…');
+    const atoms = window.QorAiBulkTranslate.collectAtoms(products);
+    const targets = window.QorAiBulkTranslate.targetLangs();
+    const missing = window.QorAiBulkTranslate.missingAtoms(atoms, targets);
+    _xlateLog(`Atoms: ${atoms.length} total · ${missing.length} missing · ${atoms.length - missing.length} cached`);
+
+    if (_catXlateAbort) throw new Error('aborted');
+
+    if (missing.length > 0) {
+      const chunks = Math.ceil(missing.length / (window.QorAiBulkTranslate.CHUNK_SIZE || 30));
+      _xlateProgress(0, chunks, `Translating ${missing.length} new atoms × ${targets.length} langs (${chunks} DeepSeek call${chunks > 1 ? 's' : ''})…`);
+      // _deepSeekAllLangsBatch handles chunking internally; we report start/end only
+      await window.QorAiBulkTranslate.translateAtoms(missing, targets);
+      _xlateProgress(chunks, chunks, 'Saving dictionary…');
+      await window.QorAiBulkTranslate.saveDict();
+      _xlateLog(`✓ Dictionary updated (+${missing.length} terms)`, 'success');
+    } else {
+      _xlateLog('All atoms already in dictionary — no API call needed', 'success');
+    }
+
+    if (_catXlateAbort) throw new Error('aborted');
+
+    _xlateProgress(0, products.length, 'Patching products…');
+    let done = 0, failed = 0;
+    for (const p of products) {
+      if (_catXlateAbort) break;
+      try {
+        const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
+        const patch = {
+          multiLangSpecs:    payload.multiLangSpecs,
+          multiLangSections: payload.multiLangSections,
+          nameTranslated:    payload.nameTranslated,
+        };
+        // Provide English primary spec view too (used by some downstream UI)
+        if (payload.multiLangSpecs?.en && Object.keys(payload.multiLangSpecs.en).length) {
+          const specsEn = {};
+          for (const [k, v] of Object.entries(p.specs || {})) {
+            specsEn[payload.multiLangSpecs.en[k] || k] = payload.multiLangSpecs.en[String(v)] || v;
+          }
+          patch.specsEn = specsEn;
+        }
+        await pbUpdateDoc('products', p.id, patch);
+        done++;
+      } catch (e) {
+        failed++;
+        _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${e.message}`, 'error');
+      }
+      if ((done + failed) % 5 === 0 || (done + failed) === products.length) {
+        _xlateProgress(done + failed, products.length, `Patching products (${done} ok, ${failed} fail)…`);
+      }
+    }
+
+    const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+    _xlateProgress(done + failed, products.length, _catXlateAbort ? 'Stopped' : 'Done');
+    _xlateLog(`✅ Completed: ${done} translated · ${failed} failed · ${elapsed}s`, 'success');
+    toast(`✅ ${done}/${products.length} ürün çevrildi`, done ? 's' : 'w');
+    try { logActivity('category_translation', `${categoryId}: ${done}/${products.length} (+${missing.length} new terms)`); } catch {}
+
+    // Refresh dict table + in-memory product list so modals show the new data
+    try { renderDictionaryTable(); } catch {}
+    try { await loadProducts?.(); } catch {}
+  } catch (e) {
+    if (e.message !== 'aborted') {
+      _xlateLog('✗ ' + e.message, 'error');
+      toast('Çeviri hatası: ' + e.message, 'e');
+    }
+  } finally {
+    _catXlateRunning = false;
+    _catXlateAbort = false;
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn)  stopBtn.style.display = 'none';
+  }
+}
+
+window.startCategoryTranslation = startCategoryTranslation;
+window.stopCategoryTranslation  = stopCategoryTranslation;
 
 // DANGER: wipes every product in the PocketBase `products` collection. Two
 // confirmation prompts (text + count) protect from misclicks.
@@ -1557,14 +1629,16 @@ function _renderProductModal(p){
   // inside via the cached multiLangSpecs lookup.
   let sections = p.specSections && Object.keys(p.specSections).length ? p.specSections : null;
   if (sections && ml) {
+    const secMap = (lang !== 'de' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
     const localized = {};
     for (const [sec, obj] of Object.entries(sections)) {
       if (!obj || typeof obj !== 'object') continue;
-      localized[sec] = {};
+      const localSec = (secMap && secMap[sec]) ? secMap[sec] : sec;
+      localized[localSec] = {};
       for (const [k, v] of Object.entries(obj)) {
         const tk = ml[k] || k;
         const tv = ml[String(v)] || v;
-        localized[sec][tk] = tv;
+        localized[localSec][tk] = tv;
       }
     }
     sections = localized;
