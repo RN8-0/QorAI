@@ -33,6 +33,19 @@ const StealthPlugin = require(path.join(rootDir, 'node_modules', 'puppeteer-extr
 
 puppeteerExtra.use(StealthPlugin());
 
+// puppeteer-real-browser uses `rebrowser-patches` to neutralise the CDP-level
+// `Runtime.Enable` detection that Cloudflare Turnstile leans on. Combined
+// with its built-in `turnstile: true` flag (auto-completes the JS challenge)
+// this clears Geizhals' Cloudflare wall without manual clicks. Loaded lazily
+// so the proxy still boots if the dependency is missing — we fall back to
+// the legacy puppeteer-extra launcher in that case.
+let realBrowserConnect = null;
+try {
+  realBrowserConnect = require(path.join(rootDir, 'node_modules', 'puppeteer-real-browser')).connect;
+} catch (_e) {
+  console.warn('  ⚠️  puppeteer-real-browser not installed — using puppeteer-extra fallback.');
+}
+
 const PORT = parseInt(process.argv[2]) || 3456;
 
 // ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
@@ -108,37 +121,72 @@ let currentUA = _randomUA();
 const BROWSER_RESTART_AFTER = 200;
 let _browserCycle = 0;
 
+// The engine label is exposed via /health for debugging. Toggled when the
+// initial browser is launched.
+let browserEngine = 'unknown';
+
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
   const chromePath = findChromePath();
   if (!chromePath) throw new Error('Chrome or Edge was not found. Please install Chrome or Edge.');
 
-  console.log(`  🚀 Starting Chrome: ${chromePath}`);
+  const launchArgs = [
+    '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
+    '--window-size=1366,768','--disable-blink-features=AutomationControlled',
+    '--disable-infobars','--disable-notifications','--lang=de-DE,de',
+    '--ignore-gpu-blocklist','--enable-gpu-rasterization',
+    // Suppress automation-only banners and side-channel signals.
+    '--no-default-browser-check','--no-first-run',
+    '--disable-features=IsolateOrigins,site-per-process,Translate',
+    '--disable-site-isolation-trials',
+  ];
+
+  // ── Primary: puppeteer-real-browser (rebrowser-patched, turnstile-aware) ──
+  if (realBrowserConnect) {
+    try {
+      console.log(`  🚀 Starting Chrome via puppeteer-real-browser…`);
+      const result = await realBrowserConnect({
+        headless: false,
+        // turnstile=true makes the package poll for the Cloudflare Turnstile
+        // iframe and auto-click the checkbox / wait for the JS challenge to
+        // self-resolve. This is the feature that kills the manual-tab-click
+        // requirement.
+        turnstile: true,
+        // Provide our Chrome path so the package doesn't pull a separate one.
+        customConfig: { chromePath },
+        connectOption: { defaultViewport: null },
+        args: launchArgs,
+        // Linux-only flag; safe to pass on Windows (ignored).
+        disableXvfb: true,
+        // Keep the default arg list except `--enable-automation` (the strongest
+        // bot signal after `navigator.webdriver`).
+        ignoreAllFlags: false,
+      });
+      browser = result.browser;
+      // The initial page from connect() is fingerprint-cleaned — reuse it.
+      activePage = result.page;
+      browserEngine = 'puppeteer-real-browser';
+      console.log('  ✅ Chrome started via puppeteer-real-browser (CDP patched, turnstile auto-solve ON)');
+      return browser;
+    } catch (e) {
+      console.warn(`  ⚠️  puppeteer-real-browser failed (${e.message}). Falling back to puppeteer-extra.`);
+      browser = null;
+      activePage = null;
+    }
+  }
+
+  // ── Fallback: legacy puppeteer-extra + stealth-plugin ──
+  console.log(`  🚀 Starting Chrome via puppeteer-extra: ${chromePath}`);
   browser = await puppeteerExtra.launch({
     executablePath: chromePath,
     headless: false,
-    // CRITICAL: removing `--enable-automation` kills the "Chrome is being
-    // controlled by automated test software" infobar AND a host of internal
-    // automation hooks that Cloudflare Turnstile fingerprints. Without this
-    // line the bot signal is irreducible regardless of stealth-plugin patches.
     ignoreDefaultArgs: ['--enable-automation'],
-    args: [
-      '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
-      '--window-size=1366,768','--disable-blink-features=AutomationControlled',
-      '--disable-infobars','--disable-notifications','--lang=de-DE,de',
-      '--ignore-gpu-blocklist','--enable-gpu-rasterization',
-      // Suppress automation-only banners and side-channel signals.
-      '--no-default-browser-check','--no-first-run',
-      '--disable-features=IsolateOrigins,site-per-process,Translate',
-      '--disable-site-isolation-trials',
-    ],
+    args: launchArgs,
     defaultViewport: { width: 1366, height: 768 },
     ignoreHTTPSErrors: true,
   });
-
-  console.log('  ✅ Chrome started with stealth mode enabled');
-  // NOTE: No warmup page — avoids hitting Cloudflare immediately on startup.
-  // Cookies will be collected naturally on the first real request.
+  browserEngine = 'puppeteer-extra-stealth';
+  console.log('  ✅ Chrome started via puppeteer-extra (stealth fallback)');
   return browser;
 }
 
@@ -158,15 +206,19 @@ async function getPage() {
     await _restartBrowser();
   }
   const b = await getBrowser();
-  // Rotate UA every 20 requests
-  if (requestCount % 20 === 0) currentUA = _randomUA();
-  // Reuse existing page unless rotation threshold reached
-  if (activePage && !activePage.isClosed() && requestCount % 80 !== 0) return activePage;
+  // Rotate UA every 20 requests (cheap — just an http header swap on next nav)
+  if (requestCount > 0 && requestCount % 20 === 0) currentUA = _randomUA();
+  // Reuse existing page whenever possible. puppeteer-real-browser hands us a
+  // pre-warmed page in connect(); creating a NEW tab via newPage() during
+  // a CF-active session frequently raises "Protocol error (Target.createTarget):
+  // Failed to open a new tab" because the CDP is busy with the Turnstile
+  // iframe. Rotating tabs every 80 requests was already cosmetic — Geizhals
+  // doesn't fingerprint by tab id — so we drop the rotation entirely.
   if (activePage && !activePage.isClosed()) {
-    await activePage.close().catch(() => {});
-    activePage = null;
+    if (activePage.__qoraiInitialised) return activePage;
+  } else {
+    activePage = await b.newPage();
   }
-  activePage = await b.newPage();
   await activePage.setUserAgent(currentUA);
   await activePage.setExtraHTTPHeaders({
     'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
@@ -191,6 +243,7 @@ async function getPage() {
   // FIX: Do NOT call setRequestInterception here — it leaks when the page is
   // reused across requests and causes "Request is already handled" errors.
   if (sessionCookies?.length) await activePage.setCookie(...sessionCookies);
+  activePage.__qoraiInitialised = true;
   return activePage;
 }
 
@@ -358,11 +411,12 @@ async function fetchWithPuppeteer(url, opts = {}) {
     let isChallenge = _isChallengeTitle(title) || _isChallengeContent(rawHtml);
 
     if (isChallenge && waitChallenge) {
-      console.log(`  ⏳ Challenge detected: "${title.substring(0, 60)}". Tarayıcı penceresinden Cloudflare'i geçin...`);
-      // Wait up to 30 seconds for the user to manually solve the Cloudflare challenge
-      // in the visible browser window (headless: false)
-      const POLL_INTERVAL = 2000;
-      const MAX_WAIT = 15000;
+      // puppeteer-real-browser auto-resolves the Turnstile JS challenge in
+      // ~5-20s by polling the iframe; we just have to give it time and re-read
+      // the page. No manual click required.
+      console.log(`  ⏳ Cloudflare challenge — turnstile auto-solver working… ("${title.substring(0, 50)}")`);
+      const POLL_INTERVAL = 2500;
+      const MAX_WAIT = 45000; // give the auto-solver up to 45s before giving up
       let waited = 0;
       while (waited < MAX_WAIT) {
         await _humanDelay(POLL_INTERVAL, POLL_INTERVAL);
@@ -371,13 +425,15 @@ async function fetchWithPuppeteer(url, opts = {}) {
         const html2 = await page.content().catch(() => '');
         isChallenge = _isChallengeTitle(title) || _isChallengeContent(html2);
         if (!isChallenge) {
-          console.log(`  ✅ Challenge solved after ${(waited / 1000).toFixed(0)}s: "${title.substring(0, 60)}"`);
+          console.log(`  ✅ Challenge auto-solved after ${(waited / 1000).toFixed(0)}s: "${title.substring(0, 50)}"`);
           break;
         }
-        console.log(`  ⏳ Still waiting... (${(waited / 1000).toFixed(0)}s / 30s) title: "${title.substring(0, 40)}"`);
+        if (waited % 10000 < POLL_INTERVAL) {
+          console.log(`  ⏳ Still solving… (${(waited / 1000).toFixed(0)}s / ${(MAX_WAIT / 1000).toFixed(0)}s)`);
+        }
       }
       if (isChallenge) {
-        console.log(`  ❌ Challenge NOT solved after 30s.`);
+        console.log(`  ❌ Auto-solver could not clear challenge in ${(MAX_WAIT / 1000).toFixed(0)}s.`);
       }
     }
 
@@ -554,8 +610,8 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok',
-      version: '4.1.0',
-      engine: flaresolverrAvailable ? 'flaresolverr (puppeteer fallback)' : 'puppeteer-extra-stealth',
+      version: '4.2.0',
+      engine: flaresolverrAvailable ? `flaresolverr (${browserEngine} fallback)` : browserEngine,
       flaresolverr: { available: flaresolverrAvailable, session: flaresolverrSession, failures: flaresolverrFailureCount, url: FLARESOLVERR_URL },
       requests: requestCount, browserConnected: browser ? browser.isConnected() : false,
       hasCookies: sessionCookies ? sessionCookies.length : 0,
