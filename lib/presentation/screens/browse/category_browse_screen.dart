@@ -29,7 +29,7 @@ import 'package:qor_ai/data/models/product_model.dart';
 // Sort options
 // ---------------------------------------------------------------------------
 
-enum _SortOption { techScore, relevance, newest }
+enum _SortOption { techScore, relevance, newest, priceAsc, priceDesc }
 
 int _releaseYearForBrowseProduct(ProductEntity product) {
   return ProductFilter.getExactReleaseYear(product) ??
@@ -38,6 +38,19 @@ int _releaseYearForBrowseProduct(ProductEntity product) {
 
 int _sortTimestampForBrowseProduct(ProductEntity product) {
   return (product.createdAt ?? product.lastUpdated).millisecondsSinceEpoch;
+}
+
+/// Returns the lowest non-zero numeric value from a product's `prices` map,
+/// or `double.infinity` when the product has no usable price (so it sorts
+/// to the end on ascending sorts and to the front on descending sorts via
+/// the inverse comparator below).
+double _lowestNumericPriceForBrowseProduct(ProductEntity product) {
+  if (product.prices.isEmpty) return double.infinity;
+  double lowest = double.infinity;
+  for (final value in product.prices.values) {
+    if (value > 0 && value < lowest) lowest = value;
+  }
+  return lowest;
 }
 
 int _compareBrowseProducts(ProductEntity a, ProductEntity b, String sortKey) {
@@ -62,6 +75,24 @@ int _compareBrowseProducts(ProductEntity a, ProductEntity b, String sortKey) {
       return _sortTimestampForBrowseProduct(
         b,
       ).compareTo(_sortTimestampForBrowseProduct(a));
+    case 'priceAsc':
+    case 'priceDesc':
+      // Local fallback only — server-side sort happens in _serverSortBy().
+      // Products without a price always go to the back of the list so the
+      // user never sees "$0" placeholders bubble to the top of the price
+      // sort.
+      final priceA = _lowestNumericPriceForBrowseProduct(a);
+      final priceB = _lowestNumericPriceForBrowseProduct(b);
+      if (!priceA.isFinite && !priceB.isFinite) {
+        return b.techScore.compareTo(a.techScore);
+      }
+      if (!priceA.isFinite) return 1;
+      if (!priceB.isFinite) return -1;
+      final cmp = sortKey == 'priceAsc'
+          ? priceA.compareTo(priceB)
+          : priceB.compareTo(priceA);
+      if (cmp != 0) return cmp;
+      return b.techScore.compareTo(a.techScore);
     default:
       final techCompare = b.techScore.compareTo(a.techScore);
       if (techCompare != 0) return techCompare;
@@ -232,6 +263,8 @@ List<String> _computeVisibleBrowseProductIds(Map<String, dynamic> args) {
 extension _SortOptionLabel on _SortOption {
   String label(BuildContext context) {
     final l10n = context.l10n;
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
     switch (this) {
       case _SortOption.techScore:
         return l10n?.sortTopRated ?? 'Top Rated';
@@ -239,6 +272,10 @@ extension _SortOptionLabel on _SortOption {
         return l10n?.sortPopular ?? 'Popular';
       case _SortOption.newest:
         return l10n?.sortNewest ?? 'Newest';
+      case _SortOption.priceAsc:
+        return isTr ? 'Fiyat: Düşük → Yüksek' : 'Price: Low → High';
+      case _SortOption.priceDesc:
+        return isTr ? 'Fiyat: Yüksek → Düşük' : 'Price: High → Low';
     }
   }
 
@@ -250,6 +287,10 @@ extension _SortOptionLabel on _SortOption {
         return Icons.local_fire_department_rounded;
       case _SortOption.newest:
         return Icons.new_releases_rounded;
+      case _SortOption.priceAsc:
+        return Icons.arrow_upward_rounded;
+      case _SortOption.priceDesc:
+        return Icons.arrow_downward_rounded;
     }
   }
 }
@@ -457,7 +498,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     'screen_size': 'screenSizeValue',
     'battery': 'batteryCapacityValue',
     'weight': 'weightValueKg',
+    // Lowest price expressed in USD on the Typesense side (populated by
+    // pb_hooks/typesense_sync.pb.js + scripts/ts_backfill_lowest_price.js).
+    // The slider in the filter sheet shows local currency in the UI, but
+    // the value travels to the server already converted to USD because the
+    // _genericFilters price entry stores USD as its native unit.
+    'price': 'lowestPriceUSD',
   };
+
+  // Range filters that are universally applicable on Typesense — present in
+  // the schema regardless of category, so the per-category allow-list does
+  // not need to know about them.
+  static const Set<String> _universalRangeFilters = {'price'};
 
   static const Map<String, Set<String>> _categoryRangeAllowList = {
     'smartphones': {'screen_size', 'battery', 'weight'},
@@ -727,6 +779,15 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                     false)) ||
             _isLocalOnlyEpeyDefinition(def);
       case FilterType.rangeSlider:
+        // Universal range filters (price) are server-side filterable for every
+        // category because their TS field exists on every document. Other
+        // ranges are gated by the per-category allow-list because their
+        // values are only meaningful in specific categories (e.g. screen_size
+        // for laptops/phones but not for cables).
+        if (_universalRangeFilters.contains(def.id) &&
+            _serverRangeFields.containsKey(def.id)) {
+          return true;
+        }
         return (_serverRangeFields.containsKey(def.id) &&
                 (_categoryRangeAllowList[_facetCategoryKey]?.contains(def.id) ??
                     false)) ||
@@ -828,6 +889,34 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     final effectiveQuery = query ?? _searchQuery;
     if (effectiveQuery.isNotEmpty) return false;
     return _buildServerSideFilterBy(state ?? _filterState) != null;
+  }
+
+  /// Extra Typesense filter clauses required by the active sort option,
+  /// independent of the user's filter selections. For price sorts we exclude
+  /// products without a known USD price (lowestPriceUSD == 0) so the list
+  /// never starts with "$0" placeholders. Returns null when the sort imposes
+  /// no extra constraints.
+  String? _sortDrivenFilterBy() {
+    switch (_sortOption) {
+      case _SortOption.priceAsc:
+      case _SortOption.priceDesc:
+        return 'lowestPriceUSD:>0';
+      case _SortOption.techScore:
+      case _SortOption.relevance:
+      case _SortOption.newest:
+        return null;
+    }
+  }
+
+  /// Combines user-driven filter clauses with sort-driven ones into a single
+  /// `filter_by` string for Typesense. Either side may be absent.
+  String? _composeExtraFilterBy(FilterState state) {
+    final userFilter = _buildServerSideFilterBy(state);
+    final sortFilter = _sortDrivenFilterBy();
+    if (userFilter == null && sortFilter == null) return null;
+    if (userFilter == null) return sortFilter;
+    if (sortFilter == null) return userFilter;
+    return '$userFilter && $sortFilter';
   }
 
   @override
@@ -1100,6 +1189,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         return 'trendScore:desc,techScore:desc';
       case _SortOption.newest:
         return 'trendScore:desc,techScore:desc';
+      case _SortOption.priceAsc:
+        // Typesense excludes `0` from ascending price sort by clamping it to
+        // the bottom via secondary techScore descending — products with
+        // unknown prices keep a deterministic order.
+        return 'lowestPriceUSD:asc,techScore:desc';
+      case _SortOption.priceDesc:
+        return 'lowestPriceUSD:desc,techScore:desc';
     }
   }
 
@@ -1186,7 +1282,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     setState(() => _fetchingAll = true);
     try {
       final ds = ref.read(pbDataSourceProvider);
-      final serverFilterBy = _buildServerSideFilterBy(_filterState);
+      final serverFilterBy = _composeExtraFilterBy(_filterState);
       final page = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 40,
@@ -1317,7 +1413,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
     try {
       final ds = ref.read(pbDataSourceProvider);
-      final serverFilterBy = _buildServerSideFilterBy(_filterState);
+      final serverFilterBy = _composeExtraFilterBy(_filterState);
       final result = await ds.getProductsPageTs(
         category: _activeCategoryId,
         limit: 40,

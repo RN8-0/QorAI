@@ -39,6 +39,37 @@ async function tsRequest(method, path, body) {
 
 // Build the same shape used by migration/ts_index.js so the
 // document stays compatible with the existing schema.
+// Currency conversion table (mirrored from scripts/fx_rates.js — keep in sync).
+// Browser bundle has no Node `require`, so the table is duplicated inline.
+const FX_TO_USD = Object.freeze({
+  US: 1.00, USD: 1.00,
+  CA: 0.73, CAD: 0.73, MX: 0.058, MXN: 0.058,
+  DE: 1.08, AT: 1.08, NL: 1.08, BE: 1.08, FR: 1.08, IT: 1.08, ES: 1.08,
+  PT: 1.08, IE: 1.08, FI: 1.08, GR: 1.08, EU: 1.08, EUR: 1.08,
+  UK: 1.27, GB: 1.27, GBP: 1.27,
+  PL: 0.25, PLN: 0.25, CH: 1.13, CHF: 1.13,
+  SE: 0.094, SEK: 0.094, NO: 0.092, NOK: 0.092, DK: 0.145, DKK: 0.145,
+  TR: 0.0286, TRY: 0.0286, AE: 0.272, AED: 0.272, SA: 0.267, SAR: 0.267,
+  IN: 0.0120, INR: 0.0120, JP: 0.0067, JPY: 0.0067, CN: 0.14, CNY: 0.14,
+  KR: 0.00072, KRW: 0.00072, SG: 0.74, SGD: 0.74, HK: 0.128, HKD: 0.128,
+  AU: 0.65, AUD: 0.65, NZ: 0.60, NZD: 0.60,
+  BR: 0.20, BRL: 0.20, AR: 0.0011, ARS: 0.0011,
+});
+
+function _lowestPriceUsd(prices) {
+  if (!prices || typeof prices !== 'object') return 0;
+  let lowest = Infinity;
+  for (const [rawKey, rawValue] of Object.entries(prices)) {
+    const value = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    const fx = FX_TO_USD[String(rawKey || '').toUpperCase()];
+    if (!fx) continue;
+    const usd = value * fx;
+    if (usd < lowest) lowest = usd;
+  }
+  return lowest === Infinity ? 0 : Math.round(lowest * 100) / 100;
+}
+
 function _flattenKeySpecs(ks) {
   if (!ks) return '';
   if (Array.isArray(ks)) return ks.map(x => typeof x === 'object' ? Object.values(x).join(' ') : String(x)).join(' ');
@@ -101,6 +132,7 @@ function tsBuildDoc(pb) {
     techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
     trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
     price_segment: pb.price_segment || '',
+    lowestPriceUSD: _lowestPriceUsd(pb.prices),
     specsCount: pb.specsCount || 0,
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],

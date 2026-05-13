@@ -3,6 +3,7 @@
 const http = require('http');
 const { req: tsReq, BASE: TS_BASE } = require('./ts');
 const { req: pbReq, BASE: PB_BASE } = require('./pb');
+const { lowestPriceUsd } = require('../scripts/fx_rates');
 
 const COL = 'products';
 const BATCH = 2000;
@@ -21,6 +22,11 @@ const schema = {
     { name: 'techScore', type: 'float' },
     { name: 'trendScore', type: 'float', optional: true },
     { name: 'price_segment', type: 'string', facet: true, optional: true },
+    // Lowest known price expressed in USD. Populated from the country/currency
+    // keyed `prices` map via scripts/fx_rates.js. Used for server-side range
+    // filters and price sorting in the Flutter catalog. 0 means unknown
+    // (Typesense rejects nullable numeric facet/sort fields).
+    { name: 'lowestPriceUSD', type: 'float', optional: true },
     { name: 'specsCount', type: 'int32', optional: true },
     { name: 'keySpecsText', type: 'string', optional: true },
     { name: 'tags', type: 'string[]', optional: true, facet: true },
@@ -69,6 +75,7 @@ function toTsDoc(pb) {
     techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
     trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
     price_segment: pb.price_segment || '',
+    lowestPriceUSD: lowestPriceUsd(pb.prices),
     specsCount: pb.specsCount || 0,
     keySpecsText: flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],

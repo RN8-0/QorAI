@@ -12,6 +12,55 @@ const TS_COLLECTION = 'products';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+// Currency conversion table (mirrored from scripts/fx_rates.js — keep in sync).
+// PB JSVM cannot require external modules so the table is duplicated inline.
+// Bump FX_VERSION when rates drift > 5% and trigger a TS backfill afterwards.
+var FX_VERSION = '2026.05';
+var FX_TO_USD = {
+  US: 1.00, USD: 1.00,
+  CA: 0.73, CAD: 0.73,
+  MX: 0.058, MXN: 0.058,
+  DE: 1.08, AT: 1.08, NL: 1.08, BE: 1.08, FR: 1.08, IT: 1.08, ES: 1.08,
+  PT: 1.08, IE: 1.08, FI: 1.08, GR: 1.08, EU: 1.08, EUR: 1.08,
+  UK: 1.27, GB: 1.27, GBP: 1.27,
+  PL: 0.25, PLN: 0.25,
+  CH: 1.13, CHF: 1.13,
+  SE: 0.094, SEK: 0.094,
+  NO: 0.092, NOK: 0.092,
+  DK: 0.145, DKK: 0.145,
+  TR: 0.0286, TRY: 0.0286,
+  AE: 0.272, AED: 0.272,
+  SA: 0.267, SAR: 0.267,
+  IN: 0.0120, INR: 0.0120,
+  JP: 0.0067, JPY: 0.0067,
+  CN: 0.14, CNY: 0.14,
+  KR: 0.00072, KRW: 0.00072,
+  SG: 0.74, SGD: 0.74,
+  HK: 0.128, HKD: 0.128,
+  AU: 0.65, AUD: 0.65,
+  NZ: 0.60, NZD: 0.60,
+  BR: 0.20, BRL: 0.20,
+  AR: 0.0011, ARS: 0.0011,
+};
+
+function _lowestPriceUsd(prices) {
+  if (!prices || typeof prices !== 'object') return 0;
+  var lowest = Infinity;
+  var keys = Object.keys(prices);
+  for (var i = 0; i < keys.length; i++) {
+    var rawKey = keys[i];
+    var rawValue = prices[rawKey];
+    var value = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    if (!isFinite(value) || value <= 0) continue;
+    var fx = FX_TO_USD[String(rawKey || '').toUpperCase()];
+    if (!fx) continue;
+    var usd = value * fx;
+    if (usd < lowest) lowest = usd;
+  }
+  if (lowest === Infinity) return 0;
+  return Math.round(lowest * 100) / 100;
+}
+
 function _tsHeaders() {
   return {
     'X-TYPESENSE-API-KEY': TS_KEY,
@@ -103,6 +152,7 @@ function buildTsDoc(record) {
     techScore:     techScore,
     trendScore:    trendScore,
     price_segment: pbData.price_segment,
+    lowestPriceUSD: _lowestPriceUsd(prices),
     specsCount:    specsCount,
     keySpecsText:  _flattenKeySpecs(keySpecs),
     tags:          tags,
