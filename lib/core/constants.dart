@@ -63,7 +63,10 @@ class AppConstants {
 
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day
-  static const int freeDailyAiCreditLimit = 10; // shared daily AI credit pool
+  static const int freeDailyAiCreditLimit = 10; // [LEGACY — daily reset disabled in lifetime model]
+  // Lifetime credit model: one-time welcome bonus granted on signup.
+  // No daily refresh. Configurable via remote config `signup_bonus_q_coins`.
+  static const int signupBonusQCoins = 20;
   static const double aiChatCreditCost = 0.5;
   static const int compareAiCreditCost = 2;
   static const int detailAiCreditCost = 1;

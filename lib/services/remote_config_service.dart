@@ -9,6 +9,7 @@ class RemoteConfigService {
     'premium_price_display': '₺199.99 / year',
     'feature_link_paste_enabled': true,
     'free_daily_ai_credit_limit': AppConstants.freeDailyAiCreditLimit,
+    'signup_bonus_q_coins': AppConstants.signupBonusQCoins,
     'free_ai_question_limit': AppConstants.freeAiQuestionLimit,
     'free_link_paste_limit': AppConstants.freeLinkPasteLimit,
     'free_subscription_analysis_limit': AppConstants.freeSubscriptionAnalysisLimit,
@@ -54,6 +55,7 @@ class RemoteConfigService {
   String get premiumPriceText           => _config['premium_price_display']             as String? ?? '₺199.99 / year';
   bool   get isLinkPasteEnabled         => _config['feature_link_paste_enabled']        as bool?   ?? true;
   int    get freeDailyAiCreditLimit     => (_config['free_daily_ai_credit_limit']       as num?)?.toInt() ?? AppConstants.freeDailyAiCreditLimit;
+  int    get signupBonusQCoins          => (_config['signup_bonus_q_coins']             as num?)?.toInt() ?? AppConstants.signupBonusQCoins;
   int    get freeAiQuestionLimit        => (_config['free_ai_question_limit']           as num?)?.toInt() ?? AppConstants.freeAiQuestionLimit;
   int    get freeLinkPasteLimit         => (_config['free_link_paste_limit']            as num?)?.toInt() ?? AppConstants.freeLinkPasteLimit;
   int    get freeSubscriptionAnalysisLimit => (_config['free_subscription_analysis_limit'] as num?)?.toInt() ?? AppConstants.freeSubscriptionAnalysisLimit;

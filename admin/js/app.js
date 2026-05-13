@@ -201,7 +201,8 @@ function qCoinPeriodKey(date=new Date()){return `${date.getFullYear()}-${date.ge
 function formatQCoinAmount(value){const amount=Math.round(safeNumber(value)*10)/10;return Number.isInteger(amount)?String(amount):amount.toFixed(1).replace(/\.0$/,'')}
 const ADMIN_PREMIUM_PRODUCTS={monthly:'aylik_abonelik',yearly:'yillik_abonelik'};
 
-let _freeDailyAiCreditLimit=10;
+let _freeDailyAiCreditLimit=0; // [LEGACY — daily reset disabled in lifetime model]
+let _signupBonusQCoins=20;
 let _activeUserModalUid='';
 
 function premiumDetails(user){return safeMap(safeMap(user.userSubscriptionDetails).premium)}
@@ -438,28 +439,30 @@ async function syncPublicConfigValue(key,value){
 }
 
 async function loadQCoinConfig(){
+  // Lifetime credit model: there is no daily refresh. The configurable value
+  // is the one-time signup bonus that new users receive on registration.
   try{
     const configMap=await getPublicConfigMap();
-    _freeDailyAiCreditLimit=Math.max(0,safeNumber(configMap.free_daily_ai_credit_limit,10));
+    _signupBonusQCoins=Math.max(0,safeNumber(configMap.signup_bonus_q_coins,20));
+    // Keep legacy var in sync for any code path that still reads it.
+    _freeDailyAiCreditLimit=0;
   }catch(_){
-    _freeDailyAiCreditLimit=10;
+    _signupBonusQCoins=20;
+    _freeDailyAiCreditLimit=0;
   }
-  const input=document.getElementById('usersDailyQCoinInput');
-  if(input)input.value=String(_freeDailyAiCreditLimit);
+  const input=document.getElementById('usersSignupBonusInput');
+  if(input)input.value=String(_signupBonusQCoins);
   const hint=document.getElementById('usersQCoinHint');
-  if(hint)hint.textContent=`Global daily pool is ${formatQCoinAmount(_freeDailyAiCreditLimit)} Q. You can add personal extra Q or reset the balance from the user detail view.`;
-  return _freeDailyAiCreditLimit;
+  if(hint)hint.textContent=`New signups receive ${formatQCoinAmount(_signupBonusQCoins)} Q as a one-time welcome bonus. Existing users are not affected. Q Coins do not refresh daily — manage individual balances from the user detail view.`;
+  return _signupBonusQCoins;
 }
 
 function getUserQCoinSnapshot(user){
-  const periodKey=String(user.dailyAiCreditsDate||'').trim();
-  const todayKey=qCoinPeriodKey();
-  const base=Math.max(0,_freeDailyAiCreditLimit);
-  const extra=Math.max(0,safeNumber(user.bonusQCoins));
-  const total=base+extra;
-  const used=periodKey===todayKey?Math.max(0,safeNumber(user.dailyAiCreditsUsed)):0;
-  const remaining=Math.max(0,total-used);
-  return{base,extra,total,used,remaining,periodKey:periodKey||todayKey};
+  // Lifetime credit model: balance lives entirely in `bonusQCoins`. The legacy
+  // `dailyAiCreditsUsed` / `dailyAiCreditsDate` fields are kept on the record
+  // for back-compat but are no longer authoritative.
+  const balance=Math.max(0,safeNumber(user.bonusQCoins));
+  return{base:0,extra:balance,total:balance,used:0,remaining:balance,periodKey:qCoinPeriodKey()};
 }
 async function generateUserDeepSeekProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
@@ -1879,16 +1882,16 @@ async function loadUsers(){
   filterUsers();renderUserIntelligence()}catch(e){toast('Users error: '+String(e.message || e),'e')}
 }
 
-async function saveUsersDailyQCoin(){
-  const input=document.getElementById('usersDailyQCoinInput');
+async function saveUsersSignupBonus(){
+  const input=document.getElementById('usersSignupBonusInput');
   const nextValue=Math.max(0,safeNumber(input?.value,0));
   try{
-    await syncPublicConfigValue('free_daily_ai_credit_limit',nextValue);
+    await syncPublicConfigValue('signup_bonus_q_coins',nextValue);
     await loadQCoinConfig();
     renderUsers();
     if(_activeUserModalUid)openUserDetail(_activeUserModalUid);
-    logActivity('qcoin_daily_pool_update',`Daily Q Coin pool updated: ${nextValue}`,{dailyQCoinPool:nextValue});
-    toast(`Daily pool saved as ${formatQCoinAmount(nextValue)} Q`,'s');
+    logActivity('qcoin_signup_bonus_update',`Signup bonus updated: ${nextValue} Q`,{signupBonusQCoins:nextValue});
+    toast(`Signup bonus saved: ${formatQCoinAmount(nextValue)} Q`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
 }
 
@@ -3165,7 +3168,7 @@ const RC_KEYS = [
   { id: 'rc_show_paywall_on_start',            key: 'show_paywall_on_start',            type: 'bool',   def: false },
   { id: 'rc_feature_link_paste_enabled',       key: 'feature_link_paste_enabled',       type: 'bool',   def: true  },
   { id: 'rc_ai_comparison_limit_free',         key: 'ai_comparison_limit_free',         type: 'int',    def: 3     },
-  { id: 'rc_free_daily_ai_credit_limit',       key: 'free_daily_ai_credit_limit',       type: 'int',    def: 10    },
+  { id: 'rc_signup_bonus_q_coins',             key: 'signup_bonus_q_coins',             type: 'int',    def: 20    },
   { id: 'rc_free_ai_question_limit',           key: 'free_ai_question_limit',           type: 'int',    def: 15    },
   { id: 'rc_free_link_paste_limit',            key: 'free_link_paste_limit',            type: 'int',    def: 3     },
   { id: 'rc_free_subscription_analysis_limit',key: 'free_subscription_analysis_limit', type: 'int',    def: 2     },
@@ -3316,7 +3319,8 @@ function resetAllPromptEditorsToDefaults(){
 async function loadRemoteConfig() {
   try {
     const configMap = await getPublicConfigMap();
-    _freeDailyAiCreditLimit = Math.max(0, safeNumber(configMap.free_daily_ai_credit_limit, 10));
+    _signupBonusQCoins = Math.max(0, safeNumber(configMap.signup_bonus_q_coins, 20));
+    _freeDailyAiCreditLimit = 0;
     for (const def of RC_KEYS) {
       const el = document.getElementById(def.id);
       if (!el) continue;

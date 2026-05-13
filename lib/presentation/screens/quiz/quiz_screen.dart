@@ -1811,17 +1811,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   ],
                 ),
               ),
-              if (!step.isRequired)
-                TextButton(
-                  onPressed: _goNext,
-                  child: Text(
-                    _t('Atla', 'Skip'),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: _primaryTextColor,
-                    ),
-                  ),
-                ),
+              // Quiz tamamlanması zorunlu — adım atlama (Skip) butonu kaldırıldı.
+              // Kullanıcı çıkıp tekrar girse bile router redirect (router.dart)
+              // quizCompleted=false olduğu sürece /quiz'e yönlendirir.
             ],
           ),
           const SizedBox(height: 16),

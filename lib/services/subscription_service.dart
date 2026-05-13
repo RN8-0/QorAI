@@ -134,7 +134,6 @@ class SubscriptionService extends ChangeNotifier {
   static const String _usageStorageKeyPrefix = 'freemium_usage_v3_';
   static const String _usageNamespaceCacheKey = 'freemium_usage_namespace';
   static const String _dailyCreditsUsedField = 'dailyAiCreditsUsed';
-  static const String _dailyCreditsPeriodField = 'dailyAiCreditsDate';
   static const String _bonusQCoinsField = 'bonusQCoins';
   final InAppPurchase _iap = InAppPurchase.instance;
   final RemoteConfigService _remoteConfigService;
@@ -147,7 +146,6 @@ class SubscriptionService extends ChangeNotifier {
   String _usageNamespace = 'guest_device';
   double _syncedDailyCreditsUsed = 0;
   double _bonusQCoins = 0;
-  String _syncedDailyCreditsPeriodKey = '';
   bool _hasSyncedCredits = false;
 
   List<ProductDetails> _products = [];
@@ -774,15 +772,15 @@ class SubscriptionService extends ChangeNotifier {
   void _resetSyncedCreditsCache() {
     _syncedDailyCreditsUsed = 0;
     _bonusQCoins = 0;
-    _syncedDailyCreditsPeriodKey = _dailyPeriodKey();
     _hasSyncedCredits = false;
   }
 
   bool get _usesSyncedCredits =>
       !isPremium && pb.authStore.isValid && _hasSyncedCredits;
 
-  double get _baseDailyCreditLimit =>
-      _remoteConfigService.freeDailyAiCreditLimit.toDouble();
+  // Lifetime credit model: free users only get a one-time signup bonus.
+  // No daily refresh. `bonusQCoins` is the only spendable balance.
+  double get _baseDailyCreditLimit => 0;
 
   Future<void> _refreshSyncedDailyCredits({
     bool persistNormalized = true,
@@ -801,30 +799,13 @@ class SubscriptionService extends ChangeNotifier {
       }
 
       final record = await pb.collection(AppConstants.usersCollection).getOne(uid);
-      final todayKey = _dailyPeriodKey();
-      final storedPeriodKey =
-          record.data[_dailyCreditsPeriodField]?.toString() ?? todayKey;
-      var used = _asDouble(record.data[_dailyCreditsUsedField]);
+      // Lifetime model: `dailyAiCreditsUsed` is no longer used as a daily
+      // counter. It is preserved on the record only for back-compat; we treat
+      // the live balance purely as `bonusQCoins`. No daily reset happens.
       final bonus = _asDouble(record.data[_bonusQCoinsField]);
-      var normalizedPeriodKey = storedPeriodKey;
 
-      if (storedPeriodKey != todayKey) {
-        used = 0;
-        normalizedPeriodKey = todayKey;
-        if (persistNormalized) {
-          await pb.collection(AppConstants.usersCollection).update(
-            uid,
-            body: {
-              _dailyCreditsUsedField: used,
-              _dailyCreditsPeriodField: normalizedPeriodKey,
-            },
-          );
-        }
-      }
-
-      _syncedDailyCreditsUsed = used;
+      _syncedDailyCreditsUsed = 0;
       _bonusQCoins = bonus;
-      _syncedDailyCreditsPeriodKey = normalizedPeriodKey;
       _hasSyncedCredits = true;
     } catch (_) {
       _resetSyncedCreditsCache();
@@ -838,11 +819,13 @@ class SubscriptionService extends ChangeNotifier {
     if (uid == null || uid.isEmpty) return;
 
     try {
+      // Lifetime credit model: persist the live `bonusQCoins` balance.
+      // Daily counter fields are kept zeroed for back-compat with older clients.
       await pb.collection(AppConstants.usersCollection).update(
         uid,
         body: {
-          _dailyCreditsUsedField: _syncedDailyCreditsUsed,
-          _dailyCreditsPeriodField: _syncedDailyCreditsPeriodKey,
+          _bonusQCoinsField: _bonusQCoins,
+          _dailyCreditsUsedField: 0,
         },
       );
     } catch (_) {}
@@ -850,12 +833,8 @@ class SubscriptionService extends ChangeNotifier {
 
   void _reserveSyncedCredits(String featureName) {
     if (!_usesSyncedCredits) return;
-    _syncedDailyCreditsPeriodKey = _dailyPeriodKey();
-    _syncedDailyCreditsUsed = min(
-      totalDailyCredits,
-      _syncedDailyCreditsUsed +
-          AppConstants.creditCostForFeature(featureName).toDouble(),
-    );
+    final cost = AppConstants.creditCostForFeature(featureName).toDouble();
+    _bonusQCoins = max(0.0, _bonusQCoins - cost);
     unawaited(_persistSyncedDailyCredits());
   }
 

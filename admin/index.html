@@ -232,18 +232,18 @@
           <div class="card-title">🪙 Q Coin Control</div>
           <div class="form-grid" style="align-items:end">
             <div class="form-field">
-              <label>Global Daily Q Coin Pool</label>
-              <input class="input" type="number" id="usersDailyQCoinInput" min="0" value="10">
+              <label>Signup Bonus Q Coins (one-time)</label>
+              <input class="input" type="number" id="usersSignupBonusInput" min="0" value="20">
             </div>
             <div class="form-field">
               <label>Quick Actions</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="saveUsersDailyQCoin()">Save Daily Pool</button>
-                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Reset All Extra Q</button>
+                <button class="btn btn-primary" onclick="saveUsersSignupBonus()">Save Signup Bonus</button>
+                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Reset All Q Balances</button>
               </div>
             </div>
           </div>
-          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">Open a user detail view to add or reset personal extra Q.</div>
+          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">One-time Q Coin grant for newly registered users. Existing users are not affected. There is no daily refresh — once spent, the balance only grows via purchases or admin grants.</div>
           <div class="text-muted" style="font-size:12px;margin-top:8px">Premium plan controls and Qor AI user portraits live in each user detail modal.</div>
         </div>
         <div class="toolbar">
@@ -888,8 +888,8 @@
               <input class="input" type="number" id="rc_ai_comparison_limit_free" min="0" value="3">
             </div>
             <div class="form-field">
-              <label>Daily Q Coin Pool</label>
-              <input class="input" type="number" id="rc_free_daily_ai_credit_limit" min="0" value="10">
+              <label>Signup Bonus Q Coins</label>
+              <input class="input" type="number" id="rc_signup_bonus_q_coins" min="0" value="20">
             </div>
             <div class="form-field">
               <label>Daily AI Questions</label>
