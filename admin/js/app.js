@@ -1282,6 +1282,77 @@ function deselectAll(){selectedIds.clear();renderProductsPage();document.getElem
 async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
+// Backfill missing translations onto existing products WITHOUT re-scraping.
+// Re-runs the DeepSeek translation pipeline on the German `specs` we already
+// have in PocketBase, then patches `multiLangSpecs` + `nameTranslated` back
+// onto the record. Atom-level dict cache keeps the API cost low.
+//
+// Idempotent: products that already have `multiLangSpecs` populated for all
+// TARGET_LANGS are skipped.
+async function backfillTranslations(){
+  if (typeof translateScrapedProduct !== 'function') {
+    toast('Scraper modülü yüklenmemiş', 'e');
+    return;
+  }
+  const targets = (typeof TARGET_LANGS !== 'undefined' && Array.isArray(TARGET_LANGS))
+    ? TARGET_LANGS : ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+
+  if (!confirm(`Tüm ürünlerde eksik çeviriler DeepSeek üzerinden tamamlanacak.\n\n• Hedef diller: ${targets.length}\n• Atom-cache sayesinde aynı terim tekrar tekrar API'ye gitmez\n• Bu işlem maliyetli olabilir, sürebilir\n\nDevam edilsin mi?`)) return;
+
+  toast('Ürünler yükleniyor...', 'i', 60000);
+  let docs;
+  try {
+    docs = await pbGetAll('products', {});
+  } catch (e) {
+    toast('Ürün listesi alınamadı: ' + e.message, 'e');
+    return;
+  }
+
+  // Filter: keep products that need work (missing any target language)
+  const needsWork = docs.filter(p => {
+    if (!p || !p.specs || !Object.keys(p.specs).length) return false;
+    const ml = p.multiLangSpecs || {};
+    return targets.some(l => !ml[l] || !Object.keys(ml[l] || {}).length);
+  });
+
+  if (!needsWork.length) {
+    toast('✅ Tüm ürünler zaten çevirili', 's');
+    return;
+  }
+
+  toast(`${needsWork.length} ürün çevrilecek...`, 'i', 8000);
+
+  let done = 0, failed = 0;
+  for (const p of needsWork) {
+    try {
+      // translateScrapedProduct mutates the object in place and returns it
+      const working = { ...p };
+      await translateScrapedProduct(working);
+      const patch = {};
+      if (working.multiLangSpecs)   patch.multiLangSpecs   = working.multiLangSpecs;
+      if (working.nameTranslated)   patch.nameTranslated   = working.nameTranslated;
+      if (working.multiLangSections) patch.multiLangSections = working.multiLangSections;
+      if (working.specsEn)          patch.specsEn          = working.specsEn;
+      if (!Object.keys(patch).length) { failed++; continue; }
+
+      await pbUpdateDoc('products', p.id, patch);
+      done++;
+      if (done % 5 === 0 || done === needsWork.length) {
+        toast(`Çevriliyor: ${done}/${needsWork.length}`, 'i', 2000);
+      }
+    } catch (e) {
+      console.warn('[backfill] failed for', p.id, e.message);
+      failed++;
+    }
+  }
+
+  logActivity('product_backfill', `${done} translated, ${failed} failed`);
+  toast(`✅ Backfill tamam: ${done} başarılı, ${failed} hatalı`, done ? 's' : 'w');
+
+  // Refresh the in-memory list so the modal picks up the new translations
+  try { await loadProducts?.(); } catch {}
+}
+
 // DANGER: wipes every product in the PocketBase `products` collection. Two
 // confirmation prompts (text + count) protect from misclicks.
 async function wipeAllProducts(){

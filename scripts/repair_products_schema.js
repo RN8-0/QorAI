@@ -13,6 +13,13 @@ const productFields = [
   { name: 'specs', type: 'json', maxSize: 2000000 },
   { name: 'specSections', type: 'json', maxSize: 2000000 },
   { name: 'keySpecs', type: 'json', maxSize: 2000000 },
+  // Multi-language payload written by the scraper translation pipeline.
+  // Without these fields PB silently strips them on save and the modal
+  // language picker shows every locale as "(fallback)".
+  { name: 'multiLangSpecs',    type: 'json', maxSize: 5000000 },
+  { name: 'multiLangSections', type: 'json', maxSize: 1000000 },
+  { name: 'nameTranslated',    type: 'json', maxSize: 100000  },
+  { name: 'specsEn',           type: 'json', maxSize: 2000000 },
   { name: 'techScore', type: 'number' },
   { name: 'price_raw', type: 'text', max: 200, min: 0 },
   { name: 'price_segment', type: 'text', max: 100, min: 0 },
