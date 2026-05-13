@@ -1,8 +1,81 @@
 /**
  * Qor AI Category & Brand Definitions
  * All unique ?cat= IDs from kategoriler.txt mapped to English names.
- * 105 unique categories.
+ * 105 unique categories + user-defined custom categories (localStorage).
  */
+
+// ────────────────────────────────────────────────────────────────
+// Custom Categories — user-managed, persisted in localStorage
+// Stored as: [{ id, name, nameDe, geizhalsSlug, custom: true }]
+// ────────────────────────────────────────────────────────────────
+const _CUSTOM_CATS_KEY = 'qorai_custom_categories_v1';
+
+window.QorAiCustomCategories = {
+  _slugifyId(input) {
+    return String(input || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 64);
+  },
+  // Accepts a full geizhals URL OR a raw ?cat= slug, returns the slug
+  parseSlug(input) {
+    const raw = String(input || '').trim();
+    if (!raw) return '';
+    // Full URL?
+    try {
+      const u = new URL(raw);
+      const cat = u.searchParams.get('cat');
+      if (cat) return cat;
+    } catch { /* not a URL */ }
+    // Already a slug
+    if (/^[a-z0-9_-]+$/i.test(raw)) return raw;
+    return '';
+  },
+  getAll() {
+    try {
+      const raw = localStorage.getItem(_CUSTOM_CATS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  },
+  save(list) {
+    try {
+      localStorage.setItem(_CUSTOM_CATS_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      console.error('[custom-categories] save failed:', e);
+      return false;
+    }
+  },
+  add({ name, nameDe, geizhalsInput }) {
+    const slug = this.parseSlug(geizhalsInput);
+    if (!slug) throw new Error('Geçerli bir geizhals URL veya ?cat= değeri girin.');
+    const cleanName = String(name || '').trim();
+    if (!cleanName) throw new Error('İngilizce kategori adı zorunlu.');
+    const id = this._slugifyId(cleanName) || `custom_${slug}`;
+    const entry = {
+      id,
+      name: cleanName,
+      nameDe: String(nameDe || '').trim() || undefined,
+      geizhalsSlug: slug,
+      custom: true,
+    };
+    const list = this.getAll().filter(c => c.id !== id && c.geizhalsSlug !== slug);
+    list.push(entry);
+    this.save(list);
+    return entry;
+  },
+  remove(id) {
+    const list = this.getAll().filter(c => c.id !== id);
+    this.save(list);
+  },
+  clear() {
+    localStorage.removeItem(_CUSTOM_CATS_KEY);
+  },
+};
 
 window.QorAiCategories = {
   groups: [
@@ -132,7 +205,15 @@ window.QorAiCategories = {
   ],
 
   getAll() {
-    return this.groups.flatMap(g => g.categories);
+    const base = this.groups.flatMap(g => g.categories);
+    const custom = QorAiCustomCategories.getAll();
+    if (!custom.length) return base;
+    // Dedup by id and geizhalsSlug: custom entries can override built-ins
+    const byKey = new Map();
+    for (const c of [...base, ...custom]) {
+      byKey.set(c.id, c);
+    }
+    return [...byKey.values()];
   },
 
   getById(id) {
@@ -220,6 +301,19 @@ async function populateScraperCategories() {
     bulkOpts += '</optgroup>';
   });
 
+  const customs = QorAiCustomCategories.getAll();
+  if (customs.length) {
+    bulkOpts += `<optgroup label="Custom">`;
+    customs.forEach(cat => {
+      const cnt = counts[cat.id] || 0;
+      const label = cnt > 0 ? ` (${cnt})` : '';
+      const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
+      bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
+      flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
+    });
+    bulkOpts += '</optgroup>';
+  }
+
   const setSel = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
   setSel('scrapeCategory', bulkOpts);
@@ -231,3 +325,98 @@ async function populateScraperCategories() {
   setSel('qualityScanCategory', flatOpts);
   setSel('categoryFilter', flatOpts);
 }
+
+// ────────────────────────────────────────────────────────────────
+//  Custom Category UI (Bulk Scrape panel)
+// ────────────────────────────────────────────────────────────────
+function renderCustomCategoriesList() {
+  const el = document.getElementById('customCategoriesList');
+  if (!el) return;
+  const customs = QorAiCustomCategories.getAll();
+  if (!customs.length) {
+    el.innerHTML = '<div class="text-muted" style="padding:8px 0;font-size:12px">Henüz özel kategori eklenmedi.</div>';
+    return;
+  }
+  el.innerHTML = customs.map(c => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface-2,#1a1a1a);border-radius:6px;margin-bottom:6px;font-size:12px">
+      <span style="flex:1">
+        <strong>${escHtml(c.name)}</strong>
+        ${c.nameDe ? `<span class="text-muted"> · ${escHtml(c.nameDe)}</span>` : ''}
+        <span class="text-muted"> · ?cat=${escHtml(c.geizhalsSlug)}</span>
+      </span>
+      <button class="btn btn-sm btn-ghost" onclick="removeCustomCategory('${escHtml(c.id)}')">Sil</button>
+    </div>
+  `).join('');
+}
+
+async function addCustomCategory() {
+  const nameEl = document.getElementById('newCatName');
+  const deEl = document.getElementById('newCatNameDe');
+  const urlEl = document.getElementById('newCatUrl');
+  if (!nameEl || !urlEl) return;
+  try {
+    const entry = QorAiCustomCategories.add({
+      name: nameEl.value,
+      nameDe: deEl ? deEl.value : '',
+      geizhalsInput: urlEl.value,
+    });
+    nameEl.value = '';
+    if (deEl) deEl.value = '';
+    urlEl.value = '';
+    // Clear count cache so UI refreshes
+    window._catCountCache = null;
+    await populateScraperCategories();
+    renderCustomCategoriesList();
+    if (typeof toast === 'function') {
+      toast(`Kategori eklendi: ${entry.name} (?cat=${entry.geizhalsSlug})`, 's');
+    }
+    // Auto-select the newly added category in the bulk scrape select
+    const sel = document.getElementById('scrapeCategory');
+    if (sel) sel.value = entry.id;
+  } catch (e) {
+    if (typeof toast === 'function') toast(e.message, 'e');
+    else alert(e.message);
+  }
+}
+
+async function removeCustomCategory(id) {
+  if (!confirm('Bu özel kategoriyi silmek istediğinize emin misiniz?')) return;
+  QorAiCustomCategories.remove(id);
+  window._catCountCache = null;
+  await populateScraperCategories();
+  renderCustomCategoriesList();
+  if (typeof toast === 'function') toast('Kategori silindi', 'i');
+}
+
+// Bulk-import categories from kategoriler.txt style URL list (one per line)
+async function importCategoriesFromText() {
+  const ta = document.getElementById('bulkCatImport');
+  if (!ta) return;
+  const lines = (ta.value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { if (typeof toast === 'function') toast('Liste boş.', 'w'); return; }
+  let added = 0, skipped = 0;
+  for (const line of lines) {
+    const slug = QorAiCustomCategories.parseSlug(line);
+    if (!slug) { skipped++; continue; }
+    const allExisting = QorAiCategories.getAll();
+    if (allExisting.some(c => c.geizhalsSlug === slug)) { skipped++; continue; }
+    try {
+      QorAiCustomCategories.add({
+        name: slug.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
+        geizhalsInput: slug,
+      });
+      added++;
+    } catch { skipped++; }
+  }
+  ta.value = '';
+  window._catCountCache = null;
+  await populateScraperCategories();
+  renderCustomCategoriesList();
+  if (typeof toast === 'function') toast(`${added} eklendi, ${skipped} atlandı`, added > 0 ? 's' : 'i');
+}
+
+// Expose to window for inline onclick handlers
+window.addCustomCategory = addCustomCategory;
+window.removeCustomCategory = removeCustomCategory;
+window.importCategoriesFromText = importCategoriesFromText;
+window.renderCustomCategoriesList = renderCustomCategoriesList;

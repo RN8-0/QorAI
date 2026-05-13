@@ -461,6 +461,42 @@
               <button class="btn btn-danger" id="btnStopScrape" onclick="stopScraping()" style="display:none">Stop</button>
             </div>
           </div>
+
+          <!-- Custom Categories Manager -->
+          <div class="card" id="customCategoriesCard">
+            <div class="card-title">Özel Kategori Yönetimi <span class="text-muted" style="font-weight:normal;font-size:12px">· geizhals.eu ?cat= slug tabanlı</span></div>
+            <p class="text-muted" style="margin-bottom:10px;font-size:12px">
+              Eklediğin kategoriler yukarıdaki "Category" listesinde <strong>Custom</strong> başlığı altında görünür.
+              Almanca ad opsiyoneldir (sitede İngilizce ad görünür).
+            </p>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1.2fr">
+              <div class="form-field">
+                <label>İngilizce Ad (zorunlu)</label>
+                <input class="input" id="newCatName" placeholder="e.g. Smart Home Hubs">
+              </div>
+              <div class="form-field">
+                <label>Almanca Ad (opsiyonel)</label>
+                <input class="input" id="newCatNameDe" placeholder="e.g. Smart Home Hubs / Zentralen">
+              </div>
+              <div class="form-field">
+                <label>Geizhals URL veya ?cat= slug</label>
+                <input class="input" id="newCatUrl" placeholder="https://geizhals.eu/?cat=... veya umtsover">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="addCustomCategory()">+ Kategori Ekle</button>
+            </div>
+
+            <div id="customCategoriesList" style="margin-top:14px"></div>
+
+            <details style="margin-top:14px">
+              <summary class="text-muted" style="cursor:pointer;font-size:12px">Toplu içe aktar (her satıra bir URL)</summary>
+              <textarea class="input" id="bulkCatImport" rows="6" style="margin-top:8px;font-family:monospace;font-size:12px" placeholder="https://geizhals.eu/?cat=umtsover&pagesize=30&hloc=at...&#10;https://geizhals.eu/?cat=hdssd..."></textarea>
+              <div style="margin-top:8px">
+                <button class="btn btn-sm" onclick="importCategoriesFromText()">İçe Aktar</button>
+              </div>
+            </details>
+          </div>
         </div>
 
         <!-- Single URL -->

@@ -106,23 +106,8 @@ async function getBrowser() {
   });
 
   console.log('  ✅ Chrome started with stealth mode enabled');
-
-  try {
-    const warmPage = await browser.newPage();
-    await warmPage.setUserAgent(currentUA);
-    await warmPage.setExtraHTTPHeaders({
-      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'DNT': '1',
-    });
-    await warmPage.goto('https://geizhals.eu/', { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await _humanDelay(1000, 2500);
-    sessionCookies = await warmPage.cookies();
-    await warmPage.close();
-    console.log(`  ✅ Session ready (${sessionCookies.length} cookies)`);
-  } catch (e) {
-    console.warn(`  ⚠️ Preload failed: ${e.message}`);
-  }
+  // NOTE: No warmup page — avoids hitting Cloudflare immediately on startup.
+  // Cookies will be collected naturally on the first real request.
   return browser;
 }
 
@@ -130,9 +115,11 @@ async function getPage() {
   const b = await getBrowser();
   // Rotate UA every 20 requests
   if (requestCount % 20 === 0) currentUA = _randomUA();
+  // Reuse existing page unless rotation threshold reached
   if (activePage && !activePage.isClosed() && requestCount % 80 !== 0) return activePage;
   if (activePage && !activePage.isClosed()) {
     await activePage.close().catch(() => {});
+    activePage = null;
   }
   activePage = await b.newPage();
   await activePage.setUserAgent(currentUA);
@@ -141,11 +128,9 @@ async function getPage() {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'DNT': '1','Upgrade-Insecure-Requests': '1',
   });
+  // FIX: Do NOT call setRequestInterception here — it leaks when the page is
+  // reused across requests and causes "Request is already handled" errors.
   if (sessionCookies?.length) await activePage.setCookie(...sessionCookies);
-  await activePage.setRequestInterception(true);
-  activePage.on('request', (req) => {
-    req.continue();
-  });
   return activePage;
 }
 
@@ -162,47 +147,104 @@ async function _humanScroll(page) {
 }
 
 function _isChallengeTitle(title) {
-  return /Just a moment|Checking|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung/i.test(title || '');
+  // Expanded: covers Cloudflare Turnstile, DDoS-Guard, and all known Geizhals CF variants
+  return /Just a moment|Checking your browser|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung|Einen Moment|Verbindung wird|Attention Required|Access denied|403 Forbidden|Enable JavaScript/i.test(title || '');
+}
+
+function _isChallengeContent(html) {
+  if (!html) return false;
+  // Detect CF challenge by known DOM fingerprints in the raw HTML
+  return (
+    html.includes('cf-browser-verification') ||
+    html.includes('cf_challenge') ||
+    html.includes('cf-turnstile') ||
+    html.includes('__cf_chl') ||
+    html.includes('jschl-answer') ||
+    html.includes('cdn-cgi/challenge-platform') ||
+    html.includes('Checking if the site connection is secure') ||
+    html.includes('Überprüfung ob die Verbindung')
+  );
+}
+
+async function _resetActivePage() {
+  try { if (activePage && !activePage.isClosed()) await activePage.close(); } catch {}
+  activePage = null;
 }
 
 async function fetchWithPuppeteer(url, opts = {}) {
-  const { waitChallenge = true } = opts;
+  const { waitChallenge = true, _attempt = 0 } = opts;
   const page = await getPage();
   requestCount++;
   try {
-    const response = await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
+    // FIX: Use 'domcontentloaded' instead of 'networkidle0'.
+    // 'networkidle0' hangs on Cloudflare challenge pages because CF keeps
+    // polling its own verification endpoints indefinitely, preventing idle.
+    // 'domcontentloaded' fires as soon as the HTML is parsed — we then check
+    // the title ourselves and wait manually if needed.
+    let response;
+    try {
+      response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    } catch (navErr) {
+      // Navigation timeout is OK — the page might still be partially loaded
+      console.warn(`  ⚠️ Navigation timeout (continuing): ${navErr.message}`);
+    }
     const status = response ? response.status() : 0;
 
-    let title = await page.title();
-    let isChallenge = _isChallengeTitle(title);
+    // Small settle delay after DOM content loaded
+    await _humanDelay(800, 1500);
+
+    let title = await page.title().catch(() => '');
+    const rawHtml = await page.content().catch(() => '');
+    let isChallenge = _isChallengeTitle(title) || _isChallengeContent(rawHtml);
 
     if (isChallenge && waitChallenge) {
-      console.log(`  ⏳ Challenge detected: "${title.substring(0, 50)}". Waiting 12s...`);
-      await _humanDelay(12000, 12000);
-      title = await page.title();
-      isChallenge = _isChallengeTitle(title);
-      if (isChallenge) {
-        console.log(`  ⏳ Still challenging. Waiting another 10s...`);
-        await _humanDelay(10000, 10000);
-        title = await page.title();
-        isChallenge = _isChallengeTitle(title);
+      console.log(`  ⏳ Challenge detected: "${title.substring(0, 60)}". Tarayıcı penceresinden Cloudflare'i geçin...`);
+      // Wait up to 30 seconds for the user to manually solve the Cloudflare challenge
+      // in the visible browser window (headless: false)
+      const POLL_INTERVAL = 2000;
+      const MAX_WAIT = 15000;
+      let waited = 0;
+      while (waited < MAX_WAIT) {
+        await _humanDelay(POLL_INTERVAL, POLL_INTERVAL);
+        waited += POLL_INTERVAL;
+        title = await page.title().catch(() => '');
+        const html2 = await page.content().catch(() => '');
+        isChallenge = _isChallengeTitle(title) || _isChallengeContent(html2);
+        if (!isChallenge) {
+          console.log(`  ✅ Challenge solved after ${(waited / 1000).toFixed(0)}s: "${title.substring(0, 60)}"`);
+          break;
+        }
+        console.log(`  ⏳ Still waiting... (${(waited / 1000).toFixed(0)}s / 30s) title: "${title.substring(0, 40)}"`);
       }
-      if (!isChallenge) console.log(`  ✅ Challenge solved: "${title.substring(0, 50)}"`);
-      else console.log(`  ⚠️ Challenge still present after 22s.`);
+      if (isChallenge) {
+        console.log(`  ❌ Challenge NOT solved after 30s.`);
+      }
     }
 
     if (!isChallenge) {
       await _humanScroll(page);
-      await _humanDelay(500, 500);
-      await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 200 - 100)); });
-      await _humanDelay(500, 500);
+      await _humanDelay(400, 800);
+      await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 200 - 100)); }).catch(() => {});
+      await _humanDelay(300, 600);
     }
 
     if (status === 404) return { html: null, status: 404, isChallenge: false };
+    // Collect cookies on every successful real page load
+    if (!isChallenge) {
+      const cookies = await page.cookies().catch(() => []);
+      if (cookies.length > 0) sessionCookies = cookies;
+    }
     const html = await page.content();
     return { html, status: status || 200, isChallenge };
   } catch (err) {
-    console.error(`  ❌ Fetch error: ${err.message}`);
+    console.error(`  ❌ Fetch error (attempt ${_attempt + 1}): ${err.message}`);
+    // Page or browser is likely broken — reset and retry once with a fresh page
+    await _resetActivePage();
+    if (_attempt < 1) {
+      console.log('  🔁 Retrying once with a fresh page...');
+      await _humanDelay(1500, 2500);
+      return fetchWithPuppeteer(url, { ...opts, _attempt: _attempt + 1 });
+    }
     throw err;
   }
 }
@@ -382,35 +424,19 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // If Cloudflare challenge is still active, wait for product list to appear
+      // If Cloudflare challenge is still active, give it a short extra window
+      // then try extraction anyway. We no longer hard-fail with 503 — the
+      // client can handle empty results and move on, avoiding 25-55s hangs.
       if (isChallenge) {
-        console.log(`  🔄 Challenge detected. Waiting up to 25s for product list...`);
+        console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
         try {
           await page.waitForSelector(
             '.productlist, #productlist, .offer-list, [data-testid="product-list"]',
-            { timeout: 25000 }
+            { timeout: 10000 }
           );
           console.log(`  ✅ Product list appeared.`);
         } catch {
-          console.log(`  ❌ 25s timeout — Cloudflare aşılamadı.`);
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            error: 'cloudflare_challenge',
-            message: 'Cloudflare aşılamadı.'
-          }));
-          return;
-        }
-
-        // Double-check: is the page title still a challenge?
-        const titleAfter = await page.title();
-        if (_isChallengeTitle(titleAfter)) {
-          console.log(`  ❌ Title still shows challenge after waitForSelector.`);
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            error: 'cloudflare_challenge',
-            message: 'Cloudflare aşılamadı.'
-          }));
-          return;
+          console.log(`  ⚠️ Product list selector did not appear; extracting best-effort links.`);
         }
       }
 

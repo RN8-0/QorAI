@@ -9,7 +9,10 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260512v4-sequential-strict';
+const SCRAPER_BUILD = '20260513v5-eu-hloc-robust';
+// EU-wide listing: matches kategoriler.txt format, maximises inventory and
+// reduces per-country Cloudflare gatekeeping that was causing 502 loops.
+const GEIZHALS_LISTING_EXTRA = 'pagesize=30&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -236,7 +239,8 @@ async function proxyFetch(url, retries = 3) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`, {
-        signal: AbortSignal.timeout(30000)
+        // 120s: covers proxy 45s nav + 15s challenge wait + one internal fresh-page retry
+        signal: AbortSignal.timeout(120000)
       });
       if (res.status === 429) {
         const delay = Math.min(15000 * Math.pow(2, attempt), 120000) + Math.random() * 5000;
@@ -979,18 +983,35 @@ async function translateScrapedProduct(product) {
 
 function isChallengePage(html) {
   if (!html) return true;
-  // Only flag as challenge if the title clearly indicates a challenge page
-  // Proxy now auto-solves challenges, so most pages should be real content
+
+  // Title-based detection (fast path)
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1] : '';
-  const isCh = title.includes('Nur einen Moment') ||
-    title.includes('Just a moment') ||
-    title.includes('Checking your browser') ||
-    title.includes('Sichere Verbindung wird überprüft');
-  if (isCh) {
-    slog(`Challenge detected in title: "${title.substring(0, 50)}"`, 'warn');
+  const challengeTitleRe = /Nur einen Moment|Just a moment|Checking your browser|Sichere Verbindung|Einen Moment|Verbindung wird|Attention Required|Access denied|403 Forbidden|Enable JavaScript|Please Wait|DDoS-Guard/i;
+  if (challengeTitleRe.test(title)) {
+    slog(`Challenge detected (title): "${title.substring(0, 60)}"`, 'warn');
+    return true;
   }
-  return isCh;
+
+  // DOM fingerprint detection (Cloudflare Turnstile & variants)
+  const cfFingerprints = [
+    'cf-browser-verification',
+    'cf_challenge',
+    'cf-turnstile',
+    '__cf_chl',
+    'jschl-answer',
+    'cdn-cgi/challenge-platform',
+    'Checking if the site connection is secure',
+    'Überprüfung ob die Verbindung',
+  ];
+  for (const fp of cfFingerprints) {
+    if (html.includes(fp)) {
+      slog(`Challenge detected (fingerprint: ${fp})`, 'warn');
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function extractProductLinksFromDoc(doc, html) {
@@ -1061,14 +1082,15 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
 
   const allItems = [];
   const seenUrls = new Set();
-  const pageParams = ['pg', 'p', 'page', 'seite'];
-
-  for (const pageParam of pageParams) {
+  // Geizhals only honours the `pg` pagination param. Cycling through other
+  // names wasted requests and multiplied CF pressure; stick with `pg`.
+  {
+    const pageParam = 'pg';
     let page = 1;
     let emptyCount = 0;
 
     while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2) {
-      const listingUrl = `${GEIZHALS_BASE}/?cat=${catParam}&pagesize=30&${pageParam}=${page}`;
+      const listingUrl = `${GEIZHALS_BASE}/?cat=${catParam}&${GEIZHALS_LISTING_EXTRA}&${pageParam}=${page}`;
       slog(`Fetching listing [${pageParam}=${page}]: ${listingUrl.substring(0, 80)}...`, 'info');
 
       try {
@@ -1077,7 +1099,8 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
         let cloudflareBlocked = false;
         try {
           const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(listingUrl)}`, {
-            signal: AbortSignal.timeout(45000)
+            // 90s: proxy nav (45s) + challenge wait (15s) + selector wait (10s) + overhead
+            signal: AbortSignal.timeout(90000)
           });
 
           // Check Content-Type before parsing — Cloudflare HTML will NOT be application/json
@@ -1164,8 +1187,6 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
         page++;
       }
     }
-
-    if (allItems.length > 0) break;
   }
 
   slog(`URL collection complete: ${allItems.length} unique product URLs`, 'success');
