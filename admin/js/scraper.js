@@ -264,6 +264,24 @@ async function proxyFetch(url, retries = 3) {
   }
 }
 
+/**
+ * Forces the local proxy to drop its current Puppeteer browser, cookies and
+ * User-Agent fingerprint and start a fresh one on the next request. This is
+ * the ONLY reliable way to recover from a sticky Cloudflare challenge: the
+ * decision is per-session, so any amount of sleeping won't help unless we
+ * rotate the fingerprint. Used by both Phase 1 (URL collection) and Phase 2
+ * (product detail scrape).
+ */
+async function resetProxySessionShared(reason) {
+  try {
+    slog(`🧹 Resetting proxy session (${reason}) — fresh browser + cookies + UA`, 'warn');
+    const r = await fetch(`${PROXY_URL}/reset-session`, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) slog(`  ⚠️ reset-session HTTP ${r.status}`, 'warn');
+  } catch (e) {
+    slog(`  ⚠️ reset-session failed: ${e.message}`, 'warn');
+  }
+}
+
 // ═══════════════════════════════════════
 //  4. SCRAPER TABS & CATEGORY UI
 // ═══════════════════════════════════════
@@ -1947,6 +1965,18 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   // 60% we pause for a long cool-down and slow down per-product delay.
   const recent = []; // 'ok' | 'err' | 'cf'
   const _MAX_CONSEC_ERRORS = 10; // hard abort threshold
+  // CF guards: once the proxy session is burned by Cloudflare every subsequent
+  // request returns the "Nur einen Moment…" interstitial. The fix is to (a)
+  // rotate the browser fingerprint on the proxy whenever we see a CF streak,
+  // (b) periodically rotate proactively (mirrors Phase-1 behaviour), and (c)
+  // hard-abort if even rotation cannot recover so the scraper checkpoints
+  // instead of silently burning the entire URL list.
+  const _CF_STREAK_BEFORE_RESET = 3;
+  const _CF_HARD_ABORT_STREAK = 12;
+  const _PROACTIVE_RESET_EVERY = 50; // products
+  const _CF_RECOVERY_MS = 45000;
+  let productsSinceReset = 0;
+  let cfRetryUrl = null; // URL to retry once immediately after a session reset
 
   // PRE-PASS: drop URLs that are already in the database.
   // This is the durable "resume" — survives full PC shutdown because the
@@ -2027,19 +2057,56 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       if (isChallengePage(html)) {
         challengeStreak++;
         recent.push('cf');
-        slog(`  → Challenge page: ${slug}`, 'warn');
-        if (challengeStreak >= 3) {
-          // Cool-down before hard abort: many CF blocks are transient
-          slog(`⏸  3 ardışık CF — 60 saniye soğuma...`, 'warn');
-          await sleep(60000);
-          challengeStreak = 0;
+        slog(`  → Challenge page: ${slug} (streak ${challengeStreak})`, 'warn');
+
+        // Hard abort: rotating the session has stopped helping, the proxy or
+        // upstream IP pool is fully burned. Checkpoint so the user can
+        // Resume later with a fresh proxy restart.
+        if (challengeStreak >= _CF_HARD_ABORT_STREAK) {
+          slog(`🛑 ${_CF_HARD_ABORT_STREAK} ardışık Cloudflare bloğu. Proxy/IP havuzu yandı. Checkpoint kaydedildi — proxy'i yeniden başlatıp Resume kullan.`, 'error');
+          _saveCheckpoint(urlItems, i, categoryId, results);
+          scraperAbort = true;
+          break;
+        }
+
+        // Recovery flow: rotate browser fingerprint, wait briefly for the
+        // edge to "forget" us, then re-attempt the SAME URL once. Only count
+        // the product as skipped if even the post-reset retry fails — this
+        // keeps us from leaking the entire CF-streak window into the
+        // skipped list (which previously caused 20+ products to be silently
+        // dropped while the scraper looked busy).
+        if (challengeStreak >= _CF_STREAK_BEFORE_RESET && cfRetryUrl !== item.url) {
+          await resetProxySessionShared(`${challengeStreak} ardışık CF`);
+          productsSinceReset = 0;
+          slog(`❄️ Recovery cooldown ${(_CF_RECOVERY_MS / 1000).toFixed(0)}s — aynı ürün tekrar denenecek…`, 'info');
+          await sleep(_CF_RECOVERY_MS);
+          // Drop any in-flight prefetch — its session is the old, burned one.
+          nextHtmlPromise = null;
+          cfRetryUrl = item.url;
+          i--; // re-iterate the same product index
+          _scrapeProductCount--; // un-count the failed attempt
           continue;
         }
+
         results.skipped++;
+        cfRetryUrl = null;
         nextHtmlPromise = prefetchNext(i + 1);
         continue;
       }
       challengeStreak = 0;
+      cfRetryUrl = null;
+      productsSinceReset++;
+
+      // Proactive rotation mirrors Phase-1's "every N pages" rule. Doing it
+      // BEFORE Cloudflare retaliates is far cheaper than the recovery path
+      // above (no wasted product attempts).
+      if (productsSinceReset >= _PROACTIVE_RESET_EVERY) {
+        productsSinceReset = 0;
+        await resetProxySessionShared(`proactive after ${_PROACTIVE_RESET_EVERY} products`);
+        slog(`❄️ Proactive cooldown 30s…`, 'info');
+        await sleep(30000);
+        nextHtmlPromise = null;
+      }
 
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
