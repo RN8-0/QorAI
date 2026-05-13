@@ -2164,9 +2164,19 @@ async function startBulkScrape() {
     slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
     if (scraperAbort) {
-      slog(`Scraping stopped by user. ${urlItems.length} URLs were collected.`, 'warn');
-      finishScraping();
-      return;
+      // Don't throw away the URLs. If we already have a meaningful batch,
+      // keep scraping the products that ARE in hand instead of silently
+      // returning. Otherwise an interrupted Phase-1 (e.g. stop button or
+      // 3-consec CF fails) wastes the 200-500 URLs that were already
+      // collected. The user can still hard-stop after Phase 2 starts.
+      if (urlItems.length > 0) {
+        slog(`Phase 1 interrupted with ${urlItems.length} URLs collected. Proceeding to Phase 2 with what we have…`, 'warn');
+        scraperAbort = false; // re-enable the loop for Phase 2
+      } else {
+        slog(`Scraping stopped by user. 0 URLs were collected.`, 'warn');
+        finishScraping();
+        return;
+      }
     }
 
     if (!urlItems.length) {

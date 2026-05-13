@@ -100,11 +100,20 @@ async function getBrowser() {
   browser = await puppeteerExtra.launch({
     executablePath: chromePath,
     headless: false,
+    // CRITICAL: removing `--enable-automation` kills the "Chrome is being
+    // controlled by automated test software" infobar AND a host of internal
+    // automation hooks that Cloudflare Turnstile fingerprints. Without this
+    // line the bot signal is irreducible regardless of stealth-plugin patches.
+    ignoreDefaultArgs: ['--enable-automation'],
     args: [
       '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
       '--window-size=1366,768','--disable-blink-features=AutomationControlled',
       '--disable-infobars','--disable-notifications','--lang=de-DE,de',
       '--ignore-gpu-blocklist','--enable-gpu-rasterization',
+      // Suppress automation-only banners and side-channel signals.
+      '--no-default-browser-check','--no-first-run',
+      '--disable-features=IsolateOrigins,site-per-process,Translate',
+      '--disable-site-isolation-trials',
     ],
     defaultViewport: { width: 1366, height: 768 },
     ignoreHTTPSErrors: true,
@@ -147,6 +156,21 @@ async function getPage() {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'DNT': '1','Upgrade-Insecure-Requests': '1',
   });
+  // Defensive bot-signal patches that run BEFORE any site script.
+  // stealth-plugin covers most of these but Cloudflare's Turnstile keeps
+  // adding new sub-checks; layering our own keeps us ahead.
+  await activePage.evaluateOnNewDocument(() => {
+    // Always report the tab as focused — `document.hasFocus() === false` is
+    // a strong bot signal because tabs always have focus when the user is
+    // actively browsing.
+    Object.defineProperty(document, 'hasFocus', { value: () => true });
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+    Object.defineProperty(document, 'hidden', { get: () => false });
+    // navigator.webdriver = false (stealth handles this but redundancy is cheap)
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    // Plausible plugin / mimeType counts (empty arrays look bot-like)
+    Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de', 'en-US', 'en'] });
+  });
   // FIX: Do NOT call setRequestInterception here — it leaks when the page is
   // reused across requests and causes "Request is already handled" errors.
   if (sessionCookies?.length) await activePage.setCookie(...sessionCookies);
@@ -160,6 +184,17 @@ function _humanDelay(min = 500, max = 1500) {
 
 async function _humanScroll(page) {
   try {
+    // Real mouse movement → Cloudflare's challenge JS captures `mousemove`
+    // and `pointermove` events as proof of human presence. Without this,
+    // the only mouse data the page sees is whatever the user happens to
+    // do in the visible window, which is often nothing.
+    const rx1 = 200 + Math.floor(Math.random() * 900);
+    const ry1 = 150 + Math.floor(Math.random() * 500);
+    const rx2 = 200 + Math.floor(Math.random() * 900);
+    const ry2 = 150 + Math.floor(Math.random() * 500);
+    await page.mouse.move(rx1, ry1, { steps: 15 + Math.floor(Math.random() * 15) });
+    await _humanDelay(120, 280);
+    await page.mouse.move(rx2, ry2, { steps: 20 + Math.floor(Math.random() * 20) });
     await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 300 + 100)); });
     await _humanDelay(200, 600);
   } catch {}
