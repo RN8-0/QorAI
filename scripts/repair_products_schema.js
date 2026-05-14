@@ -26,6 +26,10 @@ const productFields = [
   { name: 'specsCount', type: 'number' },
   { name: 'variantGroup', type: 'text', max: 200, min: 0 },
   { name: 'scrapedAt', type: 'date' },
+  // Icecat Open Catalog fields (added 2026-05) — needed for affiliate matching
+  { name: 'gtin',     type: 'text',   max: 200, min: 0 },
+  { name: 'mpn',      type: 'text',   max: 200, min: 0 },
+  { name: 'icecatId', type: 'number' },
   { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
   { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
 ];

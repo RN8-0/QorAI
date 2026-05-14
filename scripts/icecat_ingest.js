@@ -58,60 +58,94 @@ const SKIP_PHASE1 = hasFlag('resume') || getOpt('phase', '1') === '2';
 const LIMIT       = parseInt(getOpt('limit',   '0'));
 const DELAY       = parseInt(getOpt('delay',   '800'));
 const WORKERS     = parseInt(getOpt('workers', '3'));
-const LANGS       = getOpt('langs', 'EN,TR').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+// 12 languages matching the Flutter app's l10n files
+const LANGS_DEFAULT = 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
+const LANGS         = getOpt('langs', LANGS_DEFAULT).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+// Optional category filter — e.g. --cats=monitors,ram  (default: all in CAT_MAP)
+const CATS_FILTER = getOpt('cats', '');
+const CAT_WHITELIST = CATS_FILTER
+  ? new Set(CATS_FILTER.split(',').map(s => s.trim().toLowerCase()))
+  : null; // null = no filter = all categories
 
 // ─── Icecat category → internal slug ─────────────────────────────────────────
-// Icecat cat_ids verified against category pages on icecat.biz
+// ✓ = confirmed via live.icecat.biz/api lookups on real products (2026-05)
 
+// Categories observed in the free Icecat Open Catalog. The whitelist is
+// applied during Phase 1 to keep the queue focused on consumer electronics.
+//
+// All CategoryID values below were verified via real Icecat live-API hits
+// during a full index scan (2026-05). Source: scripts/icecat_cats_named.json,
+// produced by `node scripts/icecat_discover_cats.js` + name resolver. Each
+// line shows the free-tier product count we'll see in Phase 1.
 const CAT_MAP = {
-  // Laptops
-  380: 'laptops',   4: 'laptops',
-  // Smartphones / Phones
-  5017: 'smartphones',  1619: 'smartphones',
-  // Tablets
-  127: 'tablets',
-  // Desktops
-  4050: 'desktops',  3761: 'desktops',
-  // CPUs
-  193: 'cpus',
-  // GPUs
-  814: 'gpus',   15: 'gpus',
-  // Motherboards
-  100: 'motherboards',
-  // RAM
-  2103: 'ram',
-  // SSDs
-  3038: 'ssds',
-  // HDDs
-  285: 'hdds',  200: 'hdds',
-  // PSUs
-  474: 'psus',
-  // PC Cases
-  344: 'cases',
-  // Coolers
-  2005: 'coolers',  3769: 'coolers',
-  // Monitors
-  1: 'monitors',
-  // Keyboards
-  130: 'keyboards',
-  // Mice
-  156: 'mice',
-  // Headsets
-  3699: 'headsets',
-  // Webcams
-  3580: 'webcams',
-  // Speakers
-  1244: 'speakers',  1243: 'speakers',
-  // TVs
-  396: 'tvs',  2101: 'tvs',
-  // Networking
-  260: 'routers',  131: 'networking',  139: 'networking',
-  // Controllers / Accessories
-  3861: 'controllers',
-  // Smartwatches
-  2642: 'smartwatches',
-  // Printers
-  760: 'printers',
+  // ── Computing ───────────────────────────────────────────────
+  151:  'laptops',                  // 877k
+  153:  'desktops',                 // 340k  (PCs/Workstations)
+  2282: 'all-in-one-pcs',           // 44k
+  156:  'servers',                  // 24k
+  896:  'thin-clients',             //  5k
+  152:  'laptop-docks',             //  5k
+  154:  'handheld-computers',       //  3k
+  // ── Components ──────────────────────────────────────────────
+  989:  'cpus',                     // 14k  (Processors)
+  911:  'ram',                      // 54k  (Memory Modules)
+  164:  'motherboards',             //  9k
+  237:  'cases',                    //  4k
+  963:  'psus',                     //  4k
+  921:  'coolers',                  //  3k  (Computer Cooling Systems)
+  // ── Storage ─────────────────────────────────────────────────
+  219:  'hdds',                     // 36k  (Internal HDDs)
+  1823: 'external-hdds',            //  4k
+  1563: 'ssds',                     // 27k  (Internal SSDs)
+  932:  'nas',                      // 46k  (NAS & Storage Servers)
+  1554: 'flash-drives',             //  6k
+  902:  'memory-cards',             //  4k
+  214:  'optical-drives',           //  4k
+  // ── Display & TV ────────────────────────────────────────────
+  222:  'monitors',                 // 42k  (Computer Monitors)
+  1584: 'tvs',                      // 42k
+  2672: 'signage-displays',         //  6k
+  567:  'projectors',               //  8k  (Data Projectors)
+  940:  'monitor-accessories',      //  6k
+  1056: 'tv-mounts',                //  6k
+  // ── Mobile ──────────────────────────────────────────────────
+  1893: 'smartphones',              // 29k  (Smartphones)
+  119:  'mobile-phones',            //  4k  (Feature phones)
+  897:  'tablets',                  // 27k
+  // ── Imaging ─────────────────────────────────────────────────
+  575:  'cameras',                  // 12k  (Digital Cameras)
+  584:  'camcorders',               //  3k
+  1557: 'security-cameras',         //  5k
+  // ── Peripherals ─────────────────────────────────────────────
+  194:  'keyboards',                // 26k  (Keyboards)
+  195:  'mice',                     //  9k
+  2813: 'mobile-keyboards',         //  5k
+  // ── Printing ────────────────────────────────────────────────
+  304:  'multifunction-printers',   // 11k
+  235:  'laser-printers',           //  4k
+  229:  'label-printers',           //  5k
+  // ── Networking ──────────────────────────────────────────────
+  258:  'network-switches',         //  9k
+  3982: 'routers',                  //  3k  (Wireless Routers)
+  182:  'network-cards',            //  6k
+  // ── Power ───────────────────────────────────────────────────
+  817:  'ups',                      //  6k  (UPSs)
+  984:  'pdus',                     //  4k  (Power Distribution Units)
+  827:  'power-adapters',           // 22k
+  // ── Audio ───────────────────────────────────────────────────
+  2315: 'portable-speakers',        //  5k
+  // ── Smart home / appliances (electronics) ───────────────────
+  1234: 'vacuums',                  //  5k
+  1320: 'coffee-makers',            //  7k
+  1324: 'dishwashers',              //  9k
+  1325: 'microwaves',               //  4k
+  1330: 'tumble-dryers',            //  5k
+  1331: 'washing-machines',         // 16k
+  1864: 'hobs',                     //  7k
+  1873: 'fridge-freezers',          // 14k
+  2286: 'ovens',                    //  8k
+  1661: 'led-bulbs',                // 11k
 };
 
 const TARGET_CATS = new Set(Object.keys(CAT_MAP).map(Number));
@@ -119,25 +153,39 @@ const TARGET_CATS = new Set(Object.keys(CAT_MAP).map(Number));
 // ─── Key specs per category (displayed in compare + AI prompts) ───────────────
 
 const KEY_SPEC_NAMES = {
-  laptops:      ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
-  smartphones:  ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Main Camera','Battery Capacity (Typical)','Network'],
-  tablets:      ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Operating System','Battery Capacity (Typical)'],
-  desktops:     ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Graphics Card','Operating System'],
-  cpus:         ['Processor Cores','Processor Threads','Processor Base Frequency','Maximum Turbo Frequency','Processor Socket','TDP'],
-  gpus:         ['Memory Size','Memory type','Core Clock Speed','Memory Interface Width','TDP'],
-  motherboards: ['Chipset','Socket','Form Factor','Memory Slots','Supported Memory Types'],
-  ram:          ['Memory Size','Memory Speed','CAS Latency','Memory type'],
-  ssds:         ['Capacity','Sequential Read Speed','Sequential Write Speed','Interface','Form Factor'],
-  hdds:         ['Capacity','HDD Speed','Interface','Cache','Form Factor'],
-  monitors:     ['Display diagonal','Display resolution','Panel type','Screen Refresh Rate','Response time','HDR'],
-  psus:         ['Maximum Output Power','Efficiency','Modularity','Form Factor'],
-  cases:        ['Form Factor','Colour','Side Panel','Dimensions (WxDxH)'],
-  coolers:      ['Cooling type','Fan Size','Max Noise Level','TDP'],
-  keyboards:    ['Keyboard type','Device connectivity','Switch type','Backlight'],
-  mice:         ['Maximum Resolution','Device connectivity','Number of buttons','Polling Rate'],
-  headsets:     ['Connectivity technology','Frequency Range','Active Noise Cancellation','Playback time'],
-  speakers:     ['RMS power output','Number of channels','Connectivity Technology'],
-  tvs:          ['Display diagonal','Display resolution','Panel type','Smart TV OS','HDR','Screen Refresh Rate'],
+  laptops:                ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
+  smartphones:            ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Main Camera','Battery Capacity (Typical)','Network'],
+  tablets:                ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Operating System','Battery Capacity (Typical)'],
+  smartwatches:           ['Display diagonal','Display resolution','Battery Life','Water resistance','Operating System','Bluetooth','GPS'],
+  desktops:               ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Graphics Card','Operating System'],
+  cpus:                   ['Processor Cores','Processor Threads','Processor Base Frequency','Maximum Turbo Frequency','Processor Socket','TDP'],
+  gpus:                   ['Memory Size','Memory type','Core Clock Speed','Memory Interface Width','TDP'],
+  motherboards:           ['Chipset','Socket','Form Factor','Memory Slots','Supported Memory Types'],
+  ram:                    ['Memory Size','Memory Speed','CAS Latency','Memory type'],
+  ssds:                   ['Capacity','Sequential Read Speed','Sequential Write Speed','Interface','Form Factor'],
+  hdds:                   ['Capacity','HDD Speed','Interface','Cache','Form Factor'],
+  'flash-drives':         ['Capacity','Interface','Read speed','Write speed'],
+  'memory-cards':         ['Capacity','Type','Read speed','Write speed','Speed Class'],
+  monitors:               ['Display diagonal','Display resolution','Panel type','Screen Refresh Rate','Response time','HDR'],
+  psus:                   ['Maximum Output Power','Efficiency','Modularity','Form Factor'],
+  cases:                  ['Form Factor','Colour','Side Panel','Dimensions (WxDxH)'],
+  coolers:                ['Cooling type','Fan Size','Max Noise Level','TDP'],
+  keyboards:              ['Keyboard type','Device connectivity','Switch type','Backlight'],
+  mice:                   ['Maximum Resolution','Device connectivity','Number of buttons','Polling Rate'],
+  headsets:               ['Connectivity technology','Frequency Range','Active Noise Cancellation','Playback time'],
+  headphones:             ['Connectivity technology','Frequency Range','Driver size','Active Noise Cancellation','Playback time'],
+  speakers:               ['RMS power output','Number of channels','Connectivity Technology'],
+  tvs:                    ['Display diagonal','Display resolution','Panel type','Smart TV OS','HDR','Screen Refresh Rate'],
+  cameras:                ['Sensor Type','Sensor Size','Megapixels','Optical Zoom','Display diagonal','Video Resolution'],
+  lenses:                 ['Focal Length','Maximum Aperture','Lens Mount','Filter Size','Weight'],
+  printers:               ['Print Technology','Maximum Print Resolution','Print Speed (black, ISO/IEC 24734)','Connectivity','Paper Sizes'],
+  'multifunction-printers':['Print Technology','Maximum Print Resolution','Print Speed (black, ISO/IEC 24734)','ADF','Duplex','Connectivity'],
+  scanners:               ['Maximum Optical Resolution','Scanner Type','Scan Speed','Connectivity'],
+  routers:                ['Wi-Fi Standard','Maximum Data Transfer Rate','LAN Ports','WAN Ports','Antennas'],
+  networking:             ['Number of Ports','Switching Capacity','PoE','Form Factor'],
+  webcams:                ['Maximum Video Resolution','Frame Rate','Microphone','Field of View'],
+  ups:                    ['Output Power','Input Voltage','Battery Type','Outlets'],
+  'power-strips':         ['Number of Outlets','Surge Protection','Cable Length','Switch'],
 };
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -163,13 +211,13 @@ async function phase1_index() {
   }
 
   log(`Phase 1 — Downloading catalog index from data.icecat.biz...`);
-  log(`Target categories: ${TARGET_CATS.size} cat_ids`);
+  log(`Target categories: ${CAT_WHITELIST ? [...CAT_WHITELIST].join(', ') : 'all (' + TARGET_CATS.size + ' cat_ids)'}`);
 
   const auth    = Buffer.from(`${ICECAT_USER}:${ICECAT_PASS}`).toString('base64');
   const indexUrl = 'https://data.icecat.biz/export/freexml.int/EN/files.index.xml';
 
   let count = 0;
-  const outStream = fs.createWriteStream(QUEUE_FILE);
+  const collected = []; // collect all, sort by id desc, then write
 
   await new Promise((resolve, reject) => {
     https.get(indexUrl, {
@@ -189,16 +237,24 @@ async function phase1_index() {
         stream = res.pipe(zlib.createGunzip());
       }
 
-      // State machine: buffer lines, extract product attributes with regex
+      // Icecat index format (verified 2026-05):
+      //   <file path="export/freexml/EN/1399.xml" ... Product_ID="1399" Supplier_id="1"
+      //         Catid="846" On_Market="1" Model_Name="HP 80 Cyan" ...>
+      //     <EAN_UPCS>
+      //       <EAN_UPC Value="5705965480557" IsApproved="1" Format="GTIN-13"/>
+      //     </EAN_UPCS>
+      //   </file>
+      // The opening <file> tag is ONE long line; EAN/etc follow on separate child lines.
+
       let buf = '';
       let cur = {};
 
       function emit() {
-        if (!cur.id) { cur = {}; return; }
-        const catId = parseInt(cur.catId || '0');
-        if (TARGET_CATS.has(catId)) {
-          const record = { id: cur.id, catId, brand: cur.brand || '', name: cur.name || '', ean: cur.ean || '' };
-          outStream.write(JSON.stringify(record) + '\n');
+        if (!cur.id || !cur.catId) { cur = {}; return; }
+        const catId = parseInt(cur.catId);
+        const slug = CAT_MAP[catId];
+        if (TARGET_CATS.has(catId) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug))) {
+          collected.push({ id: cur.id, catId, name: cur.name || '', ean: cur.ean || '' });
           count++;
           if (count % 10000 === 0) log(`  Indexed ${count.toLocaleString()} products...`);
         }
@@ -211,46 +267,25 @@ async function phase1_index() {
         buf = lines.pop(); // keep incomplete trailing line
 
         for (const ln of lines) {
-          // New <file> element — reset state
-          if (ln.includes('<file '))      cur = {};
-
-          // Prod_id (may appear as Prod_id or prod_id)
-          if (!cur.id) {
-            const m = ln.match(/[Pp]rod_id="(\d+)"/);
-            if (m) cur.id = m[1];
+          // Opening <file> tag — all key attributes on one line
+          if (ln.includes('<file ')) {
+            emit(); // flush previous
+            cur = {};
+            const mId   = ln.match(/Product_ID="(\d+)"/);
+            const mCat  = ln.match(/Catid="(\d+)"/);
+            const mName = ln.match(/Model_Name="([^"]*)"/);
+            if (mId)   cur.id    = mId[1];
+            if (mCat)  cur.catId = mCat[1];
+            if (mName) cur.name  = mName[1];
           }
 
-          // cat_id
-          if (!cur.catId) {
-            const m = ln.match(/cat_id="(\d+)"/i);
-            if (m) cur.catId = m[1];
+          // First approved EAN from child <EAN_UPC> lines
+          if (!cur.ean && ln.includes('IsApproved="1"')) {
+            const mEan = ln.match(/Value="(\d{8,14})"/);
+            if (mEan) cur.ean = mEan[1];
           }
 
-          // Brand / Vendor
-          if (!cur.brand) {
-            const m = ln.match(/Vendor="([^"]+)"/);
-            if (m) cur.brand = m[1];
-          }
-
-          // EAN (first occurrence)
-          if (!cur.ean) {
-            const m = ln.match(/EAN="([^"]+)"/);
-            if (m) cur.ean = m[1];
-          }
-
-          // Product name in English (langid="1")
-          if (!cur.name) {
-            const m = ln.match(/langid="1"\s+Value="([^"]+)"/);
-            if (!m) {
-              // alternate order: Value="..." langid="1"
-              const m2 = ln.match(/Value="([^"]+)"\s+langid="1"/);
-              if (m2) cur.name = m2[1];
-            } else {
-              cur.name = m[1];
-            }
-          }
-
-          // End of file element — emit if valid
+          // End of file element — emit
           if (ln.includes('</file>')) emit();
         }
       });
@@ -263,8 +298,11 @@ async function phase1_index() {
             if (ln.includes('</file>')) emit();
           }
         }
-        outStream.end();
-        resolve();
+        // Sort newest first (highest ID = most recent product)
+        collected.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        const outStream = fs.createWriteStream(QUEUE_FILE);
+        for (const rec of collected) outStream.write(JSON.stringify(rec) + '\n');
+        outStream.end(resolve);
       });
 
       stream.on('error', reject);
@@ -291,7 +329,7 @@ async function fetchIcecatJson(icecatId, lang, retries = 3) {
         res.on('data', c => raw += c);
         res.on('end', () => {
           try { resolve(JSON.parse(raw)); }
-          catch { resolve({ code: -1, msg: 'json_parse_error' }); }
+          catch { resolve({ Code: -1, Message: 'json_parse_error' }); }
         });
       }).on('error', reject);
     });
@@ -301,8 +339,10 @@ async function fetchIcecatJson(icecatId, lang, retries = 3) {
       await sleep(60000);
       continue;
     }
-    if (result.code === 0 || result.code === -1) {
-      throw new Error(result.msg || 'product_not_found');
+    // Icecat errors: {"Code": 404, "Message": "..."} (capital C)
+    // Icecat success: {"code": 1, "data": {...}} (lowercase c)
+    if (result.Code !== undefined || !result.data) {
+      throw new Error(result.Message || result.msg || 'product_not_found');
     }
     return result;
   }
@@ -311,7 +351,7 @@ async function fetchIcecatJson(icecatId, lang, retries = 3) {
 
 // ─── Map Icecat JSON → PocketBase fields ─────────────────────────────────────
 
-function mapToPb(json, lang) {
+function mapToPb(json, lang, queueItem = {}) {
   const d  = json.data  || {};
   const gi = d.GeneralInfo || {};
   const bi = gi.BrandInfo  || {};
@@ -320,36 +360,54 @@ function mapToPb(json, lang) {
   const icecatId = gi.IcecatId     || d.ProductID     || 0;
   const brand    = bi.BrandName    || d.Supplier       || d.Brand        || '';
   const mpn      = gi.BrandPartCode || d.ProductCode   || '';
-  const gtin     = (gi.GTIN && Array.isArray(gi.GTIN) && gi.GTIN[0]) || '';
+  const gtin     = (gi.GTIN && Array.isArray(gi.GTIN) && gi.GTIN[0]) || queueItem.ean || '';
   const name     = gi.Title        || d.Name           || '';
   const catId    = parseInt(gc.CategoryID || 0);
   const category = CAT_MAP[catId]  || 'other';
 
-  // Images — try both d.Gallery and gi.Gallery
+  // Images — Icecat publishes 3 variants per asset:
+  //   Pic       → original (often 5000×5000, 5MB)   — too big for the app
+  //   Pic500x500→ ~500×500 (~80-120KB)              — sweet spot
+  //   LowPic    → 200×200  (~20-30KB)               — thumb only
+  // We persist the 500×500 variant so the admin gallery and Flutter detail
+  // page load in <300ms per image without filling PocketBase storage. The
+  // single hero image (`imageUrl`) also points to the medium variant.
   const gallery = (Array.isArray(d.Gallery) ? d.Gallery : []).concat(Array.isArray(gi.Gallery) ? gi.Gallery : []);
   const images  = gallery
-    .map(img => img.Pic || img.HighPic || img.Pic500x500 || '')
+    .map(img => img.Pic500x500 || img.Pic || img.HighPic || '')
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i) // dedupe
-    .slice(0, 10);
-  const imageUrl = images[0] || '';
+    .slice(0, 12);
+  // Fall back to the Image envelope object if Gallery was empty
+  const imgEnv = d.Image || {};
+  const imageUrl = images[0] || imgEnv.Pic500x500 || imgEnv.HighPic || imgEnv.LowPic || '';
+  // Ensure imageUrl is also present in `images` for consistent rendering
+  if (imageUrl && !images.includes(imageUrl)) images.unshift(imageUrl);
 
   // Feature groups → specs + specSections
   const specs        = {};
   const specSections = [];
 
+  // Helper to extract localized name from {Value:"...", Language:"EN"} or string
+  const extractName = n => {
+    if (!n) return '';
+    if (typeof n === 'string') return n;
+    if (typeof n === 'object') return n.Value || n._ || '';
+    return '';
+  };
+
   for (const fg of (d.FeaturesGroups || [])) {
     const fgg  = fg.FeatureGroup || {};
-    const gn   = typeof fgg.Name === 'object' ? (fgg.Name._ || '') : (fgg.Name || 'General');
+    const gn   = extractName(fgg.Name) || 'General';
     const sec  = { section: gn, specs: [] };
 
     for (const f of (fg.Features || [])) {
       const feat = f.Feature || {};
-      const k    = typeof feat.Name === 'object' ? (feat.Name._ || '') : (feat.Name || '');
-      const v    = f.Presentation_Value || f.Value || '';
+      const k    = extractName(feat.Name);
+      const v    = f.PresentationValue || f.Presentation_Value || f.RawValue || f.Value || '';
       if (k && v) {
-        specs[k] = v;
-        sec.specs.push({ key: k, val: v });
+        specs[k] = String(v);
+        sec.specs.push({ key: k, val: String(v) });
       }
     }
     if (sec.specs.length) specSections.push(sec);
@@ -453,38 +511,36 @@ async function phase23_enrichImport() {
       try {
         // Primary language (always EN)
         const enJson = await fetchIcecatJson(icecatId, 'EN');
-        const pbData = mapToPb(enJson, 'EN');
+        const pbData = mapToPb(enJson, 'EN', item);
         pbData.keySpecs = buildKeySpecs(pbData.category, pbData.specs);
 
-        // Additional languages (e.g. TR)
+        // Additional languages — fetched in parallel. The Icecat live API
+        // tolerates a small burst of concurrent reads per user; serialising
+        // 12 languages with delays would take >10s per product and cap us
+        // at ~10/min/worker. Parallel fan-out cuts that to ~1s per product.
         const extraLangs = LANGS.filter(l => l !== 'EN');
+        const multiSpecs    = { en: pbData.specs };
+        const multiSections = { en: pbData.specSections };
+        const nameTrans     = { en: pbData.name };
+
         if (extraLangs.length) {
-          const multiSpecs    = { en: pbData.specs };
-          const multiSections = { en: pbData.specSections };
-          const nameTrans     = { en: pbData.name };
-
-          for (const lang of extraLangs) {
-            await sleep(Math.floor(DELAY * 0.6)); // shorter inter-lang delay
-            try {
-              const xJson = await fetchIcecatJson(icecatId, lang);
-              const xData = mapToPb(xJson, lang);
-              multiSpecs[lang.toLowerCase()]    = xData.specs;
-              multiSections[lang.toLowerCase()] = xData.specSections;
-              nameTrans[lang.toLowerCase()]     = xData.name;
-            } catch {
-              // Non-fatal: EN used as fallback for missing locales
-            }
+          const results = await Promise.allSettled(
+            extraLangs.map(lang => fetchIcecatJson(icecatId, lang).then(j => ({ lang, json: j })))
+          );
+          for (const r of results) {
+            if (r.status !== 'fulfilled') continue; // EN already covered
+            const { lang, json } = r.value;
+            const xData = mapToPb(json, lang, item);
+            const key = lang.toLowerCase();
+            multiSpecs[key]    = xData.specs;
+            multiSections[key] = xData.specSections;
+            nameTrans[key]     = xData.name;
           }
-
-          pbData.multiLangSpecs    = multiSpecs;
-          pbData.multiLangSections = multiSections;
-          pbData.nameTranslated    = nameTrans;
-        } else {
-          // EN-only: still populate multilang fields so the modal doesn't show "(fallback)"
-          pbData.multiLangSpecs    = { en: pbData.specs };
-          pbData.multiLangSections = { en: pbData.specSections };
-          pbData.nameTranslated    = { en: pbData.name };
         }
+
+        pbData.multiLangSpecs    = multiSpecs;
+        pbData.multiLangSections = multiSections;
+        pbData.nameTranslated    = nameTrans;
 
         const action = await upsertToPb(pbData);
         if (action === 'created') prog.created++;
@@ -532,6 +588,11 @@ async function main() {
   if (!ICECAT_USER) throw new Error('ICECAT_USERNAME not set in migration/.env — add it and retry');
 
   if (!SKIP_PHASE1) {
+    // Reset progress since queue will be rebuilt with new sort order
+    if (fs.existsSync(PROGRESS_FILE)) {
+      fs.unlinkSync(PROGRESS_FILE);
+      log('Progress reset — queue rebuilt from scratch');
+    }
     await phase1_index();
   } else {
     log('Skipping Phase 1 (--resume or --phase=2)');

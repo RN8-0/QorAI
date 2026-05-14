@@ -432,6 +432,7 @@
         <!-- Scraper Tabs -->
         <div class="scraper-tabs">
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
+          <button class="scraper-tab" data-tab="icecat" onclick="switchScraperTab(this); icecatRefreshStatus()">🧊 Icecat</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v6</button>
           <button class="scraper-tab" data-tab="dictionary" onclick="switchScraperTab(this); openDictionaryPanel()">� Dictionary</button>
@@ -497,6 +498,85 @@
               <div style="margin-top:8px">
                 <button class="btn btn-sm" onclick="importCategoriesFromText()">İçe Aktar</button>
               </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Icecat Open Catalog Ingestion -->
+        <div class="scraper-panel" id="icecatPanel">
+          <div class="card">
+            <div class="card-title">🧊 Icecat Open Catalog Ingestor
+              <span class="text-muted" style="font-weight:normal;font-size:12px"> · ücretsiz spec + görsel + GTIN feed</span>
+            </div>
+            <p class="text-muted" style="margin-bottom:12px;font-size:13px">
+              Icecat Open Catalog'tan ürün çeker. Her kategori için en yeni ürünler önce işlenir.
+              GTIN/MPN affiliate eşleşmesi için kullanılır.
+            </p>
+
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-field" style="grid-column:span 2">
+                <label>Kategoriler (Icecat Open Catalog · ücretsiz · gerçek ürün sayıları)</label>
+                <div id="icecatCatList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:260px;overflow:auto;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:var(--surface-1,#0e0e0e)">
+                  <div class="text-muted" style="font-size:12px;grid-column:1/-1">Yükleniyor…</div>
+                </div>
+                <input type="hidden" id="icecatCats" value="">
+                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectAllCats()">Tümünü Seç</button>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectNoneCats()">Hiçbiri</button>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatRenderCats()">↻ Yenile</button>
+                  <small class="text-muted" id="icecatCatSummary" style="margin-left:auto;font-size:11px"></small>
+                </div>
+              </div>
+              <div class="form-field">
+                <label>Diller (uygulamadaki 12 dil)</label>
+                <input class="input" id="icecatLangs" value="EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR">
+                <small class="text-muted" style="font-size:11px">Uygulamada hangi dil seçili ise specs o dilde gösterilir</small>
+              </div>
+              <div class="form-field">
+                <label>Ürün limiti (0 = sınırsız)</label>
+                <input class="input" type="number" id="icecatLimit" value="0" min="0">
+              </div>
+              <div class="form-field">
+                <label>Worker sayısı</label>
+                <input class="input" type="number" id="icecatWorkers" value="4" min="1" max="10">
+              </div>
+              <div class="form-field">
+                <label>Worker delay (ms)</label>
+                <input class="input" type="number" id="icecatDelay" value="600" min="100" step="100">
+              </div>
+              <div class="form-field" style="grid-column:span 2">
+                <label style="display:flex;align-items:center;gap:8px">
+                  <input type="checkbox" id="icecatResume">
+                  <span>Resume (mevcut queue'dan devam et — Phase 1'i atla)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-primary" id="btnIcecatStart" onclick="icecatStart()">▶ Start</button>
+              <button class="btn btn-danger" id="btnIcecatStop" onclick="icecatStop()" style="display:none">■ Stop</button>
+              <button class="btn btn-ghost btn-sm" onclick="icecatRefreshStatus()">↻ Refresh</button>
+              <button class="btn btn-ghost btn-sm" onclick="icecatReset()" style="margin-left:auto;color:#f87171">⟲ Reset Queue</button>
+            </div>
+
+            <div style="margin-top:18px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px">
+              <div>Status: <strong id="icecatStatus">idle</strong></div>
+              <div>Queue: <strong id="icecatQueueSize">0</strong></div>
+              <div>Done: <strong id="icecatDone">0</strong></div>
+              <div>Created: <strong id="icecatCreated" style="color:#22c55e">0</strong></div>
+              <div>Updated: <strong id="icecatUpdated" style="color:#0891b2">0</strong></div>
+              <div>Errors: <strong id="icecatErrors" style="color:#ef4444">0</strong></div>
+            </div>
+
+            <div style="margin-top:14px">
+              <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
+                <div id="icecatProgressBar" style="background:linear-gradient(90deg,#06b6d4,#3b82f6);height:100%;width:0;transition:width .3s"></div>
+              </div>
+            </div>
+
+            <details style="margin-top:14px" open>
+              <summary class="text-muted" style="cursor:pointer;font-size:12px">Log Output</summary>
+              <pre id="icecatLog" style="margin-top:8px;background:#0a0a0a;color:#10b981;padding:10px;border-radius:6px;font-size:11px;max-height:300px;overflow:auto;font-family:monospace">Henüz log yok. Start'a bas.</pre>
             </details>
           </div>
         </div>
@@ -994,6 +1074,7 @@
         'js/dictionary.js',
         'js/categories.js',
         'js/scraper.js',
+        'js/icecat.js',
         'js/notifications.js',
         'js/support.js',
         'js/app.js'

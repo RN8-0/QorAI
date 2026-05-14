@@ -48,6 +48,10 @@ try {
 
 const PORT = parseInt(process.argv[2]) || 3456;
 
+// ─── Icecat ingestion state (managed via /icecat/* endpoints) ────────────
+let icecatProc = null;
+let icecatLog  = '';
+
 // ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
 // FlareSolverr is a Docker container that solves Cloudflare challenges using
 // undetected-chromedriver. When it's running on http://localhost:8191/v1 the
@@ -607,6 +611,108 @@ const server = http.createServer(async (req, res) => {
   }
 
   setCORSHeaders(res, origin);
+
+  // ── Icecat Open Catalog Ingestion ──────────────────────────────────────
+  // POST /icecat/start  body: {cats, langs, limit, workers, delay, resume}
+  // GET  /icecat/status -> {running, progress, logTail}
+  // POST /icecat/stop
+  if (req.url === '/icecat/start' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const opts = body ? JSON.parse(body) : {};
+        if (icecatProc && !icecatProc.killed) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Icecat already running' }));
+          return;
+        }
+        const args = ['scripts/icecat_ingest.js'];
+        if (opts.resume)  args.push('--resume');
+        if (opts.cats)    args.push(`--cats=${opts.cats}`);
+        if (opts.langs)   args.push(`--langs=${opts.langs}`);
+        if (opts.limit)   args.push(`--limit=${opts.limit}`);
+        if (opts.workers) args.push(`--workers=${opts.workers}`);
+        if (opts.delay)   args.push(`--delay=${opts.delay}`);
+        const { spawn } = require('child_process');
+        icecatLog = '';
+        icecatProc = spawn('node', args, { cwd: rootDir, env: process.env });
+        icecatProc.stdout.on('data', d => { icecatLog += d.toString(); if (icecatLog.length > 50000) icecatLog = icecatLog.slice(-40000); });
+        icecatProc.stderr.on('data', d => { icecatLog += d.toString(); if (icecatLog.length > 50000) icecatLog = icecatLog.slice(-40000); });
+        icecatProc.on('exit', code => { icecatLog += `\n[icecat] exited with code ${code}\n`; });
+        console.log(`  🧊 /icecat/start args=${args.join(' ')}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, pid: icecatProc.pid, args }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+  if (req.url === '/icecat/status') {
+    let progress = null;
+    try { progress = JSON.parse(fs.readFileSync(path.join(rootDir, 'scripts', 'icecat_progress.json'), 'utf8')); } catch {}
+    let queueSize = 0;
+    try { queueSize = fs.readFileSync(path.join(rootDir, 'scripts', 'icecat_queue.jsonl'), 'utf8').split('\n').filter(Boolean).length; } catch {}
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      running: !!(icecatProc && !icecatProc.killed && icecatProc.exitCode === null),
+      pid: icecatProc?.pid || null,
+      progress, queueSize,
+      logTail: icecatLog.slice(-4000),
+    }));
+    return;
+  }
+  if (req.url === '/icecat/stop' && req.method === 'POST') {
+    if (icecatProc && !icecatProc.killed) {
+      try { icecatProc.kill('SIGTERM'); } catch {}
+      console.log('  🧊 /icecat/stop — process killed');
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // POST /icecat/reset — wipe queue + progress so the next start does a
+  // clean Phase 1 rebuild. Does NOT touch PocketBase records (those are
+  // upserted by slug — re-running just refreshes them).
+  if (req.url === '/icecat/reset' && req.method === 'POST') {
+    if (icecatProc && !icecatProc.killed) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Stop the ingest first' }));
+      return;
+    }
+    const wiped = [];
+    for (const f of ['icecat_queue.jsonl', 'icecat_progress.json']) {
+      const p = path.join(rootDir, 'scripts', f);
+      try { fs.unlinkSync(p); wiped.push(f); } catch {}
+    }
+    icecatLog = '';
+    console.log(`  🧊 /icecat/reset — wiped ${wiped.join(', ') || '(nothing)'}`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, wiped }));
+    return;
+  }
+
+  // GET /icecat/discover — returns the cached top-N category list produced by
+  // `node scripts/icecat_discover_cats.js`. Read-only — admin UI uses this to
+  // show counts when the user is picking categories.
+  if (req.url.startsWith('/icecat/discover')) {
+    const namedPath = path.join(rootDir, 'scripts', 'icecat_cats_named.json');
+    const rawPath   = path.join(rootDir, 'scripts', 'icecat_cats.json');
+    let body = null;
+    try { body = JSON.parse(fs.readFileSync(namedPath, 'utf8')); } catch {}
+    if (!body) { try { body = JSON.parse(fs.readFileSync(rawPath, 'utf8')); } catch {} }
+    if (!body) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No discovery cache. Run: node scripts/icecat_discover_cats.js' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+    return;
+  }
 
   // ── Reset Session ──
   // Hard-wipes the Cloudflare-flagged fingerprint: drops cookies, rotates
