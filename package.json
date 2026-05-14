@@ -14,6 +14,11 @@
     "scraper:repair-products-schema": "node scripts/repair_products_schema.js",
     "scraper:test-pb": "node scripts/test_scraper_pb.js 10",
     "scraper:proxy": "node scripts/scraper-proxy.js",
+    "icecat:migrate": "node scripts/icecat_schema_migrate.js",
+    "icecat:ingest": "node scripts/icecat_ingest.js --langs=EN,TR --workers=3 --delay=800",
+    "icecat:ingest:fast": "node scripts/icecat_ingest.js --langs=EN --workers=5 --delay=500",
+    "icecat:resume": "node scripts/icecat_ingest.js --resume --langs=EN,TR --workers=3 --delay=800",
+    "icecat:test": "node scripts/icecat_ingest.js --resume --limit=10 --langs=EN,TR --workers=1 --delay=1000",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
