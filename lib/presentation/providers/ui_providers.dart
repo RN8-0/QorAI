@@ -335,19 +335,28 @@ String normalizeProductName(String name) {
 /// Products with no storage in their ID (base model URLs like "xiaomi-15")
 /// return 0 — they are treated as the smallest and shown as representative.
 int _storageCapacityMB(ProductEntity p) {
-  final m = RegExp(r'(\d+)(tb|gb|mb)', caseSensitive: false).firstMatch(p.id);
-  if (m == null) return 0; // no storage suffix → base model → show in list
-  final val = int.tryParse(m.group(1)!) ?? 0;
-  switch (m.group(2)!.toLowerCase()) {
-    case 'tb':
-      return val * 1024 * 1024;
-    case 'gb':
-      return val * 1024;
-    case 'mb':
-      return val;
-    default:
-      return 0;
+  final text = [
+    p.id,
+    p.name,
+    ...p.keySpecs.values,
+    ...p.specs.values.map((v) => v.toString()),
+  ].join(' ');
+  final matches = RegExp(
+    r'\b(\d+)\s*(tb|gb|mb)\b',
+    caseSensitive: false,
+  ).allMatches(text);
+  var best = 0;
+  for (final m in matches) {
+    final val = int.tryParse(m.group(1)!) ?? 0;
+    final unit = m.group(2)!.toLowerCase();
+    final mb = switch (unit) {
+      'tb' => val * 1024 * 1024,
+      'gb' => val * 1024,
+      _ => val,
+    };
+    if (mb > best) best = mb;
   }
+  return best;
 }
 
 /// Deduplicates variant products for list display.

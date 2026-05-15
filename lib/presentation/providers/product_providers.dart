@@ -3136,7 +3136,7 @@ final productVariantsProvider = FutureProvider.autoDispose
       try {
         final ds = ref.read(pbDataSourceProvider);
         final tsProducts = await ds
-            .getProductsByCategoryTs(category: product.category, limit: 50)
+            .getProductsByCategoryTs(category: product.category, limit: 250)
             .timeout(const Duration(seconds: 6));
         if (tsProducts.isNotEmpty) {
           return filterVariants(tsProducts.cast<ProductEntity>());
@@ -3147,7 +3147,7 @@ final productVariantsProvider = FutureProvider.autoDispose
       try {
         final result = await ref
             .read(productRepositoryProvider)
-            .getProducts(category: product.category, limit: 30)
+            .getProducts(category: product.category, limit: 250)
             .timeout(const Duration(seconds: 8));
         return result.when(
           success: (products) => filterVariants(products),

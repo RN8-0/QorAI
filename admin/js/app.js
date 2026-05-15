@@ -1165,6 +1165,50 @@ function buildQuery(){
   return{filter,sort:pbSort};
 }
 
+function _adminVariantStorageMB(p){
+  const text=`${p?.name||''} ${Object.values(p?.keySpecs||{}).join(' ')}`;
+  const matches=[...String(text).matchAll(/\b(\d+)\s*(TB|GB|MB)\b/gi)];
+  if(!matches.length)return 0;
+  let best=0;
+  for(const m of matches){
+    const n=parseInt(m[1],10)||0;
+    const unit=String(m[2]||'').toLowerCase();
+    const mb=unit==='tb'?n*1024*1024:unit==='gb'?n*1024:n;
+    if(mb>best)best=mb;
+  }
+  return best;
+}
+
+function _adminProductFamilyKey(p){
+  const vg=String(p?.variantGroup||'').trim().toLowerCase();
+  if(vg)return `${p?.category||''}|${vg}`;
+  return `${p?.category||''}|${p?.brand||''}|${String(p?.name||'').toLowerCase()
+    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi,'')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|titanium)\b/gi,'')
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-|-$/g,'')}`;
+}
+
+function groupProductFamilies(products){
+  const groups=new Map();
+  for(const p of products||[]){
+    const key=_adminProductFamilyKey(p);
+    const arr=groups.get(key)||[];
+    arr.push(p);
+    groups.set(key,arr);
+  }
+  const out=[];
+  for(const arr of groups.values()){
+    arr.sort((a,b)=>{
+      const scoreDelta=(Number(b.techScore)||0)-(Number(a.techScore)||0);
+      if(scoreDelta)return scoreDelta;
+      return _adminVariantStorageMB(a)-_adminVariantStorageMB(b);
+    });
+    out.push({...arr[0],_variantCount:arr.length});
+  }
+  return out;
+}
+
 async function loadPage(direction,pageOverride){
   const g=document.getElementById('productGrid');
   try{
@@ -1208,16 +1252,19 @@ async function loadPage(direction,pageOverride){
 function renderProductsPage(){
   const g=document.getElementById('productGrid');
   const countEl=document.getElementById('productCount');
-  if(countEl)countEl.textContent=String(totalProductCount||allProducts.length||displayProducts.length);
-  if(!displayProducts.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
-  g.innerHTML=displayProducts.map(p=>{
+  const groupedProducts=groupProductFamilies(displayProducts);
+  if(countEl)countEl.textContent=String(groupedProducts.length||totalProductCount||allProducts.length||displayProducts.length);
+  if(!groupedProducts.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
+  g.innerHTML=groupedProducts.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
     const id=escJs(p.id);
     const image=safeUrl(p.imageUrl||(p.images?.[0])||'');
     const brand=escHtml(p.brand||'');
     const name=escHtml(p.name||'');
     const category=escHtml(p.category||'');
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
+    const variants=Number(p._variantCount||1);
+    const variantBadge=variants>1?`<div class="score-badge" title="${variants} variants" style="left:8px;right:auto;top:8px;border-color:#ef4444;color:#ef4444;background:#fff">${variants}</div>`:'';
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${variants>1?variants+' variants':(p.price?p.price.toLocaleString()+' TL':'')}</span><span>${category}</span></div></div></div>`;
   }).join('');
 
   const pEl=document.getElementById('pagination');

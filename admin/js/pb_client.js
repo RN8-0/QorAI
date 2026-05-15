@@ -68,7 +68,6 @@ async function _findRecord(collection, identifier, data = {}) {
 
   if (collection === 'products') {
     const sourceUrl = String(data.sourceUrl || '').trim();
-    const variantGroup = String(data.variantGroup || '').trim();
     const name = String(data.name || '').trim();
     const category = String(data.category || '').trim();
     const gtin = String(data.gtin || '').trim();
@@ -77,7 +76,6 @@ async function _findRecord(collection, identifier, data = {}) {
     if (gtin) filters.push(`gtin="${_escapeFilterValue(gtin)}"`);
     if (mpn && brand) filters.push(`mpn="${_escapeFilterValue(mpn)}" && brand="${_escapeFilterValue(brand)}"`);
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
-    if (variantGroup && category) filters.push(`variantGroup="${_escapeFilterValue(variantGroup)}" && category="${_escapeFilterValue(category)}"`);
     if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
   }
 

@@ -200,6 +200,30 @@ const KEY_SPEC_NAMES = {
 const sleep   = ms => new Promise(r => setTimeout(r, ms));
 const slugify = s  => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
 
+function modelFamilyKey({ name, brand, category }) {
+  let s = String(name || '').toLowerCase();
+  const b = String(brand || '').toLowerCase().trim();
+  if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
+  s = s
+    .replace(/\[([^\]]*)\]/g, ' $1 ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*cm\b/gi, ' ')
+    .replace(/\(\s*\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\s*\)/gi, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\b/gi, ' ')
+    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, ' ')
+    .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
+    .replace(/\b\d+\s*mah\b/gi, ' ')
+    .replace(/\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-c|5g|4g|lte|wi-fi|wifi|wlan|bluetooth)\b/gi, ' ')
+    .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
+    .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
+    .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  const base = [b, s].filter(Boolean).join('-').slice(0, 180);
+  return base || slugify(name) || slugify(category);
+}
+
 function log(msg, tag = 'info') {
   const prefix = { info: '   ', ok: ' ✓ ', warn: ' ! ', err: ' ✗ ' }[tag] || '   ';
   console.log(`[icecat]${prefix}${msg}`);
@@ -432,7 +456,7 @@ function mapToPb(json, lang, queueItem = {}) {
     imageUrl, images, specs, specSections,
     specsEn:      lang === 'EN' ? specs : undefined,
     specsCount,
-    variantGroup: `${slugify(brand)}-${slugify(mpn).slice(0, 40)}`,
+    variantGroup: modelFamilyKey({ name, brand, category }),
     scrapedAt:    new Date().toISOString(),
     gtin, mpn, icecatId,
   };

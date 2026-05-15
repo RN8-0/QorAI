@@ -5,7 +5,8 @@ class _DeferredVariantsSection extends StatefulWidget {
   const _DeferredVariantsSection({required this.product});
 
   @override
-  State<_DeferredVariantsSection> createState() => _DeferredVariantsSectionState();
+  State<_DeferredVariantsSection> createState() =>
+      _DeferredVariantsSectionState();
 }
 
 class _DeferredVariantsSectionState extends State<_DeferredVariantsSection> {
@@ -41,7 +42,8 @@ class _VariantsSection extends ConsumerWidget {
       error: (_, _) => const SizedBox.shrink(),
       data: (variants) {
         if (variants.isEmpty) return const SizedBox.shrink();
-        final all = [product, ...variants]..sort((a, b) => a.name.compareTo(b.name));
+        final all = [product, ...variants]
+          ..sort((a, b) => a.name.compareTo(b.name));
 
         // Deduplicate by storage label — keep current product or first match
         final seen = <String>{};
@@ -70,12 +72,16 @@ class _VariantsSection extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
-                  Localizations.localeOf(context).languageCode.toLowerCase() == 'tr'
+                  Localizations.localeOf(context).languageCode.toLowerCase() ==
+                          'tr'
                       ? 'Mevcut Modeller'
                       : 'Available Models',
                   style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -101,7 +107,7 @@ class _VariantsSection extends ConsumerWidget {
 
   /// Extract storage-only label for deduplication
   static String _storageLabel(ProductEntity p) {
-    return _VariantChip._extractStorageOnly(p);
+    return _VariantChip._variantLabelFor(p);
   }
 }
 
@@ -115,9 +121,10 @@ class _VariantChip extends StatelessWidget {
   /// For "128 GB" → "128 GB"
   static String _extractStorageOnly(ProductEntity p) {
     // Find all GB/TB matches in product name
-    final allMatches = RegExp(r'\b(\d+)\s*(TB|GB)\b', caseSensitive: false)
-        .allMatches(p.name)
-        .toList();
+    final allMatches = RegExp(
+      r'\b(\d+)\s*(TB|GB)\b',
+      caseSensitive: false,
+    ).allMatches(p.name).toList();
 
     if (allMatches.length >= 2) {
       // Multiple matches (e.g. "16 GB / 2048 GB") → pick largest = storage
@@ -158,17 +165,23 @@ class _VariantChip extends StatelessWidget {
     final storageRegex = RegExp(r'(\d+)\s*(GB|TB)', caseSensitive: false);
     for (final entry in p.keySpecs.entries) {
       final key = entry.key.toLowerCase();
-      if (key.contains('storage') || key.contains('capacity') || key.contains('rom') || key.contains('internal')) {
+      if (key.contains('storage') ||
+          key.contains('capacity') ||
+          key.contains('rom') ||
+          key.contains('internal')) {
         final m = storageRegex.firstMatch(entry.value);
         if (m != null) return '${m.group(1)} ${m.group(2)!.toUpperCase()}';
       }
     }
     for (final section in p.specSections.entries) {
       final sKey = section.key.toLowerCase();
-      if ((sKey.contains('storage') || sKey.contains('memory')) && section.value is Map) {
+      if ((sKey.contains('storage') || sKey.contains('memory')) &&
+          section.value is Map) {
         for (final spec in (section.value as Map).entries) {
           final sk = spec.key.toString().toLowerCase();
-          if (sk.contains('internal') || sk.contains('storage') || sk.contains('capacity')) {
+          if (sk.contains('internal') ||
+              sk.contains('storage') ||
+              sk.contains('capacity')) {
             final m = storageRegex.firstMatch(spec.value.toString());
             if (m != null) return '${m.group(1)} ${m.group(2)!.toUpperCase()}';
           }
@@ -178,16 +191,80 @@ class _VariantChip extends StatelessWidget {
     return null;
   }
 
-  String get _variantLabel => _extractStorageOnly(product);
+  static String _variantLabelFor(ProductEntity p) {
+    final parts = <String>[];
+    final ram = _extractRam(p);
+    final storage = _extractStorageOnly(p);
+    final color = _extractColor(p);
+    if (ram != null && ram != storage) parts.add(ram);
+    if (storage.isNotEmpty) parts.add(storage);
+    if (color != null) parts.add(color);
+    return parts.isEmpty ? _extractStorageOnly(p) : parts.join(' / ');
+  }
+
+  static String? _extractRam(ProductEntity p) {
+    final patterns = [
+      RegExp(r'\b(\d+)\s*GB\s*(?:RAM|memory)\b', caseSensitive: false),
+      RegExp(r'\b(\d+)\s*GB\s+LPDDR', caseSensitive: false),
+    ];
+    final text =
+        '${p.name} ${p.keySpecs.values.join(' ')} ${p.specs.values.join(' ')}';
+    for (final re in patterns) {
+      final m = re.firstMatch(text);
+      if (m != null) return '${m.group(1)} GB RAM';
+    }
+    return null;
+  }
+
+  static String? _extractColor(ProductEntity p) {
+    const colors = [
+      'Black',
+      'White',
+      'Silver',
+      'Gold',
+      'Blue',
+      'Purple',
+      'Violet',
+      'Pink',
+      'Red',
+      'Green',
+      'Gray',
+      'Grey',
+      'Cream',
+      'Graphite',
+      'Lavender',
+      'Wood',
+      'Bordeaux',
+      'Midnight',
+      'Titanium',
+      'Stone colour',
+      'Dark Blue',
+      'Dark Green',
+    ];
+    final text = '${p.name} ${p.specs.values.join(' ')}';
+    for (final c in colors) {
+      if (RegExp(
+        '\\b${RegExp.escape(c)}\\b',
+        caseSensitive: false,
+      ).hasMatch(text)) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  String get _variantLabel => _variantLabelFor(product);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     return GestureDetector(
-      onTap: isSelected ? null : () {
-        context.push('/product/${product.id}');
-      },
+      onTap: isSelected
+          ? null
+          : () {
+              context.push('/product/${product.id}');
+            },
       child: Container(
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -196,7 +273,9 @@ class _VariantChip extends StatelessWidget {
           color: isSelected ? primary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? primary : theme.colorScheme.outline.withValues(alpha: 0.4),
+            color: isSelected
+                ? primary
+                : theme.colorScheme.outline.withValues(alpha: 0.4),
             width: 1,
           ),
         ),
