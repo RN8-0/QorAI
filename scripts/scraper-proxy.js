@@ -52,6 +52,10 @@ const PORT = parseInt(process.argv[2]) || 3456;
 let icecatProc = null;
 let icecatLog  = '';
 
+function isIcecatRunning() {
+  return !!(icecatProc && !icecatProc.killed && icecatProc.exitCode === null);
+}
+
 // ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
 // FlareSolverr is a Docker container that solves Cloudflare challenges using
 // undetected-chromedriver. When it's running on http://localhost:8191/v1 the
@@ -629,14 +633,20 @@ const server = http.createServer(async (req, res) => {
     req.on('end', () => {
       try {
         const opts = body ? JSON.parse(body) : {};
-        if (icecatProc && !icecatProc.killed) {
+        if (isIcecatRunning()) {
           res.writeHead(409, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Icecat already running' }));
           return;
         }
+        const cats = String(opts.cats || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (!cats.length) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Select at least one Icecat category' }));
+          return;
+        }
         const args = ['scripts/icecat_ingest.js'];
         if (opts.resume)  args.push('--resume');
-        if (opts.cats)    args.push(`--cats=${opts.cats}`);
+        args.push(`--cats=${cats.join(',')}`);
         if (opts.langs)   args.push(`--langs=${opts.langs}`);
         if (opts.limit)   args.push(`--limit=${opts.limit}`);
         if (opts.workers) args.push(`--workers=${opts.workers}`);
@@ -664,7 +674,7 @@ const server = http.createServer(async (req, res) => {
     try { queueSize = fs.readFileSync(path.join(rootDir, 'scripts', 'icecat_queue.jsonl'), 'utf8').split('\n').filter(Boolean).length; } catch {}
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      running: !!(icecatProc && !icecatProc.killed && icecatProc.exitCode === null),
+      running: isIcecatRunning(),
       pid: icecatProc?.pid || null,
       progress, queueSize,
       logTail: icecatLog.slice(-4000),
@@ -672,7 +682,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (req.url === '/icecat/stop' && req.method === 'POST') {
-    if (icecatProc && !icecatProc.killed) {
+    if (isIcecatRunning()) {
       try { icecatProc.kill('SIGTERM'); } catch {}
       console.log('  🧊 /icecat/stop — process killed');
     }
@@ -685,7 +695,7 @@ const server = http.createServer(async (req, res) => {
   // clean Phase 1 rebuild. Does NOT touch PocketBase records (those are
   // upserted by slug — re-running just refreshes them).
   if (req.url === '/icecat/reset' && req.method === 'POST') {
-    if (icecatProc && !icecatProc.killed) {
+    if (isIcecatRunning()) {
       res.writeHead(409, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Stop the ingest first' }));
       return;

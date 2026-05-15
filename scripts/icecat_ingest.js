@@ -149,6 +149,13 @@ const CAT_MAP = {
 };
 
 const TARGET_CATS = new Set(Object.keys(CAT_MAP).map(Number));
+const VALID_CAT_SLUGS = new Set(Object.values(CAT_MAP));
+if (CAT_WHITELIST) {
+  const unknownCats = [...CAT_WHITELIST].filter(slug => !VALID_CAT_SLUGS.has(slug));
+  if (unknownCats.length) {
+    throw new Error(`Unknown Icecat category slug(s): ${unknownCats.join(', ')}`);
+  }
+}
 
 // ─── Key specs per category (displayed in compare + AI prompts) ───────────────
 
