@@ -132,7 +132,8 @@
         const count = (CAT_COUNTS && CAT_COUNTS[it.catId]) || 0;
         const isDefault = prevSelected.size ? prevSelected.has(it.slug) : it.defChecked;
         const countLabel = count ? ` <span style="opacity:.55">(${count.toLocaleString('tr-TR')})</span>` : '';
-        html += `<label style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--surface-2,#171717);border-radius:4px;font-size:12px;cursor:pointer">
+        const searchText = `${group} ${it.slug} ${it.label}`.toLowerCase();
+        html += `<label class="ic-cat-row" data-search="${searchText.replace(/"/g, '&quot;')}" style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--surface-2,#171717);border-radius:4px;font-size:12px;cursor:pointer">
           <input type="checkbox" class="ic-cat-cb" value="${it.slug}" ${isDefault ? 'checked' : ''}>
           <span>${it.label}${countLabel}</span>
         </label>`;
@@ -140,7 +141,16 @@
     }
     host.innerHTML = html;
     host.querySelectorAll('.ic-cat-cb').forEach(cb => cb.addEventListener('change', icecatSyncCats));
+    icecatFilterCats();
     icecatSyncCats();
+  }
+
+  function icecatFilterCats() {
+    const q = ($('icecatCatSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('.ic-cat-row').forEach(row => {
+      const hay = row.getAttribute('data-search') || row.textContent.toLowerCase();
+      row.style.display = !q || hay.includes(q) ? 'flex' : 'none';
+    });
   }
 
   function icecatSyncCats() {
@@ -289,4 +299,5 @@
   window.icecatRenderCats      = icecatRenderCats;
   window.icecatSelectAllCats   = icecatSelectAllCats;
   window.icecatSelectNoneCats  = icecatSelectNoneCats;
+  window.icecatFilterCats      = icecatFilterCats;
 })();

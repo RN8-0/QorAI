@@ -142,12 +142,13 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   }
 
   void _computeGroupedSpecsAsync() {
+    final lang = Localizations.localeOf(context).languageCode;
     final input = widget.products
         .map(
           (p) => <String, dynamic>{
             'category': p.category,
-            'specSections': p.specSections,
-            'specs': p.specs,
+            'specSections': p.specSectionsForLanguage(lang),
+            'specs': p.specsForLanguage(lang),
           },
         )
         .toList();

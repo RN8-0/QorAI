@@ -36,7 +36,9 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('performance')) {
       return Icons.memory;
     }
-    if (k.contains('graphic') || k.contains('gpu') || k.contains('video card')) {
+    if (k.contains('graphic') ||
+        k.contains('gpu') ||
+        k.contains('video card')) {
       return Icons.videogame_asset_outlined;
     }
     if (k.contains('memory') || k.contains('ram')) return Icons.memory_outlined;
@@ -1289,8 +1291,9 @@ class _SpecRow extends StatelessWidget {
   /// Displays a single value string. Font shrinks automatically for long text.
   Widget _buildValueText(BuildContext context, String text) {
     final displayText = _capitalizeLeadingLetter(text.trim());
-    final fontSize =
-        displayText.length > 45 ? 11.5 : (displayText.length > 30 ? 12.0 : 13.0);
+    final fontSize = displayText.length > 45
+        ? 11.5
+        : (displayText.length > 30 ? 12.0 : 13.0);
     return Text(
       displayText,
       style: TextStyle(
@@ -1303,7 +1306,6 @@ class _SpecRow extends StatelessWidget {
       overflow: TextOverflow.visible,
     );
   }
-
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1948,8 +1950,11 @@ class _SpecsTabContentState extends State<_SpecsTabContent> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final lang = Localizations.localeOf(context).languageCode;
+    final displaySpecs = product.specsForLanguage(lang);
+    final displaySections = product.specSectionsForLanguage(lang);
     final cardBg = context.surfaceVariantColor;
-    if (product.specs.isEmpty && product.specSections.isEmpty) {
+    if (displaySpecs.isEmpty && displaySections.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -1978,9 +1983,9 @@ class _SpecsTabContentState extends State<_SpecsTabContent> {
         if (_showFullSpecs)
           RepaintBoundary(
             child: _SpecsCard(
-              specs: product.specSections.isNotEmpty
-                  ? product.specSections
-                  : product.specs,
+              specs: displaySections.isNotEmpty
+                  ? displaySections
+                  : displaySpecs,
               cardBg: cardBg,
               isDark: widget.isDark,
             ),

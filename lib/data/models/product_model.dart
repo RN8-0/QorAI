@@ -12,6 +12,7 @@ class ProductModel extends ProductEntity {
     super.brand,
     required super.category,
     required super.subcategory,
+    super.source,
     super.description,
     super.imageURL,
     super.prices,
@@ -32,6 +33,9 @@ class ProductModel extends ProductEntity {
     super.createdAt,
     super.isActive,
     super.variantGroup,
+    super.multiLangSpecs,
+    super.multiLangSections,
+    super.nameTranslated,
   });
 
   /// Read from PocketBase
@@ -68,51 +72,55 @@ class ProductModel extends ProductEntity {
     // Handle affiliate links
     final affiliateLinks = <String, String>{};
     final affiliateLinksByCountry = <String, Map<String, String>>{};
-    
+
     if (data.containsKey('affiliateLinks') && data['affiliateLinks'] is Map) {
       final al = _deepCastMap(data['affiliateLinks']);
-      
+
       // Legacy format or direct map
       al.forEach((k, v) {
         if (v is String && v.isNotEmpty) {
-           affiliateLinks[k] = v;
+          affiliateLinks[k] = v;
 
-           // Parse known country codes from keys like 'amazon_us'
-           if (k.contains('_')) {
-             final parts = k.split('_');
-             if (parts.length == 2) {
-               final store = parts[0]; // amazon
-               final country = parts[1].toUpperCase(); // US
-               
-               if (!affiliateLinksByCountry.containsKey(country)) {
-                 affiliateLinksByCountry[country] = {};
-               }
-               // Capitalize store name
-               final storeName = store[0].toUpperCase() + store.substring(1);
-               affiliateLinksByCountry[country]![storeName] = v;
-             }
-           }
+          // Parse known country codes from keys like 'amazon_us'
+          if (k.contains('_')) {
+            final parts = k.split('_');
+            if (parts.length == 2) {
+              final store = parts[0]; // amazon
+              final country = parts[1].toUpperCase(); // US
+
+              if (!affiliateLinksByCountry.containsKey(country)) {
+                affiliateLinksByCountry[country] = {};
+              }
+              // Capitalize store name
+              final storeName = store[0].toUpperCase() + store.substring(1);
+              affiliateLinksByCountry[country]![storeName] = v;
+            }
+          }
         }
       });
     }
 
-    const legacyScoreKey = 'comp' 'airScore';
+    const legacyScoreKey =
+        'comp'
+        'airScore';
     const qorScoreKey = 'qorScore';
 
     // Ratings
     final ratingsData = _deepCastMap(data['ratings']);
     // Support both the current score field and the legacy brand-specific key.
-    double expertScore = (ratingsData['expert'] as num?)?.toDouble() ??
-               (ratingsData[qorScoreKey] as num?)?.toDouble() ??
-               (ratingsData[legacyScoreKey] as num?)?.toDouble() ?? 0.0;
-    
+    double expertScore =
+        (ratingsData['expert'] as num?)?.toDouble() ??
+        (ratingsData[qorScoreKey] as num?)?.toDouble() ??
+        (ratingsData[legacyScoreKey] as num?)?.toDouble() ??
+        0.0;
+
     // Check if we have community (0-5) or legacy (0-100)
     // If it's <= 5, assume 5-star scale and convert to 100
     double communityVal = (ratingsData['community'] as num?)?.toDouble() ?? 0.0;
     if (communityVal > 0 && communityVal <= 5) {
       communityVal *= 20; // 4.5 -> 90
     }
-    
+
     final ratings = ProductRatings(
       expert: expertScore,
       community: communityVal,
@@ -125,6 +133,7 @@ class ProductModel extends ProductEntity {
       brand: data['brand'] ?? '',
       category: data['category'] ?? '',
       subcategory: data['subcategory'] ?? '',
+      source: data['source'] ?? '',
       description: data['description'] ?? '',
       imageURL: data['imageURL'] ?? data['imageUrl'] ?? '',
       prices: prices,
@@ -141,12 +150,15 @@ class ProductModel extends ProductEntity {
       techScore: (data['techScore'] as num?)?.toDouble() ?? 0.0,
       techSubscores: _parseTechSubscores(data['techSubscores']),
       images: List<String>.from(data['images'] ?? []),
-      lastUpdated:
-          _parseOptionalDate(data['lastUpdated']) ?? DateTime.now(),
-      createdAt: _parseOptionalDate(data['createdAt']) ??
-                 _parseOptionalDate(data['scrapedAt']),
+      lastUpdated: _parseOptionalDate(data['lastUpdated']) ?? DateTime.now(),
+      createdAt:
+          _parseOptionalDate(data['createdAt']) ??
+          _parseOptionalDate(data['scrapedAt']),
       isActive: data['isActive'] ?? true,
       variantGroup: data['variantGroup'] as String? ?? '',
+      multiLangSpecs: _castNestedDynamicMap(data['multiLangSpecs']),
+      multiLangSections: _castNestedDynamicMap(data['multiLangSections']),
+      nameTranslated: _castStringMap(data['nameTranslated']),
     );
   }
 
@@ -165,6 +177,7 @@ class ProductModel extends ProductEntity {
       'brand': brand,
       'category': category,
       'subcategory': subcategory,
+      'source': source,
       'description': description,
       'imageURL': imageURL,
       'prices': prices,
@@ -188,6 +201,9 @@ class ProductModel extends ProductEntity {
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       'isActive': isActive,
       'variantGroup': variantGroup,
+      'multiLangSpecs': multiLangSpecs,
+      'multiLangSections': multiLangSections,
+      'nameTranslated': nameTranslated,
     };
   }
 
@@ -202,6 +218,7 @@ class ProductModel extends ProductEntity {
       brand: entity.brand,
       category: entity.category,
       subcategory: entity.subcategory,
+      source: entity.source,
       description: entity.description,
       imageURL: entity.imageURL,
       prices: entity.prices,
@@ -221,6 +238,10 @@ class ProductModel extends ProductEntity {
       lastUpdated: entity.lastUpdated,
       createdAt: entity.createdAt,
       isActive: entity.isActive,
+      variantGroup: entity.variantGroup,
+      multiLangSpecs: entity.multiLangSpecs,
+      multiLangSections: entity.multiLangSections,
+      nameTranslated: entity.nameTranslated,
     );
   }
 
@@ -238,9 +259,14 @@ class ProductModel extends ProductEntity {
 
     final ratingsData = _deepCastMap(data['ratings']);
     final ratings = ProductRatings(
-          expert: (ratingsData['expert'] as num?)?.toDouble() ??
-            (ratingsData['qorScore'] as num?)?.toDouble() ??
-            (ratingsData['comp' 'airScore'] as num?)?.toDouble() ?? 0.0,
+      expert:
+          (ratingsData['expert'] as num?)?.toDouble() ??
+          (ratingsData['qorScore'] as num?)?.toDouble() ??
+          (ratingsData['comp'
+                      'airScore']
+                  as num?)
+              ?.toDouble() ??
+          0.0,
       community: (ratingsData['community'] as num?)?.toDouble() ?? 0.0,
       count: (ratingsData['count'] as num?)?.toInt() ?? 0,
     );
@@ -251,6 +277,7 @@ class ProductModel extends ProductEntity {
       brand: data['brand'] ?? '',
       category: data['category'] ?? '',
       subcategory: data['subcategory'] ?? '',
+      source: data['source'] ?? '',
       description: data['description'] ?? '',
       imageURL: data['imageURL'] ?? data['imageUrl'] ?? '',
       prices: prices,
@@ -274,6 +301,9 @@ class ProductModel extends ProductEntity {
           ? DateTime.tryParse(data['createdAt'])
           : null,
       isActive: data['isActive'] ?? true,
+      multiLangSpecs: _castNestedDynamicMap(data['multiLangSpecs']),
+      multiLangSections: _castNestedDynamicMap(data['multiLangSections']),
+      nameTranslated: _castStringMap(data['nameTranslated']),
     );
   }
 
@@ -281,10 +311,12 @@ class ProductModel extends ProductEntity {
     if (raw == null) return {};
     if (raw is! Map) return {};
     return Map<String, double>.fromEntries(
-      raw.entries.map((e) => MapEntry(
-        e.key.toString(),
-        (e.value is num) ? (e.value as num).toDouble() : 0.0,
-      )),
+      raw.entries.map(
+        (e) => MapEntry(
+          e.key.toString(),
+          (e.value is num) ? (e.value as num).toDouble() : 0.0,
+        ),
+      ),
     );
   }
 }
@@ -302,6 +334,19 @@ Map<String, dynamic> _deepCastMap(dynamic raw) {
       if (val is Map) return MapEntry(key, _deepCastMap(val));
       return MapEntry(key, val);
     }),
+  );
+}
+
+Map<String, Map<String, dynamic>> _castNestedDynamicMap(dynamic raw) {
+  if (raw == null) return {};
+  if (raw is! Map) return {};
+  return Map<String, Map<String, dynamic>>.fromEntries(
+    raw.entries
+        .where((e) => e.value is Map)
+        .map(
+          (e) =>
+              MapEntry(e.key.toString().toLowerCase(), _deepCastMap(e.value)),
+        ),
   );
 }
 

@@ -480,11 +480,11 @@
           </div>
 
           <!-- Custom Categories Manager -->
-          <div class="card" id="customCategoriesCard">
-            <div class="card-title">Özel Kategori Yönetimi <span class="text-muted" style="font-weight:normal;font-size:12px">· geizhals.eu ?cat= slug tabanlı</span></div>
-            <p class="text-muted" style="margin-bottom:10px;font-size:12px">
+          <details class="card" id="customCategoriesCard">
+            <summary class="card-title" style="cursor:pointer">Advanced Category Tools <span class="text-muted" style="font-weight:normal;font-size:12px">· optional Geizhals ?cat= manager</span></summary>
+            <p class="text-muted" style="margin:10px 0;font-size:12px">
               Eklediğin kategoriler yukarıdaki "Category" listesinde <strong>Custom</strong> başlığı altında görünür.
-              Almanca ad opsiyoneldir (sitede İngilizce ad görünür).
+              Marka araması için bu bölüm gerekli değildir.
             </p>
             <div class="form-grid" style="grid-template-columns:1fr 1fr 1.2fr">
               <div class="form-field">
@@ -513,7 +513,7 @@
                 <button class="btn btn-sm" onclick="importCategoriesFromText()">İçe Aktar</button>
               </div>
             </details>
-          </div>
+          </details>
         </div>
 
         <!-- Icecat Open Catalog Ingestion -->
@@ -530,6 +530,7 @@
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
               <div class="form-field" style="grid-column:span 2">
                 <label>Kategoriler (Icecat Open Catalog · ücretsiz · gerçek ürün sayıları)</label>
+                <input class="input" id="icecatCatSearch" placeholder="Kategori ara..." style="margin-bottom:8px" oninput="icecatFilterCats()">
                 <div id="icecatCatList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:260px;overflow:auto;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:var(--surface-1,#0e0e0e)">
                   <div class="text-muted" style="font-size:12px;grid-column:1/-1">Yükleniyor…</div>
                 </div>

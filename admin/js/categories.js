@@ -256,19 +256,27 @@ function escHtml(value) {
 // ── PB product count cache ──
 window._catCountCache = null;
 
-async function _loadCategoryCounts() {
+async function _loadCategoryCounts(sourceFilter = '') {
   const now = Date.now();
-  if (window._catCountCache && (now - window._catCountCache.ts) < 60000) {
-    return window._catCountCache.data;
+  const cacheKey = sourceFilter || '__all__';
+  if (
+    window._catCountCache &&
+    window._catCountCache[cacheKey] &&
+    (now - window._catCountCache[cacheKey].ts) < 60000
+  ) {
+    return window._catCountCache[cacheKey].data;
   }
   const counts = {};
   try {
     const pb = getPb();
     if (!pb) return counts;
-    const total = (await pb.collection('products').getList(1, 1, {})).totalItems;
+    const opts = sourceFilter
+      ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"` }
+      : {};
+    const total = (await pb.collection('products').getList(1, 1, opts)).totalItems;
     const pages = Math.ceil(total / 500);
     for (let page = 1; page <= pages; page++) {
-      const res = await pb.collection('products').getList(page, 500, {});
+      const res = await pb.collection('products').getList(page, 500, opts);
       res.items.forEach(p => {
         const c = p.category;
         if (c) counts[c] = (counts[c] || 0) + 1;
@@ -278,7 +286,10 @@ async function _loadCategoryCounts() {
   } catch (e) {
     console.warn('[cat-count]', e.message);
   }
-  window._catCountCache = { ts: now, data: counts };
+  window._catCountCache = {
+    ...(window._catCountCache || {}),
+    [cacheKey]: { ts: now, data: counts },
+  };
   return counts;
 }
 
@@ -286,8 +297,10 @@ async function populateScraperCategories() {
   if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
 
   const counts = await _loadCategoryCounts();
+  const geizhalsCounts = await _loadCategoryCounts('geizhals.eu');
 
   let bulkOpts = '<option value="">Select Category</option>';
+  let dictOpts = '<option value="">Select Geizhals Category</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
   const groupForCat = (cat) => {
@@ -315,9 +328,13 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
     cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
+      const ghCnt = geizhalsCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
+      if (ghCnt > 0) {
+        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)} (${ghCnt})</option>`;
+      }
     });
     bulkOpts += '</optgroup>';
   });
@@ -327,10 +344,14 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="Custom">`;
     customs.forEach(cat => {
       const cnt = counts[cat.id] || 0;
+      const ghCnt = geizhalsCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
+      if (ghCnt > 0) {
+        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de} (${ghCnt})</option>`;
+      }
     });
     bulkOpts += '</optgroup>';
   }
@@ -341,7 +362,7 @@ async function populateScraperCategories() {
   setSel('singleUrlCategory', flatOpts);
   setSel('scoreCategory', flatOpts);
   setSel('scoreEngineCategory', flatOpts);
-  setSel('dictXlateCategory', bulkOpts);
+  setSel('dictXlateCategory', dictOpts);
   setSel('updateCategory', flatOpts);
   setSel('inventoryCategory', flatOpts);
   setSel('qualityScanCategory', flatOpts);

@@ -1065,6 +1065,26 @@ function _shouldPreserve(token) {
   return false;
 }
 
+function _shouldTranslateAtom(text) {
+  const s = String(text || '').trim();
+  if (!s || s.length < 2) return false;
+  if (!/[a-zA-ZÀ-ÿ]/.test(s)) return false;
+  if (/^\d{8,14}$/.test(s)) return false; // GTIN/EAN/UPC
+  if (/^[\d\s.,:+/()°%'"-]+$/.test(s)) return false;
+  if (/^(ean|gtin|upc|mpn|sku|id)$/i.test(s)) return false;
+  const tokens = s.split(/\s+/).filter(Boolean);
+  if (tokens.length && tokens.every(t => _shouldPreserve(t.replace(/^[^\w]+|[^\w]+$/g, '')))) {
+    return false;
+  }
+  // Model-code-heavy values such as "0/1/10 (B550)" or "SM-S918BZKQXSP"
+  // are better preserved verbatim and should not spend DeepSeek calls.
+  const compact = s.replace(/[\s._/-]+/g, '');
+  if (/[A-Z]/.test(s) && /\d/.test(s) && compact.length <= 32 && /^[A-Z0-9]+$/i.test(compact)) {
+    return false;
+  }
+  return true;
+}
+
 // Title-case a single token while keeping acronyms / units intact.
 function _titleCaseToken(token) {
   if (!token) return token;
@@ -1236,18 +1256,17 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
 
   // Build the set of (text, lang) pairs that are NOT in cache yet
   const missingByText = new Map(); // text → Set<lang>
-  for (const t of germanTexts) {
+  for (const t of germanTexts.filter(_shouldTranslateAtom)) {
     const missing = targetLangs.filter(l => !_deDictLookup(t, l));
     if (missing.length) missingByText.set(t, missing);
   }
   if (missingByText.size === 0) return; // everything cached — no API hit
 
   const uncached = [...missingByText.keys()];
-  // DeepSeek output cap: each atom × 11 langs ≈ 350-700 tokens of JSON.
-  // 12 atoms × 11 langs ≈ 5-8K tokens → fits comfortably under the 8K
-  // max_tokens cap with a safety margin. 30 was overflowing → truncated
-  // JSON → "Expected ',' or '}'" parse failures for 90% of chunks.
-  const CHUNK = 12;
+  // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
+  // moderate. The atom filter above removes model codes/numbers first, which
+  // lets us safely use a slightly larger batch than the old 12.
+  const CHUNK = 18;
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
@@ -1530,11 +1549,11 @@ window.QorAiBulkTranslate = {
   collectAtoms(products) {
     const sink = new Set();
     for (const p of products || []) _collectAtomsFromProduct(p, sink);
-    return [...sink];
+    return [...sink].filter(_shouldTranslateAtom);
   },
   // Return only the atoms that are missing for at least one target lang
   missingAtoms(atoms, targetLangs = TARGET_LANGS) {
-    return atoms.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+    return atoms.filter(t => _shouldTranslateAtom(t) && targetLangs.some(l => !_deDictLookup(t, l)));
   },
   // Hit DeepSeek for the supplied (already filtered) atoms. Chunked & batched.
   // `onProgress` receives { phase, chunkIndex, totalChunks, ... } per chunk so
@@ -1550,7 +1569,7 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 12,
+  CHUNK_SIZE: 18,
   CONCURRENCY: 4,
 };
 

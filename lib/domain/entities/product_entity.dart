@@ -10,26 +10,36 @@ class ProductEntity extends Equatable {
   final String? brand;
   final String category; // tech / subscription / gaming / travel
   final String subcategory;
+  final String source;
   final String description;
   final String imageURL;
-  final Map<String, double> prices; // Country-based prices {US: 999.0, TR: 45999.0}
-  final Map<String, Map<String, String>> affiliateLinksByCountry; // {US: {Amazon: url, BestBuy: url}}
+  final Map<String, double>
+  prices; // Country-based prices {US: 999.0, TR: 45999.0}
+  final Map<String, Map<String, String>>
+  affiliateLinksByCountry; // {US: {Amazon: url, BestBuy: url}}
   final Map<String, String> affiliateLinks; // General affiliate links
   final Map<String, dynamic> specs; // Technical specifications (dynamic)
-  final Map<String, dynamic> specSections; // Categorized specifications (as in admin panel)
+  final Map<String, dynamic>
+  specSections; // Categorized specifications (as in admin panel)
   final ProductRatings ratings;
   final List<String> pros; // Pros
   final List<String> cons; // Cons
   final List<String> tags; // Searchable tags
   final double trendScore;
   final double techScore; // Technical score (0-100), normalized within category
-  final Map<String, double> techSubscores; // Sub-category scores {processor: 85, camera: 92, ...}
+  final Map<String, double>
+  techSubscores; // Sub-category scores {processor: 85, camera: 92, ...}
   final List<String> images; // All product images (pulled from admin panel)
   final DateTime lastUpdated;
   final DateTime? createdAt; // When the product was first added to the database
   final bool isActive;
-  final String variantGroup; // groups storage/RAM variants: "oneplus-15" for all OnePlus 15 variants
-  final Map<String, String> keySpecs; // Key Specs — key specs from epey.com summary grid
+  final String
+  variantGroup; // groups storage/RAM variants: "oneplus-15" for all OnePlus 15 variants
+  final Map<String, String>
+  keySpecs; // Key Specs — key specs from epey.com summary grid
+  final Map<String, Map<String, dynamic>> multiLangSpecs;
+  final Map<String, Map<String, dynamic>> multiLangSections;
+  final Map<String, String> nameTranslated;
 
   const ProductEntity({
     required this.id,
@@ -37,6 +47,7 @@ class ProductEntity extends Equatable {
     this.brand,
     required this.category,
     required this.subcategory,
+    this.source = '',
     this.description = '',
     this.imageURL = '',
     this.prices = const {},
@@ -57,6 +68,9 @@ class ProductEntity extends Equatable {
     this.isActive = true,
     this.variantGroup = '',
     this.keySpecs = const {},
+    this.multiLangSpecs = const {},
+    this.multiLangSections = const {},
+    this.nameTranslated = const {},
   });
 
   /// Convenience getter - screens use imageUrl
@@ -71,6 +85,30 @@ class ProductEntity extends Equatable {
 
   /// Convenience getter - screens use categoryId
   String get categoryId => category;
+
+  String nameForLanguage(String languageCode) {
+    final code = languageCode.toLowerCase().trim();
+    final localized = nameTranslated[code];
+    return localized != null && localized.trim().isNotEmpty ? localized : name;
+  }
+
+  Map<String, dynamic> specsForLanguage(String languageCode) {
+    final code = languageCode.toLowerCase().trim();
+    if (source == 'icecat') {
+      final localized = multiLangSpecs[code];
+      if (localized != null && localized.isNotEmpty) return localized;
+    }
+    return specs;
+  }
+
+  Map<String, dynamic> specSectionsForLanguage(String languageCode) {
+    final code = languageCode.toLowerCase().trim();
+    if (source == 'icecat') {
+      final localized = multiLangSections[code];
+      if (localized != null && localized.isNotEmpty) return localized;
+    }
+    return specSections;
+  }
 
   /// Get price by country
   double? getPriceForCountry(String countryCode) => prices[countryCode];
@@ -89,6 +127,7 @@ class ProductEntity extends Equatable {
     String? brand,
     String? category,
     String? subcategory,
+    String? source,
     String? description,
     String? imageURL,
     Map<String, double>? prices,
@@ -98,6 +137,9 @@ class ProductEntity extends Equatable {
     Map<String, dynamic>? specSections,
     Map<String, String>? keySpecs,
     String? variantGroup,
+    Map<String, Map<String, dynamic>>? multiLangSpecs,
+    Map<String, Map<String, dynamic>>? multiLangSections,
+    Map<String, String>? nameTranslated,
     ProductRatings? ratings,
     List<String>? pros,
     List<String>? cons,
@@ -115,15 +157,20 @@ class ProductEntity extends Equatable {
       brand: brand ?? this.brand,
       category: category ?? this.category,
       subcategory: subcategory ?? this.subcategory,
+      source: source ?? this.source,
       description: description ?? this.description,
       imageURL: imageURL ?? this.imageURL,
       prices: prices ?? this.prices,
-      affiliateLinksByCountry: affiliateLinksByCountry ?? this.affiliateLinksByCountry,
+      affiliateLinksByCountry:
+          affiliateLinksByCountry ?? this.affiliateLinksByCountry,
       affiliateLinks: affiliateLinks ?? this.affiliateLinks,
       specs: specs ?? this.specs,
       specSections: specSections ?? this.specSections,
       keySpecs: keySpecs ?? this.keySpecs,
       variantGroup: variantGroup ?? this.variantGroup,
+      multiLangSpecs: multiLangSpecs ?? this.multiLangSpecs,
+      multiLangSections: multiLangSections ?? this.multiLangSections,
+      nameTranslated: nameTranslated ?? this.nameTranslated,
       ratings: ratings ?? this.ratings,
       pros: pros ?? this.pros,
       cons: cons ?? this.cons,

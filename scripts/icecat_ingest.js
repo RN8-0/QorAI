@@ -206,7 +206,11 @@ function log(msg, tag = 'info') {
 }
 
 function loadProgress() {
-  try { return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8')); } catch { return { done: 0, created: 0, updated: 0, errors: 0 }; }
+  try {
+    return { skipped: 0, ...JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8')) };
+  } catch {
+    return { done: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
+  }
 }
 function saveProgress(p) { fs.writeFileSync(PROGRESS_FILE, JSON.stringify(p, null, 2), 'utf8'); }
 
@@ -450,6 +454,17 @@ function buildKeySpecs(category, specs) {
   return result;
 }
 
+function minSpecsForCategory(category) {
+  if (['laptops', 'smartphones', 'tablets'].includes(category)) return 20;
+  if (['tvs', 'monitors', 'desktops', 'cameras'].includes(category)) return 15;
+  return 8;
+}
+
+function passesIcecatQuality(payload) {
+  const count = Number(payload.specsCount || Object.keys(payload.specs || {}).length);
+  return count >= minSpecsForCategory(payload.category);
+}
+
 // ─── PocketBase upsert ────────────────────────────────────────────────────────
 
 async function upsertToPb(data) {
@@ -530,6 +545,15 @@ async function phase23_enrichImport() {
         const enJson = await fetchIcecatJson(icecatId, 'EN');
         const pbData = mapToPb(enJson, 'EN', item);
         pbData.keySpecs = buildKeySpecs(pbData.category, pbData.specs);
+        if (!passesIcecatQuality(pbData)) {
+          const minSpecs = minSpecsForCategory(pbData.category);
+          prog.skipped = (prog.skipped || 0) + 1;
+          log(`  Skip id=${icecatId} (${name || brand}): only ${pbData.specsCount || 0} specs, need ${minSpecs}+`, 'warn');
+          prog.done++;
+          if (prog.done % 100 === 0) saveProgress(prog);
+          await sleep(DELAY);
+          continue;
+        }
 
         // Additional languages — fetched in parallel. The Icecat live API
         // tolerates a small burst of concurrent reads per user; serialising
@@ -574,7 +598,7 @@ async function phase23_enrichImport() {
       if (prog.done % 100 === 0) {
         saveProgress(prog);
         const pct = ((prog.done - start) / (end - start) * 100).toFixed(1);
-        log(`[w${workerId}] ${prog.done}/${end} (${pct}%) — +${prog.created} new, ~${prog.updated} upd, ${prog.errors} err`);
+        log(`[w${workerId}] ${prog.done}/${end} (${pct}%) — +${prog.created} new, ~${prog.updated} upd, ${prog.skipped || 0} skip, ${prog.errors} err`);
       }
 
       await sleep(DELAY);
@@ -585,7 +609,7 @@ async function phase23_enrichImport() {
   await Promise.all(Array.from({ length: WORKERS }, (_, i) => runWorker(i + 1)));
 
   saveProgress(prog);
-  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, errors: ${prog.errors}`, 'ok');
+  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
   log(`Progress saved to ${path.basename(PROGRESS_FILE)} — run with --resume to continue later`, 'ok');
 }
 
