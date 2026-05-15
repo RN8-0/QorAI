@@ -1,4 +1,4 @@
-﻿part of '../compare_screen.dart';
+part of '../compare_screen.dart';
 
 enum _AiPanelType { deepAnalysis, alternatives, advisor, prediction }
 
@@ -145,6 +145,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     final input = widget.products
         .map(
           (p) => <String, dynamic>{
+            'category': p.category,
             'specSections': p.specSections,
             'specs': p.specs,
           },
@@ -7276,10 +7277,238 @@ Rules:
 /// Top-level function for compute() — builds grouped specs from serialised
 /// product data (no platform channels, no UI objects).
 /// Input: List of {'specSections': {...}, 'specs': {...}} per product.
+String _compareNormalizeText(String input) {
+  return input
+      .toLowerCase()
+      .replaceAll('ı', 'i')
+      .replaceAll('İ', 'i')
+      .replaceAll('ö', 'o')
+      .replaceAll('ü', 'u')
+      .replaceAll('ä', 'a')
+      .replaceAll('ß', 'ss')
+      .replaceAll('é', 'e')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+String _compareCategory(String raw) {
+  final cat = _compareNormalizeText(raw);
+  if (cat.contains('notebook') || cat.contains('laptop')) return 'laptops';
+  if (cat == 'ssd' || cat == 'ssds') return 'ssds';
+  if (cat == 'psu' || cat == 'psus' || cat.contains('power supply')) {
+    return 'psu';
+  }
+  return cat;
+}
+
+Map<String, String> _compareFlatSpecPool(Map<String, dynamic> p) {
+  final pool = <String, String>{};
+  void add(String key, dynamic value) {
+    final k = key.trim();
+    final v = value?.toString().trim() ?? '';
+    if (k.isEmpty || v.isEmpty || v == 'null' || v == '?') return;
+    pool.putIfAbsent(k, () => v);
+  }
+
+  final specs = (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
+  specs.forEach(add);
+  final sections = (p['specSections'] as Map?)?.cast<String, dynamic>() ?? {};
+  for (final section in sections.values) {
+    if (section is Map) {
+      section.cast<dynamic, dynamic>().forEach((key, value) {
+        add(key.toString(), value);
+      });
+    }
+  }
+  return pool;
+}
+
+String _findCompareValue(Map<String, String> pool, List<String> aliases) {
+  for (final alias in aliases.map(_compareNormalizeText)) {
+    for (final entry in pool.entries) {
+      final key = _compareNormalizeText(entry.key);
+      if (key == alias || key.contains(alias) || alias.contains(key)) {
+        return entry.value;
+      }
+    }
+  }
+  return '';
+}
+
+String _firstUsefulLine(String value) {
+  for (final line in value.split('\n')) {
+    final t = line.trim();
+    if (t.isNotEmpty) return t;
+  }
+  return value.trim();
+}
+
+String _lineMatching(String value, RegExp pattern) {
+  for (final line in value.split('\n')) {
+    final t = line.trim();
+    if (pattern.hasMatch(t)) return t;
+  }
+  final match = pattern.firstMatch(value);
+  return match?.group(0)?.trim() ?? '';
+}
+
+String _combineNonEmpty(List<String> parts) {
+  final clean = parts.map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+  return clean.join(' ');
+}
+
+String _laptopComparableValue(Map<String, String> pool, String id) {
+  switch (id) {
+    case 'display_size':
+      final v = _findCompareValue(pool, [
+        'Display diagonal',
+        'Display Size',
+        'Bildschirmdiagonale',
+      ]);
+      if (v.isNotEmpty) return _firstUsefulLine(v);
+      final display = _findCompareValue(pool, ['Display']);
+      return _lineMatching(
+        display,
+        RegExp(r'\d+(?:[.,]\d+)?\s*(?:"|zoll|inch|cm)', caseSensitive: false),
+      );
+    case 'display_resolution':
+      final v = _findCompareValue(pool, [
+        'Display resolution',
+        'Resolution',
+        'Auflösung',
+      ]);
+      if (v.isNotEmpty) return _firstUsefulLine(v);
+      return _lineMatching(
+        _findCompareValue(pool, ['Display']),
+        RegExp(r'\d{3,5}\s*x\s*\d{3,5}', caseSensitive: false),
+      );
+    case 'processor':
+      final family = _findCompareValue(pool, ['Processor family']);
+      final model = _findCompareValue(pool, [
+        'Processor model',
+        'Processor Model',
+      ]);
+      final combined = _combineNonEmpty([family, model]);
+      if (combined.isNotEmpty) return combined;
+      return _firstUsefulLine(
+        _findCompareValue(pool, ['CPU', 'Processor', 'Prozessor']),
+      );
+    case 'cpu_cores':
+      final cores = _findCompareValue(pool, ['Processor cores', 'Cores']);
+      if (cores.isNotEmpty) return cores;
+      final cpu = _findCompareValue(pool, ['CPU', 'Processor']);
+      return _lineMatching(
+        cpu,
+        RegExp(r'\d+\s*(?:core|cores|kern)', caseSensitive: false),
+      );
+    case 'graphics':
+      final gpu = _findCompareValue(pool, [
+        'On-board graphics card model',
+        'Discrete graphics card model',
+        'Graphics Card',
+        'GPU',
+        'Grafik',
+      ]);
+      return _firstUsefulLine(gpu);
+    case 'ram':
+      final memory = _findCompareValue(pool, [
+        'Internal memory',
+        'Memory (RAM)',
+        'RAM',
+      ]);
+      final type = _findCompareValue(pool, [
+        'Internal memory type',
+        'Memory type',
+      ]);
+      final first = _firstUsefulLine(memory);
+      if (first.isEmpty) return '';
+      return type.isNotEmpty &&
+              !first.toLowerCase().contains(type.toLowerCase())
+          ? '$first $type'
+          : first;
+    case 'storage':
+      final total = _findCompareValue(pool, [
+        'Total storage capacity',
+        'Storage',
+        'SSD',
+      ]);
+      final media = _findCompareValue(pool, ['Storage media']);
+      final first = _firstUsefulLine(total);
+      if (first.isEmpty) return '';
+      return media.isNotEmpty &&
+              !first.toLowerCase().contains(media.toLowerCase())
+          ? '$first $media'
+          : first;
+    case 'battery':
+      final cap = _findCompareValue(pool, [
+        'Battery capacity',
+        'Battery',
+        'Akku',
+      ]);
+      final wh = _lineMatching(
+        cap,
+        RegExp(r'\d+(?:[.,]\d+)?\s*wh', caseSensitive: false),
+      );
+      return wh.isNotEmpty ? wh : _firstUsefulLine(cap);
+    case 'weight':
+      return _firstUsefulLine(_findCompareValue(pool, ['Weight', 'Gewicht']));
+    case 'os':
+      return _firstUsefulLine(
+        _findCompareValue(pool, ['Operating System', 'Betriebssystem', 'OS']),
+      );
+    case 'wireless':
+      final wifi = _findCompareValue(pool, [
+        'Wi-Fi standards',
+        'Wireless',
+        'WLAN',
+      ]);
+      return _firstUsefulLine(wifi);
+  }
+  return '';
+}
+
+Map<String, Map<String, List<String>>> _buildComparableSpecs(
+  List<Map<String, dynamic>> productsData,
+) {
+  if (productsData.isEmpty) return {};
+  final cat = _compareCategory(
+    productsData.first['category']?.toString() ?? '',
+  );
+  if (cat != 'laptops') return {};
+
+  const rows = <String, String>{
+    'Display size': 'display_size',
+    'Resolution': 'display_resolution',
+    'Processor': 'processor',
+    'CPU cores': 'cpu_cores',
+    'Graphics': 'graphics',
+    'RAM': 'ram',
+    'Storage': 'storage',
+    'Battery': 'battery',
+    'Weight': 'weight',
+    'Operating system': 'os',
+    'Wireless': 'wireless',
+  };
+
+  final pools = productsData.map(_compareFlatSpecPool).toList();
+  final group = <String, List<String>>{};
+  for (final entry in rows.entries) {
+    final values = pools.map((pool) {
+      final value = _laptopComparableValue(pool, entry.value).trim();
+      return value.isEmpty ? '—' : value;
+    }).toList();
+    if (values.any((v) => v != '—')) group[entry.key] = values;
+  }
+  return group.isEmpty ? {} : {'Comparable Specs': group};
+}
+
 Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
   List<Map<String, dynamic>> productsData,
 ) {
-  final result = <String, Map<String, List<String>>>{};
+  final result = <String, Map<String, List<String>>>{
+    ..._buildComparableSpecs(productsData),
+  };
   final productCount = productsData.length;
 
   Map<String, dynamic> displaySpecs(Map<String, dynamic> p) {

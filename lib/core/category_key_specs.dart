@@ -30,12 +30,33 @@ const categoryKeySpecAliases = <String, List<List<String>>>{
 
   // ── Tech: Laptops ──
   'laptops': [
-    ['Screen Size', 'Display Size', 'Ekran Boyutu'],
-    ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
-    ['Storage', 'SSD', 'Internal Storage', 'Dahili Depolama', 'Hard Disk (SSD)'],
-    ['Processor', 'CPU', 'İşlemci', 'Processor Model'],
-    ['GPU', 'Graphics Card', 'Ekran Kartı', 'GPU Model', 'Video Card'],
-    ['Battery', 'Battery Life', 'Pil'],
+    [
+      'Screen Size',
+      'Display Size',
+      'Display diagonal',
+      'Display',
+      'Ekran Boyutu',
+    ],
+    ['RAM', 'Memory (RAM)', 'Internal memory', 'RAM Kapasitesi'],
+    [
+      'Storage',
+      'SSD',
+      'Internal Storage',
+      'Total storage capacity',
+      'Dahili Depolama',
+      'Hard Disk (SSD)',
+    ],
+    ['Processor', 'CPU', 'İşlemci', 'Processor Model', 'Processor model'],
+    [
+      'GPU',
+      'Graphics Card',
+      'Grafik',
+      'Ekran Kartı',
+      'GPU Model',
+      'Video Card',
+      'On-board graphics card model',
+    ],
+    ['Battery', 'Akku', 'Battery Life', 'Battery capacity', 'Pil'],
   ],
 
   // ── Tech: Desktops ──
@@ -431,41 +452,97 @@ const categoryKeySpecAliases = <String, List<List<String>>>{
 
 /// Aliases to resolve Firestore category names to canonical keys.
 const categoryAliases = <String, String>{
-  'phone': 'smartphones', 'telefon': 'smartphones', 'akıllı telefon': 'smartphones',
-  'smartphone': 'smartphones', 'cep telefonu': 'smartphones',
+  'phone': 'smartphones',
+  'telefon': 'smartphones',
+  'akıllı telefon': 'smartphones',
+  'smartphone': 'smartphones',
+  'cep telefonu': 'smartphones',
   'tablet': 'tablets',
-  'laptop': 'laptops', 'dizüstü': 'laptops', 'notebook': 'laptops', 'dizüstü bilgisayar': 'laptops',
-  'desktop': 'desktops', 'masaüstü': 'desktops', 'masaüstü bilgisayar': 'desktops',
-  'monitor': 'monitors', 'monitör': 'monitors', 'ekran': 'monitors',
-  'tv': 'tvs', 'televizyon': 'tvs', 'television': 'tvs',
-  'headphone': 'headphones', 'kulaklık': 'headphones', 'earphone': 'headphones', 'earbuds': 'headphones',
-  'keyboard': 'keyboards', 'klavye': 'keyboards',
-  'mouse': 'mice', 'fare': 'mice',
-  'camera': 'cameras', 'fotoğraf makinesi': 'cameras', 'kamera': 'cameras',
-  'action camera': 'action-cameras', 'aksiyon kamera': 'action-cameras',
-  'security camera': 'security-cameras', 'güvenlik kamerası': 'security-cameras',
-  'printer': 'printers', 'yazıcı': 'printers',
-  'webcam': 'webcams', 'web kamerası': 'webcams',
-  'router': 'routers', 'modem': 'routers',
+  'laptop': 'laptops',
+  'laptops': 'laptops',
+  'dizüstü': 'laptops',
+  'notebook': 'laptops',
+  'notebooks': 'laptops',
+  'dizüstü bilgisayar': 'laptops',
+  'desktop': 'desktops',
+  'masaüstü': 'desktops',
+  'masaüstü bilgisayar': 'desktops',
+  'monitor': 'monitors',
+  'monitör': 'monitors',
+  'ekran': 'monitors',
+  'tv': 'tvs',
+  'televizyon': 'tvs',
+  'television': 'tvs',
+  'headphone': 'headphones',
+  'kulaklık': 'headphones',
+  'earphone': 'headphones',
+  'earbuds': 'headphones',
+  'keyboard': 'keyboards',
+  'klavye': 'keyboards',
+  'mouse': 'mice',
+  'fare': 'mice',
+  'camera': 'cameras',
+  'fotoğraf makinesi': 'cameras',
+  'kamera': 'cameras',
+  'action camera': 'action-cameras',
+  'aksiyon kamera': 'action-cameras',
+  'security camera': 'security-cameras',
+  'güvenlik kamerası': 'security-cameras',
+  'printer': 'printers',
+  'yazıcı': 'printers',
+  'webcam': 'webcams',
+  'web kamerası': 'webcams',
+  'router': 'routers',
+  'modem': 'routers',
   'ssd': 'ssd',
-  'hdd': 'ssd', 'hard disk': 'ssd',
-  'ram': 'ram', 'memory': 'ram', 'bellek': 'ram',
-  'gpu': 'gpus', 'ekran kartı': 'gpus', 'graphics card': 'gpus', 'video card': 'gpus',
-  'cpu': 'cpus', 'işlemci': 'cpus', 'processor': 'cpus',
-  'motherboard': 'motherboards', 'anakart': 'motherboards',
-  'psu': 'psu', 'güç kaynağı': 'psu', 'power supply': 'psu',
-  'case': 'cases', 'kasa': 'cases', 'pc case': 'cases',
-  'cooler': 'coolers', 'soğutucu': 'coolers', 'cpu cooler': 'coolers',
-  'projector': 'projectors', 'projeksiyon': 'projectors',
-  'speaker': 'speakers', 'hoparlör': 'speakers',
-  'soundbar': 'soundbars', 'ses çubuğu': 'soundbars',
-  'smartwatch': 'smartwatches', 'akıllı saat': 'smartwatches', 'watch': 'smartwatches',
-  'console': 'consoles', 'oyun konsolu': 'consoles', 'konsol': 'consoles',
-  'gamepad': 'gamepads', 'oyun kolu': 'gamepads', 'controller': 'gamepads',
-  'robot vacuum': 'robot-vacuums', 'robot süpürge': 'robot-vacuums',
-  'powerbank': 'powerbanks', 'power bank': 'powerbanks', 'taşınabilir şarj': 'powerbanks',
-  'e-reader': 'e-readers', 'e-kitap': 'e-readers', 'kindle': 'e-readers',
-  'drone': 'drones', 'dron': 'drones',
+  'hdd': 'ssd',
+  'hard disk': 'ssd',
+  'ram': 'ram',
+  'memory': 'ram',
+  'bellek': 'ram',
+  'gpu': 'gpus',
+  'ekran kartı': 'gpus',
+  'graphics card': 'gpus',
+  'video card': 'gpus',
+  'cpu': 'cpus',
+  'işlemci': 'cpus',
+  'processor': 'cpus',
+  'motherboard': 'motherboards',
+  'anakart': 'motherboards',
+  'psu': 'psu',
+  'güç kaynağı': 'psu',
+  'power supply': 'psu',
+  'case': 'cases',
+  'kasa': 'cases',
+  'pc case': 'cases',
+  'cooler': 'coolers',
+  'soğutucu': 'coolers',
+  'cpu cooler': 'coolers',
+  'projector': 'projectors',
+  'projeksiyon': 'projectors',
+  'speaker': 'speakers',
+  'hoparlör': 'speakers',
+  'soundbar': 'soundbars',
+  'ses çubuğu': 'soundbars',
+  'smartwatch': 'smartwatches',
+  'akıllı saat': 'smartwatches',
+  'watch': 'smartwatches',
+  'console': 'consoles',
+  'oyun konsolu': 'consoles',
+  'konsol': 'consoles',
+  'gamepad': 'gamepads',
+  'oyun kolu': 'gamepads',
+  'controller': 'gamepads',
+  'robot vacuum': 'robot-vacuums',
+  'robot süpürge': 'robot-vacuums',
+  'powerbank': 'powerbanks',
+  'power bank': 'powerbanks',
+  'taşınabilir şarj': 'powerbanks',
+  'e-reader': 'e-readers',
+  'e-kitap': 'e-readers',
+  'kindle': 'e-readers',
+  'drone': 'drones',
+  'dron': 'drones',
 };
 
 /// Resolve any category string to a canonical key in [categoryKeySpecAliases].
@@ -483,68 +560,236 @@ String resolveCategory(String raw) {
 /// Icon for a spec key label.
 IconData iconForSpecKey(String key) {
   final k = key.toLowerCase();
-  if (k.contains('screen') || k.contains('display') || k.contains('ekran') || k.contains('çözünürlük')) return Icons.monitor_rounded;
-  if (k.contains('battery') || k.contains('pil')) return Icons.battery_full_rounded;
-  if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) return Icons.memory_rounded;
-  if (k.contains('processor') || k.contains('cpu') || k.contains('chip') || k.contains('işlemci')) return Icons.developer_board_rounded;
-  if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) return Icons.camera_alt_rounded;
-  if (k.contains('storage') || k.contains('ssd') || k.contains('hdd') || k.contains('depolama') || k.contains('kapasite') || k.contains('capacity') || k.contains('hard disk')) return Icons.storage_rounded;
+  if (k.contains('screen') ||
+      k.contains('display') ||
+      k.contains('ekran') ||
+      k.contains('çözünürlük')) {
+    return Icons.monitor_rounded;
+  }
+  if (k.contains('battery') || k.contains('pil')) {
+    return Icons.battery_full_rounded;
+  }
+  if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) {
+    return Icons.memory_rounded;
+  }
+  if (k.contains('processor') ||
+      k.contains('cpu') ||
+      k.contains('chip') ||
+      k.contains('işlemci')) {
+    return Icons.developer_board_rounded;
+  }
+  if (k.contains('camera') || k.contains('kamera') || k.contains('megapixel')) {
+    return Icons.camera_alt_rounded;
+  }
+  if (k.contains('storage') ||
+      k.contains('ssd') ||
+      k.contains('hdd') ||
+      k.contains('depolama') ||
+      k.contains('kapasite') ||
+      k.contains('capacity') ||
+      k.contains('hard disk')) {
+    return Icons.storage_rounded;
+  }
   if (k.contains('weight') || k.contains('ağırlık')) return Icons.scale_rounded;
-  if (k.contains('5g') || k.contains('4.5g') || k.contains('network') || k.contains('wifi') || k.contains('ağ') || k.contains('bağlantı') || k.contains('connectivity') || k.contains('cellular')) return Icons.signal_cellular_alt_rounded;
-  if (k.contains('gpu') || k.contains('graphic') || k.contains('ekran kartı') || k.contains('vram')) return Icons.videogame_asset_rounded;
-  if (k.contains('os') || k.contains('operating') || k.contains('işletim')) return Icons.phone_android_rounded;
-  if (k.contains('refresh') || k.contains('yenileme')) return Icons.speed_rounded;
+  if (k.contains('5g') ||
+      k.contains('4.5g') ||
+      k.contains('network') ||
+      k.contains('wifi') ||
+      k.contains('ağ') ||
+      k.contains('bağlantı') ||
+      k.contains('connectivity') ||
+      k.contains('cellular')) {
+    return Icons.signal_cellular_alt_rounded;
+  }
+  if (k.contains('gpu') ||
+      k.contains('graphic') ||
+      k.contains('ekran kartı') ||
+      k.contains('vram')) {
+    return Icons.videogame_asset_rounded;
+  }
+  if (k.contains('os') || k.contains('operating') || k.contains('işletim')) {
+    return Icons.phone_android_rounded;
+  }
+  if (k.contains('refresh') || k.contains('yenileme')) {
+    return Icons.speed_rounded;
+  }
   if (k.contains('resolution')) return Icons.high_quality_rounded;
   if (k.contains('panel')) return Icons.grid_view_rounded;
   if (k.contains('hdr')) return Icons.hdr_on_rounded;
-  if (k.contains('noise') || k.contains('anc') || k.contains('gürültü')) return Icons.noise_aware_rounded;
+  if (k.contains('noise') || k.contains('anc') || k.contains('gürültü')) {
+    return Icons.noise_aware_rounded;
+  }
   if (k.contains('heart') || k.contains('kalp')) return Icons.favorite_rounded;
-  if (k.contains('gps') || k.contains('location') || k.contains('navigation') || k.contains('navigasyon')) return Icons.location_on_rounded;
-  if (k.contains('water') || k.contains('su') || k.contains('ip6') || k.contains('atm') || k.contains('waterproof')) return Icons.water_drop_rounded;
-  if (k.contains('sensor') || k.contains('sensör')) return Icons.sensors_rounded;
-  if (k.contains('dpi') || k.contains('sensitivity')) return Icons.mouse_rounded;
-  if (k.contains('switch') || k.contains('anahtar')) return Icons.keyboard_rounded;
-  if (k.contains('port') || k.contains('hdmi') || k.contains('usb') || k.contains('connector') || k.contains('konnektör')) return Icons.settings_input_hdmi_rounded;
-  if (k.contains('speed') || k.contains('hız') || k.contains('clock') || k.contains('frequency') || k.contains('frekans')) return Icons.speed_rounded;
-  if (k.contains('type') || k.contains('tip') || k.contains('form factor')) return Icons.category_rounded;
-  if (k.contains('thread') || k.contains('iş parçacığı')) return Icons.hub_rounded;
-  if (k.contains('core') || k.contains('çekirdek')) return Icons.developer_board_rounded;
-  if (k.contains('socket') || k.contains('soket')) return Icons.electrical_services_rounded;
-  if (k.contains('cache') || k.contains('önbellek')) return Icons.cached_rounded;
-  if (k.contains('tdp') || k.contains('güç') || k.contains('power') || k.contains('watt')) return Icons.bolt_rounded;
-  if (k.contains('cool') || k.contains('soğut') || k.contains('fan')) return Icons.ac_unit_rounded;
-  if (k.contains('warranty') || k.contains('garanti')) return Icons.verified_rounded;
-  if (k.contains('nfc') || k.contains('payment')) return Icons.contactless_rounded;
-  if (k.contains('microphone') || k.contains('mikrofon')) return Icons.mic_rounded;
-  if (k.contains('rgb') || k.contains('backlight') || k.contains('aydınlatma')) return Icons.lightbulb_rounded;
+  if (k.contains('gps') ||
+      k.contains('location') ||
+      k.contains('navigation') ||
+      k.contains('navigasyon')) {
+    return Icons.location_on_rounded;
+  }
+  if (k.contains('water') ||
+      k.contains('su') ||
+      k.contains('ip6') ||
+      k.contains('atm') ||
+      k.contains('waterproof')) {
+    return Icons.water_drop_rounded;
+  }
+  if (k.contains('sensor') || k.contains('sensör')) {
+    return Icons.sensors_rounded;
+  }
+  if (k.contains('dpi') || k.contains('sensitivity')) {
+    return Icons.mouse_rounded;
+  }
+  if (k.contains('switch') || k.contains('anahtar')) {
+    return Icons.keyboard_rounded;
+  }
+  if (k.contains('port') ||
+      k.contains('hdmi') ||
+      k.contains('usb') ||
+      k.contains('connector') ||
+      k.contains('konnektör')) {
+    return Icons.settings_input_hdmi_rounded;
+  }
+  if (k.contains('speed') ||
+      k.contains('hız') ||
+      k.contains('clock') ||
+      k.contains('frequency') ||
+      k.contains('frekans')) {
+    return Icons.speed_rounded;
+  }
+  if (k.contains('type') || k.contains('tip') || k.contains('form factor')) {
+    return Icons.category_rounded;
+  }
+  if (k.contains('thread') || k.contains('iş parçacığı')) {
+    return Icons.hub_rounded;
+  }
+  if (k.contains('core') || k.contains('çekirdek')) {
+    return Icons.developer_board_rounded;
+  }
+  if (k.contains('socket') || k.contains('soket')) {
+    return Icons.electrical_services_rounded;
+  }
+  if (k.contains('cache') || k.contains('önbellek')) {
+    return Icons.cached_rounded;
+  }
+  if (k.contains('tdp') ||
+      k.contains('güç') ||
+      k.contains('power') ||
+      k.contains('watt')) {
+    return Icons.bolt_rounded;
+  }
+  if (k.contains('cool') || k.contains('soğut') || k.contains('fan')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (k.contains('warranty') || k.contains('garanti')) {
+    return Icons.verified_rounded;
+  }
+  if (k.contains('nfc') || k.contains('payment')) {
+    return Icons.contactless_rounded;
+  }
+  if (k.contains('microphone') || k.contains('mikrofon')) {
+    return Icons.mic_rounded;
+  }
+  if (k.contains('rgb') ||
+      k.contains('backlight') ||
+      k.contains('aydınlatma')) {
+    return Icons.lightbulb_rounded;
+  }
   if (k.contains('bluetooth')) return Icons.bluetooth_rounded;
-  if (k.contains('channel') || k.contains('kanal') || k.contains('dolby') || k.contains('atmos') || k.contains('surround')) return Icons.surround_sound_rounded;
-  if (k.contains('subwoofer') || k.contains('bass')) return Icons.speaker_rounded;
-  if (k.contains('brightness') || k.contains('lumen') || k.contains('parlaklık')) return Icons.wb_sunny_rounded;
-  if (k.contains('contrast') || k.contains('kontrast')) return Icons.contrast_rounded;
-  if (k.contains('throw') || k.contains('mesafe') || k.contains('projection')) return Icons.settings_overscan_rounded;
+  if (k.contains('channel') ||
+      k.contains('kanal') ||
+      k.contains('dolby') ||
+      k.contains('atmos') ||
+      k.contains('surround')) {
+    return Icons.surround_sound_rounded;
+  }
+  if (k.contains('subwoofer') || k.contains('bass')) {
+    return Icons.speaker_rounded;
+  }
+  if (k.contains('brightness') ||
+      k.contains('lumen') ||
+      k.contains('parlaklık')) {
+    return Icons.wb_sunny_rounded;
+  }
+  if (k.contains('contrast') || k.contains('kontrast')) {
+    return Icons.contrast_rounded;
+  }
+  if (k.contains('throw') || k.contains('mesafe') || k.contains('projection')) {
+    return Icons.settings_overscan_rounded;
+  }
   if (k.contains('suction') || k.contains('emme')) return Icons.air_rounded;
-  if (k.contains('mopping') || k.contains('mop') || k.contains('silme')) return Icons.cleaning_services_rounded;
+  if (k.contains('mopping') || k.contains('mop') || k.contains('silme')) {
+    return Icons.cleaning_services_rounded;
+  }
   if (k.contains('stabiliz')) return Icons.control_camera_rounded;
   if (k.contains('flight') || k.contains('uçuş')) return Icons.flight_rounded;
-  if (k.contains('range') || k.contains('menzil') || k.contains('coverage') || k.contains('kapsama')) return Icons.cell_tower_rounded;
-  if (k.contains('price') || k.contains('fiyat') || k.contains('cost')) return Icons.attach_money_rounded;
-  if (k.contains('genre') || k.contains('tür')) return Icons.sports_esports_rounded;
-  if (k.contains('rating') || k.contains('puan') || k.contains('score')) return Icons.star_rounded;
-  if (k.contains('multiplayer') || k.contains('online') || k.contains('çok oyunculu')) return Icons.people_rounded;
-  if (k.contains('content') || k.contains('library') || k.contains('içerik') || k.contains('kütüphane')) return Icons.library_books_rounded;
-  if (k.contains('download') || k.contains('indirme') || k.contains('offline') || k.contains('çevrimdışı')) return Icons.download_rounded;
-  if (k.contains('model') || k.contains('token') || k.contains('api')) return Icons.smart_toy_rounded;
-  if (k.contains('integration') || k.contains('plugin') || k.contains('entegrasyon')) return Icons.extension_rounded;
-  if (k.contains('sync') || k.contains('senkronizasyon')) return Icons.sync_rounded;
-  if (k.contains('security') || k.contains('encryption') || k.contains('şifreleme') || k.contains('privacy') || k.contains('gizlilik')) return Icons.lock_rounded;
-  if (k.contains('collaboration') || k.contains('sharing') || k.contains('paylaşım') || k.contains('işbirliği')) return Icons.share_rounded;
+  if (k.contains('range') ||
+      k.contains('menzil') ||
+      k.contains('coverage') ||
+      k.contains('kapsama')) {
+    return Icons.cell_tower_rounded;
+  }
+  if (k.contains('price') || k.contains('fiyat') || k.contains('cost')) {
+    return Icons.attach_money_rounded;
+  }
+  if (k.contains('genre') || k.contains('tür')) {
+    return Icons.sports_esports_rounded;
+  }
+  if (k.contains('rating') || k.contains('puan') || k.contains('score')) {
+    return Icons.star_rounded;
+  }
+  if (k.contains('multiplayer') ||
+      k.contains('online') ||
+      k.contains('çok oyunculu')) {
+    return Icons.people_rounded;
+  }
+  if (k.contains('content') ||
+      k.contains('library') ||
+      k.contains('içerik') ||
+      k.contains('kütüphane')) {
+    return Icons.library_books_rounded;
+  }
+  if (k.contains('download') ||
+      k.contains('indirme') ||
+      k.contains('offline') ||
+      k.contains('çevrimdışı')) {
+    return Icons.download_rounded;
+  }
+  if (k.contains('model') || k.contains('token') || k.contains('api')) {
+    return Icons.smart_toy_rounded;
+  }
+  if (k.contains('integration') ||
+      k.contains('plugin') ||
+      k.contains('entegrasyon')) {
+    return Icons.extension_rounded;
+  }
+  if (k.contains('sync') || k.contains('senkronizasyon')) {
+    return Icons.sync_rounded;
+  }
+  if (k.contains('security') ||
+      k.contains('encryption') ||
+      k.contains('şifreleme') ||
+      k.contains('privacy') ||
+      k.contains('gizlilik')) {
+    return Icons.lock_rounded;
+  }
+  if (k.contains('collaboration') ||
+      k.contains('sharing') ||
+      k.contains('paylaşım') ||
+      k.contains('işbirliği')) {
+    return Icons.share_rounded;
+  }
   if (k.contains('server') || k.contains('sunucu')) return Icons.dns_rounded;
   if (k.contains('country') || k.contains('ülke')) return Icons.public_rounded;
-  if (k.contains('family') || k.contains('aile')) return Icons.family_restroom_rounded;
+  if (k.contains('family') || k.contains('aile')) {
+    return Icons.family_restroom_rounded;
+  }
   if (k.contains('podcast')) return Icons.podcasts_rounded;
   if (k.contains('audio') || k.contains('ses')) return Icons.headphones_rounded;
   if (k.contains('ad') || k.contains('reklam')) return Icons.block_rounded;
-  if (k.contains('stream') || k.contains('simultaneous') || k.contains('ekran sayısı')) return Icons.devices_rounded;
+  if (k.contains('stream') ||
+      k.contains('simultaneous') ||
+      k.contains('ekran sayısı')) {
+    return Icons.devices_rounded;
+  }
   return Icons.info_outline_rounded;
 }

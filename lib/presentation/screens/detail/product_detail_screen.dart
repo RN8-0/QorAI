@@ -35,6 +35,7 @@ import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
+import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/core/product_name_localizer.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
@@ -198,7 +199,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     if (comp.selectedProductIds.isEmpty) return;
     final pool = comp.poolCategory;
     if (pool == null) return;
-    if (pool != widget.product.category) {
+    final current = key_specs.resolveCategory(widget.product.category);
+    final normalizedCurrent = current.isNotEmpty
+        ? current
+        : widget.product.category.toLowerCase().trim();
+    if (pool != normalizedCurrent) {
       ref.read(comparisonStateProvider.notifier).clearSelection();
     }
   }

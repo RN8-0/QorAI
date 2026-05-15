@@ -1461,14 +1461,15 @@ async function startCategoryTranslation(){
 
   try {
     _xlateProgress(0, 0, 'Loading dictionary…');
-    _xlateLog(`▶ Translating category: ${categoryId}`);
+    _xlateLog(`▶ Translating Geizhals products in category: ${categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
 
     _xlateProgress(0, 0, 'Fetching products…');
     // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
     // Unwrap so we can access fields directly. Filter server-side by
     // category for efficiency.
-    const filter = `category="${String(categoryId).replace(/"/g, '\\"')}"`;
+    const safeCategory = String(categoryId).replace(/"/g, '\\"');
+    const filter = `category="${safeCategory}" && source="geizhals.eu"`;
     const rawDocs = await pbGetAll('products', { filter });
     const products = (rawDocs || [])
       .map(d => {
@@ -1477,11 +1478,11 @@ async function startCategoryTranslation(){
       })
       .filter(p => p && p.specs && Object.keys(p.specs).length);
     if (!products.length) {
-      _xlateLog(`No products with specs in this category (raw docs: ${rawDocs?.length || 0}).`, 'warn');
-      toast('Bu kategoride çevrilecek ürün yok', 'w');
+      _xlateLog(`No Geizhals products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
+      toast('Bu kategoride çevrilecek Geizhals ürünü yok', 'w');
       return;
     }
-    _xlateLog(`Found ${products.length} products`);
+    _xlateLog(`Found ${products.length} Geizhals products. Icecat records will not be patched by dictionary translation.`);
 
     _xlateProgress(0, 0, 'Collecting atoms…');
     const atoms = window.QorAiBulkTranslate.collectAtoms(products);

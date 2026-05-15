@@ -37,14 +37,35 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Weight', 'Ağırlık'],
     ],
     'laptops': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
-      ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
-      ['Storage', 'SSD', 'Internal Storage', 'Dahili Depolama', 'Hard Disk (SSD)'],
-      ['Processor', 'CPU', 'İşlemci', 'Processor Model'],
-      ['GPU', 'Graphics Card', 'Ekran Kartı', 'GPU Model', 'Video Card'],
-      ['Battery', 'Battery Life', 'Pil'],
-      ['OS', 'Operating System', 'İşletim Sistemi'],
-      ['Weight', 'Ağırlık'],
+      [
+        'Screen Size',
+        'Display Size',
+        'Display diagonal',
+        'Display',
+        'Ekran Boyutu',
+      ],
+      ['RAM', 'Memory (RAM)', 'Internal memory', 'RAM Kapasitesi'],
+      [
+        'Storage',
+        'SSD',
+        'Internal Storage',
+        'Total storage capacity',
+        'Dahili Depolama',
+        'Hard Disk (SSD)',
+      ],
+      ['Processor', 'CPU', 'İşlemci', 'Processor Model', 'Processor model'],
+      [
+        'GPU',
+        'Graphics Card',
+        'Grafik',
+        'Ekran Kartı',
+        'GPU Model',
+        'Video Card',
+        'On-board graphics card model',
+      ],
+      ['Battery', 'Akku', 'Battery Life', 'Battery capacity', 'Pil'],
+      ['OS', 'Operating System', 'Betriebssystem', 'İşletim Sistemi'],
+      ['Weight', 'Gewicht', 'Ağırlık'],
       ['Display Technology', 'Panel', 'Refresh Rate', 'Yenileme Hızı'],
     ],
     'monitors': [
@@ -257,13 +278,19 @@ class SharedKeySpecsGrid extends StatelessWidget {
     return pool;
   }
 
-  MapEntry<String, String>? _findSpec(Map<String, String> pool, List<String> aliases, Set<String> used) {
+  MapEntry<String, String>? _findSpec(
+    Map<String, String> pool,
+    List<String> aliases,
+    Set<String> used,
+  ) {
     for (final alias in aliases) {
       final aLower = alias.toLowerCase();
       for (final e in pool.entries) {
         if (used.contains(e.key)) continue;
         final eLower = e.key.toLowerCase();
-        if (eLower == aLower || eLower.contains(aLower) || aLower.contains(eLower)) {
+        if (eLower == aLower ||
+            eLower.contains(aLower) ||
+            aLower.contains(eLower)) {
           return e;
         }
       }
@@ -350,7 +377,11 @@ class SharedKeySpecsGrid extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(iconForSpec(key), size: 22, color: theme.colorScheme.primary),
+                Icon(
+                  iconForSpec(key),
+                  size: 22,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -383,10 +414,18 @@ class SharedKeySpecsGrid extends StatelessWidget {
     final v = value.toLowerCase().trim();
     final theme = Theme.of(context);
     if (v == 'true' || v == 'yes' || v == 'var' || v == 'evet' || v == '✓') {
-      return Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary, size: 20);
+      return Icon(
+        Icons.check_circle_rounded,
+        color: theme.colorScheme.primary,
+        size: 20,
+      );
     }
     if (v == 'false' || v == 'no' || v == 'yok' || v == 'hayır' || v == '✗') {
-      return Icon(Icons.cancel_rounded, color: theme.colorScheme.error, size: 20);
+      return Icon(
+        Icons.cancel_rounded,
+        color: theme.colorScheme.error,
+        size: 20,
+      );
     }
     final fontSize = value.length > 16 ? 11.0 : 13.0;
     return Text(
@@ -423,7 +462,11 @@ class SharedKeySpecsGrid extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_rounded, size: 16, color: theme.colorScheme.primary),
+              Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(width: 6),
               Text(
                 AppLocalizations.of(context)?.specs ?? 'Key Specs',
@@ -450,14 +493,25 @@ class SharedKeySpecsGrid extends StatelessWidget {
                         if (idx >= specs.length) return const SizedBox.shrink();
                         final entry = specs[idx];
                         return GestureDetector(
-                          onTap: () => _showSpecDetail(context, entry.key, entry.value),
+                          onTap: () =>
+                              _showSpecDetail(context, entry.key, entry.value),
                           child: Container(
-                            constraints: const BoxConstraints(minHeight: 80, maxHeight: 100),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                            constraints: const BoxConstraints(
+                              minHeight: 80,
+                              maxHeight: 100,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
+                              border: Border.all(
+                                color: theme.dividerColor.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -465,17 +519,22 @@ class SharedKeySpecsGrid extends StatelessWidget {
                                 Icon(
                                   iconForSpec(entry.key),
                                   size: 18,
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
-                                Flexible(child: buildValue(context, entry.value)),
+                                Flexible(
+                                  child: buildValue(context, entry.value),
+                                ),
                                 const SizedBox(height: 2),
                                 Text(
                                   _localizedSpecKey(context, entry.key),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
                                   ),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,

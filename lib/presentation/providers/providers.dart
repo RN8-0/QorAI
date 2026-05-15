@@ -50,6 +50,7 @@ import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
+import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/data/models/product_model.dart';

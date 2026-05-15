@@ -69,6 +69,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   void toggleProduct(String productId, {String? productCategory}) {
     var current = List<String>.from(state.selectedProductIds);
     var pool = state.poolCategory;
+    final normalizedCategory = _normalizeCompareCategory(productCategory);
 
     if (current.contains(productId)) {
       current.remove(productId);
@@ -80,16 +81,16 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
         return;
       }
       if (current.isNotEmpty &&
-          productCategory != null &&
+          normalizedCategory != null &&
           pool != null &&
-          productCategory != pool) {
+          normalizedCategory != pool) {
         // Different category: new pool with only this product
         current = <String>[];
         pool = null;
       }
       current.add(productId);
       if (current.length == 1) {
-        pool = productCategory;
+        pool = normalizedCategory;
       }
     }
     state = state.copyWith(
@@ -97,6 +98,13 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
       setPoolCategory: true,
       poolCategory: current.isEmpty ? null : pool,
     );
+  }
+
+  String? _normalizeCompareCategory(String? raw) {
+    final value = raw?.trim();
+    if (value == null || value.isEmpty) return null;
+    final resolved = key_specs.resolveCategory(value);
+    return resolved.isNotEmpty ? resolved : value.toLowerCase();
   }
 
   /// Clear selection

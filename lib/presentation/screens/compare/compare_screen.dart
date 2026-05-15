@@ -1,4 +1,4 @@
-﻿/// Qor AI - Compare Screen
+/// Qor AI - Compare Screen
 /// Direct spec-by-spec comparison of products in the same category.
 library;
 
@@ -246,8 +246,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       return;
     }
 
-    // Enforce same category
-    final categories = products.map((p) => p.category).toSet();
+    // Enforce same comparable category. Sources use different labels
+    // (for example Geizhals "notebooks" vs Icecat "laptops").
+    final categories = products.map((p) {
+      final resolved = key_specs.resolveCategory(p.category);
+      return resolved.isNotEmpty ? resolved : p.category.toLowerCase();
+    }).toSet();
     if (categories.length > 1) {
       _showCompareNotice(
         context.l10n?.mustBeSameCategory ??
