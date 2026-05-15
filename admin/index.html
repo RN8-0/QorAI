@@ -441,14 +441,25 @@
         <!-- Bulk Scrape -->
         <div class="scraper-panel active" id="bulkScrapePanel">
           <div class="card">
-            <div class="card-title">Bulk Scrape from geizhals.eu</div>
+            <div class="card-title">Geizhals Product Import</div>
             <div class="form-grid">
               <div class="form-field">
+                <label>Import Mode</label>
+                <select class="input" id="scrapeMode" onchange="updateScrapeModeUI()">
+                  <option value="brand">Brand Search</option>
+                  <option value="category">Category Listing</option>
+                </select>
+              </div>
+              <div class="form-field" id="scrapeSearchField">
+                <label>Brand / Search Term</label>
+                <input class="input" id="scrapeSearchTerm" placeholder="e.g. Apple, Asus, MSI">
+              </div>
+              <div class="form-field" id="scrapeCategoryField" style="display:none">
                 <label>Category</label>
                 <select class="input" id="scrapeCategory"></select>
               </div>
               <div class="form-field">
-                <label>Products per Batch</label>
+                <label>Product Limit</label>
                 <input class="input" type="number" id="scrapeMaxProducts" value="200" min="1">
               </div>
               <div class="form-field">
@@ -456,6 +467,9 @@
                 <input class="input" type="number" id="scrapeDelay" value="3000" min="1000" step="500">
               </div>
             </div>
+            <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
+              Searches Geizhals by brand, imports product specs/images/EAN/MPN, and auto-detects the product category. Prices and merchant/store data are not imported.
+            </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
               <button class="btn" id="btnResumeScrape" onclick="resumeBulkScrape()" style="display:none;background:#0891b2;color:#fff">▶ Resume</button>

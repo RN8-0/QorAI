@@ -290,9 +290,30 @@ async function populateScraperCategories() {
   let bulkOpts = '<option value="">Select Category</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
-  QorAiCategories.groups.forEach(group => {
-    bulkOpts += `<optgroup label="${escHtml(group.name)}">`;
-    group.categories.forEach(cat => {
+  const groupForCat = (cat) => {
+    const id = String(cat.id || '');
+    if (/smartphone|tablet|watch|phone/.test(id)) return 'Mobile';
+    if (/notebook|mini_pc|barebone|nuc|thin_client|server|rack19/.test(id)) return 'Computers';
+    if (/graphics|cpu|motherboard|ram|pc_case|psu|cool|thermal|radiator|water/.test(id)) return 'Components';
+    if (/ssd|hdd|drive|storage|sata|nas/.test(id)) return 'Storage';
+    if (/mouse|keyboard|gamepad|joystick|wheel|kvm|pad|stylus/.test(id)) return 'Peripherals';
+    if (/network|router|wifi|modem|switch|access_point|firewall|antenna|media_converter/.test(id)) return 'Networking';
+    if (/tv|hifi|speaker|headphone|soundbar|audio|subwoofer|amplifier|remote|dj/.test(id)) return 'TV & Audio';
+    if (/camera|lens|objective|video|action|film/.test(id)) return 'Photo & Video';
+    if (/ps5|xbox|switch2|console|gaming/.test(id)) return 'Gaming';
+    if (/ups|pdu|power/.test(id)) return 'Power';
+    return 'Other';
+  };
+
+  const grouped = {};
+  QorAiCategories.getAll().filter(cat => !cat.custom).forEach(cat => {
+    const group = groupForCat(cat);
+    (grouped[group] = grouped[group] || []).push(cat);
+  });
+
+  Object.entries(grouped).forEach(([groupName, cats]) => {
+    bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
+    cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;

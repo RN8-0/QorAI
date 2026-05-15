@@ -377,7 +377,7 @@ function mapToPb(json, lang, queueItem = {}) {
     .map(img => img.Pic500x500 || img.Pic || img.HighPic || '')
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i) // dedupe
-    .slice(0, 12);
+    .slice(0, 4);
   // Fall back to the Image envelope object if Gallery was empty
   const imgEnv = d.Image || {};
   const imageUrl = images[0] || imgEnv.Pic500x500 || imgEnv.HighPic || imgEnv.LowPic || '';
@@ -386,7 +386,7 @@ function mapToPb(json, lang, queueItem = {}) {
 
   // Feature groups → specs + specSections
   const specs        = {};
-  const specSections = [];
+  const specSections = {};
 
   // Helper to extract localized name from {Value:"...", Language:"EN"} or string
   const extractName = n => {
@@ -399,7 +399,7 @@ function mapToPb(json, lang, queueItem = {}) {
   for (const fg of (d.FeaturesGroups || [])) {
     const fgg  = fg.FeatureGroup || {};
     const gn   = extractName(fgg.Name) || 'General';
-    const sec  = { section: gn, specs: [] };
+    if (!specSections[gn]) specSections[gn] = {};
 
     for (const f of (fg.Features || [])) {
       const feat = f.Feature || {};
@@ -407,10 +407,9 @@ function mapToPb(json, lang, queueItem = {}) {
       const v    = f.PresentationValue || f.Presentation_Value || f.RawValue || f.Value || '';
       if (k && v) {
         specs[k] = String(v);
-        sec.specs.push({ key: k, val: String(v) });
+        specSections[gn][k] = String(v);
       }
     }
-    if (sec.specs.length) specSections.push(sec);
   }
 
   const specsCount = Object.keys(specs).length;
@@ -452,13 +451,24 @@ async function upsertToPb(data) {
     Object.entries(data).filter(([, v]) => v !== undefined && v !== null && v !== '')
   );
 
-  // Look up existing record by slug
-  const filter   = `slug="${payload.slug}"`;
+  // Look up existing record by stable identifiers first so Icecat enriches
+  // Geizhals records instead of creating duplicates of the same product.
+  const filters = [`slug="${payload.slug}"`];
+  if (payload.gtin) filters.push(`gtin="${String(payload.gtin).replace(/"/g, '\\"')}"`);
+  if (payload.mpn && payload.brand) {
+    filters.push(`mpn="${String(payload.mpn).replace(/"/g, '\\"')}" && brand="${String(payload.brand).replace(/"/g, '\\"')}"`);
+  }
+  const filter   = filters.join(' || ');
   const checkRes = await pbReq('GET', `/api/collections/products/records?filter=${encodeURIComponent(filter)}&perPage=1&skipTotal=1`);
   const existing = checkRes.status === 200 && checkRes.body.items && checkRes.body.items[0];
 
   if (existing) {
-    const r = await pbReq('PATCH', `/api/collections/products/records/${existing.id}`, payload);
+    const updatePayload = { ...payload };
+    if (payload.source === 'icecat' && existing.source && existing.source !== 'icecat') {
+      updatePayload.source = existing.source;
+      if (existing.sourceUrl) updatePayload.sourceUrl = existing.sourceUrl;
+    }
+    const r = await pbReq('PATCH', `/api/collections/products/records/${existing.id}`, updatePayload);
     if (r.status !== 200) throw new Error(`PATCH ${existing.id}: ${JSON.stringify(r.body).slice(0, 300)}`);
     return 'updated';
   }

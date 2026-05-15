@@ -145,6 +145,61 @@ function findCategoryByGeizhalsUrl(url) {
   } catch { return null; }
 }
 
+function findCategoryByGeizhalsSlug(slug) {
+  const token = String(slug || '').trim();
+  if (!token || typeof QorAiCategories === 'undefined') return null;
+  return QorAiCategories.getAll().find(c => c.geizhalsSlug === token || c.id === token) || null;
+}
+
+function detectCategoryFromDoc(doc, fallbackCategory = '') {
+  if (!doc || typeof QorAiCategories === 'undefined') return fallbackCategory || '';
+  const links = Array.from(doc.querySelectorAll('a[href*="cat="]'));
+  for (const a of links) {
+    try {
+      const href = a.getAttribute('href') || '';
+      const u = new URL(href, GEIZHALS_BASE);
+      const cat = u.searchParams.get('cat');
+      const found = findCategoryByGeizhalsSlug(cat);
+      if (found) return found.id;
+    } catch {}
+  }
+
+  const text = (doc.body?.textContent || '').toLowerCase();
+  const all = QorAiCategories.getAll();
+  const sorted = [...all].sort((a, b) => b.name.length - a.name.length);
+  for (const c of sorted) {
+    const name = String(c.name || '').toLowerCase();
+    const de = String(c.nameDe || '').toLowerCase();
+    if ((name && text.includes(name)) || (de && text.includes(de))) return c.id;
+  }
+  return fallbackCategory || '';
+}
+
+function extractProductIdentifiers(doc) {
+  const ids = { gtin: '', mpn: '' };
+  const scan = (key, value) => {
+    const k = String(key || '').toLowerCase();
+    const v = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!v) return;
+    if (!ids.gtin && /\b(ean|gtin|upc)\b/i.test(k)) {
+      const m = v.match(/\b\d{8,14}\b/);
+      if (m) ids.gtin = m[0];
+    }
+    if (!ids.mpn && /(mpn|manufacturer.*part|part.*number|hersteller.*nr|herstellernummer|artikelnummer|modellnummer)/i.test(k)) {
+      ids.mpn = v.split(/\s*[|,;]\s*/)[0].slice(0, 200);
+    }
+  };
+
+  doc.querySelectorAll('dl.specs-grid .specs-grid__item').forEach(item => {
+    scan(item.querySelector('dt')?.textContent, item.querySelector('dd')?.textContent);
+  });
+  doc.querySelectorAll('table tr').forEach(row => {
+    const cells = row.querySelectorAll('th,td');
+    if (cells.length >= 2) scan(cells[0].textContent, cells[1].textContent);
+  });
+  return ids;
+}
+
 function productUrlMatchesCategory(url, categoryId) {
   if (!url || !categoryId) return false;
   const slug = categorySlugFromUrl(url);
@@ -294,6 +349,22 @@ function switchScraperTab(btn) {
   if (panel) panel.classList.add('active');
 }
 
+function updateScrapeModeUI() {
+  const mode = document.getElementById('scrapeMode')?.value || 'brand';
+  const searchField = document.getElementById('scrapeSearchField');
+  const catField = document.getElementById('scrapeCategoryField');
+  const hint = document.getElementById('scrapeModeHint');
+  if (searchField) searchField.style.display = mode === 'brand' ? '' : 'none';
+  if (catField) catField.style.display = mode === 'category' ? '' : 'none';
+  if (hint) {
+    hint.textContent = mode === 'brand'
+      ? 'Searches Geizhals by brand, imports product specs/images/EAN/MPN, and auto-detects the product category. Prices and merchant/store data are not imported.'
+      : 'Uses the selected Geizhals category listing. This is slower and mainly kept for targeted category backfills.';
+  }
+}
+window.updateScrapeModeUI = updateScrapeModeUI;
+document.addEventListener('DOMContentLoaded', updateScrapeModeUI);
+
 // _loadCategoryCounts() and populateScraperCategories() are defined in categories.js
 
 // ═══════════════════════════════════════
@@ -370,6 +441,9 @@ function prepareProductPayload(product) {
     variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
+
+  if (product.gtin) payload.gtin = String(product.gtin).trim().slice(0, 200);
+  if (product.mpn) payload.mpn = String(product.mpn).trim().slice(0, 200);
 
   // Multilingual payload (only if translation pipeline ran inline)
   if (product.multiLangSpecs && typeof product.multiLangSpecs === 'object') {
@@ -1526,6 +1600,12 @@ async function scrapeProductDetail(html, url, categoryId) {
     const found = findCategoryByGeizhalsUrl(url);
     category = found ? found.id : categorySlugFromUrl(url);
   }
+  category = detectCategoryFromDoc(doc, category);
+
+  // ── EAN/GTIN + MPN ──
+  // Keep affiliate-matching identifiers as fields, but do not keep shop,
+  // price or merchant metadata from Geizhals.
+  const identifiers = extractProductIdentifiers(doc);
 
   // ── Tech Score ──
   const techScore = extractTechScore(doc);
@@ -1553,6 +1633,8 @@ async function scrapeProductDetail(html, url, categoryId) {
     techScore: techScore ?? undefined,
     specsCount: Object.keys(rawSpecs).length,
     variantGroup,
+    gtin: identifiers.gtin || undefined,
+    mpn: identifiers.mpn || undefined,
     scrapedAt: new Date().toISOString(),
   };
 }
@@ -1858,6 +1940,87 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
   return allItems;
 }
 
+async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
+  const term = String(searchTerm || '').trim();
+  if (!term) return [];
+  slog(`Collecting from Geizhals search: "${term}"`);
+
+  const allItems = [];
+  const seenUrls = new Set();
+  let page = 1;
+  let emptyCount = 0;
+  let failCount = 0;
+
+  async function fetchSearchPage(url) {
+    let links = [];
+    let blocked = false;
+    let reason = '';
+    try {
+      const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
+        signal: AbortSignal.timeout(90000)
+      });
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json().catch(() => null);
+        links = (data?.links || []).map(u => ({ url: u, techScore: null }));
+      } else {
+        blocked = res.status === 503 || !contentType.includes('application/json');
+        reason = `http-${res.status}`;
+      }
+    } catch (e) {
+      reason = e.message;
+    }
+    if (!blocked && links.length === 0) {
+      try {
+        const html = await proxyFetch(url);
+        if (html) {
+          if (isChallengePage(html)) { blocked = true; reason = 'challenge'; }
+          else links = extractProductLinksFromDoc(parseHTML(html), html);
+        }
+      } catch (e) {
+        reason = reason || e.message;
+      }
+    }
+    return { links, blocked, reason };
+  }
+
+  while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2 && failCount < 3) {
+    const url = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(term)}&${GEIZHALS_LISTING_EXTRA}&pg=${page}`;
+    slog(`Fetching search page ${page}: ${url.substring(0, 90)}...`, 'info');
+    const result = await fetchSearchPage(url);
+    if (result.blocked) {
+      failCount++;
+      slog(`  → Search page blocked (${result.reason || 'unknown'}). Fresh session and retry next page.`, 'warn');
+      await resetProxySessionShared(`search page ${page} blocked`);
+      await sleep(30000);
+      page++;
+      continue;
+    }
+    failCount = 0;
+    if (!result.links.length) {
+      emptyCount++;
+      slog(`  → No products on search page ${page}`, 'warn');
+    } else {
+      emptyCount = 0;
+      let newCount = 0;
+      for (const item of result.links) {
+        if (!seenUrls.has(item.url)) {
+          seenUrls.add(item.url);
+          allItems.push({ url: item.url, techScore: item.techScore, category: '' });
+          newCount++;
+        }
+        if (allItems.length >= maxProducts) break;
+      }
+      slog(`  +${newCount} products (total unique: ${allItems.length})`, 'success');
+    }
+    page++;
+    await sleep(2500 + Math.random() * 1500);
+  }
+
+  slog(`Search URL collection complete: ${allItems.length} unique product URLs`, allItems.length ? 'success' : 'warn');
+  return allItems;
+}
+
 // ═══════════════════════════════════════
 //  15. SEQUENTIAL SCRAPING (NO parallel / NO Promise.all)
 // ═══════════════════════════════════════
@@ -1940,6 +2103,7 @@ window.updateResumeUI = updateResumeUI;
 // even after a PC restart, the next run skips everything already saved
 // and continues with brand-new URLs.
 async function _loadExistingSourceUrls(categoryId) {
+  if (!categoryId) return new Set();
   try {
     const docs = await pbGetAll('products', {
       filter: `category="${String(categoryId).replace(/"/g, '\\"')}"`,
@@ -2247,9 +2411,12 @@ async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
+  const mode = document.getElementById('scrapeMode')?.value || 'brand';
+  const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
   const catSelect = document.getElementById('scrapeCategory');
   const catValue = catSelect ? catSelect.value : '';
-  if (!catValue) { toast('Select a category', 'w'); return; }
+  if (mode === 'brand' && !searchTerm) { toast('Enter a brand or search term', 'w'); return; }
+  if (mode === 'category' && !catValue) { toast('Select a category', 'w'); return; }
 
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
@@ -2260,12 +2427,14 @@ async function startBulkScrape() {
 
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
-  slog(`Bulk scrape: ${catValue}, max ${maxProducts}`, 'info');
+  slog(`Bulk scrape: ${mode === 'brand' ? `"${searchTerm}"` : catValue}, max ${maxProducts}`, 'info');
 
   try {
-    // Phase 1: Collect product URLs via similar-products chain discovery
+    // Phase 1: Collect product URLs from brand search or category listing
     slog('── Phase 1: Collecting product URLs ──', 'info');
-    const urlItems = await collectProductUrls(catValue, maxProducts);
+    const urlItems = mode === 'brand'
+      ? await collectSearchProductUrls(searchTerm, maxProducts)
+      : await collectProductUrls(catValue, maxProducts);
     slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
 
     if (scraperAbort) {
@@ -2295,7 +2464,7 @@ async function startBulkScrape() {
     slog(`── Phase 2: Scraping ${toScrape.length} products ──`, 'info');
 
     // Phase 2: Scrape products sequentially (NO parallel / NO Promise.all)
-    const results = await sequentialScrape(toScrape, catValue, delay);
+    const results = await sequentialScrape(toScrape, mode === 'brand' ? '' : catValue, delay);
 
     slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
     if (results.added > 0 && typeof loadProducts === 'function') {
@@ -2554,4 +2723,3 @@ function downloadScraperLog() {
   a.click();
   URL.revokeObjectURL(url);
 }
-

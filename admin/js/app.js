@@ -1648,6 +1648,53 @@ const MODAL_LANGS = [
 ];
 let _modalLang = 'de';
 
+function normalizeSpecSectionsShape(raw){
+  if(!raw)return null;
+  const out={};
+  const cleanVal=(v)=>{
+    if(v==null)return '';
+    if(typeof v==='string'||typeof v==='number'||typeof v==='boolean')return String(v);
+    if(typeof v==='object'){
+      const direct=v.val??v.value??v.Value??v.PresentationValue??v.Presentation_Value??v.RawValue??v._;
+      if(direct!=null)return String(direct);
+    }
+    return '';
+  };
+  const add=(section,key,value)=>{
+    const sec=String(section||'General').trim()||'General';
+    const k=String(key||'').trim();
+    const v=cleanVal(value).trim();
+    if(!k||!v)return;
+    if(!out[sec])out[sec]={};
+    out[sec][k]=v;
+  };
+  const addSpecList=(section,list)=>{
+    if(Array.isArray(list)){
+      list.forEach(item=>{
+        if(!item||typeof item!=='object')return;
+        add(section,item.key??item.name??item.label??item.Feature?.Name?.Value??item.Feature?.Name,item.val??item.value??item.Value??item.PresentationValue??item.Presentation_Value??item.RawValue);
+      });
+    }else if(list&&typeof list==='object'){
+      Object.entries(list).forEach(([k,v])=>add(section,k,v));
+    }
+  };
+  if(Array.isArray(raw)){
+    raw.forEach(sec=>{
+      if(!sec||typeof sec!=='object')return;
+      addSpecList(sec.section||sec.name||sec.title||'General',sec.specs||sec.values||sec.items||sec);
+    });
+  }else if(typeof raw==='object'){
+    Object.entries(raw).forEach(([section,data])=>{
+      if(data&&typeof data==='object'&&('specs'in data||'values'in data||'items'in data)){
+        addSpecList(data.section||data.name||section,data.specs||data.values||data.items);
+      }else{
+        addSpecList(section,data);
+      }
+    });
+  }
+  return Object.keys(out).length?out:null;
+}
+
 function openProduct(id){
   const p=allProducts.find(x=>x.id===id);if(!p)return;
   // Default to user's saved preference (else German source)
@@ -1677,17 +1724,28 @@ function _renderProductModal(p){
   // Build localized sections on the fly: keep the original German section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
   // inside via the cached multiLangSpecs lookup.
-  let sections = p.specSections && Object.keys(p.specSections).length ? p.specSections : null;
-  if (sections && ml) {
-    const secMap = (lang !== 'de' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
+  let sections = normalizeSpecSectionsShape(p.specSections);
+  let directLocalizedSections = false;
+  const rawLangSections = (lang !== 'de' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
+  const isSimpleSectionNameMap = rawLangSections && !Array.isArray(rawLangSections) && typeof rawLangSections === 'object' &&
+    Object.values(rawLangSections).every(v => typeof v === 'string');
+  if (rawLangSections && !isSimpleSectionNameMap) {
+    const directSections = normalizeSpecSectionsShape(rawLangSections);
+    if (directSections) { sections = directSections; directLocalizedSections = true; }
+  }
+  if (sections && ml && !directLocalizedSections) {
+    const secMap = rawLangSections
+      ? (isSimpleSectionNameMap ? rawLangSections : normalizeSpecSectionsShape(rawLangSections))
+      : null;
     const localized = {};
     for (const [sec, obj] of Object.entries(sections)) {
       if (!obj || typeof obj !== 'object') continue;
-      const localSec = (secMap && secMap[sec]) ? secMap[sec] : sec;
+      const localSec = (secMap && secMap[sec] && typeof secMap[sec] === 'string') ? secMap[sec] : sec;
       localized[localSec] = {};
       for (const [k, v] of Object.entries(obj)) {
+        const directSectionVal = secMap && secMap[sec] && typeof secMap[sec] === 'object' ? secMap[sec][k] : null;
         const tk = ml[k] || k;
-        const tv = ml[String(v)] || v;
+        const tv = directSectionVal || ml[String(v)] || v;
         localized[localSec][tk] = tv;
       }
     }

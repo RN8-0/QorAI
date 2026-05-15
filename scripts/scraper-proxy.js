@@ -527,7 +527,7 @@ async function extractCategoryLinks(page) {
    ═══════════════════════════════════════════ */
 async function extractProductDetail(page) {
   return await page.evaluate(() => {
-    const r = { name: '', images: [], specs: {}, url: location.href };
+    const r = { name: '', images: [], specs: {}, gtin: '', mpn: '', url: location.href };
 
     // Name
     const h1 = document.querySelector('h1');
@@ -544,7 +544,7 @@ async function extractProductDetail(page) {
         const val = img.getAttribute(attr);
         if (val && val.includes('gzhls.at/pix')) {
           const clean = val.trim().split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/-n.webp');
-          if (!seenImg.has(clean)) { seenImg.add(clean); r.images.push(clean); }
+          if (!seenImg.has(clean) && r.images.length < 4) { seenImg.add(clean); r.images.push(clean); }
           break;
         }
       }
@@ -553,7 +553,7 @@ async function extractProductDetail(page) {
       const href = a.getAttribute('href');
       if (href) {
         const clean = href.trim().split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/-n.webp');
-        if (!seenImg.has(clean)) { seenImg.add(clean); r.images.push(clean); }
+        if (!seenImg.has(clean) && r.images.length < 4) { seenImg.add(clean); r.images.push(clean); }
       }
     });
 
@@ -566,6 +566,13 @@ async function extractProductDetail(page) {
         if (!dt || !dd) return;
         const k = dt.textContent.trim();
         let v = dd.textContent.trim().replace(/\s+/g, ' ');
+        if (!r.gtin && /\b(ean|gtin|upc)\b/i.test(k)) {
+          const m = v.match(/\b\d{8,14}\b/);
+          if (m) r.gtin = m[0];
+        }
+        if (!r.mpn && /(mpn|manufacturer.*part|part.*number|hersteller.*nr|herstellernummer|artikelnummer|modellnummer)/i.test(k)) {
+          r.mpn = v.split(/\s*[|,;]\s*/)[0].slice(0, 200);
+        }
         if (k && v && k.length > 1 && k.length < 80 && v.length < 800) {
           r.specs[k] = v;
         }

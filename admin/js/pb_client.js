@@ -71,6 +71,11 @@ async function _findRecord(collection, identifier, data = {}) {
     const variantGroup = String(data.variantGroup || '').trim();
     const name = String(data.name || '').trim();
     const category = String(data.category || '').trim();
+    const gtin = String(data.gtin || '').trim();
+    const mpn = String(data.mpn || '').trim();
+    const brand = String(data.brand || '').trim();
+    if (gtin) filters.push(`gtin="${_escapeFilterValue(gtin)}"`);
+    if (mpn && brand) filters.push(`mpn="${_escapeFilterValue(mpn)}" && brand="${_escapeFilterValue(brand)}"`);
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
     if (variantGroup && category) filters.push(`variantGroup="${_escapeFilterValue(variantGroup)}" && category="${_escapeFilterValue(category)}"`);
     if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
@@ -413,4 +418,3 @@ function handleGitHubLogin() {
 function logoutAdmin() {
   try { getPb().authStore.clear(); } catch (_) {}
 }
-
