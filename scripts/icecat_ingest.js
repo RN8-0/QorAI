@@ -157,10 +157,17 @@ if (CAT_WHITELIST) {
   }
 }
 
+function canonicalCategory(slug) {
+  const s = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (['laptop', 'laptops', 'notebook', 'notebooks', 'notebooks-laptops'].includes(s)) return 'laptops';
+  return s;
+}
+
 // ─── Key specs per category (displayed in compare + AI prompts) ───────────────
 
 const KEY_SPEC_NAMES = {
   laptops:                ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
+  notebooks:              ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
   smartphones:            ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Main Camera','Battery Capacity (Typical)','Network'],
   tablets:                ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Operating System','Battery Capacity (Typical)'],
   smartwatches:           ['Display diagonal','Display resolution','Battery Life','Water resistance','Operating System','Bluetooth','GPS'],
@@ -204,17 +211,52 @@ function modelFamilyKey({ name, brand, category }) {
   let s = String(name || '').toLowerCase();
   const b = String(brand || '').toLowerCase().trim();
   if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
+  const familyProbe = s
+    .replace(/[()[\],"'’]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const familyPatterns = [
+    /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
+    /\b(ideapad\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(elitebook\s+\d+\s*g\d+)\b/i,
+    /\b(probook\s+\d+\s*g\d+)\b/i,
+    /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
+    /\b(latitude\s+\d+)\b/i,
+    /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
+    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
+  ];
+  for (const re of familyPatterns) {
+    const m = familyProbe.match(re);
+    if (m && m[1]) {
+      const fam = slugify(m[1]);
+      if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+    }
+  }
+  const mac = familyProbe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
+  if (mac) {
+    const chip = familyProbe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
+    const fam = slugify(`${mac[1]} ${chip ? chip[1] : ''}`);
+    if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+  }
   s = s
     .replace(/\[([^\]]*)\]/g, ' $1 ')
+    .replace(/\((?:intel|amd|qualcomm|apple)\)/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*cm\b/gi, ' ')
     .replace(/\(\s*\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\s*\)/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\b/gi, ' ')
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, ' ')
     .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
     .replace(/\b\d+\s*mah\b/gi, ' ')
+    .replace(/\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
+    .replace(/\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
+    .replace(/\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b/gi, ' ')
     .replace(/\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-c|5g|4g|lte|wi-fi|wifi|wlan|bluetooth)\b/gi, ' ')
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
+    .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
     .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
     .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
@@ -398,7 +440,7 @@ function mapToPb(json, lang, queueItem = {}) {
   const gtin     = (gi.GTIN && Array.isArray(gi.GTIN) && gi.GTIN[0]) || queueItem.ean || '';
   const name     = gi.Title        || d.Name           || '';
   const catId    = parseInt(gc.CategoryID || 0);
-  const category = CAT_MAP[catId]  || 'other';
+  const category = canonicalCategory(CAT_MAP[catId] || 'other');
 
   // Images — Icecat publishes 3 variants per asset:
   //   Pic       → original (often 5000×5000, 5MB)   — too big for the app
@@ -489,6 +531,103 @@ function passesIcecatQuality(payload) {
   return count >= minSpecsForCategory(payload.category);
 }
 
+// ─── Category sync ────────────────────────────────────────────────────────────
+
+const CATEGORY_NAMES = {
+  laptops: 'Laptops',
+  desktops: 'Desktops',
+  smartphones: 'Smartphones',
+  tablets: 'Tablets',
+  monitors: 'Monitors',
+  tvs: 'TVs',
+  ram: 'RAM',
+  ssds: 'SSDs',
+  hdds: 'Hard Drives',
+  cpus: 'CPUs',
+  motherboards: 'Motherboards',
+  keyboards: 'Keyboards',
+  mice: 'Mice',
+  cameras: 'Cameras',
+  routers: 'Routers',
+  ups: 'UPS',
+};
+const ensuredCategories = new Set();
+const touchedCategories = new Set();
+let categorySyncWarned = false;
+
+function titleFromCategory(slug) {
+  return CATEGORY_NAMES[slug] || String(slug || 'other')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, s => s.toUpperCase());
+}
+
+function iconForCategory(slug) {
+  if (/smartphone|phone/.test(slug)) return 'smartphone';
+  if (/tablet/.test(slug)) return 'tablet';
+  if (/laptop|desktop|pc|server|thin/.test(slug)) return 'computer';
+  if (/camera|camcorder/.test(slug)) return 'camera';
+  if (/headphone|speaker|audio/.test(slug)) return 'headphones';
+  if (/keyboard|mouse/.test(slug)) return 'keyboard';
+  if (/ssd|hdd|storage|nas|drive/.test(slug)) return 'hard-drive';
+  if (/tv|monitor|display|projector/.test(slug)) return 'monitor';
+  if (/router|network|wifi|switch/.test(slug)) return 'wifi';
+  if (/cpu|ram|motherboard|graphics|psu|cool/.test(slug)) return 'cpu';
+  return 'box';
+}
+
+async function upsertCategoryRecord(slug, productCount) {
+  const safeSlug = String(slug || '').replace(/"/g, '\\"');
+  const name = titleFromCategory(slug);
+  const payload = {
+    slug,
+    name,
+    nameEn: name,
+    icon: iconForCategory(slug),
+    emoji: '',
+    order: 1000,
+    isActive: true,
+    subcategories: [],
+  };
+  if (Number.isFinite(productCount)) payload.productCount = productCount;
+
+  const check = await pbReq('GET', `/api/collections/categories/records?filter=${encodeURIComponent(`slug="${safeSlug}"`)}&perPage=1&skipTotal=1`);
+  if (check.status !== 200) throw new Error(`categories lookup failed: ${JSON.stringify(check.body).slice(0, 200)}`);
+  const existing = check.body.items && check.body.items[0];
+  const res = existing
+    ? await pbReq('PATCH', `/api/collections/categories/records/${existing.id}`, payload)
+    : await pbReq('POST', '/api/collections/categories/records', payload);
+  if (![200, 201].includes(res.status)) throw new Error(`categories upsert failed: ${JSON.stringify(res.body).slice(0, 200)}`);
+}
+
+async function ensureCategoryRecord(slug) {
+  const category = canonicalCategory(slug);
+  if (!category || ensuredCategories.has(category)) return;
+  try {
+    await upsertCategoryRecord(category);
+    ensuredCategories.add(category);
+  } catch (e) {
+    if (!categorySyncWarned) {
+      categorySyncWarned = true;
+      log(`Category sync skipped: ${e.message || e}`, 'warn');
+    }
+  }
+}
+
+async function syncTouchedCategoryCounts() {
+  for (const category of touchedCategories) {
+    try {
+      const safeSlug = String(category).replace(/"/g, '\\"');
+      const countRes = await pbReq('GET', `/api/collections/products/records?filter=${encodeURIComponent(`category="${safeSlug}"`)}&perPage=1`);
+      if (countRes.status !== 200) continue;
+      await upsertCategoryRecord(category, Number(countRes.body.totalItems || 0));
+    } catch (e) {
+      log(`Category count sync failed for ${category}: ${e.message || e}`, 'warn');
+    }
+  }
+}
+
 // ─── PocketBase upsert ────────────────────────────────────────────────────────
 
 async function upsertToPb(data) {
@@ -496,6 +635,11 @@ async function upsertToPb(data) {
   const payload = Object.fromEntries(
     Object.entries(data).filter(([, v]) => v !== undefined && v !== null && v !== '')
   );
+  if (payload.category) {
+    payload.category = canonicalCategory(payload.category);
+    touchedCategories.add(payload.category);
+    await ensureCategoryRecord(payload.category);
+  }
 
   // Look up existing record by stable identifiers first so Icecat enriches
   // Geizhals records instead of creating duplicates of the same product.
@@ -634,6 +778,7 @@ async function phase23_enrichImport() {
 
   saveProgress(prog);
   log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
+  await syncTouchedCategoryCounts();
   log(`Progress saved to ${path.basename(PROGRESS_FILE)} — run with --resume to continue later`, 'ok');
 }
 

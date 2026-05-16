@@ -1058,7 +1058,12 @@ class PbDataSource {
     try {
       final result = await _pb
           .collection(AppConstants.categoriesCollection)
-          .getList(page: 1, perPage: 100, sort: 'order')
+          .getList(
+            page: 1,
+            perPage: 100,
+            sort: 'order',
+            filter: 'isActive = true && productCount > 0',
+          )
           .timeout(const Duration(seconds: 10));
       return result.items.map((r) => CategoryModel.fromPb(r)).toList();
     } catch (e) {

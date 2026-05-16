@@ -533,18 +533,24 @@
 
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
               <div class="form-field" style="grid-column:span 2">
-                <label>Kategoriler (Icecat Open Catalog · ücretsiz · gerçek ürün sayıları)</label>
-                <input class="input" id="icecatCatSearch" placeholder="Kategori ara..." style="margin-bottom:8px" oninput="icecatFilterCats()">
-                <div id="icecatCatList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:260px;overflow:auto;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:var(--surface-1,#0e0e0e)">
-                  <div class="text-muted" style="font-size:12px;grid-column:1/-1">Yükleniyor…</div>
-                </div>
                 <input type="hidden" id="icecatCats" value="">
-                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectAllCats()">Tümünü Seç</button>
-                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectNoneCats()">Hiçbiri</button>
-                  <button class="btn btn-ghost btn-sm" type="button" onclick="icecatRenderCats()">↻ Yenile</button>
-                  <small class="text-muted" id="icecatCatSummary" style="margin-left:auto;font-size:11px"></small>
-                </div>
+                <details id="icecatCatPicker" style="border:1px solid var(--surface-3,#2a2a2a);border-radius:8px;background:var(--surface-1,#0e0e0e);padding:0">
+                  <summary style="cursor:pointer;list-style:none;padding:10px 12px;display:flex;align-items:center;gap:10px">
+                    <span style="font-weight:700">Kategoriler</span>
+                    <small class="text-muted" id="icecatCatSummary" style="margin-left:auto;font-size:11px">Yükleniyor…</small>
+                  </summary>
+                  <div style="padding:0 12px 12px">
+                    <input class="input" id="icecatCatSearch" placeholder="Kategori ara..." style="margin-bottom:8px" oninput="icecatFilterCats()">
+                    <div id="icecatCatList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:220px;overflow:auto;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:#0a0a0a">
+                      <div class="text-muted" style="font-size:12px;grid-column:1/-1">Yükleniyor…</div>
+                    </div>
+                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectAllCats()">Tümünü Seç</button>
+                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectNoneCats()">Hiçbiri</button>
+                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatRenderCats()">↻ Yenile</button>
+                    </div>
+                  </div>
+                </details>
               </div>
               <div class="form-field">
                 <label>Diller (uygulamadaki 12 dil)</label>
@@ -663,9 +669,10 @@
           <div class="card" style="margin-bottom:14px">
             <div class="card-title">🌍 Translate Category (Bulk)</div>
             <p class="text-muted" style="margin-bottom:12px">
-              Pick a category and translate every product into 11 languages.
-              Terms already in the dictionary are reused (zero API cost); only
-              new atoms hit DeepSeek and are then learned for the next run.
+              Pick a Geizhals category. Only products with source=geizhals.eu are translated;
+              Icecat records are skipped because they already include multilingual specs.
+              Terms already in the dictionary are reused (zero API cost); only new atoms hit
+              DeepSeek and are then learned for the next run.
             </p>
             <div class="form-grid" style="grid-template-columns:2fr auto auto;gap:8px;align-items:end">
               <div class="form-field">

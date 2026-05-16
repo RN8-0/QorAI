@@ -22,7 +22,7 @@ class CategoryModel extends CategoryEntity {
   factory CategoryModel.fromPb(RecordModel record) {
     final data = record.data;
     return CategoryModel(
-      id: record.id,
+      id: data['slug'] ?? data['id'] ?? record.id,
       name: data['name'] ?? '',
       icon: data['icon'] ?? '',
       emoji: data['emoji'],

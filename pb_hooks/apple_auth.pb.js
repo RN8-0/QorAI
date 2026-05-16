@@ -13,6 +13,35 @@
 
 const APPLE_ISSUER = "https://appleid.apple.com";
 const APPLE_EXPECTED_AUD = "com.qorai.app"; // App Bundle ID
+const DEFAULT_SIGNUP_BONUS = 20;
+
+function _readSignupBonusFromConfig() {
+  try {
+    const rec = $app.findFirstRecordByData("public_config", "key", "signup_bonus_q_coins");
+    if (!rec) return DEFAULT_SIGNUP_BONUS;
+    const raw = rec.get("value");
+    let parsed = raw;
+    if (typeof raw === "string") {
+      try { parsed = JSON.parse(raw); } catch (_) { parsed = raw; }
+    }
+    const n = Number(parsed);
+    if (!isFinite(n) || n < 0) return DEFAULT_SIGNUP_BONUS;
+    return Math.floor(n);
+  } catch (_) {
+    return DEFAULT_SIGNUP_BONUS;
+  }
+}
+
+function _grantSignupBonusIfEmpty(userRecord) {
+  try {
+    const current = Number(userRecord.get("bonusQCoins") || 0);
+    if (current > 0) return;
+    const bonus = _readSignupBonusFromConfig();
+    if (bonus <= 0) return;
+    userRecord.set("bonusQCoins", bonus);
+    try { userRecord.set("dailyAiCreditsUsed", 0); } catch (_) {}
+  } catch (_) {}
+}
 
 // ── Pure-JS base64url → string decoder (goja has no atob) ───────────────────
 const B64CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -129,6 +158,7 @@ routerAdd("POST", "/api/auth/apple", (e) => {
       userRecord.set("name",            displayName);
       userRecord.set("displayName",     displayName);
       try { userRecord.set("appleId", appleUserId); } catch (_) {}
+      _grantSignupBonusIfEmpty(userRecord);
 
       $app.save(userRecord);
     } else {

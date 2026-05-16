@@ -3109,7 +3109,7 @@ final productVariantsProvider = FutureProvider.autoDispose
         final variants = products.where((p) {
           if (p.id == product.id) return false;
           if (baseGroup.isNotEmpty && p.variantGroup.isNotEmpty) {
-            return p.variantGroup == baseGroup;
+            if (p.variantGroup == baseGroup) return true;
           }
           return normalizeProductName(p.name) == baseName;
         }).toList();

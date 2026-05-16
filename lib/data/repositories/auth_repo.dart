@@ -11,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart' show pb, kPbBaseUrl;
 import 'package:qor_ai/data/datasources/hive_ds.dart';
@@ -83,6 +84,7 @@ class AuthRepository {
       if (gender != null) body['gender'] = gender;
       await _pb.collection('users').create(body: body);
       await _pb.collection('users').authWithPassword(email, password);
+      await _ensureSignupBonusForCurrentUser();
 
       // Verification mail gönder — hata olursa kullanıcıyı bilgilendir
       // (mail gelmediği halde "gelir" demek yerine açıkça söyle).
@@ -117,6 +119,31 @@ class AuthRepository {
           originalError: e,
         ),
       );
+    }
+  }
+
+  Future<void> _ensureSignupBonusForCurrentUser() async {
+    try {
+      if (!_pb.authStore.isValid) return;
+      final uid = _pb.authStore.record?.id;
+      if (uid == null || uid.isEmpty) return;
+      final record = await _pb.collection('users').getOne(uid);
+      final email = (record.getStringValue('email')).toLowerCase();
+      if (email.endsWith('@qorai.local')) return;
+      final current = (record.data['bonusQCoins'] as num?)?.toDouble() ??
+          double.tryParse(record.data['bonusQCoins']?.toString() ?? '') ??
+          0;
+      if (current > 0) return;
+      await _pb.collection('users').update(
+        uid,
+        body: {
+          'bonusQCoins': AppConstants.signupBonusQCoins,
+          'dailyAiCreditsUsed': 0,
+        },
+      );
+      await _pb.collection('users').authRefresh();
+    } catch (e) {
+      debugPrint('[auth] signup bonus ensure failed: $e');
     }
   }
 
@@ -293,6 +320,7 @@ class AuthRepository {
       };
       final recModel = RecordModel.fromJson(recJson);
       _pb.authStore.save(token, recModel);
+      await _ensureSignupBonusForCurrentUser();
 
       final recordId = record['id']?.toString();
       final profileUpdate = <String, dynamic>{
@@ -421,6 +449,7 @@ class AuthRepository {
       };
       final recModel = RecordModel.fromJson(recJson);
       _pb.authStore.save(token, recModel);
+      await _ensureSignupBonusForCurrentUser();
       return Success(UserModel.fromPb(recModel));
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
@@ -490,6 +519,7 @@ class AuthRepository {
 
       // Best-effort profile sync — only backfill empty fields
       _syncProfileFromOAuth(authData, providerName);
+      await _ensureSignupBonusForCurrentUser();
 
       return Success(UserModel.fromPb(authData.record));
     } on ClientException catch (e) {

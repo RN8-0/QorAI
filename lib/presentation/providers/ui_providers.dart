@@ -321,11 +321,48 @@ final categoriesProvider = FutureProvider<Result<List<CategoryModel>>>((
 
 /// Removes variant suffixes from product name — for grouping
 String normalizeProductName(String name) {
-  return name
+  final lower = name.toLowerCase();
+  final probe = lower
+      .replaceAll(RegExp(r'''[()[\],"']'''), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  final familyPatterns = <RegExp>[
+    RegExp(r'\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b'),
+    RegExp(r'\b(ideapad\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b'),
+    RegExp(r'\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b'),
+    RegExp(r'\b(elitebook\s+\d+\s*g\d+)\b'),
+    RegExp(r'\b(probook\s+\d+\s*g\d+)\b'),
+    RegExp(r'\b(zbook\s+[a-z0-9]+\s*g\d+)\b'),
+    RegExp(r'\b(latitude\s+\d+)\b'),
+    RegExp(r'\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b'),
+    RegExp(r'\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b'),
+    RegExp(r'\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b'),
+    RegExp(r'\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b'),
+  ];
+  for (final re in familyPatterns) {
+    final m = re.firstMatch(probe);
+    if (m != null) return m.group(1)!.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+  final mac = RegExp(
+    r'\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)',
+  ).firstMatch(probe);
+  if (mac != null) {
+    final chip = RegExp(r'\b(m\d+(?:\s*(?:pro|max|ultra))?)\b').firstMatch(probe);
+    return '${mac.group(1)} ${chip?.group(1) ?? ''}'
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  return lower
+      .replaceAll(RegExp(r'\((?:intel|amd|qualcomm|apple)\)'), '')
       .replaceAll(RegExp(r'\b\d+\s*TB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+\s*GB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+\s*MB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+/\d+\b'), '') // 8/256 RAM/Storage combos
+      .replaceAll(RegExp(r'\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b'), '')
+      .replaceAll(RegExp(r'\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b'), '')
+      .replaceAll(RegExp(r'\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b'), '')
+      .replaceAll(RegExp(r'\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim()
       .toLowerCase();
@@ -390,52 +427,7 @@ List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
 
 /// Normalize product name for dedup (strip storage/color/connectivity variants)
 String _normalizeProductName(String name) {
-  return name
-      .toLowerCase()
-      // Strip storage in parentheses: (256GB), (1 TB), (512 MB)
-      .replaceAll(
-        RegExp(r'\s*\(\d+\s*(?:gb|tb|mb)\)', caseSensitive: false),
-        '',
-      )
-      // Strip standalone storage anywhere: 256GB, 1TB, 512 MB
-      .replaceAll(RegExp(r'\b\d+\s*(?:gb|tb|mb)\b', caseSensitive: false), '')
-      // Strip RAM+Storage combos: 8/256, 12/512
-      .replaceAll(RegExp(r'\b\d+/\d+\b'), '')
-      // Strip connectivity: Wi-Fi + Cellular, Wi-Fi+Cellular, Wi-Fi, WiFi, 5G, LTE, Cellular
-      .replaceAll(
-        RegExp(r'\bwi-fi\s*\+\s*cellular\b', caseSensitive: false),
-        '',
-      )
-      .replaceAll(RegExp(r'\bwi-fi\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bwifi\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bcellular\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\b5g\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\blte\b', caseSensitive: false), '')
-      // Strip common Apple colors
-      .replaceAll(RegExp(r'\bspace\s*gr[ae]y\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bnatural\s*titanium\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bblack\s*titanium\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bwhite\s*titanium\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'\bdesert\s*titanium\b', caseSensitive: false), '')
-      .replaceAll(
-        RegExp(
-          r'\b(?:starlight|midnight|silver|gold|black|white|blue|purple|pink|red|green|yellow|orange|graphite|sierra\s*blue|alpine\s*green|deep\s*purple|product\s*red)\b',
-          caseSensitive: false,
-        ),
-        '',
-      )
-      // Strip color parentheticals: (Black), (Cosmic Black)
-      .replaceAll(
-        RegExp(
-          r'\s*\([^)]*(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight)[^)]*\)',
-          caseSensitive: false,
-        ),
-        '',
-      )
-      // Normalize whitespace and trailing separators
-      .replaceAll(RegExp(r'[\s\-,/]+$'), '')
-      .replaceAll(RegExp(r'\s{2,}'), ' ')
-      .trim();
+  return normalizeProductName(name);
 }
 
 /// Static per-category cache — survives provider re-reads, cleared only on app restart.

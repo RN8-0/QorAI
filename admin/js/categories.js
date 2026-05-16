@@ -77,6 +77,24 @@ window.QorAiCustomCategories = {
   },
 };
 
+const CATEGORY_ALIASES = Object.freeze({
+  laptop: 'laptops',
+  laptops: 'laptops',
+  notebook: 'laptops',
+  notebooks: 'laptops',
+  notebooks_laptops: 'laptops',
+});
+
+function normalizeCategoryId(input) {
+  const raw = String(input || '').trim().toLowerCase();
+  if (!raw) return '';
+  const slug = raw
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return CATEGORY_ALIASES[slug] || slug;
+}
+
 window.QorAiCategories = {
   groups: [
     {
@@ -95,7 +113,7 @@ window.QorAiCategories = {
         { id: 'drive_adapters',        name: 'Drive Adapters',             geizhalsSlug: 'hdadko' },
         { id: 'storage_systems',       name: 'Storage Systems',            geizhalsSlug: 'hdesys' },
         { id: 'storage_accessories',   name: 'Storage Accessories',        geizhalsSlug: 'hdzub' },
-        { id: 'notebooks',             name: 'Notebooks / Laptops',        geizhalsSlug: 'nb' },
+        { id: 'laptops',               name: 'Notebooks / Laptops',        geizhalsSlug: 'nb' },
         { id: 'cpu_amd_am4',           name: 'AMD AM4 CPUs',               geizhalsSlug: 'cpuamdam4' },
         { id: 'cpu_intel_1151',        name: 'Intel 1151 CPUs',            geizhalsSlug: 'cpu1151' },
         { id: 'cpu_server',            name: 'Server / Workstation CPUs',  geizhalsSlug: 'cpucoproz' },
@@ -204,6 +222,10 @@ window.QorAiCategories = {
     },
   ],
 
+  canonicalId(id) {
+    return normalizeCategoryId(id);
+  },
+
   getAll() {
     const base = this.groups.flatMap(g => g.categories);
     const custom = QorAiCustomCategories.getAll();
@@ -217,7 +239,8 @@ window.QorAiCategories = {
   },
 
   getById(id) {
-    return this.getAll().find(c => c.id === id);
+    const canonical = this.canonicalId(id);
+    return this.getAll().find(c => c.id === canonical || c.id === id);
   },
 
   getByGroup(groupName) {
@@ -253,6 +276,125 @@ function escHtml(value) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function _titleFromCategoryId(id) {
+  return String(id || 'other')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, s => s.toUpperCase());
+}
+
+function _categoryIconFor(id) {
+  const slug = normalizeCategoryId(id);
+  if (/smartphone|phone/.test(slug)) return 'smartphone';
+  if (/tablet/.test(slug)) return 'tablet';
+  if (/laptop|notebook|desktop|pc|server|thin_client/.test(slug)) return 'computer';
+  if (/watch/.test(slug)) return 'watch';
+  if (/camera|lens|camcorder/.test(slug)) return 'camera';
+  if (/headphone|speaker|audio|soundbar/.test(slug)) return 'headphones';
+  if (/keyboard|mouse|pad|stylus/.test(slug)) return 'keyboard';
+  if (/ssd|hdd|storage|nas|drive/.test(slug)) return 'hard-drive';
+  if (/tv|monitor|display|projector/.test(slug)) return 'monitor';
+  if (/router|network|wifi|switch/.test(slug)) return 'wifi';
+  if (/cpu|ram|motherboard|graphics|psu|cool/.test(slug)) return 'cpu';
+  return 'box';
+}
+
+function _categoryEmojiFor(id) {
+  const slug = normalizeCategoryId(id);
+  if (/smartphone|phone/.test(slug)) return '📱';
+  if (/tablet/.test(slug)) return '▣';
+  if (/laptop|notebook|desktop|pc|server/.test(slug)) return '💻';
+  if (/watch/.test(slug)) return '⌚';
+  if (/camera/.test(slug)) return '📷';
+  if (/headphone|speaker|audio|soundbar/.test(slug)) return '🎧';
+  if (/tv|monitor|display|projector/.test(slug)) return '🖥️';
+  if (/cpu|ram|motherboard|graphics/.test(slug)) return '⚙️';
+  return '📦';
+}
+
+function _categoryOrderFor(id) {
+  const all = window.QorAiCategories?.getAll?.() || [];
+  const idx = all.findIndex(c => c.id === normalizeCategoryId(id));
+  return idx >= 0 ? idx + 1 : 1000;
+}
+
+function _safePbFilterValue(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function syncCategoryRecord(categoryId) {
+  const slug = normalizeCategoryId(categoryId);
+  if (!slug || typeof getPb !== 'function' || typeof pbSetDoc !== 'function') return null;
+  const catDef = window.QorAiCategories?.getById?.(slug);
+  const name = catDef?.name || _titleFromCategoryId(slug);
+  let productCount = 0;
+  try {
+    const res = await getPb().collection('products').getList(1, 1, {
+      filter: `category="${_safePbFilterValue(slug)}"`,
+      $autoCancel: false,
+    });
+    productCount = Number(res.totalItems || 0);
+  } catch (e) {
+    console.warn('[category-sync] count failed:', slug, e.message || e);
+  }
+  const payload = {
+    slug,
+    name,
+    nameEn: name,
+    icon: _categoryIconFor(slug),
+    emoji: _categoryEmojiFor(slug),
+    order: _categoryOrderFor(slug),
+    isActive: true,
+    productCount,
+    subcategories: [],
+  };
+  try {
+    return await pbSetDoc('categories', slug, payload);
+  } catch (e) {
+    console.warn('[category-sync] upsert failed:', slug, e.message || e);
+    return null;
+  }
+}
+
+async function syncAllProductCategories() {
+  if (typeof getPb !== 'function') return {};
+  const counts = {};
+  try {
+    const pb = getPb();
+    const total = (await pb.collection('products').getList(1, 1, { $autoCancel: false })).totalItems;
+    const pages = Math.ceil(total / 500);
+    for (let page = 1; page <= pages; page++) {
+      const res = await pb.collection('products').getList(page, 500, { $autoCancel: false });
+      for (const p of res.items) {
+        const slug = normalizeCategoryId(p.category);
+        if (!slug) continue;
+        counts[slug] = (counts[slug] || 0) + 1;
+      }
+      if (res.items.length < 500) break;
+    }
+    for (const slug of Object.keys(counts)) {
+      await syncCategoryRecord(slug);
+    }
+    try {
+      const existing = await pb.collection('categories').getFullList({ $autoCancel: false });
+      await Promise.all(existing
+        .filter(cat => cat.slug && !counts[normalizeCategoryId(cat.slug)])
+        .map(cat => pb.collection('categories').update(cat.id, {
+          productCount: 0,
+          isActive: false,
+        }, { $autoCancel: false }))
+      );
+    } catch (e) {
+      console.warn('[category-sync] stale category update failed:', e.message || e);
+    }
+    window._catCountCache = null;
+  } catch (e) {
+    console.warn('[category-sync] full sync failed:', e.message || e);
+  }
+  return counts;
+}
+
 // ── PB product count cache ──
 window._catCountCache = null;
 
@@ -278,7 +420,7 @@ async function _loadCategoryCounts(sourceFilter = '') {
     for (let page = 1; page <= pages; page++) {
       const res = await pb.collection('products').getList(page, 500, opts);
       res.items.forEach(p => {
-        const c = p.category;
+        const c = normalizeCategoryId(p.category);
         if (c) counts[c] = (counts[c] || 0) + 1;
       });
       if (res.items.length < 500) break;
@@ -306,7 +448,7 @@ async function populateScraperCategories() {
   const groupForCat = (cat) => {
     const id = String(cat.id || '');
     if (/smartphone|tablet|watch|phone/.test(id)) return 'Mobile';
-    if (/notebook|mini_pc|barebone|nuc|thin_client|server|rack19/.test(id)) return 'Computers';
+    if (/laptop|notebook|mini_pc|barebone|nuc|thin_client|server|rack19/.test(id)) return 'Computers';
     if (/graphics|cpu|motherboard|ram|pc_case|psu|cool|thermal|radiator|water/.test(id)) return 'Components';
     if (/ssd|hdd|drive|storage|sata|nas/.test(id)) return 'Storage';
     if (/mouse|keyboard|gamepad|joystick|wheel|kvm|pad|stylus/.test(id)) return 'Peripherals';
@@ -354,6 +496,26 @@ async function populateScraperCategories() {
       }
     });
     bulkOpts += '</optgroup>';
+  }
+
+  const knownIds = new Set(QorAiCategories.getAll().map(cat => cat.id));
+  const syncedIds = Object.keys(counts).filter(id => id && !knownIds.has(id)).sort();
+  if (syncedIds.length) {
+    flatOpts += `<optgroup label="Synced">`;
+    const dictSynced = [];
+    syncedIds.forEach(id => {
+      const cnt = counts[id] || 0;
+      const ghCnt = geizhalsCounts[id] || 0;
+      const name = _titleFromCategoryId(id);
+      flatOpts += `<option value="${escHtml(id)}">${escHtml(name)}${cnt > 0 ? ` (${cnt})` : ''}</option>`;
+      if (ghCnt > 0) {
+        dictSynced.push(`<option value="${escHtml(id)}">${escHtml(name)} (${ghCnt})</option>`);
+      }
+    });
+    flatOpts += '</optgroup>';
+    if (dictSynced.length) {
+      dictOpts += `<optgroup label="Synced">${dictSynced.join('')}</optgroup>`;
+    }
   }
 
   const setSel = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
@@ -463,3 +625,14 @@ window.addCustomCategory = addCustomCategory;
 window.removeCustomCategory = removeCustomCategory;
 window.importCategoriesFromText = importCategoriesFromText;
 window.renderCustomCategoriesList = renderCustomCategoriesList;
+window.QorAiCategorySync = { syncCategoryRecord, syncAllProductCategories };
+
+window.addEventListener('qorai:product-saved', (event) => {
+  const rawCategory = event?.detail?.product?.category || event?.detail?.category || '';
+  const category = normalizeCategoryId(rawCategory);
+  if (!category) return;
+  window._catCountCache = null;
+  syncCategoryRecord(category)
+    .then(() => populateScraperCategories().catch(() => {}))
+    .catch(e => console.warn('[category-sync] product-saved failed:', e.message || e));
+});

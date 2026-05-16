@@ -1179,14 +1179,52 @@ function _adminVariantStorageMB(p){
   return best;
 }
 
+function _adminNormalizeFamilyName(p){
+  let s=String(p?.name||'').toLowerCase();
+  const brand=String(p?.brand||'').toLowerCase().trim();
+  if(brand)s=s.replace(new RegExp(`^${brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i'),'');
+  const probe=s.replace(/[()[\],"'’]/g,' ').replace(/\s+/g,' ').trim();
+  const patterns=[
+    /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
+    /\b(ideapad\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(elitebook\s+\d+\s*g\d+)\b/i,
+    /\b(probook\s+\d+\s*g\d+)\b/i,
+    /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
+    /\b(latitude\s+\d+)\b/i,
+    /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
+    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
+  ];
+  for(const re of patterns){
+    const m=probe.match(re);
+    if(m&&m[1])return m[1].toLowerCase().replace(/\s+/g,' ').trim();
+  }
+  const mac=probe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
+  if(mac){
+    const chip=probe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
+    return `${mac[1]} ${chip?chip[1]:''}`.toLowerCase().replace(/\s+/g,' ').trim();
+  }
+  return s
+    .replace(/\((?:intel|amd|qualcomm|apple)\)/gi,'')
+    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi,'')
+    .replace(/\b\d+\s*\/\s*\d+\b/g,'')
+    .replace(/\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi,'')
+    .replace(/\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b/gi,'')
+    .replace(/\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b/gi,'')
+    .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,'')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|titanium|siyah|beyaz|gri|mavi)\b/gi,'')
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-|-$/g,'');
+}
+
 function _adminProductFamilyKey(p){
   const vg=String(p?.variantGroup||'').trim().toLowerCase();
+  const nameKey=_adminNormalizeFamilyName(p);
+  if(nameKey)return `${p?.category||''}|${p?.brand||''}|${nameKey}`;
   if(vg)return `${p?.category||''}|${vg}`;
-  return `${p?.category||''}|${p?.brand||''}|${String(p?.name||'').toLowerCase()
-    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi,'')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|titanium)\b/gi,'')
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/^-|-$/g,'')}`;
+  return `${p?.category||''}|${p?.brand||''}|${p?.id||''}`;
 }
 
 function groupProductFamilies(products){
@@ -1523,6 +1561,7 @@ async function startCategoryTranslation(){
         const body = (typeof d.data === 'function') ? d.data() : d;
         return { id: d.id || body.id, ...body };
       })
+      .filter(p => String(p?.source || '') === 'geizhals.eu')
       .filter(p => p && p.specs && Object.keys(p.specs).length);
     if (!products.length) {
       _xlateLog(`No Geizhals products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
@@ -1594,6 +1633,10 @@ async function startCategoryTranslation(){
     let done = 0, failed = 0;
     for (const p of products) {
       if (_catXlateAbort) break;
+      if (String(p?.source || '') !== 'geizhals.eu') {
+        _xlateLog(`↷ skipped non-Geizhals product: ${p?.name || p?.id || 'unknown'}`, 'warn');
+        continue;
+      }
       try {
         const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
         const patch = {
@@ -1672,6 +1715,7 @@ async function wipeAllProducts(){
     selectedIds.clear();
     document.getElementById('selectionBar').style.display = 'none';
     renderProductsPage();
+    try { await window.QorAiCategorySync?.syncAllProductCategories?.(); } catch {}
     toast(`✅ ${ids.length} ürün silindi`, 's');
   } catch (e) {
     toast('Hata: ' + e.message, 'e');
