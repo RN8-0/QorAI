@@ -3122,8 +3122,11 @@ final productVariantsProvider = FutureProvider.autoDispose
       // 1) Try from already-cached homeFeed (instant, no network)
       final feedAsync = ref.read(homeFeedProvider);
       final cached = feedAsync.valueOrNull;
+      final categoryKey = product.category.toLowerCase().trim() == 'notebooks'
+          ? 'laptops'
+          : product.category;
       if (cached != null) {
-        final catKey = product.category.toLowerCase().trim();
+        final catKey = categoryKey.toLowerCase().trim();
         final catProducts = cached.byCategory[catKey] ?? [];
         // Also search all products in case category key doesn't match
         final allProducts = cached.trending;
@@ -3136,7 +3139,7 @@ final productVariantsProvider = FutureProvider.autoDispose
       try {
         final ds = ref.read(pbDataSourceProvider);
         final tsProducts = await ds
-            .getProductsByCategoryTs(category: product.category, limit: 250)
+            .getProductsByCategoryTs(category: categoryKey, limit: 500)
             .timeout(const Duration(seconds: 6));
         if (tsProducts.isNotEmpty) {
           return filterVariants(tsProducts.cast<ProductEntity>());
@@ -3147,7 +3150,7 @@ final productVariantsProvider = FutureProvider.autoDispose
       try {
         final result = await ref
             .read(productRepositoryProvider)
-            .getProducts(category: product.category, limit: 250)
+            .getProducts(category: categoryKey, limit: 500)
             .timeout(const Duration(seconds: 8));
         return result.when(
           success: (products) => filterVariants(products),

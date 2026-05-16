@@ -1089,7 +1089,7 @@ async function loadProducts(){
       document.getElementById('productCount').textContent=totalProductCount.toLocaleString();
     }
     // Populate filters from categories.js if available, otherwise from loaded data
-    populateFiltersFromData();
+    await populateFiltersFromData();
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
 }
 
@@ -1104,6 +1104,7 @@ function queueProductsRefresh(){
 
 window.addEventListener('qorai:product-saved',e=>{
   const p=e.detail?.product;
+  _productFacetCache.ts=0;
   if(p&&Array.isArray(allProducts)){
     const item={id:e.detail?.id||p.id||p.slug,...p};
     const before=allProducts.length;
@@ -1116,34 +1117,53 @@ window.addEventListener('qorai:product-saved',e=>{
   queueProductsRefresh();
 });
 
-function populateFiltersFromData(){
-  // Use QorAiCategories if available (from categories.js)
-  let cats=[],brands=[];
-  if(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll){
-    cats=QorAiCategories.getAll().map(c=>({id:c.id,name:c.name}));
+let _productFacetCache={ts:0,brands:[],cats:[]};
+function _adminCategoryLabel(id){
+  const cat=typeof QorAiCategories!=='undefined'&&QorAiCategories.getById?QorAiCategories.getById(id):null;
+  return cat?.name||String(id||'').replace(/[_-]+/g,' ').replace(/\b\w/g,s=>s.toUpperCase());
+}
+async function _loadLiveProductFacets(){
+  const now=Date.now();
+  if(_productFacetCache.ts&&now-_productFacetCache.ts<60000)return _productFacetCache;
+  const brandSet=new Set(),catMap=new Map();
+  try{
+    const pb=getPb();
+    const first=await pb.collection('products').getList(1,1,{$autoCancel:false,fields:'id'});
+    const pages=Math.ceil((first.totalItems||0)/500);
+    for(let page=1;page<=pages;page++){
+      const res=await pb.collection('products').getList(page,500,{$autoCancel:false,fields:'id,brand,category'});
+      for(const p of res.items||[]){
+        const b=String(p.brand||'').trim();
+        const c=String(p.category||'').trim();
+        if(b)brandSet.add(b);
+        if(c)catMap.set(c,_adminCategoryLabel(c));
+      }
+      if(!res.items||res.items.length<500)break;
+    }
+  }catch(e){
+    console.warn('[product-facets] live load failed:',e.message||e);
+    for(const p of allProducts||[]){
+      if(p.brand)brandSet.add(String(p.brand).trim());
+      if(p.category)catMap.set(String(p.category).trim(),_adminCategoryLabel(p.category));
+    }
   }
-  if(typeof QorAiBrands!=='undefined'&&Array.isArray(QorAiBrands)){
-    brands=QorAiBrands.map(b=>typeof b==='string'?b:b.name||b).sort();
-  }
-  // Supplement from sample data if available
-  if(dashSampleProducts&&dashSampleProducts.length){
-    const sampleCats=[...new Set(dashSampleProducts.map(p=>p.category).filter(Boolean))];
-    sampleCats.forEach(c=>{if(!cats.find(x=>x.id===c))cats.push({id:c,name:c})});
-    const sampleBrands=[...new Set(dashSampleProducts.map(p=>p.brand).filter(Boolean))];
-    brands=[...new Set([...brands,...sampleBrands])].sort();
-  }
-  // Supplement from current page
-  if(allProducts.length){
-    const pageCats=[...new Set(allProducts.map(p=>p.category).filter(Boolean))];
-    pageCats.forEach(c=>{if(!cats.find(x=>x.id===c))cats.push({id:c,name:c})});
-    const pageBrands=[...new Set(allProducts.map(p=>p.brand).filter(Boolean))];
-    brands=[...new Set([...brands,...pageBrands])].sort();
-  }
-  cats.sort((a,b)=>a.name.localeCompare(b.name));
+  _productFacetCache={
+    ts:now,
+    brands:[...brandSet].filter(Boolean).sort((a,b)=>a.localeCompare(b)),
+    cats:[...catMap.entries()].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name)),
+  };
+  return _productFacetCache;
+}
+async function populateFiltersFromData(){
+  const prevBrand=document.getElementById('brandFilter')?.value||'';
+  const prevCat=document.getElementById('categoryFilter')?.value||'';
+  const {brands,cats}=await _loadLiveProductFacets();
   const bf=document.getElementById('brandFilter');
   const cf=document.getElementById('categoryFilter');
   if(bf)bf.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
   if(cf)cf.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
+  if(bf&&brands.includes(prevBrand))bf.value=prevBrand;
+  if(cf&&cats.some(c=>c.id===prevCat))cf.value=prevCat;
 }
 
 function buildQuery(){
@@ -1222,9 +1242,10 @@ function _adminNormalizeFamilyName(p){
 function _adminProductFamilyKey(p){
   const vg=String(p?.variantGroup||'').trim().toLowerCase();
   const nameKey=_adminNormalizeFamilyName(p);
-  if(nameKey)return `${p?.category||''}|${p?.brand||''}|${nameKey}`;
-  if(vg)return `${p?.category||''}|${vg}`;
-  return `${p?.category||''}|${p?.brand||''}|${p?.id||''}`;
+  const category=window.QorAiCategories?.canonicalId?window.QorAiCategories.canonicalId(p?.category||''):String(p?.category||'');
+  if(nameKey)return `${category}|${p?.brand||''}|${nameKey}`;
+  if(vg)return `${category}|${vg}`;
+  return `${category}|${p?.brand||''}|${p?.id||''}`;
 }
 
 function groupProductFamilies(products){
@@ -1269,6 +1290,7 @@ async function loadPage(direction,pageOverride){
     displayProducts=allProducts;
 
     totalProductCount=result.totalItems||allProducts.length;
+    if(!_productFacetCache.ts)populateFiltersFromData().catch(()=>{});
 
     // Client-side search filter
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
@@ -1787,14 +1809,82 @@ function normalizeSpecSectionsShape(raw){
   return Object.keys(out).length?out:null;
 }
 
-function openProduct(id){
-  const p=allProducts.find(x=>x.id===id);if(!p)return;
-  // Default to user's saved preference (else German source)
-  _modalLang = localStorage.getItem('qorai_modal_lang') || 'de';
-  _renderProductModal(p);
+function _adminVariantText(p){
+  return [
+    p?.name||'',
+    ...Object.values(p?.keySpecs||{}),
+    ...Object.values(p?.specs||{}).map(v=>String(v||'')),
+  ].join(' ');
 }
 
-function _renderProductModal(p){
+function _adminVariantLabel(p){
+  const text=_adminVariantText(p);
+  const parts=[];
+  const ram=text.match(/\b(\d+)\s*GB\s*(?:RAM|memory|LPDDR|DDR)/i);
+  const matches=[...text.matchAll(/\b(\d+)\s*(TB|GB|MB)\b/gi)];
+  let storage='';
+  for(const m of matches){
+    const n=parseInt(m[1],10)||0;
+    const unit=String(m[2]||'').toUpperCase();
+    const mb=unit==='TB'?n*1024*1024:unit==='GB'?n*1024:n;
+    if(!storage||mb>(_adminVariantLabel._bestMb||0)){
+      _adminVariantLabel._bestMb=mb;
+      storage=`${n} ${unit}`;
+    }
+  }
+  _adminVariantLabel._bestMb=0;
+  const combo=String(p?.name||'').match(/\b(\d+)\s*\/\s*(\d+)\b/);
+  if(!storage&&combo)storage=`${combo[2]} GB`;
+  const colors=['Black','White','Silver','Gold','Blue','Purple','Violet','Pink','Red','Green','Gray','Grey','Cream','Graphite','Lavender','Midnight','Titanium','Siyah','Beyaz','Gri','Mavi','Gümüş'];
+  const color=colors.find(c=>new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i').test(text));
+  if(ram)parts.push(`${ram[1]} GB RAM`);
+  if(storage)parts.push(storage);
+  if(color)parts.push(color);
+  return parts.join(' / ')||String(p?.name||'Variant').slice(0,80);
+}
+
+async function _adminFetchProductVariants(p){
+  const baseKey=_adminProductFamilyKey(p);
+  if(!baseKey)return [p];
+  const filters=[];
+  if(p.category)filters.push(`category="${String(p.category).replace(/"/g,'\\"')}"`);
+  if(p.brand)filters.push(`brand="${String(p.brand).replace(/"/g,'\\"')}"`);
+  try{
+    const docs=await pbGetAll('products',{filter:filters.join(' && '),sort:'name'});
+    const variants=(docs||[])
+      .map(d=>({id:d.id,...(typeof d.data==='function'?d.data():d)}))
+      .filter(x=>_adminProductFamilyKey(x)===baseKey);
+    if(!variants.some(x=>x.id===p.id))variants.push(p);
+    const byId=new Map();
+    variants.forEach(v=>byId.set(v.id,v));
+    return [...byId.values()].sort((a,b)=>{
+      const storageDelta=_adminVariantStorageMB(a)-_adminVariantStorageMB(b);
+      if(storageDelta)return storageDelta;
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+  }catch(e){
+    console.warn('[variants] load failed:',e.message||e);
+    return [p];
+  }
+}
+
+async function openProduct(id){
+  let p=allProducts.find(x=>x.id===id);
+  if(!p){
+    const doc=await pbGetDoc('products',id).catch(()=>null);
+    if(doc?.exists)p={id:doc.id,...doc.data()};
+  }
+  if(!p)return;
+  // Default to user's saved preference (else German source)
+  _modalLang = localStorage.getItem('qorai_modal_lang') || 'de';
+  const body=document.getElementById('modalBody');
+  if(body)body.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading variants...</div>';
+  document.getElementById('modalOverlay').style.display='flex';
+  const variants=await _adminFetchProductVariants(p);
+  _renderProductModal(p,variants);
+}
+
+function _renderProductModal(p,variants=[]){
   const id = p.id;
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the German source.
@@ -1916,7 +2006,10 @@ function _renderProductModal(p){
     })
     .join('');
   const langChip = `<span class="pm-chip" style="padding:2px 8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4)">🌐 <select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit;font-weight:600">${langOptions}</select></span>`;
+  const uniqueVariants=(variants||[]).filter(v=>v&&v.id);
+  const variantPanel=uniqueVariants.length>1?`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:12px"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:8px">Variants</div><div style="display:flex;gap:8px;flex-wrap:wrap">${uniqueVariants.map(v=>`<button class="btn btn-sm ${v.id===id?'btn-primary':'btn-ghost'}" type="button" onclick="openProduct('${escJs(v.id)}')" title="${escHtml(v.name||'')}">${escHtml(_adminVariantLabel(v))}</button>`).join('')}</div></div>`:'';
   body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
+  ${variantPanel}
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
       <div class="card-title">✏️ Edit Product</div>
@@ -1941,11 +2034,9 @@ function closeModal(){document.getElementById('modalOverlay').style.display='non
 // Switch the modal to a different language WITHOUT any API call:
 // the translations have been pre-baked into `multiLangSpecs` during scrape.
 function switchModalLang(id, lang){
-  const p = allProducts.find(x => x.id === id);
-  if (!p) return;
   _modalLang = lang;
   try { localStorage.setItem('qorai_modal_lang', lang); } catch {}
-  _renderProductModal(p);
+  openProduct(id);
 }
 async function saveProductEdit(id){
   const updates={};

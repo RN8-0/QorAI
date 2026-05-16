@@ -295,6 +295,7 @@ async function phase1_index() {
 
   let count = 0;
   const collected = []; // collect all, sort by id desc, then write
+  const seenIcecatIds = new Set();
 
   await new Promise((resolve, reject) => {
     https.get(indexUrl, {
@@ -330,7 +331,8 @@ async function phase1_index() {
         if (!cur.id || !cur.catId) { cur = {}; return; }
         const catId = parseInt(cur.catId);
         const slug = CAT_MAP[catId];
-        if (TARGET_CATS.has(catId) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug))) {
+        if (TARGET_CATS.has(catId) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)) && !seenIcecatIds.has(cur.id)) {
+          seenIcecatIds.add(cur.id);
           collected.push({ id: cur.id, catId, name: cur.name || '', ean: cur.ean || '' });
           count++;
           if (count % 10000 === 0) log(`  Indexed ${count.toLocaleString()} products...`);
@@ -644,6 +646,7 @@ async function upsertToPb(data) {
   // Look up existing record by stable identifiers first so Icecat enriches
   // Geizhals records instead of creating duplicates of the same product.
   const filters = [`slug="${payload.slug}"`];
+  if (payload.icecatId) filters.push(`icecatId=${Number(payload.icecatId) || 0}`);
   if (payload.gtin) filters.push(`gtin="${String(payload.gtin).replace(/"/g, '\\"')}"`);
   if (payload.mpn && payload.brand) {
     filters.push(`mpn="${String(payload.mpn).replace(/"/g, '\\"')}" && brand="${String(payload.brand).replace(/"/g, '\\"')}"`);

@@ -528,7 +528,6 @@ async function populateScraperCategories() {
   setSel('updateCategory', flatOpts);
   setSel('inventoryCategory', flatOpts);
   setSel('qualityScanCategory', flatOpts);
-  setSel('categoryFilter', flatOpts);
 }
 
 // ────────────────────────────────────────────────────────────────
