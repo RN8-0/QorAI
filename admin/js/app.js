@@ -2181,19 +2181,22 @@ function _adminVariantLabel(p){
 }
 
 async function _adminFetchProductVariants(p){
-  const baseKey=_adminProductFamilyKey(p);
-  if(!baseKey)return [p];
-  const filters=[];
-  if(p.category)filters.push(`category="${String(p.category).replace(/"/g,'\\"')}"`);
-  if(p.brand)filters.push(`brand="${String(p.brand).replace(/"/g,'\\"')}"`);
+  // Query the family directly via the indexed variantGroup field — never
+  // pull the brand's whole catalog. Light field projection keeps the modal
+  // fast even for families with dozens of configurations.
+  const vg=String(p.variantGroup||'').trim();
+  if(!vg)return [p];
   try{
-    const docs=await pbGetAll('products',{filter:filters.join(' && '),sort:'name'});
-    const variants=(docs||[])
-      .map(d=>({id:d.id,...(typeof d.data==='function'?d.data():d)}))
-      .filter(x=>_adminProductFamilyKey(x)===baseKey);
-    if(!variants.some(x=>x.id===p.id))variants.push(p);
+    const filter=`variantGroup="${vg.replace(/"/g,'\\"')}" && category="${String(p.category||'').replace(/"/g,'\\"')}"`;
+    const items=await getPb().collection('products').getFullList({
+      filter,
+      sort:'name',
+      fields:'id,name,brand,category,techScore,imageUrl,images,keySpecs,variantGroup,configKey,price,sourceUrl,specsCount',
+      $autoCancel:false,
+    });
     const byId=new Map();
-    variants.forEach(v=>byId.set(v.id,v));
+    items.forEach(v=>byId.set(v.id,v));
+    if(!byId.has(p.id))byId.set(p.id,p);
     return [...byId.values()].sort((a,b)=>{
       const storageDelta=_adminVariantStorageMB(a)-_adminVariantStorageMB(b);
       if(storageDelta)return storageDelta;

@@ -763,13 +763,18 @@ async function isCosmeticDuplicate(icecatId, category, ck) {
 }
 
 function reconcileVariantsNow() {
-  try {
-    log('Reconciling variant groups (exact counts)...');
-    const { spawnSync } = require('child_process');
-    const r = spawnSync(process.execPath, [path.join(__dirname, 'repair_variants.js')], { stdio: 'inherit' });
-    if (r.status !== 0) log('Variant reconcile exited non-zero', 'warn');
-  } catch (e) {
-    log(`Variant reconcile failed: ${e.message}`, 'warn');
+  // After a run: (1) collapse any config duplicates that slipped past the
+  // live dedup — concurrent workers can race on a brand-new config — then
+  // (2) reconcile variantPrimary / variantCount over the cleaned catalog.
+  const { spawnSync } = require('child_process');
+  for (const script of ['dedupe_configs.js', 'repair_variants.js']) {
+    try {
+      log(`Running ${script}...`);
+      const r = spawnSync(process.execPath, [path.join(__dirname, script)], { stdio: 'inherit' });
+      if (r.status !== 0) log(`${script} exited non-zero`, 'warn');
+    } catch (e) {
+      log(`${script} failed: ${e.message}`, 'warn');
+    }
   }
 }
 
