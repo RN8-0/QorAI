@@ -17,6 +17,9 @@ const { req } = require('../migration/pb');
 const NEW_FIELDS = [
   { name: 'variantPrimary', type: 'bool' },
   { name: 'variantCount',   type: 'number', min: 0 },
+  // Normalised configuration key — one row per real CPU/RAM/storage/GPU
+  // config; colour/reseller/language dupes share it. Used to dedupe.
+  { name: 'configKey',      type: 'text', max: 255 },
 ];
 
 const NEW_INDEXES = [
@@ -36,6 +39,8 @@ const NEW_INDEXES = [
   // filter and the sort are both index-served.
   'CREATE INDEX `idx_products_vp_brand` ON `products` (`variantPrimary`, `brand`, `scrapedAt`)',
   'CREATE INDEX `idx_products_vp_cat` ON `products` (`variantPrimary`, `category`, `scrapedAt`)',
+  // configKey lookup — the ingestor checks it to skip duplicate configs.
+  'CREATE INDEX `idx_products_configKey` ON `products` (`category`, `configKey`)',
 ];
 
 async function main() {

@@ -29,6 +29,7 @@ const https    = require('https');
 const zlib     = require('zlib');
 const readline = require('readline');
 const { req: pbReq } = require('../migration/pb');
+const { configKey } = require('./lib/config_key');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,10 @@ const SKIP_PHASE1 = hasFlag('resume') || getOpt('phase', '1') === '2';
 const LIMIT       = parseInt(getOpt('limit',   '0'));
 const DELAY       = parseInt(getOpt('delay',   '800'));
 const WORKERS     = parseInt(getOpt('workers', '3'));
+// Phase 1 cap: at most N index entries per model name. Icecat lists thousands
+// of cosmetic SKUs per model; ~400 random samples still cover every real
+// CPU/RAM/storage configuration. Set --maxPerModel=0 to disable the cap.
+const MAX_PER_MODEL = parseInt(getOpt('maxPerModel', '400'));
 // 12 languages matching the Flutter app's l10n files
 const LANGS_DEFAULT = 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
 const LANGS         = getOpt('langs', LANGS_DEFAULT).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -314,7 +319,7 @@ function loadProgress() {
   try {
     return { skipped: 0, ...JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8')) };
   } catch {
-    return { done: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
+    return { done: 0, created: 0, updated: 0, deduped: 0, skipped: 0, errors: 0 };
   }
 }
 function saveProgress(p) { fs.writeFileSync(PROGRESS_FILE, JSON.stringify(p, null, 2), 'utf8'); }
@@ -333,8 +338,10 @@ async function phase1_index() {
   const indexUrl = 'https://data.icecat.biz/export/freexml.int/EN/files.index.xml';
 
   let count = 0;
+  let capped = 0;
   const collected = []; // collect all, sort by id desc, then write
   const seenIcecatIds = new Set();
+  const modelCounts = new Map(); // `catId:model_name` -> queued count, for the cap
 
   await new Promise((resolve, reject) => {
     https.get(indexUrl, {
@@ -371,6 +378,15 @@ async function phase1_index() {
         const catId = parseInt(cur.catId);
         const slug = CAT_MAP[catId];
         if (TARGET_CATS.has(catId) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)) && !seenIcecatIds.has(cur.id)) {
+          // Per-model cap — drop cosmetic SKUs beyond the sampling limit.
+          const modelKey = `${catId}:${String(cur.name || '').toLowerCase().trim()}`;
+          const seen = modelCounts.get(modelKey) || 0;
+          if (MAX_PER_MODEL > 0 && seen >= MAX_PER_MODEL) {
+            capped++;
+            cur = {};
+            return;
+          }
+          modelCounts.set(modelKey, seen + 1);
           seenIcecatIds.add(cur.id);
           collected.push({ id: cur.id, catId, name: cur.name || '', ean: cur.ean || '' });
           count++;
@@ -428,6 +444,7 @@ async function phase1_index() {
   });
 
   log(`Phase 1 done — ${count.toLocaleString()} products queued → ${path.basename(QUEUE_FILE)}`, 'ok');
+  if (capped) log(`  ${capped.toLocaleString()} cosmetic SKUs skipped by --maxPerModel=${MAX_PER_MODEL}`, 'ok');
   return count;
 }
 
@@ -540,6 +557,7 @@ function mapToPb(json, lang, queueItem = {}) {
     specsEn:      lang === 'EN' ? specs : undefined,
     specsCount,
     variantGroup: modelFamilyKey({ name, brand, category }),
+    configKey:    configKey(name, brand),
     scrapedAt:    new Date().toISOString(),
     gtin, mpn, icecatId,
   };
@@ -716,6 +734,34 @@ async function resolveVariantPrimary(payload) {
   return true;
 }
 
+// ─── Configuration-level dedup ────────────────────────────────────────────────
+// Icecat lists every cosmetic SKU (colour / reseller / keyboard language) as a
+// separate product. We store ONE row per real configuration. configOwner maps
+// `category|configKey` → the icecatId already kept for it, so a same-config
+// product from a different icecatId is recognised as a duplicate and skipped.
+
+const configOwner = new Map();
+
+async function isCosmeticDuplicate(icecatId, category, ck) {
+  if (!ck) return false;
+  const key = `${category}|${ck}`;
+  const owner = configOwner.get(key);
+  if (owner !== undefined) return Number(owner) !== Number(icecatId);
+
+  const filter = encodeURIComponent(
+    `category="${String(category).replace(/"/g, '\\"')}" && configKey="${String(ck).replace(/"/g, '\\"')}"`
+  );
+  const r = await pbReq('GET', `/api/collections/products/records?filter=${filter}&perPage=1&skipTotal=1&fields=icecatId`);
+  if (r.status === 200 && r.body.items && r.body.items[0]) {
+    const ownerId = Number(r.body.items[0].icecatId) || 0;
+    configOwner.set(key, ownerId);
+    return ownerId !== Number(icecatId);
+  }
+  // No row for this config yet — this product becomes its representative.
+  configOwner.set(key, Number(icecatId) || 0);
+  return false;
+}
+
 function reconcileVariantsNow() {
   try {
     log('Reconciling variant groups (exact counts)...');
@@ -825,6 +871,17 @@ async function phase23_enrichImport() {
           continue;
         }
 
+        // Configuration dedup — bail out BEFORE the 11 extra-language fetches
+        // if this is just a cosmetic duplicate (same CPU/RAM/storage, only a
+        // different colour / reseller / keyboard) of a config already kept.
+        if (await isCosmeticDuplicate(icecatId, pbData.category, pbData.configKey)) {
+          prog.deduped = (prog.deduped || 0) + 1;
+          prog.done++;
+          if (prog.done % 10 === 0) saveProgress(prog);
+          await sleep(DELAY);
+          continue;
+        }
+
         // Additional languages — fetched in parallel. The Icecat live API
         // tolerates a small burst of concurrent reads per user; serialising
         // 12 languages with delays would take >10s per product and cap us
@@ -869,7 +926,7 @@ async function phase23_enrichImport() {
       if (prog.done % 100 === 0) {
         saveProgress(prog);
         const pct = ((prog.done - start) / (end - start) * 100).toFixed(1);
-        log(`[w${workerId}] ${prog.done}/${end} (${pct}%) — +${prog.created} new, ~${prog.updated} upd, ${prog.skipped || 0} skip, ${prog.errors} err`);
+        log(`[w${workerId}] ${prog.done}/${end} (${pct}%) — +${prog.created} new, ~${prog.updated} upd, ${prog.deduped || 0} dup, ${prog.skipped || 0} skip, ${prog.errors} err`);
       }
 
       await sleep(DELAY);
@@ -887,7 +944,7 @@ async function phase23_enrichImport() {
     log(`Stopped — progress saved at ${prog.done.toLocaleString()}/${queue.length.toLocaleString()}. Use Resume to continue.`, 'warn');
     return;
   }
-  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
+  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, deduped: ${prog.deduped || 0}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
   reconcileVariantsNow();
   log(`Progress saved to ${path.basename(PROGRESS_FILE)} — run with --resume to continue later`, 'ok');
 }
