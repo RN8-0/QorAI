@@ -32,6 +32,10 @@ const NEW_INDEXES = [
   // let the filter+sort be satisfied by one index.
   'CREATE INDEX `idx_products_vp_scraped` ON `products` (`variantPrimary`, `scrapedAt`)',
   'CREATE INDEX `idx_products_vp_score` ON `products` (`variantPrimary`, `techScore`)',
+  // Grouped list + a brand or category filter: 3-column composites so the
+  // filter and the sort are both index-served.
+  'CREATE INDEX `idx_products_vp_brand` ON `products` (`variantPrimary`, `brand`, `scrapedAt`)',
+  'CREATE INDEX `idx_products_vp_cat` ON `products` (`variantPrimary`, `category`, `scrapedAt`)',
 ];
 
 async function main() {

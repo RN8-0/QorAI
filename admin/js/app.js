@@ -1088,6 +1088,11 @@ function updateCategoryChart(catCounts){
 let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selectedIds=new Set(),viewMode='grid';
 // Grouped product view — one card per model family. Toggled from the toolbar.
 let _groupVariants=true;
+// Raw SKU total (every variant) — shown in the header so it matches the
+// dashboard, while pagination shows the grouped model count.
+let _rawProductTotal=0;
+// Monotonic guard so a slow filter response can't overwrite a newer one.
+let _loadPageSeq=0;
 let dashSampleProducts=null,dashProductTotal=0;
 let totalProductCount=0;
 let _productRefreshTimer=null;
@@ -1186,13 +1191,22 @@ async function loadProducts(){
     currentPage=1;
     _productUiPages=new Map();
     await loadPage();
-    if(totalProductCount){
-      document.getElementById('productCount').textContent=totalProductCount.toLocaleString();
-    }
+    refreshRawProductTotal();
     populateFiltersFromCurrentPage();
     populateCategoryFilterFromCollection().catch(()=>{});
     populateFiltersFromData().catch(e=>console.warn('[product-filters] background load failed:',e.message||e));
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
+}
+
+// Raw catalog size (all variants) for the header — kept separate from the
+// grouped page count so the Products header matches the Dashboard.
+async function refreshRawProductTotal(){
+  try{
+    const r=await getPb().collection('products').getList(1,1,{$autoCancel:false,fields:'id'});
+    if(r&&typeof r.totalItems==='number')_rawProductTotal=r.totalItems;
+    const el=document.getElementById('productCount');
+    if(el)el.textContent=(_rawProductTotal||totalProductCount||0).toLocaleString();
+  }catch(_){/* non-fatal */}
 }
 
 function queueProductsRefresh(){
@@ -1230,13 +1244,14 @@ async function productsLiveTick(){
     const searching=!!(document.getElementById('searchInput')?.value||'').trim();
     const sort=document.getElementById('sortFilter')?.value||'newest';
     totalProductCount=total;
-    const countEl=document.getElementById('productCount');
-    if(countEl)countEl.textContent=total.toLocaleString();
+    refreshRawProductTotal(); // keeps the header (raw SKU count) fresh too
     // Only auto-rerender when it won't fight the user: page 1, newest sort,
-    // no active search. Otherwise the count badge update is enough.
+    // no active search. Otherwise the count update is enough.
     if(!searching&&currentPage===1&&sort==='newest'){
       _productUiPages.delete(1);
       loadPage(null,1).catch(()=>{});
+    }else{
+      renderProductsPage();
     }
   }catch(_){/* tunnel hiccup — try again next tick */}
 }
@@ -1553,7 +1568,15 @@ async function loadPage(direction,pageOverride){
       return;
     }
 
+    // Sequence guard: if the user changes a filter while this request is in
+    // flight, a newer loadPage bumps the counter and this stale response is
+    // discarded instead of overwriting the screen with the wrong filter.
+    const seq=++_loadPageSeq;
+    if(g&&!g.querySelector('.spinner')){
+      g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>';
+    }
     const result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
+    if(seq!==_loadPageSeq)return; // a newer query superseded this one
     if(result.empty&&direction==='next'){currentPage--;toast('Last page','i');return}
 
     if(result.empty){
@@ -1598,7 +1621,9 @@ function renderProductsPage(){
   const g=document.getElementById('productGrid');
   const countEl=document.getElementById('productCount');
   const products=displayProducts||[];
-  if(countEl)countEl.textContent=(totalProductCount||allProducts.length||products.length).toLocaleString();
+  // Header shows the raw catalog size (matches the Dashboard); the grouped
+  // model count is shown in the pagination summary below.
+  if(countEl)countEl.textContent=(_rawProductTotal||totalProductCount||allProducts.length||products.length).toLocaleString();
   if(!products.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
   g.innerHTML=products.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
@@ -1624,7 +1649,12 @@ function renderProductsPage(){
     h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Previous</button>`;
     h+=`<span class="pg-btn" style="cursor:default;font-weight:600">Page ${currentPage}</span>`;
     h+=`<button class="pg-btn" ${hasNext?'':`disabled`} onclick="nextPage()">Next ▶</button>`;
-    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} ${_groupVariants?'models':'products'} · ${products.length} shown</span>`;
+    if(totalProductCount){
+      const summary=_groupVariants
+        ?`${totalProductCount.toLocaleString()} model${_rawProductTotal?` · ${_rawProductTotal.toLocaleString()} SKU`:''} · sayfada ${products.length}`
+        :`${totalProductCount.toLocaleString()} ürün · sayfada ${products.length}`;
+      h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${summary}</span>`;
+    }
   }
   pEl.innerHTML=h;
 }
@@ -1646,7 +1676,9 @@ async function serverSearch(){
     let filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
     // Honour the grouped toggle so search results collapse SKU variants too.
     if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
+    const seq=++_loadPageSeq;
     const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
+    if(seq!==_loadPageSeq)return; // a newer search/filter superseded this one
     const qLow=q.toLowerCase();
     // Sort: exact name match first, then starts-with, then contains, then rest by techScore
     const sorted=result.items.map(p=>({...p,_partial:true})).slice().sort((a,b)=>{
