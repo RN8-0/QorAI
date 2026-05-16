@@ -26,6 +26,12 @@ const NEW_INDEXES = [
   'CREATE INDEX `idx_products_icecatId` ON `products` (`icecatId`)',
   'CREATE INDEX `idx_products_gtin` ON `products` (`gtin`)',
   'CREATE INDEX `idx_products_mpn` ON `products` (`mpn`)',
+  // Composite indexes: the grouped product list filters variantPrimary AND
+  // sorts at the same time. A single-column index can only serve one of the
+  // two, forcing SQLite to scan thousands of recent non-primary rows. These
+  // let the filter+sort be satisfied by one index.
+  'CREATE INDEX `idx_products_vp_scraped` ON `products` (`variantPrimary`, `scrapedAt`)',
+  'CREATE INDEX `idx_products_vp_score` ON `products` (`variantPrimary`, `techScore`)',
 ];
 
 async function main() {
