@@ -102,18 +102,28 @@
     if (CAT_COUNTS) return CAT_COUNTS;
     try {
       const r = await fetch(`${PROXY}/icecat/discover`);
-      if (!r.ok) return null;
+      if (!r.ok) {
+        CAT_COUNTS = {};
+        return CAT_COUNTS;
+      }
       const j = await r.json();
       CAT_COUNTS = {};
       for (const c of (j.categories || [])) CAT_COUNTS[c.catId] = c.count;
       return CAT_COUNTS;
-    } catch { return null; }
+    } catch {
+      CAT_COUNTS = {};
+      return CAT_COUNTS;
+    }
   }
 
   async function icecatRenderCats() {
     const host = $('icecatCatList');
     if (!host) return;
-    await loadDiscover();
+    try {
+      await loadDiscover();
+    } catch {
+      CAT_COUNTS = {};
+    }
 
     // Group by category section
     const groups = {};
@@ -132,12 +142,17 @@
         const count = (CAT_COUNTS && CAT_COUNTS[it.catId]) || 0;
         const isDefault = prevSelected.size ? prevSelected.has(it.slug) : it.defChecked;
         const countLabel = count ? ` <span style="opacity:.55">(${count.toLocaleString('tr-TR')})</span>` : '';
-        const searchText = `${group} ${it.slug} ${it.label}`.toLowerCase();
+        const searchText = `${g} ${it.slug} ${it.label}`.toLowerCase();
         html += `<label class="ic-cat-row" data-search="${searchText.replace(/"/g, '&quot;')}" style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--surface-2,#171717);border-radius:4px;font-size:12px;cursor:pointer">
           <input type="checkbox" class="ic-cat-cb" value="${it.slug}" ${isDefault ? 'checked' : ''}>
           <span>${it.label}${countLabel}</span>
         </label>`;
       }
+    }
+    if (!Object.keys(CAT_COUNTS || {}).length) {
+      html += `<div class="text-muted" style="grid-column:1/-1;font-size:11px;margin-top:8px">
+        Canli Icecat sayilari okunamadi; kategori listesi yedek sabit haritadan gosteriliyor. Proxy calisiyorsa Refresh ile tekrar deneyebilirsin.
+      </div>`;
     }
     host.innerHTML = html;
     host.querySelectorAll('.ic-cat-cb').forEach(cb => cb.addEventListener('change', icecatSyncCats));

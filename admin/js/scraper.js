@@ -1825,6 +1825,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     const pageParam = 'pg';
     let page = 1;
     let emptyCount = 0;
+    let noNewCount = 0;
 
     // Fetch a single listing page through the proxy, returning either
     // { ok: true, links: [...] } or { ok: false, cloudflare: bool, reason }.
@@ -1951,6 +1952,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       const links = pageResult.links;
       if (links.length === 0) {
         emptyCount++;
+        noNewCount++;
         slog(`  → No products on page ${page} (param: ${pageParam})`, 'warn');
       } else {
         emptyCount = 0;
@@ -1963,6 +1965,17 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
           }
         }
         slog(`  +${newCount} products (total unique: ${allItems.length})`, 'success');
+        if (newCount === 0) {
+          noNewCount++;
+          slog(`  → Page ${page} only repeated known products (${noNewCount}/2).`, 'warn');
+        } else {
+          noNewCount = 0;
+        }
+      }
+
+      if (noNewCount >= 2) {
+        slog(`No new products on ${noNewCount} consecutive pages. URL collection is complete; starting scrape with ${allItems.length} collected products.`, 'warn');
+        break;
       }
 
       page++;
@@ -1996,6 +2009,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const seenUrls = new Set();
   let page = 1;
   let emptyCount = 0;
+  let noNewCount = 0;
   let failCount = 0;
 
   async function fetchSearchPage(url) {
@@ -2046,6 +2060,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
     failCount = 0;
     if (!result.links.length) {
       emptyCount++;
+      noNewCount++;
       slog(`  → No products on search page ${page}`, 'warn');
     } else {
       emptyCount = 0;
@@ -2059,6 +2074,17 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
         if (allItems.length >= maxProducts) break;
       }
       slog(`  +${newCount} products (total unique: ${allItems.length})`, 'success');
+      if (newCount === 0) {
+        noNewCount++;
+        slog(`  → Search page ${page} only repeated known products (${noNewCount}/2).`, 'warn');
+      } else {
+        noNewCount = 0;
+      }
+    }
+
+    if (noNewCount >= 2) {
+      slog(`No new search products on ${noNewCount} consecutive pages. URL collection is complete; starting scrape with ${allItems.length} collected products.`, 'warn');
+      break;
     }
     page++;
     await sleep(2500 + Math.random() * 1500);

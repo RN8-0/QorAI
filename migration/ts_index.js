@@ -516,6 +516,7 @@ function extractBrowseFilters(pb) {
 }
 
 async function importBatch(docs) {
+  if (!docs.length) return { ok: 0, fail: 0 };
   // Typesense /documents/import expects JSONL
   const jsonl = docs.map(d => JSON.stringify(d)).join('\n');
   const r = await tsReq('POST', `/collections/${COL}/documents/import?action=upsert`, jsonl, 'text/plain');
@@ -565,6 +566,10 @@ async function pbPage(page) {
   const total = first.totalItems;
   const pages = first.totalPages;
   console.log(`[pb] ${total} products across ${pages} pages`);
+  if (total === 0) {
+    console.log('[ts] DONE: 0 indexed, 0 failed in 0.0s');
+    process.exit(0);
+  }
 
   const t0 = Date.now();
   let okTotal = 0, failTotal = 0, processed = 0;
