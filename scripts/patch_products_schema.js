@@ -20,6 +20,12 @@ const NEW_FIELDS = [
   // Normalised configuration key — one row per real CPU/RAM/storage/GPU
   // config; colour/reseller/language dupes share it. Used to dedupe.
   { name: 'configKey',      type: 'text', max: 255 },
+  // Price rollup — denormalised from the `offers` collection by
+  // scripts/lib/offers.js so the list/app can show & sort by price.
+  { name: 'lowestPrice',         type: 'number', min: 0 },
+  { name: 'lowestPriceCurrency', type: 'text', max: 4 },
+  { name: 'lowestPriceUSD',      type: 'number', min: 0 },
+  { name: 'offerCount',          type: 'number', min: 0 },
 ];
 
 const NEW_INDEXES = [
@@ -41,6 +47,8 @@ const NEW_INDEXES = [
   'CREATE INDEX `idx_products_vp_cat` ON `products` (`variantPrimary`, `category`, `scrapedAt`)',
   // configKey lookup — the ingestor checks it to skip duplicate configs.
   'CREATE INDEX `idx_products_configKey` ON `products` (`category`, `configKey`)',
+  // Price sorting in the grouped product list.
+  'CREATE INDEX `idx_products_vp_price` ON `products` (`variantPrimary`, `lowestPriceUSD`)',
 ];
 
 async function main() {
