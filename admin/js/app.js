@@ -938,11 +938,11 @@ async function countAllProductsInBackground(){
   try{
     const firstRes=await pbGetList('products',1,1,{});
     const total=firstRes.totalItems;
-    totalProductCount=total;
+    // This is the raw SKU total for the dashboard. The Products view tracks
+    // its own (grouped) count via loadPage — don't clobber it here.
     dashProductTotal=total;
-    document.getElementById('dashTotalProducts').textContent=total.toLocaleString();
-    const el=document.getElementById('productCount');
-    if(el)el.textContent=total.toLocaleString();
+    const dt=document.getElementById('dashTotalProducts');
+    if(dt)dt.textContent=total.toLocaleString();
 
     // Fetch all pages for per-category/brand breakdown
     const catCounts={};const brandCounts={};const repairs=[];
@@ -1086,12 +1086,14 @@ function updateCategoryChart(catCounts){
 //  PRODUCTS — Server-side Firestore pagination
 // ═══════════════════════════════════════
 let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selectedIds=new Set(),viewMode='grid';
+// Grouped product view — one card per model family. Toggled from the toolbar.
+let _groupVariants=true;
 let dashSampleProducts=null,dashProductTotal=0;
 let totalProductCount=0;
 let _productRefreshTimer=null;
 const PRODUCT_RAW_PER=120;
 const CATALOG_REPAIR_LIMIT=0;
-const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,sourceUrl,variantGroup,keySpecs,scrapedAt,updatedAt';
+const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
 let _productUiPages=new Map();
 let _lastProductQueryKey='';
 let _facetWarmupRunning=false;
@@ -1188,6 +1190,7 @@ async function loadProducts(){
       document.getElementById('productCount').textContent=totalProductCount.toLocaleString();
     }
     populateFiltersFromCurrentPage();
+    populateCategoryFilterFromCollection().catch(()=>{});
     populateFiltersFromData().catch(e=>console.warn('[product-filters] background load failed:',e.message||e));
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
 }
@@ -1343,7 +1346,31 @@ async function populateFiltersFromData(){
   const {brands,cats}=await _loadLiveProductFacets();
   if(!brands.length&&!cats.length)return;
   if(brands.length)_applySelectOptions('brandFilter',_brandOptionsHtml(brands));
-  if(cats.length)_applySelectOptions('categoryFilter',_categoryOptionsHtml(cats));
+  // Category options come from the dedicated collection (see below); only
+  // fall back to scan-derived cats if that collection load hasn't run yet.
+  if(cats.length&&!document.querySelector('#categoryFilter option[value]'))
+    _applySelectOptions('categoryFilter',_categoryOptionsHtml(cats));
+}
+
+// The cleaned `categories` collection is the single source of truth for the
+// Category filter — one tiny request, always canonical, never a product scan.
+async function populateCategoryFilterFromCollection(){
+  try{
+    const res=await getPb().collection('categories').getList(1,300,{
+      filter:'isActive=true',sort:'name',fields:'slug,name,productCount',$autoCancel:false,
+    });
+    const byId=new Map();
+    for(const c of (res.items||[])){
+      if(!c.slug||(Number(c.productCount)||0)<=0)continue;
+      const id=normalizeAdminCategoryValue(c.slug);
+      if(!id)continue;
+      const count=Number(c.productCount)||0;
+      const ex=byId.get(id);
+      if(!ex||count>ex.count)byId.set(id,{id,name:c.name||_adminCategoryLabel(id),count});
+    }
+    const list=[...byId.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    if(list.length)_applySelectOptions('categoryFilter',_categoryOptionsHtml(list));
+  }catch(e){console.warn('[category-filter] collection load failed:',e.message||e);}
 }
 
 function populateFiltersFromCurrentPage(){
@@ -1389,6 +1416,9 @@ function buildQuery(){
   const date=document.getElementById('dateFilter')?.value||'';
   const sort=document.getElementById('sortFilter')?.value||'newest';
   const filters=[];
+  // Grouped view: show one card per model family (variantPrimary), not one
+  // per SKU/colour. Icecat dumps every variant as its own product row.
+  if(_groupVariants)filters.push('variantPrimary=true');
   if(brand)filters.push(`brand="${brand.replace(/"/g,'\\"')}"`);
   if(cat){
     const catFilter=_adminCategoryFilterVariants(cat)
@@ -1578,7 +1608,9 @@ function renderProductsPage(){
     const name=escHtml(p.name||'');
     const catId=normalizeAdminCategoryValue(p.category,p);
     const category=escHtml(_adminCategoryLabel(catId));
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
+    const vc=Number(p.variantCount)||0;
+    const variantBadge=(_groupVariants&&vc>1)?`<div class="variant-badge" title="${vc} varyant">×${vc>99?'99+':vc}</div>`:'';
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
   }).join('');
   populateFiltersFromCurrentPage();
 
@@ -1592,7 +1624,7 @@ function renderProductsPage(){
     h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Previous</button>`;
     h+=`<span class="pg-btn" style="cursor:default;font-weight:600">Page ${currentPage}</span>`;
     h+=`<button class="pg-btn" ${hasNext?'':`disabled`} onclick="nextPage()">Next ▶</button>`;
-    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} products · ${products.length} shown</span>`;
+    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} ${_groupVariants?'models':'products'} · ${products.length} shown</span>`;
   }
   pEl.innerHTML=h;
 }
@@ -1611,7 +1643,9 @@ async function serverSearch(){
   try{
     const esc=q.replace(/"/g,'\\"');
     // Search by name, brand, category or slug-style id
-    const filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
+    let filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
+    // Honour the grouped toggle so search results collapse SKU variants too.
+    if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
     const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
     const qLow=q.toLowerCase();
     // Sort: exact name match first, then starts-with, then contains, then rest by techScore
@@ -1639,6 +1673,19 @@ function filterProducts(){
   _productUiPages=new Map();
   loadPage();
 }
+
+// Toggle between the grouped view (one card per model family) and the raw
+// view that shows every SKU/variant individually.
+function toggleGroupVariants(){
+  _groupVariants=!_groupVariants;
+  const btn=document.getElementById('groupVariantsBtn');
+  if(btn)btn.textContent=_groupVariants?'⊞ Gruplu':'≣ Tüm SKU';
+  currentPage=1;
+  _productUiPages=new Map();
+  _lastProductQueryKey='';
+  loadPage();
+}
+window.toggleGroupVariants=toggleGroupVariants;
 function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt?new Date(p.updatedAt).getTime():0}
 
 // Old renderProducts replaced by renderProductsPage above

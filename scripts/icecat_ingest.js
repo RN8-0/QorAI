@@ -684,6 +684,49 @@ async function syncTouchedCategoryCounts() {
   }
 }
 
+// ─── Variant grouping ─────────────────────────────────────────────────────────
+// Icecat ships every SKU as its own product. We keep them all, but flag one
+// `variantPrimary` per (category + variantGroup) family so the admin can show
+// a single card per model. The cache means at most one PB lookup per family
+// per run instead of one per product.
+
+const familyHasPrimary = new Map();
+
+function variantFamilyKey(p) {
+  const cat = String(p.category || '').trim().toLowerCase();
+  const vg  = String(p.variantGroup || '').trim().toLowerCase();
+  return vg ? `${cat}|${vg}` : `${cat}|__solo__${p.slug || p.icecatId}`;
+}
+
+// Decide whether a newly-created product should be its family's primary.
+async function resolveVariantPrimary(payload) {
+  const key = variantFamilyKey(payload);
+  if (familyHasPrimary.get(key)) return false;
+  const vg = String(payload.variantGroup || '').replace(/"/g, '\\"');
+  if (vg) {
+    const cat = String(payload.category || '').replace(/"/g, '\\"');
+    const filter = encodeURIComponent(`variantGroup="${vg}" && category="${cat}" && variantPrimary=true`);
+    const r = await pbReq('GET', `/api/collections/products/records?filter=${filter}&perPage=1&skipTotal=1`);
+    if (r.status === 200 && r.body.items && r.body.items.length) {
+      familyHasPrimary.set(key, true);
+      return false;
+    }
+  }
+  familyHasPrimary.set(key, true); // this product becomes the family primary
+  return true;
+}
+
+function reconcileVariantsNow() {
+  try {
+    log('Reconciling variant groups (exact counts)...');
+    const { spawnSync } = require('child_process');
+    const r = spawnSync(process.execPath, [path.join(__dirname, 'repair_variants.js')], { stdio: 'inherit' });
+    if (r.status !== 0) log('Variant reconcile exited non-zero', 'warn');
+  } catch (e) {
+    log(`Variant reconcile failed: ${e.message}`, 'warn');
+  }
+}
+
 // ─── PocketBase upsert ────────────────────────────────────────────────────────
 
 async function upsertToPb(data) {
@@ -720,6 +763,8 @@ async function upsertToPb(data) {
     return 'updated';
   }
 
+  payload.variantPrimary = await resolveVariantPrimary(payload);
+  payload.variantCount   = payload.variantPrimary ? 1 : 0;
   const r = await pbReq('POST', '/api/collections/products/records', payload);
   if (![200, 201].includes(r.status)) throw new Error(`POST: ${JSON.stringify(r.body).slice(0, 300)}`);
   return 'created';
@@ -843,6 +888,7 @@ async function phase23_enrichImport() {
     return;
   }
   log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
+  reconcileVariantsNow();
   log(`Progress saved to ${path.basename(PROGRESS_FILE)} — run with --resume to continue later`, 'ok');
 }
 

@@ -140,6 +140,21 @@ async function pbSetDoc(collection, id, data) {
       record = await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
     } else {
       const createData = _prepareCreateData(collection, id, clean);
+      // New product: flag it as the variant-group primary unless its family
+      // already has one, so the grouped product list stays consistent across
+      // every writer (scraper, manual create…).
+      if (collection === 'products' && createData.variantGroup && createData.variantPrimary === undefined) {
+        try {
+          const fam = await getPb().collection('products').getList(1, 1, {
+            filter: `variantGroup="${_escapeFilterValue(createData.variantGroup)}" && category="${_escapeFilterValue(createData.category || '')}" && variantPrimary=true`,
+            $autoCancel: false, fields: 'id',
+          });
+          createData.variantPrimary = !(fam.items && fam.items.length);
+        } catch (_) {
+          createData.variantPrimary = true;
+        }
+        if (createData.variantPrimary && createData.variantCount === undefined) createData.variantCount = 1;
+      }
       record = await getPb().collection(collection).create(createData, { $autoCancel: false });
     }
   } catch (e) {
