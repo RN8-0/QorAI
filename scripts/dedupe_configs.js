@@ -74,7 +74,7 @@ async function main() {
   const junk = [];
   for (const p of products) {
     if (isJunkBrand(p.brand)) { junk.push(p); continue; }
-    const ck = configKey(p.name, p.brand);
+    const ck = configKey(p);
     const key = ck ? `${p.category || ''}|${ck}` : `${p.category || ''}|__solo__${p.id}`;
     let g = groups.get(key);
     if (!g) groups.set(key, g = { ck, items: [] });

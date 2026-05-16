@@ -17,6 +17,18 @@ function slugify(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
 }
 
+// Reseller / refurbisher "brands" — the same hardware sold under a trader
+// name. Their brand must NOT taint the model key, or a "Forza Refurbished
+// iPhone 15" would never group with the real "Apple iPhone 15".
+const REFURBISHER_BRANDS = new Set([
+  't1a', 'teqcycle', 'upcycle it', 'flex it', 'forza refurbished',
+  'circular computing', 'origin storage', 'bluechip', 'zolyd', 'renewd',
+  'forza', 'greenpanda', 'circular', 'refurbed', 'asgoodasnew',
+]);
+const JUNK_BRANDS = new Set(['qa_test', 'test', 'heat', 'unknown', 'noname', 'no name', 'n/a', 'oem']);
+const isRefurbisherBrand = b => REFURBISHER_BRANDS.has(String(b || '').trim().toLowerCase());
+const isJunkBrand = b => JUNK_BRANDS.has(String(b || '').trim().toLowerCase());
+
 // Model lines whose identifier is "<line> <code>" — matched first for accuracy.
 const FAMILY_PATTERNS = [
   /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
@@ -41,8 +53,10 @@ const FAMILY_PATTERNS = [
   /\b((?:swift|spin|nitro|predator|travelmate|extensa)\s+[a-z0-9-]+)\b/i,
   /\b((?:vivobook|zenbook|expertbook|proart)\s+[a-z0-9-]+)\b/i,
   /\b(rog\s+[a-z0-9-]+)\b/i,
-  /\b(galaxy\s+(?:s|z|a|m|tab)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
-  /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+  // suffix may repeat ("S24 Ultra", "iPhone 15 Pro Max") — "+" is normalised
+  // to " plus " before matching so S24 and S24+ never collapse together.
+  /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
+  /\b(iphone\s+(?:se\s+)?\d+[a-z]*(?:\s+(?:pro|max|plus|mini))*)/i,
   /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
   /\b(surface\s+(?:pro|laptop|go|book|studio)?\s*\d*)\b/i,
 ];
@@ -83,7 +97,7 @@ const STRIP = [
   /\bandroid\s*\d+(?:[.,]\d+)?\b/gi,
   /\b(?:windows|win)\s*\d+(?:[.,]\d+)?(?:\s*(?:pro|home|enterprise|s))?\b/gi,
   /\b(?:windows|macos|mac\s*os|linux|freebsd|free\s*dos|chrome\s*os|no\s*os)\b/gi,
-  /\b(?:pro|home|laptop|notebook|desktop|computer|pc|tablet)\b/gi,
+  /\b(?:laptop|notebook|desktop|computer)\b/gi,
   // languages / colours / regions
   /\b(?:spanish|german|french|italian|english|turkish|dutch|polish|portuguese|swedish|arabic|japanese|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,
   /\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi,
@@ -96,12 +110,16 @@ function modelFamilyKey({ name, brand, category }) {
   const b = String(brand || '').toLowerCase().trim();
   if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
 
-  const probe = s.replace(/[()[\],"'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  // "+" carries meaning (S24 vs S24+) — turn it into a word so \b patterns see it.
+  const probe = s.replace(/\+/g, ' plus ').replace(/[()[\],"'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Pattern names (thinkpad, iphone, ideacentre…) are brand-exclusive, so the
+  // key needs no brand — and dropping it lets refurbisher rebrands collapse
+  // into the real model.
   for (const re of FAMILY_PATTERNS) {
     const m = probe.match(re);
     if (m && m[1]) {
       const fam = slugify(m[1]);
-      if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+      if (fam) return fam.slice(0, 180);
     }
   }
   // MacBook needs the chip kept (Air/Pro M1…M4 are distinct models).
@@ -109,7 +127,7 @@ function modelFamilyKey({ name, brand, category }) {
   if (mac) {
     const chip = probe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
     const fam = slugify(`${mac[1]} ${chip ? chip[1] : ''}`);
-    if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+    if (fam) return fam.slice(0, 180);
   }
 
   for (const re of STRIP) s = s.replace(re, ' ');
@@ -118,8 +136,11 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  const base = [b, s].filter(Boolean).join('-').slice(0, 180);
+  // Generic fallback keeps the brand (cleaned names can collide across
+  // brands) — except for refurbishers, whose trader name must not taint it.
+  const keyBrand = isRefurbisherBrand(b) ? '' : b;
+  const base = [keyBrand, s].filter(Boolean).join('-').slice(0, 180);
   return base || slugify(name) || slugify(category);
 }
 
-module.exports = { modelFamilyKey, slugify };
+module.exports = { modelFamilyKey, slugify, isRefurbisherBrand, isJunkBrand, REFURBISHER_BRANDS, JUNK_BRANDS };

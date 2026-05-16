@@ -493,14 +493,15 @@ function mapToPb(json, lang, queueItem = {}) {
   const specsCount = Object.keys(specs).length;
   const slug       = `icecat-${icecatId}`;
   const sourceUrl  = `https://icecat.biz/p/${slugify(brand)}/${slugify(mpn).slice(0, 50)}-${icecatId}.html`;
+  const variantGroup = modelFamilyKey({ name, brand, category });
 
   return {
     slug, name, brand, category, source: 'icecat', sourceUrl,
     imageUrl, images, specs, specSections,
     specsEn:      lang === 'EN' ? specs : undefined,
     specsCount,
-    variantGroup: modelFamilyKey({ name, brand, category }),
-    configKey:    configKey(name, brand),
+    variantGroup,
+    configKey:    configKey({ name, brand, category, variantGroup }),
     scrapedAt:    new Date().toISOString(),
     gtin, mpn, icecatId,
   };
