@@ -156,7 +156,12 @@ function showView(name){
   document.getElementById(name+'View')?.classList.add('active');
   document.querySelector(`[data-view="${name}"]`)?.classList.add('active');
   if(name==='dashboard')refreshDashboard();
-  if(name==='products'&&!allProducts.length)loadProducts();
+  if(name==='products'){
+    if(!allProducts.length)loadProducts();
+    startProductsLivePoll();
+  }else{
+    stopProductsLivePoll();
+  }
   if(name==='users')loadUsers();
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
@@ -764,8 +769,11 @@ async function refreshDashboard(){
     const statsBrandCounts=stats.brandCounts&&typeof stats.brandCounts==='object'?stats.brandCounts:null;
     const statsUpdatedAt=stats.updatedAt?new Date(stats.updatedAt).getTime():0;
 
-    // Load 500 recent products for charts
-    const sRes=await pbGetList('products',1,500,{sort:'-scrapedAt'});
+    // Load 500 recent products for charts — only the light fields the
+    // dashboard actually reads. Without this projection PocketBase ships the
+    // full record (specs + 12-language multiLangSpecs ≈ 80KB each) and the
+    // 500-row sample alone becomes a ~40MB download over the tunnel.
+    const sRes=await pbGetList('products',1,500,{sort:'-scrapedAt',fields:'id,name,brand,category,techScore,imageUrl,images,scrapedAt,specsCount,keySpecs'});
     const sampleProducts=sRes.items;
     dashSampleProducts=sampleProducts;
 
@@ -800,7 +808,7 @@ async function refreshDashboard(){
   renderDashboardCharts(users,supportItems,sampleProducts);
   renderDashboardHealth({users,products:sampleProducts,supportItems,avgScore,statsUpdatedAt});
 
-    const sampleCats={};sampleProducts.forEach(p=>{if(p.category)sampleCats[p.category]=(sampleCats[p.category]||0)+1});
+    const sampleCats={};sampleProducts.forEach(p=>{const c=normalizeAdminCategoryValue(p.category,p);if(c)sampleCats[c]=(sampleCats[c]||0)+1});
     // Flicker fix: only render if we have full stats; otherwise show loading state until background count completes
     if(statsCategoryCounts&&Object.keys(statsCategoryCounts).length>=2){
       updateCategoryChart(statsCategoryCounts);
@@ -827,9 +835,9 @@ async function refreshDashboard(){
 
     // Recent (from sample)
     const rEl=document.getElementById('dashRecentProducts');
-    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>{const id=escJs(p.id);const img=safeUrl(p.images?.[0]);const name=escHtml(p.name||'');const brand=escHtml(p.brand||'');const category=escHtml(p.category||'');const score=Number(p.techScore)||0;return`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${id}'),300)">${img?`<img class="recent-img" src="${img}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${name}</div><div class="recent-meta">${brand} · ${category}</div></div>${score?`<span class="badge badge-green">${score}</span>`:''}</div>`;}).join('')||'<div class="placeholder">No products</div>';
+    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>{const id=escJs(p.id);const img=safeUrl(p.images?.[0]||p.imageUrl);const name=escHtml(p.name||'');const brand=escHtml(normalizeAdminBrand(p.brand)||p.brand||'');const category=escHtml(_adminCategoryLabel(normalizeAdminCategoryValue(p.category,p)));const score=Number(p.techScore)||0;return`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${id}'),300)">${img?`<img class="recent-img" src="${img}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${name}</div><div class="recent-meta">${brand} · ${category}</div></div>${score?`<span class="badge badge-green">${score}</span>`:''}</div>`;}).join('')||'<div class="placeholder">No products</div>';
 
-    const brands={};sampleProducts.forEach(p=>{if(p.brand)brands[p.brand]=(brands[p.brand]||0)+1});
+    const brands={};sampleProducts.forEach(p=>{const b=normalizeAdminBrand(p.brand);if(b)brands[b]=(brands[b]||0)+1});
     updateTopBrands(statsBrandCounts&&Object.keys(statsBrandCounts).length?statsBrandCounts:brands);
 
     const totalCats=statsCategoryCounts&&Object.keys(statsCategoryCounts).length?Object.keys(statsCategoryCounts).length:Object.keys(sampleCats).length;
@@ -937,20 +945,49 @@ async function countAllProductsInBackground(){
     if(el)el.textContent=total.toLocaleString();
 
     // Fetch all pages for per-category/brand breakdown
-    const catCounts={};const brandCounts={};
+    const catCounts={};const brandCounts={};const repairs=[];
     const totalPages=Math.ceil(total/500);
     for(let page=1;page<=totalPages;page++){
-      const res=await pbGetList('products',page,500,{});
+      // Project to the 3 fields the aggregation needs — pulling full records
+      // here downloads the entire catalog with all specs and is the single
+      // biggest cause of the admin freezing during ingestion.
+      const res=await pbGetList('products',page,500,{fields:'id,brand,category,keySpecs,name'});
       res.items.forEach(p=>{
-        if(p.category)catCounts[p.category]=(catCounts[p.category]||0)+1;
-        if(p.brand)brandCounts[p.brand]=(brandCounts[p.brand]||0)+1;
+        const cat=normalizeAdminCategoryValue(p.category,p);
+        const brand=normalizeAdminBrand(p.brand);
+        if(cat)catCounts[cat]=(catCounts[cat]||0)+1;
+        if(brand)brandCounts[brand]=(brandCounts[brand]||0)+1;
+        if(CATALOG_REPAIR_LIMIT>0&&cat&&cat!==String(p.category||'').trim()&&repairs.length<CATALOG_REPAIR_LIMIT){
+          repairs.push({id:p.id,data:{category:cat}});
+        }
       });
       if(res.items.length<500)break;
+    }
+    if(repairs.length){
+      for(let i=0;i<repairs.length;i+=25){
+        await Promise.all(repairs.slice(i,i+25).map(item=>pbUpdateDoc('products',item.id,item.data).catch(()=>null)));
+      }
+      window._catCountCache=null;
+      _productFacetCache.ts=0;
+      if(document.getElementById('productsView')?.classList.contains('active')){
+        _productUiPages=new Map();
+        queueProductsRefresh();
+      }
     }
     updateCategoryChart(catCounts);
     updateTopBrands(brandCounts);
     updateInsights(total,Object.keys(catCounts).length);
     pbSetDoc('public_config','stats',{productCount:total,categoryCounts:catCounts,brandCounts:brandCounts,updatedAt:new Date().toISOString()}).catch(()=>{});
+    // Feed the freshly counted facets straight into the product filters so
+    // the Brand/Category dropdowns reflect the full catalog without a second
+    // scan from _loadLiveProductFacets.
+    const facets=_facetsFromStats({brandCounts,categoryCounts:catCounts});
+    if(facets){
+      _productFacetCache={ts:Date.now(),brands:facets.brands,cats:facets.cats};
+      if(document.getElementById('productsView')?.classList.contains('active')){
+        populateFiltersFromData().catch(()=>{});
+      }
+    }
   }catch(e){console.error('Count error:',e)}
   _bgCountRunning=false;
 }
@@ -985,14 +1022,15 @@ function updateCategoryChart(catCounts){
   if(parent){const ld=parent.querySelector('.chart-loading');if(ld)ld.remove();}
   if(catChart)catChart.destroy();
 
-  // Map category IDs to display names
-  const catIdToName={};
-  if(typeof QorAiCategories!=='undefined'&&QorAiCategories.groups){
-    QorAiCategories.groups.forEach(g=>{g.categories.forEach(c=>{catIdToName[c.id]=c.name})});
+  const normalizedCounts={};
+  for(const [raw,count] of Object.entries(catCounts||{})){
+    const id=normalizeAdminCategoryValue(raw);
+    const n=Number(count)||0;
+    if(id&&n>0)normalizedCounts[id]=(normalizedCounts[id]||0)+n;
   }
 
-  // Show ALL individual categories sorted by count
-  const entries=Object.entries(catCounts).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
+  // Show ALL canonical categories sorted by count
+  const entries=Object.entries(normalizedCounts).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
   if(!entries.length)return;
 
   const totalCats=entries.length;
@@ -1016,7 +1054,7 @@ function updateCategoryChart(catCounts){
   catChart=new Chart(cCtx,{
     type:'bar',
     data:{
-      labels:entries.map(([id])=>catIdToName[id]||id),
+      labels:entries.map(([id])=>_adminCategoryLabel(id)),
       datasets:[{
         data:entries.map(x=>x[1]),
         backgroundColor:entries.map((_,i)=>cl[i%cl.length]),
@@ -1051,7 +1089,67 @@ let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selected
 let dashSampleProducts=null,dashProductTotal=0;
 let totalProductCount=0;
 let _productRefreshTimer=null;
-const PER=100;
+const PRODUCT_RAW_PER=120;
+const CATALOG_REPAIR_LIMIT=0;
+const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,sourceUrl,variantGroup,keySpecs,scrapedAt,updatedAt';
+let _productUiPages=new Map();
+let _lastProductQueryKey='';
+let _facetWarmupRunning=false;
+
+const ADMIN_BRAND_BLOCKLIST=new Set(['heat','be quiet','be quiet!','unknown','generic','oem','noname','no name','n/a','na','none','sonstige']);
+
+function normalizeAdminBrand(value){
+  let brand=String(value||'').replace(/\s+/g,' ').trim();
+  if(!brand)return '';
+  brand=brand.replace(/[®™]/g,'').trim();
+  if(!brand||ADMIN_BRAND_BLOCKLIST.has(brand.toLowerCase()))return '';
+  if(brand.length<2||brand.length>60)return '';
+  if(!/[a-z0-9]/i.test(brand))return '';
+  return brand;
+}
+
+function normalizeAdminCategoryValue(value,product){
+  let raw=String(value||'').trim();
+  if(window.QorAiCategories?.canonicalId)raw=window.QorAiCategories.canonicalId(raw);
+  const brand=String(product?.brand||'').toLowerCase();
+  const name=String(product?.name||'').toLowerCase();
+  const text=`${brand} ${name} ${Object.values(product?.keySpecs||{}).join(' ')}`.toLowerCase();
+  if((raw==='gaming_consoles'||raw==='gaming_accessories'||raw==='games')&&!/(nintendo|switch|playstation|ps5|xbox|gamepad|controller|console|game\b)/i.test(text)){
+    if(/robot\s*vacuum|vacuum|saug|staubsauger/.test(text))return 'vacuums';
+    if(/power\s*bank|powerbank|battery pack|mah/.test(text))return 'powerbanks';
+    if(/scooter|elektro-roller|e-roller/.test(text))return 'electric_scooters';
+    if(/buds|earbuds|headphone|kopfhorer|kopfhörer/.test(text))return 'headphones';
+    if(/camera|kamera|cam\b|security/.test(text))return 'digital_cameras';
+    if(/redmi|smartphone|phone|android|iphone/.test(text))return 'smartphones';
+  }
+  return raw;
+}
+
+function _adminCategoryFilterVariants(categoryId){
+  const canonical=normalizeAdminCategoryValue(categoryId);
+  const aliases={
+    laptops:['laptops','laptop','notebook','notebooks','notebooks_laptops','notebooks-laptops'],
+    ssd:['ssd','ssds','internal_ssds','internal-ssds'],
+    hard_drives:['hard_drives','hard-drives','hdd','hdds'],
+    external_hdd:['external_hdd','external-hdd','external_hdds','external-hdds'],
+    psu:['psu','psus','power_supplies','power-supplies'],
+    pc_cases:['pc_cases','pc-cases','cases','computer_cases','computer-cases'],
+    cpu_coolers:['cpu_coolers','cpu-coolers','coolers'],
+    cpus:['cpus','cpu','processor','processors'],
+    desktops:['desktops','desktop','all_in_one_pcs','all-in-one-pcs'],
+    nas_servers:['nas_servers','nas-servers','nas'],
+    pcie_nic:['pcie_nic','pcie-nic','network_cards','network-cards'],
+    smartphones:['smartphones','mobile_phones','mobile-phones'],
+    digital_cameras:['digital_cameras','digital-cameras','cameras'],
+    video_cameras:['video_cameras','video-cameras','camcorders'],
+    speakers:['speakers','portable_speakers','portable-speakers'],
+    printers:['printers','multifunction_printers','multifunction-printers','laser_printers','laser-printers','label_printers','label-printers'],
+    gaming_consoles:['gaming_consoles','gaming-consoles','switch2_consoles','switch2-consoles'],
+    gaming_accessories:['gaming_accessories','gaming-accessories','switch2_accessories','switch2-accessories'],
+    games:['games','switch2_games','switch2-games'],
+  };
+  return [...new Set([canonical,...(aliases[canonical]||[])].filter(Boolean))];
+}
 
 function productListKey(p){
   return String(p?.sourceUrl||p?.id||p?.slug||`${p?.category||''}:${p?.name||''}`).toLowerCase().trim();
@@ -1079,17 +1177,18 @@ function mergeProductLists(existing,incoming){
 
 async function loadProducts(){
   const g=document.getElementById('productGrid');
+  const countEl=document.getElementById('productCount');
+  if(countEl)countEl.textContent='...';
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading products...</div>';
   try{
-    // Load first page IMMEDIATELY — no counting, no blocking
     currentPage=1;
+    _productUiPages=new Map();
     await loadPage();
-    // Show cached count if available
     if(totalProductCount){
       document.getElementById('productCount').textContent=totalProductCount.toLocaleString();
     }
-    // Populate filters from categories.js if available, otherwise from loaded data
-    await populateFiltersFromData();
+    populateFiltersFromCurrentPage();
+    populateFiltersFromData().catch(e=>console.warn('[product-filters] background load failed:',e.message||e));
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>'}
 }
 
@@ -1098,9 +1197,48 @@ function queueProductsRefresh(){
   _productRefreshTimer=setTimeout(async()=>{
     if(!document.getElementById('productsView')?.classList.contains('active'))return;
     const page=currentPage;
-    try{await loadPage(null,page)}catch(e){console.error('queued product refresh failed:',e)}
+    try{_productUiPages.delete(page);await loadPage(null,page)}catch(e){console.error('queued product refresh failed:',e)}
   },900);
 }
+
+// ─── Live product list polling ──────────────────────────────────────────────
+// The Icecat ingestor writes straight to PocketBase from a separate Node
+// process, so the admin never receives a qorai:product-saved event for those
+// rows. A light 20s poll (one count request, id field only) keeps the
+// Products view in sync: the count badge always updates, and page 1 auto-
+// refreshes when the user is on the newest-first view.
+let _productsLivePollTimer=null;
+function startProductsLivePoll(){
+  stopProductsLivePoll();
+  _productsLivePollTimer=setInterval(productsLiveTick,20000);
+}
+function stopProductsLivePoll(){
+  if(_productsLivePollTimer){clearInterval(_productsLivePollTimer);_productsLivePollTimer=null;}
+}
+async function productsLiveTick(){
+  const view=document.getElementById('productsView');
+  if(!view||!view.classList.contains('active')){stopProductsLivePoll();return;}
+  if(document.hidden)return;
+  try{
+    const {filter}=buildQuery();
+    const res=await pbGetList('products',1,1,{filter,fields:'id'});
+    const total=res.totalItems||0;
+    if(!total||total===totalProductCount)return;
+    const searching=!!(document.getElementById('searchInput')?.value||'').trim();
+    const sort=document.getElementById('sortFilter')?.value||'newest';
+    totalProductCount=total;
+    const countEl=document.getElementById('productCount');
+    if(countEl)countEl.textContent=total.toLocaleString();
+    // Only auto-rerender when it won't fight the user: page 1, newest sort,
+    // no active search. Otherwise the count badge update is enough.
+    if(!searching&&currentPage===1&&sort==='newest'){
+      _productUiPages.delete(1);
+      loadPage(null,1).catch(()=>{});
+    }
+  }catch(_){/* tunnel hiccup — try again next tick */}
+}
+window.startProductsLivePoll=startProductsLivePoll;
+window.stopProductsLivePoll=stopProductsLivePoll;
 
 window.addEventListener('qorai:product-saved',e=>{
   const p=e.detail?.product;
@@ -1111,7 +1249,7 @@ window.addEventListener('qorai:product-saved',e=>{
     allProducts=mergeProductLists(allProducts,[item]);
     totalProductCount=Math.max(totalProductCount||0,totalProductCount+(allProducts.length>before?1:0),allProducts.length);
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
-    displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||(x.category||'').toLowerCase().includes(searchQ)):allProducts;
+    displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||normalizeAdminCategoryValue(x.category,x).toLowerCase().includes(searchQ)):allProducts;
     if(currentPage===1&&document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
   }
   queueProductsRefresh();
@@ -1122,57 +1260,150 @@ function _adminCategoryLabel(id){
   const cat=typeof QorAiCategories!=='undefined'&&QorAiCategories.getById?QorAiCategories.getById(id):null;
   return cat?.name||String(id||'').replace(/[_-]+/g,' ').replace(/\b\w/g,s=>s.toUpperCase());
 }
+function _facetsFromStats(stats){
+  if(!stats||typeof stats!=='object')return null;
+  const brandCounts=stats.brandCounts&&typeof stats.brandCounts==='object'?stats.brandCounts:null;
+  const categoryCounts=stats.categoryCounts&&typeof stats.categoryCounts==='object'?stats.categoryCounts:null;
+  if(!brandCounts&&!categoryCounts)return null;
+  const brandMap=new Map();
+  for(const [raw,count] of Object.entries(brandCounts||{})){
+    const brand=normalizeAdminBrand(raw);
+    const n=Number(count)||0;
+    if(brand&&n>0)brandMap.set(brand,(brandMap.get(brand)||0)+n);
+  }
+  const catMap=new Map();
+  for(const [raw,count] of Object.entries(categoryCounts||{})){
+    const id=normalizeAdminCategoryValue(raw);
+    const n=Number(count)||0;
+    if(id&&n>0)catMap.set(id,(catMap.get(id)||0)+n);
+  }
+  return {
+    brands:[...brandMap.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).map(([brand])=>brand),
+    cats:[...catMap.entries()].map(([id,count])=>({id,name:_adminCategoryLabel(id),count})).sort((a,b)=>a.name.localeCompare(b.name)),
+  };
+}
 async function _loadLiveProductFacets(){
   const now=Date.now();
   if(_productFacetCache.ts&&now-_productFacetCache.ts<60000)return _productFacetCache;
   const brandSet=new Set(),catMap=new Map();
   try{
-    const pb=getPb();
-    const first=await pb.collection('products').getList(1,1,{$autoCancel:false,fields:'id'});
-    const pages=Math.ceil((first.totalItems||0)/500);
-    for(let page=1;page<=pages;page++){
-      const res=await pb.collection('products').getList(page,500,{$autoCancel:false,fields:'id,brand,category'});
-      for(const p of res.items||[]){
-        const b=String(p.brand||'').trim();
-        const c=String(p.category||'').trim();
-        if(b)brandSet.add(b);
-        if(c)catMap.set(c,_adminCategoryLabel(c));
-      }
-      if(!res.items||res.items.length<500)break;
+    const statsDoc=await pbGetDoc('public_config','stats').catch(()=>({exists:false,data:()=>null}));
+    const stats=statsDoc?.exists?normalizeConfigData(statsDoc.data()):null;
+    const facets=_facetsFromStats(stats);
+    const updatedAt=stats?.updatedAt?new Date(stats.updatedAt).getTime():0;
+    if(facets&&facets.brands.length&&facets.cats.length){
+      _productFacetCache={ts:now,brands:facets.brands,cats:facets.cats};
+      if(!updatedAt||(now-updatedAt)>6*3600*1000)countAllProductsInBackground();
+      return _productFacetCache;
     }
   }catch(e){
-    console.warn('[product-facets] live load failed:',e.message||e);
-    for(const p of allProducts||[]){
-      if(p.brand)brandSet.add(String(p.brand).trim());
-      if(p.category)catMap.set(String(p.category).trim(),_adminCategoryLabel(p.category));
-    }
+    console.warn('[product-facets] stats load failed:',e.message||e);
   }
+  // No usable stats doc — do NOT launch our own full-catalog scan here.
+  // The single throttled background counter (countAllProductsInBackground)
+  // owns catalog-wide aggregation and writes the stats doc when done. Until
+  // then, serve facets derived from whatever pages are already in memory.
+  countAllProductsInBackground();
+  for(const p of allProducts||[]){
+    const b=normalizeAdminBrand(p.brand);
+    const c=normalizeAdminCategoryValue(p.category,p);
+    if(b)brandSet.add(b);
+    if(c)catMap.set(c,_adminCategoryLabel(c));
+  }
+  // Short-lived cache so the next call quickly picks up the fresh stats doc.
   _productFacetCache={
-    ts:now,
+    ts:now-55000,
     brands:[...brandSet].filter(Boolean).sort((a,b)=>a.localeCompare(b)),
     cats:[...catMap.entries()].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name)),
   };
   return _productFacetCache;
 }
+
+// Apply <option> html to a <select> without disrupting the user: skip the
+// rewrite when the dropdown is open/focused, and skip when nothing changed
+// (prevents the constant flicker that made the filters feel frozen).
+function _applySelectOptions(selId,optionsHtml){
+  const sel=document.getElementById(selId);
+  if(!sel)return;
+  if(sel===document.activeElement)return;
+  if(sel.innerHTML===optionsHtml)return;
+  const prev=sel.value;
+  sel.innerHTML=optionsHtml;
+  if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+
+function _brandOptionsHtml(brands){
+  return '<option value="">All Brands</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
+}
+function _categoryOptionsHtml(cats){
+  return '<option value="">All Categories</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
+}
+
 async function populateFiltersFromData(){
-  const prevBrand=document.getElementById('brandFilter')?.value||'';
-  const prevCat=document.getElementById('categoryFilter')?.value||'';
   const {brands,cats}=await _loadLiveProductFacets();
-  const bf=document.getElementById('brandFilter');
-  const cf=document.getElementById('categoryFilter');
-  if(bf)bf.innerHTML='<option value="">All Brands</option>'+brands.map(b=>`<option>${escHtml(b)}</option>`).join('');
-  if(cf)cf.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
-  if(bf&&brands.includes(prevBrand))bf.value=prevBrand;
-  if(cf&&cats.some(c=>c.id===prevCat))cf.value=prevCat;
+  if(!brands.length&&!cats.length)return;
+  if(brands.length)_applySelectOptions('brandFilter',_brandOptionsHtml(brands));
+  if(cats.length)_applySelectOptions('categoryFilter',_categoryOptionsHtml(cats));
+}
+
+function populateFiltersFromCurrentPage(){
+  const brandSet=new Set();
+  const catMap=new Map();
+  document.querySelectorAll('#brandFilter option').forEach(opt=>{
+    const brand=normalizeAdminBrand(opt.value||opt.textContent);
+    if(brand)brandSet.add(brand);
+  });
+  document.querySelectorAll('#categoryFilter option').forEach(opt=>{
+    const id=normalizeAdminCategoryValue(opt.value);
+    if(id)catMap.set(id,opt.textContent||_adminCategoryLabel(id));
+  });
+  for(const p of allProducts||[]){
+    const brand=normalizeAdminBrand(p.brand);
+    const cat=normalizeAdminCategoryValue(p.category,p);
+    if(brand)brandSet.add(brand);
+    if(cat)catMap.set(cat,_adminCategoryLabel(cat));
+  }
+  const brands=[...brandSet].sort((a,b)=>a.localeCompare(b));
+  const cats=[...catMap.entries()].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name));
+  _applySelectOptions('brandFilter',_brandOptionsHtml(brands));
+  _applySelectOptions('categoryFilter',_categoryOptionsHtml(cats));
+}
+
+// Kept as a thin compatibility shim. Facet aggregation now belongs to the
+// single throttled countAllProductsInBackground() pass — this no longer runs
+// its own 25+ request full-catalog scan, which used to hammer the tunnel on
+// every Products refresh.
+async function warmProductFacetsInBackground(){
+  if(_facetWarmupRunning)return;
+  _facetWarmupRunning=true;
+  try{
+    countAllProductsInBackground();
+  }finally{
+    _facetWarmupRunning=false;
+  }
 }
 
 function buildQuery(){
   const brand=document.getElementById('brandFilter')?.value||'';
   const cat=document.getElementById('categoryFilter')?.value||'';
+  const date=document.getElementById('dateFilter')?.value||'';
   const sort=document.getElementById('sortFilter')?.value||'newest';
   const filters=[];
   if(brand)filters.push(`brand="${brand.replace(/"/g,'\\"')}"`);
-  if(cat)filters.push(`category="${cat.replace(/"/g,'\\"')}"`);
+  if(cat){
+    const catFilter=_adminCategoryFilterVariants(cat)
+      .map(c=>`category="${c.replace(/"/g,'\\"')}"`)
+      .join(' || ');
+    if(catFilter)filters.push(`(${catFilter})`);
+  }
+  if(date){
+    const now=new Date();
+    const days=date==='today'?1:date==='week'?7:date==='month'?30:0;
+    if(days){
+      const since=new Date(now.getTime()-days*864e5).toISOString();
+      filters.push(`scrapedAt >= "${since}"`);
+    }
+  }
   const filter=filters.join(' && ');
   let pbSort;
   switch(sort){
@@ -1242,7 +1473,7 @@ function _adminNormalizeFamilyName(p){
 function _adminProductFamilyKey(p){
   const vg=String(p?.variantGroup||'').trim().toLowerCase();
   const nameKey=_adminNormalizeFamilyName(p);
-  const category=window.QorAiCategories?.canonicalId?window.QorAiCategories.canonicalId(p?.category||''):String(p?.category||'');
+  const category=normalizeAdminCategoryValue(p?.category||'',p);
   if(nameKey)return `${category}|${p?.brand||''}|${nameKey}`;
   if(vg)return `${category}|${vg}`;
   return `${category}|${p?.brand||''}|${p?.id||''}`;
@@ -1272,24 +1503,40 @@ async function loadPage(direction,pageOverride){
   const g=document.getElementById('productGrid');
   try{
     const {filter,sort}=buildQuery();
+    const queryKey=JSON.stringify({filter,sort,search:document.getElementById('searchInput')?.value||''});
+    if(queryKey!==_lastProductQueryKey){
+      _productUiPages=new Map();
+      _lastProductQueryKey=queryKey;
+      if(!direction&&!pageOverride)currentPage=1;
+    }
 
     if(Number.isInteger(pageOverride)&&pageOverride>0)currentPage=pageOverride;
     else if(direction==='next')currentPage++;
     else if(direction==='prev'&&currentPage>1)currentPage--;
 
-    const result=await pbGetList('products',currentPage,PER,{filter,sort});
+    let cached=_productUiPages.get(currentPage);
+    if(cached){
+      allProducts=cached.rawItems;
+      displayProducts=cached.displayItems;
+      totalProductCount=cached.totalItems||totalProductCount;
+      renderProductsPage();
+      return;
+    }
 
+    const result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
     if(result.empty&&direction==='next'){currentPage--;toast('Last page','i');return}
+
     if(result.empty){
       g.innerHTML='<div class="placeholder">No products found. Try changing the filters.</div>';
       document.getElementById('pagination').innerHTML='';
       return;
     }
 
-    allProducts=result.items;
+    allProducts=(result.items||[]).map(p=>({...p,_partial:true}));
     displayProducts=allProducts;
 
-    totalProductCount=result.totalItems||allProducts.length;
+    totalProductCount=result?.totalItems||totalProductCount||allProducts.length;
+    populateFiltersFromCurrentPage();
     if(!_productFacetCache.ts)populateFiltersFromData().catch(()=>{});
 
     // Client-side search filter
@@ -1302,6 +1549,14 @@ async function loadPage(direction,pageOverride){
       );
     }
 
+    _productUiPages.set(currentPage,{
+      rawStartPage:currentPage,
+      rawEndPage:currentPage,
+      rawItems:allProducts,
+      displayItems:displayProducts,
+      totalItems:totalProductCount,
+      groupedCount:displayProducts.length,
+    });
     renderProductsPage();
   }catch(e){
     g.innerHTML='<div class="placeholder" style="color:var(--red)">Error: '+escHtml(e.message)+'</div>';
@@ -1312,31 +1567,32 @@ async function loadPage(direction,pageOverride){
 function renderProductsPage(){
   const g=document.getElementById('productGrid');
   const countEl=document.getElementById('productCount');
-  const groupedProducts=groupProductFamilies(displayProducts);
-  if(countEl)countEl.textContent=String(groupedProducts.length||totalProductCount||allProducts.length||displayProducts.length);
-  if(!groupedProducts.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
-  g.innerHTML=groupedProducts.map(p=>{
+  const products=displayProducts||[];
+  if(countEl)countEl.textContent=(totalProductCount||allProducts.length||products.length).toLocaleString();
+  if(!products.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
+  g.innerHTML=products.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
     const id=escJs(p.id);
     const image=safeUrl(p.imageUrl||(p.images?.[0])||'');
     const brand=escHtml(p.brand||'');
     const name=escHtml(p.name||'');
-    const category=escHtml(p.category||'');
-    const variants=Number(p._variantCount||1);
-    const variantBadge=variants>1?`<div class="score-badge" title="${variants} variants" style="left:8px;right:auto;top:8px;border-color:#ef4444;color:#ef4444;background:#fff">${variants}</div>`:'';
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${variants>1?variants+' variants':(p.price?p.price.toLocaleString()+' TL':'')}</span><span>${category}</span></div></div></div>`;
+    const catId=normalizeAdminCategoryValue(p.category,p);
+    const category=escHtml(_adminCategoryLabel(catId));
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
   }).join('');
+  populateFiltersFromCurrentPage();
 
   const pEl=document.getElementById('pagination');
-  const totalPages=totalProductCount?Math.ceil(totalProductCount/PER):0;
-  const hasNext=currentPage<totalPages||displayProducts.length>=PER;
+  const totalRawPages=totalProductCount?Math.ceil(totalProductCount/PRODUCT_RAW_PER):0;
+  const meta=_productUiPages.get(currentPage);
+  const hasNext=meta?meta.rawEndPage<totalRawPages:displayProducts.length>=PRODUCT_RAW_PER;
   const hasPrev=currentPage>1;
   let h='';
   if(hasPrev||hasNext){
     h+=`<button class="pg-btn" ${hasPrev?'':`disabled`} onclick="prevPage()">◀ Previous</button>`;
     h+=`<span class="pg-btn" style="cursor:default;font-weight:600">Page ${currentPage}</span>`;
     h+=`<button class="pg-btn" ${hasNext?'':`disabled`} onclick="nextPage()">Next ▶</button>`;
-    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} products</span>`;
+    if(totalProductCount)h+=`<span class="pg-btn" style="cursor:default;opacity:.6;font-size:12px">${totalProductCount.toLocaleString()} products · ${products.length} shown</span>`;
   }
   pEl.innerHTML=h;
 }
@@ -1356,10 +1612,10 @@ async function serverSearch(){
     const esc=q.replace(/"/g,'\\"');
     // Search by name, brand, category or slug-style id
     const filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
-    const result=await pbGetList('products',1,500,{filter,sort:'-techScore'});
+    const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
     const qLow=q.toLowerCase();
     // Sort: exact name match first, then starts-with, then contains, then rest by techScore
-    const sorted=result.items.slice().sort((a,b)=>{
+    const sorted=result.items.map(p=>({...p,_partial:true})).slice().sort((a,b)=>{
       const an=(a.name||'').toLowerCase(); const bn=(b.name||'').toLowerCase();
       const ae=an===qLow; const be=bn===qLow;
       if(ae&&!be)return -1; if(be&&!ae)return 1;
@@ -1371,6 +1627,7 @@ async function serverSearch(){
     });
     displayProducts=sorted;
     allProducts=sorted;
+    _productUiPages=new Map();
     renderProductsPage();
     document.getElementById('productCount').textContent=result.totalItems+' results';
     if(!sorted.length)toast('No results for "'+q+'"','i');
@@ -1379,6 +1636,7 @@ async function serverSearch(){
 
 function filterProducts(){
   currentPage=1;
+  _productUiPages=new Map();
   loadPage();
 }
 function pDate(p){return p.scrapedAt?new Date(p.scrapedAt).getTime():p.updatedAt?new Date(p.updatedAt).getTime():0}
@@ -1389,7 +1647,7 @@ function handleCardClick(e,id){if(e.target.type==='checkbox')return;if(selectedI
 function toggleSel(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);renderProductsPage();const bar=document.getElementById('selectionBar');if(selectedIds.size>0){bar.style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}else bar.style.display='none'}
 function selectAll(){displayProducts.forEach(p=>selectedIds.add(p.id));renderProductsPage();document.getElementById('selectionBar').style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}
 function deselectAll(){selectedIds.clear();renderProductsPage();document.getElementById('selectionBar').style.display='none'}
-async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
+async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();_productUiPages=new Map();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
 // ─── DICTIONARY MANAGEMENT (Scraper → 📚 Dictionary tab) ──────────────────
@@ -1870,7 +2128,7 @@ async function _adminFetchProductVariants(p){
 
 async function openProduct(id){
   let p=allProducts.find(x=>x.id===id);
-  if(!p){
+  if(!p||p._partial){
     const doc=await pbGetDoc('products',id).catch(()=>null);
     if(doc?.exists)p={id:doc.id,...doc.data()};
   }
@@ -2109,7 +2367,7 @@ async function rescrapeProduct(id) {
   } catch (e) { toast('Scrape error: ' + e.message, 'e'); }
 }
 
-async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Product deleted: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Product deleted: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;_productUiPages=new Map();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}}
 
 // ═══════════════════════════════════════
 //  USERS

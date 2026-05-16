@@ -83,6 +83,40 @@ const CATEGORY_ALIASES = Object.freeze({
   notebook: 'laptops',
   notebooks: 'laptops',
   notebooks_laptops: 'laptops',
+  notebook_laptop: 'laptops',
+  notebooks_laptop: 'laptops',
+  all_in_one_pcs: 'desktops',
+  all_in_one_pc: 'desktops',
+  desktop: 'desktops',
+  desktops: 'desktops',
+  pc: 'desktops',
+  pcs: 'desktops',
+  cpu: 'cpus',
+  processor: 'cpus',
+  processors: 'cpus',
+  ssds: 'ssd',
+  internal_ssds: 'ssd',
+  hdd: 'hard_drives',
+  hdds: 'hard_drives',
+  external_hdds: 'external_hdd',
+  psus: 'psu',
+  power_supplies: 'psu',
+  cases: 'pc_cases',
+  computer_cases: 'pc_cases',
+  coolers: 'cpu_coolers',
+  computer_cooling_systems: 'cpu_coolers',
+  nas: 'nas_servers',
+  network_cards: 'pcie_nic',
+  mobile_phones: 'smartphones',
+  cameras: 'digital_cameras',
+  camcorders: 'video_cameras',
+  portable_speakers: 'speakers',
+  multifunction_printers: 'printers',
+  laser_printers: 'printers',
+  label_printers: 'printers',
+  switch2_consoles: 'gaming_consoles',
+  switch2_accessories: 'gaming_accessories',
+  switch2_games: 'games',
 });
 
 function normalizeCategoryId(input) {
@@ -113,7 +147,9 @@ window.QorAiCategories = {
         { id: 'drive_adapters',        name: 'Drive Adapters',             geizhalsSlug: 'hdadko' },
         { id: 'storage_systems',       name: 'Storage Systems',            geizhalsSlug: 'hdesys' },
         { id: 'storage_accessories',   name: 'Storage Accessories',        geizhalsSlug: 'hdzub' },
-        { id: 'laptops',               name: 'Notebooks / Laptops',        geizhalsSlug: 'nb' },
+        { id: 'laptops',               name: 'Laptops',                    geizhalsSlug: 'nb' },
+        { id: 'desktops',              name: 'Desktop PCs',                geizhalsSlug: 'sysdiv' },
+        { id: 'cpus',                  name: 'Processors',                 geizhalsSlug: 'cpu' },
         { id: 'cpu_amd_am4',           name: 'AMD AM4 CPUs',               geizhalsSlug: 'cpuamdam4' },
         { id: 'cpu_intel_1151',        name: 'Intel 1151 CPUs',            geizhalsSlug: 'cpu1151' },
         { id: 'cpu_server',            name: 'Server / Workstation CPUs',  geizhalsSlug: 'cpucoproz' },
@@ -137,6 +173,8 @@ window.QorAiCategories = {
         { id: 'keyboard_accessories',  name: 'Keyboard Accessories',       geizhalsSlug: 'hwkblumzb' },
         { id: 'soundbars',             name: 'Soundbars',                  geizhalsSlug: 'scnbar' },
         { id: 'gaming_accessories',    name: 'Gaming Accessories',         geizhalsSlug: 'egzub' },
+        { id: 'gaming_consoles',       name: 'Game Consoles',              geizhalsSlug: 'con' },
+        { id: 'games',                 name: 'Games',                      geizhalsSlug: 'games' },
         { id: 'pc_cases',              name: 'PC Cases',                   geizhalsSlug: 'gehatx' },
         { id: 'tablets',               name: 'Tablets',                    geizhalsSlug: 'nbtabl' },
         { id: 'ram',                   name: 'RAM',                        geizhalsSlug: 'ramddr3' },
@@ -189,9 +227,6 @@ window.QorAiCategories = {
         { id: 'ps5_consoles',          name: 'PlayStation 5 Consoles',     geizhalsSlug: 'conps5' },
         { id: 'ps5_games',             name: 'PS5 Games',                  geizhalsSlug: 'ps5g' },
         { id: 'ps5_accessories',       name: 'PS5 Accessories',            geizhalsSlug: 'ps5zub' },
-        { id: 'switch2_consoles',      name: 'Nintendo Switch 2',          geizhalsSlug: 'connsw2' },
-        { id: 'switch2_accessories',   name: 'Switch 2 Accessories',       geizhalsSlug: 'nsw2zub' },
-        { id: 'switch2_games',         name: 'Switch 2 Games',             geizhalsSlug: 'nsw2g' },
         { id: 'xbox_series',           name: 'Xbox Series X/S',            geizhalsSlug: 'conxboxsx' },
         { id: 'xbox_one',              name: 'Xbox One',                   geizhalsSlug: 'conxone' },
         { id: 'xbox_accessories',      name: 'Xbox Accessories',           geizhalsSlug: 'xboxsxzub' },
@@ -218,6 +253,10 @@ window.QorAiCategories = {
         { id: 'hifi_accessories',      name: 'HiFi Accessories',           geizhalsSlug: 'hifizub' },
         { id: 'tv_remotes',            name: 'TV Remotes',                 geizhalsSlug: 'tvfernbed' },
         { id: 'hifi_filters',          name: 'HiFi Filters / Studio',      geizhalsSlug: 'hifiltsst' },
+        { id: 'printers',              name: 'Printers',                   geizhalsSlug: 'pr' },
+        { id: 'vacuums',               name: 'Vacuum Cleaners',            geizhalsSlug: 'hsauger' },
+        { id: 'powerbanks',            name: 'Power Banks',                geizhalsSlug: 'akkupw' },
+        { id: 'electric_scooters',     name: 'Electric Scooters',          geizhalsSlug: 'escooter' },
       ]
     },
   ],
@@ -261,7 +300,7 @@ window.QorAiBrands = [
   'MSI', 'Razer', 'Corsair', 'Logitech', 'HyperX', 'SteelSeries', 'JBL', 'Bose',
   'Sennheiser', 'Audio-Technica', 'Beyerdynamic', 'Marshall', 'Anker', 'Baseus',
   'Intel', 'AMD', 'Nvidia', 'Kingston', 'Crucial', 'Western Digital', 'Seagate',
-  'Gigabyte', 'ASRock', 'EVGA', 'Cooler Master', 'NZXT', 'be quiet!', 'Thermaltake',
+  'Gigabyte', 'ASRock', 'EVGA', 'Cooler Master', 'NZXT', 'Thermaltake',
   'BenQ', 'ViewSonic', 'AOC', 'Philips', 'TCL', 'Hisense', 'Vestel',
   'Canon', 'Nikon', 'Fujifilm', 'Panasonic', 'GoPro', 'DJI', 'Insta360',
   'Nintendo', 'Microsoft', 'Valve', 'Meta',
@@ -365,7 +404,8 @@ async function syncAllProductCategories() {
     const total = (await pb.collection('products').getList(1, 1, { $autoCancel: false })).totalItems;
     const pages = Math.ceil(total / 500);
     for (let page = 1; page <= pages; page++) {
-      const res = await pb.collection('products').getList(page, 500, { $autoCancel: false });
+      // Only the category field is needed — never pull full records here.
+      const res = await pb.collection('products').getList(page, 500, { $autoCancel: false, fields: 'id,category' });
       for (const p of res.items) {
         const slug = normalizeCategoryId(p.category);
         if (!slug) continue;
@@ -413,8 +453,8 @@ async function _loadCategoryCounts(sourceFilter = '') {
     const pb = getPb();
     if (!pb) return counts;
     const opts = sourceFilter
-      ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"` }
-      : {};
+      ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
+      : { fields: 'id,category' };
     const total = (await pb.collection('products').getList(1, 1, opts)).totalItems;
     const pages = Math.ceil(total / 500);
     for (let page = 1; page <= pages; page++) {

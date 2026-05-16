@@ -61,6 +61,15 @@ const WORKERS     = parseInt(getOpt('workers', '3'));
 // 12 languages matching the Flutter app's l10n files
 const LANGS_DEFAULT = 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
 const LANGS         = getOpt('langs', LANGS_DEFAULT).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+let shutdownRequested = false;
+process.on('SIGTERM', () => {
+  shutdownRequested = true;
+  log('Stop requested — finishing in-flight workers and saving progress...', 'warn');
+});
+process.on('SIGINT', () => {
+  shutdownRequested = true;
+  log('Stop requested — finishing in-flight workers and saving progress...', 'warn');
+});
 
 // Optional category filter — e.g. --cats=monitors,ram  (default: all in CAT_MAP)
 const CATS_FILTER = getOpt('cats', '');
@@ -158,9 +167,34 @@ if (CAT_WHITELIST) {
 }
 
 function canonicalCategory(slug) {
-  const s = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  if (['laptop', 'laptops', 'notebook', 'notebooks', 'notebooks-laptops'].includes(s)) return 'laptops';
-  return s;
+  const s = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  if (['laptop', 'laptops', 'notebook', 'notebooks', 'notebooks_laptops'].includes(s)) return 'laptops';
+  const aliases = {
+    all_in_one_pcs: 'desktops',
+    desktop: 'desktops',
+    pc: 'desktops',
+    pcs: 'desktops',
+    cpu: 'cpus',
+    processor: 'cpus',
+    processors: 'cpus',
+    ssds: 'ssd',
+    hdd: 'hard_drives',
+    hdds: 'hard_drives',
+    external_hdds: 'external_hdd',
+    psus: 'psu',
+    cases: 'pc_cases',
+    coolers: 'cpu_coolers',
+    nas: 'nas_servers',
+    network_cards: 'pcie_nic',
+    mobile_phones: 'smartphones',
+    cameras: 'digital_cameras',
+    camcorders: 'video_cameras',
+    portable_speakers: 'speakers',
+    multifunction_printers: 'printers',
+    laser_printers: 'printers',
+    label_printers: 'printers',
+  };
+  return aliases[s] || s;
 }
 
 // ─── Key specs per category (displayed in compare + AI prompts) ───────────────
@@ -176,13 +210,19 @@ const KEY_SPEC_NAMES = {
   gpus:                   ['Memory Size','Memory type','Core Clock Speed','Memory Interface Width','TDP'],
   motherboards:           ['Chipset','Socket','Form Factor','Memory Slots','Supported Memory Types'],
   ram:                    ['Memory Size','Memory Speed','CAS Latency','Memory type'],
+  ssd:                    ['Capacity','Sequential Read Speed','Sequential Write Speed','Interface','Form Factor'],
   ssds:                   ['Capacity','Sequential Read Speed','Sequential Write Speed','Interface','Form Factor'],
+  hard_drives:            ['Capacity','HDD Speed','Interface','Cache','Form Factor'],
+  external_hdd:           ['Capacity','HDD Speed','Interface','Cache','Form Factor'],
   hdds:                   ['Capacity','HDD Speed','Interface','Cache','Form Factor'],
-  'flash-drives':         ['Capacity','Interface','Read speed','Write speed'],
-  'memory-cards':         ['Capacity','Type','Read speed','Write speed','Speed Class'],
+  flash_drives:           ['Capacity','Interface','Read speed','Write speed'],
+  memory_cards:           ['Capacity','Type','Read speed','Write speed','Speed Class'],
   monitors:               ['Display diagonal','Display resolution','Panel type','Screen Refresh Rate','Response time','HDR'],
+  psu:                    ['Maximum Output Power','Efficiency','Modularity','Form Factor'],
   psus:                   ['Maximum Output Power','Efficiency','Modularity','Form Factor'],
+  pc_cases:               ['Form Factor','Colour','Side Panel','Dimensions (WxDxH)'],
   cases:                  ['Form Factor','Colour','Side Panel','Dimensions (WxDxH)'],
+  cpu_coolers:            ['Cooling type','Fan Size','Max Noise Level','TDP'],
   coolers:                ['Cooling type','Fan Size','Max Noise Level','TDP'],
   keyboards:              ['Keyboard type','Device connectivity','Switch type','Backlight'],
   mice:                   ['Maximum Resolution','Device connectivity','Number of buttons','Polling Rate'],
@@ -192,8 +232,7 @@ const KEY_SPEC_NAMES = {
   tvs:                    ['Display diagonal','Display resolution','Panel type','Smart TV OS','HDR','Screen Refresh Rate'],
   cameras:                ['Sensor Type','Sensor Size','Megapixels','Optical Zoom','Display diagonal','Video Resolution'],
   lenses:                 ['Focal Length','Maximum Aperture','Lens Mount','Filter Size','Weight'],
-  printers:               ['Print Technology','Maximum Print Resolution','Print Speed (black, ISO/IEC 24734)','Connectivity','Paper Sizes'],
-  'multifunction-printers':['Print Technology','Maximum Print Resolution','Print Speed (black, ISO/IEC 24734)','ADF','Duplex','Connectivity'],
+  printers:               ['Print Technology','Maximum Print Resolution','Print Speed (black, ISO/IEC 24734)','ADF','Duplex','Connectivity'],
   scanners:               ['Maximum Optical Resolution','Scanner Type','Scan Speed','Connectivity'],
   routers:                ['Wi-Fi Standard','Maximum Data Transfer Rate','LAN Ports','WAN Ports','Antennas'],
   networking:             ['Number of Ports','Switching Capacity','PoE','Form Factor'],
@@ -524,7 +563,7 @@ function buildKeySpecs(category, specs) {
 
 function minSpecsForCategory(category) {
   if (['laptops', 'smartphones', 'tablets'].includes(category)) return 20;
-  if (['tvs', 'monitors', 'desktops', 'cameras'].includes(category)) return 15;
+  if (['tvs', 'monitors', 'desktops', 'digital_cameras'].includes(category)) return 15;
   return 8;
 }
 
@@ -543,15 +582,23 @@ const CATEGORY_NAMES = {
   monitors: 'Monitors',
   tvs: 'TVs',
   ram: 'RAM',
+  ssd: 'SSDs',
   ssds: 'SSDs',
+  hard_drives: 'Hard Drives',
+  external_hdd: 'External Hard Drives',
   hdds: 'Hard Drives',
   cpus: 'CPUs',
+  psu: 'Power Supplies',
+  pc_cases: 'PC Cases',
+  cpu_coolers: 'CPU Coolers',
   motherboards: 'Motherboards',
   keyboards: 'Keyboards',
   mice: 'Mice',
+  digital_cameras: 'Digital Cameras',
   cameras: 'Cameras',
   routers: 'Routers',
   ups: 'UPS',
+  printers: 'Printers',
 };
 const ensuredCategories = new Set();
 const touchedCategories = new Set();
@@ -597,9 +644,16 @@ async function upsertCategoryRecord(slug, productCount) {
   const check = await pbReq('GET', `/api/collections/categories/records?filter=${encodeURIComponent(`slug="${safeSlug}"`)}&perPage=1&skipTotal=1`);
   if (check.status !== 200) throw new Error(`categories lookup failed: ${JSON.stringify(check.body).slice(0, 200)}`);
   const existing = check.body.items && check.body.items[0];
-  const res = existing
-    ? await pbReq('PATCH', `/api/collections/categories/records/${existing.id}`, payload)
-    : await pbReq('POST', '/api/collections/categories/records', payload);
+  let res;
+  if (existing) {
+    // Don't fight the admin's curated category names/icons. On an existing
+    // record only refresh activity + the live product count.
+    const patch = { isActive: true };
+    if (Number.isFinite(productCount)) patch.productCount = productCount;
+    res = await pbReq('PATCH', `/api/collections/categories/records/${existing.id}`, patch);
+  } else {
+    res = await pbReq('POST', '/api/collections/categories/records', payload);
+  }
   if (![200, 201].includes(res.status)) throw new Error(`categories upsert failed: ${JSON.stringify(res.body).slice(0, 200)}`);
 }
 
@@ -707,7 +761,7 @@ async function phase23_enrichImport() {
   let idx = start;
 
   async function runWorker(workerId) {
-    while (idx < end) {
+    while (idx < end && !shutdownRequested) {
       const item = queue[idx++];
       const { id: icecatId, catId, brand, name } = item;
 
@@ -721,7 +775,7 @@ async function phase23_enrichImport() {
           prog.skipped = (prog.skipped || 0) + 1;
           log(`  Skip id=${icecatId} (${name || brand}): only ${pbData.specsCount || 0} specs, need ${minSpecs}+`, 'warn');
           prog.done++;
-          if (prog.done % 100 === 0) saveProgress(prog);
+          if (prog.done % 10 === 0) saveProgress(prog);
           await sleep(DELAY);
           continue;
         }
@@ -765,7 +819,8 @@ async function phase23_enrichImport() {
 
       prog.done++;
 
-      // Checkpoint every 100 products
+      // Frequent checkpointing keeps the Resume button honest after stops.
+      if (prog.done % 10 === 0) saveProgress(prog);
       if (prog.done % 100 === 0) {
         saveProgress(prog);
         const pct = ((prog.done - start) / (end - start) * 100).toFixed(1);
@@ -780,8 +835,14 @@ async function phase23_enrichImport() {
   await Promise.all(Array.from({ length: WORKERS }, (_, i) => runWorker(i + 1)));
 
   saveProgress(prog);
-  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
+  // Always reconcile category product counts — including after a stop — so the
+  // admin/Flutter category lists never drift from the real catalog.
   await syncTouchedCategoryCounts();
+  if (shutdownRequested) {
+    log(`Stopped — progress saved at ${prog.done.toLocaleString()}/${queue.length.toLocaleString()}. Use Resume to continue.`, 'warn');
+    return;
+  }
+  log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');
   log(`Progress saved to ${path.basename(PROGRESS_FILE)} — run with --resume to continue later`, 'ok');
 }
 

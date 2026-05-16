@@ -89,8 +89,10 @@
   function setRunningUI(running) {
     const startBtn = $('btnIcecatStart');
     const stopBtn  = $('btnIcecatStop');
+    const resumeBtn = $('btnIcecatResume');
     if (startBtn) startBtn.style.display = running ? 'none' : '';
     if (stopBtn)  stopBtn.style.display  = running ? '' : 'none';
+    if (resumeBtn && running) resumeBtn.style.display = 'none';
     const status = $('icecatStatus');
     if (status) {
       status.textContent = running ? 'running…' : 'idle';
@@ -198,6 +200,15 @@
   }
 
   async function icecatStart() {
+    return icecatStartWithResume(!!$('icecatResume')?.checked);
+  }
+
+  async function icecatResume() {
+    if ($('icecatResume')) $('icecatResume').checked = true;
+    return icecatStartWithResume(true);
+  }
+
+  async function icecatStartWithResume(forceResume) {
     const slugs = $('icecatCats').value.trim();
     if (!slugs) {
       alert('En az bir kategori seçin.');
@@ -209,7 +220,7 @@
       limit:   parseInt($('icecatLimit').value) || 0,
       workers: parseInt($('icecatWorkers').value) || 3,
       delay:   parseInt($('icecatDelay').value) || 600,
-      resume:  $('icecatResume').checked,
+      resume:  !!forceResume,
     };
     try {
       const r = await fetch(`${PROXY}/icecat/start`, {
@@ -279,6 +290,13 @@
       const done  = p.done || 0;
       const pct   = total > 0 ? Math.min(100, (done / total) * 100) : 0;
       $('icecatProgressBar').style.width = pct.toFixed(1) + '%';
+      const resumeBtn = $('btnIcecatResume');
+      if (resumeBtn && !s.running) {
+        resumeBtn.style.display = total > 0 && done < total ? '' : 'none';
+      }
+      if ($('icecatResume') && total > 0 && done < total && !s.running) {
+        $('icecatResume').checked = true;
+      }
 
       if (s.logTail) {
         const log = $('icecatLog');
@@ -308,6 +326,7 @@
 
   // Expose globally for inline onclick handlers
   window.icecatStart           = icecatStart;
+  window.icecatResume          = icecatResume;
   window.icecatStop            = icecatStop;
   window.icecatReset           = icecatReset;
   window.icecatRefreshStatus   = bootstrap; // tab-switch triggers bootstrap

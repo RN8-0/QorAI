@@ -239,6 +239,7 @@ async function pbGetList(collection, page, perPage, options = {}) {
     const result = await getPb().collection(collection).getList(page, perPage, {
       sort: options.sort || 'id',
       filter: options.filter || '',
+      fields: options.fields || undefined,
       $autoCancel: false
     });
     return {
@@ -259,6 +260,7 @@ async function pbGetList(collection, page, perPage, options = {}) {
     if (shouldRetryWithoutSort) {
       const retryOptions = {
         filter: options.filter || '',
+        fields: options.fields || undefined,
         $autoCancel: false
       };
       const result = await getPb().collection(collection).getList(page, perPage, retryOptions);
