@@ -248,67 +248,10 @@ const KEY_SPEC_NAMES = {
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-const sleep   = ms => new Promise(r => setTimeout(r, ms));
-const slugify = s  => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
-
-function modelFamilyKey({ name, brand, category }) {
-  let s = String(name || '').toLowerCase();
-  const b = String(brand || '').toLowerCase().trim();
-  if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
-  const familyProbe = s
-    .replace(/[()[\],"'’]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const familyPatterns = [
-    /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
-    /\b(ideapad\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
-    /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
-    /\b(elitebook\s+\d+\s*g\d+)\b/i,
-    /\b(probook\s+\d+\s*g\d+)\b/i,
-    /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
-    /\b(latitude\s+\d+)\b/i,
-    /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
-    /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
-    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
-    /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
-  ];
-  for (const re of familyPatterns) {
-    const m = familyProbe.match(re);
-    if (m && m[1]) {
-      const fam = slugify(m[1]);
-      if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
-    }
-  }
-  const mac = familyProbe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
-  if (mac) {
-    const chip = familyProbe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
-    const fam = slugify(`${mac[1]} ${chip ? chip[1] : ''}`);
-    if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
-  }
-  s = s
-    .replace(/\[([^\]]*)\]/g, ' $1 ')
-    .replace(/\((?:intel|amd|qualcomm|apple)\)/gi, ' ')
-    .replace(/\b\d+(?:[.,]\d+)?\s*cm\b/gi, ' ')
-    .replace(/\(\s*\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\s*\)/gi, ' ')
-    .replace(/\b\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\b/gi, ' ')
-    .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, ' ')
-    .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
-    .replace(/\b\d+\s*mah\b/gi, ' ')
-    .replace(/\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
-    .replace(/\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
-    .replace(/\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b/gi, ' ')
-    .replace(/\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-c|5g|4g|lte|wi-fi|wifi|wlan|bluetooth)\b/gi, ' ')
-    .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
-    .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
-    .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
-    .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  const base = [b, s].filter(Boolean).join('-').slice(0, 180);
-  return base || slugify(name) || slugify(category);
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// modelFamilyKey + slugify live in a shared module so the live ingestor and
+// the variantGroup backfill stay byte-for-byte identical.
+const { modelFamilyKey, slugify } = require('./lib/model_family');
 
 function log(msg, tag = 'info') {
   const prefix = { info: '   ', ok: ' ✓ ', warn: ' ! ', err: ' ✗ ' }[tag] || '   ';

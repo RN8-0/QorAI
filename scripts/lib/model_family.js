@@ -1,0 +1,125 @@
+/**
+ * Qor AI — model family key
+ *
+ * variantGroup = the MODEL (e.g. "lenovo-ideacentre-a340-24iwl").
+ * configKey    = the CONFIGURATION inside it (CPU/RAM/storage…).
+ *
+ * modelFamilyKey() must strip every config-level token (CPU, GPU, RAM,
+ * storage, resolution, screen, connectivity, OS, colour…) so all
+ * configurations of one model collapse to the same variantGroup. The grouped
+ * product list then shows one card per model.
+ *
+ * Shared by scripts/icecat_ingest.js and scripts/repair_variant_groups.js.
+ */
+'use strict';
+
+function slugify(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+}
+
+// Model lines whose identifier is "<line> <code>" — matched first for accuracy.
+const FAMILY_PATTERNS = [
+  /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
+  /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+  /\b(thinkcentre\s+[a-z]+\d+[a-z0-9-]*)\b/i,
+  /\b(thinkstation\s+[a-z]+\d+[a-z0-9-]*)\b/i,
+  /\b(ideapad\s+[a-z0-9]+(?:\s+\d+[a-z0-9-]*)?(?:\s+gen\s+\d+)?)\b/i,
+  /\b(ideacentre\s+[a-z]*\d+[a-z0-9-]*)\b/i,
+  /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+  /\b(yoga\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+  /\b(elitebook\s+\d+\s*g\d+)\b/i,
+  /\b(probook\s+\d+\s*g\d+)\b/i,
+  /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
+  /\b(pavilion\s+[a-z0-9-]+)\b/i,
+  /\b(victus\s+[a-z0-9-]+)\b/i,
+  /\b(omen\s+[a-z0-9-]+)\b/i,
+  /\b((?:envy|spectre|omnibook)\s+[a-z0-9-]+)\b/i,
+  /\b(latitude\s+\d+[a-z0-9-]*)\b/i,
+  /\b((?:inspiron|vostro|precision)\s+\d+[a-z0-9-]*)\b/i,
+  /\b(xps\s+\d+[a-z0-9-]*)\b/i,
+  /\b(aspire\s+[a-z0-9-]+)\b/i,
+  /\b((?:swift|spin|nitro|predator|travelmate|extensa)\s+[a-z0-9-]+)\b/i,
+  /\b((?:vivobook|zenbook|expertbook|proart)\s+[a-z0-9-]+)\b/i,
+  /\b(rog\s+[a-z0-9-]+)\b/i,
+  /\b(galaxy\s+(?:s|z|a|m|tab)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
+  /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+  /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
+  /\b(surface\s+(?:pro|laptop|go|book|studio)?\s*\d*)\b/i,
+];
+
+// Config-level noise removed by the generic fallback.
+const STRIP = [
+  /\[([^\]]*)\]/g,
+  /\((?:intel|amd|qualcomm|apple|nvidia)\)/gi,
+  /\b\d+(?:[.,]\d+)?\s*cm\b/gi,
+  /\(\s*\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\s*\)/gi,
+  /\b\d+(?:[.,]\d+)?\s*(?:"|inch|zoll)\b/gi,
+  /\b\d+\s*(?:gb|tb|mb)\b/gi,
+  /\b\d+\s*\/\s*\d+\b/g,
+  /\b\d+\s*mah\b/gi,
+  // CPUs — Core Ultra, Core i3-i9, plus the bare model number Icecat repeats
+  /\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi,
+  /\b(?:intel\s+)?core\s+i[3579]\b/gi,
+  /\bi[3579][- ]?\d{3,5}[a-z]*\b/gi,
+  /\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+(?:pro\s+)?[a-z0-9-]+\b/gi,
+  /\b(?:intel\s+)?(?:celeron|pentium|xeon|atom)\s+[a-z]?\d+[a-z]*\b/gi,
+  /\b(?:amd\s+)?(?:athlon|a\d)\s+[a-z0-9-]+\b/gi,
+  /\b(?:snapdragon|mediatek|dimensity|exynos|tensor)\s+[a-z0-9-]+\b/gi,
+  // GPUs
+  /\b(?:amd\s+)?radeon\s+[a-z0-9 ]*\d+[a-z0-9]*\b/gi,
+  /\b(?:nvidia\s+)?(?:geforce\s+)?(?:gtx|rtx|mx)\s*\d+[a-z0-9 ]*\b/gi,
+  /\b(?:intel\s+)?(?:iris\s+xe|uhd|hd)\s+graphics\b/gi,
+  // memory / storage tech
+  /\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|emmc|wuxga|wqxga|wqhd|fhd\+?|uhd|qhd|hd\+)\b/gi,
+  // resolution
+  /\b\d{3,4}\s*[x×]\s*\d{3,4}\b/gi,
+  /\bpixels?\b/gi,
+  // screen / form factor
+  /\b(?:touchscreen|touch|all[\s-]?in[\s-]?one|convertible|2[\s-]?in[\s-]?1)\b/gi,
+  // connectivity
+  /\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-?c|usb\s*\d|5g|4g|lte|wi-?fi\s*\d*[a-z]*|wlan|bluetooth)\b/gi,
+  /\b802\.?11\s*[a-z/]*\b/gi,
+  // OS
+  /\bandroid\s*\d+(?:[.,]\d+)?\b/gi,
+  /\b(?:windows|win)\s*\d+(?:[.,]\d+)?(?:\s*(?:pro|home|enterprise|s))?\b/gi,
+  /\b(?:windows|macos|mac\s*os|linux|freebsd|free\s*dos|chrome\s*os|no\s*os)\b/gi,
+  /\b(?:pro|home|laptop|notebook|desktop|computer|pc|tablet)\b/gi,
+  // languages / colours / regions
+  /\b(?:spanish|german|french|italian|english|turkish|dutch|polish|portuguese|swedish|arabic|japanese|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,
+  /\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi,
+  /\b(?:de|uk|us|eu|pl|fr|it|es|se|gb|nl|be|at|ch)\b/gi,
+  /\bcopilot\+?\s*pc\b/gi,
+];
+
+function modelFamilyKey({ name, brand, category }) {
+  let s = String(name || '').toLowerCase();
+  const b = String(brand || '').toLowerCase().trim();
+  if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
+
+  const probe = s.replace(/[()[\],"'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  for (const re of FAMILY_PATTERNS) {
+    const m = probe.match(re);
+    if (m && m[1]) {
+      const fam = slugify(m[1]);
+      if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+    }
+  }
+  // MacBook needs the chip kept (Air/Pro M1…M4 are distinct models).
+  const mac = probe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
+  if (mac) {
+    const chip = probe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
+    const fam = slugify(`${mac[1]} ${chip ? chip[1] : ''}`);
+    if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+  }
+
+  for (const re of STRIP) s = s.replace(re, ' ');
+  s = s
+    .replace(/\b\d\b/g, ' ')              // stray single digits (Wi-Fi 5, …)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  const base = [b, s].filter(Boolean).join('-').slice(0, 180);
+  return base || slugify(name) || slugify(category);
+}
+
+module.exports = { modelFamilyKey, slugify };

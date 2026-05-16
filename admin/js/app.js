@@ -2157,25 +2157,33 @@ function _adminVariantText(p){
 function _adminVariantLabel(p){
   const text=_adminVariantText(p);
   const parts=[];
-  const ram=text.match(/\b(\d+)\s*GB\s*(?:RAM|memory|LPDDR|DDR)/i);
-  const matches=[...text.matchAll(/\b(\d+)\s*(TB|GB|MB)\b/gi)];
-  let storage='';
-  for(const m of matches){
-    const n=parseInt(m[1],10)||0;
-    const unit=String(m[2]||'').toUpperCase();
-    const mb=unit==='TB'?n*1024*1024:unit==='GB'?n*1024:n;
-    if(!storage||mb>(_adminVariantLabel._bestMb||0)){
-      _adminVariantLabel._bestMb=mb;
-      storage=`${n} ${unit}`;
-    }
+  // CPU — the most specific model token (distinguishes i3/i5/i7 configs).
+  const cpuM=text.match(/\b(?:core\s+)?ultra\s+[3579]\s+\w+\b/i)
+    ||text.match(/\bi[3579]-\w+\b/i)
+    ||text.match(/\bryzen(?:\s+ai)?\s+[3579]\s+(?:pro\s+)?\w+\b/i)
+    ||text.match(/\b(?:celeron|pentium|xeon)\s+\w+\b/i)
+    ||text.match(/\bm[1-9]\s*(?:pro|max|ultra)?\b/i);
+  if(cpuM)parts.push(cpuM[0].replace(/\s+/g,' ').trim());
+  // Capacity tokens — storage is the largest, RAM the largest GB token ≤64.
+  const caps=[...String(text).matchAll(/\b(\d+)\s*(TB|GB)\b/gi)].map(m=>{
+    const n=parseInt(m[1],10)||0,unit=m[2].toUpperCase();
+    return {n,unit,mb:unit==='TB'?n*1048576:n*1024};
+  });
+  let storage=null;
+  for(const c of caps)if(!storage||c.mb>storage.mb)storage=c;
+  let ram=null;
+  for(const c of caps){
+    if(c===storage||c.unit!=='GB'||c.n>64)continue;
+    if(!ram||c.n>ram.n)ram=c;
   }
-  _adminVariantLabel._bestMb=0;
-  const combo=String(p?.name||'').match(/\b(\d+)\s*\/\s*(\d+)\b/);
-  if(!storage&&combo)storage=`${combo[2]} GB`;
+  if(ram)parts.push(`${ram.n} GB RAM`);
+  if(storage)parts.push(`${storage.n} ${storage.unit}`);
+  else{
+    const combo=String(p?.name||'').match(/\b(\d+)\s*\/\s*(\d+)\b/);
+    if(combo)parts.push(`${combo[2]} GB`);
+  }
   const colors=['Black','White','Silver','Gold','Blue','Purple','Violet','Pink','Red','Green','Gray','Grey','Cream','Graphite','Lavender','Midnight','Titanium','Siyah','Beyaz','Gri','Mavi','Gümüş'];
   const color=colors.find(c=>new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i').test(text));
-  if(ram)parts.push(`${ram[1]} GB RAM`);
-  if(storage)parts.push(storage);
   if(color)parts.push(color);
   return parts.join(' / ')||String(p?.name||'Variant').slice(0,80);
 }
