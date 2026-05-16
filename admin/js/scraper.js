@@ -2052,6 +2052,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   let emptyCount = 0;
   let noNewCount = 0;
   let failCount = 0;
+  const SEARCH_BLOCK_RECOVERY_MS = 10000;
 
   async function fetchSearchPage(url) {
     let links = [];
@@ -2092,9 +2093,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
     const result = await fetchSearchPage(url);
     if (result.blocked) {
       failCount++;
-      slog(`  → Search page blocked (${result.reason || 'unknown'}). Fresh session and retry next page.`, 'warn');
+      slog(`  → Search page blocked (${result.reason || 'unknown'}). Fresh session and short cooldown, then next page.`, 'warn');
       await resetProxySessionShared(`search page ${page} blocked`);
-      await sleep(30000);
+      await sleep(SEARCH_BLOCK_RECOVERY_MS);
       page++;
       continue;
     }
@@ -2237,6 +2238,7 @@ async function _loadExistingSourceUrls(categoryId) {
 
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
+  const isBrandSearch = !String(categoryId || '').trim();
   let errorStreak = 0;
   let challengeStreak = 0;
   // Adaptive rate-limit: track last 20 outcomes; if success rate drops below
@@ -2251,8 +2253,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   // instead of silently burning the entire URL list.
   const _CF_STREAK_BEFORE_RESET = 3;
   const _CF_HARD_ABORT_STREAK = 12;
-  const _PROACTIVE_RESET_EVERY = 50; // products
-  const _CF_RECOVERY_MS = 45000;
+  const _PROACTIVE_RESET_EVERY = isBrandSearch ? 150 : 80; // products
+  const _PROACTIVE_COOLDOWN_MS = isBrandSearch ? 5000 : 15000;
+  const _CF_RECOVERY_MS = isBrandSearch ? 15000 : 45000;
   let productsSinceReset = 0;
   let cfRetryUrl = null; // URL to retry once immediately after a session reset
 
@@ -2381,8 +2384,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       if (productsSinceReset >= _PROACTIVE_RESET_EVERY) {
         productsSinceReset = 0;
         await resetProxySessionShared(`proactive after ${_PROACTIVE_RESET_EVERY} products`);
-        slog(`❄️ Proactive cooldown 30s…`, 'info');
-        await sleep(30000);
+        slog(`❄️ Proactive cooldown ${(_PROACTIVE_COOLDOWN_MS / 1000).toFixed(0)}s…`, 'info');
+        await sleep(_PROACTIVE_COOLDOWN_MS);
         nextHtmlPromise = null;
       }
 
