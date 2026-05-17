@@ -466,6 +466,109 @@ function plainFetch(url, redirects = 4, referer = '') {
   });
 }
 
+// Plain HTTPS POST (form-urlencoded) — drives Epey's /kat/listele/ AJAX
+// listing endpoint without a browser. ~50x faster than a Puppeteer render
+// and it actually works: the in-page AJAX path broke because page.setContent
+// leaves the document origin off epey.com, so the relative fetch 404s.
+function plainPost(url, formObj, referer = '') {
+  return new Promise((resolve) => {
+    let u;
+    try { u = new URL(url); } catch { return resolve({ html: '', status: 0 }); }
+    const body = new URLSearchParams(formObj || {}).toString();
+    const cookieHeader = (Array.isArray(sessionCookies) && sessionCookies.length)
+      ? sessionCookies.map(c => `${c.name}=${c.value}`).join('; ')
+      : '';
+    const reqOpts = {
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'POST',
+      timeout: 15000,
+      headers: {
+        'User-Agent': currentUA || _randomUA(),
+        'Accept': 'text/html, */*; q=0.01',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Length': Buffer.byteLength(body),
+        ...(referer ? { 'Referer': referer } : {}),
+        ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
+      },
+    };
+    const r = https.request(reqOpts, (res) => {
+      let stream = res;
+      const enc = String(res.headers['content-encoding'] || '').toLowerCase();
+      try {
+        if (enc === 'gzip') stream = res.pipe(zlib.createGunzip());
+        else if (enc === 'deflate') stream = res.pipe(zlib.createInflate());
+        else if (enc === 'br') stream = res.pipe(zlib.createBrotliDecompress());
+      } catch { /* fall back to raw */ }
+      const chunks = [];
+      stream.on('data', c => chunks.push(c));
+      stream.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf8'), status: res.statusCode || 0 }));
+      stream.on('error', () => resolve({ html: '', status: res.statusCode || 0 }));
+    });
+    r.on('error', () => resolve({ html: '', status: 0 }));
+    r.on('timeout', () => { r.destroy(); resolve({ html: '', status: 0 }); });
+    r.write(body);
+    r.end();
+  });
+}
+
+// ── Server-side listing parsing (regex) — mirrors the in-page extractors so
+//    /category-links and /listing-ajax run with NO browser at all. ──────────
+const _PRODUCT_LINK_RE = /^\/[a-z0-9][a-z0-9/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i;
+
+// requirePrefix (e.g. "/akilli-telefonlar/") scopes results to the category,
+// dropping cross-category links from "popular"/sidebar widgets in the page.
+function extractListingLinksFromHtml(html, maxLinks = 1000, requirePrefix = '') {
+  const seen = new Set();
+  const links = [];
+  const re = /(?:href|data-href|data-url)\s*=\s*["']([^"']+?\.html)["']/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && links.length < maxLinks) {
+    let href = m[1].trim();
+    if (/^https?:/i.test(href)) { try { href = new URL(href).pathname; } catch { continue; } }
+    if (!href.startsWith('/')) href = '/' + href;
+    if (!_PRODUCT_LINK_RE.test(href)) continue;
+    if (/-resimleri\.html$/i.test(href)) continue;
+    if (/\/(karsilastir|sayfa|yardim|hakkimizda|iletisim)\//i.test(href)) continue;
+    if (requirePrefix && !href.toLowerCase().startsWith(requirePrefix.toLowerCase())) continue;
+    const full = 'https://www.epey.com' + href;
+    if (seen.has(full)) continue;
+    seen.add(full);
+    links.push(full);
+  }
+  return links;
+}
+
+// Epey embeds the AJAX pagination tokens (category id + a per-session "cerez"
+// nonce + page size) in an inline script on the category page.
+function extractAjaxParams(html) {
+  const kid = String(html).match(/kategori_id\s*:\s*['"]?(\d+)/i);
+  const cerez = String(html).match(/cerez\s*:\s*['"]([^'"]+)['"]/i);
+  if (!kid || !cerez) return null;
+  const limit = String(html).match(/limit\s*:\s*['"]?(\d+)/i);
+  return {
+    kategoriId: kid[1],
+    cerez: cerez[1],
+    limit: Math.max(1, parseInt(limit?.[1] || '31', 10) || 31),
+  };
+}
+
+// Highest page number referenced by the listing's pagination block.
+function extractMaxListingPage(html, catPath) {
+  if (!catPath) return 1;
+  const esc = catPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`${esc}/(\\d{1,5})/`, 'gi');
+  let m, max = 1;
+  while ((m = re.exec(html)) !== null) {
+    const n = parseInt(m[1], 10);
+    if (n > max && n < 100000) max = n;
+  }
+  return max;
+}
+
 async function fetchWithPuppeteer(url, opts = {}) {
   const { waitChallenge = true, _attempt = 0 } = opts;
   const page = await getPage();
@@ -1008,8 +1111,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Category Links (strict, no detail) ──
+  // Plain-HTTP first (no browser): parse page 1 links + AJAX tokens + last
+  // page number, and hand AJAX pagination back to the caller so it can be
+  // driven page-by-page (live progress) via /listing-ajax. Puppeteer is only
+  // used as a fallback when Epey serves a Cloudflare challenge.
   if (req.url.startsWith('/category-links')) {
-    // Wrap EVERYTHING so this endpoint NEVER falls through to HTML
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const targetUrl = urlObj.searchParams.get('url');
@@ -1021,62 +1127,75 @@ const server = http.createServer(async (req, res) => {
       }
 
       console.log(`  🔗 Category links: ${targetUrl}`);
-      const { links, pages } = await withBrowserLock(async () => {
-        const page = await getPage();
+      let result = null;
 
-        // Navigate to the category page (FlareSolverr if available, else Puppeteer)
-        const { html, status, isChallenge } = await fetchHtml(targetUrl);
-        if (!html) {
-          const err = new Error('Failed to load category page');
-          err.status = status;
-          throw err;
+      // FAST PATH — plain HTTPS GET, parsed server-side.
+      const t0 = Date.now();
+      const fast = await plainFetch(targetUrl, 4, 'https://www.epey.com/');
+      if (fast.status === 200 && fast.html.length > 4000 && !_isChallengeContent(fast.html)) {
+        let catPath = '';
+        try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
+        // Scope product links to the category's top-level path so "popular"
+        // widgets pointing at other categories are dropped.
+        const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
+        const links = extractListingLinksFromHtml(fast.html, maxLinks, prefix);
+        const ajax = extractAjaxParams(fast.html);
+        const maxPage = extractMaxListingPage(fast.html, catPath);
+        const pages = [];
+        if (!ajax && catPath) {
+          for (let p = 2; p <= Math.min(maxPage, 200); p++) pages.push(`https://www.epey.com/${catPath}/${p}/`);
         }
-        try {
-          await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
-        } catch {}
+        result = {
+          links, pages,
+          ajax: ajax ? { ...ajax, maxPage, base: targetUrl, prefix } : null,
+        };
+        console.log(`  ⚡ fast category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
+          `${ajax ? ` · AJAX ${maxPage}p` : (pages.length ? ` · ${pages.length} pages` : '')}`);
+      }
 
-        // If Cloudflare challenge is still active, give it a short extra window
-        // then try extraction anyway. We no longer hard-fail with 503 — the
-        // client can handle empty results and move on, avoiding 25-55s hangs.
-        if (isChallenge) {
-          console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
+      // FALLBACK — Cloudflare challenge or empty body: drive a real browser.
+      if (!result || !result.links.length) {
+        console.log(`  🐢 fast path empty — falling back to Puppeteer…`);
+        result = await withBrowserLock(async () => {
+          const page = await getPage();
+          const { html, status, isChallenge } = await fetchHtml(targetUrl);
+          if (!html) { const e = new Error('Failed to load category page'); e.status = status; throw e; }
+          try { await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 }); } catch {}
+          if (isChallenge) {
+            console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
+            try {
+              await page.waitForSelector('#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist', { timeout: 10000 });
+            } catch {}
+          }
           try {
-            await page.waitForSelector(
-              '#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist',
-              { timeout: 10000 }
-            );
-            console.log(`  ✅ Product list appeared.`);
-          } catch {
-            console.log(`  ⚠️ Product list selector did not appear; extracting best-effort links.`);
+            const initialLinks = await extractCategoryLinks(page);
+            const ajaxLinks = initialLinks.length < maxLinks
+              ? await extractEpeyAjaxListingLinks(page, maxLinks - initialLinks.length).catch(() => [])
+              : [];
+            const seen = new Set();
+            const links = [];
+            for (const link of [...initialLinks, ...ajaxLinks]) {
+              if (!link || seen.has(link)) continue;
+              seen.add(link);
+              links.push(link);
+              if (links.length >= maxLinks) break;
+            }
+            return { links, pages: await extractListingPaginationLinks(page).catch(() => []), ajax: null };
+          } catch (extractErr) {
+            extractErr.extractionFailed = true;
+            throw extractErr;
           }
-        }
+        });
+      }
 
-        try {
-          const initialLinks = await extractCategoryLinks(page);
-          const ajaxLinks = initialLinks.length < maxLinks
-            ? await extractEpeyAjaxListingLinks(page, maxLinks - initialLinks.length).catch(() => [])
-            : [];
-          const seen = new Set();
-          const links = [];
-          for (const link of [...initialLinks, ...ajaxLinks]) {
-            if (!link || seen.has(link)) continue;
-            seen.add(link);
-            links.push(link);
-            if (links.length >= maxLinks) break;
-          }
-          return {
-            links,
-            pages: await extractListingPaginationLinks(page).catch(() => []),
-          };
-        } catch (extractErr) {
-          extractErr.extractionFailed = true;
-          throw extractErr;
-        }
-      });
-
-      console.log(`  ✅ ${links.length} product links extracted`);
+      console.log(`  ✅ ${result.links.length} product links extracted`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ count: links.length, links, pages }));
+      res.end(JSON.stringify({
+        count: result.links.length,
+        links: result.links,
+        pages: result.pages || [],
+        ajax: result.ajax || null,
+      }));
     } catch (err) {
       if (err.extractionFailed) {
         console.error(`  ❌ extractCategoryLinks threw: ${err.message}`);
@@ -1096,6 +1215,39 @@ const server = http.createServer(async (req, res) => {
         error: 'category_links_failed',
         message: err.message
       }));
+    }
+    return;
+  }
+
+  // ── Listing AJAX page (one /kat/listele/ page, plain HTTP, no browser) ──
+  // The caller drives pagination one page at a time so the admin log can show
+  // live per-page progress.
+  if (req.url.startsWith('/listing-ajax')) {
+    try {
+      const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+      const kid = urlObj.searchParams.get('kid');
+      const cerez = urlObj.searchParams.get('cerez');
+      const limit = urlObj.searchParams.get('limit') || '31';
+      const pageNo = urlObj.searchParams.get('page') || '2';
+      const base = urlObj.searchParams.get('base') || 'https://www.epey.com/';
+      const prefix = urlObj.searchParams.get('prefix') || '';
+      if (!kid || !cerez) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing kid/cerez' }));
+        return;
+      }
+      const { html, status } = await plainPost(
+        'https://www.epey.com/kat/listele/',
+        { kategori_id: kid, cerez, limit, sayfa: pageNo },
+        base,
+      );
+      const links = status === 200 ? extractListingLinksFromHtml(html, 1000, prefix) : [];
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ count: links.length, links, status }));
+    } catch (err) {
+      console.error(`  ❌ /listing-ajax: ${err.message}`);
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'listing_ajax_failed', message: err.message, links: [] }));
     }
     return;
   }
