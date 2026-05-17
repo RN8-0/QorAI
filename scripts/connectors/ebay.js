@@ -63,44 +63,92 @@ async function getToken() {
   return _token;
 }
 
-/** Return offer objects for one product (matched by GTIN, else brand+MPN). */
+// Build a clean keyword query from a (often verbose) product name: keep the
+// brand + model, drop the spec tail (screen size, RAM, OS, colour…) that would
+// only confuse eBay's search. "Motorola moto g37 16.9 cm (6.67\") Dual SIM
+// Android 16.0 5G 8 GB 256 GB…" → "Motorola moto g37".
+function buildKeywordQuery(product) {
+  let name = String(product.name || '').replace(/\s+/g, ' ').trim();
+  const cut = name.search(/\s(?:\d+(?:[.,]\d+)?\s*(?:cm|mm|inch|gb|tb|ghz|mhz|mah|wh|w)\b|\(\d|dual\s*sim|single\s*sim|android|windows|macos|chrome\s*os|wi-?fi|bluetooth|\d(?:g|G)\b|touchscreen)/i);
+  if (cut > 10) name = name.slice(0, cut).trim();
+  const brand = String(product.brand || '').trim();
+  const brandFirst = brand.split(/\s+/)[0] || '';
+  if (brandFirst && !name.toLowerCase().startsWith(brandFirst.toLowerCase())) {
+    name = `${brand} ${name}`.trim();
+  }
+  return name.replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+// Distinctive model tokens — alphanumeric chunks that contain a digit
+// (e.g. "g37", "s918b", "16"). A candidate eBay title must contain the brand
+// and at least one of these, otherwise it's a different product.
+function modelTokens(query) {
+  return query.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 2 && /\d/.test(w));
+}
+function titleMatches(title, brandFirst, tokens) {
+  const t = String(title || '').toLowerCase();
+  if (brandFirst && brandFirst.length > 1 && !t.includes(brandFirst.toLowerCase())) return false;
+  if (tokens.length && !tokens.some(tok => t.includes(tok))) return false;
+  return true;
+}
+
+/** Return offer objects for one product. */
 async function searchOffers(product) {
   if (!isConfigured()) return [];
   const gtin = String(product.gtin || '').trim();
-  const mpn = String(product.mpn || '').trim();
   const brand = String(product.brand || '').trim();
-  // GTIN is an exact barcode match. Epey imports often have no barcode, so we
-  // fall back to a brand+MPN keyword search — still precise enough to match
-  // the right listing, and it lets those products earn affiliate offers too.
-  let query;
-  if (gtin)             query = `gtin=${encodeURIComponent(gtin)}`;
-  else if (mpn && brand) query = `q=${encodeURIComponent(`${brand} ${mpn}`)}`;
-  else if (mpn)          query = `q=${encodeURIComponent(mpn)}`;
-  else return [];
+  const brandFirst = brand.split(/\s+/)[0] || '';
+  const kw = buildKeywordQuery(product);
+  const tokens = modelTokens(kw);
+  if (!gtin && !kw) return [];
+
   const token = await getToken();
   const out = [];
   for (const market of MARKETPLACES) {
-    const r = await httpsJson({
-      method: 'GET', hostname: 'api.ebay.com',
-      path: `/buy/browse/v1/item_summary/search?${query}&limit=5`,
-      headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market },
-    });
-    if (r.status !== 200 || !Array.isArray(r.body.itemSummaries)) continue;
     const country = MARKET_COUNTRY[market] || 'US';
-    // Cheapest summary for this marketplace.
-    const best = r.body.itemSummaries
-      .filter(it => it.price && it.price.value)
-      .sort((a, b) => parseFloat(a.price.value) - parseFloat(b.price.value))[0];
-    if (!best) continue;
+    const hit = async (qs) => {
+      const r = await httpsJson({
+        method: 'GET', hostname: 'api.ebay.com',
+        path: `/buy/browse/v1/item_summary/search?${qs}&limit=10`,
+        headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market },
+      });
+      return (r.status === 200 && Array.isArray(r.body.itemSummaries)) ? r.body.itemSummaries : [];
+    };
+
+    // GTIN is exact but eBay listings rarely carry one — fall back to a
+    // validated keyword search so the product still gets an offer.
+    let items = gtin ? await hit(`gtin=${encodeURIComponent(gtin)}`) : [];
+    let matched = items.filter(it => it.price && it.price.value);
+    if (!matched.length && kw) {
+      items = await hit(`q=${encodeURIComponent(kw)}`);
+      matched = items.filter(it =>
+        it.price && it.price.value && titleMatches(it.title, brandFirst, tokens));
+    }
+    if (!matched.length) continue;
+
+    // eBay conditionId is language-independent (the localized text is "Neu",
+    // "Gebraucht"… on non-US sites). 1000/1500 = new, 2000-2750 = refurbished.
+    const condOf = it => {
+      const id = String(it.conditionId || '');
+      if (id === '1000' || id === '1500') return 'new';
+      if (/^2[0-7]/.test(id)) return 'refurbished';
+      if (id) return 'used';
+      return /new/i.test(it.condition || '') ? 'new' : 'used';
+    };
+    // Prefer new, then refurbished, then used; within a tier, the cheapest.
+    const rank = { new: 0, refurbished: 1, used: 2 };
+    const best = matched.sort((a, b) =>
+      (rank[condOf(a)] - rank[condOf(b)]) ||
+      (parseFloat(a.price.value) - parseFloat(b.price.value)))[0];
     const url = best.itemAffiliateWebUrl || best.itemWebUrl || '';
     out.push({
-      gtin, mpn: product.mpn || '', brand: product.brand || '',
+      gtin, mpn: product.mpn || '', brand,
       store: 'eBay', network: 'ebay', country,
       price: parseFloat(best.price.value) || 0,
       currency: best.price.currency || '',
       url,
       affiliateUrl: best.itemAffiliateWebUrl || buildAffiliateUrl('ebay', url, { country }),
-      condition: /new/i.test(best.condition || '') ? 'new' : (best.condition || 'used').toLowerCase(),
+      condition: condOf(best),
       inStock: true,
       source: 'ebay-browse',
     });
