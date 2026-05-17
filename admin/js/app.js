@@ -1098,7 +1098,7 @@ let totalProductCount=0;
 let _productRefreshTimer=null;
 const PRODUCT_RAW_PER=120;
 const CATALOG_REPAIR_LIMIT=0;
-const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
+const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,lowestOfferUrl,lowestOfferStore,offerCount,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
 let _productUiPages=new Map();
 let _lastProductQueryKey='';
 let _facetWarmupRunning=false;
@@ -1637,9 +1637,20 @@ function renderProductsPage(){
     const effectiveVariantCount=vc||Number(p._variantCount)||0;
     const variantBadge=(_groupVariants&&effectiveVariantCount>1)?`<div class="variant-badge" title="${effectiveVariantCount} varyant">×${effectiveVariantCount>99?'99+':effectiveVariantCount}</div>`:'';
     const priceValue=Number(p.lowestPrice||p.price||0);
-    const priceCurrency=p.lowestPriceCurrency||'TL';
+    const priceCurrency=p.lowestPriceCurrency||'';
     const priceText=priceValue?`${priceValue.toLocaleString()} ${escHtml(priceCurrency)}`:'';
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${priceText}</span><span>${category}</span></div></div></div>`;
+    // Price + buy link sit ABOVE the product name. The link opens the cheapest
+    // offer's affiliate URL directly; stopPropagation keeps the card's own
+    // click (open modal) from firing.
+    const offerUrl=safeUrl(p.lowestOfferUrl||'');
+    const offerStore=escHtml(p.lowestOfferStore||'eBay');
+    const offerHtml=priceText
+      ? `<div class="product-offer" style="display:flex;align-items:center;gap:6px;margin:1px 0 2px">`
+        + `<span style="font-weight:800;color:#22c55e;font-size:13px">${priceText}</span>`
+        + (offerUrl?`<a href="${offerUrl}" target="_blank" rel="noopener sponsored" onclick="event.stopPropagation()" style="font-size:10px;font-weight:800;color:#fff;background:#0064d2;padding:1px 6px;border-radius:4px;text-decoration:none">${offerStore} ↗</a>`:'')
+        + `</div>`
+      : '';
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div>${offerHtml}<div class="product-name">${name}</div><div class="product-meta"><span>${category}</span></div></div></div>`;
   }).join('');
   populateFiltersFromCurrentPage();
 
@@ -2271,10 +2282,61 @@ async function openProduct(id){
   if(body)body.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading variants...</div>';
   document.getElementById('modalOverlay').style.display='flex';
   const variants=await _adminFetchProductVariants(p);
-  _renderProductModal(p,variants);
+  const offers=await _adminFetchProductOffers(p.id);
+  _renderProductModal(p,variants,offers);
 }
 
-function _renderProductModal(p,variants=[]){
+// Retailer offers for a product (eBay, …) — cheapest first.
+async function _adminFetchProductOffers(productId){
+  if(!productId)return[];
+  try{
+    const r=await pbGetList('offers',1,50,{
+      filter:`productId="${String(productId).replace(/"/g,'\\"')}"`,
+      sort:'price',
+    });
+    return r.items||[];
+  }catch{return[]}
+}
+
+// eBay wordmark recreated in the brand colours (red-e blue-b yellow-a green-y).
+function _ebayLogoHtml(){
+  return '<span style="font-weight:800;font-size:18px;font-style:italic;letter-spacing:-1px">'
+    +'<span style="color:#e53238">e</span><span style="color:#0064d2">b</span>'
+    +'<span style="color:#f5af02">a</span><span style="color:#86b817">y</span></span>';
+}
+
+// Offers panel for the product modal: a store logo with its country price rows
+// and affiliate buy links underneath.
+function _buildOffersPanel(offers){
+  if(!offers||!offers.length)return'';
+  const FLAG={US:'🇺🇸',DE:'🇩🇪',GB:'🇬🇧',TR:'🇹🇷',AU:'🇦🇺'};
+  const byStore={};
+  offers.forEach(o=>{const k=o.store||'eBay';(byStore[k]=byStore[k]||[]).push(o)});
+  let out='';
+  for(const[store,list]of Object.entries(byStore)){
+    list.sort((a,b)=>(Number(a.price)||0)-(Number(b.price)||0));
+    const logo=/ebay/i.test(store)?_ebayLogoHtml():`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
+    let rows='';
+    for(const o of list){
+      const flag=FLAG[String(o.country||'').toUpperCase()]||'🌐';
+      const price=o.price?`${Number(o.price).toLocaleString()} ${escHtml(o.currency||'')}`:'—';
+      const link=safeUrl(o.affiliateUrl||o.url||'');
+      rows+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--border)">`
+        +`<span style="font-size:13px;min-width:54px">${flag} ${escHtml(o.country||'')}</span>`
+        +`<span style="font-weight:800;color:#22c55e;font-size:15px">${price}</span>`
+        +`<span style="font-size:11px;color:var(--text3);text-transform:capitalize">${escHtml(o.condition||'')}</span>`
+        +(link?`<a href="${link}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:12px;padding:6px 14px;border-radius:6px;text-decoration:none">Satın Al ↗</a>`:'')
+        +`</div>`;
+    }
+    out+=`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:12px">`
+      +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">${logo}`
+      +`<span style="color:var(--text3);font-size:11px;font-weight:800;letter-spacing:.5px">FİYATLAR & SATIN AL</span></div>`
+      +rows+`</div>`;
+  }
+  return out;
+}
+
+function _renderProductModal(p,variants=[],offers=[]){
   const id = p.id;
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the Turkish source.
@@ -2405,6 +2467,7 @@ function _renderProductModal(p,variants=[]){
   const variantPanel=uniqueVariants.length>1?`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:12px"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:8px">Variants</div><div style="display:flex;gap:8px;flex-wrap:wrap">${uniqueVariants.map(v=>`<button class="btn btn-sm ${v.id===id?'btn-primary':'btn-ghost'}" type="button" onclick="openProduct('${escJs(v.id)}')" title="${escHtml(v.name||'')}">${escHtml(_adminVariantLabel(v))}</button>`).join('')}</div></div>`:'';
   body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
   ${variantPanel}
+  ${_buildOffersPanel(offers)}
   <div id="editFormContainer" style="display:none;margin:16px 0">
     <div class="card" style="margin:0;border:1px solid var(--accent)">
       <div class="card-title">✏️ Edit Product</div>
