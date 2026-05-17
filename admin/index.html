@@ -445,22 +445,25 @@
             <div class="card-title">Epey.com Product Import</div>
             <div class="form-grid">
               <input type="hidden" id="scrapeMode" value="brand">
-              <input type="hidden" id="scrapeCategory" value="">
               <div class="form-field" id="scrapeSearchField">
-                <label>Brand / Search Term</label>
-                <input class="input" id="scrapeSearchTerm" placeholder="Samsung, Apple, Xiaomi, Lenovo">
+                <label>Marka / Arama</label>
+                <input class="input" id="scrapeSearchTerm" placeholder="Apple, Samsung, Xiaomi, Huawei">
               </div>
               <div class="form-field">
-                <label>Product Limit</label>
-                <input class="input" type="number" id="scrapeMaxProducts" value="200" min="1">
+                <label>Kategori</label>
+                <select class="input" id="scrapeCategory"></select>
+              </div>
+              <div class="form-field">
+                <label>Ürün Limiti</label>
+                <input class="input" type="number" id="scrapeMaxProducts" value="2000" min="1">
               </div>
               <div class="form-field">
                 <label>Delay (ms)</label>
-                <input class="input" type="number" id="scrapeDelay" value="300" min="0" step="100">
+                <input class="input" type="number" id="scrapeDelay" value="600" min="0" step="100">
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Searches Epey.com by brand or model, imports Turkish specs/images/EAN/MPN/score, skips already saved Epey URLs, and auto-detects the product category.
+              Marka + kategori seç (ör. Apple → Akıllı Telefon) → sadece o markanın o kategorideki ürünleri gelir, alakasız sonuç yok. Kategori boş bırakılırsa tüm Epey araması yapılır (karışık sonuç).
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>

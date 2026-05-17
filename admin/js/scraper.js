@@ -358,7 +358,7 @@ function updateScrapeModeUI() {
   if (searchField) searchField.style.display = '';
   if (catField) catField.style.display = 'none';
   if (hint) {
-    hint.textContent = 'Searches Epey.com by brand or model, imports Turkish specs/images/EAN/MPN/score, skips already saved Epey URLs, and auto-detects the product category.';
+    hint.textContent = 'Marka + kategori seç (ör. Apple → Akıllı Telefon) → sadece o markanın o kategorideki ürünleri gelir, alakasız sonuç yok. Kategori boş bırakılırsa tüm Epey araması yapılır (karışık sonuç).';
   }
 }
 window.updateScrapeModeUI = updateScrapeModeUI;
@@ -3319,18 +3319,16 @@ function epeyBrandCategoryUrls(term) {
 
 // Collect product URLs for a brand / search term.
 //
-// PRIMARY path = Epey's own site search (`/ara/?ara=<term>`). One proxy call
-// returns the brand's products in the exact order the website shows them,
-// across every category, and the proxy paginates internally (AJAX) up to
-// `max`. This is "brand-based, not category-based": type "huawei", get the
-// first N of Epey's 800-odd Huawei results.
+// CATEGORY-SCOPED (categoryId given) = Epey's per-category brand listing
+// (`epey.com/<epeyPath>/<brand>/`) — e.g. Apple → Akıllı Telefon returns ONLY
+// Apple phones, zero junk (no perfume / baby-food rows that an "apple" site
+// search drags in).
 //
-// FALLBACK = per-category brand listings (round-robin), only used when the
-// site search yields nothing (e.g. odd model-number terms).
-async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
+// NO CATEGORY = Epey site search (`/ara/?ara=<term>`): brand-based across
+// every category, in site order. Useful but can include unrelated products.
+async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryId = '') {
   const term = String(searchTerm || '').trim();
   if (!term) return [];
-  slog(`Collecting Epey products for brand/search: "${term}"`);
   const allItems = [];
   const seen = new Set();
 
@@ -3359,7 +3357,41 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
     return res.ok ? await res.json() : null;
   };
 
-  // ── PRIMARY: Epey site search ──────────────────────────────────────────
+  // ── CATEGORY-SCOPED: brand + category → clean per-category brand listing ──
+  const catDef = categoryId && typeof QorAiCategories !== 'undefined'
+    ? (QorAiCategories.getById?.(categoryId) || QorAiCategories.getAll().find(c => c.id === categoryId))
+    : null;
+  const epeyPath = catDef && catDef.epeyPath ? String(catDef.epeyPath).replace(/^\/|\/$/g, '') : '';
+  if (categoryId) {
+    if (!epeyPath) {
+      slog(`Category "${categoryId}" has no Epey path — falling back to site-wide search.`, 'warn');
+    } else {
+      const brandSlug = normalizeCategoryToken(term);
+      const baseUrl = `${EPEY_BASE}/${epeyPath}/${brandSlug}/`;
+      slog(`Collecting "${term}" in ${catDef.name || categoryId} — ${baseUrl}`, 'info');
+      const pages = [baseUrl];
+      const seenPages = new Set();
+      for (let pi = 0; pi < pages.length && pi < 40 && allItems.length < maxProducts && !scraperAbort; pi++) {
+        const pageUrl = pages[pi];
+        if (seenPages.has(pageUrl)) continue;
+        seenPages.add(pageUrl);
+        try {
+          const data = await fetchLinks(pageUrl);
+          const added = pushItems(itemsFromData(data));
+          if (pi === 0 || added) slog(`  +${added} (${allItems.length}/${maxProducts})`, allItems.length ? 'success' : 'warn');
+          for (const next of (Array.isArray(data?.pages) ? data.pages : [])) {
+            if (next && !seenPages.has(next) && !pages.includes(next)) pages.push(next);
+          }
+        } catch (e) {
+          slog(`  category page failed: ${e.message}`, 'warn');
+        }
+      }
+      return allItems.slice(0, maxProducts);
+    }
+  }
+
+  // ── NO CATEGORY: Epey site search ──────────────────────────────────────
+  slog(`Collecting Epey products for brand/search: "${term}"`);
   slog(`  searching Epey for "${term}" (site order, all categories)`, 'info');
   for (const searchUrl of epeySearchUrls(term)) {
     if (scraperAbort || allItems.length >= maxProducts) break;
@@ -3462,6 +3494,7 @@ async function startBulkScrape() {
 
   const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
   if (!searchTerm) { toast('Marka veya arama terimi gir', 'w'); return; }
+  const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
 
@@ -3470,17 +3503,17 @@ async function startBulkScrape() {
   document.getElementById('btnStopScrape').style.display = '';
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
-  slog(`Epey search import: "${searchTerm}", max ${maxProducts}`, 'info');
+  slog(`Epey import: "${searchTerm}"${categoryId ? ` · category=${categoryId}` : ' · all categories'} · max ${maxProducts}`, 'info');
 
   try {
-    const urlItems = await collectSearchProductUrls(searchTerm, maxProducts);
+    const urlItems = await collectSearchProductUrls(searchTerm, maxProducts, categoryId);
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {
       slog('No product URLs found. Try a more exact brand/model term or check proxy.', 'error');
       finishScraping();
       return;
     }
-    const results = await sequentialScrape(urlItems.slice(0, maxProducts), '', delay);
+    const results = await sequentialScrape(urlItems.slice(0, maxProducts), categoryId, delay);
     slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
     if (results.added > 0 && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
