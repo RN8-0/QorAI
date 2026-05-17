@@ -37,14 +37,25 @@ async function resolveProductId(offer) {
 /** Recompute lowestPrice* / offerCount on a product from its in-stock offers. */
 async function refreshProductRollup(productId) {
   const r = await req('GET',
-    `/api/collections/offers/records?perPage=200&fields=price,currency,inStock,affiliateUrl,url,store` +
+    `/api/collections/offers/records?perPage=200&fields=price,currency,inStock,affiliateUrl,url,store,country` +
     `&filter=${encodeURIComponent(`productId="${esc(productId)}"`)}`);
   const offers = (r.status === 200 && r.body.items) ? r.body.items : [];
   const live = offers.filter(o => o.inStock !== false);
   let best = null, bestUsd = Infinity;
+  // Per-country price + affiliate links so the Flutter app can show the price
+  // in the visitor's own country/currency and a buy link for it.
+  const prices = {};
+  const affiliateLinksByCountry = {};
   for (const o of live) {
     const usd = toUsd(o.price, o.currency);
     if (usd > 0 && usd < bestUsd) { bestUsd = usd; best = o; }
+    const c = String(o.country || '').toUpperCase();
+    const pr = Number(o.price) || 0;
+    if (c && pr > 0 && (prices[c] === undefined || pr < prices[c])) prices[c] = pr;
+    const link = o.affiliateUrl || o.url || '';
+    if (c && link) {
+      (affiliateLinksByCountry[c] = affiliateLinksByCountry[c] || {})[o.store || 'eBay'] = link;
+    }
   }
   // Stash the cheapest offer's store + affiliate link on the product so the
   // catalog list can show a price and a buy link without querying offers.
@@ -54,10 +65,12 @@ async function refreshProductRollup(productId) {
         offerCount: live.length,
         lowestOfferUrl: best.affiliateUrl || best.url || '',
         lowestOfferStore: best.store || '',
+        prices, affiliateLinksByCountry,
       }
     : {
         lowestPrice: 0, lowestPriceCurrency: '', lowestPriceUSD: 0,
         offerCount: live.length, lowestOfferUrl: '', lowestOfferStore: '',
+        prices: {}, affiliateLinksByCountry: {},
       };
   await req('PATCH', `/api/collections/products/records/${productId}`, payload);
 }
