@@ -56,6 +56,9 @@ const EBAY_CATEGORY = {
 // a real device listing is never dropped.
 const ACCESSORY_RE = /\b(case|cover|kılıf|kilif|sleeve|pouch|protector|tempered|screen\s*guard|bumper|\bskin\b|lanyard|for\s+(?:samsung|apple|iphone|ipad|xiaomi|huawei|lenovo|hp|dell|asus|sony|lg)\b|replacement\s+(?:screen|battery|part)|spare\s+part)\b/i;
 
+// Broken / spare-parts listings — never a valid price for a working device.
+const JUNK_RE = /\b(for\s+parts|not\s+working|spares?\s+(?:or\s+)?repairs?|faulty|defective|cracked|screen\s+only|lcd\s+only|digitizer|motherboard\s+only|board\s+only|housing\s+only)\b/i;
+
 const isConfigured = () => !!(CLIENT_ID && CLIENT_SECRET);
 
 function httpsJson(opts, body) {
@@ -141,14 +144,19 @@ async function searchOffers(product) {
       return (r.status === 200 && Array.isArray(r.body.itemSummaries)) ? r.body.itemSummaries : [];
     };
 
+    // A usable listing has a price, is not "For parts or not working"
+    // (eBay conditionId 7000) and is not a broken/spares listing.
+    const usable = it => it.price && it.price.value
+      && String(it.conditionId || '') !== '7000'
+      && !JUNK_RE.test(String(it.title || ''));
+
     // GTIN is exact but eBay listings rarely carry one — fall back to a
     // validated keyword search so the product still gets an offer.
     let items = gtin ? await hit(`gtin=${encodeURIComponent(gtin)}`) : [];
-    let matched = items.filter(it => it.price && it.price.value);
+    let matched = items.filter(usable);
     if (!matched.length && kw) {
       items = await hit(`q=${encodeURIComponent(kw)}`);
-      matched = items.filter(it =>
-        it.price && it.price.value && titleMatches(it.title, brandFirst, tokens));
+      matched = items.filter(it => usable(it) && titleMatches(it.title, brandFirst, tokens));
     }
     if (!matched.length) continue;
 
