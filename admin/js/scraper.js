@@ -289,10 +289,11 @@ function ensureProxyPolling() {
   }, 5000);
 }
 
-async function proxyFetch(url, retries = 3) {
+async function proxyFetch(url, retries = 3, referer = '') {
+  const refQuery = referer ? `&referer=${encodeURIComponent(referer)}` : '';
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`, {
+      const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}${refQuery}`, {
         // 120s: covers proxy 45s nav + 15s challenge wait + one internal fresh-page retry
         signal: AbortSignal.timeout(120000)
       });
@@ -2304,28 +2305,10 @@ function updateResumeUI() {
 }
 window.updateResumeUI = updateResumeUI;
 
-// ── Skip-existing: pull every product URL already stored in PB for this
-// category and drop them from the scrape list. This makes resume "free":
-// even after a PC restart, the next run skips everything already saved
-// and continues with brand-new URLs.
-async function _loadExistingSourceUrls(categoryId) {
-  if (!categoryId) return new Set();
-  try {
-    const docs = await pbGetAll('products', {
-      filter: `category="${String(categoryId).replace(/"/g, '\\"')}"`,
-      sort: '-created',
-    });
-    const set = new Set();
-    for (const d of docs) {
-      const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      if (data?.sourceUrl) set.add(String(data.sourceUrl).trim());
-    }
-    return set;
-  } catch (e) {
-    slog(`  (existing-URL preload failed: ${e.message})`, 'warn');
-    return new Set();
-  }
-}
+// Skip-existing: see the active _loadExistingSourceUrls() in the EPEY.COM
+// OVERRIDES section below — it preloads what is already in the catalog so the
+// bulk scrape can skip it. This makes resume "free": even after a PC restart
+// the next run skips everything already saved and continues with new URLs.
 
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
@@ -2354,7 +2337,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const existingUrls = await _loadExistingSourceUrls(categoryId);
+  const { urls: existingUrls, variantGroups: existingVariantGroups } = await _loadExistingSourceUrls(categoryId);
   const beforeCount = urlItems.length;
   urlItems = urlItems.filter(it => !existingUrls.has(it.url));
   const skippedCount = beforeCount - urlItems.length;
@@ -2480,23 +2463,28 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         nextHtmlPromise = null;
       }
 
+      // ── Kick off prefetch of the NEXT product's HTML NOW, so it downloads
+      // in parallel with this product's gallery fetch + parse + PB save.
+      // Translation is intentionally DECOUPLED from the scrape loop — products
+      // are persisted in the source language, and the admin runs the
+      // Dictionary → "Translate Category" action when ready. This keeps the
+      // scrape at network-bound speed (~1-2s/product). ──
+      nextHtmlPromise = prefetchNext(i + 1);
+
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
         slog(`  → Skipped (no data): ${slug}`, 'warn');
         results.skipped++;
-        nextHtmlPromise = prefetchNext(i + 1);
         continue;
       }
-      if (!product.techScore && item.techScore) {
-        product.techScore = item.techScore;
-      }
 
-      // ── Kick off prefetch of the NEXT product's HTML in parallel with
-      // PocketBase save. Translation is intentionally DECOUPLED from the
-      // scrape loop — products are persisted with German specs only, and
-      // the admin runs the Dictionary → "Translate Category" action when
-      // ready. This keeps scrape at network-bound speed (~1-2s/product). ──
-      nextHtmlPromise = prefetchNext(i + 1);
+      // Cross-source de-dup: if this product family is already in the catalog
+      // (imported earlier from Icecat OR Epey) skip it instead of re-saving.
+      if (product.variantGroup && existingVariantGroups.has(product.variantGroup)) {
+        slog(`  → Atlandı (zaten katalogda — Icecat/Epey): ${slug}`, 'info');
+        results.skipped++;
+        continue;
+      }
 
       const clean = prepareProductPayload(product);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
@@ -2504,7 +2492,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       results.added++;
       errorStreak = 0;
       recent.push('ok');
-      slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
+      slog(`  → Added: ${product.name} (${product.specsCount} specs, ${product.images.length} görsel)`, 'success');
 
       // Adaptive checkpoint every 25 products
       if (results.added > 0 && results.added % 25 === 0) {
@@ -3084,12 +3072,24 @@ function extractImages(doc, productSlug = '') {
   return [...byKey.values()].map(v => v.url).slice(0, MAX_IMAGES_PER_PRODUCT);
 }
 
-async function fetchGalleryImages(productSlug) {
-  if (!productSlug) return [];
+// Epey's full photo set lives on a separate gallery page. Its URL is the
+// product URL with "-resimleri" inserted before ".html" AND it keeps the
+// category path (epey.com/akilli-telefonlar/honor-magic7-pro-resimleri.html).
+// The page also 404s unless the request carries a Referer to the product page.
+function epeyGalleryUrl(productUrl) {
+  const u = normalizeEpeyProductUrl(productUrl) || String(productUrl || '');
+  if (!/\.html$/i.test(u)) return '';
+  return u.replace(/\.html$/i, '-resimleri.html');
+}
+
+async function fetchGalleryImages(productUrl) {
+  const galleryUrl = epeyGalleryUrl(productUrl);
+  if (!galleryUrl) return [];
   try {
-    const html = await proxyFetch(`${EPEY_BASE}/${productSlug}-resimleri.html`);
+    // retries=1: the gallery is a best-effort image top-up, not worth 3 retries.
+    const html = await proxyFetch(galleryUrl, 1, productUrl);
     if (!html || isChallengePage(html)) return [];
-    return extractImages(parseHTML(html), productSlug);
+    return extractImages(parseHTML(html));
   } catch { return []; }
 }
 
@@ -3213,7 +3213,7 @@ async function scrapeProductDetail(html, url, categoryId = '') {
 
   let images = extractImages(doc, productSlug);
   if (images.length < MAX_IMAGES_PER_PRODUCT) {
-    const gallery = await fetchGalleryImages(productSlug);
+    const gallery = await fetchGalleryImages(url);
     const seen = new Set(images.map(x => _epeyImageKey(x)));
     for (const img of gallery) {
       if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
@@ -3240,7 +3240,8 @@ async function scrapeProductDetail(html, url, categoryId = '') {
     specsCount: Object.keys(rawSpecs).length,
     images,
     imageUrl: images[0] || '',
-    techScore: extractTechScore(doc),
+    // techScore is intentionally NOT scraped — Epey's "teknik puan" is
+    // replaced by the admin panel's own Score Engine, run after import.
     price_raw: extractPrice(doc),
     gtin: ids.gtin,
     mpn: ids.mpn,
@@ -3471,22 +3472,31 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   return allItems.slice(0, maxProducts);
 }
 
+// Loads what is ALREADY in the catalog for a category so the bulk scrape can
+// skip it. Returns:
+//   urls          — every sourceUrl on record (URL-level skip for Epey re-runs)
+//   variantGroups — every variantGroup on record, from ANY source. This is the
+//                   cross-source identity key (modelFamilyKey), so a product
+//                   first imported from Icecat is skipped when the Epey scrape
+//                   rediscovers it. NOTE: the source filter is intentionally
+//                   dropped — we must see Icecat products here too.
 async function _loadExistingSourceUrls(categoryId) {
+  const empty = { urls: new Set(), variantGroups: new Set() };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
-    const filter = safeCategory
-      ? `category="${safeCategory}" && (source="epey.com" || source="epey")`
-      : `(source="epey.com" || source="epey")`;
-    const docs = await pbGetAll('products', { filter, sort: '-created' });
-    const set = new Set();
+    const filter = safeCategory ? `category="${safeCategory}"` : '';
+    const docs = await pbGetAll('products', filter ? { filter, sort: '-created' } : { sort: '-created' });
+    const urls = new Set();
+    const variantGroups = new Set();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      if (data?.sourceUrl) set.add(String(data.sourceUrl).trim());
+      if (data?.sourceUrl) urls.add(String(data.sourceUrl).trim());
+      if (data?.variantGroup) variantGroups.add(String(data.variantGroup).trim());
     }
-    return set;
+    return { urls, variantGroups };
   } catch (e) {
-    slog(`  (existing Epey URL preload failed: ${e.message})`, 'warn');
-    return new Set();
+    slog(`  (existing-product preload failed: ${e.message})`, 'warn');
+    return empty;
   }
 }
 

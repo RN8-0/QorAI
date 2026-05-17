@@ -415,7 +415,7 @@ async function fetchHtml(url, opts = {}) {
 // product detail pages to a normal browser-like request without a Cloudflare
 // challenge; when it doesn't, the caller falls back to fetchHtml(). Follows
 // redirects and transparently decompresses gzip/deflate/br.
-function plainFetch(url, redirects = 4) {
+function plainFetch(url, redirects = 4, referer = '') {
   return new Promise((resolve) => {
     let u;
     try { u = new URL(url); } catch { return resolve({ html: '', status: 0 }); }
@@ -437,6 +437,7 @@ function plainFetch(url, redirects = 4) {
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
         'Upgrade-Insecure-Requests': '1',
+        ...(referer ? { 'Referer': referer } : {}),
         ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
       },
     };
@@ -445,7 +446,7 @@ function plainFetch(url, redirects = 4) {
         res.resume();
         let next;
         try { next = new URL(res.headers.location, url).href; } catch { return resolve({ html: '', status: 0 }); }
-        return resolve(plainFetch(next, redirects - 1));
+        return resolve(plainFetch(next, redirects - 1, referer));
       }
       let stream = res;
       const enc = String(res.headers['content-encoding'] || '').toLowerCase();
@@ -1209,6 +1210,9 @@ const server = http.createServer(async (req, res) => {
   // ── Generic proxy fetch (single page) ──
   const urlObj = new URL(req.url, `http://localhost:${PORT}`);
   const targetUrl = req.headers['x-target-url'] || urlObj.searchParams.get('url');
+  // Optional Referer — Epey's image-gallery pages (…-resimleri.html) return a
+  // 404 unless the request carries a Referer pointing at the product page.
+  const referer = req.headers['x-referer'] || urlObj.searchParams.get('referer') || '';
 
   if (!targetUrl) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1234,8 +1238,11 @@ const server = http.createServer(async (req, res) => {
     // Use it when it returns a real page; only spin up Puppeteer if Epey
     // actually serves a Cloudflare challenge or an empty/blocked response.
     let html, status;
-    const fast = await plainFetch(targetUrl);
-    if (fast.status === 200 && fast.html.length > 4000 && !_isChallengeContent(fast.html)) {
+    const fast = await plainFetch(targetUrl, 4, referer);
+    // Gallery pages are small static HTML — accept a much shorter body for
+    // them (a refererred request) than for full product/listing pages.
+    const minFastLen = referer ? 800 : 4000;
+    if (fast.status === 200 && fast.html.length > minFastLen && !_isChallengeContent(fast.html)) {
       html = fast.html; status = 200;
       console.log(`  ⚡ fast-fetch (${(html.length / 1024).toFixed(0)}KB)`);
     } else {
