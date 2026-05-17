@@ -199,12 +199,33 @@ async function tsBulkUpsert(pbRecords, onProgress) {
   return out;
 }
 
+// Full-text search — fast and typo-tolerant. Returns the raw Typesense
+// response ({ found, hits:[{document}], … }); each document carries `_raw`
+// (the full PocketBase record JSON) so callers get complete product objects.
+async function tsSearch(query, opts = {}) {
+  const params = new URLSearchParams({
+    q: String(query || '').trim() || '*',
+    query_by: 'name,brand,category,keySpecsText',
+    query_by_weights: '5,3,2,1',
+    sort_by: '_text_match:desc,techScore:desc',
+    per_page: String(Math.min(250, Math.max(1, opts.perPage || 100))),
+    page: String(opts.page || 1),
+    num_typos: '2',
+    typo_tokens_threshold: '1',
+    drop_tokens_threshold: '2',
+    prefix: 'true',
+  });
+  if (opts.filterBy) params.set('filter_by', opts.filterBy);
+  return tsRequest('GET', `/collections/${TS_COLLECTION}/documents/search?${params.toString()}`);
+}
+
 // Public surface
 window.TsClient = {
   upsertDoc: tsUpsertDoc,
   patchDoc: tsPatchDoc,
   bulkUpsert: tsBulkUpsert,
   buildDoc: tsBuildDoc,
+  search: tsSearch,
   request: tsRequest,
   COLLECTION: TS_COLLECTION,
   URL: TS_URL,

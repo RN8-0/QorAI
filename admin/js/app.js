@@ -1669,34 +1669,42 @@ window.loadProducts=loadProducts;
 window.nextPage=nextPage;
 window.prevPage=prevPage;
 
+// PocketBase tokenised search: every word must appear somewhere in the
+// product. "galaxy s26 ultra" matches "Samsung Galaxy S26 Ultra 5G" even
+// though the words are not one contiguous substring — word order is free.
+// Each token is also matched against brand / category / MPN / GTIN, so a
+// product is findable by model code or barcode.
+async function _pbSearch(q){
+  const sani=t=>String(t).replace(/["\\%]/g,'').trim();
+  const tokens=q.split(/\s+/).map(sani).filter(t=>t.length>=2).slice(0,8);
+  let filter;
+  if(tokens.length){
+    filter=tokens.map(t=>`(name~"${t}" || brand~"${t}" || category~"${t}" || mpn~"${t}" || gtin~"${t}")`).join(' && ');
+  }else{
+    const e=sani(q);
+    filter=`name~"${e}" || brand~"${e}" || category~"${e}"`;
+  }
+  if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
+  const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
+  return {items:result.items||[],total:result.totalItems||0,source:'PocketBase'};
+}
+
 async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
   if(!q){currentPage=1;await loadPage();return}
   const g=document.getElementById('productGrid');
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor…</div>';
+  const seq=++_loadPageSeq;
   try{
-    // Tokenised AND search: every word must appear somewhere in the product.
-    // "galaxy s26 ultra" matches "Samsung Galaxy S26 Ultra 5G" even though the
-    // words are not one contiguous substring — and word order does not matter.
-    // Each token is also matched against brand / category / MPN / GTIN so you
-    // can find a product by model code or barcode.
-    const sani=t=>String(t).replace(/["\\%]/g,'').trim();
-    const tokens=q.split(/\s+/).map(sani).filter(t=>t.length>=2).slice(0,8);
-    let filter;
-    if(tokens.length){
-      filter=tokens.map(t=>`(name~"${t}" || brand~"${t}" || category~"${t}" || mpn~"${t}" || gtin~"${t}")`).join(' && ');
-    }else{
-      const e=sani(q);
-      filter=`name~"${e}" || brand~"${e}" || category~"${e}"`;
-    }
-    // Honour the grouped toggle so search results collapse SKU variants too.
-    if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
-    const seq=++_loadPageSeq;
-    const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
-    if(seq!==_loadPageSeq)return; // a newer search/filter superseded this one
+    // PocketBase is the search source: it always holds the complete catalog
+    // and the tokenised LIKE query is fast at this scale. (Typesense is kept
+    // in sync for the mobile app, but the admin must never miss a product
+    // because the TS mirror lagged behind a bulk ingest.)
+    const res=await _pbSearch(q);
+    if(seq!==_loadPageSeq)return;
     const qLow=q.toLowerCase();
-    // Sort: exact name match first, then starts-with, then contains, then rest by techScore
-    const raw=result.items.map(p=>({...p,_partial:true}));
+    // Sort: exact name match first, then starts-with, then contains, rest by score.
+    const raw=res.items.map(p=>({...p,_partial:true}));
     const sorted=(_groupVariants?groupProductFamilies(raw):raw).slice().sort((a,b)=>{
       const an=(a.name||'').toLowerCase(); const bn=(b.name||'').toLowerCase();
       const ae=an===qLow; const be=bn===qLow;
@@ -1711,9 +1719,9 @@ async function serverSearch(){
     allProducts=sorted;
     _productUiPages=new Map();
     renderProductsPage();
-    document.getElementById('productCount').textContent=result.totalItems+' sonuç';
+    document.getElementById('productCount').textContent=sorted.length+' sonuç';
     if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
-  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Search error: '+escHtml(e.message)+'</div>'}
+  }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+escHtml(e.message)+'</div>'}
 }
 
 function filterProducts(){
@@ -2100,16 +2108,24 @@ async function wipeAllProducts(){
 // Search debounce — server-side search with cancellation. 250 ms feels
 // instant while still collapsing fast typing into one query; Enter fires
 // the search immediately.
+//
+// IMPORTANT: app.js is injected dynamically (see index.html), so by the time
+// it runs `DOMContentLoaded` has usually already fired — a plain
+// addEventListener('DOMContentLoaded', …) would never run and the search box
+// would be dead. Wire it immediately when the DOM is already parsed.
 let sTimer;
-document.addEventListener('DOMContentLoaded',()=>{
+function _wireProductSearch(){
   const si=document.getElementById('searchInput');
-  if(!si)return;
+  if(!si||si._wired)return;
+  si._wired=true;
   si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,250)});
   si.addEventListener('keydown',e=>{
     if(e.key==='Enter'){clearTimeout(sTimer);serverSearch()}
     else if(e.key==='Escape'){si.value='';clearTimeout(sTimer);serverSearch()}
   });
-});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_wireProductSearch);
+else _wireProductSearch();
 
 // ── PRODUCT MODAL ──
 const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','AI / Performance':'🧠','Memory':'💾','Storage':'💿','Design':'📐','Dimensions':'📐','Network':'📡','Connectivity':'🔌','Connectivity / I/O':'🔌','Operating System':'💻','Software / OS':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Chip / Processor':'🧠','Graphics':'🎮','Power':'⚡','Cooling':'❄️','Release & Pricing':'📅','General':'ℹ️'};
