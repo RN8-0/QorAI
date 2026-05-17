@@ -1098,7 +1098,7 @@ let totalProductCount=0;
 let _productRefreshTimer=null;
 const PRODUCT_RAW_PER=120;
 const CATALOG_REPAIR_LIMIT=0;
-const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,lowestOfferUrl,lowestOfferStore,offerCount,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
+const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,lowestPriceUSD,lowestOfferUrl,lowestOfferStore,offerCount,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
 let _productUiPages=new Map();
 let _lastProductQueryKey='';
 let _facetWarmupRunning=false;
@@ -1639,9 +1639,11 @@ function renderProductsPage(){
     const vc=Number(p.variantCount)||0;
     const effectiveVariantCount=vc||Number(p._variantCount)||0;
     const variantBadge=(_groupVariants&&effectiveVariantCount>1)?`<div class="variant-badge" title="${effectiveVariantCount} varyant">×${effectiveVariantCount>99?'99+':effectiveVariantCount}</div>`:'';
-    const priceValue=Number(p.lowestPrice||p.price||0);
-    const priceCurrency=p.lowestPriceCurrency||'';
-    const priceText=priceValue?`${priceValue.toLocaleString()} ${escHtml(priceCurrency)}`:'';
+    // Admin list always shows ONE comparable currency (USD). Offers are stored
+    // per-country (EUR/GBP/USD) for the app; the admin would otherwise show a
+    // different currency on every card. lowestPriceUSD is the converted value.
+    const priceUsd=Number(p.lowestPriceUSD||0);
+    const priceText=priceUsd?`$${priceUsd.toLocaleString('en-US',{maximumFractionDigits:0})}`:'';
     // Price + buy link sit ABOVE the product name. The link opens the cheapest
     // offer's affiliate URL directly; stopPropagation keeps the card's own
     // click (open modal) from firing.
@@ -2299,15 +2301,19 @@ function _ebayLogoHtml(){
 // + a "Satın Al" affiliate button. Built from the product's price rollup
 // (lowestPrice / lowestOfferStore / lowestOfferUrl) — no extra query.
 function _buildOfferRow(p){
-  const price=Number(p.lowestPrice)||0;
-  if(!price)return'';
+  const usd=Number(p.lowestPriceUSD)||0;
+  if(!usd)return'';
+  const native=Number(p.lowestPrice)||0;
   const cur=escHtml(p.lowestPriceCurrency||'');
   const store=p.lowestOfferStore||'eBay';
   const url=safeUrl(p.lowestOfferUrl||'');
   const logo=/ebay/i.test(store)?_ebayLogoHtml():`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
+  // Headline price in USD (comparable); the native-currency amount in brackets.
+  const nativeNote=(native&&cur)?`<span style="font-size:11px;color:var(--text3)">(${native.toLocaleString()} ${cur})</span>`:'';
   return`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">`
     +logo
-    +`<span style="font-weight:800;color:#22c55e;font-size:22px">${price.toLocaleString()} ${cur}</span>`
+    +`<span style="font-weight:800;color:#22c55e;font-size:22px">$${usd.toLocaleString('en-US',{maximumFractionDigits:0})}</span>`
+    +nativeNote
     +`<span style="font-size:11px;color:var(--text3)">en ucuz fiyat</span>`
     +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Satın Al ↗</a>`:'')
     +`</div>`;
