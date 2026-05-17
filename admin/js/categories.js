@@ -607,6 +607,7 @@ async function populateScraperCategories() {
 
   setSel('scrapeCategory', bulkOpts);
   setSel('singleUrlCategory', flatOpts);
+  setSel('offersCategory', flatOpts);
   setSel('scoreCategory', flatOpts);
   setSel('scoreEngineCategory', flatOpts);
   setSel('dictXlateCategory', dictOpts);

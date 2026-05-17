@@ -435,6 +435,7 @@
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="icecat" onclick="switchScraperTab(this); icecatRefreshStatus()">🧊 Icecat</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
+          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v6</button>
           <button class="scraper-tab" data-tab="dictionary" onclick="switchScraperTab(this); openDictionaryPanel()">� Dictionary</button>
         </div>
@@ -475,6 +476,39 @@
           </div>
 
           <div class="card" id="customCategoriesCard" style="display:none"></div>
+        </div>
+
+        <!-- Affiliate offer sync (eBay) -->
+        <div class="scraper-panel" id="offersPanel">
+          <div class="card">
+            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · eBay Browse API</span></div>
+            <p class="text-muted" style="margin-bottom:12px;font-size:13px">
+              Ürünlere eBay'den fiyat + affiliate link çeker (US / DE / GB). Günlük API kotası otomatik hesaplanır — limit asla aşılmaz. Kategori kategori, artımlı çalıştır.
+            </p>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-field">
+                <label>Kategori</label>
+                <select class="input" id="offersCategory"></select>
+              </div>
+              <div class="form-field">
+                <label>Ürün limiti (0 = kotanın izin verdiği kadar)</label>
+                <input class="input" type="number" id="offersLimit" value="0" min="0">
+              </div>
+              <div class="form-field" style="grid-column:span 2">
+                <label style="display:flex;align-items:center;gap:8px">
+                  <input type="checkbox" id="offersMissingOnly" checked>
+                  <span>Sadece teklifi olmayan ürünler (artımlı — önerilir)</span>
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-primary" id="btnOffersSync" onclick="offersStartSync()">▶ Eşleştirmeyi Başlat</button>
+              <button class="btn btn-danger" id="btnOffersStop" onclick="offersStop()" style="display:none">■ Durdur</button>
+              <button class="btn btn-ghost btn-sm" onclick="offersRefreshStatus()">↻ Yenile</button>
+              <span id="offersStatus" class="text-muted" style="font-size:12px;margin-left:auto">idle</span>
+            </div>
+            <pre id="offersLog" style="margin-top:12px;background:#0a0a0a;color:#10b981;padding:10px;border-radius:6px;font-size:11px;max-height:340px;overflow:auto;font-family:monospace">Henüz çalışmadı. "Eşleştirmeyi Başlat"a bas.</pre>
+          </div>
         </div>
 
         <!-- Icecat Open Catalog Ingestion -->

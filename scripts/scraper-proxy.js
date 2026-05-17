@@ -56,6 +56,14 @@ function isIcecatRunning() {
   return !!(icecatProc && !icecatProc.killed && icecatProc.exitCode === null);
 }
 
+// ─── Affiliate offer sync (sync_offers.js child process) ─────────────────
+let offersProc = null;
+let offersLog  = '';
+
+function isOffersRunning() {
+  return !!(offersProc && !offersProc.killed && offersProc.exitCode === null);
+}
+
 // ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
 // FlareSolverr is a Docker container that solves Cloudflare challenges using
 // undetected-chromedriver. When it's running on http://localhost:8191/v1 the
@@ -840,6 +848,58 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
+    return;
+  }
+
+  // ── Affiliate offer sync ───────────────────────────────────────────────
+  // POST /offers/sync  body: {cat, missingOnly, limit}  → spawns sync_offers.js
+  // GET  /offers/status -> {running, logTail}
+  // POST /offers/stop
+  if (req.url === '/offers/sync' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        if (isOffersRunning()) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Offer sync already running' }));
+          return;
+        }
+        const opts = body ? JSON.parse(body) : {};
+        const args = ['scripts/sync_offers.js', '--auto'];
+        if (opts.missingOnly !== false) args.push('--missing-only');
+        const cat = String(opts.cat || '').replace(/[^a-z0-9_-]/gi, '');
+        if (cat) args.push(`--cat=${cat}`);
+        const limit = parseInt(opts.limit, 10);
+        if (limit > 0) args.push(`--limit=${limit}`);
+        const { spawn } = require('child_process');
+        offersLog = '';
+        offersProc = spawn('node', args, { cwd: rootDir, env: process.env });
+        offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+        offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+        offersProc.on('exit', code => { offersLog += `\n[offers] exited with code ${code}\n`; });
+        console.log(`  💰 /offers/sync args=${args.join(' ')}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, pid: offersProc.pid, args }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+  if (req.url === '/offers/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ running: isOffersRunning(), logTail: offersLog.slice(-6000) }));
+    return;
+  }
+  if (req.url === '/offers/stop' && req.method === 'POST') {
+    if (isOffersRunning()) {
+      try { offersProc.kill('SIGTERM'); } catch {}
+      console.log('  💰 /offers/stop — process killed');
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

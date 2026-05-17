@@ -3562,3 +3562,70 @@ async function scrapeByUrl() {
     if (btn) btn.disabled = false;
   }
 }
+
+// ═══════════════════════════════════════
+//  AFFILIATE OFFER SYNC (eBay) — admin tab
+//  Spawns scripts/sync_offers.js via the local proxy and streams its log.
+// ═══════════════════════════════════════
+let _offersPollTimer = null;
+
+async function offersStartSync() {
+  if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
+  const cat = document.getElementById('offersCategory')?.value || '';
+  const limit = parseInt(document.getElementById('offersLimit')?.value) || 0;
+  const missingOnly = document.getElementById('offersMissingOnly')?.checked !== false;
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cat, limit, missingOnly }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('Başlatılamadı: ' + (j.error || r.status), 'e'); return; }
+    document.getElementById('btnOffersSync').style.display = 'none';
+    document.getElementById('btnOffersStop').style.display = '';
+    document.getElementById('offersLog').textContent = 'Başlatıldı — eBay kotası hesaplanıyor…\n';
+    _offersStartPolling();
+  } catch (e) {
+    toast('Proxy ulaşılamadı: ' + e.message, 'e');
+  }
+}
+
+async function offersStop() {
+  try { await fetch(`${PROXY_URL}/offers/stop`, { method: 'POST' }); } catch {}
+  setTimeout(offersRefreshStatus, 400);
+}
+
+async function offersRefreshStatus() {
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/status`);
+    if (!r.ok) return;
+    const s = await r.json();
+    const running = !!s.running;
+    const startBtn = document.getElementById('btnOffersSync');
+    const stopBtn = document.getElementById('btnOffersStop');
+    if (startBtn) startBtn.style.display = running ? 'none' : '';
+    if (stopBtn) stopBtn.style.display = running ? '' : 'none';
+    const st = document.getElementById('offersStatus');
+    if (st) { st.textContent = running ? 'çalışıyor…' : 'idle'; st.style.color = running ? '#06b6d4' : ''; }
+    if (s.logTail) {
+      const log = document.getElementById('offersLog');
+      if (log) {
+        const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+        log.textContent = s.logTail;
+        if (atBottom) log.scrollTop = log.scrollHeight;
+      }
+    }
+    if (running && !_offersPollTimer) _offersStartPolling();
+    if (!running && _offersPollTimer) { clearInterval(_offersPollTimer); _offersPollTimer = null; }
+  } catch { /* proxy down — silent */ }
+}
+
+function _offersStartPolling() {
+  if (_offersPollTimer) return;
+  _offersPollTimer = window.setInterval(offersRefreshStatus, 2000);
+}
+
+window.offersStartSync = offersStartSync;
+window.offersStop = offersStop;
+window.offersRefreshStatus = offersRefreshStatus;
