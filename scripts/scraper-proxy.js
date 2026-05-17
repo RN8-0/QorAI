@@ -24,6 +24,8 @@
  */
 
 const http = require('http');
+const https = require('https');
+const zlib = require('zlib');
 const path = require('path');
 const fs = require('fs');
 
@@ -407,6 +409,60 @@ async function fetchHtml(url, opts = {}) {
     }
   }
   return fetchWithPuppeteer(url, opts);
+}
+
+// Plain HTTPS GET — ~10x faster than a Puppeteer render. Epey serves most
+// product detail pages to a normal browser-like request without a Cloudflare
+// challenge; when it doesn't, the caller falls back to fetchHtml(). Follows
+// redirects and transparently decompresses gzip/deflate/br.
+function plainFetch(url, redirects = 4) {
+  return new Promise((resolve) => {
+    let u;
+    try { u = new URL(url); } catch { return resolve({ html: '', status: 0 }); }
+    // sessionCookies is an array of Puppeteer cookie objects — the Cloudflare
+    // cf_clearance captured by the last browser load. Serialise it into a real
+    // Cookie header so this plain request inherits the same clearance (it is
+    // bound to currentUA, which Puppeteer also uses).
+    const cookieHeader = (Array.isArray(sessionCookies) && sessionCookies.length)
+      ? sessionCookies.map(c => `${c.name}=${c.value}`).join('; ')
+      : '';
+    const reqOpts = {
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'GET',
+      timeout: 15000,
+      headers: {
+        'User-Agent': currentUA || _randomUA(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Upgrade-Insecure-Requests': '1',
+        ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
+      },
+    };
+    const r = https.request(reqOpts, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
+        res.resume();
+        let next;
+        try { next = new URL(res.headers.location, url).href; } catch { return resolve({ html: '', status: 0 }); }
+        return resolve(plainFetch(next, redirects - 1));
+      }
+      let stream = res;
+      const enc = String(res.headers['content-encoding'] || '').toLowerCase();
+      try {
+        if (enc === 'gzip') stream = res.pipe(zlib.createGunzip());
+        else if (enc === 'deflate') stream = res.pipe(zlib.createInflate());
+        else if (enc === 'br') stream = res.pipe(zlib.createBrotliDecompress());
+      } catch { /* fall back to raw */ }
+      const chunks = [];
+      stream.on('data', c => chunks.push(c));
+      stream.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf8'), status: res.statusCode || 0 }));
+      stream.on('error', () => resolve({ html: '', status: res.statusCode || 0 }));
+    });
+    r.on('error', () => resolve({ html: '', status: 0 }));
+    r.on('timeout', () => { r.destroy(); resolve({ html: '', status: 0 }); });
+    r.end();
+  });
 }
 
 async function fetchWithPuppeteer(url, opts = {}) {
@@ -1174,7 +1230,17 @@ const server = http.createServer(async (req, res) => {
 
   try {
     console.log(`  [${requestCount + 1}] → ${targetUrl}`);
-    const { html, status } = await withBrowserLock(() => fetchHtml(targetUrl));
+    // FAST PATH: a plain HTTPS GET is ~10x quicker than a browser render.
+    // Use it when it returns a real page; only spin up Puppeteer if Epey
+    // actually serves a Cloudflare challenge or an empty/blocked response.
+    let html, status;
+    const fast = await plainFetch(targetUrl);
+    if (fast.status === 200 && fast.html.length > 4000 && !_isChallengeContent(fast.html)) {
+      html = fast.html; status = 200;
+      console.log(`  ⚡ fast-fetch (${(html.length / 1024).toFixed(0)}KB)`);
+    } else {
+      ({ html, status } = await withBrowserLock(() => fetchHtml(targetUrl)));
+    }
     if (!html || status === 404) {
       res.setHeader('X-Status-Code', '404');
       res.writeHead(404, { 'Content-Type': 'application/json' });
