@@ -305,6 +305,36 @@ function loadProgress() {
 }
 function saveProgress(p) { fs.writeFileSync(PROGRESS_FILE, JSON.stringify(p, null, 2), 'utf8'); }
 
+// Durable-resume helper: every Icecat product already in PocketBase, keyed by
+// its Icecat ID. This is the single source of truth for "is this done" — it
+// survives PC shutdown, proxy restarts, queue rebuilds and category switches,
+// so Resume can never lose its place or re-do finished work.
+async function loadExistingIcecatIds() {
+  const ids = new Set();
+  try {
+    let page = 1;
+    for (;;) {
+      const r = await pbReq('GET',
+        `/api/collections/products/records?filter=${encodeURIComponent('source="icecat"')}` +
+        `&perPage=500&page=${page}&fields=icecatId,slug`);
+      if (r.status !== 200) break;
+      const items = r.body.items || [];
+      for (const it of items) {
+        if (it.icecatId) ids.add(String(it.icecatId));
+        else {
+          const m = String(it.slug || '').match(/^icecat-(\d+)$/);
+          if (m) ids.add(m[1]);
+        }
+      }
+      if (!items.length || page >= (r.body.totalPages || 1)) break;
+      page++;
+    }
+  } catch (e) {
+    log(`Could not preload existing Icecat products (${e.message}) — running without resume-skip.`, 'warn');
+  }
+  return ids;
+}
+
 // ─── Phase 1: Download & filter catalog index ─────────────────────────────────
 
 async function phase1_index() {
@@ -843,32 +873,43 @@ async function phase23_enrichImport() {
   if (queue.length !== beforeFilter) {
     log(`Queue filtered by selected categories/quality: ${beforeFilter.toLocaleString()} → ${queue.length.toLocaleString()}`, 'warn');
   }
+  const categoryTotal = queue.length;
 
-  const currentCatsKey = catsKey();
-  const prog  = loadProgress();
-  if (prog.catsKey && prog.catsKey !== currentCatsKey) {
-    log(`Selected categories changed (${prog.catsKey} → ${currentCatsKey}); resetting Icecat progress for this filtered run.`, 'warn');
-    prog.done = 0;
-    prog.created = 0;
-    prog.updated = 0;
-    prog.deduped = 0;
-    prog.skipped = 0;
-    prog.errors = 0;
+  // ── Durable resume ──────────────────────────────────────────────────────
+  // "Done" is whatever is already in PocketBase — not a fragile numeric index
+  // into a filter-dependent list. Preload every saved Icecat product and drop
+  // it from the work list. This makes Resume survive PC shutdown, proxy
+  // restarts, category switches and a corrupt/stale progress file.
+  const alreadySaved = await loadExistingIcecatIds();
+  const beforeResume = queue.length;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (alreadySaved.has(String(queue[i].id))) queue.splice(i, 1);
   }
-  prog.catsKey = currentCatsKey;
-  const start = prog.done;
-  const end   = LIMIT > 0 ? Math.min(start + LIMIT, queue.length) : queue.length;
+  const alreadyDone = beforeResume - queue.length;
+  if (alreadyDone > 0) {
+    log(`Resume: ${alreadyDone.toLocaleString()} products already in PocketBase — skipped.`, 'ok');
+  }
 
-  log(`Queue: ${queue.length.toLocaleString()} products | Processing: ${start.toLocaleString()} → ${end.toLocaleString()}`);
+  // Progress is a live display counter only; PocketBase is the source of
+  // truth, so a lost or stale progress file can never corrupt a run.
+  const prog = {
+    catsKey: catsKey(), total: categoryTotal, alreadyDone,
+    done: 0, created: 0, updated: 0, deduped: 0, skipped: 0, errors: 0,
+  };
+  const end = LIMIT > 0 ? Math.min(LIMIT, queue.length) : queue.length;
+  saveProgress(prog);
+
+  log(`Category total: ${categoryTotal.toLocaleString()} | Already saved: ${alreadyDone.toLocaleString()} | To process now: ${end.toLocaleString()}`);
   log(`Workers: ${WORKERS} | Delay: ${DELAY}ms | Languages: ${LANGS.join(', ')}`);
 
-  if (start >= queue.length) {
-    log('Nothing to process — queue is fully done. Delete icecat_progress.json to restart.', 'warn');
+  if (end === 0) {
+    log('Nothing to process — every product in the selected category is already in the catalog.', 'ok');
+    await syncTouchedCategoryCounts();
     return;
   }
 
-  // Shared index (JS is single-threaded so no race condition)
-  let idx = start;
+  // Shared index into the not-yet-saved work list (JS is single-threaded).
+  let idx = 0;
 
   async function runWorker(workerId) {
     while (idx < end && !shutdownRequested) {
@@ -948,7 +989,7 @@ async function phase23_enrichImport() {
       if (prog.done % 10 === 0) saveProgress(prog);
       if (prog.done % 100 === 0) {
         saveProgress(prog);
-        const pct = ((prog.done - start) / (end - start) * 100).toFixed(1);
+        const pct = (prog.done / end * 100).toFixed(1);
         log(`[w${workerId}] ${prog.done}/${end} (${pct}%) — +${prog.created} new, ~${prog.updated} upd, ${prog.deduped || 0} dup, ${prog.skipped || 0} skip, ${prog.errors} err`);
       }
 
@@ -964,7 +1005,7 @@ async function phase23_enrichImport() {
   // admin/Flutter category lists never drift from the real catalog.
   await syncTouchedCategoryCounts();
   if (shutdownRequested) {
-    log(`Stopped — progress saved at ${prog.done.toLocaleString()}/${queue.length.toLocaleString()}. Use Resume to continue.`, 'warn');
+    log(`Stopped — ${prog.done.toLocaleString()}/${end.toLocaleString()} processed this session. Use Resume to continue (it re-checks PocketBase).`, 'warn');
     return;
   }
   log(`Phase 2+3 done — created: ${prog.created}, updated: ${prog.updated}, deduped: ${prog.deduped || 0}, skipped: ${prog.skipped || 0}, errors: ${prog.errors}`, 'ok');

@@ -245,22 +245,25 @@
       if (s.running && !pollHandle) startPolling();
       if (!s.running && pollHandle) stopPolling();
 
-      $('icecatQueueSize').textContent = (s.queueSize || 0).toLocaleString();
       const p = s.progress || {};
-      $('icecatDone').textContent     = (p.done    || 0).toLocaleString();
+      // total = products in the selected category; doneOverall = those already
+      // in PocketBase + processed this session. The ingestor reports these so
+      // the bar tracks the real catalog state, not the 1.7M raw index.
+      const total = p.total || s.queueSize || 0;
+      const doneOverall = (p.alreadyDone || 0) + (p.done || 0);
+      $('icecatQueueSize').textContent = total.toLocaleString();
+      $('icecatDone').textContent     = doneOverall.toLocaleString();
       $('icecatCreated').textContent  = (p.created || 0).toLocaleString();
       $('icecatUpdated').textContent  = (p.updated || 0).toLocaleString();
       $('icecatErrors').textContent   = (p.errors  || 0).toLocaleString();
 
-      const total = s.queueSize || 0;
-      const done  = p.done || 0;
-      const pct   = total > 0 ? Math.min(100, (done / total) * 100) : 0;
+      const pct = total > 0 ? Math.min(100, (doneOverall / total) * 100) : 0;
       $('icecatProgressBar').style.width = pct.toFixed(1) + '%';
       const resumeBtn = $('btnIcecatResume');
       if (resumeBtn && !s.running) {
-        resumeBtn.style.display = total > 0 && done < total ? '' : 'none';
+        resumeBtn.style.display = total > 0 && doneOverall < total ? '' : 'none';
       }
-      if ($('icecatResume') && total > 0 && done < total && !s.running) {
+      if ($('icecatResume') && total > 0 && doneOverall < total && !s.running) {
         $('icecatResume').checked = true;
       }
 
