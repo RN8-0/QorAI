@@ -656,7 +656,7 @@ async function extractProductDetail(page) {
       clean = clean.split(/[?#]/)[0];
       if (!/\.(?:jpe?g|png|webp|avif)$/i.test(clean)) return;
       const key = clean.toLowerCase().replace(/\/[zbsmtck]_/i, '/_').replace(/\.(jpe?g|png|webp|avif)$/i, '');
-      if (!seenImg.has(key) && r.images.length < 4) { seenImg.add(key); r.images.push(clean); }
+      if (!seenImg.has(key) && r.images.length < 8) { seenImg.add(key); r.images.push(clean); }
     };
     const og = document.querySelector('meta[property="og:image"], meta[name="twitter:image"], link[rel="image_src"]');
     addImg(og?.getAttribute('content') || og?.getAttribute('href'));
