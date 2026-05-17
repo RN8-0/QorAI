@@ -37,10 +37,20 @@ function amazonUrl(url, country) {
 
 function ebayUrl(url, _country) {
   const campid = ENV.EBAY_CAMPID || '';
-  if (!campid) return url;
-  // eBay Partner Network smart-link (rover) wrapper.
-  return `https://rover.ebay.com/rover/1/711-53200-19255-0/1` +
-    `?mpre=${encodeURIComponent(url)}&campid=${campid}&toolid=10001`;
+  if (!campid || !url) return url;
+  // Modern EPN tracking — append the campaign params straight to the item
+  // URL. (The old rover.ebay.com/rover wrapper is deprecated and now lands
+  // on a blank page.) Normally unused: the Browse API already returns a
+  // ready `itemAffiliateWebUrl` when the affiliate header is sent.
+  try {
+    const u = new URL(url);
+    u.searchParams.set('mkevt', '1');
+    u.searchParams.set('mkcid', '1');
+    u.searchParams.set('mkrid', '711-53200-19255-0');
+    u.searchParams.set('campid', campid);
+    u.searchParams.set('toolid', '10001');
+    return u.toString();
+  } catch { return url; }
 }
 
 function awinUrl(url, _country) {

@@ -30,6 +30,7 @@ function loadEnv() {
 const ENV = loadEnv();
 const CLIENT_ID = ENV.EBAY_CLIENT_ID || '';
 const CLIENT_SECRET = ENV.EBAY_CLIENT_SECRET || '';
+const CAMPID = ENV.EBAY_CAMPID || '';
 const MARKETPLACES = (ENV.EBAY_MARKETPLACES || 'EBAY_US,EBAY_DE').split(',').map(s => s.trim()).filter(Boolean);
 const MARKET_COUNTRY = { EBAY_US: 'US', EBAY_DE: 'DE', EBAY_GB: 'GB', EBAY_AU: 'AU', EBAY_TR: 'TR' };
 
@@ -136,10 +137,15 @@ async function searchOffers(product) {
     const country = MARKET_COUNTRY[market] || 'US';
     const hit = async (qs) => {
       const cat = catId ? `&category_ids=${catId}` : '';
+      const headers = { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market };
+      // This header is what makes eBay return `itemAffiliateWebUrl` — a real,
+      // working EPN-tracked deep link. Without it the API gives no affiliate
+      // URL and the old rover.ebay.com fallback lands on a blank page.
+      if (CAMPID) headers['X-EBAY-C-ENDUSERCTX'] = `affiliateCampaignId=${CAMPID}`;
       const r = await httpsJson({
         method: 'GET', hostname: 'api.ebay.com',
         path: `/buy/browse/v1/item_summary/search?${qs}${cat}&limit=10`,
-        headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market },
+        headers,
       });
       return (r.status === 200 && Array.isArray(r.body.itemSummaries)) ? r.body.itemSummaries : [];
     };
