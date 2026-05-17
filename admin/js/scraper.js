@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260517v2-epey-strict-media';
+const SCRAPER_BUILD = '20260517v3-epey-balanced-cats';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -342,6 +342,13 @@ function switchScraperTab(btn) {
   btn.classList.add('active');
   const panel = document.getElementById(btn.dataset.tab + 'Panel');
   if (panel) panel.classList.add('active');
+  // The category dropdowns live in panels that may render before the category
+  // catalog finishes loading. Re-populate them whenever a tab is opened so the
+  // "Add by URL" / "Bulk Scrape" selects are never empty.
+  if ((btn.dataset.tab === 'singleUrl' || btn.dataset.tab === 'bulkScrape')
+      && typeof populateScraperCategories === 'function') {
+    populateScraperCategories().catch(() => {});
+  }
 }
 
 function updateScrapeModeUI() {
@@ -559,7 +566,7 @@ function prepareProductPayload(product) {
       seenImg.add(key);
       images.push(mid);
     }
-    if (images.length >= (isEpeySource ? 8 : 4)) break;
+    if (images.length >= 4) break;
   }
   const primary = images[0] || product.imageUrl || '';
 
@@ -3294,23 +3301,26 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const allItems = [];
   const seen = new Set();
 
+  // Per-category buckets — each Epey catalog section (laptop, telefon, tablet…)
+  // is scanned independently so a brand with hundreds of laptops can no longer
+  // consume the whole `maxProducts` quota and starve its phones/tablets/watches.
   const brandUrls = epeyBrandCategoryUrls(term);
+  const buckets = [];
   if (brandUrls.length) {
-    slog(`  scanning Epey brand listings across supported catalog sections`, 'info');
+    slog(`  scanning Epey brand listings across ${brandUrls.length} catalog sections`, 'info');
     for (const brandPage of brandUrls) {
-      if (allItems.length >= maxProducts || scraperAbort) break;
+      if (scraperAbort) break;
+      const bucket = [];
       try {
         const pages = [brandPage.url];
         const seenPages = new Set();
-        let added = 0;
 
-        for (let pi = 0; pi < pages.length && pi < 20 && allItems.length < maxProducts && !scraperAbort; pi++) {
+        for (let pi = 0; pi < pages.length && pi < 25 && bucket.length < maxProducts && !scraperAbort; pi++) {
           const pageUrl = pages[pi];
           if (seenPages.has(pageUrl)) continue;
           seenPages.add(pageUrl);
 
-          const remaining = Math.max(1, maxProducts - allItems.length);
-          const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(pageUrl)}&max=${encodeURIComponent(remaining)}`, { signal: AbortSignal.timeout(60000) });
+          const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(pageUrl)}&max=${encodeURIComponent(maxProducts)}`, { signal: AbortSignal.timeout(60000) });
           const data = res.ok ? await res.json() : null;
           const pageItems = Array.isArray(data?.items)
             ? data.items
@@ -3320,9 +3330,8 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
             const full = normalizeEpeyProductUrl(item.url);
             if (!full || seen.has(full)) continue;
             seen.add(full);
-            allItems.push({ url: full, techScore: item.techScore || null });
-            added++;
-            if (allItems.length >= maxProducts) break;
+            bucket.push({ url: full, techScore: item.techScore || null });
+            if (bucket.length >= maxProducts) break;
           }
 
           const nextPages = Array.isArray(data?.pages) ? data.pages : [];
@@ -3331,14 +3340,34 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
             pages.push(next);
           }
         }
-
-        if (added) slog(`  ${brandPage.id}: +${added}`);
       } catch (e) {
         // Brand listing may not exist for every supported section. Keep going.
+      }
+      if (bucket.length) {
+        slog(`  ${brandPage.id}: +${bucket.length}`);
+        buckets.push(bucket);
       }
     }
   }
 
+  // Round-robin merge: take one product from each category in turn so the
+  // final list is balanced across every section the brand appears in.
+  if (buckets.length) {
+    let exhausted = false;
+    for (let idx = 0; !exhausted && allItems.length < maxProducts; idx++) {
+      exhausted = true;
+      for (const bucket of buckets) {
+        if (idx >= bucket.length) continue;
+        exhausted = false;
+        allItems.push(bucket[idx]);
+        if (allItems.length >= maxProducts) break;
+      }
+    }
+  }
+  if (allItems.length >= maxProducts) return allItems.slice(0, maxProducts);
+
+  // Fallback: site-wide mixed search, only used when the brand listings came
+  // up short (e.g. a model-number search rather than a clean brand name).
   let emptyPages = 0;
   const maxPages = Math.max(1, Math.ceil(maxProducts / 24) + 3);
 

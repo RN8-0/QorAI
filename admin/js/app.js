@@ -2292,9 +2292,14 @@ function _renderProductModal(p,variants=[]){
   const safeCategory=escHtml(p.category||'');
   const safeSourceUrl=safeUrl(p.sourceUrl);
   let bricks='';
+  // Localised affirmative/negative labels — boolean specs must render in the
+  // language the modal is showing, not hard-coded English.
+  const _ynPair=({tr:['Evet','Hayır'],en:['Yes','No'],de:['Ja','Nein'],es:['Sí','No'],fr:['Oui','Non'],it:['Sì','No'],ja:['Var','Yok'],nl:['Ja','Nee'],pl:['Tak','Nie'],pt:['Sim','Não'],sv:['Ja','Nej'],ar:['نعم','لا']})[lang]||['Yes','No'];
+  const _isYesV=v=>/^(yes|var|evet|true|ja|oui|sí|si|sim|tak)$/i.test(String(v).trim());
+  const _isNoV=v=>/^(no|yok|hayır|hayir|nein|non|não|nao|nie|false)$/i.test(String(v).trim());
   function fmtSpecVal(s){
-    if(s==='Yes'||s==='Var')return'<span class="yes">✓ Yes</span>';
-    if(s==='No'||s==='Yok')return'<span class="no">✗ No</span>';
+    if(_isYesV(s))return`<span class="yes">✓ ${escHtml(_ynPair[0])}</span>`;
+    if(_isNoV(s))return`<span class="no">✗ ${escHtml(_ynPair[1])}</span>`;
     // Values arrive already \n-split from the scraper. We additionally split
     // on TOP-LEVEL commas / semicolons — separators inside parens/brackets
     // stay attached to their parent fact (e.g. "Adaptive Sync (40-240Hz, HDMI)"
@@ -2334,7 +2339,7 @@ function _renderProductModal(p,variants=[]){
     return escHtml(localized[0]||s);
   }
   function specRow(k,v){
-    const s=String(v),y=s==='Yes'||s==='Var',n=s==='No'||s==='Yok';
+    const s=String(v),y=_isYesV(s),n=_isNoV(s);
     return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
   if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
