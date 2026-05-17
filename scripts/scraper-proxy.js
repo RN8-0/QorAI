@@ -135,6 +135,13 @@ let _browserCycle = 0;
 // The engine label is exposed via /health for debugging. Toggled when the
 // initial browser is launched.
 let browserEngine = 'unknown';
+let browserQueue = Promise.resolve();
+
+function withBrowserLock(task) {
+  const run = browserQueue.then(task, task);
+  browserQueue = run.catch(() => {});
+  return run;
+}
 
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
@@ -531,6 +538,97 @@ async function extractCategoryLinks(page) {
   });
 }
 
+async function extractListingPaginationLinks(page) {
+  return await page.evaluate(() => {
+    const pages = [];
+    const seen = new Set();
+    const current = new URL(location.href);
+    const basePath = current.pathname.replace(/\/\d+\/?$/i, '/');
+    const add = (href) => {
+      if (!href) return;
+      let u;
+      try { u = new URL(href, location.origin); } catch { return; }
+      if (!/(\.|^)epey\.com$/i.test(u.hostname)) return;
+      if (/\.html$/i.test(u.pathname)) return;
+      if (u.pathname === current.pathname) return;
+      if (!u.pathname.startsWith(basePath)) return;
+      const canonical = `${u.origin}${u.pathname}${u.search || ''}`;
+      if (seen.has(canonical)) return;
+      seen.add(canonical);
+      pages.push(canonical);
+    };
+    document.querySelectorAll('.sayfalama a[href], .sayfa a[href], .pagination a[href], [class*="sayfa"] a[href], [class*="pagination"] a[href]').forEach(a => add(a.getAttribute('href')));
+    return pages.slice(0, 20);
+  });
+}
+
+async function extractEpeyAjaxListingLinks(page, maxLinks = 200) {
+  return await page.evaluate(async (maxLinks) => {
+    const html = document.documentElement.innerHTML;
+    const catMatch = html.match(/kategori_id\s*:\s*['"]?(\d+)/i);
+    const cerezMatch = html.match(/cerez\s*:\s*['"]([^'"]+)['"]/i);
+    if (!catMatch || !cerezMatch || typeof fetch !== 'function') return [];
+
+    const limitMatch = html.match(/limit\s*:\s*['"]?(\d+)/i);
+    const totalText = document.querySelector('#temizle .toplam, .toplam')?.textContent || '';
+    const totalMatch = totalText.replace(/\./g, '').match(/(\d+)/);
+    const limit = Math.max(1, parseInt(limitMatch?.[1] || '31', 10) || 31);
+    const total = Math.max(limit, parseInt(totalMatch?.[1] || String(limit), 10) || limit);
+    const maxPages = Math.min(Math.ceil(total / limit), Math.ceil(Math.max(1, maxLinks) / limit) + 2, 80);
+    const productLinkRe = /^\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i;
+    const seen = new Set();
+    const results = [];
+
+    const addFromHtml = (fragment) => {
+      const doc = new DOMParser().parseFromString(fragment || '', 'text/html');
+      doc.querySelectorAll('a[href], [data-href], [data-url], [onclick]').forEach(a => {
+        let href = (a.getAttribute('href') || a.getAttribute('data-href') || a.getAttribute('data-url') || '').trim();
+        if (!href) {
+          const m = String(a.getAttribute('onclick') || '').match(/['"]([^'"]+\.html)['"]/i);
+          if (m) href = m[1];
+        }
+        if (!href) return;
+        if (href.startsWith('http')) {
+          try { href = new URL(href).pathname; } catch { return; }
+        }
+        if (!href.startsWith('/')) href = '/' + href;
+        if (!productLinkRe.test(href) || /-resimleri\.html$/i.test(href)) return;
+        const full = 'https://www.epey.com' + href;
+        if (seen.has(full)) return;
+        seen.add(full);
+        results.push(full);
+      });
+    };
+
+    for (let pageNo = 2; pageNo <= maxPages && results.length < maxLinks; pageNo++) {
+      try {
+        const body = new URLSearchParams({
+          kategori_id: catMatch[1],
+          cerez: cerezMatch[1],
+          limit: String(limit),
+          sayfa: String(pageNo),
+        });
+        const res = await fetch('/kat/listele/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body,
+          credentials: 'include',
+        });
+        if (!res.ok) break;
+        const before = results.length;
+        addFromHtml(await res.text());
+        if (results.length === before) break;
+      } catch {
+        break;
+      }
+    }
+    return results.slice(0, maxLinks);
+  }, Math.max(1, Math.min(1000, parseInt(maxLinks, 10) || 200)));
+}
+
 /* ═══════════════════════════════════════════
    Product detail extraction (runs in browser context)
    ═══════════════════════════════════════════ */
@@ -546,18 +644,23 @@ async function extractProductDetail(page) {
       r.name = clone.textContent.trim();
     }
 
-    // Images — Epey product CDN only; skip brand/category/logo assets.
+    // Images — Epey product CDN only; skip brand/category/logo/spec assets.
     const seenImg = new Set();
     const addImg = (raw) => {
       let clean = String(raw || '').trim();
       if (!clean) return;
       if (clean.startsWith('//')) clean = 'https:' + clean;
       if (!clean.includes('resim.epey.com')) return;
-      if (/\/(?:tema|marka|kategori|logo)\//i.test(clean)) return;
-      clean = clean.split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/b_');
-      if (!seenImg.has(clean) && r.images.length < 8) { seenImg.add(clean); r.images.push(clean); }
+      if (/\/(?:tema|marka|kategori|logo|site|grup)\//i.test(clean)) return;
+      if (/(favicon|yildiz|profil|yukleniyor|loading|placeholder)/i.test(clean)) return;
+      clean = clean.split(/[?#]/)[0];
+      if (!/\.(?:jpe?g|png|webp|avif)$/i.test(clean)) return;
+      const key = clean.toLowerCase().replace(/\/[zbsmtck]_/i, '/_').replace(/\.(jpe?g|png|webp|avif)$/i, '');
+      if (!seenImg.has(key) && r.images.length < 4) { seenImg.add(key); r.images.push(clean); }
     };
-    document.querySelectorAll('img, a[href*="resim.epey.com"], [data-src], [data-zoom], [data-big], [data-full], [data-image]').forEach(img => {
+    const og = document.querySelector('meta[property="og:image"], meta[name="twitter:image"], link[rel="image_src"]');
+    addImg(og?.getAttribute('content') || og?.getAttribute('href'));
+    document.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, .galerim img, .galerik img, a[href*="resim.epey.com"]').forEach(img => {
       for (const attr of ['src', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'href']) {
         const val = img.getAttribute(attr);
         addImg(val);
@@ -790,6 +893,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const targetUrl = urlObj.searchParams.get('url');
+      const maxLinks = Math.max(1, Math.min(1000, parseInt(urlObj.searchParams.get('max') || '200', 10) || 200));
       if (!targetUrl) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing ?url=...' }));
@@ -797,53 +901,74 @@ const server = http.createServer(async (req, res) => {
       }
 
       console.log(`  🔗 Category links: ${targetUrl}`);
-      const page = await getPage();
+      const { links, pages } = await withBrowserLock(async () => {
+        const page = await getPage();
 
-      // Navigate to the category page (FlareSolverr if available, else Puppeteer)
-      const { html, status, isChallenge } = await fetchHtml(targetUrl);
-      if (!html) {
-        res.writeHead(502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Failed to load category page', status }));
-        return;
-      }
-      try {
-        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
-      } catch {}
-
-      // If Cloudflare challenge is still active, give it a short extra window
-      // then try extraction anyway. We no longer hard-fail with 503 — the
-      // client can handle empty results and move on, avoiding 25-55s hangs.
-      if (isChallenge) {
-        console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
-        try {
-          await page.waitForSelector(
-            '#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist',
-            { timeout: 10000 }
-          );
-          console.log(`  ✅ Product list appeared.`);
-        } catch {
-          console.log(`  ⚠️ Product list selector did not appear; extracting best-effort links.`);
+        // Navigate to the category page (FlareSolverr if available, else Puppeteer)
+        const { html, status, isChallenge } = await fetchHtml(targetUrl);
+        if (!html) {
+          const err = new Error('Failed to load category page');
+          err.status = status;
+          throw err;
         }
-      }
+        try {
+          await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        } catch {}
 
-      // Extract links from the now-clean page
-      let links;
-      try {
-        links = await extractCategoryLinks(page);
-      } catch (extractErr) {
-        console.error(`  ❌ extractCategoryLinks threw: ${extractErr.message}`);
-        res.writeHead(503, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          error: 'extraction_failed',
-          message: extractErr.message
-        }));
-        return;
-      }
+        // If Cloudflare challenge is still active, give it a short extra window
+        // then try extraction anyway. We no longer hard-fail with 503 — the
+        // client can handle empty results and move on, avoiding 25-55s hangs.
+        if (isChallenge) {
+          console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
+          try {
+            await page.waitForSelector(
+              '#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist',
+              { timeout: 10000 }
+            );
+            console.log(`  ✅ Product list appeared.`);
+          } catch {
+            console.log(`  ⚠️ Product list selector did not appear; extracting best-effort links.`);
+          }
+        }
+
+        try {
+          const initialLinks = await extractCategoryLinks(page);
+          const ajaxLinks = initialLinks.length < maxLinks
+            ? await extractEpeyAjaxListingLinks(page, maxLinks - initialLinks.length).catch(() => [])
+            : [];
+          const seen = new Set();
+          const links = [];
+          for (const link of [...initialLinks, ...ajaxLinks]) {
+            if (!link || seen.has(link)) continue;
+            seen.add(link);
+            links.push(link);
+            if (links.length >= maxLinks) break;
+          }
+          return {
+            links,
+            pages: await extractListingPaginationLinks(page).catch(() => []),
+          };
+        } catch (extractErr) {
+          extractErr.extractionFailed = true;
+          throw extractErr;
+        }
+      });
 
       console.log(`  ✅ ${links.length} product links extracted`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ count: links.length, links }));
+      res.end(JSON.stringify({ count: links.length, links, pages }));
     } catch (err) {
+      if (err.extractionFailed) {
+        console.error(`  ❌ extractCategoryLinks threw: ${err.message}`);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'extraction_failed', message: err.message }));
+        return;
+      }
+      if (err.message === 'Failed to load category page') {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message, status: err.status }));
+        return;
+      }
       // FINAL safety net — ALWAYS return JSON, NEVER HTML
       console.error(`  ❌ /category-links fatal: ${err.message}`);
       res.writeHead(502, { 'Content-Type': 'application/json' });
@@ -931,29 +1056,32 @@ const server = http.createServer(async (req, res) => {
     }
     try {
       console.log(`  🔍 Searching: ${productName}`);
-      const page = await getPage();
-      await page.goto('https://www.epey.com/ara/?ara=' + encodeURIComponent(productName), { waitUntil: 'domcontentloaded', timeout: 20000 });
-      const productUrl = await page.evaluate(() => {
-        for (const a of document.querySelectorAll('a[href$=".html"]')) {
-          const h = a.getAttribute('href') || '';
-          if (/\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i.test(h) && !/-resimleri\.html$/i.test(h)) return h;
+      const data = await withBrowserLock(async () => {
+        const page = await getPage();
+        await page.goto('https://www.epey.com/ara/?ara=' + encodeURIComponent(productName), { waitUntil: 'domcontentloaded', timeout: 20000 });
+        const productUrl = await page.evaluate(() => {
+          for (const a of document.querySelectorAll('a[href$=".html"]')) {
+            const h = a.getAttribute('href') || '';
+            if (/\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i.test(h) && !/-resimleri\.html$/i.test(h)) return h;
+          }
+          return null;
+        });
+        if (!productUrl) {
+          const err = new Error('Not found');
+          err.statusCode = 404;
+          throw err;
         }
-        return null;
+        const fullUrl = productUrl.startsWith('http') ? productUrl : 'https://www.epey.com' + productUrl;
+        await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await _humanDelay(500, 1000);
+        const detail = await extractProductDetail(page);
+        detail.sourceUrl = fullUrl;
+        return detail;
       });
-      if (!productUrl) {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Not found' }));
-        return;
-      }
-      const fullUrl = productUrl.startsWith('http') ? productUrl : 'https://www.epey.com' + productUrl;
-      await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
-      await _humanDelay(500, 1000);
-      const data = await extractProductDetail(page);
-      data.sourceUrl = fullUrl;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(data));
     } catch (err) {
-      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.writeHead(err.statusCode || 502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }
     return;
@@ -983,7 +1111,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     console.log(`  [${requestCount + 1}] → ${targetUrl}`);
-    const { html, status } = await fetchHtml(targetUrl);
+    const { html, status } = await withBrowserLock(() => fetchHtml(targetUrl));
     if (!html || status === 404) {
       res.setHeader('X-Status-Code', '404');
       res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -998,6 +1126,15 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(502, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }));
   }
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.log(`\n  ✅ Qor AI Scraper Proxy is already running on http://localhost:${PORT}`);
+    console.log(`  Health: http://localhost:${PORT}/health\n`);
+    process.exit(0);
+  }
+  throw err;
 });
 
 server.listen(PORT, async () => {

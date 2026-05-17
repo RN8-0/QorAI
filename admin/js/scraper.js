@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260517v1-epey-search';
+const SCRAPER_BUILD = '20260517v2-epey-strict-media';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -2935,8 +2935,10 @@ function normalizeEpeyImageUrl(url) {
   if (!/^https?:\/\//i.test(u)) return '';
   u = u.split(/[?#]/)[0];
   if (!/resim\.epey\.com/i.test(u)) return '';
-  if (/\/(?:tema|marka|kategori|logo)\//i.test(u)) return '';
-  return u.replace(/\/[ksmtc]_/g, '/b_');
+  if (/\/(?:tema|marka|kategori|logo|site|grup)\//i.test(u)) return '';
+  if (/(favicon|yildiz|profil|yukleniyor|loading|placeholder)/i.test(u)) return '';
+  if (!/\.(?:jpe?g|png|webp|avif)$/i.test(u)) return '';
+  return u;
 }
 
 function isEpeyProductUrl(url) {
@@ -3020,21 +3022,24 @@ function extractTechScore(doc) {
 
 function extractImages(doc, productSlug = '') {
   if (typeof doc === 'string') doc = parseHTML(doc);
-  const slug = String(productSlug || '').replace(/\.html$/i, '').toLowerCase();
   const images = [];
   const seen = new Set();
-  const add = (raw, loose = false) => {
+  const add = (raw) => {
     const u = normalizeEpeyImageUrl(raw);
     if (!u) return;
     const lower = u.toLowerCase();
-    if (!loose && slug && !lower.includes(slug)) return;
-    const key = lower.replace(/\.(jpe?g|png|webp|gif|avif)$/i, '');
-    if (seen.has(key) || images.length >= 8) return;
+    const key = lower
+      .replace(/\/[zbsmtck]_/i, '/_')
+      .replace(/\.(jpe?g|png|webp|avif)$/i, '');
+    if (seen.has(key) || images.length >= 4) return;
     seen.add(key);
     images.push(u);
   };
 
-  doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, [data-src], [data-zoom], [data-big], [data-full], [data-image], img, a[href*="resim.epey.com"]').forEach(el => {
+  const ogImage = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"], link[rel="image_src"]');
+  add(ogImage?.getAttribute('content') || ogImage?.getAttribute('href'));
+
+  doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, .galerim img, .galerik img, .bresim, a[href*="-resimleri.html"]').forEach(el => {
     for (const attr of ['data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'data-url', 'src', 'href']) {
       const val = el.getAttribute(attr);
       if (val && /resim\.epey\.com/i.test(val)) add(val);
@@ -3047,11 +3052,6 @@ function extractImages(doc, productSlug = '') {
     if (om) add(om[1]);
   });
 
-  if (images.length === 0) {
-    doc.querySelectorAll('img[src*="resim.epey.com"], img[data-src*="resim.epey.com"]').forEach(img => {
-      add(img.getAttribute('src') || img.getAttribute('data-src'), true);
-    });
-  }
   return images;
 }
 
@@ -3070,9 +3070,35 @@ function parseSpecs(doc) {
   const keySpecs = {};
 
   const cleanText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+  const cleanValueText = (value) => String(value || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
+  const nodeOwnText = (node) => {
+    if (!node) return '';
+    return Array.from(node.childNodes || [])
+      .map(child => child.nodeType === 3 ? child.textContent : '')
+      .join(' ');
+  };
+  const valueFromCell = (cell) => {
+    if (!cell) return '';
+    const values = [];
+    const entries = cell.querySelectorAll('a, span, div');
+    entries.forEach(el => {
+      if (el.querySelector('a, span, div')) return;
+      const t = cleanText(el.textContent);
+      if (t && !values.includes(t)) values.push(t);
+    });
+    const own = cleanText(nodeOwnText(cell));
+    if (own && !values.includes(own)) values.unshift(own);
+    if (values.length) return values.join('\n');
+    return cleanValueText(cell.textContent);
+  };
   const addSpec = (section, key, value) => {
     const k = cleanText(key).replace(/:$/, '');
-    const v = cleanText(value);
+    const v = cleanValueText(value);
     if (!k || !v || k.length > 180 || v.length > 1200) return;
     if (!specSections[section]) specSections[section] = {};
     specs[k] = v;
@@ -3083,13 +3109,12 @@ function parseSpecs(doc) {
     root.querySelectorAll('li').forEach(li => {
       const strong = li.querySelector('strong, b, .baslik, .cell:first-child');
       if (!strong) return;
-      const clone = li.cloneNode(true);
-      clone.querySelectorAll('strong, b, .baslik, .cell:first-child, script, style').forEach(x => x.remove());
-      let value = Array.from(li.querySelectorAll('span.cell a, .cell a, a'))
-        .map(a => cleanText(a.textContent))
-        .filter(Boolean)
-        .join('\n');
-      if (!value) value = cleanText(clone.textContent);
+      let value = valueFromCell(li.querySelector('span.cell, .cell:not(:first-child)'));
+      if (!value) {
+        const clone = li.cloneNode(true);
+        clone.querySelectorAll('strong, b, .baslik, .cell:first-child, script, style').forEach(x => x.remove());
+        value = cleanValueText(clone.textContent);
+      }
       addSpec(section, strong.textContent, value);
     });
   };
@@ -3102,7 +3127,7 @@ function parseSpecs(doc) {
       parseList(block, section || 'Genel');
       block.querySelectorAll('tr').forEach(row => {
         const cells = row.querySelectorAll('th,td');
-        if (cells.length >= 2) addSpec(section || 'Genel', cells[0].textContent, cells[1].textContent);
+        if (cells.length >= 2) addSpec(section || 'Genel', cells[0].textContent, valueFromCell(cells[1]));
       });
     });
 
@@ -3116,16 +3141,18 @@ function parseSpecs(doc) {
         if (el.tagName === 'LI') parseList(el.parentElement || el, section);
         if (el.tagName === 'TR') {
           const cells = el.querySelectorAll('th,td');
-          if (cells.length >= 2) addSpec(section, cells[0].textContent, cells[1].textContent);
+          if (cells.length >= 2) addSpec(section, cells[0].textContent, valueFromCell(cells[1]));
         }
       });
     }
   }
 
-  doc.querySelectorAll('table tr').forEach(row => {
-    const cells = row.querySelectorAll('th,td');
-    if (cells.length >= 2) addSpec('Genel', cells[0].textContent, cells[1].textContent);
-  });
+  if (Object.keys(specs).length === 0) {
+    doc.querySelectorAll('table tr').forEach(row => {
+      const cells = row.querySelectorAll('th,td');
+      if (cells.length >= 2) addSpec('Genel', cells[0].textContent, valueFromCell(cells[1]));
+    });
+  }
 
   doc.querySelectorAll('.cell, .ozet .row, .row1, .row2').forEach(el => {
     const key = cleanText(el.querySelector('.row1, strong, b')?.textContent);
@@ -3160,10 +3187,11 @@ async function scrapeProductDetail(html, url, categoryId = '') {
     const gallery = await fetchGalleryImages(productSlug);
     const seen = new Set(images.map(x => x.toLowerCase()));
     for (const img of gallery) {
-      if (images.length >= 8) break;
+      if (images.length >= 4) break;
       if (!seen.has(img.toLowerCase())) { seen.add(img.toLowerCase()); images.push(img); }
     }
   }
+  images = images.slice(0, 4);
 
   const variantGroup = modelFamilyKey({ name: originalName, brand, category })
     || normalizeVariantGroupFromSlug(productSlug);
@@ -3262,31 +3290,51 @@ function epeyBrandCategoryUrls(term) {
 async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const term = String(searchTerm || '').trim();
   if (!term) return [];
-  slog(`Collecting from Epey search: "${term}"`);
+  slog(`Collecting Epey products for brand/search: "${term}"`);
   const allItems = [];
   const seen = new Set();
 
   const brandUrls = epeyBrandCategoryUrls(term);
   if (brandUrls.length) {
-    slog(`  scanning ${brandUrls.length} Epey category/brand pages first`, 'info');
+    slog(`  scanning Epey brand listings across supported catalog sections`, 'info');
     for (const brandPage of brandUrls) {
       if (allItems.length >= maxProducts || scraperAbort) break;
       try {
-        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(brandPage.url)}`, { signal: AbortSignal.timeout(45000) });
-        const data = res.ok ? await res.json() : null;
-        const pageItems = Array.isArray(data?.links) ? data.links.map(x => ({ url: x })) : [];
+        const pages = [brandPage.url];
+        const seenPages = new Set();
         let added = 0;
-        for (const item of pageItems) {
-          const full = normalizeEpeyProductUrl(item.url);
-          if (!full || seen.has(full)) continue;
-          seen.add(full);
-          allItems.push({ url: full, techScore: item.techScore || null });
-          added++;
-          if (allItems.length >= maxProducts) break;
+
+        for (let pi = 0; pi < pages.length && pi < 20 && allItems.length < maxProducts && !scraperAbort; pi++) {
+          const pageUrl = pages[pi];
+          if (seenPages.has(pageUrl)) continue;
+          seenPages.add(pageUrl);
+
+          const remaining = Math.max(1, maxProducts - allItems.length);
+          const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(pageUrl)}&max=${encodeURIComponent(remaining)}`, { signal: AbortSignal.timeout(60000) });
+          const data = res.ok ? await res.json() : null;
+          const pageItems = Array.isArray(data?.items)
+            ? data.items
+            : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
+
+          for (const item of pageItems) {
+            const full = normalizeEpeyProductUrl(item.url);
+            if (!full || seen.has(full)) continue;
+            seen.add(full);
+            allItems.push({ url: full, techScore: item.techScore || null });
+            added++;
+            if (allItems.length >= maxProducts) break;
+          }
+
+          const nextPages = Array.isArray(data?.pages) ? data.pages : [];
+          for (const next of nextPages) {
+            if (!next || seenPages.has(next) || pages.includes(next)) continue;
+            pages.push(next);
+          }
         }
+
         if (added) slog(`  ${brandPage.id}: +${added}`);
       } catch (e) {
-        // Brand/category URL may not exist for every category. Quietly continue.
+        // Brand listing may not exist for every supported section. Keep going.
       }
     }
   }
@@ -3300,7 +3348,8 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
     for (const url of epeySearchUrls(term, page)) {
       try {
         let data = null;
-        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(45000) });
+        const remaining = Math.max(1, maxProducts - allItems.length);
+        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}&max=${encodeURIComponent(remaining)}`, { signal: AbortSignal.timeout(60000) });
         if (res.ok) data = await res.json();
         pageItems = Array.isArray(data?.items)
           ? data.items
@@ -3360,7 +3409,7 @@ async function startBulkScrape() {
   const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
   if (!searchTerm) { toast('Marka veya arama terimi gir', 'w'); return; }
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
-  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 1200;
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
 
   scraperRunning = true; scraperAbort = false;
   document.getElementById('btnBulkScrape').style.display = 'none';
@@ -3389,21 +3438,27 @@ async function startBulkScrape() {
 async function scrapeByUrl() {
   const inputVal = document.getElementById('scrapeUrl')?.value?.trim() || '';
   if (!inputVal) { toast('Epey URL veya ürün adı gir', 'w'); return; }
+  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   clearScraperLog();
+  scraperRunning = true;
+  const btn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('onclick') === 'scrapeByUrl()');
+  if (btn) btn.disabled = true;
   let url = '';
-  if (/^https?:\/\//i.test(inputVal)) {
-    url = normalizeEpeyProductUrl(inputVal);
-    if (!url) { toast('Sadece epey.com ürün URL destekleniyor', 'e'); return; }
-  } else {
-    slog(`Searching Epey: ${inputVal}`);
-    const links = await collectSearchProductUrls(inputVal, 1);
-    url = links[0]?.url || '';
-    if (!url) { slog('No Epey result found', 'error'); return; }
-  }
-
   try {
+    if (/^https?:\/\//i.test(inputVal)) {
+      url = normalizeEpeyProductUrl(inputVal);
+      if (!url) { toast('Sadece epey.com ürün URL destekleniyor', 'e'); return; }
+      slog(`Direct Epey product URL: ${url}`, 'info');
+    } else {
+      slog(`Searching Epey: ${inputVal}`);
+      const links = await collectSearchProductUrls(inputVal, 1);
+      url = links[0]?.url || '';
+      if (!url) { slog('No Epey result found', 'error'); return; }
+      slog(`First Epey match: ${url}`, 'info');
+    }
+
     const html = await proxyFetch(url);
     if (!html || isChallengePage(html)) { slog('Page not found or blocked', 'error'); return; }
     const product = await scrapeProductDetail(html, url, document.getElementById('singleUrlCategory')?.value || '');
@@ -3415,5 +3470,8 @@ async function scrapeByUrl() {
     if (typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Error: ${e.message}`, 'error');
+  } finally {
+    scraperRunning = false;
+    if (btn) btn.disabled = false;
   }
 }

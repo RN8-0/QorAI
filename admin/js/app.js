@@ -1800,7 +1800,7 @@ let _dictDirty = false;
 function markDictDirty(){ _dictDirty = true; }
 
 function addDictionaryRow(){
-  const term = (prompt('Yeni Almanca terim:') || '').trim();
+  const term = (prompt('Yeni Türkçe terim:') || '').trim();
   if (!term) return;
   const cache = window.QorAiDict.cache();
   const k = term.toLowerCase();
