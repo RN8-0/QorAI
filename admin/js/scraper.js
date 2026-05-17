@@ -2278,7 +2278,7 @@ async function resumeBulkScrape() {
   clearScraperLog();
   slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (category: ${cp.categoryId})`, 'info');
   const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay);
-  slog(`═══ Resume done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
+  slog(`═══ Resume done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
   _clearCheckpoint();
   finishScraping();
 }
@@ -2337,7 +2337,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const { urls: existingUrls, variantGroups: existingVariantGroups } = await _loadExistingSourceUrls(categoryId);
+  const { urls: existingUrls, byVariantGroup: existingByVG } = await _loadExistingSourceUrls(categoryId);
   const beforeCount = urlItems.length;
   urlItems = urlItems.filter(it => !existingUrls.has(it.url));
   const skippedCount = beforeCount - urlItems.length;
@@ -2478,21 +2478,42 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         continue;
       }
 
-      // Cross-source de-dup: if this product family is already in the catalog
-      // (imported earlier from Icecat OR Epey) skip it instead of re-saving.
-      if (product.variantGroup && existingVariantGroups.has(product.variantGroup)) {
-        slog(`  → Atlandı (zaten katalogda — Icecat/Epey): ${slug}`, 'info');
-        results.skipped++;
+      const clean = prepareProductPayload(product);
+
+      // Cross-source merge: if this model already exists as an ICECAT record,
+      // overwrite that record in place with the Epey data instead of creating
+      // a duplicate. PocketBase PATCH is partial — the Icecat record's
+      // affiliate/offer fields (gtin, mpn, icecatId, lowestPrice*,
+      // affiliateLinksByCountry, offerCount, techScore) are NOT in the Epey
+      // payload, so they survive untouched. configKey is dropped too so the
+      // original dedup key is kept. Result: one record, Epey content, Icecat
+      // affiliate data — exactly the requested behaviour.
+      const existing = product.variantGroup ? existingByVG.get(product.variantGroup) : null;
+      if (existing && /icecat/i.test(existing.source)) {
+        const mergePayload = { ...clean };
+        // Keep Icecat's identity/affiliate keys — they are the base. Dropping
+        // them from the PATCH means PocketBase leaves the record's existing
+        // gtin / mpn / configKey untouched.
+        delete mergePayload.configKey;
+        delete mergePayload.gtin;
+        delete mergePayload.mpn;
+        await pbUpdateDoc('products', existing.id, mergePayload);
+        existingByVG.delete(product.variantGroup); // a later variant → new record
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: mergePayload } }));
+        results.updated++;
+        errorStreak = 0;
+        recent.push('ok');
+        slog(`  ↻ Güncellendi (Epey verisi + Icecat affiliate korundu): ${product.name}`, 'success');
+        if ((results.added + results.updated) % 25 === 0) _saveCheckpoint(urlItems, i + 1, categoryId, results);
         continue;
       }
 
-      const clean = prepareProductPayload(product);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
       errorStreak = 0;
       recent.push('ok');
-      slog(`  → Added: ${product.name} (${product.specsCount} specs, ${product.images.length} görsel)`, 'success');
+      slog(`  → Eklendi: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'success');
 
       // Adaptive checkpoint every 25 products
       if (results.added > 0 && results.added % 25 === 0) {
@@ -2662,8 +2683,8 @@ async function startBulkScrape() {
     // Phase 2: Scrape products sequentially (NO parallel / NO Promise.all)
     const results = await sequentialScrape(toScrape, mode === 'brand' ? '' : catValue, delay);
 
-    slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
-    if (results.added > 0 && typeof loadProducts === 'function') {
+    slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
+    if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') {
       await loadProducts();
       slog('Products view refreshed.', 'success');
     }
@@ -3402,9 +3423,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       // AJAX pagination — driven here so every page is logged live.
       if (data?.ajax && data.ajax.kategoriId && allItems.length < maxProducts) {
         const ajax = data.ajax;
-        // maxPage is only a display hint — the real terminator is an empty
+        // estPages is only a display hint — the real terminator is an empty
         // page, so a wrong (too-low) hint never truncates the collection.
-        const hint = Math.min(Math.max(parseInt(ajax.maxPage, 10) || 1, 1), 500);
+        const hint = Math.min(Math.max(parseInt(ajax.estPages, 10) || 1, 1), 500);
         const HARD_CAP = 500;
         slog(`  ⏩ AJAX sayfalama: ~${hint} sayfa · ${ajax.limit} ürün/sayfa`, 'info');
         let emptyStreak = 0;
@@ -3524,27 +3545,35 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
 }
 
 // Loads what is ALREADY in the catalog for a category so the bulk scrape can
-// skip it. Returns:
-//   urls          — every sourceUrl on record (URL-level skip for Epey re-runs)
-//   variantGroups — every variantGroup on record, from ANY source. This is the
-//                   cross-source identity key (modelFamilyKey), so a product
-//                   first imported from Icecat is skipped when the Epey scrape
-//                   rediscovers it. NOTE: the source filter is intentionally
-//                   dropped — we must see Icecat products here too.
+// reconcile against it. Returns:
+//   urls         — every sourceUrl on record (URL-level skip for Epey re-runs)
+//   byVariantGroup — Map(variantGroup → { id, source, name }). variantGroup is
+//                  the cross-source identity key (modelFamilyKey). When a
+//                  family has both an Icecat and an Epey record the ICECAT one
+//                  is kept as the merge target — its record id (and the
+//                  affiliate offers linked to it) is what we keep alive.
 async function _loadExistingSourceUrls(categoryId) {
-  const empty = { urls: new Set(), variantGroups: new Set() };
+  const empty = { urls: new Set(), byVariantGroup: new Map() };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const filter = safeCategory ? `category="${safeCategory}"` : '';
     const docs = await pbGetAll('products', filter ? { filter, sort: '-created' } : { sort: '-created' });
     const urls = new Set();
-    const variantGroups = new Set();
+    const byVariantGroup = new Map();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
       if (data?.sourceUrl) urls.add(String(data.sourceUrl).trim());
-      if (data?.variantGroup) variantGroups.add(String(data.variantGroup).trim());
+      const vg = String(data?.variantGroup || '').trim();
+      if (vg && d.id) {
+        const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };
+        const prev = byVariantGroup.get(vg);
+        const isIcecat = /icecat/i.test(rec.source);
+        const prevIcecat = prev && /icecat/i.test(prev.source);
+        // Prefer an Icecat record as the merge target.
+        if (!prev || (isIcecat && !prevIcecat)) byVariantGroup.set(vg, rec);
+      }
     }
-    return { urls, variantGroups };
+    return { urls, byVariantGroup };
   } catch (e) {
     slog(`  (existing-product preload failed: ${e.message})`, 'warn');
     return empty;
@@ -3576,8 +3605,8 @@ async function startBulkScrape() {
       return;
     }
     const results = await sequentialScrape(urlItems.slice(0, maxProducts), categoryId, delay);
-    slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
-    if (results.added > 0 && typeof loadProducts === 'function') await loadProducts();
+    slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
+    if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Fatal error: ${e.message}`, 'error');
   }

@@ -1145,12 +1145,21 @@ const server = http.createServer(async (req, res) => {
         if (!ajax && catPath) {
           for (let p = 2; p <= Math.min(maxPage, 200); p++) pages.push(`https://www.epey.com/${catPath}/${p}/`);
         }
+        // Page the AJAX endpoint at 200/req instead of Epey's native 31 — same
+        // result, ~6x fewer round-trips. estPages is a display hint only.
+        const AJAX_PAGE_SIZE = 200;
+        const estPages = ajax
+          ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE))
+          : 0;
         result = {
           links, pages,
-          ajax: ajax ? { ...ajax, maxPage, base: targetUrl, prefix } : null,
+          ajax: ajax
+            ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
+                estPages, base: targetUrl, prefix }
+            : null,
         };
         console.log(`  ⚡ fast category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
-          `${ajax ? ` · AJAX ${maxPage}p` : (pages.length ? ` · ${pages.length} pages` : '')}`);
+          `${ajax ? ` · AJAX ~${estPages}p@${AJAX_PAGE_SIZE}` : (pages.length ? ` · ${pages.length} pages` : '')}`);
       }
 
       // FALLBACK — Cloudflare challenge or empty body: drive a real browser.
