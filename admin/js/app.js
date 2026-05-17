@@ -1673,11 +1673,22 @@ async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
   if(!q){currentPage=1;await loadPage();return}
   const g=document.getElementById('productGrid');
-  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Searching...</div>';
+  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor…</div>';
   try{
-    const esc=q.replace(/"/g,'\\"');
-    // Search by name, brand, category or slug-style id
-    let filter=`name~"${esc}" || brand~"${esc}" || category~"${esc}" || id~"${esc.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}"`;
+    // Tokenised AND search: every word must appear somewhere in the product.
+    // "galaxy s26 ultra" matches "Samsung Galaxy S26 Ultra 5G" even though the
+    // words are not one contiguous substring — and word order does not matter.
+    // Each token is also matched against brand / category / MPN / GTIN so you
+    // can find a product by model code or barcode.
+    const sani=t=>String(t).replace(/["\\%]/g,'').trim();
+    const tokens=q.split(/\s+/).map(sani).filter(t=>t.length>=2).slice(0,8);
+    let filter;
+    if(tokens.length){
+      filter=tokens.map(t=>`(name~"${t}" || brand~"${t}" || category~"${t}" || mpn~"${t}" || gtin~"${t}")`).join(' && ');
+    }else{
+      const e=sani(q);
+      filter=`name~"${e}" || brand~"${e}" || category~"${e}"`;
+    }
     // Honour the grouped toggle so search results collapse SKU variants too.
     if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
     const seq=++_loadPageSeq;
@@ -1700,8 +1711,8 @@ async function serverSearch(){
     allProducts=sorted;
     _productUiPages=new Map();
     renderProductsPage();
-    document.getElementById('productCount').textContent=result.totalItems+' results';
-    if(!sorted.length)toast('No results for "'+q+'"','i');
+    document.getElementById('productCount').textContent=result.totalItems+' sonuç';
+    if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Search error: '+escHtml(e.message)+'</div>'}
 }
 
@@ -2086,9 +2097,19 @@ async function wipeAllProducts(){
   }
 }
 
-// Search debounce — server-side search with cancellation
+// Search debounce — server-side search with cancellation. 250 ms feels
+// instant while still collapsing fast typing into one query; Enter fires
+// the search immediately.
 let sTimer;
-document.addEventListener('DOMContentLoaded',()=>{const si=document.getElementById('searchInput');if(si)si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,800)})});
+document.addEventListener('DOMContentLoaded',()=>{
+  const si=document.getElementById('searchInput');
+  if(!si)return;
+  si.addEventListener('input',()=>{clearTimeout(sTimer);sTimer=setTimeout(serverSearch,250)});
+  si.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){clearTimeout(sTimer);serverSearch()}
+    else if(e.key==='Escape'){si.value='';clearTimeout(sTimer);serverSearch()}
+  });
+});
 
 // ── PRODUCT MODAL ──
 const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','Camera':'📸','Core Hardware':'⚙️','Performance':'⚡','AI / Performance':'🧠','Memory':'💾','Storage':'💿','Design':'📐','Dimensions':'📐','Network':'📡','Connectivity':'🔌','Connectivity / I/O':'🔌','Operating System':'💻','Software / OS':'💻','Audio':'🔊','Features':'✨','Sensors':'📡','Processor':'🧠','Chip / Processor':'🧠','Graphics':'🎮','Power':'⚡','Cooling':'❄️','Release & Pricing':'📅','General':'ℹ️'};
