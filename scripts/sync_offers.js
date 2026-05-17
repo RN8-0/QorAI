@@ -9,6 +9,9 @@
  *   node scripts/sync_offers.js --cat=laptops      one category
  *   node scripts/sync_offers.js --limit=200        cap product count
  *   node scripts/sync_offers.js --all-variants     include non-primary SKUs
+ *   node scripts/sync_offers.js --missing-only     only products with no
+ *                                                  offers yet (incremental —
+ *                                                  use this for automation)
  *
  * Connectors with no credentials are skipped — add keys to migration/.env
  * (see scripts/connectors/*.js headers) to enable eBay / Amazon / …
@@ -27,6 +30,10 @@ const argv = process.argv.slice(2);
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
 const LIMIT = parseInt((argv.find(a => a.startsWith('--limit=')) || '').split('=')[1] || '0', 10);
 const ALL_VARIANTS = argv.includes('--all-variants');
+// --missing-only (alias --new): only enrich products that have no offers yet.
+// Use this after every scrape batch — it skips the thousands of products
+// already covered, so a daily/automated run stays cheap as the catalog grows.
+const MISSING_ONLY = argv.includes('--missing-only') || argv.includes('--new');
 const DELAY = 250; // ms between products — be gentle with retailer APIs
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -36,6 +43,7 @@ async function fetchProducts() {
   const parts = [];
   if (!ALL_VARIANTS) parts.push('variantPrimary=true');
   if (ONLY_CAT) parts.push(`category="${ONLY_CAT.replace(/"/g, '\\"')}"`);
+  if (MISSING_ONLY) parts.push('offerCount<1');
   const filter = parts.length ? `&filter=${encodeURIComponent(parts.join(' && '))}` : '';
   let page = 1;
   for (;;) {
