@@ -490,25 +490,18 @@
             </p>
 
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
-              <div class="form-field" style="grid-column:span 2">
+              <div class="form-field">
+                <label>Kategori (tek seçim)</label>
                 <input type="hidden" id="icecatCats" value="">
-                <details id="icecatCatPicker" style="border:1px solid var(--surface-3,#2a2a2a);border-radius:8px;background:var(--surface-1,#0e0e0e);padding:0">
-                  <summary style="cursor:pointer;list-style:none;padding:10px 12px;display:flex;align-items:center;gap:10px">
-                    <span style="font-weight:700">Kategoriler</span>
-                    <small class="text-muted" id="icecatCatSummary" style="margin-left:auto;font-size:11px">Yükleniyor…</small>
-                  </summary>
-                  <div style="padding:0 12px 12px">
-                    <input class="input" id="icecatCatSearch" placeholder="Kategori ara..." style="margin-bottom:8px" oninput="icecatFilterCats()">
-                    <div id="icecatCatList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:220px;overflow:auto;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:#0a0a0a">
-                      <div class="text-muted" style="font-size:12px;grid-column:1/-1">Yükleniyor…</div>
-                    </div>
-                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectAllCats()">Tümünü Seç</button>
-                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatSelectNoneCats()">Hiçbiri</button>
-                      <button class="btn btn-ghost btn-sm" type="button" onclick="icecatRenderCats()">↻ Yenile</button>
-                    </div>
-                  </div>
-                </details>
+                <select class="input" id="icecatCatSelect" onchange="icecatSyncCats()">
+                  <option value="">Yükleniyor…</option>
+                </select>
+                <small class="text-muted" id="icecatCatSummary" style="font-size:11px">Tek kategori seç — düzgün, sistematik çekim için</small>
+              </div>
+              <div class="form-field">
+                <label>Marka filtresi (opsiyonel)</label>
+                <input class="input" id="icecatBrand" placeholder="örn: Apple — boş = tüm markalar">
+                <small class="text-muted" style="font-size:11px">Sadece bu markaya ait ürünler kaydedilir</small>
               </div>
               <div class="form-field">
                 <label>Diller (uygulamadaki 12 dil)</label>

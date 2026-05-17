@@ -760,6 +760,9 @@ const server = http.createServer(async (req, res) => {
         if (opts.limit)   args.push(`--limit=${opts.limit}`);
         if (opts.workers) args.push(`--workers=${opts.workers}`);
         if (opts.delay)   args.push(`--delay=${opts.delay}`);
+        // Optional brand filter — only products of this brand are saved.
+        const brand = String(opts.brand || '').trim().replace(/[^\p{L}\p{N} .&+-]/gu, '').slice(0, 60);
+        if (brand) args.push(`--brand=${brand}`);
         const { spawn } = require('child_process');
         icecatLog = '';
         icecatProc = spawn('node', args, { cwd: rootDir, env: process.env });

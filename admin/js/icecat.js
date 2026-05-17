@@ -118,85 +118,50 @@
     }
   }
 
+  // Single-category picker — one Icecat category at a time keeps each run
+  // small, predictable and easy to verify before moving to the next one.
   async function icecatRenderCats() {
-    const host = $('icecatCatList');
-    if (!host) return;
+    const sel = $('icecatCatSelect');
+    if (!sel) return;
     try {
       await loadDiscover();
     } catch {
       CAT_COUNTS = {};
     }
 
-    // Group by category section
     const groups = {};
     for (const row of CAT_PRESET) {
-      const [g, slug, catId, label, defChecked] = row;
-      (groups[g] = groups[g] || []).push({ slug, catId, label, defChecked });
+      const [g, slug, catId, label] = row;
+      (groups[g] = groups[g] || []).push({ slug, catId, label });
     }
 
-    // Read previously-selected slugs (from hidden input) so re-renders preserve state
-    const prevSelected = new Set(($('icecatCats').value || '').split(',').map(s => s.trim()).filter(Boolean));
-
-    let html = '';
+    const prev = ($('icecatCats').value || '').trim();
+    let html = '<option value="">— Kategori seç —</option>';
     for (const [g, items] of Object.entries(groups)) {
-      html += `<div style="grid-column:1/-1;font-size:11px;color:var(--muted,#9aa);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 2px">${g}</div>`;
+      html += `<optgroup label="${g}">`;
       for (const it of items) {
         const count = (CAT_COUNTS && CAT_COUNTS[it.catId]) || 0;
-        const isDefault = prevSelected.size ? prevSelected.has(it.slug) : it.defChecked;
-        const countLabel = count ? ` <span style="opacity:.55">(${count.toLocaleString('tr-TR')})</span>` : '';
-        const searchText = `${g} ${it.slug} ${it.label}`.toLowerCase();
-        html += `<label class="ic-cat-row" data-search="${searchText.replace(/"/g, '&quot;')}" style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--surface-2,#171717);border-radius:4px;font-size:12px;cursor:pointer">
-          <input type="checkbox" class="ic-cat-cb" value="${it.slug}" ${isDefault ? 'checked' : ''}>
-          <span>${it.label}${countLabel}</span>
-        </label>`;
+        const countLabel = count ? ` (${count.toLocaleString('tr-TR')})` : '';
+        html += `<option value="${it.slug}"${it.slug === prev ? ' selected' : ''}>${it.label}${countLabel}</option>`;
       }
+      html += '</optgroup>';
     }
-    if (!Object.keys(CAT_COUNTS || {}).length) {
-      html += `<div class="text-muted" style="grid-column:1/-1;font-size:11px;margin-top:8px">
-        Canli Icecat sayilari okunamadi; kategori listesi yedek sabit haritadan gosteriliyor. Proxy calisiyorsa Refresh ile tekrar deneyebilirsin.
-      </div>`;
-    }
-    host.innerHTML = html;
-    host.querySelectorAll('.ic-cat-cb').forEach(cb => cb.addEventListener('change', icecatSyncCats));
-    icecatFilterCats();
+    sel.innerHTML = html;
     icecatSyncCats();
-  }
-
-  function icecatFilterCats() {
-    const q = ($('icecatCatSearch')?.value || '').trim().toLowerCase();
-    document.querySelectorAll('.ic-cat-row').forEach(row => {
-      const hay = row.getAttribute('data-search') || row.textContent.toLowerCase();
-      row.style.display = !q || hay.includes(q) ? 'flex' : 'none';
-    });
   }
 
   function icecatSyncCats() {
-    const cbs = document.querySelectorAll('.ic-cat-cb');
-    const slugs = [];
-    let totalCount = 0;
-    cbs.forEach(cb => {
-      if (cb.checked) {
-        slugs.push(cb.value);
-        const row = CAT_PRESET.find(r => r[1] === cb.value);
-        if (row && CAT_COUNTS) totalCount += (CAT_COUNTS[row[2]] || 0);
-      }
-    });
-    $('icecatCats').value = slugs.join(',');
+    const sel = $('icecatCatSelect');
+    const slug = sel ? sel.value.trim() : '';
+    $('icecatCats').value = slug;
     const summary = $('icecatCatSummary');
     if (summary) {
-      summary.textContent = slugs.length
-        ? `${slugs.length} kategori seçili · yaklaşık ${totalCount.toLocaleString('tr-TR')} ürün`
-        : 'hiç kategori seçili değil';
+      const row = CAT_PRESET.find(r => r[1] === slug);
+      const count = (row && CAT_COUNTS) ? (CAT_COUNTS[row[2]] || 0) : 0;
+      summary.textContent = slug
+        ? `Seçili: ${row ? row[3] : slug}${count ? ` · ~${count.toLocaleString('tr-TR')} ürün` : ''}`
+        : 'Tek kategori seç — düzgün, sistematik çekim için';
     }
-  }
-
-  function icecatSelectAllCats() {
-    document.querySelectorAll('.ic-cat-cb').forEach(cb => cb.checked = true);
-    icecatSyncCats();
-  }
-  function icecatSelectNoneCats() {
-    document.querySelectorAll('.ic-cat-cb').forEach(cb => cb.checked = false);
-    icecatSyncCats();
   }
 
   async function icecatStart() {
@@ -211,11 +176,12 @@
   async function icecatStartWithResume(forceResume) {
     const slugs = $('icecatCats').value.trim();
     if (!slugs) {
-      alert('En az bir kategori seçin.');
+      alert('Bir kategori seçin.');
       return;
     }
     const body = {
       cats:    slugs,
+      brand:   ($('icecatBrand')?.value || '').trim(),
       langs:   $('icecatLangs').value.trim(),
       limit:   parseInt($('icecatLimit').value) || 0,
       workers: parseInt($('icecatWorkers').value) || 3,
@@ -331,7 +297,5 @@
   window.icecatReset           = icecatReset;
   window.icecatRefreshStatus   = bootstrap; // tab-switch triggers bootstrap
   window.icecatRenderCats      = icecatRenderCats;
-  window.icecatSelectAllCats   = icecatSelectAllCats;
-  window.icecatSelectNoneCats  = icecatSelectNoneCats;
-  window.icecatFilterCats      = icecatFilterCats;
+  window.icecatSyncCats        = icecatSyncCats;
 })();

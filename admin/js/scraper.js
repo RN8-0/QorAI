@@ -561,12 +561,14 @@ function prepareProductPayload(product) {
     const mid = isEpeySource
       ? normalizeEpeyImageUrl(url)
       : (typeof imgMedium === 'function' ? imgMedium(url) : url);
-    const key = String(mid || '').replace(/-[a-z]\.webp$/i, '').toLowerCase();
+    const key = isEpeySource
+      ? (typeof _epeyImageKey === 'function' ? _epeyImageKey(mid) : String(mid || '').toLowerCase())
+      : String(mid || '').replace(/-[a-z]\.webp$/i, '').toLowerCase();
     if (mid && !seenImg.has(key)) {
       seenImg.add(key);
       images.push(mid);
     }
-    if (images.length >= 4) break;
+    if (images.length >= 8) break;
   }
   const primary = images[0] || product.imageUrl || '';
 
@@ -892,7 +894,7 @@ function extractListingTechScore(cardEl) {
 // ═══════════════════════════════════════
 
 // Max images per product (user requirement: first 4 product-only images)
-const MAX_IMAGES_PER_PRODUCT = 4;
+const MAX_IMAGES_PER_PRODUCT = 8;
 
 // Legacy CDN exposes the same image in multiple sizes via prefix:
 //   /-n.webp = original (~1280px, 80-120 KB)
@@ -3027,39 +3029,59 @@ function extractTechScore(doc) {
   return null;
 }
 
+// Epey serves the same photo in several size tiers, encoded as a one-letter
+// filename prefix: z=zoom/huge (~1MB), m=medium (~80-150KB, gallery display),
+// s/t/c/k=thumbnails. We keep the MEDIUM tier — sharp enough for the product
+// gallery, small enough to not bloat PocketBase storage — and fall back to the
+// next-best tier only when m_ is missing.
+const _EPEY_TIER_RANK = { m: 0, b: 1, l: 2, o: 3, z: 4, t: 5, c: 6, s: 7, k: 8 };
+function _epeyImageKey(u) {
+  // Strip the size-tier prefix + extension so every tier of one photo collapses
+  // to a single identity (…/934802/m_huawei-…-18.png → …/934802/huawei-…-18).
+  return String(u).toLowerCase()
+    .replace(/\/[a-z]_([^/]+)$/i, '/$1')
+    .replace(/\.(jpe?g|png|webp|avif)$/i, '');
+}
+function _epeyImageTier(u) {
+  const m = String(u).match(/\/([a-z])_[^/]+\.(?:jpe?g|png|webp|avif)$/i);
+  return m ? m[1].toLowerCase() : 'z';
+}
+
 function extractImages(doc, productSlug = '') {
   if (typeof doc === 'string') doc = parseHTML(doc);
-  const images = [];
-  const seen = new Set();
-  const add = (raw) => {
+  // Group candidates by photo identity; for each, keep the best (medium) tier.
+  // A Map preserves first-seen order, so the og:image / first gallery thumb
+  // stays the hero image.
+  const byKey = new Map(); // key -> { url, rank }
+  const consider = (raw) => {
     const u = normalizeEpeyImageUrl(raw);
     if (!u) return;
-    const lower = u.toLowerCase();
-    const key = lower
-      .replace(/\/[zbsmtck]_/i, '/_')
-      .replace(/\.(jpe?g|png|webp|avif)$/i, '');
-    if (seen.has(key) || images.length >= 4) return;
-    seen.add(key);
-    images.push(u);
+    const key = _epeyImageKey(u);
+    const rank = _EPEY_TIER_RANK[_epeyImageTier(u)] ?? 9;
+    const prev = byKey.get(key);
+    if (!prev || rank < prev.rank) {
+      // Keep the original insertion slot when upgrading the tier.
+      byKey.set(key, { url: u, rank });
+    }
   };
 
   const ogImage = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"], link[rel="image_src"]');
-  add(ogImage?.getAttribute('content') || ogImage?.getAttribute('href'));
+  consider(ogImage?.getAttribute('content') || ogImage?.getAttribute('href'));
 
-  doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, .galerim img, .galerik img, .bresim, a[href*="-resimleri.html"]').forEach(el => {
+  doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, .galerim img, .galerik img, .bresim, [id^="rtab"] img, [id^="modal-galeri"] img, a[href*="-resimleri.html"]').forEach(el => {
     for (const attr of ['data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'data-url', 'src', 'href']) {
       const val = el.getAttribute(attr);
-      if (val && /resim\.epey\.com/i.test(val)) add(val);
+      if (val && /resim\.epey\.com/i.test(val)) consider(val);
     }
     const style = el.getAttribute('style') || '';
     const sm = style.match(/url\((['"]?)([^'")]+resim\.epey\.com[^'")]+)\1\)/i);
-    if (sm) add(sm[2]);
+    if (sm) consider(sm[2]);
     const onclick = el.getAttribute('onclick') || '';
     const om = onclick.match(/['"]([^'"]*resim\.epey\.com[^'"]*)['"]/i);
-    if (om) add(om[1]);
+    if (om) consider(om[1]);
   });
 
-  return images;
+  return [...byKey.values()].map(v => v.url).slice(0, MAX_IMAGES_PER_PRODUCT);
 }
 
 async function fetchGalleryImages(productSlug) {
@@ -3190,15 +3212,16 @@ async function scrapeProductDetail(html, url, categoryId = '') {
   let category = categoryId || findCategoryByEpeyUrl(url)?.id || detectCategoryFromDoc(doc, categorySlugFromUrl(url)) || categorySlugFromUrl(url);
 
   let images = extractImages(doc, productSlug);
-  if (images.length < 4) {
+  if (images.length < MAX_IMAGES_PER_PRODUCT) {
     const gallery = await fetchGalleryImages(productSlug);
-    const seen = new Set(images.map(x => x.toLowerCase()));
+    const seen = new Set(images.map(x => _epeyImageKey(x)));
     for (const img of gallery) {
-      if (images.length >= 4) break;
-      if (!seen.has(img.toLowerCase())) { seen.add(img.toLowerCase()); images.push(img); }
+      if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
+      const k = _epeyImageKey(img);
+      if (!seen.has(k)) { seen.add(k); images.push(img); }
     }
   }
-  images = images.slice(0, 4);
+  images = images.slice(0, MAX_IMAGES_PER_PRODUCT);
 
   const variantGroup = modelFamilyKey({ name: originalName, brand, category })
     || normalizeVariantGroupFromSlug(productSlug);
@@ -3294,6 +3317,16 @@ function epeyBrandCategoryUrls(term) {
     });
 }
 
+// Collect product URLs for a brand / search term.
+//
+// PRIMARY path = Epey's own site search (`/ara/?ara=<term>`). One proxy call
+// returns the brand's products in the exact order the website shows them,
+// across every category, and the proxy paginates internally (AJAX) up to
+// `max`. This is "brand-based, not category-based": type "huawei", get the
+// first N of Epey's 800-odd Huawei results.
+//
+// FALLBACK = per-category brand listings (round-robin), only used when the
+// site search yields nothing (e.g. odd model-number terms).
 async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const term = String(searchTerm || '').trim();
   if (!term) return [];
@@ -3301,114 +3334,106 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const allItems = [];
   const seen = new Set();
 
-  // Per-category buckets — each Epey catalog section (laptop, telefon, tablet…)
-  // is scanned independently so a brand with hundreds of laptops can no longer
-  // consume the whole `maxProducts` quota and starve its phones/tablets/watches.
-  const brandUrls = epeyBrandCategoryUrls(term);
-  const buckets = [];
-  if (brandUrls.length) {
-    slog(`  scanning Epey brand listings across ${brandUrls.length} catalog sections`, 'info');
-    for (const brandPage of brandUrls) {
-      if (scraperAbort) break;
-      const bucket = [];
-      try {
-        const pages = [brandPage.url];
-        const seenPages = new Set();
+  const itemsFromData = (data) => Array.isArray(data?.items)
+    ? data.items
+    : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
 
-        for (let pi = 0; pi < pages.length && pi < 25 && bucket.length < maxProducts && !scraperAbort; pi++) {
-          const pageUrl = pages[pi];
-          if (seenPages.has(pageUrl)) continue;
-          seenPages.add(pageUrl);
-
-          const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(pageUrl)}&max=${encodeURIComponent(maxProducts)}`, { signal: AbortSignal.timeout(60000) });
-          const data = res.ok ? await res.json() : null;
-          const pageItems = Array.isArray(data?.items)
-            ? data.items
-            : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
-
-          for (const item of pageItems) {
-            const full = normalizeEpeyProductUrl(item.url);
-            if (!full || seen.has(full)) continue;
-            seen.add(full);
-            bucket.push({ url: full, techScore: item.techScore || null });
-            if (bucket.length >= maxProducts) break;
-          }
-
-          const nextPages = Array.isArray(data?.pages) ? data.pages : [];
-          for (const next of nextPages) {
-            if (!next || seenPages.has(next) || pages.includes(next)) continue;
-            pages.push(next);
-          }
-        }
-      } catch (e) {
-        // Brand listing may not exist for every supported section. Keep going.
-      }
-      if (bucket.length) {
-        slog(`  ${brandPage.id}: +${bucket.length}`);
-        buckets.push(bucket);
-      }
-    }
-  }
-
-  // Round-robin merge: take one product from each category in turn so the
-  // final list is balanced across every section the brand appears in.
-  if (buckets.length) {
-    let exhausted = false;
-    for (let idx = 0; !exhausted && allItems.length < maxProducts; idx++) {
-      exhausted = true;
-      for (const bucket of buckets) {
-        if (idx >= bucket.length) continue;
-        exhausted = false;
-        allItems.push(bucket[idx]);
-        if (allItems.length >= maxProducts) break;
-      }
-    }
-  }
-  if (allItems.length >= maxProducts) return allItems.slice(0, maxProducts);
-
-  // Fallback: site-wide mixed search, only used when the brand listings came
-  // up short (e.g. a model-number search rather than a clean brand name).
-  let emptyPages = 0;
-  const maxPages = Math.max(1, Math.ceil(maxProducts / 24) + 3);
-
-  for (let page = 1; page <= maxPages && allItems.length < maxProducts && !scraperAbort; page++) {
-    updateProgress(page, maxPages, 'Search pages');
-    let pageItems = [];
-    for (const url of epeySearchUrls(term, page)) {
-      try {
-        let data = null;
-        const remaining = Math.max(1, maxProducts - allItems.length);
-        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}&max=${encodeURIComponent(remaining)}`, { signal: AbortSignal.timeout(60000) });
-        if (res.ok) data = await res.json();
-        pageItems = Array.isArray(data?.items)
-          ? data.items
-          : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
-        if (!pageItems.length) {
-          const html = await proxyFetch(url);
-          if (html && !isChallengePage(html)) pageItems = extractProductLinksFromDoc(html);
-        }
-        if (pageItems.length) {
-          slog(`  page ${page}: ${pageItems.length} links`);
-          break;
-        }
-      } catch (e) {
-        slog(`  search page ${page} failed: ${e.message}`, 'warn');
-      }
-    }
-
+  const pushItems = (items) => {
     let added = 0;
-    for (const item of pageItems) {
-      const full = normalizeEpeyProductUrl(item.url);
+    for (const item of items || []) {
+      if (allItems.length >= maxProducts) break;
+      const full = normalizeEpeyProductUrl(item.url || item);
       if (!full || seen.has(full)) continue;
       seen.add(full);
       allItems.push({ url: full, techScore: item.techScore || null });
       added++;
-      if (allItems.length >= maxProducts) break;
     }
-    if (!added) emptyPages++;
-    else emptyPages = 0;
-    if (emptyPages >= 2) break;
+    return added;
+  };
+
+  const fetchLinks = async (url) => {
+    const res = await fetch(
+      `${PROXY_URL}/category-links?url=${encodeURIComponent(url)}&max=${encodeURIComponent(maxProducts)}`,
+      { signal: AbortSignal.timeout(120000) }
+    );
+    return res.ok ? await res.json() : null;
+  };
+
+  // ── PRIMARY: Epey site search ──────────────────────────────────────────
+  slog(`  searching Epey for "${term}" (site order, all categories)`, 'info');
+  for (const searchUrl of epeySearchUrls(term)) {
+    if (scraperAbort || allItems.length >= maxProducts) break;
+    try {
+      const data = await fetchLinks(searchUrl);
+      const items = itemsFromData(data);
+      if (!items.length) continue;
+      const added = pushItems(items);
+      slog(`  search "${term}": +${added} (${allItems.length}/${maxProducts})`, 'success');
+      // Follow numbered pagination if the proxy reported it and we still
+      // need more (AJAX pagination usually already covered this).
+      const pages = Array.isArray(data?.pages) ? data.pages : [];
+      for (const pg of pages) {
+        if (scraperAbort || allItems.length >= maxProducts) break;
+        try {
+          const more = pushItems(itemsFromData(await fetchLinks(pg)));
+          if (more) slog(`  +${more} more (${allItems.length}/${maxProducts})`);
+        } catch { /* page failed — keep going */ }
+      }
+      break; // a working search endpoint was found — don't try alternates
+    } catch (e) {
+      slog(`  search endpoint failed: ${e.message}`, 'warn');
+    }
   }
+  if (allItems.length >= maxProducts) return allItems.slice(0, maxProducts);
+
+  // ── FALLBACK: per-category brand listings, round-robin merged ──────────
+  if (!allItems.length) {
+    const brandUrls = epeyBrandCategoryUrls(term);
+    if (brandUrls.length) {
+      slog(`  site search empty — scanning ${brandUrls.length} brand listings`, 'info');
+      const buckets = [];
+      for (const brandPage of brandUrls) {
+        if (scraperAbort) break;
+        const bucket = [];
+        try {
+          const pages = [brandPage.url];
+          const seenPages = new Set();
+          for (let pi = 0; pi < pages.length && pi < 25 && bucket.length < maxProducts && !scraperAbort; pi++) {
+            const pageUrl = pages[pi];
+            if (seenPages.has(pageUrl)) continue;
+            seenPages.add(pageUrl);
+            const data = await fetchLinks(pageUrl);
+            for (const item of itemsFromData(data)) {
+              const full = normalizeEpeyProductUrl(item.url);
+              if (!full || seen.has(full)) continue;
+              seen.add(full);
+              bucket.push({ url: full, techScore: item.techScore || null });
+              if (bucket.length >= maxProducts) break;
+            }
+            for (const next of (Array.isArray(data?.pages) ? data.pages : [])) {
+              if (!next || seenPages.has(next) || pages.includes(next)) continue;
+              pages.push(next);
+            }
+          }
+        } catch { /* brand listing may not exist for this section */ }
+        if (bucket.length) {
+          slog(`  ${brandPage.id}: +${bucket.length}`);
+          buckets.push(bucket);
+        }
+      }
+      let exhausted = false;
+      for (let idx = 0; !exhausted && allItems.length < maxProducts; idx++) {
+        exhausted = true;
+        for (const bucket of buckets) {
+          if (idx >= bucket.length) continue;
+          exhausted = false;
+          allItems.push(bucket[idx]);
+          if (allItems.length >= maxProducts) break;
+        }
+      }
+    }
+  }
+
   return allItems.slice(0, maxProducts);
 }
 

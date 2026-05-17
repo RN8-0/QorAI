@@ -96,8 +96,14 @@ const CAT_WHITELIST = CATS_FILTER && CATS_FILTER.trim().toLowerCase() !== 'all'
     ? null
     : DEFAULT_CAT_SLUGS;
 
+// Optional brand filter — e.g. --brand=apple. Only products whose Icecat
+// brand matches are saved; everything else is skipped in Phase 2.
+const BRAND_FILTER = String(getOpt('brand', '')).trim().toLowerCase();
+
 const REFURBISHED_RE = /\b(?:refurbished|renewed|renew|renewd|refurbed|refurb|reconditioned|remanufactured|yenilenmi[sş]|yenilenmis|ikinci\s*el|used|pre[-\s]?owned|asgoodasnew|back\s*market|forza\s*refurbished|forza|greenpanda|teqcycle|upcycle\s*it|circular\s*computing|circular)\b/i;
-const BAD_PRODUCT_RE = /\b(?:spare\s*part|replacement\s*part|service\s*part|warranty|license|licence|subscription|accessory\s*kit|mounting\s*kit)\b/i;
+// Non-catalog rows: spare parts, services, warranties, bundles, demo units,
+// promo/marketing SKUs and pure accessories that pollute consumer categories.
+const BAD_PRODUCT_RE = /\b(?:spare\s*part|replacement\s*part|service\s*part|repair\s*part|warranty|garantie|license|licence|lisans|subscription|abonnement|accessory\s*kit|mounting\s*kit|carry\s*case|carrying\s*case|sleeve|backpack|gift\s*card|voucher|coupon|demo\s*unit|dummy|display\s*model|sample\s*unit|engraving|installation\s*service|setup\s*service|onsite\s*service|extended\s*warranty|care\s*pack|carepack|protection\s*plan|trade[-\s]?in|co[-\s]?term|staging\s*service|bundle\s*offer|promotional|marketing\s*sample|not\s*for\s*resale|nfr\b)\b/i;
 
 function catsKey() {
   if (!CAT_WHITELIST) return 'all';
@@ -483,6 +489,9 @@ function mapToPb(json, lang, queueItem = {}) {
   if (isBlockedCatalogText(name, brand, mpn)) {
     throw new Error('blocked_refurbished_or_non_catalog_product');
   }
+  if (BRAND_FILTER && String(brand).trim().toLowerCase() !== BRAND_FILTER) {
+    throw new Error(`brand_filtered:${brand || '(none)'}`);
+  }
 
   // Images — Icecat publishes 3 variants per asset:
   //   Pic       → original (often 5000×5000, 5MB)   — too big for the app
@@ -491,7 +500,7 @@ function mapToPb(json, lang, queueItem = {}) {
   // We persist the 500×500 variant so the admin gallery and Flutter detail
   // page load in <300ms per image without filling PocketBase storage. The
   // single hero image (`imageUrl`) also points to the medium variant.
-  const { imageUrl, images } = collectIcecatImages(d, gi, 4);
+  const { imageUrl, images } = collectIcecatImages(d, gi, 8);
   if (!imageUrl || !images.length) {
     throw new Error('no_valid_product_image');
   }
@@ -925,8 +934,12 @@ async function phase23_enrichImport() {
         else prog.updated++;
 
       } catch (e) {
+        // Filtered-out rows (wrong brand, refurbished, junk, off-category)
+        // are expected noise — count them as skipped, not hard errors.
+        const filtered = /^(brand_filtered|blocked_|category_not_selected|too_few)/.test(e.message || '');
         log(`  Skip id=${icecatId} (${name || brand}): ${e.message}`, 'warn');
-        prog.errors++;
+        if (filtered) prog.skipped = (prog.skipped || 0) + 1;
+        else prog.errors++;
       }
 
       prog.done++;
