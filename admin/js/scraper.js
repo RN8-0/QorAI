@@ -345,7 +345,7 @@ function switchScraperTab(btn) {
   // The category dropdowns live in panels that may render before the category
   // catalog finishes loading. Re-populate them whenever a tab is opened so the
   // "Add by URL" / "Bulk Scrape" selects are never empty.
-  if ((btn.dataset.tab === 'singleUrl' || btn.dataset.tab === 'bulkScrape')
+  if (['singleUrl', 'bulkScrape', 'offers'].includes(btn.dataset.tab)
       && typeof populateScraperCategories === 'function') {
     populateScraperCategories().catch(() => {});
   }

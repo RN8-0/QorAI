@@ -1429,8 +1429,11 @@ function buildQuery(){
   const brand=document.getElementById('brandFilter')?.value||'';
   const cat=document.getElementById('categoryFilter')?.value||'';
   const date=document.getElementById('dateFilter')?.value||'';
+  const offer=document.getElementById('offerFilter')?.value||'';
   const sort=document.getElementById('sortFilter')?.value||'newest';
   const filters=[];
+  if(offer==='with')filters.push('offerCount>0');
+  else if(offer==='without')filters.push('offerCount<1');
   // Grouped view: show one card per model family (variantPrimary), not one
   // per SKU/colour. Icecat dumps every variant as its own product row.
   if(_groupVariants)filters.push('variantPrimary=true');
