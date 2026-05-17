@@ -33,6 +33,29 @@ const CLIENT_SECRET = ENV.EBAY_CLIENT_SECRET || '';
 const MARKETPLACES = (ENV.EBAY_MARKETPLACES || 'EBAY_US,EBAY_DE').split(',').map(s => s.trim()).filter(Boolean);
 const MARKET_COUNTRY = { EBAY_US: 'US', EBAY_DE: 'DE', EBAY_GB: 'GB', EBAY_AU: 'AU', EBAY_TR: 'TR' };
 
+// Our category slug → eBay top-level category id. Restricting the search to
+// the real product category keeps phone CASES out of phone results, laptop
+// SLEEVES out of laptop results, etc. — the single biggest accuracy win.
+const EBAY_CATEGORY = {
+  smartphones: '9355', mobile_phones: '9355',
+  laptops: '177', desktops: '171957', all_in_one_pcs: '171957',
+  tablets: '171485',
+  monitors: '80053', tvs: '11071',
+  cpus: '164', motherboards: '1244', graphics_cards: '27386',
+  ram: '170083', ssd: '175669', external_ssd: '175669',
+  hard_drives: '56083', external_hdd: '171243',
+  headphones: '112529', speakers: '14990',
+  smartwatches: '178893',
+  keyboards: '33963', mice: '23160',
+  cameras: '31388', digital_cameras: '31388',
+  printers: '1245',
+};
+
+// Conservative accessory filter — a backup for cases/covers that sellers
+// mis-list inside the product category. Only unambiguous accessory words so
+// a real device listing is never dropped.
+const ACCESSORY_RE = /\b(case|cover|kılıf|kilif|sleeve|pouch|protector|tempered|screen\s*guard|bumper|\bskin\b|lanyard|for\s+(?:samsung|apple|iphone|ipad|xiaomi|huawei|lenovo|hp|dell|asus|sony|lg)\b|replacement\s+(?:screen|battery|part)|spare\s+part)\b/i;
+
 const isConfigured = () => !!(CLIENT_ID && CLIENT_SECRET);
 
 function httpsJson(opts, body) {
@@ -87,6 +110,7 @@ function modelTokens(query) {
 }
 function titleMatches(title, brandFirst, tokens) {
   const t = String(title || '').toLowerCase();
+  if (ACCESSORY_RE.test(t)) return false;                       // case / cover / "for iPhone" …
   if (brandFirst && brandFirst.length > 1 && !t.includes(brandFirst.toLowerCase())) return false;
   if (tokens.length && !tokens.some(tok => t.includes(tok))) return false;
   return true;
@@ -102,14 +126,16 @@ async function searchOffers(product) {
   const tokens = modelTokens(kw);
   if (!gtin && !kw) return [];
 
+  const catId = EBAY_CATEGORY[String(product.category || '').trim()] || '';
   const token = await getToken();
   const out = [];
   for (const market of MARKETPLACES) {
     const country = MARKET_COUNTRY[market] || 'US';
     const hit = async (qs) => {
+      const cat = catId ? `&category_ids=${catId}` : '';
       const r = await httpsJson({
         method: 'GET', hostname: 'api.ebay.com',
-        path: `/buy/browse/v1/item_summary/search?${qs}&limit=10`,
+        path: `/buy/browse/v1/item_summary/search?${qs}${cat}&limit=10`,
         headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market },
       });
       return (r.status === 200 && Array.isArray(r.body.itemSummaries)) ? r.body.itemSummaries : [];
