@@ -3113,10 +3113,39 @@ final productVariantsProvider = FutureProvider.autoDispose
           }
           return normalizeProductName(p.name) == baseName;
         }).toList();
-        variants.sort(
+        final byConfig = <String, ProductEntity>{};
+        for (final v in variants) {
+          final key = v.configKey.isNotEmpty
+              ? v.configKey
+              : '${v.variantGroup}|${_storageCapacityMB(v)}|${v.name.toLowerCase()}';
+          final existing = byConfig[key];
+          if (existing == null ||
+              v.id == product.id ||
+              v.techScore > existing.techScore) {
+            byConfig[key] = v;
+          }
+        }
+        final unique = byConfig.values.toList();
+        unique.sort(
           (a, b) => _storageCapacityMB(a).compareTo(_storageCapacityMB(b)),
         );
-        return variants;
+        return unique;
+      }
+
+      // 0) Exact PocketBase lookup by variantGroup. Category browsing/search
+      // providers only carry a slice of a category; direct group lookup is the
+      // reliable path for Icecat families with dozens of variants.
+      if (baseGroup.isNotEmpty) {
+        final direct = await ref
+            .read(pbDataSourceProvider)
+            .getProductVariantsByGroup(
+              variantGroup: baseGroup,
+              category: product.category,
+              limit: 120,
+            )
+            .timeout(const Duration(seconds: 12));
+        final variants = filterVariants(direct.cast<ProductEntity>());
+        if (variants.isNotEmpty) return variants;
       }
 
       // 1) Try from already-cached homeFeed (instant, no network)

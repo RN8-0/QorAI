@@ -17,7 +17,7 @@
  *
  * Endpoints:
  *   GET /health                     -> proxy status
- *   GET /?url=<geizhals-url>        -> fetch single page HTML
+ *   GET /?url=<epey-url>            -> fetch single page HTML
  *   GET /category-links?url=<cat>   -> fetch ONLY product links from category
  *   GET /scrape-category?catUrl=..  -> sequential scrape: links + detail data
  *   GET /scrape-product?name=..     -> search & scrape single product
@@ -36,7 +36,7 @@ puppeteerExtra.use(StealthPlugin());
 // puppeteer-real-browser uses `rebrowser-patches` to neutralise the CDP-level
 // `Runtime.Enable` detection that Cloudflare Turnstile leans on. Combined
 // with its built-in `turnstile: true` flag (auto-completes the JS challenge)
-// this clears Geizhals' Cloudflare wall without manual clicks. Loaded lazily
+// this clears site Cloudflare walls without manual clicks. Loaded lazily
 // so the proxy still boots if the dependency is missing — we fall back to
 // the legacy puppeteer-extra launcher in that case.
 let realBrowserConnect = null;
@@ -144,7 +144,7 @@ async function getBrowser() {
   const launchArgs = [
     '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
     '--window-size=1366,768','--disable-blink-features=AutomationControlled',
-    '--disable-infobars','--disable-notifications','--lang=de-DE,de',
+    '--disable-infobars','--disable-notifications','--lang=tr-TR,tr',
     '--ignore-gpu-blocklist','--enable-gpu-rasterization',
     // Suppress automation-only banners and side-channel signals.
     '--no-default-browser-check','--no-first-run',
@@ -223,8 +223,8 @@ async function getPage() {
   // pre-warmed page in connect(); creating a NEW tab via newPage() during
   // a CF-active session frequently raises "Protocol error (Target.createTarget):
   // Failed to open a new tab" because the CDP is busy with the Turnstile
-  // iframe. Rotating tabs every 80 requests was already cosmetic — Geizhals
-  // doesn't fingerprint by tab id — so we drop the rotation entirely.
+  // iframe. Rotating tabs every 80 requests was already cosmetic for the
+  // scraper target, so we keep one warmed tab and rotate the browser instead.
   if (activePage && !activePage.isClosed()) {
     if (activePage.__qoraiInitialised) return activePage;
   } else {
@@ -232,7 +232,7 @@ async function getPage() {
   }
   await activePage.setUserAgent(currentUA);
   await activePage.setExtraHTTPHeaders({
-    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'DNT': '1','Upgrade-Insecure-Requests': '1',
   });
@@ -249,7 +249,7 @@ async function getPage() {
     // navigator.webdriver = false (stealth handles this but redundancy is cheap)
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     // Plausible plugin / mimeType counts (empty arrays look bot-like)
-    Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de', 'en-US', 'en'] });
+    Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr', 'en-US', 'en'] });
   });
   // FIX: Do NOT call setRequestInterception here — it leaks when the page is
   // reused across requests and causes "Request is already handled" errors.
@@ -282,7 +282,7 @@ async function _humanScroll(page) {
 }
 
 function _isChallengeTitle(title) {
-  // Expanded: covers Cloudflare Turnstile, DDoS-Guard, and all known Geizhals CF variants
+  // Expanded: covers Cloudflare Turnstile, DDoS-Guard, and common CF variants
   return /Just a moment|Checking your browser|DDoS-Guard|Please Wait|Nur einen Moment|Sichere Verbindung|Einen Moment|Verbindung wird|Attention Required|Access denied|403 Forbidden|Enable JavaScript/i.test(title || '');
 }
 
@@ -495,11 +495,10 @@ async function extractCategoryLinks(page) {
   return await page.evaluate(() => {
     const results = [];
     const seen = new Set();
-    const productLinkRe = /-[av]\d+\.html$/i;
+    const productLinkRe = /^\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i;
 
-    // STRICT: only look inside known main listing containers
     const containers = document.querySelectorAll(
-      '#productlist, .productlist, .productlist__item, .offer-list, [data-testid="product-list"]'
+      '#listele, .urunler, .listele, .urun-listesi, main, #content, .content'
     );
 
     const scopes = containers.length > 0
@@ -508,19 +507,25 @@ async function extractCategoryLinks(page) {
 
     for (const scope of scopes) {
       if (!scope) continue;
-      const links = scope.querySelectorAll('a[href]');
+      const links = scope.querySelectorAll('a[href], [data-href], [data-url], [onclick]');
       for (const a of links) {
-        let href = (a.getAttribute('href') || '').trim();
+        let href = (a.getAttribute('href') || a.getAttribute('data-href') || a.getAttribute('data-url') || '').trim();
+        if (!href) {
+          const m = String(a.getAttribute('onclick') || '').match(/['"]([^'"]+\.html)['"]/i);
+          if (m) href = m[1];
+        }
         if (!href) continue;
         if (href.startsWith('http')) {
           try { href = new URL(href).pathname; } catch { continue; }
         }
-        if (!productLinkRe.test(href)) continue;
         if (!href.startsWith('/')) href = '/' + href;
+        if (!productLinkRe.test(href)) continue;
+        if (/-resimleri\.html$/i.test(href) || /\/(karsilastir|sayfa|yardim|hakkimizda|iletisim)\//i.test(href)) continue;
         if (seen.has(href)) continue;
         seen.add(href);
-        results.push('https://geizhals.eu' + href);
+        results.push('https://www.epey.com' + href);
       }
+      if (results.length) break;
     }
     return results;
   });
@@ -541,47 +546,48 @@ async function extractProductDetail(page) {
       r.name = clone.textContent.trim();
     }
 
-    // Images — only gzhls.at/pix/, upgrade size prefix
+    // Images — Epey product CDN only; skip brand/category/logo assets.
     const seenImg = new Set();
-    document.querySelectorAll('img').forEach(img => {
-      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
+    const addImg = (raw) => {
+      let clean = String(raw || '').trim();
+      if (!clean) return;
+      if (clean.startsWith('//')) clean = 'https:' + clean;
+      if (!clean.includes('resim.epey.com')) return;
+      if (/\/(?:tema|marka|kategori|logo)\//i.test(clean)) return;
+      clean = clean.split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/b_');
+      if (!seenImg.has(clean) && r.images.length < 8) { seenImg.add(clean); r.images.push(clean); }
+    };
+    document.querySelectorAll('img, a[href*="resim.epey.com"], [data-src], [data-zoom], [data-big], [data-full], [data-image]').forEach(img => {
+      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'href']) {
         const val = img.getAttribute(attr);
-        if (val && val.includes('gzhls.at/pix')) {
-          const clean = val.trim().split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/-n.webp');
-          if (!seenImg.has(clean) && r.images.length < 4) { seenImg.add(clean); r.images.push(clean); }
-          break;
-        }
-      }
-    });
-    document.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
-      const href = a.getAttribute('href');
-      if (href) {
-        const clean = href.trim().split(/[?#]/)[0].replace(/\/[ksmtc]_/g, '/-n.webp');
-        if (!seenImg.has(clean) && r.images.length < 4) { seenImg.add(clean); r.images.push(clean); }
+        addImg(val);
       }
     });
 
-    // Specs — only the FIRST dl.specs-grid to avoid variant duplicates
-    const firstGrid = document.querySelector('dl.specs-grid');
-    if (firstGrid) {
-      firstGrid.querySelectorAll('.specs-grid__item').forEach(item => {
-        const dt = item.querySelector('dt');
-        const dd = item.querySelector('dd');
-        if (!dt || !dd) return;
-        const k = dt.textContent.trim();
-        let v = dd.textContent.trim().replace(/\s+/g, ' ');
-        if (!r.gtin && /\b(ean|gtin|upc)\b/i.test(k)) {
-          const m = v.match(/\b\d{8,14}\b/);
-          if (m) r.gtin = m[0];
-        }
-        if (!r.mpn && /(mpn|manufacturer.*part|part.*number|hersteller.*nr|herstellernummer|artikelnummer|modellnummer)/i.test(k)) {
-          r.mpn = v.split(/\s*[|,;]\s*/)[0].slice(0, 200);
-        }
-        if (k && v && k.length > 1 && k.length < 80 && v.length < 800) {
-          r.specs[k] = v;
-        }
-      });
-    }
+    const scan = (k, v) => {
+      k = String(k || '').replace(/:$/, '').trim();
+      v = String(v || '').replace(/\s+/g, ' ').trim();
+      if (!k || !v || k.length > 180 || v.length > 1200) return;
+      if (!r.gtin && /\b(ean|gtin|barkod|upc)\b/i.test(k)) {
+        const m = v.match(/\b\d{8,14}\b/);
+        if (m) r.gtin = m[0];
+      }
+      if (!r.mpn && /(mpn|üretici kodu|urun kodu|ürün kodu|model kodu|part number)/i.test(k)) {
+        r.mpn = v.split(/\s*[|,;]\s*/)[0].slice(0, 200);
+      }
+      r.specs[k] = v;
+    };
+    document.querySelectorAll('#ozellikler li, .ozellikler li').forEach(li => {
+      const key = li.querySelector('strong, b, .baslik, .cell:first-child');
+      if (!key) return;
+      const clone = li.cloneNode(true);
+      clone.querySelectorAll('strong, b, .baslik, .cell:first-child, script, style').forEach(x => x.remove());
+      scan(key.textContent, clone.textContent);
+    });
+    document.querySelectorAll('table tr').forEach(row => {
+      const cells = row.querySelectorAll('th,td');
+      if (cells.length >= 2) scan(cells[0].textContent, cells[1].textContent);
+    });
 
     return r;
   });
@@ -800,6 +806,9 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Failed to load category page', status }));
         return;
       }
+      try {
+        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
+      } catch {}
 
       // If Cloudflare challenge is still active, give it a short extra window
       // then try extraction anyway. We no longer hard-fail with 503 — the
@@ -808,7 +817,7 @@ const server = http.createServer(async (req, res) => {
         console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
         try {
           await page.waitForSelector(
-            '.productlist, #productlist, .offer-list, [data-testid="product-list"]',
+            '#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist',
             { timeout: 10000 }
           );
           console.log(`  ✅ Product list appeared.`);
@@ -923,11 +932,11 @@ const server = http.createServer(async (req, res) => {
     try {
       console.log(`  🔍 Searching: ${productName}`);
       const page = await getPage();
-      await page.goto('https://geizhals.eu/?fs=' + encodeURIComponent(productName), { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page.goto('https://www.epey.com/ara/?ara=' + encodeURIComponent(productName), { waitUntil: 'domcontentloaded', timeout: 20000 });
       const productUrl = await page.evaluate(() => {
-        for (const a of document.querySelectorAll('a[href*="-a"][href*=".html"]')) {
+        for (const a of document.querySelectorAll('a[href$=".html"]')) {
           const h = a.getAttribute('href') || '';
-          if (/-a\d+\.html$/.test(h)) return h;
+          if (/\/[a-z0-9][a-z0-9\/-]*\/[a-z0-9][a-z0-9._-]*\.html$/i.test(h) && !/-resimleri\.html$/i.test(h)) return h;
         }
         return null;
       });
@@ -936,7 +945,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Not found' }));
         return;
       }
-      const fullUrl = productUrl.startsWith('http') ? productUrl : 'https://geizhals.eu' + productUrl;
+      const fullUrl = productUrl.startsWith('http') ? productUrl : 'https://www.epey.com' + productUrl;
       await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
       await _humanDelay(500, 1000);
       const data = await extractProductDetail(page);
@@ -966,9 +975,9 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Invalid URL.' }));
     return;
   }
-  if (!parsed.hostname.endsWith('geizhals.eu') && !parsed.hostname.endsWith('geizhals.at') && !parsed.hostname.endsWith('geizhals.de')) {
+  if (!parsed.hostname.endsWith('epey.com')) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Only geizhals.eu domains are allowed.' }));
+    res.end(JSON.stringify({ error: 'Only epey.com domains are allowed.' }));
     return;
   }
 

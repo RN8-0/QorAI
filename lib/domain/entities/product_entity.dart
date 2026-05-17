@@ -35,6 +35,8 @@ class ProductEntity extends Equatable {
   final bool isActive;
   final String
   variantGroup; // groups storage/RAM variants: "oneplus-15" for all OnePlus 15 variants
+  final String
+  configKey; // normalized real configuration: CPU/RAM/storage/GPU/display axes
   final Map<String, String>
   keySpecs; // Key Specs — key specs from epey.com summary grid
   final Map<String, Map<String, dynamic>> multiLangSpecs;
@@ -67,6 +69,7 @@ class ProductEntity extends Equatable {
     this.createdAt,
     this.isActive = true,
     this.variantGroup = '',
+    this.configKey = '',
     this.keySpecs = const {},
     this.multiLangSpecs = const {},
     this.multiLangSections = const {},
@@ -137,6 +140,7 @@ class ProductEntity extends Equatable {
     Map<String, dynamic>? specSections,
     Map<String, String>? keySpecs,
     String? variantGroup,
+    String? configKey,
     Map<String, Map<String, dynamic>>? multiLangSpecs,
     Map<String, Map<String, dynamic>>? multiLangSections,
     Map<String, String>? nameTranslated,
@@ -168,6 +172,7 @@ class ProductEntity extends Equatable {
       specSections: specSections ?? this.specSections,
       keySpecs: keySpecs ?? this.keySpecs,
       variantGroup: variantGroup ?? this.variantGroup,
+      configKey: configKey ?? this.configKey,
       multiLangSpecs: multiLangSpecs ?? this.multiLangSpecs,
       multiLangSections: multiLangSections ?? this.multiLangSections,
       nameTranslated: nameTranslated ?? this.nameTranslated,

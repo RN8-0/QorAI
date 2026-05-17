@@ -11,6 +11,7 @@
  *   node scripts/icecat_ingest.js --resume          Skip Phase 1, continue Phase 2+3
  *   node scripts/icecat_ingest.js --phase=2         Same as --resume
  *   node scripts/icecat_ingest.js --limit=500       Stop after N products (good for testing)
+ *   node scripts/icecat_ingest.js --fast            EN-only bulk mode (workers=8, delay=150 by default)
  *   node scripts/icecat_ingest.js --langs=EN        EN only (faster, recommended first run)
  *   node scripts/icecat_ingest.js --langs=EN,TR     EN + Turkish (doubles API calls)
  *   node scripts/icecat_ingest.js --workers=6       Concurrent workers (default 3)
@@ -30,6 +31,7 @@ const zlib     = require('zlib');
 const readline = require('readline');
 const { req: pbReq } = require('../migration/pb');
 const { configKey } = require('./lib/config_key');
+const { collectIcecatImages } = require('./lib/icecat_images');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -56,15 +58,16 @@ const getOpt  = (name, def) => {
 };
 
 const SKIP_PHASE1 = hasFlag('resume') || getOpt('phase', '1') === '2';
+const FAST_MODE   = hasFlag('fast');
 const LIMIT       = parseInt(getOpt('limit',   '0'));
-const DELAY       = parseInt(getOpt('delay',   '800'));
-const WORKERS     = parseInt(getOpt('workers', '3'));
+const DELAY       = parseInt(getOpt('delay',   FAST_MODE ? '150' : '800'));
+const WORKERS     = parseInt(getOpt('workers', FAST_MODE ? '8' : '3'));
 // Phase 1 cap: at most N index entries per model name. Icecat lists thousands
 // of cosmetic SKUs per model; ~400 random samples still cover every real
 // CPU/RAM/storage configuration. Set --maxPerModel=0 to disable the cap.
 const MAX_PER_MODEL = parseInt(getOpt('maxPerModel', '400'));
 // 12 languages matching the Flutter app's l10n files
-const LANGS_DEFAULT = 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
+const LANGS_DEFAULT = FAST_MODE ? 'EN' : 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
 const LANGS         = getOpt('langs', LANGS_DEFAULT).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
 let shutdownRequested = false;
 process.on('SIGTERM', () => {
@@ -76,11 +79,40 @@ process.on('SIGINT', () => {
   log('Stop requested — finishing in-flight workers and saving progress...', 'warn');
 });
 
-// Optional category filter — e.g. --cats=monitors,ram  (default: all in CAT_MAP)
+// Optional category filter — e.g. --cats=monitors,ram.
+// Default is intentionally narrow: Versus-like catalog surfaces should ingest
+// comparable product families first, not every Icecat accessory/appliance row.
+// Use --cats=all for the full CAT_MAP.
 const CATS_FILTER = getOpt('cats', '');
-const CAT_WHITELIST = CATS_FILTER
+const DEFAULT_CAT_SLUGS = new Set([
+  'laptops', 'desktops', 'all-in-one-pcs',
+  'smartphones', 'tablets',
+  'monitors', 'tvs',
+  'cpus', 'ram', 'ssds', 'hdds', 'external-hdds',
+]);
+const CAT_WHITELIST = CATS_FILTER && CATS_FILTER.trim().toLowerCase() !== 'all'
   ? new Set(CATS_FILTER.split(',').map(s => s.trim().toLowerCase()))
-  : null; // null = no filter = all categories
+  : CATS_FILTER.trim().toLowerCase() === 'all'
+    ? null
+    : DEFAULT_CAT_SLUGS;
+
+const REFURBISHED_RE = /\b(?:refurbished|renewed|renew|renewd|refurbed|refurb|reconditioned|remanufactured|yenilenmi[sş]|yenilenmis|ikinci\s*el|used|pre[-\s]?owned|asgoodasnew|back\s*market|forza\s*refurbished|forza|greenpanda|teqcycle|upcycle\s*it|circular\s*computing|circular)\b/i;
+const BAD_PRODUCT_RE = /\b(?:spare\s*part|replacement\s*part|service\s*part|warranty|license|licence|subscription|accessory\s*kit|mounting\s*kit)\b/i;
+
+function catsKey() {
+  if (!CAT_WHITELIST) return 'all';
+  return [...CAT_WHITELIST].sort().join(',');
+}
+
+function isAllowedCatId(catId) {
+  const slug = CAT_MAP[Number(catId)];
+  return !!(slug && TARGET_CATS.has(Number(catId)) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)));
+}
+
+function isBlockedCatalogText(...parts) {
+  const text = parts.map(v => String(v || '')).join(' ');
+  return REFURBISHED_RE.test(text) || BAD_PRODUCT_RE.test(text);
+}
 
 // ─── Icecat category → internal slug ─────────────────────────────────────────
 // ✓ = confirmed via live.icecat.biz/api lookups on real products (2026-05)
@@ -284,7 +316,7 @@ async function phase1_index() {
   let capped = 0;
   const collected = []; // collect all, sort by id desc, then write
   const seenIcecatIds = new Set();
-  const modelCounts = new Map(); // `catId:model_name` -> queued count, for the cap
+  const modelCounts = new Map(); // `catId:model_family` -> queued count, for the cap
 
   await new Promise((resolve, reject) => {
     https.get(indexUrl, {
@@ -320,9 +352,12 @@ async function phase1_index() {
         if (!cur.id || !cur.catId) { cur = {}; return; }
         const catId = parseInt(cur.catId);
         const slug = CAT_MAP[catId];
-        if (TARGET_CATS.has(catId) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)) && !seenIcecatIds.has(cur.id)) {
-          // Per-model cap — drop cosmetic SKUs beyond the sampling limit.
-          const modelKey = `${catId}:${String(cur.name || '').toLowerCase().trim()}`;
+        if (isAllowedCatId(catId) && !seenIcecatIds.has(cur.id) && !isBlockedCatalogText(cur.name)) {
+          // Per-model-family cap — drop cosmetic SKUs beyond the sampling
+          // limit before the expensive live API phase. The key strips
+          // colour/language/region/RAM/storage/CPU tokens, so repeated
+          // Icecat SKUs for one model do not explode the queue.
+          const modelKey = `${catId}:${modelFamilyKey({ name: cur.name, brand: '', category: slug })}`;
           const seen = modelCounts.get(modelKey) || 0;
           if (MAX_PER_MODEL > 0 && seen >= MAX_PER_MODEL) {
             capped++;
@@ -442,6 +477,12 @@ function mapToPb(json, lang, queueItem = {}) {
   const name     = gi.Title        || d.Name           || '';
   const catId    = parseInt(gc.CategoryID || 0);
   const category = canonicalCategory(CAT_MAP[catId] || 'other');
+  if (!isAllowedCatId(catId)) {
+    throw new Error(`category_not_selected:${CAT_MAP[catId] || catId}`);
+  }
+  if (isBlockedCatalogText(name, brand, mpn)) {
+    throw new Error('blocked_refurbished_or_non_catalog_product');
+  }
 
   // Images — Icecat publishes 3 variants per asset:
   //   Pic       → original (often 5000×5000, 5MB)   — too big for the app
@@ -450,17 +491,10 @@ function mapToPb(json, lang, queueItem = {}) {
   // We persist the 500×500 variant so the admin gallery and Flutter detail
   // page load in <300ms per image without filling PocketBase storage. The
   // single hero image (`imageUrl`) also points to the medium variant.
-  const gallery = (Array.isArray(d.Gallery) ? d.Gallery : []).concat(Array.isArray(gi.Gallery) ? gi.Gallery : []);
-  const images  = gallery
-    .map(img => img.Pic500x500 || img.Pic || img.HighPic || '')
-    .filter(Boolean)
-    .filter((u, i, a) => a.indexOf(u) === i) // dedupe
-    .slice(0, 4);
-  // Fall back to the Image envelope object if Gallery was empty
-  const imgEnv = d.Image || {};
-  const imageUrl = images[0] || imgEnv.Pic500x500 || imgEnv.HighPic || imgEnv.LowPic || '';
-  // Ensure imageUrl is also present in `images` for consistent rendering
-  if (imageUrl && !images.includes(imageUrl)) images.unshift(imageUrl);
+  const { imageUrl, images } = collectIcecatImages(d, gi, 4);
+  if (!imageUrl || !images.length) {
+    throw new Error('no_valid_product_image');
+  }
 
   // Feature groups → specs + specSections
   const specs        = {};
@@ -501,7 +535,7 @@ function mapToPb(json, lang, queueItem = {}) {
     specsEn:      lang === 'EN' ? specs : undefined,
     specsCount,
     variantGroup,
-    configKey:    configKey({ name, brand, category, variantGroup }),
+    configKey:    configKey({ name, brand, category, variantGroup, specs, specSections }),
     scrapedAt:    new Date().toISOString(),
     gtin, mpn, icecatId,
   };
@@ -531,6 +565,8 @@ function minSpecsForCategory(category) {
 
 function passesIcecatQuality(payload) {
   const count = Number(payload.specsCount || Object.keys(payload.specs || {}).length);
+  if (!payload.imageUrl || !Array.isArray(payload.images) || !payload.images.length) return false;
+  if (isBlockedCatalogText(payload.name, payload.brand, payload.mpn)) return false;
   return count >= minSpecsForCategory(payload.category);
 }
 
@@ -707,11 +743,11 @@ async function isCosmeticDuplicate(icecatId, category, ck) {
 }
 
 function reconcileVariantsNow() {
-  // After a run: (1) collapse any config duplicates that slipped past the
-  // live dedup — concurrent workers can race on a brand-new config — then
-  // (2) reconcile variantPrimary / variantCount over the cleaned catalog.
+  // After a run: normalize model families, remove logo/certificate images,
+  // collapse config duplicates that slipped past the live dedup, then
+  // reconcile variantPrimary / variantCount over the cleaned catalog.
   const { spawnSync } = require('child_process');
-  for (const script of ['dedupe_configs.js', 'repair_variants.js']) {
+  for (const script of ['repair_variant_groups.js', 'repair_icecat_images.js', 'dedupe_configs.js', 'repair_variants.js']) {
     try {
       log(`Running ${script}...`);
       const r = spawnSync(process.execPath, [path.join(__dirname, script)], { stdio: 'inherit' });
@@ -739,6 +775,11 @@ async function upsertToPb(data) {
   // Geizhals records instead of creating duplicates of the same product.
   const filters = [`slug="${payload.slug}"`];
   if (payload.icecatId) filters.push(`icecatId=${Number(payload.icecatId) || 0}`);
+  if (payload.category && payload.configKey) {
+    filters.push(
+      `category="${String(payload.category).replace(/"/g, '\\"')}" && configKey="${String(payload.configKey).replace(/"/g, '\\"')}"`
+    );
+  }
   if (payload.gtin) filters.push(`gtin="${String(payload.gtin).replace(/"/g, '\\"')}"`);
   if (payload.mpn && payload.brand) {
     filters.push(`mpn="${String(payload.mpn).replace(/"/g, '\\"')}" && brand="${String(payload.brand).replace(/"/g, '\\"')}"`);
@@ -785,7 +826,27 @@ async function phase23_enrichImport() {
     }
   }
 
+  const beforeFilter = queue.length;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const item = queue[i] || {};
+    if (!isAllowedCatId(item.catId) || isBlockedCatalogText(item.name, item.brand)) queue.splice(i, 1);
+  }
+  if (queue.length !== beforeFilter) {
+    log(`Queue filtered by selected categories/quality: ${beforeFilter.toLocaleString()} → ${queue.length.toLocaleString()}`, 'warn');
+  }
+
+  const currentCatsKey = catsKey();
   const prog  = loadProgress();
+  if (prog.catsKey && prog.catsKey !== currentCatsKey) {
+    log(`Selected categories changed (${prog.catsKey} → ${currentCatsKey}); resetting Icecat progress for this filtered run.`, 'warn');
+    prog.done = 0;
+    prog.created = 0;
+    prog.updated = 0;
+    prog.deduped = 0;
+    prog.skipped = 0;
+    prog.errors = 0;
+  }
+  prog.catsKey = currentCatsKey;
   const start = prog.done;
   const end   = LIMIT > 0 ? Math.min(start + LIMIT, queue.length) : queue.length;
 
@@ -921,6 +982,9 @@ async function main() {
     }
     await phase1_index();
   } else {
+    if (CATS_FILTER) {
+      log(`Resume uses selected category filter: ${catsKey()}`);
+    }
     log('Skipping Phase 1 (--resume or --phase=2)');
   }
 

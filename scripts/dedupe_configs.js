@@ -23,20 +23,20 @@ const { configKey, isRefurbisherBrand, isJunkBrand } = require('./lib/config_key
 
 const DRY = process.argv.includes('--dry');
 const CONCURRENCY = 16;
-const FIELDS = 'id,name,brand,category,variantGroup,specsCount,techScore,imageUrl,source,configKey';
+const FIELDS = 'id,name,brand,category,variantGroup,specsCount,techScore,imageUrl,source,configKey,keySpecs,specs,specSections';
 
 async function fetchAll() {
-  const out = [];
+  const byId = new Map();
   let page = 1;
   for (;;) {
     const r = await req('GET', `/api/collections/products/records?perPage=500&page=${page}&sort=id&fields=${FIELDS}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${JSON.stringify(r.body).slice(0, 200)}`);
     const items = r.body.items || [];
-    out.push(...items);
+    for (const item of items) byId.set(item.id, item);
     if (items.length < 500 || page >= (r.body.totalPages || 1)) break;
     page++;
   }
-  return out;
+  return [...byId.values()];
 }
 
 async function runPool(items, worker, label) {

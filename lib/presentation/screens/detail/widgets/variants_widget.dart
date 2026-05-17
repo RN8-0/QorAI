@@ -45,20 +45,25 @@ class _VariantsSection extends ConsumerWidget {
         final all = [product, ...variants]
           ..sort((a, b) => a.name.compareTo(b.name));
 
-        // Deduplicate by storage label — keep current product or first match
+        // Deduplicate by the backend configuration key. This keeps one chip
+        // per real CPU/RAM/storage/GPU/display configuration, not one chip per
+        // Icecat cosmetic SKU.
         final seen = <String>{};
         final unique = <ProductEntity>[];
         for (final v in all) {
-          final label = _storageLabel(v);
-          if (seen.contains(label)) {
-            // If the duplicate is the current product, replace the existing one
+          final key = v.configKey.isNotEmpty ? v.configKey : _storageLabel(v);
+          if (seen.contains(key)) {
             if (v.id == product.id) {
-              unique.removeWhere((u) => _storageLabel(u) == label);
+              unique.removeWhere(
+                (u) =>
+                    (u.configKey.isNotEmpty ? u.configKey : _storageLabel(u)) ==
+                    key,
+              );
               unique.add(v);
             }
             continue;
           }
-          seen.add(label);
+          seen.add(key);
           unique.add(v);
         }
         if (unique.length <= 1) return const SizedBox.shrink();
@@ -193,13 +198,72 @@ class _VariantChip extends StatelessWidget {
 
   static String _variantLabelFor(ProductEntity p) {
     final parts = <String>[];
+    final cpu = _extractCpu(p);
+    final gpu = _extractGpu(p);
     final ram = _extractRam(p);
     final storage = _extractStorageOnly(p);
-    final color = _extractColor(p);
+    final display = _extractDisplay(p);
+    if (cpu != null) parts.add(cpu);
+    if (gpu != null) parts.add(gpu);
     if (ram != null && ram != storage) parts.add(ram);
     if (storage.isNotEmpty) parts.add(storage);
-    if (color != null) parts.add(color);
+    if (display != null) parts.add(display);
     return parts.isEmpty ? _extractStorageOnly(p) : parts.join(' / ');
+  }
+
+  static String _combinedText(ProductEntity p) =>
+      '${p.name} ${p.keySpecs.values.join(' ')} ${p.specs.values.join(' ')} ${_sectionValues(p.specSections).join(' ')}';
+
+  static Iterable<String> _sectionValues(Map<String, dynamic> sections) sync* {
+    for (final value in sections.values) {
+      if (value is Map) {
+        for (final v in value.values) {
+          yield v.toString();
+        }
+      } else {
+        yield value.toString();
+      }
+    }
+  }
+
+  static String? _extractCpu(ProductEntity p) {
+    final text = _combinedText(p);
+    final patterns = [
+      RegExp(r'\bCore\s+Ultra\s+[3579]\s+\w+\b', caseSensitive: false),
+      RegExp(r'\bi[3579]-\w+\b', caseSensitive: false),
+      RegExp(
+        r'\bRyzen(?:\s+AI)?\s+[3579]\s+(?:Pro\s+)?\w+\b',
+        caseSensitive: false,
+      ),
+      RegExp(r'\bApple\s+M[1-9]\s*(?:Pro|Max|Ultra)?\b', caseSensitive: false),
+      RegExp(r'\bM[1-9]\s*(?:Pro|Max|Ultra)?\b', caseSensitive: false),
+    ];
+    for (final re in patterns) {
+      final m = re.firstMatch(text);
+      if (m != null) return m.group(0)!.replaceAll(RegExp(r'\s+'), ' ');
+    }
+    return null;
+  }
+
+  static String? _extractGpu(ProductEntity p) {
+    final text = _combinedText(p);
+    final patterns = [
+      RegExp(
+        r'\b(?:GeForce\s+)?RTX\s*\d{3,5}(?:\s*(?:Ti|Super|Laptop))?\b',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'\b(?:GeForce\s+)?GTX\s*\d{3,5}(?:\s*Ti)?\b',
+        caseSensitive: false,
+      ),
+      RegExp(r'\bRadeon\s+(?:RX\s*)?\d{3,5}\w*\b', caseSensitive: false),
+      RegExp(r'\bIntel\s+Arc\s+\w+\b', caseSensitive: false),
+    ];
+    for (final re in patterns) {
+      final m = re.firstMatch(text);
+      if (m != null) return m.group(0)!.replaceAll(RegExp(r'\s+'), ' ');
+    }
+    return null;
   }
 
   static String? _extractRam(ProductEntity p) {
@@ -216,44 +280,38 @@ class _VariantChip extends StatelessWidget {
     return null;
   }
 
-  static String? _extractColor(ProductEntity p) {
-    const colors = [
-      'Black',
-      'White',
-      'Silver',
-      'Gold',
-      'Blue',
-      'Purple',
-      'Violet',
-      'Pink',
-      'Red',
-      'Green',
-      'Gray',
-      'Grey',
-      'Cream',
-      'Graphite',
-      'Lavender',
-      'Wood',
-      'Bordeaux',
-      'Midnight',
-      'Titanium',
-      'Stone colour',
-      'Dark Blue',
-      'Dark Green',
-    ];
-    final text = '${p.name} ${p.specs.values.join(' ')}';
-    for (final c in colors) {
-      if (RegExp(
-        '\\b${RegExp.escape(c)}\\b',
-        caseSensitive: false,
-      ).hasMatch(text)) {
-        return c;
-      }
+  static String? _extractDisplay(ProductEntity p) {
+    final text = _combinedText(p);
+    final inch = RegExp(
+      r'\b(\d+(?:[.,]\d+)?)\s*(?:"|inch|inches|zoll)\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final cm = RegExp(
+      r'\b(\d+(?:[.,]\d+)?)\s*cm\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    String? size;
+    if (inch != null) {
+      size = '${inch.group(1)!.replaceAll(',', '.')}"';
+    } else if (cm != null) {
+      final parsed = double.tryParse(cm.group(1)!.replaceAll(',', '.'));
+      if (parsed != null) size = '${(parsed / 2.54).toStringAsFixed(1)}"';
     }
-    return null;
+    final res = RegExp(
+      r'\b(\d{3,5})\s*[x×]\s*(\d{3,5})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (size == null && res == null) return null;
+    if (size != null && res != null) {
+      return '$size ${res.group(1)}x${res.group(2)}';
+    }
+    return size ?? '${res!.group(1)}x${res.group(2)}';
   }
 
-  String get _variantLabel => _variantLabelFor(product);
+  String get _variantLabel {
+    final label = _variantLabelFor(product);
+    return label.length > 54 ? '${label.substring(0, 51)}...' : label;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +339,8 @@ class _VariantChip extends StatelessWidget {
         ),
         child: Text(
           _variantLabel,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,

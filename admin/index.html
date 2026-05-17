@@ -442,22 +442,13 @@
         <!-- Bulk Scrape -->
         <div class="scraper-panel active" id="bulkScrapePanel">
           <div class="card">
-            <div class="card-title">Geizhals Product Import</div>
+            <div class="card-title">Epey.com Product Import</div>
             <div class="form-grid">
-              <div class="form-field">
-                <label>Import Mode</label>
-                <select class="input" id="scrapeMode" onchange="updateScrapeModeUI()">
-                  <option value="brand">Brand Search</option>
-                  <option value="category">Category Listing</option>
-                </select>
-              </div>
+              <input type="hidden" id="scrapeMode" value="brand">
+              <input type="hidden" id="scrapeCategory" value="">
               <div class="form-field" id="scrapeSearchField">
                 <label>Brand / Search Term</label>
-                <input class="input" id="scrapeSearchTerm" placeholder="e.g. Apple, Asus, MSI">
-              </div>
-              <div class="form-field" id="scrapeCategoryField" style="display:none">
-                <label>Category</label>
-                <select class="input" id="scrapeCategory"></select>
+                <input class="input" id="scrapeSearchTerm" placeholder="Samsung, Apple, Xiaomi, Lenovo">
               </div>
               <div class="form-field">
                 <label>Product Limit</label>
@@ -465,11 +456,11 @@
               </div>
               <div class="form-field">
                 <label>Delay (ms)</label>
-                <input class="input" type="number" id="scrapeDelay" value="3000" min="1000" step="500">
+                <input class="input" type="number" id="scrapeDelay" value="1200" min="300" step="100">
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Searches Geizhals by brand, imports product specs/images/EAN/MPN, and auto-detects the product category. Prices and merchant/store data are not imported.
+              Searches Epey.com by brand or model, imports Turkish specs/images/EAN/MPN/score, skips already saved Epey URLs, and auto-detects the product category.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
@@ -480,41 +471,7 @@
             <div id="resumeHint" class="text-muted" style="margin-top:8px;font-size:12px;display:none"></div>
           </div>
 
-          <!-- Custom Categories Manager -->
-          <details class="card" id="customCategoriesCard">
-            <summary class="card-title" style="cursor:pointer">Advanced Category Tools <span class="text-muted" style="font-weight:normal;font-size:12px">· optional Geizhals ?cat= manager</span></summary>
-            <p class="text-muted" style="margin:10px 0;font-size:12px">
-              Eklediğin kategoriler yukarıdaki "Category" listesinde <strong>Custom</strong> başlığı altında görünür.
-              Marka araması için bu bölüm gerekli değildir.
-            </p>
-            <div class="form-grid" style="grid-template-columns:1fr 1fr 1.2fr">
-              <div class="form-field">
-                <label>İngilizce Ad (zorunlu)</label>
-                <input class="input" id="newCatName" placeholder="e.g. Smart Home Hubs">
-              </div>
-              <div class="form-field">
-                <label>Almanca Ad (opsiyonel)</label>
-                <input class="input" id="newCatNameDe" placeholder="e.g. Smart Home Hubs / Zentralen">
-              </div>
-              <div class="form-field">
-                <label>Geizhals URL veya ?cat= slug</label>
-                <input class="input" id="newCatUrl" placeholder="https://geizhals.eu/?cat=... veya umtsover">
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="addCustomCategory()">+ Kategori Ekle</button>
-            </div>
-
-            <div id="customCategoriesList" style="margin-top:14px"></div>
-
-            <details style="margin-top:14px">
-              <summary class="text-muted" style="cursor:pointer;font-size:12px">Toplu içe aktar (her satıra bir URL)</summary>
-              <textarea class="input" id="bulkCatImport" rows="6" style="margin-top:8px;font-family:monospace;font-size:12px" placeholder="https://geizhals.eu/?cat=umtsover&pagesize=30&hloc=at...&#10;https://geizhals.eu/?cat=hdssd..."></textarea>
-              <div style="margin-top:8px">
-                <button class="btn btn-sm" onclick="importCategoriesFromText()">İçe Aktar</button>
-              </div>
-            </details>
-          </details>
+          <div class="card" id="customCategoriesCard" style="display:none"></div>
         </div>
 
         <!-- Icecat Open Catalog Ingestion -->
@@ -529,7 +486,7 @@
             </p>
             <p class="text-muted" style="margin-bottom:12px;font-size:12px;padding:10px;border:1px solid var(--surface-3,#2a2a2a);border-radius:6px;background:var(--surface-1,#0e0e0e)">
               Marka listesi Icecat'te kategori indeksinden net gelmez; marka bilgisi ürün detayı açılınca gelir.
-              Bu yüzden Icecat tarafında güvenli akış kategori + düşük limit testidir. Apple/Xiaomi gibi Open Catalog'da çıkmayan markalar için Geizhals Brand Search kullanılmalı.
+              Güvenli akış: kategori seç, düşük limit ile test et, sonra resume ile genişlet.
             </p>
 
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
@@ -613,8 +570,8 @@
           <div class="card">
             <div class="card-title">Add Product by URL or Search</div>
             <div class="form-field">
-              <label>geizhals.eu URL or Product Name</label>
-              <input class="input" id="scrapeUrl" placeholder="https://geizhals.eu/... or iPhone 16, Samsung Galaxy S25...">
+              <label>Epey.com URL or Product Name</label>
+              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/... or iPhone 16, Samsung Galaxy S25...">
             </div>
             <div class="form-field">
               <label>Category (auto-detected from URL)</label>
@@ -671,7 +628,7 @@
           <div class="card" style="margin-bottom:14px">
             <div class="card-title">🌍 Translate Category (Bulk)</div>
             <p class="text-muted" style="margin-bottom:12px">
-              Pick a Geizhals category. Only products with source=geizhals.eu are translated;
+              Pick a category. Only products with source=epey.com are translated;
               Icecat records are skipped because they already include multilingual specs.
               Terms already in the dictionary are reused (zero API cost); only new atoms hit
               DeepSeek and are then learned for the next run.
@@ -699,13 +656,13 @@
           <div class="card">
             <div class="card-title">📚 Translation Dictionary</div>
             <p class="text-muted" style="margin-bottom:12px">
-              Atomic German → 11-language translation cache used by the scraper. Add or edit entries here to override DeepSeek output and lock in correct translations.
+              Atomic Turkish → 11-language translation cache used by the scraper. Add or edit entries here to override DeepSeek output and lock in correct translations.
               <span id="dictStats" style="float:right;font-size:11px"></span>
             </p>
             <div class="form-grid" style="grid-template-columns:1.5fr auto auto;gap:8px;align-items:end">
               <div class="form-field">
                 <label>Search</label>
-                <input class="input" id="dictSearch" type="text" placeholder="German term, e.g. Akku, fest verbaut, kabelloses Laden" oninput="renderDictionaryTable()">
+                <input class="input" id="dictSearch" type="text" placeholder="Turkish term, e.g. Pil kapasitesi, kablosuz şarj, ekran boyutu" oninput="renderDictionaryTable()">
               </div>
               <button class="btn btn-primary" onclick="addDictionaryRow()">+ Add Term</button>
               <button class="btn" style="background:#0891b2;color:#fff" onclick="saveDictionary()">💾 Save All</button>
@@ -719,7 +676,7 @@
               </table>
             </div>
             <p class="text-muted" style="margin-top:10px;font-size:11px">
-              Tip: empty cells in a row will use the German term verbatim at render time. Changes are saved to PocketBase <code>public_config.de_translation_dict</code> on click.
+              Tip: empty cells in a row will use the Turkish term verbatim at render time. Changes are saved to PocketBase <code>public_config.tr_translation_dict</code> on click.
             </p>
           </div>
         </div>

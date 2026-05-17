@@ -32,14 +32,23 @@ const isJunkBrand = b => JUNK_BRANDS.has(String(b || '').trim().toLowerCase());
 // Model lines whose identifier is "<line> <code>" — matched first for accuracy.
 const FAMILY_PATTERNS = [
   /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
+  /\b(thinkbook\s+\d+\s+g\d+[a-z]*(?:\s+[a-z]{2,4})?)\b/i,
   /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
   /\b(thinkcentre\s+[a-z]+\d+[a-z0-9-]*)\b/i,
   /\b(thinkstation\s+[a-z]+\d+[a-z0-9-]*)\b/i,
+  /\b(ideapad\s+\d+\s+pro)\b/i,
+  /\b(ideapad\s+\d+\s+2[\s-]?in[\s-]?1)\b/i,
+  /\b(ideapad\s+\d+\s+slim)\b/i,
+  /\b(ideapad\s+\d+)\b/i,
   /\b(ideapad\s+[a-z0-9]+(?:\s+\d+[a-z0-9-]*)?(?:\s+gen\s+\d+)?)\b/i,
+  /\b(v\d{2}\s+g\d+)\b/i,
+  /\b(ideacentre\s+aio\s+\d+[a-z0-9]*)\b/i,
+  /\b(ideacentre\s+[a-z]?\d{3})[-\s]?[a-z0-9]*\b/i,
   /\b(ideacentre\s+[a-z]*\d+[a-z0-9-]*)\b/i,
   /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
   /\b(yoga\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
   /\b(elitebook\s+\d+\s*g\d+)\b/i,
+  /\b(\d{3}\s+g\d+)\b/i,
   /\b(probook\s+\d+\s*g\d+)\b/i,
   /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
   /\b(pavilion\s+[a-z0-9-]+)\b/i,
@@ -57,8 +66,22 @@ const FAMILY_PATTERNS = [
   // to " plus " before matching so S24 and S24+ never collapse together.
   /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
   /\b(iphone\s+(?:se\s+)?\d+[a-z]*(?:\s+(?:pro|max|plus|mini))*)/i,
-  /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
+  /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+  /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+  /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+  /\b(redmi\s+pad(?:\s+se)?(?:\s+\d+(?:[.,]\d+)?)?(?:\s+pro)?)/i,
+  /\b(watch\s+s?\d+(?:\s+\d+\s*mm)?)/i,
+  /\b(smart\s+band\s+\d+)/i,
+  /\b(redmi\s+smart\s+band\s+\d+)/i,
+  /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?(?:\s*-\s*\d+\.\s*generation)?(?:\s*\/\s*\d{4})?(?:\s+a\d+\s*pro)?)/i,
   /\b(surface\s+(?:pro|laptop|go|book|studio)?\s*\d*)\b/i,
+  /\b(the\s+frame\s+pro)\b/i,
+  /\b(the\s+frame)\b/i,
+  /\b(go\s+\d+)(?:\s+(?:duo|mono|portable|speaker))*\b/i,
+  /\b(clip\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+  /\b(charge\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+  /\b(flip\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+  /\b(b760m\s+[a-z0-9]+(?:\s+[a-z0-9]+)?)\b/i,
 ];
 
 // Config-level noise removed by the generic fallback.
@@ -73,11 +96,13 @@ const STRIP = [
   /\b\d+\s*mah\b/gi,
   // CPUs — Core Ultra, Core i3-i9, plus the bare model number Icecat repeats
   /\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi,
+  /\b(?:intel\s+)?core\s+i[3579][- ]?[a-z0-9-]*\b/gi,
   /\b(?:intel\s+)?core\s+i[3579]\b/gi,
   /\bi[3579][- ]?\d{3,5}[a-z]*\b/gi,
   /\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+(?:pro\s+)?[a-z0-9-]+\b/gi,
   /\b(?:intel\s+)?(?:celeron|pentium|xeon|atom)\s+[a-z]?\d+[a-z]*\b/gi,
   /\b(?:amd\s+)?(?:athlon|a\d)\s+[a-z0-9-]+\b/gi,
+  /\b(?:intel\s+)?core\s+[3579]\s+\d{3,4}[a-z]*\b/gi,
   /\b(?:snapdragon|mediatek|dimensity|exynos|tensor)\s+[a-z0-9-]+\b/gi,
   // GPUs
   /\b(?:amd\s+)?radeon\s+[a-z0-9 ]*\d+[a-z0-9]*\b/gi,
@@ -101,7 +126,9 @@ const STRIP = [
   // languages / colours / regions
   /\b(?:spanish|german|french|italian|english|turkish|dutch|polish|portuguese|swedish|arabic|japanese|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,
   /\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi,
+  /\b(?:orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory)\b/gi,
   /\b(?:de|uk|us|eu|pl|fr|it|es|se|gb|nl|be|at|ch)\b/gi,
+  /\b\d+(?:[.,]\d+)?\s*w\b/gi,
   /\bcopilot\+?\s*pc\b/gi,
 ];
 

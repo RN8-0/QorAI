@@ -20,16 +20,16 @@ const DRY = process.argv.includes('--dry');
 const CONCURRENCY = 16;
 
 async function fetchAll() {
-  const out = [];
+  const byId = new Map();
   let page = 1;
   for (;;) {
     const r = await req('GET', `/api/collections/products/records?perPage=500&page=${page}&sort=id&fields=id,name,brand,category,variantGroup`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
-    out.push(...(r.body.items || []));
+    for (const item of (r.body.items || [])) byId.set(item.id, item);
     if (page >= (r.body.totalPages || 1)) break;
     page++;
   }
-  return out;
+  return [...byId.values()];
 }
 
 async function runPool(items, worker) {

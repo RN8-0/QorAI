@@ -68,7 +68,7 @@ class PbDataSource {
       'name,brand,category,subcategory,'
       'imageUrl,imageURL,techScore,trendScore,techSubscores,'
       'price_segment,priceRange,prices,tags,ratings,'
-      'isActive,variantGroup,scrapedAt,lastUpdated';
+      'isActive,variantGroup,configKey,scrapedAt,lastUpdated';
 
   PbDataSource({PocketBase? client}) : _pb = client ?? pb {
     _dio = Dio(
@@ -559,6 +559,45 @@ class PbDataSource {
     } catch (e, st) {
       debugPrint('=== QOR AI: getProducts ERROR: $e\n$st ===');
       throw ServerException(message: 'Products could not be retrieved: $e');
+    }
+  }
+
+  Future<List<ProductModel>> getProductVariantsByGroup({
+    required String variantGroup,
+    String? category,
+    int limit = 80,
+  }) async {
+    final vg = variantGroup.replaceAll('"', r'\"');
+    final filters = <String>['variantGroup = "$vg"'];
+    if (category != null && category.trim().isNotEmpty) {
+      filters.add('category = "${category.replaceAll('"', r'\"')}"');
+    }
+    try {
+      final result = await _pb
+          .collection(AppConstants.productsCollection)
+          .getList(
+            page: 1,
+            perPage: limit,
+            filter: filters.join(' && '),
+            sort: 'name',
+            fields:
+                'id,collectionId,collectionName,created,updated,name,brand,category,subcategory,'
+                'imageUrl,imageURL,techScore,prices,ratings,isActive,variantGroup,configKey,'
+                'keySpecs,specs,specSections,scrapedAt,lastUpdated',
+          )
+          .timeout(const Duration(seconds: 12));
+      return result.items
+          .map((r) {
+            try {
+              return ProductModel.fromPb(r);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ProductModel>()
+          .toList();
+    } catch (_) {
+      return const <ProductModel>[];
     }
   }
 

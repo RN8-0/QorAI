@@ -1098,7 +1098,7 @@ let totalProductCount=0;
 let _productRefreshTimer=null;
 const PRODUCT_RAW_PER=120;
 const CATALOG_REPAIR_LIMIT=0;
-const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
+const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
 let _productUiPages=new Map();
 let _lastProductQueryKey='';
 let _facetWarmupRunning=false;
@@ -1519,8 +1519,8 @@ function _adminProductFamilyKey(p){
   const vg=String(p?.variantGroup||'').trim().toLowerCase();
   const nameKey=_adminNormalizeFamilyName(p);
   const category=normalizeAdminCategoryValue(p?.category||'',p);
-  if(nameKey)return `${category}|${p?.brand||''}|${nameKey}`;
   if(vg)return `${category}|${vg}`;
+  if(nameKey)return `${category}|${p?.brand||''}|${nameKey}`;
   return `${category}|${p?.brand||''}|${p?.id||''}`;
 }
 
@@ -1586,7 +1586,7 @@ async function loadPage(direction,pageOverride){
     }
 
     allProducts=(result.items||[]).map(p=>({...p,_partial:true}));
-    displayProducts=allProducts;
+    displayProducts=_groupVariants?groupProductFamilies(allProducts):allProducts;
 
     totalProductCount=result?.totalItems||totalProductCount||allProducts.length;
     populateFiltersFromCurrentPage();
@@ -1634,8 +1634,12 @@ function renderProductsPage(){
     const catId=normalizeAdminCategoryValue(p.category,p);
     const category=escHtml(_adminCategoryLabel(catId));
     const vc=Number(p.variantCount)||0;
-    const variantBadge=(_groupVariants&&vc>1)?`<div class="variant-badge" title="${vc} varyant">×${vc>99?'99+':vc}</div>`:'';
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${p.price?p.price.toLocaleString()+' TL':''}</span><span>${category}</span></div></div></div>`;
+    const effectiveVariantCount=vc||Number(p._variantCount)||0;
+    const variantBadge=(_groupVariants&&effectiveVariantCount>1)?`<div class="variant-badge" title="${effectiveVariantCount} varyant">×${effectiveVariantCount>99?'99+':effectiveVariantCount}</div>`:'';
+    const priceValue=Number(p.lowestPrice||p.price||0);
+    const priceCurrency=p.lowestPriceCurrency||'TL';
+    const priceText=priceValue?`${priceValue.toLocaleString()} ${escHtml(priceCurrency)}`:'';
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div><div class="product-name">${name}</div><div class="product-meta"><span class="product-price">${priceText}</span><span>${category}</span></div></div></div>`;
   }).join('');
   populateFiltersFromCurrentPage();
 
@@ -1681,7 +1685,8 @@ async function serverSearch(){
     if(seq!==_loadPageSeq)return; // a newer search/filter superseded this one
     const qLow=q.toLowerCase();
     // Sort: exact name match first, then starts-with, then contains, then rest by techScore
-    const sorted=result.items.map(p=>({...p,_partial:true})).slice().sort((a,b)=>{
+    const raw=result.items.map(p=>({...p,_partial:true}));
+    const sorted=(_groupVariants?groupProductFamilies(raw):raw).slice().sort((a,b)=>{
       const an=(a.name||'').toLowerCase(); const bn=(b.name||'').toLowerCase();
       const ae=an===qLow; const be=bn===qLow;
       if(ae&&!be)return -1; if(be&&!ae)return 1;
@@ -1732,10 +1737,10 @@ function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=docum
 // ─── DICTIONARY MANAGEMENT (Scraper → 📚 Dictionary tab) ──────────────────
 //
 // Editable view onto the shared atomic translation cache stored at
-// PocketBase `public_config.de_translation_dict`. Add new German terms,
+// PocketBase `public_config.tr_translation_dict`. Add new Turkish terms,
 // override DeepSeek output, or fix wrong translations — the next scrape
 // run automatically uses these values via _deDictLookup.
-const DICT_VIEW_LANGS = ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+const DICT_VIEW_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 
 async function openDictionaryPanel(){
   if (!window.QorAiDict) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
@@ -1759,7 +1764,7 @@ function renderDictionaryTable(){
 
   // Build header once per render (cheap, keeps things idempotent)
   head.innerHTML =
-    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:200px;background:var(--bg2)">German term</th>' +
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:200px;background:var(--bg2)">Turkish term</th>' +
     DICT_VIEW_LANGS.map(l =>
       `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:140px;background:var(--bg2);text-transform:uppercase;font-size:10px">${l}</th>`
     ).join('') +
@@ -1825,7 +1830,7 @@ async function saveDictionary(){
     if (!k || !l) return;
     if (v) window.QorAiDict.set(k, l, v);
     else {
-      // Empty value → drop that lang entry so the renderer falls back to German
+      // Empty value → drop that lang entry so the renderer falls back to Turkish
       const cache = window.QorAiDict.cache();
       if (cache[k] && cache[k][l]) { delete cache[k][l]; _dictDirty = true; }
     }
@@ -1905,7 +1910,7 @@ async function startCategoryTranslation(){
 
   try {
     _xlateProgress(0, 0, 'Loading dictionary…');
-    _xlateLog(`▶ Translating Geizhals products in category: ${categoryId}`);
+    _xlateLog(`▶ Translating Epey products in category: ${categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
 
     _xlateProgress(0, 0, 'Fetching products…');
@@ -1913,21 +1918,21 @@ async function startCategoryTranslation(){
     // Unwrap so we can access fields directly. Filter server-side by
     // category for efficiency.
     const safeCategory = String(categoryId).replace(/"/g, '\\"');
-    const filter = `category="${safeCategory}" && source="geizhals.eu"`;
+    const filter = `category="${safeCategory}" && (source="epey.com" || source="epey")`;
     const rawDocs = await pbGetAll('products', { filter });
     const products = (rawDocs || [])
       .map(d => {
         const body = (typeof d.data === 'function') ? d.data() : d;
         return { id: d.id || body.id, ...body };
       })
-      .filter(p => String(p?.source || '') === 'geizhals.eu')
+      .filter(p => ['epey.com', 'epey'].includes(String(p?.source || '').toLowerCase()))
       .filter(p => p && p.specs && Object.keys(p.specs).length);
     if (!products.length) {
-      _xlateLog(`No Geizhals products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
-      toast('Bu kategoride çevrilecek Geizhals ürünü yok', 'w');
+      _xlateLog(`No Epey products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
+      toast('Bu kategoride çevrilecek Epey ürünü yok', 'w');
       return;
     }
-    _xlateLog(`Found ${products.length} Geizhals products. Icecat records will not be patched by dictionary translation.`);
+    _xlateLog(`Found ${products.length} Epey products. Icecat records will not be patched by dictionary translation.`);
 
     _xlateProgress(0, 0, 'Collecting atoms…');
     const atoms = window.QorAiBulkTranslate.collectAtoms(products);
@@ -1992,8 +1997,8 @@ async function startCategoryTranslation(){
     let done = 0, failed = 0;
     for (const p of products) {
       if (_catXlateAbort) break;
-      if (String(p?.source || '') !== 'geizhals.eu') {
-        _xlateLog(`↷ skipped non-Geizhals product: ${p?.name || p?.id || 'unknown'}`, 'warn');
+      if (!['epey.com', 'epey'].includes(String(p?.source || '').toLowerCase())) {
+        _xlateLog(`↷ skipped non-Epey product: ${p?.name || p?.id || 'unknown'}`, 'warn');
         continue;
       }
       try {
@@ -2092,12 +2097,12 @@ const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','
 // Plain-text labels — Windows doesn't render flag emojis correctly inside
 // <select> elements, which previously made every option look identical.
 const MODAL_LANGS = [
-  ['de','German (orig.)'], ['en','English'], ['tr','Türkçe'],
+  ['tr','Türkçe (source)'], ['en','English'], ['de','Deutsch'],
   ['es','Español'],         ['fr','Français'], ['it','Italiano'],
   ['ja','日本語'],          ['nl','Nederlands'], ['pl','Polski'],
   ['pt','Português'],       ['sv','Svenska'],   ['ar','العربية'],
 ];
-let _modalLang = 'de';
+let _modalLang = 'tr';
 
 function normalizeSpecSectionsShape(raw){
   if(!raw)return null;
@@ -2223,8 +2228,8 @@ async function openProduct(id){
     if(doc?.exists)p={id:doc.id,...doc.data()};
   }
   if(!p)return;
-  // Default to user's saved preference (else German source)
-  _modalLang = localStorage.getItem('qorai_modal_lang') || 'de';
+  // Default to user's saved preference (else Turkish source)
+  _modalLang = localStorage.getItem('qorai_modal_lang') || 'tr';
   const body=document.getElementById('modalBody');
   if(body)body.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading variants...</div>';
   document.getElementById('modalOverlay').style.display='flex';
@@ -2235,19 +2240,19 @@ async function openProduct(id){
 function _renderProductModal(p,variants=[]){
   const id = p.id;
   // Pick the localized payload based on chosen language. If translation
-  // missing for that language we silently fall back to the German source.
-  const lang = _modalLang || 'de';
+  // missing for that language we silently fall back to the Turkish source.
+  const lang = _modalLang || 'tr';
   // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
-  // German keys, so we treat it as missing instead of pretending to localize.
+  // source keys, so we treat it as missing instead of pretending to localize.
   let ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
-  if (ml && lang !== 'de' && p.specs) {
-    const germanKeys = Object.keys(p.specs);
-    if (germanKeys.length && !germanKeys.some(k => Object.prototype.hasOwnProperty.call(ml, k))) {
+  if (ml && lang !== 'tr' && p.specs) {
+    const sourceKeys = Object.keys(p.specs);
+    if (sourceKeys.length && !sourceKeys.some(k => Object.prototype.hasOwnProperty.call(ml, k))) {
       console.warn('[modal] legacy multiLangSpecs format for', p.id, lang, '— ignoring');
       ml = null;
     }
   }
-  const localizedName = (lang !== 'de' && p.nameTranslated && p.nameTranslated[lang]) ? p.nameTranslated[lang] : p.name;
+  const localizedName = (lang !== 'tr' && p.nameTranslated && p.nameTranslated[lang]) ? p.nameTranslated[lang] : p.name;
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);

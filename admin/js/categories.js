@@ -6,7 +6,7 @@
 
 // ────────────────────────────────────────────────────────────────
 // Custom Categories — user-managed, persisted in localStorage
-// Stored as: [{ id, name, nameDe, geizhalsSlug, custom: true }]
+// Stored as: [{ id, name, nameDe, LegacySlug, custom: true }]
 // ────────────────────────────────────────────────────────────────
 const _CUSTOM_CATS_KEY = 'qorai_custom_categories_v1';
 
@@ -19,7 +19,7 @@ window.QorAiCustomCategories = {
       .replace(/^_|_$/g, '')
       .slice(0, 64);
   },
-  // Accepts a full geizhals URL OR a raw ?cat= slug, returns the slug
+  // Accepts a full Legacy URL OR a raw ?cat= slug, returns the slug
   parseSlug(input) {
     const raw = String(input || '').trim();
     if (!raw) return '';
@@ -50,9 +50,9 @@ window.QorAiCustomCategories = {
       return false;
     }
   },
-  add({ name, nameDe, geizhalsInput }) {
-    const slug = this.parseSlug(geizhalsInput);
-    if (!slug) throw new Error('Geçerli bir geizhals URL veya ?cat= değeri girin.');
+  add({ name, nameDe, LegacyInput }) {
+    const slug = this.parseSlug(LegacyInput);
+    if (!slug) throw new Error('Geçerli bir Legacy URL veya ?cat= değeri girin.');
     const cleanName = String(name || '').trim();
     if (!cleanName) throw new Error('İngilizce kategori adı zorunlu.');
     const id = this._slugifyId(cleanName) || `custom_${slug}`;
@@ -60,10 +60,10 @@ window.QorAiCustomCategories = {
       id,
       name: cleanName,
       nameDe: String(nameDe || '').trim() || undefined,
-      geizhalsSlug: slug,
+      LegacySlug: slug,
       custom: true,
     };
-    const list = this.getAll().filter(c => c.id !== id && c.geizhalsSlug !== slug);
+    const list = this.getAll().filter(c => c.id !== id && c.LegacySlug !== slug);
     list.push(entry);
     this.save(list);
     return entry;
@@ -119,6 +119,47 @@ const CATEGORY_ALIASES = Object.freeze({
   switch2_games: 'games',
 });
 
+const EPEY_PATHS = Object.freeze({
+  smartphones: 'akilli-telefonlar',
+  tablets: 'tablet',
+  laptops: 'laptop',
+  desktops: 'masaustu-bilgisayar',
+  mini_pcs: 'mini-pc',
+  cpus: 'islemci',
+  graphics_cards: 'ekran-karti',
+  ram: 'bellek-ram',
+  ssd: 'depolama/cihaz-sinifi/ssd',
+  hard_drives: 'hard-disk',
+  motherboards: 'anakart',
+  psu: 'power-supply-psu',
+  pc_cases: 'bilgisayar-kasasi',
+  cpu_coolers: 'islemci-sogutucu',
+  monitors: 'monitor',
+  tvs: 'televizyon',
+  projectors: 'projeksiyon-makinesi',
+  headphones: 'kulaklik',
+  speakers: 'bluetooth-hoparlor',
+  soundbars: 'ses-sistemi/urun-tipi/soundbar',
+  smartwatches: 'akilli-saat',
+  digital_cameras: 'fotograf-kamera',
+  action_cameras: 'aksiyon-kamera',
+  security_cameras: 'guvenlik-kamerasi',
+  gaming_consoles: 'oyun-konsolu',
+  gamepads: 'oyun-kolu',
+  keyboards: 'klavye-mouse/urun-tipi/klavye',
+  mice: 'klavye-mouse/urun-tipi/mouse',
+  printers: 'yazici',
+  webcams: 'webcam',
+  routers: 'modem',
+  modem_routers: 'modem',
+  wifi_routers: 'modem',
+  robot_vacuums: 'robot-supurge',
+  vacuums: 'robot-supurge',
+  powerbanks: 'powerbank',
+  e_readers: 'e-kitap-okuyucu',
+  drones: 'drone',
+});
+
 function normalizeCategoryId(input) {
   const raw = String(input || '').trim().toLowerCase();
   if (!raw) return '';
@@ -134,129 +175,129 @@ window.QorAiCategories = {
     {
       name: 'Categories',
       categories: [
-        { id: 'smartphones',           name: 'Smartphones',                geizhalsSlug: 'umtsover' },
-        { id: 'graphics_cards',        name: 'Graphics Cards',             geizhalsSlug: 'gra16_512' },
-        { id: 'monitors',              name: 'Monitors',                   geizhalsSlug: 'monlcd19wide' },
-        { id: 'ssd',                   name: 'SSDs',                       geizhalsSlug: 'hdssd' },
-        { id: 'external_ssd',          name: 'External SSDs',              geizhalsSlug: 'hde7s' },
-        { id: 'hard_drives',           name: 'Hard Drives',                geizhalsSlug: 'hdx' },
-        { id: 'external_hdd',          name: 'External Hard Drives',       geizhalsSlug: 'gehhd' },
-        { id: 'hdd_docks',             name: 'HDD Docks',                  geizhalsSlug: 'hddocks' },
-        { id: 'hdd_enclosures',        name: 'HDD Enclosures',             geizhalsSlug: 'gehwrahm' },
-        { id: 'sata_cables',           name: 'SATA / SAS Cables',          geizhalsSlug: 'kabelfp' },
-        { id: 'drive_adapters',        name: 'Drive Adapters',             geizhalsSlug: 'hdadko' },
-        { id: 'storage_systems',       name: 'Storage Systems',            geizhalsSlug: 'hdesys' },
-        { id: 'storage_accessories',   name: 'Storage Accessories',        geizhalsSlug: 'hdzub' },
-        { id: 'laptops',               name: 'Laptops',                    geizhalsSlug: 'nb' },
-        { id: 'desktops',              name: 'Desktop PCs',                geizhalsSlug: 'sysdiv' },
-        { id: 'cpus',                  name: 'Processors',                 geizhalsSlug: 'cpu' },
-        { id: 'cpu_amd_am4',           name: 'AMD AM4 CPUs',               geizhalsSlug: 'cpuamdam4' },
-        { id: 'cpu_intel_1151',        name: 'Intel 1151 CPUs',            geizhalsSlug: 'cpu1151' },
-        { id: 'cpu_server',            name: 'Server / Workstation CPUs',  geizhalsSlug: 'cpucoproz' },
-        { id: 'motherboards',          name: 'Motherboards',               geizhalsSlug: 'mainboards' },
-        { id: 'server_motherboards',   name: 'Server Motherboards',        geizhalsSlug: 'mbson' },
-        { id: 'mb_cables',             name: 'Motherboard Cables',         geizhalsSlug: 'kabelmb' },
-        { id: 'mice',                  name: 'Mice',                       geizhalsSlug: 'mouse' },
-        { id: 'mouse_pads',            name: 'Mouse Pads',                 geizhalsSlug: 'egpads' },
-        { id: 'trackballs',            name: 'Trackballs',                 geizhalsSlug: 'mousetrack' },
-        { id: 'presentation_remotes',  name: 'Presentation Remotes',       geizhalsSlug: 'hweinpres' },
-        { id: 'keyboards',             name: 'Keyboards',                  geizhalsSlug: 'kb' },
-        { id: 'numeric_keypads',       name: 'Numeric Keypads',            geizhalsSlug: 'hweinnump' },
-        { id: 'desktop_keyboards',     name: 'Desktop Keyboards',          geizhalsSlug: 'kbdesk' },
-        { id: 'gamepads',              name: 'Gamepads',                   geizhalsSlug: 'eggamepad' },
-        { id: 'racing_wheels',         name: 'Racing Wheels',              geizhalsSlug: 'egglenkr' },
-        { id: 'joysticks',             name: 'Joysticks',                  geizhalsSlug: 'eggjoystick' },
-        { id: 'drawing_tablets',       name: 'Drawing Tablets',            geizhalsSlug: 'pads' },
-        { id: 'stylus_pens',           name: 'Stylus Pens',                geizhalsSlug: 'hweinstift' },
-        { id: 'kvm_switches',          name: 'KVM Switches',               geizhalsSlug: 'kvmkon' },
-        { id: 'switch_cables',         name: 'Switch Cables',              geizhalsSlug: 'kabelsw' },
-        { id: 'keyboard_accessories',  name: 'Keyboard Accessories',       geizhalsSlug: 'hwkblumzb' },
-        { id: 'soundbars',             name: 'Soundbars',                  geizhalsSlug: 'scnbar' },
-        { id: 'gaming_accessories',    name: 'Gaming Accessories',         geizhalsSlug: 'egzub' },
-        { id: 'gaming_consoles',       name: 'Game Consoles',              geizhalsSlug: 'con' },
-        { id: 'games',                 name: 'Games',                      geizhalsSlug: 'games' },
-        { id: 'pc_cases',              name: 'PC Cases',                   geizhalsSlug: 'gehatx' },
-        { id: 'tablets',               name: 'Tablets',                    geizhalsSlug: 'nbtabl' },
-        { id: 'ram',                   name: 'RAM',                        geizhalsSlug: 'ramddr3' },
-        { id: 'pcie_nic',              name: 'PCIe Network Cards',         geizhalsSlug: 'nwpcie' },
-        { id: 'network_switches',      name: 'Network Switches',           geizhalsSlug: 'switchgi' },
-        { id: 'cordless_phones',       name: 'Cordless Phones',            geizhalsSlug: 'phonmdg' },
-        { id: 'modem_routers',         name: 'Modem Routers',              geizhalsSlug: 'wlanroutmod' },
-        { id: 'wifi_routers',          name: 'WiFi Routers',               geizhalsSlug: 'wlanrout' },
-        { id: 'dsl_modems',            name: 'DSL Modems',                 geizhalsSlug: 'rdsl' },
-        { id: 'routers',               name: 'Routers',                    geizhalsSlug: 'router' },
-        { id: 'access_points',         name: 'Access Points',              geizhalsSlug: 'wlanap' },
-        { id: 'wifi_repeaters',        name: 'WiFi Repeaters',             geizhalsSlug: 'wlanrepeat' },
-        { id: 'firewalls',             name: 'Network Firewalls',          geizhalsSlug: 'nwfw' },
-        { id: 'media_converters',      name: 'Media Converters',           geizhalsSlug: 'hwlanmedcon' },
-        { id: 'wifi_antennas',         name: 'WiFi Antennas',              geizhalsSlug: 'wlanant' },
-        { id: 'nas_servers',           name: 'NAS / Media Servers',        geizhalsSlug: 'mda' },
-        { id: 'wifi_accessories',      name: 'WiFi Accessories',           geizhalsSlug: 'wlanzub' },
-        { id: 'cpu_coolers',           name: 'CPU Coolers',                geizhalsSlug: 'cpucooler' },
-        { id: 'gpu_coolers',           name: 'GPU Coolers',                geizhalsSlug: 'coolvga' },
-        { id: 'm2_coolers',            name: 'M.2 Coolers',                geizhalsSlug: 'coolm2' },
-        { id: 'thermal_paste',         name: 'Thermal Paste / Pads',       geizhalsSlug: 'coolchip' },
-        { id: 'case_fans',             name: 'Case Fans',                  geizhalsSlug: 'coolfan' },
-        { id: 'ram_coolers',           name: 'RAM Coolers',                geizhalsSlug: 'coolram' },
-        { id: 'thermal_compounds',     name: 'Thermal Compounds',          geizhalsSlug: 'cooltc' },
-        { id: 'cooling_cables',        name: 'Cooling Cables',             geizhalsSlug: 'coolkab' },
-        { id: 'cooling_accessories',   name: 'Cooling Accessories',        geizhalsSlug: 'coolacc' },
-        { id: 'psu',                   name: 'Power Supplies (PSU)',       geizhalsSlug: 'gehps' },
-        { id: 'psu_cables',            name: 'PSU Cables',                 geizhalsSlug: 'gehpskab' },
-        { id: 'ups',                   name: 'UPS',                        geizhalsSlug: 'gehups' },
-        { id: 'pdu',                   name: 'PDUs',                       geizhalsSlug: 'gehpdu' },
-        { id: 'ups_accessories',       name: 'UPS Accessories',            geizhalsSlug: 'gehupzub' },
-        { id: 'server_psu',            name: 'Server PSUs',                geizhalsSlug: 'gehsysps' },
-        { id: 'mini_pcs',              name: 'Mini PCs',                   geizhalsSlug: 'sysdiv' },
-        { id: 'barebone_pcs',          name: 'Barebone PCs',               geizhalsSlug: 'barepc' },
-        { id: 'nuc_pcs',               name: 'NUC / Compact PCs',          geizhalsSlug: 'sysnn' },
-        { id: 'thin_clients',          name: 'Thin Clients',               geizhalsSlug: 'sysdivtc' },
-        { id: 'rack19_barebones',      name: '19" Barebones',             geizhalsSlug: 'bare19' },
-        { id: 'rack19_servers',        name: '19" Rack Servers',          geizhalsSlug: 'sys19rack' },
-        { id: 'watercooling_kits',     name: 'Water Cooling Kits',         geizhalsSlug: 'coolwsets' },
-        { id: 'water_reservoirs',      name: 'Water Reservoirs',           geizhalsSlug: 'coolwausgleich' },
-        { id: 'watercooling_systems',  name: 'Water Cooling Systems',      geizhalsSlug: 'coolw' },
-        { id: 'water_pumps',           name: 'Water Pumps',                geizhalsSlug: 'coolwpumpen' },
-        { id: 'radiators',             name: 'Radiators',                  geizhalsSlug: 'coolwradia' },
-        { id: 'water_fittings',        name: 'Water Fittings',             geizhalsSlug: 'coolwaanve' },
-        { id: 'water_tubing',          name: 'Water Tubing',               geizhalsSlug: 'coolwaschla' },
-        { id: 'water_coolant',         name: 'Water Coolant',              geizhalsSlug: 'hwcoolwclnt' },
-        { id: 'watercooling_acc',      name: 'Water Cooling Accessories',  geizhalsSlug: 'coolwaglhzub' },
-        { id: 'watercooling_zubeh',    name: 'Water Cooling Misc',         geizhalsSlug: 'coolwzubeh' },
-        { id: 'smartwatches',          name: 'Smartwatches',               geizhalsSlug: 'uhrpm' },
-        { id: 'ps5_consoles',          name: 'PlayStation 5 Consoles',     geizhalsSlug: 'conps5' },
-        { id: 'ps5_games',             name: 'PS5 Games',                  geizhalsSlug: 'ps5g' },
-        { id: 'ps5_accessories',       name: 'PS5 Accessories',            geizhalsSlug: 'ps5zub' },
-        { id: 'xbox_series',           name: 'Xbox Series X/S',            geizhalsSlug: 'conxboxsx' },
-        { id: 'xbox_one',              name: 'Xbox One',                   geizhalsSlug: 'conxone' },
-        { id: 'xbox_accessories',      name: 'Xbox Accessories',           geizhalsSlug: 'xboxsxzub' },
-        { id: 'tvs',                   name: 'TVs',                        geizhalsSlug: 'tvlcd' },
-        { id: 'digital_cameras',       name: 'Digital Cameras',            geizhalsSlug: 'dcam' },
-        { id: 'camera_lenses',         name: 'Camera Lenses',              geizhalsSlug: 'dcamsp' },
-        { id: 'camera_objectives',     name: 'Camera Objectives',          geizhalsSlug: 'acamobjo' },
-        { id: 'video_cameras',         name: 'Video Cameras',              geizhalsSlug: 'dvcam' },
-        { id: 'action_cameras',        name: 'Action Cameras',             geizhalsSlug: 'dvcamac' },
-        { id: 'film_cameras',          name: '35mm Film Cameras',          geizhalsSlug: 'acam35' },
-        { id: 'headphones',            name: 'Headphones',                 geizhalsSlug: 'sphd' },
-        { id: 'hifi_receivers',        name: 'HiFi Receivers',             geizhalsSlug: 'hifirec' },
-        { id: 'surround_systems',      name: 'Surround Systems',           geizhalsSlug: 'hifisur' },
-        { id: 'speakers',              name: 'Speakers',                   geizhalsSlug: 'hifibox' },
-        { id: 'subwoofers',            name: 'Subwoofers',                 geizhalsSlug: 'hifisubw' },
-        { id: 'compact_hifi',          name: 'Compact HiFi',               geizhalsSlug: 'hificom' },
-        { id: 'multiroom_audio',       name: 'Multiroom Audio',            geizhalsSlug: 'hifimltlt' },
-        { id: 'wireless_audio',        name: 'Wireless Audio',             geizhalsSlug: 'hifiwiar' },
-        { id: 'amplifiers',            name: 'Amplifiers',                 geizhalsSlug: 'hifiamp' },
-        { id: 'preamplifiers',         name: 'Preamplifiers',              geizhalsSlug: 'hifipre' },
-        { id: 'power_amplifiers',      name: 'Power Amplifiers',           geizhalsSlug: 'hifiend' },
-        { id: 'dj_turntables',         name: 'DJ Turntables',              geizhalsSlug: 'djtonab' },
-        { id: 'dj_controllers',        name: 'DJ Controllers',             geizhalsSlug: 'djptylst' },
-        { id: 'hifi_accessories',      name: 'HiFi Accessories',           geizhalsSlug: 'hifizub' },
-        { id: 'tv_remotes',            name: 'TV Remotes',                 geizhalsSlug: 'tvfernbed' },
-        { id: 'hifi_filters',          name: 'HiFi Filters / Studio',      geizhalsSlug: 'hifiltsst' },
-        { id: 'printers',              name: 'Printers',                   geizhalsSlug: 'pr' },
-        { id: 'vacuums',               name: 'Vacuum Cleaners',            geizhalsSlug: 'hsauger' },
-        { id: 'powerbanks',            name: 'Power Banks',                geizhalsSlug: 'akkupw' },
-        { id: 'electric_scooters',     name: 'Electric Scooters',          geizhalsSlug: 'escooter' },
+        { id: 'smartphones',           name: 'Smartphones',                LegacySlug: 'umtsover' },
+        { id: 'graphics_cards',        name: 'Graphics Cards',             LegacySlug: 'gra16_512' },
+        { id: 'monitors',              name: 'Monitors',                   LegacySlug: 'monlcd19wide' },
+        { id: 'ssd',                   name: 'SSDs',                       LegacySlug: 'hdssd' },
+        { id: 'external_ssd',          name: 'External SSDs',              LegacySlug: 'hde7s' },
+        { id: 'hard_drives',           name: 'Hard Drives',                LegacySlug: 'hdx' },
+        { id: 'external_hdd',          name: 'External Hard Drives',       LegacySlug: 'gehhd' },
+        { id: 'hdd_docks',             name: 'HDD Docks',                  LegacySlug: 'hddocks' },
+        { id: 'hdd_enclosures',        name: 'HDD Enclosures',             LegacySlug: 'gehwrahm' },
+        { id: 'sata_cables',           name: 'SATA / SAS Cables',          LegacySlug: 'kabelfp' },
+        { id: 'drive_adapters',        name: 'Drive Adapters',             LegacySlug: 'hdadko' },
+        { id: 'storage_systems',       name: 'Storage Systems',            LegacySlug: 'hdesys' },
+        { id: 'storage_accessories',   name: 'Storage Accessories',        LegacySlug: 'hdzub' },
+        { id: 'laptops',               name: 'Laptops',                    LegacySlug: 'nb' },
+        { id: 'desktops',              name: 'Desktop PCs',                LegacySlug: 'sysdiv' },
+        { id: 'cpus',                  name: 'Processors',                 LegacySlug: 'cpu' },
+        { id: 'cpu_amd_am4',           name: 'AMD AM4 CPUs',               LegacySlug: 'cpuamdam4' },
+        { id: 'cpu_intel_1151',        name: 'Intel 1151 CPUs',            LegacySlug: 'cpu1151' },
+        { id: 'cpu_server',            name: 'Server / Workstation CPUs',  LegacySlug: 'cpucoproz' },
+        { id: 'motherboards',          name: 'Motherboards',               LegacySlug: 'mainboards' },
+        { id: 'server_motherboards',   name: 'Server Motherboards',        LegacySlug: 'mbson' },
+        { id: 'mb_cables',             name: 'Motherboard Cables',         LegacySlug: 'kabelmb' },
+        { id: 'mice',                  name: 'Mice',                       LegacySlug: 'mouse' },
+        { id: 'mouse_pads',            name: 'Mouse Pads',                 LegacySlug: 'egpads' },
+        { id: 'trackballs',            name: 'Trackballs',                 LegacySlug: 'mousetrack' },
+        { id: 'presentation_remotes',  name: 'Presentation Remotes',       LegacySlug: 'hweinpres' },
+        { id: 'keyboards',             name: 'Keyboards',                  LegacySlug: 'kb' },
+        { id: 'numeric_keypads',       name: 'Numeric Keypads',            LegacySlug: 'hweinnump' },
+        { id: 'desktop_keyboards',     name: 'Desktop Keyboards',          LegacySlug: 'kbdesk' },
+        { id: 'gamepads',              name: 'Gamepads',                   LegacySlug: 'eggamepad' },
+        { id: 'racing_wheels',         name: 'Racing Wheels',              LegacySlug: 'egglenkr' },
+        { id: 'joysticks',             name: 'Joysticks',                  LegacySlug: 'eggjoystick' },
+        { id: 'drawing_tablets',       name: 'Drawing Tablets',            LegacySlug: 'pads' },
+        { id: 'stylus_pens',           name: 'Stylus Pens',                LegacySlug: 'hweinstift' },
+        { id: 'kvm_switches',          name: 'KVM Switches',               LegacySlug: 'kvmkon' },
+        { id: 'switch_cables',         name: 'Switch Cables',              LegacySlug: 'kabelsw' },
+        { id: 'keyboard_accessories',  name: 'Keyboard Accessories',       LegacySlug: 'hwkblumzb' },
+        { id: 'soundbars',             name: 'Soundbars',                  LegacySlug: 'scnbar' },
+        { id: 'gaming_accessories',    name: 'Gaming Accessories',         LegacySlug: 'egzub' },
+        { id: 'gaming_consoles',       name: 'Game Consoles',              LegacySlug: 'con' },
+        { id: 'games',                 name: 'Games',                      LegacySlug: 'games' },
+        { id: 'pc_cases',              name: 'PC Cases',                   LegacySlug: 'gehatx' },
+        { id: 'tablets',               name: 'Tablets',                    LegacySlug: 'nbtabl' },
+        { id: 'ram',                   name: 'RAM',                        LegacySlug: 'ramddr3' },
+        { id: 'pcie_nic',              name: 'PCIe Network Cards',         LegacySlug: 'nwpcie' },
+        { id: 'network_switches',      name: 'Network Switches',           LegacySlug: 'switchgi' },
+        { id: 'cordless_phones',       name: 'Cordless Phones',            LegacySlug: 'phonmdg' },
+        { id: 'modem_routers',         name: 'Modem Routers',              LegacySlug: 'wlanroutmod' },
+        { id: 'wifi_routers',          name: 'WiFi Routers',               LegacySlug: 'wlanrout' },
+        { id: 'dsl_modems',            name: 'DSL Modems',                 LegacySlug: 'rdsl' },
+        { id: 'routers',               name: 'Routers',                    LegacySlug: 'router' },
+        { id: 'access_points',         name: 'Access Points',              LegacySlug: 'wlanap' },
+        { id: 'wifi_repeaters',        name: 'WiFi Repeaters',             LegacySlug: 'wlanrepeat' },
+        { id: 'firewalls',             name: 'Network Firewalls',          LegacySlug: 'nwfw' },
+        { id: 'media_converters',      name: 'Media Converters',           LegacySlug: 'hwlanmedcon' },
+        { id: 'wifi_antennas',         name: 'WiFi Antennas',              LegacySlug: 'wlanant' },
+        { id: 'nas_servers',           name: 'NAS / Media Servers',        LegacySlug: 'mda' },
+        { id: 'wifi_accessories',      name: 'WiFi Accessories',           LegacySlug: 'wlanzub' },
+        { id: 'cpu_coolers',           name: 'CPU Coolers',                LegacySlug: 'cpucooler' },
+        { id: 'gpu_coolers',           name: 'GPU Coolers',                LegacySlug: 'coolvga' },
+        { id: 'm2_coolers',            name: 'M.2 Coolers',                LegacySlug: 'coolm2' },
+        { id: 'thermal_paste',         name: 'Thermal Paste / Pads',       LegacySlug: 'coolchip' },
+        { id: 'case_fans',             name: 'Case Fans',                  LegacySlug: 'coolfan' },
+        { id: 'ram_coolers',           name: 'RAM Coolers',                LegacySlug: 'coolram' },
+        { id: 'thermal_compounds',     name: 'Thermal Compounds',          LegacySlug: 'cooltc' },
+        { id: 'cooling_cables',        name: 'Cooling Cables',             LegacySlug: 'coolkab' },
+        { id: 'cooling_accessories',   name: 'Cooling Accessories',        LegacySlug: 'coolacc' },
+        { id: 'psu',                   name: 'Power Supplies (PSU)',       LegacySlug: 'gehps' },
+        { id: 'psu_cables',            name: 'PSU Cables',                 LegacySlug: 'gehpskab' },
+        { id: 'ups',                   name: 'UPS',                        LegacySlug: 'gehups' },
+        { id: 'pdu',                   name: 'PDUs',                       LegacySlug: 'gehpdu' },
+        { id: 'ups_accessories',       name: 'UPS Accessories',            LegacySlug: 'gehupzub' },
+        { id: 'server_psu',            name: 'Server PSUs',                LegacySlug: 'gehsysps' },
+        { id: 'mini_pcs',              name: 'Mini PCs',                   LegacySlug: 'sysdiv' },
+        { id: 'barebone_pcs',          name: 'Barebone PCs',               LegacySlug: 'barepc' },
+        { id: 'nuc_pcs',               name: 'NUC / Compact PCs',          LegacySlug: 'sysnn' },
+        { id: 'thin_clients',          name: 'Thin Clients',               LegacySlug: 'sysdivtc' },
+        { id: 'rack19_barebones',      name: '19" Barebones',             LegacySlug: 'bare19' },
+        { id: 'rack19_servers',        name: '19" Rack Servers',          LegacySlug: 'sys19rack' },
+        { id: 'watercooling_kits',     name: 'Water Cooling Kits',         LegacySlug: 'coolwsets' },
+        { id: 'water_reservoirs',      name: 'Water Reservoirs',           LegacySlug: 'coolwausgleich' },
+        { id: 'watercooling_systems',  name: 'Water Cooling Systems',      LegacySlug: 'coolw' },
+        { id: 'water_pumps',           name: 'Water Pumps',                LegacySlug: 'coolwpumpen' },
+        { id: 'radiators',             name: 'Radiators',                  LegacySlug: 'coolwradia' },
+        { id: 'water_fittings',        name: 'Water Fittings',             LegacySlug: 'coolwaanve' },
+        { id: 'water_tubing',          name: 'Water Tubing',               LegacySlug: 'coolwaschla' },
+        { id: 'water_coolant',         name: 'Water Coolant',              LegacySlug: 'hwcoolwclnt' },
+        { id: 'watercooling_acc',      name: 'Water Cooling Accessories',  LegacySlug: 'coolwaglhzub' },
+        { id: 'watercooling_zubeh',    name: 'Water Cooling Misc',         LegacySlug: 'coolwzubeh' },
+        { id: 'smartwatches',          name: 'Smartwatches',               LegacySlug: 'uhrpm' },
+        { id: 'ps5_consoles',          name: 'PlayStation 5 Consoles',     LegacySlug: 'conps5' },
+        { id: 'ps5_games',             name: 'PS5 Games',                  LegacySlug: 'ps5g' },
+        { id: 'ps5_accessories',       name: 'PS5 Accessories',            LegacySlug: 'ps5zub' },
+        { id: 'xbox_series',           name: 'Xbox Series X/S',            LegacySlug: 'conxboxsx' },
+        { id: 'xbox_one',              name: 'Xbox One',                   LegacySlug: 'conxone' },
+        { id: 'xbox_accessories',      name: 'Xbox Accessories',           LegacySlug: 'xboxsxzub' },
+        { id: 'tvs',                   name: 'TVs',                        LegacySlug: 'tvlcd' },
+        { id: 'digital_cameras',       name: 'Digital Cameras',            LegacySlug: 'dcam' },
+        { id: 'camera_lenses',         name: 'Camera Lenses',              LegacySlug: 'dcamsp' },
+        { id: 'camera_objectives',     name: 'Camera Objectives',          LegacySlug: 'acamobjo' },
+        { id: 'video_cameras',         name: 'Video Cameras',              LegacySlug: 'dvcam' },
+        { id: 'action_cameras',        name: 'Action Cameras',             LegacySlug: 'dvcamac' },
+        { id: 'film_cameras',          name: '35mm Film Cameras',          LegacySlug: 'acam35' },
+        { id: 'headphones',            name: 'Headphones',                 LegacySlug: 'sphd' },
+        { id: 'hifi_receivers',        name: 'HiFi Receivers',             LegacySlug: 'hifirec' },
+        { id: 'surround_systems',      name: 'Surround Systems',           LegacySlug: 'hifisur' },
+        { id: 'speakers',              name: 'Speakers',                   LegacySlug: 'hifibox' },
+        { id: 'subwoofers',            name: 'Subwoofers',                 LegacySlug: 'hifisubw' },
+        { id: 'compact_hifi',          name: 'Compact HiFi',               LegacySlug: 'hificom' },
+        { id: 'multiroom_audio',       name: 'Multiroom Audio',            LegacySlug: 'hifimltlt' },
+        { id: 'wireless_audio',        name: 'Wireless Audio',             LegacySlug: 'hifiwiar' },
+        { id: 'amplifiers',            name: 'Amplifiers',                 LegacySlug: 'hifiamp' },
+        { id: 'preamplifiers',         name: 'Preamplifiers',              LegacySlug: 'hifipre' },
+        { id: 'power_amplifiers',      name: 'Power Amplifiers',           LegacySlug: 'hifiend' },
+        { id: 'dj_turntables',         name: 'DJ Turntables',              LegacySlug: 'djtonab' },
+        { id: 'dj_controllers',        name: 'DJ Controllers',             LegacySlug: 'djptylst' },
+        { id: 'hifi_accessories',      name: 'HiFi Accessories',           LegacySlug: 'hifizub' },
+        { id: 'tv_remotes',            name: 'TV Remotes',                 LegacySlug: 'tvfernbed' },
+        { id: 'hifi_filters',          name: 'HiFi Filters / Studio',      LegacySlug: 'hifiltsst' },
+        { id: 'printers',              name: 'Printers',                   LegacySlug: 'pr' },
+        { id: 'vacuums',               name: 'Vacuum Cleaners',            LegacySlug: 'hsauger' },
+        { id: 'powerbanks',            name: 'Power Banks',                LegacySlug: 'akkupw' },
+        { id: 'electric_scooters',     name: 'Electric Scooters',          LegacySlug: 'escooter' },
       ]
     },
   ],
@@ -268,11 +309,12 @@ window.QorAiCategories = {
   getAll() {
     const base = this.groups.flatMap(g => g.categories);
     const custom = QorAiCustomCategories.getAll();
-    if (!custom.length) return base;
-    // Dedup by id and geizhalsSlug: custom entries can override built-ins
+    const attachEpey = (c) => ({ ...c, epeyPath: c.epeyPath || EPEY_PATHS[c.id] || '' });
+    if (!custom.length) return base.map(attachEpey);
+    // Dedup by id and LegacySlug: custom entries can override built-ins
     const byKey = new Map();
     for (const c of [...base, ...custom]) {
-      byKey.set(c.id, c);
+      byKey.set(c.id, attachEpey(c));
     }
     return [...byKey.values()];
   },
@@ -289,8 +331,8 @@ window.QorAiCategories = {
 
   getCatUrl(id) {
     const cat = this.getById(id);
-    if (!cat || !cat.geizhalsSlug) return null;
-    return `https://geizhals.eu/?cat=${cat.geizhalsSlug}&pagesize=30`;
+    if (!cat || !cat.epeyPath) return null;
+    return `https://www.epey.com/${cat.epeyPath}/`;
   }
 };
 
@@ -479,10 +521,10 @@ async function populateScraperCategories() {
   if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
 
   const counts = await _loadCategoryCounts();
-  const geizhalsCounts = await _loadCategoryCounts('geizhals.eu');
+  const LegacyCounts = await _loadCategoryCounts('Legacy.eu');
 
   let bulkOpts = '<option value="">Select Category</option>';
-  let dictOpts = '<option value="">Select Geizhals Category</option>';
+  let dictOpts = '<option value="">Select Legacy Category</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
   const groupForCat = (cat) => {
@@ -510,7 +552,7 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
     cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
-      const ghCnt = geizhalsCounts[cat.id] || 0;
+      const ghCnt = LegacyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
@@ -526,7 +568,7 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="Custom">`;
     customs.forEach(cat => {
       const cnt = counts[cat.id] || 0;
-      const ghCnt = geizhalsCounts[cat.id] || 0;
+      const ghCnt = LegacyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
@@ -545,7 +587,7 @@ async function populateScraperCategories() {
     const dictSynced = [];
     syncedIds.forEach(id => {
       const cnt = counts[id] || 0;
-      const ghCnt = geizhalsCounts[id] || 0;
+      const ghCnt = LegacyCounts[id] || 0;
       const name = _titleFromCategoryId(id);
       flatOpts += `<option value="${escHtml(id)}">${escHtml(name)}${cnt > 0 ? ` (${cnt})` : ''}</option>`;
       if (ghCnt > 0) {
@@ -586,7 +628,7 @@ function renderCustomCategoriesList() {
       <span style="flex:1">
         <strong>${escHtml(c.name)}</strong>
         ${c.nameDe ? `<span class="text-muted"> · ${escHtml(c.nameDe)}</span>` : ''}
-        <span class="text-muted"> · ?cat=${escHtml(c.geizhalsSlug)}</span>
+        <span class="text-muted"> · ?cat=${escHtml(c.LegacySlug)}</span>
       </span>
       <button class="btn btn-sm btn-ghost" onclick="removeCustomCategory('${escHtml(c.id)}')">Sil</button>
     </div>
@@ -602,7 +644,7 @@ async function addCustomCategory() {
     const entry = QorAiCustomCategories.add({
       name: nameEl.value,
       nameDe: deEl ? deEl.value : '',
-      geizhalsInput: urlEl.value,
+      LegacyInput: urlEl.value,
     });
     nameEl.value = '';
     if (deEl) deEl.value = '';
@@ -612,7 +654,7 @@ async function addCustomCategory() {
     await populateScraperCategories();
     renderCustomCategoriesList();
     if (typeof toast === 'function') {
-      toast(`Kategori eklendi: ${entry.name} (?cat=${entry.geizhalsSlug})`, 's');
+      toast(`Kategori eklendi: ${entry.name} (?cat=${entry.LegacySlug})`, 's');
     }
     // Auto-select the newly added category in the bulk scrape select
     const sel = document.getElementById('scrapeCategory');
@@ -643,11 +685,11 @@ async function importCategoriesFromText() {
     const slug = QorAiCustomCategories.parseSlug(line);
     if (!slug) { skipped++; continue; }
     const allExisting = QorAiCategories.getAll();
-    if (allExisting.some(c => c.geizhalsSlug === slug)) { skipped++; continue; }
+    if (allExisting.some(c => c.LegacySlug === slug)) { skipped++; continue; }
     try {
       QorAiCustomCategories.add({
         name: slug.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
-        geizhalsInput: slug,
+        LegacyInput: slug,
       });
       added++;
     } catch { skipped++; }

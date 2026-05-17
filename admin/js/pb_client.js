@@ -73,8 +73,10 @@ async function _findRecord(collection, identifier, data = {}) {
     const gtin = String(data.gtin || '').trim();
     const mpn = String(data.mpn || '').trim();
     const brand = String(data.brand || '').trim();
+    const configKey = String(data.configKey || '').trim();
     if (gtin) filters.push(`gtin="${_escapeFilterValue(gtin)}"`);
     if (mpn && brand) filters.push(`mpn="${_escapeFilterValue(mpn)}" && brand="${_escapeFilterValue(brand)}"`);
+    if (category && configKey) filters.push(`category="${_escapeFilterValue(category)}" && configKey="${_escapeFilterValue(configKey)}"`);
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
     if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
   }

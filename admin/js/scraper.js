@@ -1,27 +1,22 @@
 // ═══════════════════════════════════════════════════════════════════
-//  QOR AI SCRAPER MODULE — geizhals.eu Scraper
-//  Scrapes products from geizhals.eu via local Puppeteer proxy.
-//  Translates German → 12 languages using DeepSeek v3 + dictionary cache.
+//  QOR AI SCRAPER MODULE — epey.com Scraper
+//  Scrapes products from epey.com via local Puppeteer proxy.
+//  Translates Turkish → 12 languages using DeepSeek v3 + dictionary cache.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
 
 const PROXY_URL = 'http://localhost:3456';
-const GEIZHALS_BASE = 'https://geizhals.eu';
+const EPEY_BASE = 'https://www.epey.com';
+const LEGACY_BASE = EPEY_BASE;
+const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v12-cf-fingerprint-reset';
-// EU-wide listing: matches kategoriler.txt format, maximises inventory and
-// reduces per-country Cloudflare gatekeeping that was causing 502 loops.
-// `sort=t` forces a stable alphabetical-by-title ordering. Without it Geizhals
-// defaults to popularity-by-view-count which is reordered on every request,
-// causing the same product to appear on 2-3 consecutive pages and dropping
-// our effective per-page yield from 30 down to 10-12 unique URLs.
-const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
+const SCRAPER_BUILD = '20260517v1-epey-search';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
-const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
-// Languages to translate German specs into (skip de since source is German)
-const TARGET_LANGS = ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// Languages to translate Turkish specs into (skip tr since source is Turkish)
+const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -122,33 +117,33 @@ function normalizeCategoryToken(value) {
     .replace(/^-|-$/g, '');
 }
 
-function findCategoryByGeizhalsUrl(url) {
+function findCategoryByLegacyUrl(url) {
   if (!url) return null;
   try {
-    const u = new URL(url, GEIZHALS_BASE);
+    const u = new URL(url, LEGACY_BASE);
     // New ?cat= format
     const catParam = u.searchParams.get('cat');
     if (catParam && typeof QorAiCategories !== 'undefined') {
       const all = QorAiCategories.getAll();
-      const found = all.find(c => c.geizhalsSlug === catParam);
+      const found = all.find(c => c.LegacySlug === catParam);
       if (found) return found;
     }
-    // Old path format: https://geizhals.eu/<cat-slug>
+    // Old path format: https://Legacy.eu/<cat-slug>
     const parts = u.pathname.split('/').filter(Boolean);
     const catSlug = parts[0] || '';
     if (typeof QorAiCategories !== 'undefined') {
       const all = QorAiCategories.getAll();
-      const found = all.find(c => c.id === catSlug || (c.geizhalsSlug && c.geizhalsSlug === catSlug));
+      const found = all.find(c => c.id === catSlug || (c.LegacySlug && c.LegacySlug === catSlug));
       if (found) return found;
     }
     return null;
   } catch { return null; }
 }
 
-function findCategoryByGeizhalsSlug(slug) {
+function findCategoryByLegacySlug(slug) {
   const token = String(slug || '').trim();
   if (!token || typeof QorAiCategories === 'undefined') return null;
-  return QorAiCategories.getAll().find(c => c.geizhalsSlug === token || c.id === token) || null;
+  return QorAiCategories.getAll().find(c => c.LegacySlug === token || c.id === token) || null;
 }
 
 function detectCategoryFromDoc(doc, fallbackCategory = '') {
@@ -157,9 +152,9 @@ function detectCategoryFromDoc(doc, fallbackCategory = '') {
   for (const a of links) {
     try {
       const href = a.getAttribute('href') || '';
-      const u = new URL(href, GEIZHALS_BASE);
+      const u = new URL(href, LEGACY_BASE);
       const cat = u.searchParams.get('cat');
-      const found = findCategoryByGeizhalsSlug(cat);
+      const found = findCategoryByLegacySlug(cat);
       if (found) return found.id;
     } catch {}
   }
@@ -204,16 +199,16 @@ function productUrlMatchesCategory(url, categoryId) {
   if (!url || !categoryId) return false;
   const slug = categorySlugFromUrl(url);
   const catDef = (typeof QorAiCategories !== 'undefined')
-    ? QorAiCategories.getAll().find(c => c.id === categoryId || c.geizhalsSlug === categoryId)
+    ? QorAiCategories.getAll().find(c => c.id === categoryId || c.LegacySlug === categoryId)
     : null;
-  const expected = catDef?.geizhalsSlug || categoryId;
+  const expected = catDef?.LegacySlug || categoryId;
   return slug === expected;
 }
 
-function normalizeGeizhalsProductUrl(url) {
+function normalizeLegacyProductUrl(url) {
   try {
-    const u = new URL(url, GEIZHALS_BASE);
-    return `${GEIZHALS_BASE}${u.pathname}`;
+    const u = new URL(url, LEGACY_BASE);
+    return `${LEGACY_BASE}${u.pathname}`;
   } catch {
     return '';
   }
@@ -350,16 +345,13 @@ function switchScraperTab(btn) {
 }
 
 function updateScrapeModeUI() {
-  const mode = document.getElementById('scrapeMode')?.value || 'brand';
   const searchField = document.getElementById('scrapeSearchField');
   const catField = document.getElementById('scrapeCategoryField');
   const hint = document.getElementById('scrapeModeHint');
-  if (searchField) searchField.style.display = mode === 'brand' ? '' : 'none';
-  if (catField) catField.style.display = mode === 'category' ? '' : 'none';
+  if (searchField) searchField.style.display = '';
+  if (catField) catField.style.display = 'none';
   if (hint) {
-    hint.textContent = mode === 'brand'
-      ? 'Searches Geizhals by brand, imports product specs/images/EAN/MPN, and auto-detects the product category. Prices and merchant/store data are not imported.'
-      : 'Uses the selected Geizhals category listing. This is slower and mainly kept for targeted category backfills.';
+    hint.textContent = 'Searches Epey.com by brand or model, imports Turkish specs/images/EAN/MPN/score, skips already saved Epey URLs, and auto-detects the product category.';
   }
 }
 window.updateScrapeModeUI = updateScrapeModeUI;
@@ -389,7 +381,8 @@ function normalizeProductDedupText(value) {
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
     .replace(/\b\d+\s*\/\s*\d+\b/g, '')
     .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|titanium|starlight|midnight|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/gi, '')
+    .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
@@ -406,16 +399,47 @@ function modelFamilyKey({ name, brand, category }) {
     .trim();
   const familyPatterns = [
     /\b(thinkpad\s+[a-z]\d+[a-z0-9]*(?:\s+gen\s+\d+)?)\b/i,
+    /\b(thinkcentre\s+[a-z]+\d+[a-z0-9-]*)\b/i,
+    /\b(thinkstation\s+[a-z]+\d+[a-z0-9-]*)\b/i,
+    /\b(ideapad\s+\d+\s+pro)\b/i,
+    /\b(ideapad\s+\d+\s+2[\s-]?in[\s-]?1)\b/i,
+    /\b(ideapad\s+\d+\s+slim)\b/i,
+    /\b(ideapad\s+\d+)\b/i,
     /\b(ideapad\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(v\d{2}\s+g\d+)\b/i,
+    /\b(ideacentre\s+aio\s+\d+[a-z0-9]*)\b/i,
+    /\b(ideacentre\s+[a-z]?\d{3})[-\s]?[a-z0-9]*\b/i,
     /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
+    /\b(yoga\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(elitebook\s+\d+\s*g\d+)\b/i,
+    /\b(\d{3}\s+g\d+)\b/i,
     /\b(probook\s+\d+\s*g\d+)\b/i,
     /\b(zbook\s+[a-z0-9]+\s*g\d+)\b/i,
+    /\b(pavilion\s+[a-z0-9-]+)\b/i,
+    /\b(victus\s+[a-z0-9-]+)\b/i,
+    /\b(omen\s+[a-z0-9-]+)\b/i,
+    /\b((?:envy|spectre|omnibook)\s+[a-z0-9-]+)\b/i,
     /\b(latitude\s+\d+)\b/i,
+    /\b((?:inspiron|vostro|precision)\s+\d+[a-z0-9-]*)\b/i,
+    /\b(xps\s+\d+[a-z0-9-]*)\b/i,
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
-    /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
+    /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
     /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
-    /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
+    /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(redmi\s+pad(?:\s+se)?(?:\s+\d+(?:[.,]\d+)?)?(?:\s+pro)?)/i,
+    /\b(watch\s+s?\d+(?:\s+\d+\s*mm)?)/i,
+    /\b(smart\s+band\s+\d+)/i,
+    /\b(redmi\s+smart\s+band\s+\d+)/i,
+    /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?(?:\s*-\s*\d+\.\s*generation)?(?:\s*\/\s*\d{4})?(?:\s+a\d+\s*pro)?)/i,
+    /\b(the\s+frame\s+pro)\b/i,
+    /\b(the\s+frame)\b/i,
+    /\b(go\s+\d+)(?:\s+(?:duo|mono|portable|speaker))*\b/i,
+    /\b(clip\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+    /\b(charge\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+    /\b(flip\s+\d+)(?:\s+(?:portable|speaker))*\b/i,
+    /\b(b760m\s+[a-z0-9]+(?:\s+[a-z0-9]+)?)\b/i,
   ];
   for (const re of familyPatterns) {
     const m = familyProbe.match(re);
@@ -440,14 +464,20 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
     .replace(/\b\d+\s*mah\b/gi, ' ')
     .replace(/\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
+    .replace(/\b(?:intel\s+)?core\s+i[3579][- ]?[a-z0-9-]*\b/gi, ' ')
+    .replace(/\b(?:intel\s+)?core\s+[3579]\s+\d{3,4}[a-z]*\b/gi, ' ')
+    .replace(/\bi[3579][- ]?\d{3,5}[a-z]*\b/gi, ' ')
     .replace(/\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b/gi, ' ')
+    .replace(/\b(?:nvidia\s+)?(?:geforce\s+)?(?:gtx|rtx|mx)\s*\d+[a-z0-9 ]*\b/gi, ' ')
+    .replace(/\b(?:amd\s+)?radeon\s+(?:rx\s*)?\d{3,5}(?:\s*(?:xt|m|mobile|graphics))?\b/gi, ' ')
     .replace(/\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b/gi, ' ')
     .replace(/\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-c|5g|4g|lte|wi-fi|wifi|wlan|bluetooth)\b/gi, ' ')
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
     .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
     .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
@@ -463,49 +493,101 @@ function productDedupKey(product) {
   return generateProductId(slugFromUrl(product?.sourceUrl || product?.slug || ''));
 }
 
+function _flatProductText(product) {
+  const vals = [];
+  const visit = value => {
+    if (!value) return;
+    if (typeof value === 'object') Object.values(value).forEach(visit);
+    else vals.push(String(value));
+  };
+  visit(product?.keySpecs);
+  visit(product?.specs);
+  visit(product?.specSections);
+  return `${product?.name || ''} ${vals.join(' ')}`;
+}
+
+function configKeyFromProduct(product, variantGroup) {
+  const text = _flatProductText(product);
+  const axes = [];
+  const caps = [...text.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(TB|GB|MB)\b/gi)]
+    .map(m => {
+      const n = parseFloat(String(m[1]).replace(',', '.')) || 0;
+      const unit = m[2].toUpperCase();
+      return { n, unit, gb: unit === 'TB' ? n * 1024 : unit === 'MB' ? n / 1024 : n };
+    })
+    .filter(x => x.gb > 0);
+  const storage = caps.reduce((best, x) => !best || x.gb > best.gb ? x : best, null);
+  const ram = caps.filter(x => x.unit === 'GB' && x.n <= 64 && x !== storage)
+    .reduce((best, x) => !best || x.n > best.n ? x : best, null);
+  if (ram) axes.push(`r${Math.round(ram.n)}`);
+  if (storage) axes.push(`s${Math.round(storage.gb)}`);
+  const cpu = text.match(/\b(?:core\s+)?ultra\s+[3579]\s+\w+/i)
+    || text.match(/\bi[3579]-\w+/i)
+    || text.match(/\bcore\s+[3579]\s+\d{3,4}[a-z]*\b/i)
+    || text.match(/\bryzen(?:\s+ai)?\s+[3579]\s+(?:pro\s+)?\w+/i)
+    || text.match(/\b(?:apple\s+)?m[1-9]\s*(?:pro|max|ultra)?\b/i);
+  if (cpu) axes.push(`c${normalizeProductDedupText(cpu[0]).replace(/-/g, '')}`);
+  const gpu = text.match(/\b(?:geforce\s+)?(?:rtx|gtx|mx)\s*\d{3,5}(?:\s*(?:ti|super|laptop))?\b/i)
+    || text.match(/\bradeon\s+(?:rx\s*)?\d{3,5}(?:\s*(?:xt|m|mobile|graphics))?\b/i);
+  if (gpu) axes.push(`g${normalizeProductDedupText(gpu[0]).replace(/-/g, '')}`);
+  const inch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:"|inch|inches|zoll)\b/i);
+  const cm = text.match(/\b(\d+(?:[.,]\d+)?)\s*cm\b/i);
+  if (inch) axes.push(`d${Math.round(parseFloat(inch[1].replace(',', '.')) * 10)}`);
+  else if (cm) axes.push(`d${Math.round((parseFloat(cm[1].replace(',', '.')) / 2.54) * 10)}`);
+  const res = text.match(/\b(\d{3,5})\s*[x×]\s*(\d{3,5})\b/i);
+  if (res) axes.push(`res${res[1]}x${res[2]}`);
+  return `${variantGroup || productDedupKey(product)}${axes.length ? `|${axes.join('|')}` : ''}`.slice(0, 230);
+}
+
 function prepareProductPayload(product) {
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
   const category = window.QorAiCategories?.canonicalId
     ? window.QorAiCategories.canonicalId(product.category || '')
     : String(product.category || '').trim();
 
-  // Enforce hard cap of 4 product images, dedup, all in -l.webp tier
+  // Enforce image cap, dedup, and keep the native CDN format for Epey.
   const rawImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  const isEpeySource = /epey/i.test(String(product.source || product.sourceUrl || ''));
   const seenImg = new Set();
   const images = [];
   for (const url of rawImages) {
-    const mid = typeof imgMedium === 'function' ? imgMedium(url) : url;
-    const key = mid.replace(/-[a-z]\.webp$/i, '').toLowerCase();
+    const mid = isEpeySource
+      ? normalizeEpeyImageUrl(url)
+      : (typeof imgMedium === 'function' ? imgMedium(url) : url);
+    const key = String(mid || '').replace(/-[a-z]\.webp$/i, '').toLowerCase();
     if (mid && !seenImg.has(key)) {
       seenImg.add(key);
       images.push(mid);
     }
-    if (images.length >= 4) break;
+    if (images.length >= (isEpeySource ? 8 : 4)) break;
   }
   const primary = images[0] || product.imageUrl || '';
 
+  const variantGroup = String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200);
   const payload = {
     slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
     name: String(product.name || '').trim().slice(0, 500),
     brand: String(product.brand || '').trim().slice(0, 200),
     category: String(category || '').trim().slice(0, 100),
-    source: String(product.source || 'geizhals.eu').trim().slice(0, 100),
+    source: String(product.source || 'epey.com').trim().slice(0, 100),
     sourceUrl: product.sourceUrl || undefined,
-    imageUrl: primary || undefined,            // medium tier (-l.webp)
-    imageUrlThumb: primary ? imgThumb(primary) : undefined, // -m.webp
-    imageUrlHQ: primary ? imgHQ(primary) : undefined,       // -n.webp
+    imageUrl: primary || undefined,
+    imageUrlThumb: primary && !isEpeySource && typeof imgThumb === 'function' ? imgThumb(primary) : primary || undefined,
+    imageUrlHQ: primary && !isEpeySource && typeof imgHQ === 'function' ? imgHQ(primary) : primary || undefined,
     images,
     specs: sanitized.specs,
     specSections: sanitized.sections,
     keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
     specsCount: Object.keys(sanitized.specs).length,
-    variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
+    variantGroup,
+    configKey: String(product.configKey || configKeyFromProduct(product, variantGroup) || '').trim().slice(0, 255),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
 
   if (product.gtin) payload.gtin = String(product.gtin).trim().slice(0, 200);
   if (product.mpn) payload.mpn = String(product.mpn).trim().slice(0, 200);
+  if (product.price_raw) payload.price_raw = String(product.price_raw).trim().slice(0, 200);
 
   // Multilingual payload (only if translation pipeline ran inline)
   if (product.multiLangSpecs && typeof product.multiLangSpecs === 'object') {
@@ -597,7 +679,7 @@ function normalizeSpecValue(value) {
   return lines.join('\n');
 }
 
-// Reference-only spec detector. Geizhals occasionally emits rows like
+// Reference-only spec detector. Legacy occasionally emits rows like
 //   <dt>USB-Schreibweise</dt><dd><a href="...">Link</a></dd>
 // pointing to an external Wikipedia / standards article. These rows are
 // not real product specs and just pollute the modal — drop them.
@@ -622,7 +704,7 @@ function _isReferenceLinkDd(dd) {
 }
 
 // Convert an HTML element to plain text while preserving line breaks for
-// the common block-level / list separators Geizhals uses.
+// the common block-level / list separators Legacy uses.
 function _htmlToLinedText(el) {
   if (!el) return '';
   const clone = el.cloneNode(true);
@@ -756,7 +838,7 @@ function extractTechScore(doc) {
     return null;
   }
 
-  // geizhals.eu doesn't have native tech scores; check for rating elements
+  // Legacy.eu doesn't have native tech scores; check for rating elements
   const ratingEl = doc.querySelector('[class*="rating"], [class*="score"], [class*="bewertung"]');
   if (ratingEl) {
     const s = parseScore(ratingEl.textContent);
@@ -805,7 +887,7 @@ function extractListingTechScore(cardEl) {
 // Max images per product (user requirement: first 4 product-only images)
 const MAX_IMAGES_PER_PRODUCT = 4;
 
-// Geizhals CDN exposes the same image in multiple sizes via prefix:
+// Legacy CDN exposes the same image in multiple sizes via prefix:
 //   /-n.webp = original (~1280px, 80-120 KB)
 //   /-l.webp = large    (~640px,  40-60 KB)  ← default product view
 //   /-m.webp = medium   (~320px,  15 KB)     ← list / thumbnail
@@ -854,7 +936,7 @@ function extractImages(doc /*, productSlug */) {
   }
 
   // 2. <img> tags inside the product gallery only
-  //    Geizhals wraps gallery images in `.product-gallery`, `.gallery`,
+  //    Legacy wraps gallery images in `.product-gallery`, `.gallery`,
   //    `#productGallery` containers; restricting to these avoids carousel
   //    "related products" leaking in.
   const galleryScopes = doc.querySelectorAll(
@@ -949,7 +1031,7 @@ function parseSpecs(doc) {
   const specSections = {};
   const keySpecs = {};
 
-  // ── PRIMARY: geizhals.eu dl.specs-grid ──
+  // ── PRIMARY: Legacy.eu dl.specs-grid ──
   // Only extract the FIRST specs-grid to avoid duplicate variants.
   // Each spec is auto-classified into a logical section so admin/app
   // can render organised accordions instead of one giant flat list.
@@ -1037,14 +1119,14 @@ function filterSpecs(specs, sections) {
 }
 
 // ═══════════════════════════════════════
-//  12b. GERMAN → MULTI-LANG TRANSLATION (DeepSeek v3 + Dictionary Cache)
+//  12b. TURKISH → MULTI-LANG TRANSLATION (DeepSeek v3 + Dictionary Cache)
 // ═══════════════════════════════════════
 
-// In-memory DE→target dictionary cache (lazy-loaded from PB)
-const _deDictCache = {}; // { 'some german text': { en: '...', tr: '...', ... } }
+// In-memory TR→target dictionary cache (lazy-loaded from PB)
+const _deDictCache = {}; // { 'some turkish text': { en: '...', de: '...', ... } }
 let _deDictLoaded = false;
 let _deDictDirty = false;
-const DE_DICT_PB_KEY = 'de_translation_dict';
+const DE_DICT_PB_KEY = 'tr_translation_dict';
 
 async function _loadDeDict() {
   if (_deDictLoaded) return;
@@ -1078,9 +1160,9 @@ async function _saveDeDict() {
   }
 }
 
-// Lookup German text in cache for a specific target language
-function _deDictLookup(germanText, targetLang) {
-  const key = germanText.toLowerCase().trim();
+// Lookup Turkish text in cache for a specific target language
+function _deDictLookup(turkishText, targetLang) {
+  const key = turkishText.toLowerCase().trim();
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) return entry[targetLang];
   return null;
@@ -1206,8 +1288,8 @@ function _applyTitleCase(text) {
 window._qorAiTitleCase = _applyTitleCase;
 
 // Store translation in cache (normalized via title-case)
-function _deDictStore(germanText, targetLang, translation) {
-  const key = germanText.toLowerCase().trim();
+function _deDictStore(turkishText, targetLang, translation) {
+  const key = turkishText.toLowerCase().trim();
   const normalized = _applyTitleCase(String(translation || '').trim());
   if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};
@@ -1226,22 +1308,22 @@ function _deDictStore(germanText, targetLang, translation) {
 window.QorAiDict = {
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
-  set:     (germanText, lang, translation) => _deDictStore(germanText, lang, translation),
-  remove:  (germanText) => {
-    const key = String(germanText || '').toLowerCase().trim();
+  set:     (turkishText, lang, translation) => _deDictStore(turkishText, lang, translation),
+  remove:  (turkishText) => {
+    const key = String(turkishText || '').toLowerCase().trim();
     if (_deDictCache[key]) { delete _deDictCache[key]; _deDictDirty = true; }
   },
   save:    () => { _deDictDirty = true; return _saveDeDict(); },
   langs:   () => SUPPORTED_LANGS,
 };
 
-// Batch translate German texts → ALL target languages in ONE DeepSeek call.
-// Response shape: { "german text": { en: "...", tr: "...", ... }, ... }
+// Batch translate Turkish texts → ALL target languages in ONE DeepSeek call.
+// Response shape: { "turkish text": { en: "...", de: "...", ... }, ... }
 // This collapses what used to be 11 sequential API hits per product into a
 // single round-trip: ~11x faster AND ~11x cheaper (token overlap on the
 // system prompt + single network latency).
 const _LANG_NAMES = {
-  en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
+  en: 'English', de: 'German', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
   ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
 };
 
@@ -1312,7 +1394,7 @@ function _salvageTruncatedJson(raw) {
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   const token = getPb()?.authStore?.token;
   if (!token) {
-    console.warn('[de-translate] No auth token');
+    console.warn('[tr-translate] No auth token');
     return {};
   }
 
@@ -1354,18 +1436,18 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
           messages: [
             {
               role: 'system',
-              content: `You are a technical product specification translator. For each German tech spec term, return a JSON object mapping the original German text to translations in the following languages: ${langCodes}.
+              content: `You are a technical product specification translator. For each Turkish tech spec term, return a JSON object mapping the original Turkish text to translations in the following languages: ${langCodes}.
 Rules:
 - Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
 - Product names / brand names stay as-is.
 - Preserve newlines (\\n) inside multi-line values.
 - Return ONLY a single JSON object of the form:
-  {"<german text>": {"en":"...", "tr":"...", "es":"...", ...}, ...}
+  {"<turkish text>": {"en":"...", "de":"...", "es":"...", ...}, ...}
 - The inner object MUST contain exactly these language codes: ${langCodes}.`
             },
             {
               role: 'user',
-              content: `Translate these ${batch.length} German product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
+              content: `Translate these ${batch.length} Turkish product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
             }
           ],
           max_tokens: 8000,
@@ -1401,7 +1483,7 @@ Rules:
         elapsedMs: Date.now() - chunkStart,
       });
     } catch (e) {
-      console.warn('[de-translate] all-langs batch error:', e.message);
+      console.warn('[tr-translate] all-langs batch error:', e.message);
       report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
     }
   }
@@ -1429,11 +1511,11 @@ Rules:
   await _saveDeDict();
 }
 
-// Main function: translate German specs → all target languages
+// Main function: translate Turkish specs → all target languages
 // Returns: { en: {specs}, tr: {specs}, ... }
 //
 // EFFICIENCY MODEL (atom + product-patch):
-//   1) All German texts → looked up in the shared `_deDictCache` (atom dict).
+//   1) All Turkish texts → looked up in the shared `_deDictCache` (atom dict).
 //   2) Only MISSING atoms hit DeepSeek (batched, 1 call per language max 50 atoms).
 //   3) New translations are stored back in the atom dict for reuse.
 //   4) Final per-product multiLangSpecs is built from dict lookups only.
@@ -1476,13 +1558,13 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   // ONE API call covers all 11 languages
   await _deepSeekAllLangsBatch(germanTexts, targetLangs);
 
-  // Build a FLAT german→localized lookup map per language. The renderer
+  // Build a FLAT Turkish→localized lookup map per language. The renderer
   // does `ml[germanKey]` and `ml[germanValue]` so the keys here MUST stay
-  // as the original German text, not the translated text.
+  // as the original Turkish text, not the translated text.
   //
   // Previous (buggy) layout stored `{ translatedKey: translatedVal }`,
   // which made the lookup miss every time and the modal silently fell back
-  // to German for every locale — looking exactly like the translation
+  // to the source language for every locale — looking exactly like the translation
   // pipeline had never run.
   const multiLangSpecs = {};
   for (const lang of targetLangs) {
@@ -1523,7 +1605,7 @@ async function translateSpecSections(specSections, targetLangs = TARGET_LANGS) {
   return out;
 }
 
-// Translate single German product name to all languages (single API call)
+// Translate single Turkish product name to all languages (single API call)
 async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
   await _deepSeekAllLangsBatch([germanName], targetLangs);
@@ -1567,7 +1649,7 @@ function _collectAtomsFromProduct(p, sink) {
 }
 
 function _buildProductTranslations(p, targetLangs) {
-  // For each lang, build flat german→localized map covering specs keys/values
+  // For each lang, build flat source→localized map covering specs keys/values
   // and atomized sub-lines, plus product name + section names.
   const multiLangSpecs = {};
   const multiLangSections = {};
@@ -1658,7 +1740,7 @@ async function scrapeProductDetail(html, url, categoryId) {
   let originalName = '';
   const h1 = doc.querySelector('h1');
   if (h1) {
-    // geizhals.eu: product name is in h1, sometimes with nested spans
+    // Legacy.eu: product name is in h1, sometimes with nested spans
     const clone = h1.cloneNode(true);
     clone.querySelectorAll('small, .subtitle, .variant').forEach(el => el.remove());
     originalName = clone.textContent.trim();
@@ -1678,7 +1760,7 @@ async function scrapeProductDetail(html, url, categoryId) {
   // ── Category ──
   let category = categoryId || '';
   if (!category) {
-    const found = findCategoryByGeizhalsUrl(url);
+    const found = findCategoryByLegacyUrl(url);
     category = found ? found.id : categorySlugFromUrl(url);
   }
   category = detectCategoryFromDoc(doc, category);
@@ -1688,7 +1770,7 @@ async function scrapeProductDetail(html, url, categoryId) {
 
   // ── EAN/GTIN + MPN ──
   // Keep affiliate-matching identifiers as fields, but do not keep shop,
-  // price or merchant metadata from Geizhals.
+  // price or merchant metadata from Legacy.
   const identifiers = extractProductIdentifiers(doc);
 
   // ── Tech Score ──
@@ -1711,7 +1793,7 @@ async function scrapeProductDetail(html, url, categoryId) {
     name: originalName || 'Unknown Product', // German original
     brand,
     category,
-    source: 'geizhals.eu',
+    source: 'Legacy.eu',
     sourceUrl: url,
     imageUrl: images[0] || undefined,
     images,
@@ -1731,7 +1813,7 @@ async function scrapeProductDetail(html, url, categoryId) {
 async function translateScrapedProduct(product) {
   if (!product || !product.specs || !Object.keys(product.specs).length) return product;
 
-  slog(`Translating German specs for: ${product.name?.substring(0, 50)}...`, 'info');
+  slog(`Translating Turkish specs for: ${product.name?.substring(0, 50)}...`, 'info');
 
   try {
     // Translate specs to all languages
@@ -1802,15 +1884,15 @@ function extractProductLinksFromDoc(doc, html) {
 
   function addLink(href) {
     if (!href) return;
-    if (href.startsWith('https://geizhals.eu/') || href.startsWith('http://geizhals.eu/') ||
-        href.startsWith('https://www.geizhals.eu/') || href.startsWith('https://geizhals.at/') ||
-        href.startsWith('https://geizhals.de/')) {
+    if (href.startsWith('https://Legacy.eu/') || href.startsWith('http://Legacy.eu/') ||
+        href.startsWith('https://www.Legacy.eu/') || href.startsWith('https://Legacy.at/') ||
+        href.startsWith('https://Legacy.de/')) {
       try { href = new URL(href).pathname; } catch { return; }
     }
     if (!productLinkRe.test(href)) return;
     if (href.includes('/en/') || href.includes('/about') || href.includes('/contact')) return;
     if (!href.startsWith('/')) href = '/' + href;
-    const fullUrl = GEIZHALS_BASE + href;
+    const fullUrl = LEGACY_BASE + href;
     if (seen.has(fullUrl)) return;
     seen.add(fullUrl);
     results.push({ url: fullUrl, techScore: null });
@@ -1846,21 +1928,21 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     ? QorAiCategories.getById(categoryPath)
     : null;
   if (!catDef && typeof QorAiCategories !== 'undefined') {
-    catDef = QorAiCategories.getAll().find(c => c.geizhalsSlug === categoryPath);
+    catDef = QorAiCategories.getAll().find(c => c.LegacySlug === categoryPath);
   }
 
-  if (!catDef || !catDef.geizhalsSlug) {
+  if (!catDef || !catDef.LegacySlug) {
     slog(`No real ?cat= ID found for category: ${categoryPath}`, 'error');
     return [];
   }
 
-  const catParam = catDef.geizhalsSlug;
+  const catParam = catDef.LegacySlug;
   const categoryId = catDef.id;
   slog(`Collecting from category listing: ?cat=${catParam} (${catDef.name})`);
 
   const allItems = [];
   const seenUrls = new Set();
-  // Geizhals only honours the `pg` pagination param. Cycling through other
+  // Legacy only honours the `pg` pagination param. Cycling through other
   // names wasted requests and multiplied CF pressure; stick with `pg`.
   {
     const pageParam = 'pg';
@@ -1948,7 +2030,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     }
 
     while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2) {
-      const listingUrl = `${GEIZHALS_BASE}/?cat=${catParam}&${GEIZHALS_LISTING_EXTRA}&${pageParam}=${page}`;
+      const listingUrl = `${LEGACY_BASE}/?cat=${catParam}&${LEGACY_LISTING_EXTRA}&${pageParam}=${page}`;
       slog(`Fetching listing [${pageParam}=${page}]: ${listingUrl.substring(0, 80)}...`, 'info');
 
       let pageResult = null;
@@ -2030,7 +2112,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
         slog(`  ❄️ Proactive cooldown ${(PROACTIVE_COOLDOWN_MS / 1000) | 0}s…`, 'info');
         await sleep(PROACTIVE_COOLDOWN_MS);
       } else {
-        // Per-page delay widened from 2-3.5s → 4-6s. Geizhals' Cloudflare
+        // Per-page delay widened from 2-3.5s → 4-6s. Legacy' Cloudflare
         // edge gets noisier when requests come in faster than ~12/min.
         await sleep(4000 + Math.random() * 2000);
       }
@@ -2044,7 +2126,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
 async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   const term = String(searchTerm || '').trim();
   if (!term) return [];
-  slog(`Collecting from Geizhals search: "${term}"`);
+  slog(`Collecting from Legacy search: "${term}"`);
 
   const allItems = [];
   const seenUrls = new Set();
@@ -2088,7 +2170,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
   }
 
   while (allItems.length < maxProducts && !scraperAbort && emptyCount < 2 && failCount < 3) {
-    const url = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(term)}&${GEIZHALS_LISTING_EXTRA}&pg=${page}`;
+    const url = `${LEGACY_BASE}/?fs=${encodeURIComponent(term)}&${LEGACY_LISTING_EXTRA}&pg=${page}`;
     slog(`Fetching search page ${page}: ${url.substring(0, 90)}...`, 'info');
     const result = await fetchSearchPage(url);
     if (result.blocked) {
@@ -2602,7 +2684,7 @@ async function startBulkScrape() {
 async function scrapeByUrl() {
   const nameInput = document.getElementById('scrapeUrl');
   const inputVal = nameInput ? nameInput.value.trim() : '';
-  if (!inputVal) { toast('Enter a product name or geizhals.eu URL', 'w'); return; }
+  if (!inputVal) { toast('Enter a product name or Legacy.eu URL', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   clearScraperLog();
@@ -2657,9 +2739,9 @@ async function scrapeByUrl() {
         return;
       }
     } else {
-      // Product name search via geizhals search page
-      slog(`Searching geizhals.eu for: ${name}`);
-      const searchUrl = `${GEIZHALS_BASE}/?fs=${encodeURIComponent(name)}`;
+      // Product name search via Legacy search page
+      slog(`Searching Legacy.eu for: ${name}`);
+      const searchUrl = `${LEGACY_BASE}/?fs=${encodeURIComponent(name)}`;
       const searchHtml = await proxyFetch(searchUrl);
       if (!searchHtml || isChallengePage(searchHtml)) {
         slog('❌ Search blocked or no results', 'error');
@@ -2738,9 +2820,9 @@ async function startScoreUpdate() {
   let products;
   try {
     if (typeof allProducts !== 'undefined' && allProducts.length > 0) {
-      products = allProducts.filter(p => p.sourceUrl && p.sourceUrl.includes('geizhals.eu'));
+      products = allProducts.filter(p => String(p.source || '').toLowerCase().includes('epey') || (p.sourceUrl && p.sourceUrl.includes('epey.com')));
     } else {
-      const items = await pbGetAll('products', { filter: `source="geizhals.eu"` });
+      const items = await pbGetAll('products', { filter: `(source="epey.com" || source="epey")` });
       products = items.map(d => ({ id: d.id, ...d.data() }));
     }
   } catch (e) {
@@ -2839,4 +2921,499 @@ function downloadScraperLog() {
   a.download = `scraper-log-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════
+//  EPEY.COM OVERRIDES
+//  Keep these at the end so they replace the retired Legacy implementations.
+// ═══════════════════════════════════════
+
+function normalizeEpeyImageUrl(url) {
+  let u = String(url || '').trim();
+  if (!u) return '';
+  if (u.startsWith('//')) u = `https:${u}`;
+  if (!/^https?:\/\//i.test(u)) return '';
+  u = u.split(/[?#]/)[0];
+  if (!/resim\.epey\.com/i.test(u)) return '';
+  if (/\/(?:tema|marka|kategori|logo)\//i.test(u)) return '';
+  return u.replace(/\/[ksmtc]_/g, '/b_');
+}
+
+function isEpeyProductUrl(url) {
+  try {
+    const u = new URL(url, EPEY_BASE);
+    return /(^|\.)epey\.com$/i.test(u.hostname)
+      && /\.html$/i.test(u.pathname)
+      && !/-resimleri\.html$/i.test(u.pathname)
+      && !/\/(karsilastir|sayfa|yardim|hakkimizda|iletisim)\//i.test(u.pathname);
+  } catch { return false; }
+}
+
+function normalizeEpeyProductUrl(url) {
+  try {
+    const u = new URL(url, EPEY_BASE);
+    if (!isEpeyProductUrl(u.href)) return '';
+    return `${EPEY_BASE}${u.pathname}`;
+  } catch { return ''; }
+}
+
+function findCategoryByEpeyUrl(url) {
+  if (!url || typeof QorAiCategories === 'undefined') return null;
+  try {
+    const parts = new URL(url, EPEY_BASE).pathname.split('/').filter(Boolean);
+    const first = normalizeCategoryToken(parts[0] || '');
+    const path = parts.slice(0, -1).join('/').toLowerCase();
+    const all = QorAiCategories.getAll();
+    return all.find(c => normalizeCategoryToken(c.id) === first)
+      || all.find(c => c.epeyPath && path.startsWith(String(c.epeyPath).toLowerCase()))
+      || null;
+  } catch { return null; }
+}
+
+function extractProductIdentifiersFromSpecs(specs) {
+  const ids = { gtin: '', mpn: '' };
+  for (const [key, value] of Object.entries(specs || {})) {
+    const k = String(key || '').toLocaleLowerCase('tr');
+    const v = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!ids.gtin && /\b(ean|gtin|barkod|upc)\b/i.test(k)) {
+      const m = v.match(/\b\d{8,14}\b/);
+      if (m) ids.gtin = m[0];
+    }
+    if (!ids.mpn && /(mpn|üretici kodu|urun kodu|ürün kodu|model kodu|parca numarasi|parça numarası|part number)/i.test(k)) {
+      ids.mpn = v.split(/\s*[|,;]\s*/)[0].slice(0, 200);
+    }
+  }
+  return ids;
+}
+
+function extractPrice(doc) {
+  if (typeof doc === 'string') doc = parseHTML(doc);
+  const candidates = [
+    '#fiyat', '.fiyat', '.urun_fiyat', '.urun-fiyat',
+    '[class*="fiyat"]', '[itemprop="price"]'
+  ];
+  for (const sel of candidates) {
+    const el = doc.querySelector(sel);
+    const txt = el?.getAttribute('content') || el?.textContent || '';
+    const m = txt.replace(/\s+/g, ' ').match(/(\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?)\s*(?:TL|₺)/i);
+    if (m) return m[0].trim();
+  }
+  return '';
+}
+
+function extractTechScore(doc) {
+  if (typeof doc === 'string') doc = parseHTML(doc);
+  const parseScore = (text) => {
+    const m = String(text || '').match(/(\d{1,3})/);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    return n >= 1 && n <= 100 ? n : null;
+  };
+  for (const sel of ['#puan', '.teknikpuan', '.teknik-puan', '.puan', '[data-teknikpuan]', '[data-puan]', '.circliful']) {
+    const el = doc.querySelector(sel);
+    if (!el) continue;
+    const s = parseScore(el.getAttribute('data-teknikpuan') || el.getAttribute('data-puan') || el.getAttribute('data-percent') || el.textContent);
+    if (s) return s;
+  }
+  return null;
+}
+
+function extractImages(doc, productSlug = '') {
+  if (typeof doc === 'string') doc = parseHTML(doc);
+  const slug = String(productSlug || '').replace(/\.html$/i, '').toLowerCase();
+  const images = [];
+  const seen = new Set();
+  const add = (raw, loose = false) => {
+    const u = normalizeEpeyImageUrl(raw);
+    if (!u) return;
+    const lower = u.toLowerCase();
+    if (!loose && slug && !lower.includes(slug)) return;
+    const key = lower.replace(/\.(jpe?g|png|webp|gif|avif)$/i, '');
+    if (seen.has(key) || images.length >= 8) return;
+    seen.add(key);
+    images.push(u);
+  };
+
+  doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, [data-src], [data-zoom], [data-big], [data-full], [data-image], img, a[href*="resim.epey.com"]').forEach(el => {
+    for (const attr of ['data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'data-url', 'src', 'href']) {
+      const val = el.getAttribute(attr);
+      if (val && /resim\.epey\.com/i.test(val)) add(val);
+    }
+    const style = el.getAttribute('style') || '';
+    const sm = style.match(/url\((['"]?)([^'")]+resim\.epey\.com[^'")]+)\1\)/i);
+    if (sm) add(sm[2]);
+    const onclick = el.getAttribute('onclick') || '';
+    const om = onclick.match(/['"]([^'"]*resim\.epey\.com[^'"]*)['"]/i);
+    if (om) add(om[1]);
+  });
+
+  if (images.length === 0) {
+    doc.querySelectorAll('img[src*="resim.epey.com"], img[data-src*="resim.epey.com"]').forEach(img => {
+      add(img.getAttribute('src') || img.getAttribute('data-src'), true);
+    });
+  }
+  return images;
+}
+
+async function fetchGalleryImages(productSlug) {
+  if (!productSlug) return [];
+  try {
+    const html = await proxyFetch(`${EPEY_BASE}/${productSlug}-resimleri.html`);
+    if (!html || isChallengePage(html)) return [];
+    return extractImages(parseHTML(html), productSlug);
+  } catch { return []; }
+}
+
+function parseSpecs(doc) {
+  const specs = {};
+  const specSections = {};
+  const keySpecs = {};
+
+  const cleanText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+  const addSpec = (section, key, value) => {
+    const k = cleanText(key).replace(/:$/, '');
+    const v = cleanText(value);
+    if (!k || !v || k.length > 180 || v.length > 1200) return;
+    if (!specSections[section]) specSections[section] = {};
+    specs[k] = v;
+    specSections[section][k] = v;
+  };
+
+  const parseList = (root, section) => {
+    root.querySelectorAll('li').forEach(li => {
+      const strong = li.querySelector('strong, b, .baslik, .cell:first-child');
+      if (!strong) return;
+      const clone = li.cloneNode(true);
+      clone.querySelectorAll('strong, b, .baslik, .cell:first-child, script, style').forEach(x => x.remove());
+      let value = Array.from(li.querySelectorAll('span.cell a, .cell a, a'))
+        .map(a => cleanText(a.textContent))
+        .filter(Boolean)
+        .join('\n');
+      if (!value) value = cleanText(clone.textContent);
+      addSpec(section, strong.textContent, value);
+    });
+  };
+
+  const ozellikler = doc.querySelector('#ozellikler, .ozellikler');
+  if (ozellikler) {
+    ozellikler.querySelectorAll('.masonry-brick, .ozellik-grup, .detay, section, .liste').forEach(block => {
+      const h = block.querySelector('h2, h3, h4, .baslik');
+      const section = cleanText(h?.querySelector('span')?.textContent || h?.textContent || 'Genel');
+      parseList(block, section || 'Genel');
+      block.querySelectorAll('tr').forEach(row => {
+        const cells = row.querySelectorAll('th,td');
+        if (cells.length >= 2) addSpec(section || 'Genel', cells[0].textContent, cells[1].textContent);
+      });
+    });
+
+    if (Object.keys(specs).length === 0) {
+      let section = 'Genel';
+      ozellikler.querySelectorAll('h2,h3,h4,li,tr').forEach(el => {
+        if (/^H[234]$/i.test(el.tagName)) {
+          section = cleanText(el.textContent) || section;
+          return;
+        }
+        if (el.tagName === 'LI') parseList(el.parentElement || el, section);
+        if (el.tagName === 'TR') {
+          const cells = el.querySelectorAll('th,td');
+          if (cells.length >= 2) addSpec(section, cells[0].textContent, cells[1].textContent);
+        }
+      });
+    }
+  }
+
+  doc.querySelectorAll('table tr').forEach(row => {
+    const cells = row.querySelectorAll('th,td');
+    if (cells.length >= 2) addSpec('Genel', cells[0].textContent, cells[1].textContent);
+  });
+
+  doc.querySelectorAll('.cell, .ozet .row, .row1, .row2').forEach(el => {
+    const key = cleanText(el.querySelector('.row1, strong, b')?.textContent);
+    const value = cleanText(el.querySelector('.row2, span:last-child')?.textContent);
+    if (key && value && !specs[key]) {
+      keySpecs[key] = value;
+      addSpec('Öne Çıkanlar', key, value);
+    }
+  });
+
+  return { specs, specSections, keySpecs };
+}
+
+async function scrapeProductDetail(html, url, categoryId = '') {
+  if (!html || isChallengePage(html)) return null;
+  const doc = parseHTML(html);
+  const bodyText = (doc.body?.textContent || '').trim();
+  if (bodyText.length < 100) return null;
+
+  const h1 = doc.querySelector('h1 > a') || doc.querySelector('h1');
+  const originalName = String(h1?.textContent || '').replace(/\s+/g, ' ').trim();
+  if (!originalName) return null;
+
+  const productSlug = slugFromUrl(url);
+  const { specs: rawSpecs, specSections: rawSections, keySpecs: rawKeySpecs } = parseSpecs(doc);
+  const ids = extractProductIdentifiersFromSpecs(rawSpecs);
+  const brand = extractBrand(originalName, rawSpecs);
+  let category = categoryId || findCategoryByEpeyUrl(url)?.id || detectCategoryFromDoc(doc, categorySlugFromUrl(url)) || categorySlugFromUrl(url);
+
+  let images = extractImages(doc, productSlug);
+  if (images.length < 4) {
+    const gallery = await fetchGalleryImages(productSlug);
+    const seen = new Set(images.map(x => x.toLowerCase()));
+    for (const img of gallery) {
+      if (images.length >= 8) break;
+      if (!seen.has(img.toLowerCase())) { seen.add(img.toLowerCase()); images.push(img); }
+    }
+  }
+
+  const variantGroup = modelFamilyKey({ name: originalName, brand, category })
+    || normalizeVariantGroupFromSlug(productSlug);
+
+  return {
+    id: generateProductId(productSlug || originalName),
+    slug: productSlug || generateProductId(originalName),
+    name: originalName,
+    brand,
+    category,
+    source: 'epey.com',
+    sourceUrl: normalizeEpeyProductUrl(url) || url,
+    specs: rawSpecs,
+    specSections: rawSections,
+    keySpecs: rawKeySpecs,
+    specsCount: Object.keys(rawSpecs).length,
+    images,
+    imageUrl: images[0] || '',
+    techScore: extractTechScore(doc),
+    price_raw: extractPrice(doc),
+    gtin: ids.gtin,
+    mpn: ids.mpn,
+    variantGroup,
+    scrapedAt: new Date().toISOString(),
+  };
+}
+
+function extractProductLinksFromDoc(doc) {
+  if (typeof doc === 'string') doc = parseHTML(doc);
+  const results = [];
+  const seen = new Set();
+  const roots = [
+    doc.querySelector('#listele'),
+    doc.querySelector('.urunler'),
+    doc.querySelector('.listele'),
+    doc.querySelector('.urun-listesi'),
+    doc.querySelector('main'),
+    doc.body,
+  ].filter(Boolean);
+
+  for (const root of roots) {
+    root.querySelectorAll('a[href], [data-href], [data-url], [onclick]').forEach(el => {
+      let href = el.getAttribute('href') || el.getAttribute('data-href') || el.getAttribute('data-url') || '';
+      if (!href) {
+        const m = String(el.getAttribute('onclick') || '').match(/['"]([^'"]+\.html)['"]/i);
+        if (m) href = m[1];
+      }
+      const full = normalizeEpeyProductUrl(href);
+      if (!full || seen.has(full)) return;
+      seen.add(full);
+      const card = el.closest('.urun, .urun-k, .liste-urun, [class*="urun"], li, tr, div');
+      results.push({ url: full, techScore: card ? extractListingTechScore(card) : null });
+    });
+    if (results.length) break;
+  }
+  return results;
+}
+
+function epeySearchUrls(term, page = 1) {
+  const q = encodeURIComponent(term);
+  const slug = normalizeCategoryToken(term);
+  const suffix = page > 1 ? `&sayfa=${page}` : '';
+  return [
+    `${EPEY_BASE}/ara/?ara=${q}${suffix}`,
+    `${EPEY_BASE}/arama/?q=${q}${suffix}`,
+    `${EPEY_BASE}/arama/?s=${q}${suffix}`,
+    `${EPEY_BASE}/arama/${slug}/${page > 1 ? `?sayfa=${page}` : ''}`,
+    `${EPEY_BASE}/?q=${q}${suffix}`,
+  ];
+}
+
+function epeyBrandCategoryUrls(term) {
+  const brandSlug = normalizeCategoryToken(term);
+  if (!brandSlug || /\d/.test(brandSlug)) return [];
+  const cats = (typeof QorAiCategories !== 'undefined' ? QorAiCategories.getAll() : [])
+    .filter(c => c.epeyPath)
+    .map(c => ({ id: c.id, url: `${EPEY_BASE}/${String(c.epeyPath).replace(/^\/|\/$/g, '')}/${brandSlug}/` }));
+  const priority = [
+    'laptops','smartphones','tablets','desktops','monitors','tvs','ssd','motherboards',
+    'graphics_cards','cpus','ram','printers','headphones','speakers','smartwatches'
+  ];
+  const score = (id) => {
+    const i = priority.indexOf(id);
+    return i >= 0 ? i : 999;
+  };
+  const seen = new Set();
+  return cats
+    .sort((a, b) => score(a.id) - score(b.id))
+    .filter(item => {
+      if (seen.has(item.url)) return false;
+      seen.add(item.url);
+      return true;
+    });
+}
+
+async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
+  const term = String(searchTerm || '').trim();
+  if (!term) return [];
+  slog(`Collecting from Epey search: "${term}"`);
+  const allItems = [];
+  const seen = new Set();
+
+  const brandUrls = epeyBrandCategoryUrls(term);
+  if (brandUrls.length) {
+    slog(`  scanning ${brandUrls.length} Epey category/brand pages first`, 'info');
+    for (const brandPage of brandUrls) {
+      if (allItems.length >= maxProducts || scraperAbort) break;
+      try {
+        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(brandPage.url)}`, { signal: AbortSignal.timeout(45000) });
+        const data = res.ok ? await res.json() : null;
+        const pageItems = Array.isArray(data?.links) ? data.links.map(x => ({ url: x })) : [];
+        let added = 0;
+        for (const item of pageItems) {
+          const full = normalizeEpeyProductUrl(item.url);
+          if (!full || seen.has(full)) continue;
+          seen.add(full);
+          allItems.push({ url: full, techScore: item.techScore || null });
+          added++;
+          if (allItems.length >= maxProducts) break;
+        }
+        if (added) slog(`  ${brandPage.id}: +${added}`);
+      } catch (e) {
+        // Brand/category URL may not exist for every category. Quietly continue.
+      }
+    }
+  }
+
+  let emptyPages = 0;
+  const maxPages = Math.max(1, Math.ceil(maxProducts / 24) + 3);
+
+  for (let page = 1; page <= maxPages && allItems.length < maxProducts && !scraperAbort; page++) {
+    updateProgress(page, maxPages, 'Search pages');
+    let pageItems = [];
+    for (const url of epeySearchUrls(term, page)) {
+      try {
+        let data = null;
+        const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(45000) });
+        if (res.ok) data = await res.json();
+        pageItems = Array.isArray(data?.items)
+          ? data.items
+          : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
+        if (!pageItems.length) {
+          const html = await proxyFetch(url);
+          if (html && !isChallengePage(html)) pageItems = extractProductLinksFromDoc(html);
+        }
+        if (pageItems.length) {
+          slog(`  page ${page}: ${pageItems.length} links`);
+          break;
+        }
+      } catch (e) {
+        slog(`  search page ${page} failed: ${e.message}`, 'warn');
+      }
+    }
+
+    let added = 0;
+    for (const item of pageItems) {
+      const full = normalizeEpeyProductUrl(item.url);
+      if (!full || seen.has(full)) continue;
+      seen.add(full);
+      allItems.push({ url: full, techScore: item.techScore || null });
+      added++;
+      if (allItems.length >= maxProducts) break;
+    }
+    if (!added) emptyPages++;
+    else emptyPages = 0;
+    if (emptyPages >= 2) break;
+  }
+  return allItems.slice(0, maxProducts);
+}
+
+async function _loadExistingSourceUrls(categoryId) {
+  try {
+    const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
+    const filter = safeCategory
+      ? `category="${safeCategory}" && (source="epey.com" || source="epey")`
+      : `(source="epey.com" || source="epey")`;
+    const docs = await pbGetAll('products', { filter, sort: '-created' });
+    const set = new Set();
+    for (const d of docs) {
+      const data = typeof d.data === 'function' ? d.data() : (d.data || d);
+      if (data?.sourceUrl) set.add(String(data.sourceUrl).trim());
+    }
+    return set;
+  } catch (e) {
+    slog(`  (existing Epey URL preload failed: ${e.message})`, 'warn');
+    return new Set();
+  }
+}
+
+async function startBulkScrape() {
+  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
+  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+
+  const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
+  if (!searchTerm) { toast('Marka veya arama terimi gir', 'w'); return; }
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 1200;
+
+  scraperRunning = true; scraperAbort = false;
+  document.getElementById('btnBulkScrape').style.display = 'none';
+  document.getElementById('btnStopScrape').style.display = '';
+  clearScraperLog();
+  slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
+  slog(`Epey search import: "${searchTerm}", max ${maxProducts}`, 'info');
+
+  try {
+    const urlItems = await collectSearchProductUrls(searchTerm, maxProducts);
+    slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
+    if (!urlItems.length) {
+      slog('No product URLs found. Try a more exact brand/model term or check proxy.', 'error');
+      finishScraping();
+      return;
+    }
+    const results = await sequentialScrape(urlItems.slice(0, maxProducts), '', delay);
+    slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
+    if (results.added > 0 && typeof loadProducts === 'function') await loadProducts();
+  } catch (e) {
+    slog(`Fatal error: ${e.message}`, 'error');
+  }
+  finishScraping();
+}
+
+async function scrapeByUrl() {
+  const inputVal = document.getElementById('scrapeUrl')?.value?.trim() || '';
+  if (!inputVal) { toast('Epey URL veya ürün adı gir', 'w'); return; }
+  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+
+  clearScraperLog();
+  let url = '';
+  if (/^https?:\/\//i.test(inputVal)) {
+    url = normalizeEpeyProductUrl(inputVal);
+    if (!url) { toast('Sadece epey.com ürün URL destekleniyor', 'e'); return; }
+  } else {
+    slog(`Searching Epey: ${inputVal}`);
+    const links = await collectSearchProductUrls(inputVal, 1);
+    url = links[0]?.url || '';
+    if (!url) { slog('No Epey result found', 'error'); return; }
+  }
+
+  try {
+    const html = await proxyFetch(url);
+    if (!html || isChallengePage(html)) { slog('Page not found or blocked', 'error'); return; }
+    const product = await scrapeProductDetail(html, url, document.getElementById('singleUrlCategory')?.value || '');
+    if (!product) { slog('Could not parse product data', 'error'); return; }
+    const clean = prepareProductPayload(product);
+    const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+    window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
+    slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images)`, 'success');
+    if (typeof loadProducts === 'function') await loadProducts();
+  } catch (e) {
+    slog(`Error: ${e.message}`, 'error');
+  }
 }
