@@ -105,7 +105,7 @@ async function main() {
       const json = await fetchIcecatJson(p.icecatId);
       const d = json.data || {};
       const gi = d.GeneralInfo || {};
-      const fresh = collectIcecatImages(d, gi, 4);
+      const fresh = collectIcecatImages(d, gi, 8);
       const samePrimary = String(p.imageUrl || '') === fresh.imageUrl;
       const sameImages = JSON.stringify(Array.isArray(p.images) ? p.images : []) === JSON.stringify(fresh.images);
       if (samePrimary && sameImages) {

@@ -63,17 +63,26 @@ async function getToken() {
   return _token;
 }
 
-/** Return offer objects for one product (matched by GTIN). */
+/** Return offer objects for one product (matched by GTIN, else brand+MPN). */
 async function searchOffers(product) {
   if (!isConfigured()) return [];
   const gtin = String(product.gtin || '').trim();
-  if (!gtin) return [];
+  const mpn = String(product.mpn || '').trim();
+  const brand = String(product.brand || '').trim();
+  // GTIN is an exact barcode match. Epey imports often have no barcode, so we
+  // fall back to a brand+MPN keyword search — still precise enough to match
+  // the right listing, and it lets those products earn affiliate offers too.
+  let query;
+  if (gtin)             query = `gtin=${encodeURIComponent(gtin)}`;
+  else if (mpn && brand) query = `q=${encodeURIComponent(`${brand} ${mpn}`)}`;
+  else if (mpn)          query = `q=${encodeURIComponent(mpn)}`;
+  else return [];
   const token = await getToken();
   const out = [];
   for (const market of MARKETPLACES) {
     const r = await httpsJson({
       method: 'GET', hostname: 'api.ebay.com',
-      path: `/buy/browse/v1/item_summary/search?gtin=${encodeURIComponent(gtin)}&limit=3`,
+      path: `/buy/browse/v1/item_summary/search?${query}&limit=5`,
       headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': market },
     });
     if (r.status !== 200 || !Array.isArray(r.body.itemSummaries)) continue;
