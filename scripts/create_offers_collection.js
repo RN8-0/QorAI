@@ -35,8 +35,8 @@ const COLLECTION = {
     { name: 'price',        type: 'number', min: 0 },
     { name: 'currency',     type: 'text', max: 4 },
     { name: 'priceText',    type: 'text', max: 60 },
-    { name: 'url',          type: 'text', max: 600 },  // retailer URL
-    { name: 'affiliateUrl', type: 'text', max: 800 },  // affiliate deep link
+    { name: 'url',          type: 'text', max: 2500 }, // retailer URL (eBay links are long)
+    { name: 'affiliateUrl', type: 'text', max: 2500 }, // affiliate deep link
     { name: 'condition',    type: 'text', max: 20 },   // new / refurbished / used
     { name: 'inStock',      type: 'bool' },
     { name: 'source',       type: 'text', max: 40 },   // connector id
