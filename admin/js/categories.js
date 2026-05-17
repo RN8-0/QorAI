@@ -521,10 +521,13 @@ async function populateScraperCategories() {
   if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
 
   const counts = await _loadCategoryCounts();
-  const LegacyCounts = await _loadCategoryCounts('Legacy.eu');
+  // The Translate-Category panel only ever translates epey.com products
+  // (Icecat already ships multilingual specs), so its dropdown must list the
+  // categories that actually hold Epey products.
+  const epeyCounts = await _loadCategoryCounts('epey.com');
 
   let bulkOpts = '<option value="">Select Category</option>';
-  let dictOpts = '<option value="">Select Legacy Category</option>';
+  let dictOpts = '<option value="">Kategori seç</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
   const groupForCat = (cat) => {
@@ -552,7 +555,7 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
     cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
-      const ghCnt = LegacyCounts[cat.id] || 0;
+      const ghCnt = epeyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
@@ -568,7 +571,7 @@ async function populateScraperCategories() {
     bulkOpts += `<optgroup label="Custom">`;
     customs.forEach(cat => {
       const cnt = counts[cat.id] || 0;
-      const ghCnt = LegacyCounts[cat.id] || 0;
+      const ghCnt = epeyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
@@ -587,7 +590,7 @@ async function populateScraperCategories() {
     const dictSynced = [];
     syncedIds.forEach(id => {
       const cnt = counts[id] || 0;
-      const ghCnt = LegacyCounts[id] || 0;
+      const ghCnt = epeyCounts[id] || 0;
       const name = _titleFromCategoryId(id);
       flatOpts += `<option value="${escHtml(id)}">${escHtml(name)}${cnt > 0 ? ` (${cnt})` : ''}</option>`;
       if (ghCnt > 0) {
