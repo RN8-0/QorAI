@@ -182,4 +182,31 @@ async function searchOffers(product) {
   return out;
 }
 
-module.exports = { searchOffers, isConfigured, id: 'ebay' };
+/** Live Browse-API daily quota for this app: { limit, remaining, reset }. */
+async function getRateLimit() {
+  if (!isConfigured()) return null;
+  try {
+    const token = await getToken();
+    const r = await httpsJson({
+      method: 'GET', hostname: 'api.ebay.com',
+      path: '/developer/analytics/v1_beta/rate_limit/?api_context=buy&api_name=Browse',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (r.status !== 200) return null;
+    for (const g of (r.body.rateLimits || [])) {
+      for (const rs of (g.resources || [])) {
+        if (/(^|\.)browse$/i.test(rs.name || '')) {
+          const rate = (rs.rates || [])[0];
+          if (rate) return { limit: rate.limit, remaining: rate.remaining, reset: rate.reset };
+        }
+      }
+    }
+    return null;
+  } catch { return null; }
+}
+
+// Roughly how many Browse calls one product costs: one per marketplace, plus
+// a keyword retry when the GTIN lookup returns nothing.
+const CALLS_PER_PRODUCT = MARKETPLACES.length * 2;
+
+module.exports = { searchOffers, isConfigured, getRateLimit, CALLS_PER_PRODUCT, id: 'ebay' };

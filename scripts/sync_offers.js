@@ -12,6 +12,9 @@
  *   node scripts/sync_offers.js --missing-only     only products with no
  *                                                  offers yet (incremental —
  *                                                  use this for automation)
+ *   node scripts/sync_offers.js --auto             size the run to whatever
+ *                                                  is left of the eBay daily
+ *                                                  API quota (never overruns)
  *
  * Connectors with no credentials are skipped — add keys to migration/.env
  * (see scripts/connectors/*.js headers) to enable eBay / Amazon / …
@@ -26,17 +29,34 @@ const CONNECTORS = [
   require('./connectors/amazon'),
 ];
 
+const ebay = require('./connectors/ebay');
+
 const argv = process.argv.slice(2);
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
-const LIMIT = parseInt((argv.find(a => a.startsWith('--limit=')) || '').split('=')[1] || '0', 10);
+let LIMIT = parseInt((argv.find(a => a.startsWith('--limit=')) || '').split('=')[1] || '0', 10);
 const ALL_VARIANTS = argv.includes('--all-variants');
 // --missing-only (alias --new): only enrich products that have no offers yet.
 // Use this after every scrape batch — it skips the thousands of products
 // already covered, so a daily/automated run stays cheap as the catalog grows.
 const MISSING_ONLY = argv.includes('--missing-only') || argv.includes('--new');
+// --auto: size the run to whatever is left of the eBay daily API quota, so
+// the job never blows the limit.
+const AUTO = argv.includes('--auto');
 const DELAY = 250; // ms between products — be gentle with retailer APIs
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Cap LIMIT to the remaining eBay Browse quota / calls-per-product.
+async function applyAutoLimit() {
+  const rl = await ebay.getRateLimit();
+  if (!rl) { console.log('  --auto: eBay rate limit unavailable, running uncapped.'); return; }
+  const perProduct = ebay.CALLS_PER_PRODUCT || 6;
+  // Keep a 10% safety margin so other calls (and rounding) never overrun.
+  const safe = Math.max(0, Math.floor((rl.remaining * 0.9) / perProduct));
+  console.log(`  eBay quota: ${rl.remaining}/${rl.limit} left → safe for ~${safe} products (resets ${rl.reset || '?'})`);
+  if (safe <= 0) { LIMIT = -1; console.log('  Quota exhausted — nothing will run today.'); return; }
+  LIMIT = (LIMIT > 0) ? Math.min(LIMIT, safe) : safe;
+}
 
 async function fetchProducts() {
   const out = [];
@@ -52,7 +72,7 @@ async function fetchProducts() {
       `&fields=id,name,brand,gtin,mpn,category${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
     out.push(...(r.body.items || []));
-    if (LIMIT && out.length >= LIMIT) return out.slice(0, LIMIT);
+    if (LIMIT > 0 && out.length >= LIMIT) return out.slice(0, LIMIT);
     if (page >= (r.body.totalPages || 1)) break;
     page++;
   }
@@ -70,6 +90,9 @@ async function main() {
     return;
   }
   console.log(`  Active connectors: ${active.map(c => c.id).join(', ')}`);
+
+  if (AUTO) await applyAutoLimit();
+  if (LIMIT < 0) { console.log('\n  Skipped — eBay daily quota is used up.\n'); return; }
 
   const products = await fetchProducts();
   console.log(`  ${products.length} products to enrich\n`);
