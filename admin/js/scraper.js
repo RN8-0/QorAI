@@ -358,7 +358,7 @@ function updateScrapeModeUI() {
   if (searchField) searchField.style.display = '';
   if (catField) catField.style.display = 'none';
   if (hint) {
-    hint.textContent = 'Marka + kategori seç (ör. Apple → Akıllı Telefon) → sadece o markanın o kategorideki ürünleri gelir, alakasız sonuç yok. Kategori boş bırakılırsa tüm Epey araması yapılır (karışık sonuç).';
+    hint.textContent = 'Kategori seç → o kategorideki TÜM Epey ürünleri çekilir (satışta olan da olmayan da, tüm markalar). Ürün limiti kadarı işlenir.';
   }
 }
 window.updateScrapeModeUI = updateScrapeModeUI;
@@ -3317,18 +3317,17 @@ function epeyBrandCategoryUrls(term) {
     });
 }
 
-// Collect product URLs for a brand / search term.
+// Collect product URLs for an Epey category (and optionally a brand/term).
 //
-// CATEGORY-SCOPED (categoryId given) = Epey's per-category brand listing
-// (`epey.com/<epeyPath>/<brand>/`) — e.g. Apple → Akıllı Telefon returns ONLY
-// Apple phones, zero junk (no perfume / baby-food rows that an "apple" site
-// search drags in).
+// CATEGORY mode (categoryId given) = Epey's category listing
+// (`epey.com/<epeyPath>/`) — every product in that category. With a search
+// term it narrows to that brand inside the category (`…/<epeyPath>/<brand>/`).
 //
-// NO CATEGORY = Epey site search (`/ara/?ara=<term>`): brand-based across
-// every category, in site order. Useful but can include unrelated products.
+// SEARCH mode (no categoryId) = Epey site search (`/ara/?ara=<term>`), used by
+// the "Add by URL" lookup.
 async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryId = '') {
   const term = String(searchTerm || '').trim();
-  if (!term) return [];
+  if (!term && !categoryId) return [];
   const allItems = [];
   const seen = new Set();
 
@@ -3357,18 +3356,21 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // ── CATEGORY-SCOPED: brand + category → clean per-category brand listing ──
+  // ── CATEGORY mode: every product in the Epey category listing ──
   const catDef = categoryId && typeof QorAiCategories !== 'undefined'
     ? (QorAiCategories.getById?.(categoryId) || QorAiCategories.getAll().find(c => c.id === categoryId))
     : null;
   const epeyPath = catDef && catDef.epeyPath ? String(catDef.epeyPath).replace(/^\/|\/$/g, '') : '';
   if (categoryId) {
     if (!epeyPath) {
-      slog(`Category "${categoryId}" has no Epey path — falling back to site-wide search.`, 'warn');
+      slog(`Category "${categoryId}" has no Epey path — cannot scrape it.`, 'error');
+      return [];
     } else {
-      const brandSlug = normalizeCategoryToken(term);
-      const baseUrl = `${EPEY_BASE}/${epeyPath}/${brandSlug}/`;
-      slog(`Collecting "${term}" in ${catDef.name || categoryId} — ${baseUrl}`, 'info');
+      const brandSlug = term ? normalizeCategoryToken(term) : '';
+      const baseUrl = brandSlug
+        ? `${EPEY_BASE}/${epeyPath}/${brandSlug}/`
+        : `${EPEY_BASE}/${epeyPath}/`;
+      slog(`Collecting ${term ? `"${term}" in ` : 'all products in '}${catDef.name || categoryId} — ${baseUrl}`, 'info');
       const pages = [baseUrl];
       const seenPages = new Set();
       for (let pi = 0; pi < pages.length && pi < 40 && allItems.length < maxProducts && !scraperAbort; pi++) {
@@ -3492,9 +3494,8 @@ async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
-  const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
-  if (!searchTerm) { toast('Marka veya arama terimi gir', 'w'); return; }
   const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
+  if (!categoryId) { toast('Bir kategori seç', 'w'); return; }
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
 
@@ -3503,13 +3504,13 @@ async function startBulkScrape() {
   document.getElementById('btnStopScrape').style.display = '';
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
-  slog(`Epey import: "${searchTerm}"${categoryId ? ` · category=${categoryId}` : ' · all categories'} · max ${maxProducts}`, 'info');
+  slog(`Epey import: category=${categoryId} · max ${maxProducts}`, 'info');
 
   try {
-    const urlItems = await collectSearchProductUrls(searchTerm, maxProducts, categoryId);
+    const urlItems = await collectSearchProductUrls('', maxProducts, categoryId);
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {
-      slog('No product URLs found. Try a more exact brand/model term or check proxy.', 'error');
+      slog('No product URLs found. Check the category or proxy.', 'error');
       finishScraping();
       return;
     }

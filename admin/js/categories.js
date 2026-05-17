@@ -552,18 +552,27 @@ async function populateScraperCategories() {
   });
 
   Object.entries(grouped).forEach(([groupName, cats]) => {
-    bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
+    // Bulk Scrape is Epey-only and category-based — list just the categories
+    // that have an Epey path, and skip a group entirely if it has none.
+    const epeyCats = cats.filter(c => c.epeyPath);
+    if (epeyCats.length) {
+      bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
+      epeyCats.forEach(cat => {
+        const cnt = counts[cat.id] || 0;
+        const label = cnt > 0 ? ` (${cnt})` : '';
+        bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
+      });
+      bulkOpts += '</optgroup>';
+    }
     cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
       const ghCnt = epeyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
-      bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       if (ghCnt > 0) {
         dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)} (${ghCnt})</option>`;
       }
     });
-    bulkOpts += '</optgroup>';
   });
 
   const customs = QorAiCustomCategories.getAll();

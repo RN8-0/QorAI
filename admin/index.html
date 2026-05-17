@@ -448,12 +448,7 @@
           <div class="card">
             <div class="card-title">Epey.com Product Import</div>
             <div class="form-grid">
-              <input type="hidden" id="scrapeMode" value="brand">
-              <div class="form-field" id="scrapeSearchField">
-                <label>Marka / Arama</label>
-                <input class="input" id="scrapeSearchTerm" placeholder="Apple, Samsung, Xiaomi, Huawei">
-              </div>
-              <div class="form-field">
+              <div class="form-field" style="grid-column:span 2">
                 <label>Kategori</label>
                 <select class="input" id="scrapeCategory"></select>
               </div>
@@ -467,7 +462,7 @@
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Marka + kategori seç (ör. Apple → Akıllı Telefon) → sadece o markanın o kategorideki ürünleri gelir, alakasız sonuç yok. Kategori boş bırakılırsa tüm Epey araması yapılır (karışık sonuç).
+              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir (satışta olan da olmayan da, tüm markalar). Ürün limiti kadarı işlenir.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
