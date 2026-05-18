@@ -1,0 +1,52 @@
+.auth-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.auth-modal {
+  position: relative; width: 100%; max-width: 408px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 32px 28px;
+  box-shadow: var(--shadow-lg);
+}
+.auth-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px; border-radius: 8px;
+  color: var(--text3); font-size: 15px;
+}
+.auth-close:hover { background: var(--bg3); color: var(--text); }
+.auth-head { text-align: center; margin-bottom: 22px; }
+.auth-head img { width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 13px; }
+.auth-head h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+.auth-head p { color: var(--text2); font-size: 13.5px; margin-top: 4px; }
+
+.auth-tabs {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 18px;
+  background: var(--bg3); border-radius: var(--radius-sm);
+}
+.auth-tabs button {
+  flex: 1; padding: 9px; border-radius: 7px;
+  font-size: 13.5px; font-weight: 700; color: var(--text2);
+}
+.auth-tabs button.active { background: var(--bg); color: var(--text); box-shadow: var(--shadow); }
+
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form input {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.14s, box-shadow 0.14s;
+}
+.auth-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.auth-form .btn { margin-top: 4px; }
+
+.auth-err {
+  background: rgba(239, 68, 68, 0.12); color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 12.5px; font-weight: 600;
+}
+.auth-foot {
+  margin-top: 16px; text-align: center;
+  font-size: 12px; color: var(--text3);
+}
+.auth-foot b { color: var(--accent); }

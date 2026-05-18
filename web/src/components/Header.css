@@ -1,0 +1,101 @@
+.hd {
+  position: sticky; top: 0; z-index: 100;
+  height: var(--header-h);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.hd-inner { height: 100%; display: flex; align-items: center; gap: 18px; }
+
+.hd-logo { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.hd-logo img { width: 30px; height: 30px; border-radius: 8px; }
+.hd-logo span { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+
+.hd-nav { display: flex; align-items: center; gap: 2px; margin-left: 8px; }
+.hd-link {
+  padding: 8px 13px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; color: var(--text2);
+  transition: color 0.13s, background 0.13s;
+}
+.hd-link:hover { color: var(--text); background: var(--bg3); }
+.hd-link.active { color: var(--accent); background: var(--accent-soft); }
+
+.hd-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.hd-icon {
+  width: 38px; height: 38px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg3); border: 1px solid var(--border); font-size: 15px;
+  transition: border-color 0.13s, background 0.13s;
+}
+.hd-icon:hover { border-color: var(--border2); background: var(--bg4); }
+.hd-signin { padding: 9px 18px; }
+
+.hd-user { position: relative; display: flex; align-items: center; gap: 8px; }
+.hd-coins {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 11px 6px 7px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid var(--accent-ring);
+  font-size: 13px; font-weight: 800; color: var(--accent);
+}
+.coin-dot {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--brand-grad); color: #001018;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 900;
+}
+.hd-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--brand-grad); color: #001018;
+  font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.hd-menu-backdrop { position: fixed; inset: 0; z-index: 90; }
+.hd-menu {
+  position: absolute; top: 48px; right: 0; z-index: 95;
+  width: 232px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); padding: 8px; overflow: hidden;
+}
+.hd-menu-head { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+.hd-menu-head strong { font-size: 14px; }
+.hd-menu-head span { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; }
+.hd-menu-coins {
+  margin: 6px 0; padding: 9px 10px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text2);
+}
+.hd-menu-coins b { color: var(--accent); font-size: 15px; }
+.hd-menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600; color: var(--text2);
+}
+.hd-menu-item:hover { background: var(--bg3); color: var(--text); }
+.hd-menu-item.danger:hover { color: var(--red); }
+
+.hd-burger { display: none; flex-direction: column; gap: 4px; }
+.hd-burger span { width: 16px; height: 2px; background: var(--text); border-radius: 2px; }
+
+.hd-drawer-wrap {
+  position: fixed; inset: var(--header-h) 0 0; z-index: 99;
+  background: rgba(0, 0, 0, 0.5);
+}
+.hd-drawer {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 4px;
+}
+.hd-drawer-link {
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 600; color: var(--text2);
+}
+.hd-drawer-link:hover, .hd-drawer-link.active { background: var(--bg3); color: var(--accent); }
+
+@media (max-width: 940px) {
+  .hd-nav { display: none; }
+  .hd-burger { display: flex; }
+  .hd-signin { display: none; }
+}
+@media (max-width: 520px) {
+  .hd-coins { padding: 5px 9px 5px 6px; font-size: 12px; }
+}
