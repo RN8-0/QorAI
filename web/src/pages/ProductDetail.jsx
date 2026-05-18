@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProduct } from '../lib/typesense';
 import { useCompare } from '../lib/compare';
+import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const t = useT();
   const { has, toggle } = useCompare();
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,9 +44,9 @@ export default function ProductDetail() {
     return (
       <div className="container pd-missing">
         <div className="pd-missing-icon">🔍</div>
-        <h2>Ürün bulunamadı</h2>
-        <p>Bu ürün kaldırılmış ya da bağlantı hatalı olabilir.</p>
-        <Link to="/catalog" className="btn btn-primary">Kataloğa Dön</Link>
+        <h2>{t('pd.notFound')}</h2>
+        <p>{t('pd.notFoundDesc')}</p>
+        <Link to="/catalog" className="btn btn-primary">{t('pd.backToCatalog')}</Link>
       </div>
     );
   }
@@ -61,12 +63,11 @@ export default function ProductDetail() {
     <div className="pd">
       <div className="container">
         <div className="pd-crumb">
-          <Link to="/">Ana Sayfa</Link> <span>/</span>
-          <Link to="/catalog">Katalog</Link> <span>/</span>
+          <Link to="/">{t('nav.home')}</Link> <span>/</span>
+          <Link to="/catalog">{t('nav.catalog')}</Link> <span>/</span>
           <b>{p.name}</b>
         </div>
 
-        {/* HERO */}
         <div className="pd-top">
           <div className="pd-gallery">
             <div className="pd-main-img">
@@ -96,8 +97,8 @@ export default function ProductDetail() {
                 <small>/ 100</small>
               </div>
               <div className="pd-score-text">
-                <strong>Qor AI Teknik Skoru</strong>
-                <span>Özellikler, gerçek yorumlar ve değere dayalı yapay zekâ puanı.</span>
+                <strong>{t('pd.scoreTitle')}</strong>
+                <span>{t('pd.scoreDesc')}</span>
               </div>
             </div>
 
@@ -107,9 +108,7 @@ export default function ProductDetail() {
                   const val = Math.max(0, Math.min(100, Number(v) || 0));
                   return (
                     <div className="pd-sub" key={k}>
-                      <div className="pd-sub-row">
-                        <span>{k}</span><b>{Math.round(val)}</b>
-                      </div>
+                      <div className="pd-sub-row"><span>{k}</span><b>{Math.round(val)}</b></div>
                       <div className="pd-sub-bar"><i style={{ width: `${val}%` }} /></div>
                     </div>
                   );
@@ -120,35 +119,34 @@ export default function ProductDetail() {
             <div className="pd-actions">
               {has(p.id) ? (
                 <>
-                  <Link to="/compare" className="btn btn-primary">⚖️ Karşılaştırmayı Aç →</Link>
-                  <button className="btn btn-ghost" onClick={() => toggle(p.id)}>✓ Listede</button>
+                  <Link to="/compare" className="btn btn-primary">{t('pd.openCompare')}</Link>
+                  <button className="btn btn-ghost" onClick={() => toggle(p.id)}>{t('pd.inList')}</button>
                 </>
               ) : (
                 <button className="btn btn-primary"
-                  onClick={() => { if (!toggle(p.id)) alert('En fazla 4 ürün karşılaştırabilirsin.'); }}>
-                  ⚖️ Karşılaştırmaya Ekle
+                  onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>
+                  {t('pd.addCompare')}
                 </button>
               )}
               <button className="btn btn-ghost"
                 onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
-                  detail: `${p.name} hakkında ne düşünüyorsun? Artıları ve eksileri neler?`,
+                  detail: t('pd.askAiQuestion', { name: p.name }),
                 }))}>
-                💬 Qor AI'a Sor
+                {t('pd.askAi')}
               </button>
             </div>
           </div>
         </div>
 
-        {/* TABS */}
         <div className="pd-tabs">
           <button className={tab === 'specs' ? 'active' : ''} onClick={() => setTab('specs')}>
-            Özellikler
+            {t('pd.tabSpecs')}
           </button>
           <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
-            AI Analizi
+            {t('pd.tabAi')}
           </button>
           <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
-            Yorumlar
+            {t('pd.tabReviews')}
           </button>
         </div>
 
@@ -161,13 +159,13 @@ export default function ProductDetail() {
                 <div className="pd-pc">
                   {pros.length > 0 && (
                     <div className="pd-pc-col pd-pros">
-                      <h4>👍 Artılar</h4>
+                      <h4>{t('pd.pros')}</h4>
                       <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
                     </div>
                   )}
                   {cons.length > 0 && (
                     <div className="pd-pc-col pd-cons">
-                      <h4>👎 Eksiler</h4>
+                      <h4>{t('pd.cons')}</h4>
                       <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
                     </div>
                   )}
@@ -175,7 +173,7 @@ export default function ProductDetail() {
               )}
 
               {keySpecs && Object.keys(keySpecs).length > 0 && (
-                <SpecBlock title="Öne Çıkan Özellikler" rows={Object.entries(keySpecs)} />
+                <SpecBlock title={t('pd.keySpecs')} rows={Object.entries(keySpecs)} />
               )}
 
               {specSections &&
@@ -186,23 +184,13 @@ export default function ProductDetail() {
                 )}
 
               {!keySpecs && !specSections && !p.description && (
-                <div className="pd-note">Bu ürün için ayrıntılı özellik verisi henüz eklenmedi.</div>
+                <div className="pd-note">{t('pd.noSpecs')}</div>
               )}
             </div>
           )}
 
-          {tab === 'ai' && (
-            <div className="pd-note fade-up">
-              🧠 Yapay zekâ analizi — bu ürün için kişiselleştirilmiş AI değerlendirmesi
-              bir sonraki güncellemede burada olacak.
-            </div>
-          )}
-
-          {tab === 'reviews' && (
-            <div className="pd-note fade-up">
-              💬 Kullanıcı yorumları ve değerlendirme — bir sonraki güncellemede burada olacak.
-            </div>
-          )}
+          {tab === 'ai' && <div className="pd-note fade-up">{t('pd.aiSoon')}</div>}
+          {tab === 'reviews' && <div className="pd-note fade-up">{t('pd.reviewsSoon')}</div>}
         </div>
       </div>
     </div>

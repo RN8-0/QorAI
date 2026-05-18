@@ -33,6 +33,11 @@
 .hd-app-soon { opacity: 0.5; cursor: default; }
 .hd-app-soon:hover { color: var(--text2); border-color: var(--border); }
 
+.hd-lang { position: relative; }
+.hd-lang-flag { font-size: 15px; line-height: 1; }
+.hd-lang-menu { width: 180px; max-height: 340px; overflow-y: auto; }
+.hd-menu-item.active { background: var(--accent-soft); color: var(--accent); }
+
 .hd-compare { position: relative; }
 .hd-compare-badge {
   position: absolute; top: -5px; right: -5px;

@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { catMeta, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
+import { useT } from '../i18n/index.jsx';
 import './ProductCard.css';
 
 export default function ProductCard({ product: p }) {
+  const t = useT();
   const meta = catMeta(p.category);
   const chips = keySpecChips(p);
 
@@ -27,8 +29,8 @@ export default function ProductCard({ product: p }) {
         {chips.length > 0 ? (
           <div className="pcard-specs">
             {chips.map((c) => (
-              <div className="pcard-spec" key={c.label}>
-                <span className="pcard-spec-label">{c.label}</span>
+              <div className="pcard-spec" key={c.labelKey}>
+                <span className="pcard-spec-label">{t(c.labelKey)}</span>
                 <span className="pcard-spec-val">{c.value}</span>
                 <span className="pcard-spec-bar"><i style={{ width: `${c.pct}%` }} /></span>
               </div>
@@ -38,7 +40,7 @@ export default function ProductCard({ product: p }) {
           <div className="pcard-cat-row">{meta.icon} {meta.label}</div>
         )}
 
-        <span className="pcard-go">İncele →</span>
+        <span className="pcard-go">{t('card.review')}</span>
       </div>
     </Link>
   );

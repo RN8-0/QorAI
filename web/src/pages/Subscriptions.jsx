@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
 import './Subscriptions.css';
 
 const PRESETS = [
   'Netflix', 'Spotify', 'YouTube Premium', 'Disney+', 'Amazon Prime',
   'Adobe Creative Cloud', 'iCloud+', 'Microsoft 365', 'ChatGPT Plus', 'Claude Pro',
-  'Xbox Game Pass', 'Apple Music', 'Spotify Premium', 'BluTV',
+  'Xbox Game Pass', 'Apple Music',
 ];
 
-const PROMPT = (subs) =>
-  `Şu dijital abonelikleri karşılaştır: ${subs.join(', ')}.\n\n` +
-  'Türkçe, sade ve net bir karşılaştırma yap. Her abonelik için: yaklaşık aylık fiyat, ' +
-  'ne işe yaradığı, artıları ve eksileri. Sonunda **Qor AI Tavsiyesi** başlığıyla kimin ' +
-  'hangisini seçmesi gerektiğini söyle. Başlıkları **kalın** yaz, maddeleri "-" ile yaz.';
+const PROMPT = (subs, lang) =>
+  `Compare these digital subscriptions: ${subs.join(', ')}.\n\n` +
+  'Give a clear, simple comparison. For each: approximate monthly price, what it does, ' +
+  'pros and cons. End with a **Qor AI Recommendation** heading saying who should pick which. ' +
+  `Make headings **bold**, use "-" for bullet points. Reply ONLY in the language with ISO code: ${lang}.`;
 
 export default function Subscriptions() {
+  const { t, lang } = useI18n();
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
   const [result, setResult] = useState('');
@@ -37,9 +39,9 @@ export default function Subscriptions() {
     setBusy(true); setResult('');
     trackEvent('subscription_compare', { count: selected.length });
     try {
-      setResult(await askQorAi([{ role: 'user', text: PROMPT(selected) }]));
+      setResult(await askQorAi([{ role: 'user', text: PROMPT(selected, lang) }]));
     } catch {
-      setResult('Karşılaştırma şu an yapılamadı. Birazdan tekrar dene.');
+      setResult(t('la.errFail'));
     } finally {
       setBusy(false);
     }
@@ -49,12 +51,12 @@ export default function Subscriptions() {
     <div className="container subs">
       <div className="subs-head">
         <div className="subs-icon">📺</div>
-        <h1>Abonelik <span className="grad-text">Karşılaştırma</span></h1>
-        <p>Dijital aboneliklerini seç — Qor AI fiyat, özellik ve değer açısından kıyaslasın.</p>
+        <h1>{t('subs.title')}</h1>
+        <p>{t('subs.subtitle')}</p>
       </div>
 
       <div className="subs-pills">
-        {PRESETS.filter((p, i) => PRESETS.indexOf(p) === i).map((name) => (
+        {PRESETS.map((name) => (
           <button key={name}
             className={'subs-pill' + (selected.includes(name) ? ' active' : '')}
             onClick={() => toggle(name)}>
@@ -65,15 +67,15 @@ export default function Subscriptions() {
 
       <form className="subs-custom" onSubmit={addCustom}>
         <input value={custom} onChange={(e) => setCustom(e.target.value)}
-          placeholder="Listede yok mu? Abonelik adı yaz ve ekle…" />
-        <button type="submit" className="btn btn-ghost">Ekle</button>
+          placeholder={t('subs.customPlaceholder')} />
+        <button type="submit" className="btn btn-ghost">{t('subs.add')}</button>
       </form>
 
       {selected.length > 0 && (
         <div className="subs-selected">
           {selected.map((s) => (
             <span key={s} className="subs-chip">
-              {s}<button onClick={() => toggle(s)} aria-label="Çıkar">✕</button>
+              {s}<button onClick={() => toggle(s)} aria-label="✕">✕</button>
             </span>
           ))}
         </div>
@@ -81,17 +83,17 @@ export default function Subscriptions() {
 
       <button className="btn btn-primary btn-lg subs-go"
         onClick={compare} disabled={busy || selected.length < 2}>
-        {busy ? 'Karşılaştırılıyor…' : selected.length < 2
-          ? 'En az 2 abonelik seç' : `${selected.length} aboneliği karşılaştır`}
+        {busy ? t('subs.analyzing') : selected.length < 2
+          ? t('subs.goMin') : t('subs.go', { n: selected.length })}
       </button>
 
       {busy && (
-        <div className="subs-loading"><div className="spinner" /><span>Qor AI karşılaştırıyor…</span></div>
+        <div className="subs-loading"><div className="spinner" /><span>{t('subs.loading')}</span></div>
       )}
 
       {result && (
         <div className="subs-result fade-up">
-          <div className="subs-result-head">🧠 Qor AI Karşılaştırması</div>
+          <div className="subs-result-head">{t('subs.resultHead')}</div>
           <div className="subs-result-body"><AiText text={result} /></div>
         </div>
       )}

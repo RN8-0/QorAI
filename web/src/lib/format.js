@@ -55,13 +55,13 @@ export function keySpecChips(p) {
   const chips = [];
 
   if (p.screenSizeValue > 0) {
-    chips.push({ label: 'Ekran', value: `${p.screenSizeValue}"`, pct: clamp((p.screenSizeValue / 7) * 100) });
+    chips.push({ labelKey: 'spec.screen', value: `${p.screenSizeValue}"`, pct: clamp((p.screenSizeValue / 7) * 100) });
   }
 
   const ram = tokenVal('ram:'); // e.g. "8_gb"
   if (ram) {
     const n = parseInt(ram, 10) || 0;
-    chips.push({ label: 'RAM', value: `${n} GB`, pct: clamp((n / 24) * 100) });
+    chips.push({ labelKey: 'spec.ram', value: `${n} GB`, pct: clamp((n / 24) * 100) });
   }
 
   const storage = tokenVal('storage:'); // "256_gb" | "1_tb"
@@ -69,12 +69,12 @@ export function keySpecChips(p) {
     const isTb = storage.includes('tb');
     const n = parseInt(storage, 10) || 0;
     const gb = isTb ? n * 1024 : n;
-    chips.push({ label: 'Depolama', value: isTb ? `${n} TB` : `${n} GB`, pct: clamp((gb / 1024) * 100) });
+    chips.push({ labelKey: 'spec.storage', value: isTb ? `${n} TB` : `${n} GB`, pct: clamp((gb / 1024) * 100) });
   }
 
   if (p.batteryCapacityValue > 0) {
     chips.push({
-      label: 'Batarya',
+      labelKey: 'spec.battery',
       value: `${p.batteryCapacityValue} mAh`,
       pct: clamp((p.batteryCapacityValue / 7000) * 100),
     });

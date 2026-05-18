@@ -1,33 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { useT } from '../i18n/index.jsx';
 import './AiBubble.css';
 
-const GREETING = {
-  role: 'model',
-  text: 'Merhaba! Ben Qor AI 👋 Telefon, laptop, kulaklık ya da abonelik — ne arıyorsan sor, sana en uygununu bulalım.',
-};
-
-const SUGGESTIONS = [
-  '50.000 TL altı en iyi telefon',
-  'Oyun için laptop önerisi',
-  'iPhone 15 mi Samsung S24 mü?',
-];
-
 export default function AiBubble() {
+  const t = useT();
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState([GREETING]);
+  const greetingRef = useRef(null);
+  if (!greetingRef.current) greetingRef.current = { role: 'model', text: t('ai.greeting') };
+  const [msgs, setMsgs] = useState(() => [greetingRef.current]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const sendRef = useRef(null);
 
+  const suggestions = [t('ai.s1'), t('ai.s2'), t('ai.s3')];
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, busy, open]);
 
-  // Other components (e.g. the product page) can open the chat with a
-  // ready-made question via a `qor-open-ai` custom event.
   useEffect(() => {
     const onOpen = (e) => {
       setOpen(true);
@@ -47,19 +40,14 @@ export default function AiBubble() {
     setBusy(true);
     trackEvent('ai_chat_message');
     try {
-      // Send only the real conversation turns (skip the static greeting).
-      const reply = await askQorAi(next.filter((m, i) => !(i === 0 && m === GREETING)));
+      const reply = await askQorAi(next.filter((m, i) => !(i === 0 && m === greetingRef.current)));
       setMsgs((m) => [...m, { role: 'model', text: reply }]);
     } catch {
-      setMsgs((m) => [
-        ...m,
-        { role: 'model', text: 'Şu an yanıt veremedim 😕 Birazdan tekrar dener misin?' },
-      ]);
+      setMsgs((m) => [...m, { role: 'model', text: t('ai.errReply') }]);
     } finally {
       setBusy(false);
     }
   }
-
   sendRef.current = send;
 
   return (
@@ -67,7 +55,7 @@ export default function AiBubble() {
       <button
         className={'aib-fab' + (open ? ' open' : '')}
         onClick={() => setOpen((o) => !o)}
-        aria-label="Qor AI Sohbet"
+        aria-label="Qor AI"
       >
         {open ? '✕' : <img src="/assets/logo.png" alt="" />}
         {!open && <span className="aib-fab-pulse" />}
@@ -80,43 +68,36 @@ export default function AiBubble() {
               <img src="/assets/logo.png" alt="Qor AI" />
               <div>
                 <strong>Qor AI</strong>
-                <span>Yapay zekâ danışman</span>
+                <span>{t('ai.subtitle')}</span>
               </div>
             </div>
-            <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="Kapat">✕</button>
+            <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="✕">✕</button>
           </div>
 
           <div className="aib-msgs" ref={scrollRef}>
             {msgs.map((m, i) => (
-              <div key={i} className={'aib-msg ' + m.role}>
-                {m.text}
-              </div>
+              <div key={i} className={'aib-msg ' + m.role}>{m.text}</div>
             ))}
             {busy && (
-              <div className="aib-msg model aib-typing">
-                <span /><span /><span />
-              </div>
+              <div className="aib-msg model aib-typing"><span /><span /><span /></div>
             )}
             {msgs.length === 1 && (
               <div className="aib-suggest">
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button key={s} onClick={() => send(s)}>{s}</button>
                 ))}
               </div>
             )}
           </div>
 
-          <form
-            className="aib-input"
-            onSubmit={(e) => { e.preventDefault(); send(); }}
-          >
+          <form className="aib-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Bir şey sor…"
+              placeholder={t('ai.placeholder')}
               disabled={busy}
             />
-            <button type="submit" disabled={busy || !input.trim()} aria-label="Gönder">
+            <button type="submit" disabled={busy || !input.trim()} aria-label="→">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M22 2 11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
               </svg>

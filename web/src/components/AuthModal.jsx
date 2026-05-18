@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { signIn, register, authErrorMessage } from '../lib/pocketbase';
+import { signIn, register, authErrorKey } from '../lib/pocketbase';
 import { trackEvent } from '../lib/analytics';
+import { useT } from '../i18n/index.jsx';
 import './AuthModal.css';
 
 export default function AuthModal() {
+  const t = useT();
   const { modalOpen, closeAuth } = useAuth();
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
@@ -27,7 +29,7 @@ export default function AuthModal() {
 
   async function submit(e) {
     e.preventDefault();
-    if (!email || !password) { setErr('E-posta ve şifre gerekli.'); return; }
+    if (!email || !password) { setErr(t('auth.errEmpty')); return; }
     setBusy(true); setErr('');
     try {
       if (mode === 'signin') {
@@ -39,7 +41,7 @@ export default function AuthModal() {
       }
       closeAuth();
     } catch (e2) {
-      setErr(authErrorMessage(e2));
+      setErr(t(authErrorKey(e2)));
     } finally {
       setBusy(false);
     }
@@ -48,41 +50,39 @@ export default function AuthModal() {
   return (
     <div className="auth-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeAuth()}>
       <div className="auth-modal fade-up" role="dialog" aria-modal="true">
-        <button className="auth-close" onClick={closeAuth} aria-label="Kapat">✕</button>
+        <button className="auth-close" onClick={closeAuth} aria-label="✕">✕</button>
         <div className="auth-head">
           <img src="/assets/logo.png" alt="Qor AI" />
-          <h2>Qor AI'a hoş geldin</h2>
-          <p>Deneyimini kişiselleştirmek için giriş yap</p>
+          <h2>{t('auth.welcome')}</h2>
+          <p>{t('auth.subtitle')}</p>
         </div>
 
         <div className="auth-tabs">
           <button className={mode === 'signin' ? 'active' : ''} onClick={() => { setMode('signin'); setErr(''); }}>
-            Giriş Yap
+            {t('auth.signin')}
           </button>
           <button className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setErr(''); }}>
-            Kayıt Ol
+            {t('auth.register')}
           </button>
         </div>
 
         <form className="auth-form" onSubmit={submit}>
           {mode === 'register' && (
-            <input type="text" placeholder="Adın (opsiyonel)" value={name}
+            <input type="text" placeholder={t('auth.name')} value={name}
               onChange={(e) => setName(e.target.value)} autoComplete="name" />
           )}
-          <input type="email" placeholder="E-posta adresi" value={email}
+          <input type="email" placeholder={t('auth.email')} value={email}
             onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-          <input type="password" placeholder="Şifre" value={password}
+          <input type="password" placeholder={t('auth.password')} value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required />
           {err && <div className="auth-err">{err}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? '…' : mode === 'signin' ? 'Giriş Yap' : 'Hesap Oluştur'}
+            {busy ? '…' : mode === 'signin' ? t('auth.signin') : t('auth.createAccount')}
           </button>
         </form>
 
-        <p className="auth-foot">
-          Yeni hesaplara hoş geldin hediyesi olarak <b>20 Qor Coin</b> verilir.
-        </p>
+        <p className="auth-foot">{t('auth.coinGift', { n: 20 })}</p>
       </div>
     </div>
   );

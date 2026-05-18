@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProduct, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
+import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import './Compare.css';
 
-// Flatten every spec a product carries into one { key: value } map.
 function flatSpecs(p) {
   const flat = {};
   const put = (obj) => {
@@ -24,6 +24,7 @@ function flatSpecs(p) {
 }
 
 export default function Compare() {
+  const t = useT();
   const { ids, remove, clear, add } = useCompare();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,6 @@ export default function Compare() {
   const [picking, setPicking] = useState(false);
   const boxRef = useRef(null);
 
-  // Load full records (with specs) for every id in the compare list.
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -42,14 +42,13 @@ export default function Compare() {
     return () => { live = false; };
   }, [ids.join(',')]); // eslint-disable-line
 
-  // Debounced product search for the add box.
   useEffect(() => {
     const q = term.trim();
     if (!q) { setResults([]); return; }
-    const t = setTimeout(async () => {
+    const tm = setTimeout(async () => {
       try { setResults(await searchProducts(q, 8)); } catch { setResults([]); }
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(tm);
   }, [term]);
 
   useEffect(() => {
@@ -70,8 +69,7 @@ export default function Compare() {
   }, [products]);
 
   function pick(p) {
-    const ok = add(p.id);
-    if (!ok) alert(`En fazla ${COMPARE_MAX} ürün karşılaştırabilirsin.`);
+    if (!add(p.id)) alert(t('pd.maxAlert', { max: COMPARE_MAX }));
     setTerm(''); setResults([]); setPicking(false);
   }
 
@@ -82,13 +80,12 @@ export default function Compare() {
     <div className="cmp">
       <div className="cmp-hero">
         <div className="container">
-          <h1>Ürün <span className="grad-text">Karşılaştır</span></h1>
-          <p>{COMPARE_MAX} ürüne kadar yan yana — özellik özellik kıyasla.</p>
+          <h1>{t('cmp.title')}</h1>
+          <p>{t('cmp.subtitle', { max: COMPARE_MAX })}</p>
         </div>
       </div>
 
       <div className="container">
-        {/* ADD BAR */}
         <div className="cmp-addbar" ref={boxRef}>
           <div className="cmp-add-input">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
@@ -98,11 +95,11 @@ export default function Compare() {
               value={term}
               onChange={(e) => { setTerm(e.target.value); setPicking(true); }}
               onFocus={() => setPicking(true)}
-              placeholder={canAdd ? 'Karşılaştırmaya ürün ekle…' : `En fazla ${COMPARE_MAX} ürün`}
+              placeholder={canAdd ? t('cmp.addPlaceholder') : t('cmp.addFull', { max: COMPARE_MAX })}
               disabled={!canAdd}
             />
             {products.length > 0 && (
-              <button className="cmp-clear" onClick={clear}>Tümünü temizle</button>
+              <button className="cmp-clear" onClick={clear}>{t('cmp.clearAll')}</button>
             )}
           </div>
           {picking && results.length > 0 && (
@@ -114,7 +111,7 @@ export default function Compare() {
                     onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
                   <span className="cmp-result-name">{r.name}</span>
                   <span className={`score ${scoreClass(r.techScore)}`}>⚡ {scoreLabel(r.techScore)}</span>
-                  {ids.includes(r.id) && <span className="cmp-result-in">✓ Ekli</span>}
+                  {ids.includes(r.id) && <span className="cmp-result-in">{t('cmp.added')}</span>}
                 </button>
               ))}
             </div>
@@ -122,25 +119,25 @@ export default function Compare() {
         </div>
 
         {loading && ids.length > 0 ? (
-          <div className="cmp-loading"><div className="spinner" /> Ürünler yükleniyor…</div>
+          <div className="cmp-loading"><div className="spinner" /> {t('cmp.loading')}</div>
         ) : products.length === 0 ? (
           <div className="cmp-empty">
             <div className="cmp-empty-icon">⚖️</div>
-            <h3>Karşılaştırmaya ürün ekle</h3>
-            <p>Yukarıdaki kutudan ürün ara, ya da katalogdan seç.</p>
-            <Link to="/catalog" className="btn btn-primary">Kataloğa Göz At</Link>
+            <h3>{t('cmp.emptyTitle')}</h3>
+            <p>{t('cmp.emptyDesc')}</p>
+            <Link to="/catalog" className="btn btn-primary">{t('cmp.browseCatalog')}</Link>
           </div>
         ) : (
           <div className="cmp-table-wrap">
             <table className="cmp-table">
               <thead>
                 <tr>
-                  <th className="cmp-th-spec">Özellik</th>
+                  <th className="cmp-th-spec">{t('cmp.specCol')}</th>
                   {slots.map((p) => {
                     const m = catMeta(p.category);
                     return (
                       <th key={p.id} className="cmp-th-prod">
-                        <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="Çıkar">✕</button>
+                        <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
                         <Link to={`/product/${p.id}`} className="cmp-th-img">
                           <img src={p.imageUrl || PLACEHOLDER_IMG} alt={p.name}
                             onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
@@ -155,7 +152,7 @@ export default function Compare() {
               </thead>
               <tbody>
                 <tr className="cmp-row-score">
-                  <td className="cmp-td-spec">⚡ Qor AI Skoru</td>
+                  <td className="cmp-td-spec">{t('cmp.scoreRow')}</td>
                   {slots.map((p) => (
                     <td key={p.id}>
                       <span className={`score ${scoreClass(p.techScore)}`}>{scoreLabel(p.techScore)}</span>
@@ -174,7 +171,7 @@ export default function Compare() {
                   <tr>
                     <td className="cmp-td-spec">—</td>
                     {slots.map((p) => (
-                      <td key={p.id} className="cmp-td-empty">Özellik verisi yok</td>
+                      <td key={p.id} className="cmp-td-empty">{t('cmp.noSpecData')}</td>
                     ))}
                   </tr>
                 )}

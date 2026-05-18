@@ -39,18 +39,17 @@ export function signOut() {
   pb.authStore.clear();
 }
 
-// Friendly, localized auth error messages.
-export function authErrorMessage(error) {
+// Returns an i18n string key for the given auth error.
+export function authErrorKey(error) {
   const msg = (error?.message || error?.data?.message || '').toLowerCase();
   if (msg.includes('invalid credentials') || msg.includes('failed to authenticate'))
-    return 'E-posta veya şifre hatalı.';
+    return 'auth.errCreds';
   if (msg.includes('already exists') || msg.includes('unique') || msg.includes('validation_not_unique'))
-    return 'Bu e-posta ile zaten bir hesap var.';
-  if (msg.includes('password')) return 'Şifre en az 8 karakter olmalı.';
-  if (msg.includes('email')) return 'Geçerli bir e-posta adresi gir.';
-  if (msg.includes('failed to fetch') || msg.includes('network'))
-    return 'Bağlantı hatası. İnternetini kontrol et.';
-  return 'Bir hata oluştu. Lütfen tekrar dene.';
+    return 'auth.errExists';
+  if (msg.includes('password')) return 'auth.errPassword';
+  if (msg.includes('email')) return 'auth.errEmail';
+  if (msg.includes('failed to fetch') || msg.includes('network')) return 'auth.errNetwork';
+  return 'auth.errGeneric';
 }
 
 export function fileUrl(record, filename) {

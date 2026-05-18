@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useT } from '../i18n/index.jsx';
 import './Placeholder.css';
 
 // The AI chat lives in the floating bubble — this route just opens it.
 export default function AiChat() {
+  const t = useT();
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('qor-open-ai'));
   }, []);
@@ -12,14 +14,14 @@ export default function AiChat() {
     <div className="container ph">
       <div className="ph-card fade-up">
         <div className="ph-emoji">💬</div>
-        <h1>Qor AI Sohbet</h1>
-        <p>Sohbet, sağ alttaki baloncukta açıldı — sayfayı gezerken hep yanında. Aşağıdan da açabilirsin.</p>
+        <h1>{t('aichat.title')}</h1>
+        <p>{t('aichat.desc')}</p>
         <div className="ph-actions">
           <button className="btn btn-primary"
             onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai'))}>
-            Sohbeti Aç
+            {t('aichat.open')}
           </button>
-          <Link to="/catalog" className="btn btn-ghost">Kataloğa Göz At</Link>
+          <Link to="/catalog" className="btn btn-ghost">{t('ph.browseCatalog')}</Link>
         </div>
       </div>
     </div>
