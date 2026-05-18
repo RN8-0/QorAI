@@ -5,37 +5,67 @@ import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
 import './LinkAnalysis.css';
 
-const PROMPT = (url, lang) =>
-  `A user wants to analyze the product at this link: ${url}\n\n` +
-  'Identify the product and give a clear review under these headings: ' +
-  '1) Product name (your best guess) 2) Short summary (2-3 sentences) ' +
-  '3) Pros (bullet list with "-") 4) Cons (bullet list with "-") ' +
-  '5) Who it suits / Qor AI recommendation.\n' +
-  "If you cannot open the link, infer the product from the URL slug and use your knowledge. " +
-  `Make headings **bold**. Reply ONLY in the language with ISO code: ${lang}.`;
+const MAX_LINKS = 4;
+
+function singlePrompt(url, lang) {
+  return (
+    `A user wants to analyze the product at this link: ${url}\n\n` +
+    'Identify the product and give a clear review under these headings: ' +
+    '1) Product name (your best guess) 2) Short summary (2-3 sentences) ' +
+    '3) Pros (bullet list with "-") 4) Cons (bullet list with "-") ' +
+    '5) Who it suits / Qor AI recommendation.\n' +
+    'If you cannot open the link, infer the product from the URL slug and use your knowledge. ' +
+    `Make headings **bold**. Reply ONLY in the language with ISO code: ${lang}.`
+  );
+}
+
+function comparePrompt(urls, lang) {
+  return (
+    'A user wants to compare the products behind these links:\n' +
+    urls.map((u, i) => `${i + 1}. ${u}`).join('\n') +
+    '\n\nIdentify each product from its URL, then compare them. Give: a short intro, ' +
+    'a **head-to-head** section covering price, performance, key strengths and weaknesses ' +
+    'of each, and finish with a **Qor AI Verdict** heading saying which to pick and for whom. ' +
+    'Use "-" for bullets and **bold** headings. ' +
+    `Reply ONLY in the language with ISO code: ${lang}.`
+  );
+}
 
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
-  const [url, setUrl] = useState('');
+  const [urls, setUrls] = useState(['']);
   const [result, setResult] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  function setUrl(i, val) {
+    setUrls((u) => u.map((x, idx) => (idx === i ? val : x)));
+  }
+  function addUrl() {
+    setUrls((u) => (u.length < MAX_LINKS ? [...u, ''] : u));
+  }
+  function removeUrl(i) {
+    setUrls((u) => u.filter((_, idx) => idx !== i));
+  }
+
   async function analyze(e) {
     e.preventDefault();
-    const u = url.trim();
-    if (!u) return;
-    if (!/^https?:\/\//i.test(u)) { setErr(t('la.errUrl')); return; }
+    const list = urls.map((u) => u.trim()).filter(Boolean);
+    if (!list.length) return;
+    if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
     setErr(''); setBusy(true); setResult('');
-    trackEvent('link_analysis');
+    trackEvent('link_analysis', { count: list.length });
     try {
-      setResult(await askQorAi([{ role: 'user', text: PROMPT(u, lang) }]));
+      const prompt = list.length > 1 ? comparePrompt(list, lang) : singlePrompt(list[0], lang);
+      setResult(await askQorAi([{ role: 'user', text: prompt }]));
     } catch {
       setErr(t('la.errFail'));
     } finally {
       setBusy(false);
     }
   }
+
+  const filled = urls.filter((u) => u.trim()).length;
 
   return (
     <div className="container la">
@@ -46,12 +76,31 @@ export default function LinkAnalysis() {
       </div>
 
       <form className="la-form" onSubmit={analyze}>
-        <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-          placeholder={t('la.placeholder')} />
-        <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? t('la.analyzing') : t('la.analyze')}
-        </button>
+        <div className="la-rows">
+          {urls.map((url, i) => (
+            <div className="la-row" key={i}>
+              <span className="la-row-no">{i + 1}</span>
+              <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
+                placeholder={t('la.placeholder')} />
+              {urls.length > 1 && (
+                <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="✕">✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="la-actions">
+          {urls.length < MAX_LINKS && (
+            <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
+          )}
+          <button type="submit" className="btn btn-primary la-go" disabled={busy}>
+            {busy ? t('la.analyzing')
+              : filled > 1 ? t('la.analyzeMany', { n: filled }) : t('la.analyzeOne')}
+          </button>
+        </div>
+        <p className="la-hint">{t('la.hintMulti')}</p>
       </form>
+
       {err && <div className="la-err">{err}</div>}
 
       {busy && (

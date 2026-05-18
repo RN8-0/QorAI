@@ -83,12 +83,12 @@
 .pd-pc-col li { font-size: 13.5px; color: var(--text2); padding-left: 16px; position: relative; }
 .pd-pc-col li::before { content: '•'; position: absolute; left: 2px; color: var(--accent); }
 
-/* ─── Spec bricks (admin-panel style, 2-column) ──────────────── */
-.pd-bricks {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 16px; align-items: start;
-}
+/* ─── Spec bricks (admin-panel style) ────────────────────────── */
+/* CSS multi-column balances section heights → symmetric layout. */
+.pd-bricks { columns: 2; column-gap: 16px; }
 .pd-brick {
+  break-inside: avoid; -webkit-column-break-inside: avoid;
+  margin-bottom: 16px; width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 12px; overflow: hidden;
 }
@@ -131,9 +131,92 @@
   .pd-skel-img { width: 100%; }
   .pd-subscores { grid-template-columns: 1fr; }
 }
+/* ─── AI Analysis tab ────────────────────────────────────────── */
+.pd-ai-loading {
+  display: flex; align-items: center; justify-content: center; gap: 11px;
+  padding: 50px 20px; color: var(--text2); font-size: 14px;
+}
+.pd-ai {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.pd-ai-head {
+  padding: 13px 18px; background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 800; color: var(--accent);
+}
+.pd-ai-body { padding: 18px 20px; }
+
+/* ─── Sections (similar / reviews) ───────────────────────────── */
+.pd-section { margin-top: 44px; }
+.pd-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.pd-section-head h2 {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 10px;
+}
+.pd-section-head h2::before {
+  content: ''; width: 5px; height: 21px; border-radius: 999px;
+  background: var(--brand-grad);
+}
+.pd-section-head span { font-size: 13px; color: var(--text3); }
+
+/* horizontal similar-products carousel */
+.pd-sim-row {
+  display: flex; gap: 14px; overflow-x: auto;
+  padding-bottom: 10px; scroll-snap-type: x proximity;
+}
+.pd-sim-card { flex: 0 0 320px; scroll-snap-align: start; }
+.pd-sim-row::-webkit-scrollbar { height: 7px; }
+
+/* ─── Reviews ────────────────────────────────────────────────── */
+.stars { display: inline-flex; gap: 1px; color: var(--bg5); font-size: 14px; }
+.stars .on { color: #fbbf24; }
+.stars-pick button { color: var(--bg5); font-size: 22px; line-height: 1; padding: 0 1px; }
+.stars-pick button.on { color: #fbbf24; }
+
+.pd-rev-avg { display: inline-flex; align-items: center; gap: 7px; }
+
+.pd-rev-form {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 18px;
+  display: flex; flex-direction: column; gap: 11px;
+}
+.pd-rev-form-top { display: flex; align-items: center; gap: 12px; }
+.pd-rev-label { font-size: 13px; font-weight: 700; color: var(--text2); }
+.pd-rev-form textarea {
+  width: 100%; padding: 11px 13px; resize: vertical;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none;
+}
+.pd-rev-form textarea:focus { border-color: var(--accent); }
+.pd-rev-form .btn { align-self: flex-start; }
+.pd-rev-ok { font-size: 13px; font-weight: 600; color: var(--green); }
+.pd-rev-er { font-size: 13px; font-weight: 600; color: var(--red); }
+
+.pd-rev-list { display: flex; flex-direction: column; gap: 12px; }
+.pd-rev-item {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+}
+.pd-rev-item-head { display: flex; align-items: center; gap: 10px; }
+.pd-rev-av {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--brand-grad); color: #001018;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+}
+.pd-rev-meta { flex: 1; min-width: 0; }
+.pd-rev-meta strong { font-size: 13.5px; display: block; }
+.pd-rev-date { font-size: 12px; color: var(--text3); }
+.pd-rev-text { font-size: 13.5px; color: var(--text2); line-height: 1.6; margin-top: 8px; }
+
 @media (max-width: 720px) {
-  .pd-bricks { grid-template-columns: 1fr; }
+  .pd-bricks { columns: 1; }
 }
 @media (max-width: 560px) {
   .pd-pc { grid-template-columns: 1fr; }
+  .pd-sim-card { flex-basis: 280px; }
 }

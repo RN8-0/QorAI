@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProduct } from '../lib/typesense';
+import { getProduct, getSimilar } from '../lib/typesense';
+import { getReviews, createReview, averageRating } from '../lib/reviews';
+import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
-import { useT } from '../i18n/index.jsx';
+import { useAuth } from '../lib/auth';
+import { useI18n } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
+import ProductCard from '../components/ProductCard.jsx';
+import AiText from '../components/AiText.jsx';
 import './ProductDetail.css';
 
-// ─── Spec helpers ────────────────────────────────────────────────
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
 const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;
 
-// Icon for a spec section — fuzzy keyword match (TR + EN).
 function sectionIcon(name) {
   const n = (name || '').toLowerCase();
   const has = (...k) => k.some((x) => n.includes(x));
@@ -18,37 +21,99 @@ function sectionIcon(name) {
   if (has('batarya', 'pil', 'battery', 'güç', 'power')) return '🔋';
   if (has('kamera', 'camera')) return '📸';
   if (has('işlemci', 'islemci', 'processor', 'chip', 'cpu')) return '🧠';
-  if (has('grafik', 'graphic', 'gpu', 'ekran kart')) return '🎮';
-  if (has('bağlant', 'baglant', 'connect', 'i/o', 'ağ', 'network')) return '🔌';
+  if (has('grafik', 'graphic', 'gpu')) return '🎮';
+  if (has('bağlant', 'baglant', 'connect', 'i/o', 'ağ', 'network', 'yuva')) return '🔌';
   if (has('bellek', 'memory', 'ram', 'depolama', 'storage')) return '💾';
-  if (has('tasarım', 'tasarim', 'design', 'boyut', 'dimension', 'ölçü')) return '📐';
+  if (has('tasarım', 'tasarim', 'design', 'boyut', 'dimension', 'ölçü', 'fonksiyon')) return '📐';
   if (has('ses', 'audio', 'hoparlör', 'speaker')) return '🔊';
   if (has('sensör', 'sensor')) return '📡';
   if (has('işletim', 'isletim', 'os', 'yazılım', 'software')) return '💻';
-  if (has('soğut', 'sogut', 'cooling')) return '❄️';
-  if (has('özellik', 'ozellik', 'feature')) return '✨';
+  if (has('soğut', 'sogut', 'cooling', 'fan')) return '❄️';
+  if (has('doküman', 'dokuman', 'document', 'kılavuz')) return '📄';
+  if (has('özellik', 'ozellik', 'feature', 'öne')) return '✨';
   if (has('temel', 'genel', 'general', 'core')) return 'ℹ️';
   return '📋';
 }
 
+function aiPrompt(p, lang) {
+  const ks = p.keySpecs && typeof p.keySpecs === 'object'
+    ? Object.entries(p.keySpecs).slice(0, 14).map(([k, v]) => `${k}: ${v}`).join(', ')
+    : '';
+  return (
+    'Analyze this tech product as Qor AI, a product advisor.\n' +
+    `Product: ${p.name}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Qor AI score: ${p.techScore || '-'}/100\nKey specs: ${ks || '-'}\n\n` +
+    'Give a concise review: a 2-3 sentence verdict, then **Strengths**, **Weaknesses** ' +
+    'and **Who it is for** sections. Use "-" for bullets and **bold** headings. ' +
+    `Reply ONLY in the language with ISO code: ${lang}.`
+  );
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
-  const t = useT();
+  const { t, lang } = useI18n();
   const { has, toggle } = useCompare();
+  const { user, openAuth } = useAuth();
+
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('specs');
   const [activeImg, setActiveImg] = useState(0);
 
+  const [aiText, setAiText] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const [similar, setSimilar] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [revRating, setRevRating] = useState(0);
+  const [revText, setRevText] = useState('');
+  const [revBusy, setRevBusy] = useState(false);
+  const [revMsg, setRevMsg] = useState('');
+
   useEffect(() => {
     let live = true;
     setLoading(true);
+    setAiText(''); setSimilar([]); setReviews([]); setRevMsg(''); setRevRating(0); setRevText('');
     getProduct(id)
-      .then((prod) => { if (live) { setP(prod); setActiveImg(0); setTab('specs'); } })
+      .then((prod) => {
+        if (!live) return;
+        setP(prod); setActiveImg(0); setTab('specs');
+        if (prod) {
+          getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
+          getReviews(prod.id).then((r) => live && setReviews(r)).catch(() => {});
+        }
+      })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [id]);
+
+  // Generate the AI analysis the first time the tab is opened.
+  useEffect(() => {
+    if (tab !== 'ai' || !p || aiText || aiBusy) return;
+    setAiBusy(true);
+    askQorAi([{ role: 'user', text: aiPrompt(p, lang) }])
+      .then((txt) => setAiText(txt))
+      .catch(() => setAiText(t('pd.aiError')))
+      .finally(() => setAiBusy(false));
+  }, [tab, p]); // eslint-disable-line
+
+  async function submitReview(e) {
+    e.preventDefault();
+    if (!user) { openAuth(); return; }
+    if (!revRating || !revText.trim()) return;
+    setRevBusy(true); setRevMsg('');
+    try {
+      await createReview(p.id, revRating, revText);
+      setRevText(''); setRevRating(0);
+      setRevMsg('ok');
+      setReviews(await getReviews(p.id));
+    } catch {
+      setRevMsg('err');
+    } finally {
+      setRevBusy(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -84,7 +149,6 @@ export default function ProductDetail() {
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
 
-  // Build the brick list: key specs first, then every spec section.
   const bricks = [];
   if (keySpecs && Object.keys(keySpecs).length > 0) {
     bricks.push({ title: t('pd.keySpecs'), icon: '⭐', rows: Object.entries(keySpecs) });
@@ -97,6 +161,8 @@ export default function ProductDetail() {
     }
   }
 
+  const avg = averageRating(reviews);
+
   return (
     <div className="pd">
       <div className="container">
@@ -106,6 +172,7 @@ export default function ProductDetail() {
           <b>{p.name}</b>
         </div>
 
+        {/* HERO */}
         <div className="pd-top">
           <div className="pd-gallery">
             <div className="pd-main-img">
@@ -176,6 +243,7 @@ export default function ProductDetail() {
           </div>
         </div>
 
+        {/* TABS */}
         <div className="pd-tabs">
           <button className={tab === 'specs' ? 'active' : ''} onClick={() => setTab('specs')}>
             {t('pd.tabSpecs')}
@@ -183,16 +251,12 @@ export default function ProductDetail() {
           <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
             {t('pd.tabAi')}
           </button>
-          <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
-            {t('pd.tabReviews')}
-          </button>
         </div>
 
         <div className="pd-tab-body">
           {tab === 'specs' && (
             <div className="pd-specs fade-up">
               {p.description && <p className="pd-desc">{p.description}</p>}
-
               {(pros.length > 0 || cons.length > 0) && (
                 <div className="pd-pc">
                   {pros.length > 0 && (
@@ -209,7 +273,6 @@ export default function ProductDetail() {
                   )}
                 </div>
               )}
-
               {bricks.length > 0 ? (
                 <div className="pd-bricks">
                   {bricks.map((b, i) => <SpecBrick key={i} brick={b} />)}
@@ -220,23 +283,123 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {tab === 'ai' && <div className="pd-note fade-up">{t('pd.aiSoon')}</div>}
-          {tab === 'reviews' && <div className="pd-note fade-up">{t('pd.reviewsSoon')}</div>}
+          {tab === 'ai' && (
+            <div className="fade-up">
+              {aiBusy && (
+                <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
+              )}
+              {!aiBusy && aiText && (
+                <div className="pd-ai">
+                  <div className="pd-ai-head">{t('pd.aiHead')}</div>
+                  <div className="pd-ai-body"><AiText text={aiText} /></div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* SIMILAR PRODUCTS */}
+        {similar.length > 0 && (
+          <section className="pd-section">
+            <div className="pd-section-head">
+              <h2>{t('pd.similar')}</h2>
+              <span>{t('pd.similarDesc')}</span>
+            </div>
+            <div className="pd-sim-row">
+              {similar.map((sp) => (
+                <div className="pd-sim-card" key={sp.id}><ProductCard product={sp} /></div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* REVIEWS */}
+        <section className="pd-section">
+          <div className="pd-section-head">
+            <h2>{t('pd.reviews')}</h2>
+            {reviews.length > 0 && (
+              <span className="pd-rev-avg">
+                <Stars value={Math.round(avg)} />
+                {t('pd.revAvg', { n: reviews.length, avg: avg.toFixed(1) })}
+              </span>
+            )}
+          </div>
+
+          <form className="pd-rev-form" onSubmit={submitReview}>
+            <div className="pd-rev-form-top">
+              <span className="pd-rev-label">{t('pd.revYour')}</span>
+              <StarPicker value={revRating} onChange={setRevRating} />
+            </div>
+            <textarea value={revText} onChange={(e) => setRevText(e.target.value)}
+              placeholder={t('pd.revPlaceholder')} rows={3} maxLength={1000} />
+            {revMsg === 'ok' && <div className="pd-rev-ok">{t('pd.revThanks')}</div>}
+            {revMsg === 'err' && <div className="pd-rev-er">{t('pd.revErr')}</div>}
+            {user ? (
+              <button type="submit" className="btn btn-primary"
+                disabled={revBusy || !revRating || !revText.trim()}>
+                {t('pd.revSubmit')}
+              </button>
+            ) : (
+              <button type="button" className="btn btn-ghost" onClick={openAuth}>
+                {t('pd.revSignIn')}
+              </button>
+            )}
+          </form>
+
+          {reviews.length === 0 ? (
+            <div className="pd-note">{t('pd.revNone')}</div>
+          ) : (
+            <div className="pd-rev-list">
+              {reviews.map((r) => (
+                <div className="pd-rev-item" key={r.id}>
+                  <div className="pd-rev-item-head">
+                    <div className="pd-rev-av">{(r.author || 'U')[0].toUpperCase()}</div>
+                    <div className="pd-rev-meta">
+                      <strong>{r.author || t('nav.profile')}</strong>
+                      <Stars value={r.rating} />
+                    </div>
+                    <span className="pd-rev-date">
+                      {r.created ? new Date(r.created).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                  {r.text && <p className="pd-rev-text">{r.text}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
 }
 
-// One spec section — admin-panel "brick": coloured header + key/value rows.
+function Stars({ value }) {
+  return (
+    <span className="stars">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className={i <= value ? 'on' : ''}>★</span>
+      ))}
+    </span>
+  );
+}
+
+function StarPicker({ value, onChange }) {
+  return (
+    <span className="stars stars-pick">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button type="button" key={i} className={i <= value ? 'on' : ''}
+          onClick={() => onChange(i)} aria-label={`${i}`}>★</button>
+      ))}
+    </span>
+  );
+}
+
 function SpecBrick({ brick }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
   if (!rows.length) return null;
   return (
     <div className="pd-brick">
-      <div className="pd-brick-head">
-        <span>{brick.icon}</span> {brick.title}
-      </div>
+      <div className="pd-brick-head"><span>{brick.icon}</span> {brick.title}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
           const s = String(v).trim();

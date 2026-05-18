@@ -108,6 +108,20 @@ export async function getProduct(id) {
   return docToProduct(await res.json());
 }
 
+// Products in the same category with the closest tech scores.
+export async function getSimilar(category, techScore, excludeId, limit = 12) {
+  if (!category) return [];
+  const pool = await getByCategory(category, 120);
+  const score = Number(techScore) || 0;
+  return pool
+    .filter((p) => p.id !== excludeId && p.name && p.imageUrl)
+    .sort(
+      (a, b) =>
+        Math.abs((a.techScore || 0) - score) - Math.abs((b.techScore || 0) - score),
+    )
+    .slice(0, limit);
+}
+
 // Total products + distinct category count.
 export async function getStats() {
   const res = await tsSearchRaw({
