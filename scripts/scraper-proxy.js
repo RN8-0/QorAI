@@ -562,24 +562,45 @@ function extractAjaxParams(html) {
   };
 }
 
-// Brand filters from the category sidebar. Each
-//   <input id="markaidN" onClick="filtre('marka:N')"> <label>… Brand (count)</label>
-// becomes { id, name, count }. The UNFILTERED listing caps deep pagination at
-// ~2.5k products, but each brand-filtered listing is small enough to page
-// through fully — so iterating brands reaches the COMPLETE category catalog.
-function extractBrandFilters(html) {
-  const re = /markaid\d+"[^>]*onclick="filtre\('marka:(\d+)'\)"[^>]*>\s*<label\b[^>]*>\s*(?:<span>\s*<\/span>)?\s*([^<(]+?)\s*\((\d+)\)/gi;
-  const brands = [];
-  const seen = new Set();
+// The unfiltered category listing caps deep pagination at ~2.5k products, but
+// a FILTERED query is not capped. So we pick one sidebar filter group whose
+// options PARTITION the whole catalog — a single-value feature that has a
+// "Belirtilmemiş" (unspecified) option, e.g. 5G: Var + Yok + Belirtilmemiş.
+// Selecting every option of that group = no real constraint = the COMPLETE
+// catalog, reachable page by page in one stream.
+//
+// Sidebar option markup:
+//   <input ... onClick="filtre('GROUPID:VALUEID')"><label>…Name (count)</label>
+// Returns { groupId, values:['GID:VID',…], total } or null.
+function extractBestFilter(html) {
+  const re = /onclick="filtre\('(\d+):(\d+)'\)"[^>]*>\s*<label\b[^>]*>\s*(?:<span>\s*<\/span>)?\s*([^<(]+?)\s*\((\d+)\)/gi;
+  const groups = new Map(); // groupId -> { values:Set, total, hasUnspecified }
   let m;
   while ((m = re.exec(String(html || ''))) !== null) {
-    const id = m[1];
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const name = m[2].replace(/\s+/g, ' ').trim();
-    if (name) brands.push({ id, name, count: parseInt(m[3], 10) || 0 });
+    const gid = m[1], vid = m[2];
+    const name = m[3].replace(/\s+/g, ' ').trim();
+    const count = parseInt(m[4], 10) || 0;
+    let g = groups.get(gid);
+    if (!g) { g = { values: new Map(), total: 0, hasUnspecified: false }; groups.set(gid, g); }
+    if (!g.values.has(vid)) { g.values.set(vid, count); g.total += count; }
+    if (/^belirtilmemiş/i.test(name)) g.hasUnspecified = true;
   }
-  return brands;
+  // A clean partition needs the catch-all "Belirtilmemiş" option. Among those,
+  // take the group covering the most products; tie-break on fewer options.
+  let best = null;
+  for (const [gid, g] of groups) {
+    if (!g.hasUnspecified) continue;
+    if (!best || g.total > best.total ||
+        (g.total === best.total && g.values.size < best.size)) {
+      best = { groupId: gid, total: g.total, size: g.values.size, values: [...g.values.keys()] };
+    }
+  }
+  if (!best) return null;
+  return {
+    groupId: best.groupId,
+    total: best.total,
+    values: best.values.map(vid => `${best.groupId}:${vid}`),
+  };
 }
 
 // Highest page number referenced by the listing's pagination block.
@@ -1180,18 +1201,17 @@ const server = http.createServer(async (req, res) => {
         const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
         const links = extractListingLinksFromHtml(html, maxLinks, prefix);
         const ajax = extractAjaxParams(html);
-        const brands = extractBrandFilters(html);
-        const maxPage = extractMaxListingPage(html, catPath);
+        const filter = extractBestFilter(html);
         const AJAX_PAGE_SIZE = 200;
-        const estPages = ajax ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE)) : 0;
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
-          `${brands.length ? ` · ${brands.length} brands` : ''}`);
+          `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}`);
         result = {
-          links, pages: [], brands,
+          links, pages: [],
           ajax: ajax
             ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
-                estPages, base: targetUrl, prefix }
+                base: targetUrl, prefix }
             : null,
+          filter,
         };
       }
 
@@ -1202,7 +1222,7 @@ const server = http.createServer(async (req, res) => {
         links: result.links,
         pages: result.pages || [],
         ajax: result.ajax || null,
-        brands: result.brands || [],
+        filter: result.filter || null,
       }));
     } catch (err) {
       if (err.extractionFailed) {
@@ -1240,10 +1260,11 @@ const server = http.createServer(async (req, res) => {
       const pageNo = urlObj.searchParams.get('page') || '1';
       const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
       const prefix = urlObj.searchParams.get('prefix') || '';
-      // Optional brand/spec filter, e.g. "marka:1" (Samsung). When set, Epey's
-      // listing is scoped to that brand — the only way to reach the products
-      // the unfiltered listing caps off.
-      const filtre = urlObj.searchParams.get('filtre') || '';
+      // Filter values, e.g. ["5711:464004","5711:464003","5711:1118558"] —
+      // all options of one partitioning group. Sent as PHP-array filtrele[].
+      // Selecting every option = no real constraint, but it puts Epey in
+      // FILTERED-listing mode, which is not capped at ~2.5k like the default.
+      const fvs = urlObj.searchParams.getAll('fv').filter(Boolean);
       if (!kid) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing kid' }));
@@ -1259,12 +1280,13 @@ const server = http.createServer(async (req, res) => {
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
         if (!onEpey) await fetchWithPuppeteer(base);
-        return await page.evaluate(async (kidV, limitV, sayfaV, filtreV) => {
+        return await page.evaluate(async (kidV, limitV, sayfaV, filterVals) => {
           try {
-            const body = new URLSearchParams({
-              kategori_id: String(kidV), limit: String(limitV), sayfa: String(sayfaV),
-            });
-            if (filtreV) body.set('filtrele', filtreV);
+            const body = new URLSearchParams();
+            body.append('kategori_id', String(kidV));
+            body.append('limit', String(limitV));
+            body.append('sayfa', String(sayfaV));
+            for (const v of (filterVals || [])) body.append('filtrele[]', v);
             const r = await fetch('/kat/listele/', {
               method: 'POST',
               headers: {
@@ -1276,7 +1298,7 @@ const server = http.createServer(async (req, res) => {
             });
             return r.ok ? await r.text() : '';
           } catch { return ''; }
-        }, kid, limit, pageNo, filtre);
+        }, kid, limit, pageNo, fvs);
       });
       const links = extractListingLinksFromHtml(html || '', 2000, prefix);
       res.writeHead(200, { 'Content-Type': 'application/json' });

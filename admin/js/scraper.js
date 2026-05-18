@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260518v3-epey-per-brand';
+const SCRAPER_BUILD = '20260518v5-epey-full-filter';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -3378,31 +3378,30 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // One Epey AJAX listing page (epey.com/kat/listele/). `filtre` optionally
-  // scopes it to a brand, e.g. "marka:1".
-  const fetchAjaxPage = async (ajax, pageNo, filtre = '') => {
-    const qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
-      `&cerez=${encodeURIComponent(ajax.cerez || '')}` +
+  // One Epey AJAX listing page (epey.com/kat/listele/). `filterValues` is the
+  // list of partition-filter options ("5711:464004", …) sent as filtrele[].
+  const fetchAjaxPage = async (ajax, pageNo, filterValues = []) => {
+    let qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
       `&page=${pageNo}` +
       `&base=${encodeURIComponent(ajax.base)}` +
-      `&prefix=${encodeURIComponent(ajax.prefix || '')}` +
-      (filtre ? `&filtre=${encodeURIComponent(filtre)}` : '');
+      `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
+    for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
     const res = await fetch(`${PROXY_URL}/listing-ajax?${qs}`, { signal: AbortSignal.timeout(30000) });
     return res.ok ? await res.json() : null;
   };
 
-  // Page one listing stream to the end. A page thinner than the page size is
-  // the last page; two consecutive no-new-product pages also end it (covers
-  // Epey's clamp-repeat behaviour). `onPage(pageNo, added, total)` is called
-  // after every page so the caller can log live progress.
-  const paginateStream = async (ajax, filtre, onPage) => {
+  // Page one listing stream 1,2,3,… to the end. A page thinner than the page
+  // size is the last page; two consecutive no-new-product pages also end it
+  // (covers Epey's clamp-repeat behaviour). `onPage(pageNo, added, total)` is
+  // called after every page so the caller can log live progress.
+  const paginateStream = async (ajax, filterValues, onPage) => {
     const pageSize = Number(ajax.limit) || 200;
     let emptyStreak = 0;
     for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
       let got = null;
       try {
-        got = await fetchAjaxPage(ajax, pageNo, filtre);
+        got = await fetchAjaxPage(ajax, pageNo, filterValues);
       } catch (e) {
         slog(`  ⚠️ sayfa ${pageNo} hatası: ${e.message}`, 'warn');
         break;
@@ -3444,16 +3443,22 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       slog(`  ✓ Kategori sayfası: +${firstAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstAdded ? 'success' : 'warn');
 
       const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
+      const filter = data?.filter && Array.isArray(data.filter.values) && data.filter.values.length
+        ? data.filter : null;
+      const logPage = (pageNo, added, total) =>
+        slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
 
-      // ONE category listing stream — the whole category, paginated. Reliable
-      // and quick (~13 requests). Per-brand filtering was tried to reach the
-      // discontinued-model superset but Epey rate-limits the rapid filtered
-      // AJAX, so it was dropped in favour of this dependable single stream.
-      if (ajax && allItems.length < maxProducts) {
-        slog(`  ⏩ Kategori listesi sayfalanıyor (${ajax.limit} ürün/sayfa)…`, 'info');
-        await paginateStream(ajax, '', (pageNo, added, total) => {
-          slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
-        });
+      // ONE stream, paginated 1,2,3,… When a partition filter is available
+      // (a sidebar group with a "Belirtilmemiş" option, e.g. 5G) selecting
+      // ALL its options puts Epey in filtered-listing mode, which is NOT
+      // capped at ~2.5k — so this single stream reaches the FULL catalog.
+      if (ajax && filter && allItems.length < maxProducts) {
+        slog(`  ⏩ Tüm katalog sayfalanıyor — filtre grubu ${filter.groupId}, ~${filter.total} ürün (${ajax.limit}/sayfa)`, 'info');
+        await paginateStream(ajax, filter.values, logPage);
+      } else if (ajax && allItems.length < maxProducts) {
+        // No partition filter found — plain listing (Epey caps it at ~2.5k).
+        slog(`  ⏩ Kategori listesi sayfalanıyor — partition filtre yok (${ajax.limit}/sayfa)`, 'warn');
+        await paginateStream(ajax, [], logPage);
       } else if (!ajax) {
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
