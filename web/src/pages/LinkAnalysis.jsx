@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
 import './LinkAnalysis.css';
@@ -57,7 +58,9 @@ export default function LinkAnalysis() {
     trackEvent('link_analysis', { count: list.length });
     try {
       const prompt = list.length > 1 ? comparePrompt(list, lang) : singlePrompt(list[0], lang);
-      setResult(await askQorAi([{ role: 'user', text: prompt }]));
+      const text = await askQorAi([{ role: 'user', text: prompt }]);
+      setResult(text);
+      saveLinkAnalysisHistory({ urls: list, analysis: text, type: list.length > 1 ? 'compare' : 'single' });
     } catch {
       setErr(t('la.errFail'));
     } finally {

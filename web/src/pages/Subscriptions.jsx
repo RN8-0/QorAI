@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { saveSubscriptionHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
 import './Subscriptions.css';
@@ -39,7 +40,9 @@ export default function Subscriptions() {
     setBusy(true); setResult('');
     trackEvent('subscription_compare', { count: selected.length });
     try {
-      setResult(await askQorAi([{ role: 'user', text: PROMPT(selected, lang) }]));
+      const text = await askQorAi([{ role: 'user', text: PROMPT(selected, lang) }]);
+      setResult(text);
+      saveSubscriptionHistory({ services: selected, analysis: text });
     } catch {
       setResult(t('la.errFail'));
     } finally {

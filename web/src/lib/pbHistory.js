@@ -87,3 +87,78 @@ export async function saveComparisonHistory(productIds, products = []) {
     // PB history is best effort; compare UI remains local and instant.
   }
 }
+
+export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single' }) {
+  const user = currentUser();
+  const list = (urls || []).map((u) => String(u || '').trim()).filter(Boolean);
+  if (!user || !list.length || !analysis) return;
+  const now = new Date().toISOString();
+  try {
+    await pb.collection('saved_analyses').create({
+      userId: user.id,
+      url: list[0] || '',
+      title: list.length > 1 ? list.join(' vs ') : list[0],
+      category: 'link_history',
+      analysisData: {
+        type,
+        urls: list,
+        url: list[0] || '',
+        analysis,
+        timestamp: now,
+      },
+      aiScore: 0,
+      aiSummary: String(analysis).slice(0, 5000),
+      savedAt: now,
+    });
+  } catch {
+    // Best effort shared history.
+  }
+}
+
+export async function saveSubscriptionHistory({ services, analysis }) {
+  const user = currentUser();
+  const list = (services || []).map((s) => String(s || '').trim()).filter(Boolean);
+  if (!user || list.length < 2 || !analysis) return;
+  const now = new Date().toISOString();
+  try {
+    await pb.collection('saved_analyses').create({
+      userId: user.id,
+      title: list.join(' vs '),
+      category: 'subscription_history',
+      analysisData: {
+        type: 'subscription',
+        services: list,
+        analysisResult: analysis,
+        timestamp: now,
+      },
+      aiScore: 0,
+      aiSummary: String(analysis).slice(0, 5000),
+      savedAt: now,
+    });
+  } catch {
+    // Best effort shared history.
+  }
+}
+
+export async function saveQuizHistory({ answers, result }) {
+  const user = currentUser();
+  if (!user || !answers || !result) return;
+  const now = new Date().toISOString();
+  try {
+    const latest = await pb.collection('users').getOne(user.id);
+    const history = Array.isArray(latest.quizHistory) ? latest.quizHistory : [];
+    await pb.collection('users').update(user.id, {
+      quizHistory: [
+        {
+          answers,
+          result,
+          recommendation: result,
+          timestamp: now,
+        },
+        ...history,
+      ].slice(0, 30),
+    });
+  } catch {
+    // Best effort shared history.
+  }
+}

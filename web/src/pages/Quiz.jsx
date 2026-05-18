@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { saveQuizHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
 import './Quiz.css';
@@ -42,7 +43,9 @@ export default function Quiz() {
       setBusy(true);
       trackEvent('quiz_complete');
       try {
-        setResult(await askQorAi([{ role: 'user', text: PROMPT(next, lang) }]));
+        const text = await askQorAi([{ role: 'user', text: PROMPT(next, lang) }]);
+        setResult(text);
+        saveQuizHistory({ answers: next, result: text });
       } catch {
         setResult(t('la.errFail'));
       } finally {
