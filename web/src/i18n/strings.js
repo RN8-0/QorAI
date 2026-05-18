@@ -377,4 +377,15 @@ const tr = {
   'nf.back': 'Ana Sayfaya Dön',
 };
 
-export const STRINGS = { en, tr };
+import de from './locales/de.js';
+import fr from './locales/fr.js';
+import es from './locales/es.js';
+import it from './locales/it.js';
+import pt from './locales/pt.js';
+import nl from './locales/nl.js';
+import pl from './locales/pl.js';
+import sv from './locales/sv.js';
+import ja from './locales/ja.js';
+import ar from './locales/ar.js';
+
+export const STRINGS = { en, tr, de, fr, es, it, pt, nl, pl, sv, ja, ar };
