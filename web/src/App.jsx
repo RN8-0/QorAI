@@ -12,6 +12,8 @@ import ProductDetail from './pages/ProductDetail.jsx';
 import Compare from './pages/Compare.jsx';
 import LinkAnalysis from './pages/LinkAnalysis.jsx';
 import AiChat from './pages/AiChat.jsx';
+import Subscriptions from './pages/Subscriptions.jsx';
+import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -37,8 +39,8 @@ export default function App() {
           <Route path="/ai-chat" element={<AiChat />} />
           <Route path="/pc-builder" element={<Placeholder title="PC Toplama" emoji="🖥️" />} />
           <Route path="/link-analysis" element={<LinkAnalysis />} />
-          <Route path="/subscriptions" element={<Placeholder title="Abonelik Karşılaştırma" emoji="📺" />} />
-          <Route path="/quiz" element={<Placeholder title="Kişisel Quiz" emoji="🎯" />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/quiz" element={<Quiz />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

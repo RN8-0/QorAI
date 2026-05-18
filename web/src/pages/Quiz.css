@@ -1,0 +1,62 @@
+.quiz { padding: 36px 20px 56px; max-width: 600px; }
+
+.quiz-head { text-align: center; margin-bottom: 24px; }
+.quiz-icon {
+  width: 72px; height: 72px; margin: 0 auto 14px; border-radius: 20px;
+  background: var(--accent-soft);
+  display: flex; align-items: center; justify-content: center; font-size: 34px;
+}
+.quiz-head h1 { font-size: clamp(24px, 4vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
+.quiz-head p { color: var(--text2); margin-top: 8px; }
+
+.quiz-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 26px;
+}
+.quiz-progress {
+  height: 6px; background: var(--bg4); border-radius: 999px; overflow: hidden;
+}
+.quiz-progress-bar {
+  height: 100%; background: var(--brand-grad); border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.quiz-step-no {
+  font-size: 12px; font-weight: 700; color: var(--accent);
+  margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.quiz-q { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 18px; }
+
+.quiz-opts { display: flex; flex-direction: column; gap: 10px; }
+.quiz-opt {
+  text-align: left; padding: 14px 16px; border-radius: var(--radius);
+  background: var(--bg3); border: 1px solid var(--border);
+  font-size: 14.5px; font-weight: 600; transition: all 0.13s;
+}
+.quiz-opt:hover {
+  border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+  transform: translateX(3px);
+}
+.quiz-back {
+  margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--text3);
+}
+.quiz-back:hover { color: var(--text); }
+
+.quiz-loading {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 60px 20px; color: var(--text2); font-size: 14px; text-align: center;
+}
+
+.quiz-result {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.quiz-result-head {
+  padding: 14px 18px; background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 800; color: var(--accent);
+}
+.quiz-result-body { padding: 18px 20px; }
+.quiz-result-actions {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 14px 20px; border-top: 1px solid var(--border); flex-wrap: wrap;
+}
