@@ -16,7 +16,7 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState('all');
+  const [cat, setCat] = useState(params.get('cat') || 'all');
   const [sort, setSort] = useState('score');
   const [shown, setShown] = useState(PAGE);
   const [q, setQ] = useState(params.get('q') || '');

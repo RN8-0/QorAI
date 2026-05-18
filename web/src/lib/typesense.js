@@ -9,7 +9,8 @@ const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
 const TS_COLLECTION = 'products';
 
 const LIGHT_FIELDS =
-  'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,price_segment,lowestPriceUSD,keySpecsText';
+  'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,price_segment,' +
+  'lowestPriceUSD,keySpecsText,filterTokens,screenSizeValue,batteryCapacityValue,weightValueKg';
 
 async function tsSearchRaw(params) {
   const qs = new URLSearchParams(params).toString();
@@ -40,6 +41,11 @@ export function docToProduct(doc) {
     price_segment: base.price_segment || doc.price_segment || '',
     lowestPriceUSD: doc.lowestPriceUSD || base.lowestPriceUSD || 0,
     slug: base.slug || doc.slug || '',
+    keySpecsText: doc.keySpecsText || '',
+    filterTokens: Array.isArray(doc.filterTokens) ? doc.filterTokens : [],
+    screenSizeValue: doc.screenSizeValue || 0,
+    batteryCapacityValue: doc.batteryCapacityValue || 0,
+    weightValueKg: doc.weightValueKg || 0,
   };
 }
 

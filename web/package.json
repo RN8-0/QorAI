@@ -6,7 +6,8 @@
   "description": "Qor AI — React SPA for qorai.net",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "prebuild": "node scripts/prebuild.mjs",
+    "build": "vite build && node scripts/postbuild.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

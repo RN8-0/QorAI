@@ -1,53 +1,57 @@
 .pcard {
-  display: flex; flex-direction: column;
+  display: flex; gap: 12px;
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden;
+  border-radius: var(--radius); padding: 12px;
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .pcard:hover {
   border-color: var(--accent-ring);
-  transform: translateY(-3px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
 }
 
 .pcard-img {
-  position: relative; aspect-ratio: 1 / 1;
-  background: var(--bg3);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
+  width: 96px; height: 116px; flex-shrink: 0;
+  background: var(--bg3); border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.pcard-img img {
-  width: 100%; height: 100%; object-fit: contain; padding: 14px;
-  transition: transform 0.25s ease;
-}
-.pcard:hover .pcard-img img { transform: scale(1.05); }
-.pcard-cat {
-  position: absolute; top: 9px; left: 9px; z-index: 1;
-  font-size: 10.5px; font-weight: 700;
-  padding: 4px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--border); color: var(--text2);
-}
+.pcard-img img { width: 100%; height: 100%; object-fit: contain; padding: 9px; }
 
-.pcard-body { padding: 13px 14px 14px; display: flex; flex-direction: column; flex: 1; }
+.pcard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pcard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pcard-brand {
-  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--accent); margin-bottom: 3px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--accent);
 }
 .pcard-name {
-  font-size: 14px; font-weight: 700; line-height: 1.35;
+  font-size: 14px; font-weight: 700; line-height: 1.35; margin-top: 3px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; min-height: 38px;
+  overflow: hidden;
 }
-.pcard-foot {
-  margin-top: auto; padding-top: 11px;
-  display: flex; align-items: center; justify-content: space-between;
+
+.pcard-specs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
+  margin-top: 9px;
 }
-.pcard-go { font-size: 12px; font-weight: 700; color: var(--text3); transition: color 0.13s; }
+.pcard-spec { display: grid; grid-template-columns: auto 1fr; column-gap: 6px; align-items: baseline; }
+.pcard-spec-label { font-size: 10.5px; color: var(--text3); }
+.pcard-spec-val { font-size: 11.5px; font-weight: 700; color: var(--text); text-align: right; }
+.pcard-spec-bar {
+  grid-column: 1 / -1; height: 3px; margin-top: 3px;
+  background: var(--bg4); border-radius: 999px; overflow: hidden;
+}
+.pcard-spec-bar i { display: block; height: 100%; background: var(--brand-grad); border-radius: 999px; }
+
+.pcard-cat-row { font-size: 12px; color: var(--text2); margin-top: 9px; }
+
+.pcard-go {
+  margin-top: auto; padding-top: 9px;
+  font-size: 11.5px; font-weight: 700; color: var(--text3);
+  transition: color 0.13s;
+}
 .pcard:hover .pcard-go { color: var(--accent); }
 
-@media (max-width: 520px) {
-  .pcard-body { padding: 10px 11px 12px; }
-  .pcard-name { font-size: 13px; min-height: 35px; }
+@media (max-width: 480px) {
+  .pcard-img { width: 84px; height: 104px; }
+  .pcard-name { font-size: 13px; }
 }
