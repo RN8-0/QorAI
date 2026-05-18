@@ -162,6 +162,7 @@
 <!-- PocketBase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
 <script src="/js/pb_client.js?v=20260428c"></script>
+<script src="/js/ts_client.js?v=20260518a"></script>
 <script src="/js/auth.js?v=20260428c"></script>
 <script src="/js/analytics.js?v=20260428c"></script>
 
@@ -205,7 +206,7 @@ function cScoreBadge(score) {
 
 async function loadCompareProducts() {
   try {
-    const items = await pbLoadProducts(200);
+    const items = await tsLoadAllProducts();
     cAllProducts = items
       .filter(p => p.name && p.imageUrl)
       .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
@@ -216,8 +217,10 @@ async function loadCompareProducts() {
 
     cFiltered = [...cAllProducts];
     renderProductList();
-    renderCompareRight();
     initCompareControls();
+    // Hydrate restored selections with full specs, then render the table.
+    await Promise.all(cSelected.map(hydrateProduct));
+    renderCompareRight();
   } catch (e) {
     console.error('Compare load error:', e);
   }
@@ -298,7 +301,7 @@ function renderProductList() {
   updateCountLabel();
 }
 
-function toggleCompareSelect(productId) {
+async function toggleCompareSelect(productId) {
   if (cSelected.includes(productId)) {
     cSelected = cSelected.filter(id => id !== productId);
   } else {
@@ -307,10 +310,28 @@ function toggleCompareSelect(productId) {
       return;
     }
     cSelected.push(productId);
+    await hydrateProduct(productId);
   }
   localStorage.setItem('qorai-compare', JSON.stringify(cSelected));
   renderProductList();
   renderCompareRight();
+}
+
+// The picker list loads light fields for speed; the comparison table
+// needs full specs, so we fetch the complete record on selection.
+async function hydrateProduct(id) {
+  const idx = cAllProducts.findIndex(p => p.id === id);
+  if (idx >= 0 && cAllProducts[idx]._hydrated) return;
+  try {
+    const full = await tsGetProduct(id);
+    if (full) {
+      full._hydrated = true;
+      if (idx >= 0) cAllProducts[idx] = full;
+      else cAllProducts.push(full);
+    }
+  } catch (e) {
+    console.warn('hydrate failed for', id, e);
+  }
 }
 
 function updateCountLabel() {

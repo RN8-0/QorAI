@@ -303,6 +303,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
 <script src="/js/pb_client.js?v=20260428c"></script>
+<script src="/js/ts_client.js?v=20260518a"></script>
 <script src="/js/auth.js?v=20260428c"></script>
 <script src="/js/analytics.js?v=20260428c"></script>
 <script>
@@ -494,12 +495,16 @@
     }
   })();
 
-  // Load
+  // Load — full catalog from Typesense (same engine as the app).
+  // Page 1 paints instantly; the rest streams in right behind it.
   (async () => {
     try {
-      allProducts = await pbLoadProducts(500);
-      // Strip products without name/image
-      allProducts = allProducts.filter(p => p.name);
+      const onFirst = (batch) => {
+        allProducts = batch.filter(p => p.name);
+        buildPills();
+        applyFilters();
+      };
+      allProducts = (await tsLoadAllProducts(onFirst)).filter(p => p.name);
       buildPills();
       applyFilters();
     } catch (e) {

@@ -220,6 +220,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
 <script src="/js/pb_client.js?v=20260428c"></script>
+<script src="/js/ts_client.js?v=20260518a"></script>
 <script src="/js/auth.js?v=20260428c"></script>
 <script src="/js/analytics.js?v=20260428c"></script>
 <script>
@@ -233,21 +234,17 @@
   document.getElementById('theme-toggle').textContent =
     (document.documentElement.getAttribute('data-theme') === 'light') ? '☀️' : '🌙';
 
-  // Live stats from PocketBase (real numbers, no mock data)
+  // Live stats from Typesense (real numbers, no mock data)
   (async () => {
     try {
-      const pb = getPb();
-      const total = await pb.collection('products').getList(1, 1, { $autoCancel:false });
-      const totalCount = total.totalItems || 0;
+      const { total, categories } = await tsStats();
       const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M+'
                      : n >= 1e3 ? (n/1e3).toFixed(1).replace(/\.0$/,'')+'K+'
                      : String(n);
       const $p = document.getElementById('stat-products');
       const $c = document.getElementById('stat-categories');
-      if ($p) $p.textContent = totalCount ? fmt(totalCount) : '—';
-      const sample = await pb.collection('products').getList(1, 200, { fields:'category', $autoCancel:false });
-      const cats = new Set((sample.items||[]).map(p=>p.category).filter(Boolean));
-      if ($c) $c.textContent = cats.size ? String(cats.size) : '—';
+      if ($p) $p.textContent = total ? fmt(total) : '—';
+      if ($c) $c.textContent = categories ? String(categories) : '—';
     } catch(e) { /* keep dashes silently */ }
   })();
 

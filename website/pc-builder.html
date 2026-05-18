@@ -71,9 +71,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
 <script src="/js/pb_client.js?v=20260428c"></script>
+<script src="/js/ts_client.js?v=20260518a"></script>
 <script src="/js/app.js?v=20260428c"></script>
-<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
-<script src="/js/pb_client.js?v=20260428c"></script>
 <script src="/js/auth.js?v=20260428c"></script>
 <script src="/js/analytics.js?v=20260428c"></script>
   <script>
@@ -101,7 +100,7 @@
     async function loadStepProducts() {
       for (const step of STEPS) {
         try {
-          const items = await pbGetByCategory(step.cat, 50);
+          const items = await tsGetByCategory(step.cat, 50);
           stepProducts[step.cat] = items
             .sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
         } catch(e) {

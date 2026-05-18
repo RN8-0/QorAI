@@ -37,6 +37,9 @@ let activeFilters = {
 
 /* ── App Init ───────────────────────────────────────────────── */
 async function initApp() {
+  // Only the catalog grid pages need the product list — skip the
+  // load entirely elsewhere so AI/PC-builder pages stay snappy.
+  if (!document.getElementById('product-grid')) return;
   try {
     db = {}; // stub for backward compat
     await loadProducts();
@@ -46,12 +49,17 @@ async function initApp() {
   }
 }
 
-/* ── Load Products ──────────────────────────────────────────────── */
+/* ── Load Products (Typesense — same engine as the app) ─────────── */
 async function loadProducts() {
   try {
-    const items = await pbLoadProducts(500);
-    allProducts = items
-      .filter(p => p.name && p.imageUrl);
+    const onFirst = (batch) => {
+      allProducts = batch.filter(p => p.name && p.imageUrl);
+      filteredProducts = [...allProducts];
+      buildCategoryFilters();
+      renderProducts();
+    };
+    const items = await tsLoadAllProducts(onFirst);
+    allProducts = items.filter(p => p.name && p.imageUrl);
     allProducts.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     filteredProducts = [...allProducts];
     buildCategoryFilters();
@@ -79,7 +87,7 @@ async function doSearch(query) {
 
   if (local.length < 5) {
     try {
-      const remote = await pbSearchProducts(query, 50);
+      const remote = await tsSearchProducts(query, 50);
       const ids = new Set(local.map(p => p.id));
       remote.forEach(p => { if (!ids.has(p.id)) local.push(p); });
     } catch (e) {
