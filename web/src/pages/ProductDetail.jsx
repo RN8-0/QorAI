@@ -49,6 +49,59 @@ function aiPrompt(p, lang) {
   );
 }
 
+function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle) {
+  const bricks = [];
+  const seen = new Set();
+  const addRows = (title, icon, entries) => {
+    const rows = [];
+    (entries || []).forEach(([k, v]) => {
+      const key = String(k || '').trim();
+      const value = v == null ? '' : String(v).trim();
+      if (!key || !value) return;
+      const sig = key.toLowerCase();
+      rows.push([key, v]);
+      seen.add(sig);
+    });
+    if (rows.length) bricks.push({ title, icon, rows });
+  };
+
+  const keySpecs = product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : null;
+  if (keySpecs && Object.keys(keySpecs).length > 0) {
+    addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
+  }
+
+  const sections = product.specSections && typeof product.specSections === 'object' ? product.specSections : null;
+  if (sections) {
+    for (const [section, specs] of Object.entries(sections)) {
+      if (specs && typeof specs === 'object') {
+        addRows(section, sectionIcon(section), Object.entries(specs));
+      }
+    }
+  }
+
+  const flat = product.specs && typeof product.specs === 'object' ? product.specs : null;
+  if (flat) {
+    const missing = Object.entries(flat).filter(([k, v]) =>
+      k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),
+    );
+    if (missing.length) addRows(allSpecsTitle, '📋', missing);
+  }
+  return bricks;
+}
+
+function balanceSpecBricks(bricks) {
+  const columns = [[], []];
+  const weights = [0, 0];
+  bricks.forEach((brick) => {
+    const rows = Array.isArray(brick.rows) ? brick.rows : [];
+    const weight = 2 + rows.length;
+    const side = weights[0] <= weights[1] ? 0 : 1;
+    columns[side].push(brick);
+    weights[side] += weight;
+  });
+  return columns.filter((col) => col.length > 0);
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
   const { t, lang } = useI18n();
@@ -136,7 +189,7 @@ export default function ProductDetail() {
         <div className="pd-missing-icon">🔍</div>
         <h2>{t('pd.notFound')}</h2>
         <p>{t('pd.notFoundDesc')}</p>
-        <Link to="/catalog" className="btn btn-primary">{t('pd.backToCatalog')}</Link>
+        <Link to="/" className="btn btn-primary">{t('pd.backToCatalog')}</Link>
       </div>
     );
   }
@@ -144,22 +197,10 @@ export default function ProductDetail() {
   const meta = catMeta(p.category);
   const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.imageUrl]).filter(Boolean);
   const subscores = p.techSubscores && typeof p.techSubscores === 'object' ? p.techSubscores : null;
-  const specSections = p.specSections && typeof p.specSections === 'object' ? p.specSections : null;
-  const keySpecs = p.keySpecs && typeof p.keySpecs === 'object' ? p.keySpecs : null;
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
-
-  const bricks = [];
-  if (keySpecs && Object.keys(keySpecs).length > 0) {
-    bricks.push({ title: t('pd.keySpecs'), icon: '⭐', rows: Object.entries(keySpecs) });
-  }
-  if (specSections) {
-    for (const [section, specs] of Object.entries(specSections)) {
-      if (specs && typeof specs === 'object') {
-        bricks.push({ title: section, icon: sectionIcon(section), rows: Object.entries(specs) });
-      }
-    }
-  }
+  const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'));
+  const specColumns = balanceSpecBricks(bricks);
 
   const avg = averageRating(reviews);
 
@@ -168,7 +209,7 @@ export default function ProductDetail() {
       <div className="container">
         <div className="pd-crumb">
           <Link to="/">{t('nav.home')}</Link> <span>/</span>
-          <Link to="/catalog">{t('nav.catalog')}</Link> <span>/</span>
+          <span>{meta.label}</span> <span>/</span>
           <b>{p.name}</b>
         </div>
 
@@ -275,7 +316,11 @@ export default function ProductDetail() {
               )}
               {bricks.length > 0 ? (
                 <div className="pd-bricks">
-                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} />)}
+                  {specColumns.map((col, colIndex) => (
+                    <div className="pd-brick-col" key={colIndex}>
+                      {col.map((b, i) => <SpecBrick key={`${colIndex}-${i}`} brick={b} />)}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 !p.description && <div className="pd-note">{t('pd.noSpecs')}</div>

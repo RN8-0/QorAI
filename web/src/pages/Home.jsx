@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { getStats, loadAllProducts } from '../lib/typesense';
+import { Link, useSearchParams } from 'react-router-dom';
+import { getStats, loadAllProducts, searchProducts } from '../lib/typesense';
 import { catMeta, formatCount, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
 import { useT } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -12,6 +12,16 @@ const TOOLS = [
   { to: '/subscriptions', emoji: '📺', t: 'home.tSubs', d: 'home.tSubsD' },
   { to: '/quiz', emoji: '🎯', t: 'home.tQuiz', d: 'home.tQuizD' },
 ];
+
+function categoryGroup(cat, label) {
+  const s = `${cat || ''} ${label || ''}`.toLowerCase();
+  if (/(smart|phone|tablet|watch|headphone|earbud|wearable)/.test(s)) return 'mobile';
+  if (/(laptop|desktop|monitor|printer|scanner|all-in-one|computer)/.test(s)) return 'computers';
+  if (/(processor|motherboard|graphics|ram|ssd|hard|psu|case|cooler|fan|thermal)/.test(s)) return 'components';
+  if (/(mouse|mice|keyboard|gamepad|speaker|microphone|webcam|accessor)/.test(s)) return 'peripherals';
+  if (/(network|router|modem|adapter|switch|wi-fi|wifi)/.test(s)) return 'network';
+  return 'other';
+}
 
 // ─── Auto-rotating featured carousel ─────────────────────────────
 function Featured({ items, t }) {
@@ -70,12 +80,20 @@ function Featured({ items, t }) {
 }
 
 export default function Home() {
-  const nav = useNavigate();
+  const [params, setParams] = useSearchParams();
   const t = useT();
   const [stats, setStats] = useState({ total: 0, categories: 0, categoryCounts: [] });
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(() => params.get('q') || '');
+  const [activeCat, setActiveCat] = useState(() => params.get('cat') || '');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    setQ(params.get('q') || '');
+    setActiveCat(params.get('cat') || '');
+  }, [params]);
 
   useEffect(() => {
     getStats().then(setStats).catch(() => {});
@@ -84,14 +102,79 @@ export default function Home() {
       .catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const term = q.trim();
+    let live = true;
+    if (!term) {
+      setSearchResults([]);
+      setSearching(false);
+      return () => { live = false; };
+    }
+    setSearching(true);
+    const tm = setTimeout(() => {
+      searchProducts(term, 60)
+        .then((res) => { if (live) setSearchResults(res); })
+        .catch(() => { if (live) setSearchResults([]); })
+        .finally(() => { if (live) setSearching(false); });
+    }, 220);
+    return () => { live = false; clearTimeout(tm); };
+  }, [q]);
+
+  function setHomeFilters(nextQ, nextCat, replace = false) {
+    const next = new URLSearchParams();
+    const term = (nextQ || '').trim();
+    if (term) next.set('q', term);
+    if (nextCat) next.set('cat', nextCat);
+    setParams(next, { replace });
+  }
+
   function search(e) {
     e.preventDefault();
     const term = q.trim();
-    nav(term ? `/catalog?q=${encodeURIComponent(term)}` : '/catalog');
+    setActiveCat('');
+    setHomeFilters(term, '', false);
+  }
+
+  function pickCategory(cat) {
+    setQ('');
+    setActiveCat(cat);
+    setHomeFilters('', cat, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function clearFilters() {
+    setQ('');
+    setActiveCat('');
+    setSearchResults([]);
+    setHomeFilters('', '', false);
   }
 
   const featured = useMemo(() => all.filter((p) => p.imageUrl).slice(0, 10), [all]);
   const popular = useMemo(() => all.slice(0, 12), [all]);
+  const groupedCategories = useMemo(() => {
+    const map = new Map();
+    stats.categoryCounts.forEach((c) => {
+      const m = catMeta(c.value);
+      const group = categoryGroup(c.value, m.label);
+      if (!map.has(group)) map.set(group, []);
+      map.get(group).push({ ...c, meta: m });
+    });
+    const order = ['mobile', 'computers', 'components', 'peripherals', 'network', 'other'];
+    return order
+      .filter((g) => map.has(g))
+      .map((g) => [g, map.get(g).sort((a, b) => b.count - a.count)]);
+  }, [stats.categoryCounts]);
+  const activeCategoryProducts = useMemo(() => {
+    if (!activeCat) return [];
+    return all.filter((p) => (p.category || '').toLowerCase() === activeCat.toLowerCase());
+  }, [all, activeCat]);
+  const resultMode = Boolean(q.trim() || activeCat);
+  const resultProducts = q.trim() ? searchResults : activeCategoryProducts;
+  const resultTitle = q.trim()
+    ? `"${q.trim()}"`
+    : activeCat
+      ? catMeta(activeCat).label
+      : '';
   // Category sections — top 3 categories with their best products.
   const catSections = useMemo(() => {
     return stats.categoryCounts.slice(0, 3).map((c) => ({
@@ -118,6 +201,11 @@ export default function Home() {
               placeholder={t('home.searchPlaceholder')} autoComplete="off" />
             <button type="submit" className="btn btn-primary">{t('common.search')}</button>
           </form>
+          {resultMode && (
+            <button className="h-clear" type="button" onClick={clearFilters}>
+              {t('catalog.clear')}
+            </button>
+          )}
         </div>
       </section>
 
@@ -125,29 +213,57 @@ export default function Home() {
       <section className="container h-hero2">
         {loading ? <div className="h-feat skel" style={{ height: 340 }} /> : <Featured items={featured} t={t} />}
         <div className="h-cats-panel">
-          <h3>{t('home.categories')}</h3>
-          <div className="h-cats-grid">
-            {stats.categoryCounts.slice(0, 10).map((c) => {
-              const m = catMeta(c.value);
-              return (
-                <Link key={c.value} to={`/catalog?cat=${c.value}`} className="h-cat-tile">
-                  <span className="h-cat-ic">{m.icon}</span>
-                  <span className="h-cat-tx">
-                    <b>{m.label}</b>
-                    <small>{c.count}</small>
-                  </span>
-                </Link>
-              );
-            })}
+          <div className="h-cats-head">
+            <h3>{t('home.categories')}</h3>
+            <button type="button" onClick={clearFilters}>{t('catalog.all')}</button>
+          </div>
+          <div className="h-cat-groups">
+            {groupedCategories.map(([group, items]) => (
+              <div className="h-cat-group" key={group}>
+                <div className="h-cat-group-title">{t(`home.group.${group}`)}</div>
+                <div className="h-cats-grid">
+                  {items.map((c) => (
+                    <button key={c.value} type="button"
+                      onClick={() => pickCategory(c.value)}
+                      className={'h-cat-tile' + (activeCat === c.value ? ' active' : '')}>
+                      <span className="h-cat-ic">{c.meta.icon}</span>
+                      <span className="h-cat-tx">
+                        <b>{c.meta.label}</b>
+                        <small>{c.count}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {resultMode && (
+        <section className="container h-sec h-results">
+          <div className="h-sec-head">
+            <h2>{resultTitle}</h2>
+            <span className="h-result-count">
+              {searching ? t('common.loading') : t('catalog.count', { n: resultProducts.length.toLocaleString() })}
+            </span>
+          </div>
+          <div className="card-grid">
+            {searching
+              ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+              : resultProducts.slice(0, 24).map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+          {!searching && resultProducts.length === 0 && (
+            <div className="h-empty">{q.trim() ? t('catalog.emptySearch', { q: q.trim() }) : t('catalog.emptyCat')}</div>
+          )}
+        </section>
+      )}
 
       {/* POPULAR PRODUCTS */}
       <section className="container h-sec">
         <div className="h-sec-head">
           <h2>{t('home.popular')}</h2>
-          <Link to="/catalog" className="h-sec-all">{t('common.seeAll')} →</Link>
+          <button type="button" className="h-sec-all" onClick={clearFilters}>{t('common.seeAll')} →</button>
         </div>
         <div className="card-grid">
           {loading
@@ -164,7 +280,7 @@ export default function Home() {
           <section className="container h-sec" key={sec.cat}>
             <div className="h-sec-head">
               <h2>{m.icon} {m.label}</h2>
-              <Link to={`/catalog?cat=${sec.cat}`} className="h-sec-all">{t('common.seeAll')} →</Link>
+              <button type="button" className="h-sec-all" onClick={() => pickCategory(sec.cat)}>{t('common.seeAll')} →</button>
             </div>
             <div className="card-grid">
               {sec.products.map((p) => <ProductCard key={p.id} product={p} />)}

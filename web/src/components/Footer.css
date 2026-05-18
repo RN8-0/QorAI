@@ -4,14 +4,15 @@
   background:
     radial-gradient(ellipse 70% 120% at 50% 0%, rgba(0, 229, 255, 0.05), transparent 70%),
     var(--bg2);
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
-.ft-inner { padding: 56px 20px 28px; }
+.ft-inner { padding: 48px 20px 0; }
 
 .ft-top {
   display: grid;
   grid-template-columns: 1.4fr 2fr;
   gap: 48px;
-  padding-bottom: 40px;
+  padding-bottom: 34px;
   border-bottom: 1px solid var(--border);
 }
 .ft-links { padding-top: 4px; }
@@ -41,8 +42,8 @@
 .ft-col a:hover { color: var(--text); }
 
 .ft-bottom {
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-  padding-top: 22px;
+  min-height: 46px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   font-size: 12.5px; color: var(--text3);
 }
 .ft-made { opacity: 0.8; }

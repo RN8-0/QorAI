@@ -27,7 +27,7 @@ export default function Footer() {
           <div className="ft-links">
             <div className="ft-col">
               <h5>{t('footer.product')}</h5>
-              <Link to="/catalog">{t('nav.catalog')}</Link>
+              <Link to="/">{t('nav.home')}</Link>
               <Link to="/compare">{t('nav.compare')}</Link>
               <Link to="/ai-chat">{t('nav.aiChat')}</Link>
               <Link to="/subscriptions">{t('nav.subscriptions')}</Link>

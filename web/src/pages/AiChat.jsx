@@ -21,7 +21,7 @@ export default function AiChat() {
             onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai'))}>
             {t('aichat.open')}
           </button>
-          <Link to="/catalog" className="btn btn-ghost">{t('ph.browseCatalog')}</Link>
+          <Link to="/" className="btn btn-ghost">{t('ph.browseCatalog')}</Link>
         </div>
       </div>
     </div>

@@ -92,7 +92,7 @@ export default function Quiz() {
           <div className="quiz-result-body"><AiText text={result} /></div>
           <div className="quiz-result-actions">
             <button className="btn btn-ghost" onClick={restart}>{t('quiz.restart')}</button>
-            <Link to="/catalog" className="btn btn-primary">{t('quiz.browseCatalog')}</Link>
+            <Link to="/" className="btn btn-primary">{t('quiz.browseCatalog')}</Link>
           </div>
         </div>
       )}

@@ -125,7 +125,7 @@ export default function Compare() {
             <div className="cmp-empty-icon">⚖️</div>
             <h3>{t('cmp.emptyTitle')}</h3>
             <p>{t('cmp.emptyDesc')}</p>
-            <Link to="/catalog" className="btn btn-primary">{t('cmp.browseCatalog')}</Link>
+            <Link to="/" className="btn btn-primary">{t('cmp.browseCatalog')}</Link>
           </div>
         ) : (
           <div className="cmp-table-wrap">

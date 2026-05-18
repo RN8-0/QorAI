@@ -58,7 +58,7 @@ export default function Profile() {
       <div className="pf-card pf-links fade-up">
         <h3>{t('pf.quickAccess')}</h3>
         <div className="pf-link-row">
-          <Link to="/catalog">📦 {t('nav.catalog')}</Link>
+          <Link to="/">📦 {t('nav.home')}</Link>
           <Link to="/compare">⚖️ {t('nav.compare')}</Link>
           <a href="/privacy.html">🔒 {t('footer.privacy')}</a>
           <a href="/terms.html">📄 {t('footer.terms')}</a>

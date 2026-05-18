@@ -7,7 +7,7 @@ import { useI18n } from '../i18n/index.jsx';
 import './Header.css';
 
 const NAV = [
-  { to: '/catalog', key: 'nav.catalog' },
+  { to: '/', key: 'nav.home', end: true },
   { to: '/compare', key: 'nav.compare' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
@@ -38,6 +38,7 @@ export default function Header() {
           <nav className="hd-nav">
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to}
+                end={n.end}
                 className={({ isActive }) => 'hd-link' + (isActive ? ' active' : '')}>
                 {t(n.key)}
               </NavLink>
@@ -138,11 +139,8 @@ export default function Header() {
       {drawer && (
         <div className="hd-drawer-wrap" onClick={() => setDrawer(false)}>
           <nav className="hd-drawer fade-up" onClick={(e) => e.stopPropagation()}>
-            <NavLink to="/" end className="hd-drawer-link" onClick={() => setDrawer(false)}>
-              {t('nav.home')}
-            </NavLink>
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} className="hd-drawer-link" onClick={() => setDrawer(false)}>
+              <NavLink key={n.to} to={n.to} end={n.end} className="hd-drawer-link" onClick={() => setDrawer(false)}>
                 {t(n.key)}
               </NavLink>
             ))}
