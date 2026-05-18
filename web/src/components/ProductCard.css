@@ -12,7 +12,7 @@
 
 .pcard-img {
   width: 96px; height: 116px; flex-shrink: 0;
-  background: var(--bg3); border-radius: var(--radius-sm);
+  background: #ffffff; border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
 .pcard-img img { width: 100%; height: 100%; object-fit: contain; padding: 9px; }

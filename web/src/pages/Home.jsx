@@ -9,7 +9,6 @@ import './Home.css';
 const TOOLS = [
   { to: '/compare', emoji: '⚖️', t: 'home.tCompare', d: 'home.tCompareD' },
   { to: '/ai-chat', emoji: '💬', t: 'home.tAi', d: 'home.tAiD' },
-  { to: '/pc-builder', emoji: '🖥️', t: 'home.tPc', d: 'home.tPcD' },
   { to: '/link-analysis', emoji: '🔗', t: 'home.tLink', d: 'home.tLinkD' },
   { to: '/subscriptions', emoji: '📺', t: 'home.tSubs', d: 'home.tSubsD' },
   { to: '/quiz', emoji: '🎯', t: 'home.tQuiz', d: 'home.tQuizD' },

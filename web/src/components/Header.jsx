@@ -10,7 +10,7 @@ const NAV = [
   { to: '/catalog', key: 'nav.catalog' },
   { to: '/compare', key: 'nav.compare' },
   { to: '/ai-chat', key: 'nav.aiChat' },
-  { to: '/pc-builder', key: 'nav.pcBuilder' },
+  { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
 ];
 
@@ -147,9 +147,6 @@ export default function Header() {
                 {t(n.key)}
               </NavLink>
             ))}
-            <NavLink to="/link-analysis" className="hd-drawer-link" onClick={() => setDrawer(false)}>
-              {t('nav.linkAnalysis')}
-            </NavLink>
             {!user && (
               <button className="btn btn-primary btn-block" style={{ marginTop: 8 }}
                 onClick={() => { setDrawer(false); openAuth(); }}>

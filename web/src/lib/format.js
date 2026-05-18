@@ -1,24 +1,45 @@
 // Shared formatting + category metadata helpers.
 
+// Icon + display label per category. Labels are intentionally English
+// here (category names are universal-ish); the icon is the main signal.
 export const CATEGORY_META = {
-  smartphones: { icon: '📱', label: 'Akıllı Telefon' },
-  laptops: { icon: '💻', label: 'Laptop' },
-  tablets: { icon: '📟', label: 'Tablet' },
-  headphones: { icon: '🎧', label: 'Kulaklık' },
-  gpus: { icon: '⚙️', label: 'Ekran Kartı' },
-  cpus: { icon: '🧠', label: 'İşlemci' },
-  monitors: { icon: '🖥️', label: 'Monitör' },
-  tvs: { icon: '📺', label: 'TV' },
-  smartwatches: { icon: '⌚', label: 'Akıllı Saat' },
-  cameras: { icon: '📷', label: 'Kamera' },
-  speakers: { icon: '🔊', label: 'Hoparlör' },
-  keyboards: { icon: '⌨️', label: 'Klavye' },
-  mice: { icon: '🖱️', label: 'Fare' },
+  smartphones: { icon: '📱', label: 'Smartphones' },
+  laptops: { icon: '💻', label: 'Laptops' },
+  tablets: { icon: '📟', label: 'Tablets' },
+  headphones: { icon: '🎧', label: 'Headphones' },
+  earbuds: { icon: '🎧', label: 'Earbuds' },
+  gpus: { icon: '🎮', label: 'Graphics Cards' },
+  cpus: { icon: '🧠', label: 'Processors' },
+  motherboards: { icon: '🔲', label: 'Motherboards' },
+  ram: { icon: '💾', label: 'RAM' },
+  storage: { icon: '💿', label: 'Storage' },
+  ssds: { icon: '💿', label: 'SSDs' },
+  psus: { icon: '🔌', label: 'Power Supplies' },
+  cases: { icon: '🗄️', label: 'PC Cases' },
+  cpu_coolers: { icon: '❄️', label: 'CPU Coolers' },
+  coolers: { icon: '❄️', label: 'Coolers' },
+  desktops: { icon: '🖥️', label: 'Desktops' },
+  monitors: { icon: '🖥️', label: 'Monitors' },
+  tvs: { icon: '📺', label: 'TVs' },
+  smartwatches: { icon: '⌚', label: 'Smartwatches' },
+  cameras: { icon: '📷', label: 'Cameras' },
+  speakers: { icon: '🔊', label: 'Speakers' },
+  keyboards: { icon: '⌨️', label: 'Keyboards' },
+  mice: { icon: '🖱️', label: 'Mice' },
+  consoles: { icon: '🎮', label: 'Consoles' },
+  printers: { icon: '🖨️', label: 'Printers' },
 };
+
+// Turns an unknown slug like "cpu_coolers" into "Cpu Coolers".
+function prettifySlug(slug) {
+  return String(slug || 'Other')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export function catMeta(category) {
   const key = (category || '').toLowerCase();
-  return CATEGORY_META[key] || { icon: '📦', label: category || 'Diğer' };
+  return CATEGORY_META[key] || { icon: '📦', label: prettifySlug(category) };
 }
 
 export function scoreClass(score) {

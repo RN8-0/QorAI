@@ -5,7 +5,6 @@ import Footer from './components/Footer.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
-import { useT } from './i18n/index.jsx';
 
 import Home from './pages/Home.jsx';
 import Catalog from './pages/Catalog.jsx';
@@ -16,12 +15,10 @@ import AiChat from './pages/AiChat.jsx';
 import Subscriptions from './pages/Subscriptions.jsx';
 import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
-import Placeholder from './pages/Placeholder.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
   const loc = useLocation();
-  const t = useT();
 
   // Scroll to top + report page view on every route change.
   useEffect(() => {
@@ -39,7 +36,6 @@ export default function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/ai-chat" element={<AiChat />} />
-          <Route path="/pc-builder" element={<Placeholder title={t('ph.pcBuilder')} emoji="🖥️" />} />
           <Route path="/link-analysis" element={<LinkAnalysis />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/quiz" element={<Quiz />} />

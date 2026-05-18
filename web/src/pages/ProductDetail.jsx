@@ -6,6 +6,31 @@ import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import './ProductDetail.css';
 
+// ─── Spec helpers ────────────────────────────────────────────────
+const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
+const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;
+
+// Icon for a spec section — fuzzy keyword match (TR + EN).
+function sectionIcon(name) {
+  const n = (name || '').toLowerCase();
+  const has = (...k) => k.some((x) => n.includes(x));
+  if (has('ekran', 'display', 'screen')) return '🖥️';
+  if (has('batarya', 'pil', 'battery', 'güç', 'power')) return '🔋';
+  if (has('kamera', 'camera')) return '📸';
+  if (has('işlemci', 'islemci', 'processor', 'chip', 'cpu')) return '🧠';
+  if (has('grafik', 'graphic', 'gpu', 'ekran kart')) return '🎮';
+  if (has('bağlant', 'baglant', 'connect', 'i/o', 'ağ', 'network')) return '🔌';
+  if (has('bellek', 'memory', 'ram', 'depolama', 'storage')) return '💾';
+  if (has('tasarım', 'tasarim', 'design', 'boyut', 'dimension', 'ölçü')) return '📐';
+  if (has('ses', 'audio', 'hoparlör', 'speaker')) return '🔊';
+  if (has('sensör', 'sensor')) return '📡';
+  if (has('işletim', 'isletim', 'os', 'yazılım', 'software')) return '💻';
+  if (has('soğut', 'sogut', 'cooling')) return '❄️';
+  if (has('özellik', 'ozellik', 'feature')) return '✨';
+  if (has('temel', 'genel', 'general', 'core')) return 'ℹ️';
+  return '📋';
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
   const t = useT();
@@ -58,6 +83,19 @@ export default function ProductDetail() {
   const keySpecs = p.keySpecs && typeof p.keySpecs === 'object' ? p.keySpecs : null;
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
+
+  // Build the brick list: key specs first, then every spec section.
+  const bricks = [];
+  if (keySpecs && Object.keys(keySpecs).length > 0) {
+    bricks.push({ title: t('pd.keySpecs'), icon: '⭐', rows: Object.entries(keySpecs) });
+  }
+  if (specSections) {
+    for (const [section, specs] of Object.entries(specSections)) {
+      if (specs && typeof specs === 'object') {
+        bricks.push({ title: section, icon: sectionIcon(section), rows: Object.entries(specs) });
+      }
+    }
+  }
 
   return (
     <div className="pd">
@@ -172,19 +210,12 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {keySpecs && Object.keys(keySpecs).length > 0 && (
-                <SpecBlock title={t('pd.keySpecs')} rows={Object.entries(keySpecs)} />
-              )}
-
-              {specSections &&
-                Object.entries(specSections).map(([section, specs]) =>
-                  specs && typeof specs === 'object' ? (
-                    <SpecBlock key={section} title={section} rows={Object.entries(specs)} />
-                  ) : null,
-                )}
-
-              {!keySpecs && !specSections && !p.description && (
-                <div className="pd-note">{t('pd.noSpecs')}</div>
+              {bricks.length > 0 ? (
+                <div className="pd-bricks">
+                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} />)}
+                </div>
+              ) : (
+                !p.description && <div className="pd-note">{t('pd.noSpecs')}</div>
               )}
             </div>
           )}
@@ -197,19 +228,33 @@ export default function ProductDetail() {
   );
 }
 
-function SpecBlock({ title, rows }) {
-  const clean = rows.filter(([, v]) => v != null && String(v).trim() !== '');
-  if (!clean.length) return null;
+// One spec section — admin-panel "brick": coloured header + key/value rows.
+function SpecBrick({ brick }) {
+  const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
+  if (!rows.length) return null;
   return (
-    <div className="pd-spec-block">
-      <h3>{title}</h3>
-      <div className="pd-spec-rows">
-        {clean.map(([k, v]) => (
-          <div className="pd-spec-row" key={k}>
-            <span>{k}</span>
-            <b>{String(v)}</b>
-          </div>
-        ))}
+    <div className="pd-brick">
+      <div className="pd-brick-head">
+        <span>{brick.icon}</span> {brick.title}
+      </div>
+      <div className="pd-brick-body">
+        {rows.map(([k, v]) => {
+          const s = String(v).trim();
+          const yes = YES_RE.test(s);
+          const no = NO_RE.test(s);
+          const lines = s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+          return (
+            <div className="pd-srow" key={k}>
+              <div className="pd-sk">{k}</div>
+              <div className={'pd-sv' + (yes ? ' yes' : no ? ' no' : '')}>
+                {yes ? `✓ ${s}` : no ? `✗ ${s}`
+                  : lines.length > 1
+                    ? lines.map((ln, i) => <div key={i} className="pd-sv-line">{ln}</div>)
+                    : s}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
