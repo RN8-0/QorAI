@@ -9,7 +9,6 @@ import './Header.css';
 const NAV = [
   { to: '/catalog', key: 'nav.catalog' },
   { to: '/compare', key: 'nav.compare' },
-  { to: '/ai-chat', key: 'nav.aiChat' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
 ];

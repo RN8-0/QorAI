@@ -11,7 +11,12 @@ const SORTS = [
   { id: 'score', key: 'catalog.sortScore' },
   { id: 'name', key: 'catalog.sortName' },
 ];
-const PAGE = 30;
+const SCORES = [
+  { id: 'high', key: 'catalog.scoreHigh', test: (s) => s >= 80 },
+  { id: 'mid', key: 'catalog.scoreMid', test: (s) => s >= 60 && s < 80 },
+  { id: 'low', key: 'catalog.scoreLow', test: (s) => s > 0 && s < 60 },
+];
+const PAGE = 24;
 
 export default function Catalog() {
   const t = useT();
@@ -20,10 +25,13 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState(params.get('cat') || 'all');
   const [sort, setSort] = useState('score');
+  const [score, setScore] = useState('all');
+  const [brand, setBrand] = useState('all');
   const [shown, setShown] = useState(PAGE);
   const [q, setQ] = useState(params.get('q') || '');
   const [hits, setHits] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [drawer, setDrawer] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -40,43 +48,101 @@ export default function Catalog() {
     const next = new URLSearchParams(params);
     if (term) next.set('q', term); else next.delete('q');
     setParams(next, { replace: true });
-
     if (!term) { setHits(null); setSearching(false); return; }
     setSearching(true);
     const tm = setTimeout(async () => {
-      try {
-        setHits(await searchProducts(term, 200));
-        trackEvent('catalog_search', { query: term });
-      } catch {
-        setHits([]);
-      } finally {
-        setSearching(false);
-      }
+      try { setHits(await searchProducts(term, 200)); trackEvent('catalog_search', { query: term }); }
+      catch { setHits([]); }
+      finally { setSearching(false); }
     }, 280);
     return () => clearTimeout(tm);
   }, [q]); // eslint-disable-line
 
   const categories = useMemo(() => {
-    const counts = {};
-    all.forEach((p) => {
-      const c = (p.category || 'other').toLowerCase();
-      counts[c] = (counts[c] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const c = {};
+    all.forEach((p) => { const k = (p.category || 'other').toLowerCase(); c[k] = (c[k] || 0) + 1; });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]);
+  }, [all]);
+
+  const brands = useMemo(() => {
+    const c = {};
+    all.forEach((p) => { if (p.brand) c[p.brand] = (c[p.brand] || 0) + 1; });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 14);
   }, [all]);
 
   const view = useMemo(() => {
     let v = q.trim() ? hits || [] : all;
     if (cat !== 'all') v = v.filter((p) => (p.category || '').toLowerCase() === cat);
+    if (brand !== 'all') v = v.filter((p) => p.brand === brand);
+    if (score !== 'all') {
+      const rule = SCORES.find((s) => s.id === score);
+      if (rule) v = v.filter((p) => rule.test(Number(p.techScore) || 0));
+    }
     v = [...v];
     if (sort === 'name') v.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     else v.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     return v;
-  }, [all, hits, cat, q, sort]);
+  }, [all, hits, cat, brand, score, q, sort]);
 
-  useEffect(() => { setShown(PAGE); }, [cat, q, sort]);
+  useEffect(() => { setShown(PAGE); }, [cat, brand, score, q, sort]);
 
   const busy = q.trim() ? searching : loading;
+  const hasFilters = cat !== 'all' || brand !== 'all' || score !== 'all';
+  function clearFilters() { setCat('all'); setBrand('all'); setScore('all'); }
+
+  const sidebar = (
+    <aside className={'cat-side' + (drawer ? ' open' : '')}>
+      <div className="cat-side-head">
+        <h3>{t('catalog.filters')}</h3>
+        {hasFilters && (
+          <button className="cat-side-clear" onClick={clearFilters}>{t('catalog.clearFilters')}</button>
+        )}
+        <button className="cat-side-x" onClick={() => setDrawer(false)} aria-label="✕">✕</button>
+      </div>
+
+      <div className="cat-fgroup">
+        <h4>{t('catalog.category')}</h4>
+        <button className={'cat-fopt' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
+          {t('catalog.all')} <span>{all.length}</span>
+        </button>
+        {categories.map(([c, n]) => {
+          const m = catMeta(c);
+          return (
+            <button key={c} className={'cat-fopt' + (cat === c ? ' on' : '')} onClick={() => setCat(c)}>
+              {m.icon} {m.label} <span>{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="cat-fgroup">
+        <h4>{t('catalog.score')}</h4>
+        <button className={'cat-fopt' + (score === 'all' ? ' on' : '')} onClick={() => setScore('all')}>
+          {t('catalog.all')}
+        </button>
+        {SCORES.map((s) => (
+          <button key={s.id} className={'cat-fopt' + (score === s.id ? ' on' : '')}
+            onClick={() => setScore(s.id)}>
+            ⚡ {t(s.key)}
+          </button>
+        ))}
+      </div>
+
+      {brands.length > 1 && (
+        <div className="cat-fgroup">
+          <h4>{t('catalog.brand')}</h4>
+          <button className={'cat-fopt' + (brand === 'all' ? ' on' : '')} onClick={() => setBrand('all')}>
+            {t('catalog.all')}
+          </button>
+          {brands.map(([b, n]) => (
+            <button key={b} className={'cat-fopt' + (brand === b ? ' on' : '')} onClick={() => setBrand(b)}>
+              {b} <span>{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </aside>
+  );
 
   return (
     <div className="catalog">
@@ -95,56 +161,49 @@ export default function Catalog() {
         </div>
       </div>
 
-      <div className="container">
-        <div className="cat-pills">
-          <button className={'cat-pill' + (cat === 'all' ? ' active' : '')} onClick={() => setCat('all')}>
-            {t('catalog.all')} <span>{all.length}</span>
-          </button>
-          {categories.map(([c, n]) => {
-            const m = catMeta(c);
-            return (
-              <button key={c} className={'cat-pill' + (cat === c ? ' active' : '')} onClick={() => setCat(c)}>
-                {m.icon} {m.label} <span>{n}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="container cat-body">
+        {sidebar}
+        {drawer && <div className="cat-side-backdrop" onClick={() => setDrawer(false)} />}
 
-        <div className="cat-toolbar">
-          <span className="cat-count">
-            {busy ? t('common.loading') : t('catalog.count', { n: view.length.toLocaleString() })}
-            {q.trim() && !busy && <em> · {t('catalog.searchTag', { q: q.trim() })}</em>}
-          </span>
-          <div className="cat-sort">
-            {SORTS.map((s) => (
-              <button key={s.id} className={sort === s.id ? 'active' : ''} onClick={() => setSort(s.id)}>
-                {t(s.key)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="cat-grid">
-          {busy
-            ? Array.from({ length: 9 }).map((_, i) => <ProductCardSkeleton key={i} />)
-            : view.slice(0, shown).map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
-
-        {!busy && view.length === 0 && (
-          <div className="cat-empty">
-            <div className="cat-empty-icon">🔍</div>
-            <h3>{t('catalog.emptyTitle')}</h3>
-            <p>{q.trim() ? t('catalog.emptySearch', { q: q.trim() }) : t('catalog.emptyCat')}</p>
-          </div>
-        )}
-
-        {!busy && shown < view.length && (
-          <div className="cat-more">
-            <button className="btn btn-ghost btn-lg" onClick={() => setShown((s) => s + PAGE)}>
-              {t('catalog.showMore', { n: (view.length - shown).toLocaleString() })}
+        <div className="cat-main">
+          <div className="cat-toolbar">
+            <button className="cat-filter-btn" onClick={() => setDrawer(true)}>
+              ☰ {t('catalog.filters')}
             </button>
+            <span className="cat-count">
+              {busy ? t('common.loading') : t('catalog.count', { n: view.length.toLocaleString() })}
+            </span>
+            <div className="cat-sort">
+              {SORTS.map((s) => (
+                <button key={s.id} className={sort === s.id ? 'active' : ''} onClick={() => setSort(s.id)}>
+                  {t(s.key)}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          <div className="cat-grid">
+            {busy
+              ? Array.from({ length: 9 }).map((_, i) => <ProductCardSkeleton key={i} />)
+              : view.slice(0, shown).map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+
+          {!busy && view.length === 0 && (
+            <div className="cat-empty">
+              <div className="cat-empty-icon">🔍</div>
+              <h3>{t('catalog.emptyTitle')}</h3>
+              <p>{q.trim() ? t('catalog.emptySearch', { q: q.trim() }) : t('catalog.emptyCat')}</p>
+            </div>
+          )}
+
+          {!busy && shown < view.length && (
+            <div className="cat-more">
+              <button className="btn btn-ghost btn-lg" onClick={() => setShown((s) => s + PAGE)}>
+                {t('catalog.showMore', { n: (view.length - shown).toLocaleString() })}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

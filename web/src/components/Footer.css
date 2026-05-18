@@ -5,15 +5,16 @@
     radial-gradient(ellipse 70% 120% at 50% 0%, rgba(0, 229, 255, 0.05), transparent 70%),
     var(--bg2);
 }
-.ft-inner { padding: 48px 20px 24px; }
+.ft-inner { padding: 56px 20px 28px; }
 
 .ft-top {
   display: grid;
   grid-template-columns: 1.4fr 2fr;
   gap: 48px;
-  padding-bottom: 32px;
+  padding-bottom: 40px;
   border-bottom: 1px solid var(--border);
 }
+.ft-links { padding-top: 4px; }
 
 .ft-brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ft-brand-row img { width: 30px; height: 30px; border-radius: 8px; }
