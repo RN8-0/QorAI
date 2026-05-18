@@ -10,6 +10,9 @@ import Home from './pages/Home.jsx';
 import Catalog from './pages/Catalog.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import Compare from './pages/Compare.jsx';
+import LinkAnalysis from './pages/LinkAnalysis.jsx';
+import AiChat from './pages/AiChat.jsx';
+import Profile from './pages/Profile.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -31,12 +34,12 @@ export default function App() {
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
-          <Route path="/ai-chat" element={<Placeholder title="AI Sohbet" emoji="💬" />} />
+          <Route path="/ai-chat" element={<AiChat />} />
           <Route path="/pc-builder" element={<Placeholder title="PC Toplama" emoji="🖥️" />} />
-          <Route path="/link-analysis" element={<Placeholder title="Link Analizi" emoji="🔗" />} />
+          <Route path="/link-analysis" element={<LinkAnalysis />} />
           <Route path="/subscriptions" element={<Placeholder title="Abonelik Karşılaştırma" emoji="📺" />} />
           <Route path="/quiz" element={<Placeholder title="Kişisel Quiz" emoji="🎯" />} />
-          <Route path="/profile" element={<Placeholder title="Profilim" emoji="👤" />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
