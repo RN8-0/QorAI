@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getStats, loadAllProducts, searchProducts } from '../lib/typesense';
 import { catMeta, formatCount, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
+import { saveSearchHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import './Home.css';
@@ -80,8 +81,10 @@ function Featured({ items, t }) {
 }
 
 export default function Home() {
+  const nav = useNavigate();
   const [params, setParams] = useSearchParams();
   const t = useT();
+  const searchRef = useRef(null);
   const [stats, setStats] = useState({ total: 0, categories: 0, categoryCounts: [] });
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +92,7 @@ export default function Home() {
   const [activeCat, setActiveCat] = useState(() => params.get('cat') || '');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
 
   useEffect(() => {
     setQ(params.get('q') || '');
@@ -120,6 +124,14 @@ export default function Home() {
     return () => { live = false; clearTimeout(tm); };
   }, [q]);
 
+  useEffect(() => {
+    const close = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSuggestOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
   function setHomeFilters(nextQ, nextCat, replace = false) {
     const next = new URLSearchParams();
     const term = (nextQ || '').trim();
@@ -131,8 +143,19 @@ export default function Home() {
   function search(e) {
     e.preventDefault();
     const term = q.trim();
-    setActiveCat('');
-    setHomeFilters(term, '', false);
+    const first = searchResults[0];
+    if (first) {
+      saveSearchHistory(term, first.id);
+      nav(`/product/${first.id}`);
+      return;
+    }
+    setSuggestOpen(true);
+  }
+
+  function openProduct(product) {
+    saveSearchHistory(q.trim(), product.id);
+    setSuggestOpen(false);
+    nav(`/product/${product.id}`);
   }
 
   function pickCategory(cat) {
@@ -168,11 +191,9 @@ export default function Home() {
     if (!activeCat) return [];
     return all.filter((p) => (p.category || '').toLowerCase() === activeCat.toLowerCase());
   }, [all, activeCat]);
-  const resultMode = Boolean(q.trim() || activeCat);
-  const resultProducts = q.trim() ? searchResults : activeCategoryProducts;
-  const resultTitle = q.trim()
-    ? `"${q.trim()}"`
-    : activeCat
+  const resultMode = Boolean(activeCat);
+  const resultProducts = activeCategoryProducts;
+  const resultTitle = activeCat
       ? catMeta(activeCat).label
       : '';
   // Category sections — top 3 categories with their best products.
@@ -193,14 +214,38 @@ export default function Home() {
           <p>{stats.total
             ? t('home.heroSub', { count: formatCount(stats.total) })
             : t('home.heroSubFallback')}</p>
-          <form className="h-search" onSubmit={search}>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder={t('home.searchPlaceholder')} autoComplete="off" />
-            <button type="submit" className="btn btn-primary">{t('common.search')}</button>
-          </form>
+          <div className="h-search-wrap" ref={searchRef}>
+            <form className="h-search" onSubmit={search}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input value={q}
+                onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); }}
+                onFocus={() => setSuggestOpen(true)}
+                placeholder={t('home.searchPlaceholder')} autoComplete="off" />
+              <button type="submit" className="btn btn-primary">{t('common.search')}</button>
+            </form>
+            {suggestOpen && q.trim().length > 0 && (
+              <div className="h-suggest">
+                {searching && <div className="h-suggest-state">{t('common.loading')}</div>}
+                {!searching && searchResults.slice(0, 8).map((p) => (
+                  <button type="button" className="h-suggest-item" key={p.id}
+                    onClick={() => openProduct(p)}>
+                    <img src={p.imageUrl || PLACEHOLDER_IMG} alt=""
+                      onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                    <span>
+                      {p.brand && <small>{p.brand}</small>}
+                      <b>{p.name}</b>
+                    </span>
+                    <i className={`score ${scoreClass(p.techScore)}`}>⚡ {scoreLabel(p.techScore)}</i>
+                  </button>
+                ))}
+                {!searching && searchResults.length === 0 && (
+                  <div className="h-suggest-state">{t('catalog.emptySearch', { q: q.trim() })}</div>
+                )}
+              </div>
+            )}
+          </div>
           {resultMode && (
             <button className="h-clear" type="button" onClick={clearFilters}>
               {t('catalog.clear')}
@@ -245,16 +290,14 @@ export default function Home() {
           <div className="h-sec-head">
             <h2>{resultTitle}</h2>
             <span className="h-result-count">
-              {searching ? t('common.loading') : t('catalog.count', { n: resultProducts.length.toLocaleString() })}
+              {t('catalog.count', { n: resultProducts.length.toLocaleString() })}
             </span>
           </div>
           <div className="card-grid">
-            {searching
-              ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-              : resultProducts.slice(0, 24).map((p) => <ProductCard key={p.id} product={p} />)}
+            {resultProducts.slice(0, 24).map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
-          {!searching && resultProducts.length === 0 && (
-            <div className="h-empty">{q.trim() ? t('catalog.emptySearch', { q: q.trim() }) : t('catalog.emptyCat')}</div>
+          {resultProducts.length === 0 && (
+            <div className="h-empty">{t('catalog.emptyCat')}</div>
           )}
         </section>
       )}

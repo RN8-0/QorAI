@@ -6,13 +6,13 @@
     var(--bg2);
   padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
-.ft-inner { padding: 48px 20px 0; }
+.ft-inner { padding: 62px 20px 0; }
 
 .ft-top {
   display: grid;
   grid-template-columns: 1.4fr 2fr;
   gap: 48px;
-  padding-bottom: 34px;
+  padding-bottom: 48px;
   border-bottom: 1px solid var(--border);
 }
 .ft-links { padding-top: 4px; }

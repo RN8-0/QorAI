@@ -8,10 +8,14 @@
 .h-searchbar > .container > p { color: var(--text2); font-size: 14px; margin-top: 6px; }
 .h-search {
   display: flex; align-items: center; gap: 8px;
-  max-width: 620px; margin: 18px auto 0;
+  width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 7px 7px 7px 15px;
   transition: border-color 0.14s, box-shadow 0.14s;
+}
+.h-search-wrap {
+  position: relative;
+  max-width: 620px; margin: 18px auto 0;
 }
 .h-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .h-search svg { color: var(--text3); flex-shrink: 0; }
@@ -24,6 +28,33 @@
   font-size: 12.5px; font-weight: 700;
 }
 .h-clear:hover { color: var(--accent); }
+.h-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 35;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  padding: 7px; max-height: 430px; overflow-y: auto; text-align: left;
+}
+.h-suggest-item {
+  width: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center; gap: 12px; padding: 8px 10px;
+  border-radius: var(--radius-sm); text-align: left;
+}
+.h-suggest-item:hover { background: var(--bg3); }
+.h-suggest-item img {
+  width: 46px; height: 52px; object-fit: contain; border-radius: 8px;
+  background: #fff; padding: 4px;
+}
+.h-suggest-item span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.h-suggest-item small {
+  color: var(--accent); font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.h-suggest-item b {
+  font-size: 13px; line-height: 1.28; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.h-suggest-item i { font-style: normal; white-space: nowrap; }
+.h-suggest-state { padding: 16px; color: var(--text2); font-size: 13px; text-align: center; }
 
 /* ─── Hero row: carousel + categories ────────────────────────── */
 .h-hero2 {
@@ -168,4 +199,6 @@
   .h-search { flex-wrap: wrap; }
   .h-search input { width: 100%; }
   .h-search .btn { width: 100%; }
+  .h-suggest-item { grid-template-columns: 44px minmax(0, 1fr); }
+  .h-suggest-item i { display: none; }
 }

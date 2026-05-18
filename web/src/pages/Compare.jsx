@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getProduct, searchProducts } from '../lib/typesense';
+import { getProduct, loadAllProducts, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
+import { saveComparisonHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -31,6 +33,8 @@ export default function Compare() {
   const [term, setTerm] = useState('');
   const [results, setResults] = useState([]);
   const [picking, setPicking] = useState(false);
+  const [popular, setPopular] = useState([]);
+  const [popularLoading, setPopularLoading] = useState(true);
   const boxRef = useRef(null);
 
   useEffect(() => {
@@ -41,6 +45,22 @@ export default function Compare() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [ids.join(',')]); // eslint-disable-line
+
+  useEffect(() => {
+    let live = true;
+    loadAllProducts((batch) => {
+      if (live) { setPopular(batch.slice(0, 12)); setPopularLoading(false); }
+    })
+      .then((full) => { if (live) setPopular(full.slice(0, 12)); })
+      .catch(() => { if (live) setPopularLoading(false); });
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (products.length < 2) return;
+    const tm = setTimeout(() => saveComparisonHistory(ids, products), 600);
+    return () => clearTimeout(tm);
+  }, [ids.join(','), products.length]); // eslint-disable-line
 
   useEffect(() => {
     const q = term.trim();
@@ -121,12 +141,24 @@ export default function Compare() {
         {loading && ids.length > 0 ? (
           <div className="cmp-loading"><div className="spinner" /> {t('cmp.loading')}</div>
         ) : products.length === 0 ? (
-          <div className="cmp-empty">
-            <div className="cmp-empty-icon">⚖️</div>
-            <h3>{t('cmp.emptyTitle')}</h3>
-            <p>{t('cmp.emptyDesc')}</p>
-            <Link to="/" className="btn btn-primary">{t('cmp.browseCatalog')}</Link>
-          </div>
+          <>
+            <div className="cmp-empty">
+              <div className="cmp-empty-icon">⚖️</div>
+              <h3>{t('cmp.emptyTitle')}</h3>
+              <p>{t('cmp.emptyDesc')}</p>
+            </div>
+            <section className="cmp-picks">
+              <div className="cmp-picks-head">
+                <h2>{t('cmp.popularTitle')}</h2>
+                <span>{t('cmp.popularDesc')}</span>
+              </div>
+              <div className="card-grid">
+                {popularLoading
+                  ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+                  : popular.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
+            </section>
+          </>
         ) : (
           <div className="cmp-table-wrap">
             <table className="cmp-table">

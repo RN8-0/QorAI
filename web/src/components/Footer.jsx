@@ -35,7 +35,6 @@ export default function Footer() {
             <div className="ft-col">
               <h5>{t('footer.corporate')}</h5>
               <Link to="/link-analysis">{t('nav.linkAnalysis')}</Link>
-              <Link to="/quiz">{t('home.tQuiz')}</Link>
               <a href="mailto:contact@arain.digital">{t('footer.contact')}</a>
             </div>
             <div className="ft-col">
