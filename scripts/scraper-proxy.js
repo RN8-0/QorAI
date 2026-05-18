@@ -594,11 +594,16 @@ function extractMaxListingPage(html, catPath) {
 }
 
 async function fetchWithPuppeteer(url, opts = {}) {
-  const { waitChallenge = true, _attempt = 0 } = opts;
+  const { waitChallenge = true, _attempt = 0, referer = '' } = opts;
   const page = await getPage();
   requestCount++;
   _browserCycle++;
   try {
+    // Epey's gallery pages (…-resimleri.html) 404 without a Referer pointing
+    // at the product page — set it as an extra header for this navigation.
+    if (referer) {
+      try { await page.setExtraHTTPHeaders({ Referer: referer }); } catch {}
+    }
     // FIX: Use 'domcontentloaded' instead of 'networkidle0'.
     // 'networkidle0' hangs on Cloudflare challenge pages because CF keeps
     // polling its own verification endpoints indefinitely, preventing idle.
@@ -610,6 +615,9 @@ async function fetchWithPuppeteer(url, opts = {}) {
     } catch (navErr) {
       // Navigation timeout is OK — the page might still be partially loaded
       console.warn(`  ⚠️ Navigation timeout (continuing): ${navErr.message}`);
+    } finally {
+      // Clear the Referer so it does not leak into the next navigation.
+      if (referer) { try { await page.setExtraHTTPHeaders({}); } catch {} }
     }
     const status = response ? response.status() : 0;
 
@@ -1135,10 +1143,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Category Links (strict, no detail) ──
-  // Plain-HTTP first (no browser): parse page 1 links + AJAX tokens + last
-  // page number, and hand AJAX pagination back to the caller so it can be
-  // driven page-by-page (live progress) via /listing-ajax. Puppeteer is only
-  // used as a fallback when Epey serves a Cloudflare challenge.
+  // Loads the category page in the real browser (Cloudflare 403s plain Node
+  // requests), then parses links + brand filters + AJAX tokens server-side.
+  // The caller drives per-brand pagination page-by-page via /listing-ajax.
   if (req.url.startsWith('/category-links')) {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
@@ -1153,43 +1160,8 @@ const server = http.createServer(async (req, res) => {
       console.log(`  🔗 Category links: ${targetUrl}`);
       let result = null;
 
-      // FAST PATH — plain HTTPS GET, parsed server-side.
-      const t0 = Date.now();
-      const fast = await plainFetch(targetUrl, 4, 'https://www.epey.com/');
-      if (fast.status === 200 && fast.html.length > 4000 && !_isChallengeContent(fast.html)) {
-        let catPath = '';
-        try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
-        // Scope product links to the category's top-level path so "popular"
-        // widgets pointing at other categories are dropped.
-        const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
-        const links = extractListingLinksFromHtml(fast.html, maxLinks, prefix);
-        const ajax = extractAjaxParams(fast.html);
-        const brands = extractBrandFilters(fast.html);
-        const maxPage = extractMaxListingPage(fast.html, catPath);
-        // Page the AJAX endpoint at 200/req instead of Epey's native 31 — same
-        // result, ~6x fewer round-trips. estPages is a display hint only.
-        const AJAX_PAGE_SIZE = 200;
-        const estPages = ajax
-          ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE))
-          : 0;
-        result = {
-          links, pages: [], brands,
-          ajax: ajax
-            ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
-                estPages, base: targetUrl, prefix }
-            : null,
-        };
-        console.log(`  ⚡ fast category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
-          `${ajax ? ` · AJAX ~${estPages}p@${AJAX_PAGE_SIZE}` : ''}${brands.length ? ` · ${brands.length} brands` : ''}`);
-      }
-
-      // FALLBACK — Cloudflare challenge or empty fast response: drive a real
-      // browser to clear the challenge, then parse the resulting HTML with the
-      // SAME server-side extractors as the fast path (links + brands + AJAX
-      // tokens). The in-page extractors are no longer used — they could not
-      // see the brand sidebar or run Epey's AJAX from the wrong origin.
-      if (!result || !result.links.length) {
-        console.log(`  🐢 fast path empty — falling back to Puppeteer…`);
+      {
+        const t0 = Date.now();
         const html = await withBrowserLock(async () => {
           const r = await fetchHtml(targetUrl);
           if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
@@ -1204,6 +1176,8 @@ const server = http.createServer(async (req, res) => {
         const maxPage = extractMaxListingPage(html, catPath);
         const AJAX_PAGE_SIZE = 200;
         const estPages = ajax ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE)) : 0;
+        console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
+          `${brands.length ? ` · ${brands.length} brands` : ''}`);
         result = {
           links, pages: [], brands,
           ajax: ajax
@@ -1211,7 +1185,6 @@ const server = http.createServer(async (req, res) => {
                 estPages, base: targetUrl, prefix }
             : null,
         };
-        console.log(`  🐢 puppeteer category-links: ${links.length} on p1${brands.length ? ` · ${brands.length} brands` : ''}`);
       }
 
       console.log(`  ✅ ${result.links.length} product links extracted`);
@@ -1246,17 +1219,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── Listing AJAX page (one /kat/listele/ page, plain HTTP, no browser) ──
-  // The caller drives pagination one page at a time so the admin log can show
-  // live per-page progress.
+  // ── Listing AJAX page (one /kat/listele/ page) ──
+  // Epey's listing AJAX must be POSTed from INSIDE the browser: Cloudflare
+  // 403s any plain Node request, and the fetch has to be same-origin so it
+  // carries cf_clearance. The caller drives pagination one page at a time so
+  // the admin log can show live per-page progress.
   if (req.url.startsWith('/listing-ajax')) {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const kid = urlObj.searchParams.get('kid');
-      const cerez = urlObj.searchParams.get('cerez') || '';
-      const limit = urlObj.searchParams.get('limit') || '31';
-      const pageNo = urlObj.searchParams.get('page') || '2';
-      const base = urlObj.searchParams.get('base') || 'https://www.epey.com/';
+      const limit = urlObj.searchParams.get('limit') || '200';
+      const pageNo = urlObj.searchParams.get('page') || '1';
+      const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
       const prefix = urlObj.searchParams.get('prefix') || '';
       // Optional brand/spec filter, e.g. "marka:1" (Samsung). When set, Epey's
       // listing is scoped to that brand — the only way to reach the products
@@ -1267,21 +1241,42 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Missing kid' }));
         return;
       }
-      const postBody = { kategori_id: kid, limit, sayfa: pageNo };
-      if (cerez) postBody.cerez = cerez;
-      if (filtre) postBody.filtrele = filtre;
-      const { html, status } = await plainPost(
-        'https://www.epey.com/kat/listele/',
-        postBody,
-        base,
-      );
-      const links = status === 200 ? extractListingLinksFromHtml(html, 1000, prefix) : [];
+      const html = await withBrowserLock(async () => {
+        const page = await getPage();
+        // The /kat/listele/ fetch must run from an epey.com document so it is
+        // same-origin and sends cf_clearance. Navigate there once; later pages
+        // reuse the already-loaded category document.
+        let onEpey = false;
+        try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
+        if (!onEpey) await fetchHtml(base);
+        return await page.evaluate(async (kidV, limitV, sayfaV, filtreV) => {
+          try {
+            const body = new URLSearchParams({
+              kategori_id: String(kidV), limit: String(limitV), sayfa: String(sayfaV),
+            });
+            if (filtreV) body.set('filtrele', filtreV);
+            const r = await fetch('/kat/listele/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+              body: body.toString(),
+              credentials: 'include',
+            });
+            return r.ok ? await r.text() : '';
+          } catch { return ''; }
+        }, kid, limit, pageNo, filtre);
+      });
+      const links = extractListingLinksFromHtml(html || '', 2000, prefix);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ count: links.length, links, status }));
+      res.end(JSON.stringify({ count: links.length, links, status: html ? 200 : 0 }));
     } catch (err) {
       console.error(`  ❌ /listing-ajax: ${err.message}`);
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'listing_ajax_failed', message: err.message, links: [] }));
+      // Return JSON 200 with empty links so the caller treats it as an empty
+      // page (and ends the stream) rather than aborting the whole scrape.
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ count: 0, links: [], status: 0, error: err.message }));
     }
     return;
   }
@@ -1420,20 +1415,12 @@ const server = http.createServer(async (req, res) => {
 
   try {
     console.log(`  [${requestCount + 1}] → ${targetUrl}`);
-    // FAST PATH: a plain HTTPS GET is ~10x quicker than a browser render.
-    // Use it when it returns a real page; only spin up Puppeteer if Epey
-    // actually serves a Cloudflare challenge or an empty/blocked response.
-    let html, status;
-    const fast = await plainFetch(targetUrl, 4, referer);
-    // Gallery pages are small static HTML — accept a much shorter body for
-    // them (a refererred request) than for full product/listing pages.
-    const minFastLen = referer ? 800 : 4000;
-    if (fast.status === 200 && fast.html.length > minFastLen && !_isChallengeContent(fast.html)) {
-      html = fast.html; status = 200;
-      console.log(`  ⚡ fast-fetch (${(html.length / 1024).toFixed(0)}KB)`);
-    } else {
-      ({ html, status } = await withBrowserLock(() => fetchHtml(targetUrl)));
-    }
+    // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
+    // (GET or POST) to epey.com is always answered with a 403 challenge — only
+    // the real browser gets through. Everything therefore goes via Puppeteer.
+    // `referer` is forwarded so Epey's gallery pages (…-resimleri.html), which
+    // 404 without a Referer, load correctly.
+    let { html, status } = await withBrowserLock(() => fetchHtml(targetUrl, { referer }));
     if (!html || status === 404) {
       res.setHeader('X-Status-Code', '404');
       res.writeHead(404, { 'Content-Type': 'application/json' });

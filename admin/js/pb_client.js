@@ -236,11 +236,16 @@ async function pbGetAll(collection, options = {}) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
   try {
-    const items = await getPb().collection(collection).getFullList({
+    const listOpts = {
       sort: options.sort || 'id',
       filter: options.filter || '',
-      $autoCancel: false
-    });
+      $autoCancel: false,
+    };
+    // `fields` projection keeps huge collections from timing out — only the
+    // requested columns are transferred. `batch` tunes the per-request page.
+    if (options.fields) listOpts.fields = options.fields;
+    if (options.batch) listOpts.batch = options.batch;
+    const items = await getPb().collection(collection).getFullList(listOpts);
     return items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }));
   } catch (e) {
     if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) return [];

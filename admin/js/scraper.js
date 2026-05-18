@@ -3562,7 +3562,14 @@ async function _loadExistingSourceUrls(categoryId) {
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const filter = safeCategory ? `category="${safeCategory}"` : '';
-    const docs = await pbGetAll('products', filter ? { filter, sort: '-created' } : { sort: '-created' });
+    // Project only the 4 fields we need — the catalog has 10k+ products and
+    // pulling full records here times PocketBase out ("Something went wrong").
+    const docs = await pbGetAll('products', {
+      ...(filter ? { filter } : {}),
+      sort: 'id',
+      fields: 'id,sourceUrl,variantGroup,source',
+      batch: 500,
+    });
     const urls = new Set();
     const byVariantGroup = new Map();
     for (const d of docs) {
