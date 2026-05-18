@@ -3392,10 +3392,11 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // Page one listing stream (a brand filter, or the unfiltered listing) to the
-  // end. A page thinner than the page size is the last page; two consecutive
-  // no-new-product pages also end it (covers Epey's clamp-repeat behaviour).
-  const paginateStream = async (ajax, filtre) => {
+  // Page one listing stream to the end. A page thinner than the page size is
+  // the last page; two consecutive no-new-product pages also end it (covers
+  // Epey's clamp-repeat behaviour). `onPage(pageNo, added, total)` is called
+  // after every page so the caller can log live progress.
+  const paginateStream = async (ajax, filtre, onPage) => {
     const pageSize = Number(ajax.limit) || 200;
     let emptyStreak = 0;
     for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
@@ -3407,6 +3408,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         break;
       }
       const added = pushItems(itemsFromData(got));
+      if (typeof onPage === 'function') onPage(pageNo, added, allItems.length);
       if (added === 0) { if (++emptyStreak >= 2) break; } else emptyStreak = 0;
       if ((Number(got?.count) || 0) < pageSize) break;
     }
@@ -3442,27 +3444,18 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       slog(`  ✓ Kategori sayfası: +${firstAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstAdded ? 'success' : 'warn');
 
       const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
-      const brands = Array.isArray(data?.brands) ? data.brands : [];
 
-      if (ajax && brands.length && allItems.length < maxProducts) {
-        // FULL CATALOG — the unfiltered listing caps deep pagination at ~half
-        // the catalog, so we walk each brand filter instead. Biggest brands
-        // first, so a low product-limit still captures the mainstream ones.
-        const grand = brands.reduce((s, b) => s + (Number(b.count) || 0), 0);
-        slog(`  🏷  ${brands.length} marka · ~${grand} ürün — marka marka taranıyor`, 'info');
-        const ordered = [...brands].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
-        for (let bi = 0; bi < ordered.length && allItems.length < maxProducts && !scraperAbort; bi++) {
-          const brand = ordered[bi];
-          const before = allItems.length;
-          await paginateStream(ajax, `marka:${brand.id}`);
-          slog(`  ✓ [${bi + 1}/${ordered.length}] ${brand.name}: +${allItems.length - before} ürün → toplam ${allItems.length}`,
-            allItems.length > before ? 'success' : 'warn');
-        }
-      } else if (ajax && allItems.length < maxProducts) {
-        // No brand sidebar — fall back to the unfiltered AJAX listing.
-        slog(`  ⏩ AJAX sayfalama (marka filtresi yok)`, 'info');
-        await paginateStream(ajax, '');
-        slog(`  ✓ Liste tarandı → toplam ${allItems.length}`, 'success');
+      // ONE category listing stream — the whole category, paginated. Reliable
+      // and quick (~13 requests). Per-brand filtering was tried to reach the
+      // discontinued-model superset but Epey rate-limits the rapid filtered
+      // AJAX, so it was dropped in favour of this dependable single stream.
+      if (ajax && allItems.length < maxProducts) {
+        slog(`  ⏩ Kategori listesi sayfalanıyor (${ajax.limit} ürün/sayfa)…`, 'info');
+        await paginateStream(ajax, '', (pageNo, added, total) => {
+          slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
+        });
+      } else if (!ajax) {
+        slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
 
       slog(`📦 Toplam ${allItems.length} ürün URL'si toplandı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
@@ -3564,12 +3557,19 @@ async function _loadExistingSourceUrls(categoryId) {
     const filter = safeCategory ? `category="${safeCategory}"` : '';
     // Project only the 4 fields we need — the catalog has 10k+ products and
     // pulling full records here times PocketBase out ("Something went wrong").
-    const docs = await pbGetAll('products', {
-      ...(filter ? { filter } : {}),
-      sort: 'id',
-      fields: 'id,sourceUrl,variantGroup,source',
-      batch: 500,
-    });
+    // Also race a 60s timeout so a slow/sick PocketBase never hangs the scrape
+    // — collection just proceeds without the preload (dedup degrades safely:
+    // pbSetDoc still updates same-sourceUrl records instead of duplicating).
+    const docs = await Promise.race([
+      pbGetAll('products', {
+        ...(filter ? { filter } : {}),
+        sort: 'id',
+        fields: 'id,sourceUrl,variantGroup,source',
+        batch: 500,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('preload 60s zaman aşımı')), 60000)),
+    ]);
     const urls = new Set();
     const byVariantGroup = new Map();
     for (const d of docs) {
