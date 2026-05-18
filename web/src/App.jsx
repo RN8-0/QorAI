@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
 
 import Home from './pages/Home.jsx';
@@ -40,6 +41,7 @@ export default function App() {
       </main>
       <Footer />
       <AuthModal />
+      <AiBubble />
     </>
   );
 }

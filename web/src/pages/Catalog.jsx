@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { loadAllProducts } from '../lib/typesense';
+import { loadAllProducts, searchProducts } from '../lib/typesense';
 import { catMeta } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -20,28 +20,40 @@ export default function Catalog() {
   const [sort, setSort] = useState('score');
   const [shown, setShown] = useState(PAGE);
   const [q, setQ] = useState(params.get('q') || '');
+  const [hits, setHits] = useState(null); // Typesense results when searching
+  const [searching, setSearching] = useState(false);
 
+  // Full catalog — for browsing + category counts.
   useEffect(() => {
     let live = true;
     loadAllProducts((batch) => {
-      if (!live) return;
-      setAll(batch.filter((p) => p.name));
-      setLoading(false);
+      if (live) { setAll(batch.filter((p) => p.name)); setLoading(false); }
     })
       .then((full) => { if (live) setAll(full.filter((p) => p.name)); })
       .catch(() => setLoading(false));
     return () => { live = false; };
   }, []);
 
-  // Keep the URL ?q= in sync so searches are shareable.
+  // Debounced Typesense search whenever the query changes.
   useEffect(() => {
-    const t = setTimeout(() => {
-      const next = new URLSearchParams(params);
-      if (q.trim()) next.set('q', q.trim());
-      else next.delete('q');
-      setParams(next, { replace: true });
-      if (q.trim()) trackEvent('catalog_search', { query: q.trim() });
-    }, 250);
+    const term = q.trim();
+    const next = new URLSearchParams(params);
+    if (term) next.set('q', term); else next.delete('q');
+    setParams(next, { replace: true });
+
+    if (!term) { setHits(null); setSearching(false); return; }
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await searchProducts(term, 200);
+        setHits(r);
+        trackEvent('catalog_search', { query: term });
+      } catch {
+        setHits([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 280);
     return () => clearTimeout(t);
   }, [q]); // eslint-disable-line
 
@@ -55,30 +67,23 @@ export default function Catalog() {
   }, [all]);
 
   const view = useMemo(() => {
-    let v = all;
+    let v = q.trim() ? hits || [] : all;
     if (cat !== 'all') v = v.filter((p) => (p.category || '').toLowerCase() === cat);
-    const term = q.trim().toLowerCase();
-    if (term) {
-      v = v.filter(
-        (p) =>
-          (p.name || '').toLowerCase().includes(term) ||
-          (p.brand || '').toLowerCase().includes(term) ||
-          (p.keySpecsText || '').toLowerCase().includes(term),
-      );
-    }
     v = [...v];
     if (sort === 'name') v.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
     else v.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     return v;
-  }, [all, cat, q, sort]);
+  }, [all, hits, cat, q, sort]);
 
   useEffect(() => { setShown(PAGE); }, [cat, q, sort]);
+
+  const busy = q.trim() ? searching : loading;
 
   return (
     <div className="catalog">
       <div className="cat-hero">
         <div className="container">
-          <h1>Kataloğu Keşfet</h1>
+          <h1>Kataloğu <span className="grad-text">Keşfet</span></h1>
           <p>AI puanlı teknoloji ürünleri — seç, karşılaştır, karar ver.</p>
           <div className="cat-search">
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2">
@@ -108,7 +113,8 @@ export default function Catalog() {
 
         <div className="cat-toolbar">
           <span className="cat-count">
-            {loading ? 'Yükleniyor…' : `${view.length.toLocaleString('tr-TR')} ürün`}
+            {busy ? 'Yükleniyor…' : `${view.length.toLocaleString('tr-TR')} ürün`}
+            {q.trim() && !busy && <em> · "{q.trim()}" araması</em>}
           </span>
           <div className="cat-sort">
             {SORTS.map((s) => (
@@ -120,20 +126,22 @@ export default function Catalog() {
         </div>
 
         <div className="cat-grid">
-          {loading
-            ? Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)
+          {busy
+            ? Array.from({ length: 9 }).map((_, i) => <ProductCardSkeleton key={i} />)
             : view.slice(0, shown).map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
 
-        {!loading && view.length === 0 && (
+        {!busy && view.length === 0 && (
           <div className="cat-empty">
             <div className="cat-empty-icon">🔍</div>
             <h3>Ürün bulunamadı</h3>
-            <p>Farklı bir arama terimi ya da kategori dene.</p>
+            <p>{q.trim()
+              ? `"${q.trim()}" için sonuç yok. Farklı bir terim dene.`
+              : 'Bu kategoride ürün yok.'}</p>
           </div>
         )}
 
-        {!loading && shown < view.length && (
+        {!busy && shown < view.length && (
           <div className="cat-more">
             <button className="btn btn-ghost btn-lg" onClick={() => setShown((s) => s + PAGE)}>
               Daha fazla göster ({(view.length - shown).toLocaleString('tr-TR')} kaldı)

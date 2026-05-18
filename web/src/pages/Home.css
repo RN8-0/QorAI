@@ -45,7 +45,14 @@
   display: flex; align-items: baseline; justify-content: space-between;
   margin-bottom: 16px;
 }
-.h-sec-head h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.h-sec-head h2 {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 10px;
+}
+.h-sec-head h2::before {
+  content: ''; width: 5px; height: 21px; border-radius: 999px;
+  background: var(--brand-grad);
+}
 .h-sec-all { font-size: 13px; font-weight: 700; color: var(--accent); }
 .h-sec-all:hover { text-decoration: underline; }
 

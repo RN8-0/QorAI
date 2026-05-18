@@ -44,6 +44,7 @@
   padding: 16px 0; gap: 12px; flex-wrap: wrap;
 }
 .cat-count { font-size: 14px; font-weight: 700; color: var(--text2); }
+.cat-count em { font-style: normal; color: var(--accent); font-weight: 600; }
 .cat-sort { display: flex; gap: 4px; background: var(--bg3); border-radius: var(--radius-sm); padding: 4px; }
 .cat-sort button {
   padding: 7px 13px; border-radius: 6px;
