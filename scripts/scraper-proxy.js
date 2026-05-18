@@ -305,14 +305,18 @@ function _isChallengeTitle(title) {
 
 function _isChallengeContent(html) {
   if (!html) return false;
-  // Detect CF challenge by known DOM fingerprints in the raw HTML
+  // Detect a CF challenge by DOM fingerprints in the raw HTML.
+  // NOTE: do NOT match 'cdn-cgi/challenge-platform' — Cloudflare injects that
+  // invisible bot-management script into EVERY page it serves, challenge or
+  // not. Matching it flagged every real Epey page as a challenge, which killed
+  // the plain-HTTP fast path and forced everything through slow Puppeteer.
+  // A genuine challenge page also carries one of the specific tokens below.
   return (
     html.includes('cf-browser-verification') ||
     html.includes('cf_challenge') ||
     html.includes('cf-turnstile') ||
     html.includes('__cf_chl') ||
     html.includes('jschl-answer') ||
-    html.includes('cdn-cgi/challenge-platform') ||
     html.includes('Checking if the site connection is secure') ||
     html.includes('Überprüfung ob die Verbindung')
   );
@@ -546,14 +550,34 @@ function extractListingLinksFromHtml(html, maxLinks = 1000, requirePrefix = '') 
 // nonce + page size) in an inline script on the category page.
 function extractAjaxParams(html) {
   const kid = String(html).match(/kategori_id\s*:\s*['"]?(\d+)/i);
+  if (!kid) return null;
   const cerez = String(html).match(/cerez\s*:\s*['"]([^'"]+)['"]/i);
-  if (!kid || !cerez) return null;
   const limit = String(html).match(/limit\s*:\s*['"]?(\d+)/i);
   return {
     kategoriId: kid[1],
-    cerez: cerez[1],
+    cerez: cerez ? cerez[1] : '',
     limit: Math.max(1, parseInt(limit?.[1] || '31', 10) || 31),
   };
+}
+
+// Brand filters from the category sidebar. Each
+//   <input id="markaidN" onClick="filtre('marka:N')"> <label>… Brand (count)</label>
+// becomes { id, name, count }. The UNFILTERED listing caps deep pagination at
+// ~2.5k products, but each brand-filtered listing is small enough to page
+// through fully — so iterating brands reaches the COMPLETE category catalog.
+function extractBrandFilters(html) {
+  const re = /markaid\d+"[^>]*onclick="filtre\('marka:(\d+)'\)"[^>]*>\s*<label\b[^>]*>\s*(?:<span>\s*<\/span>)?\s*([^<(]+?)\s*\((\d+)\)/gi;
+  const brands = [];
+  const seen = new Set();
+  let m;
+  while ((m = re.exec(String(html || ''))) !== null) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const name = m[2].replace(/\s+/g, ' ').trim();
+    if (name) brands.push({ id, name, count: parseInt(m[3], 10) || 0 });
+  }
+  return brands;
 }
 
 // Highest page number referenced by the listing's pagination block.
@@ -1119,7 +1143,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const targetUrl = urlObj.searchParams.get('url');
-      const maxLinks = Math.max(1, Math.min(1000, parseInt(urlObj.searchParams.get('max') || '200', 10) || 200));
+      const maxLinks = Math.max(1, Math.min(10000, parseInt(urlObj.searchParams.get('max') || '200', 10) || 200));
       if (!targetUrl) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing ?url=...' }));
@@ -1140,11 +1164,8 @@ const server = http.createServer(async (req, res) => {
         const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
         const links = extractListingLinksFromHtml(fast.html, maxLinks, prefix);
         const ajax = extractAjaxParams(fast.html);
+        const brands = extractBrandFilters(fast.html);
         const maxPage = extractMaxListingPage(fast.html, catPath);
-        const pages = [];
-        if (!ajax && catPath) {
-          for (let p = 2; p <= Math.min(maxPage, 200); p++) pages.push(`https://www.epey.com/${catPath}/${p}/`);
-        }
         // Page the AJAX endpoint at 200/req instead of Epey's native 31 — same
         // result, ~6x fewer round-trips. estPages is a display hint only.
         const AJAX_PAGE_SIZE = 200;
@@ -1152,49 +1173,45 @@ const server = http.createServer(async (req, res) => {
           ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE))
           : 0;
         result = {
-          links, pages,
+          links, pages: [], brands,
           ajax: ajax
             ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
                 estPages, base: targetUrl, prefix }
             : null,
         };
         console.log(`  ⚡ fast category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
-          `${ajax ? ` · AJAX ~${estPages}p@${AJAX_PAGE_SIZE}` : (pages.length ? ` · ${pages.length} pages` : '')}`);
+          `${ajax ? ` · AJAX ~${estPages}p@${AJAX_PAGE_SIZE}` : ''}${brands.length ? ` · ${brands.length} brands` : ''}`);
       }
 
-      // FALLBACK — Cloudflare challenge or empty body: drive a real browser.
+      // FALLBACK — Cloudflare challenge or empty fast response: drive a real
+      // browser to clear the challenge, then parse the resulting HTML with the
+      // SAME server-side extractors as the fast path (links + brands + AJAX
+      // tokens). The in-page extractors are no longer used — they could not
+      // see the brand sidebar or run Epey's AJAX from the wrong origin.
       if (!result || !result.links.length) {
         console.log(`  🐢 fast path empty — falling back to Puppeteer…`);
-        result = await withBrowserLock(async () => {
-          const page = await getPage();
-          const { html, status, isChallenge } = await fetchHtml(targetUrl);
-          if (!html) { const e = new Error('Failed to load category page'); e.status = status; throw e; }
-          try { await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 }); } catch {}
-          if (isChallenge) {
-            console.log(`  🔄 Challenge flagged. Waiting up to 10s for product list...`);
-            try {
-              await page.waitForSelector('#listele, .urunler, .listele, .urun-listesi, .productlist, #productlist', { timeout: 10000 });
-            } catch {}
-          }
-          try {
-            const initialLinks = await extractCategoryLinks(page);
-            const ajaxLinks = initialLinks.length < maxLinks
-              ? await extractEpeyAjaxListingLinks(page, maxLinks - initialLinks.length).catch(() => [])
-              : [];
-            const seen = new Set();
-            const links = [];
-            for (const link of [...initialLinks, ...ajaxLinks]) {
-              if (!link || seen.has(link)) continue;
-              seen.add(link);
-              links.push(link);
-              if (links.length >= maxLinks) break;
-            }
-            return { links, pages: await extractListingPaginationLinks(page).catch(() => []), ajax: null };
-          } catch (extractErr) {
-            extractErr.extractionFailed = true;
-            throw extractErr;
-          }
+        const html = await withBrowserLock(async () => {
+          const r = await fetchHtml(targetUrl);
+          if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
+          return r.html;
         });
+        let catPath = '';
+        try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
+        const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
+        const links = extractListingLinksFromHtml(html, maxLinks, prefix);
+        const ajax = extractAjaxParams(html);
+        const brands = extractBrandFilters(html);
+        const maxPage = extractMaxListingPage(html, catPath);
+        const AJAX_PAGE_SIZE = 200;
+        const estPages = ajax ? Math.max(1, Math.ceil((maxPage * (ajax.limit || 31)) / AJAX_PAGE_SIZE)) : 0;
+        result = {
+          links, pages: [], brands,
+          ajax: ajax
+            ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
+                estPages, base: targetUrl, prefix }
+            : null,
+        };
+        console.log(`  🐢 puppeteer category-links: ${links.length} on p1${brands.length ? ` · ${brands.length} brands` : ''}`);
       }
 
       console.log(`  ✅ ${result.links.length} product links extracted`);
@@ -1204,6 +1221,7 @@ const server = http.createServer(async (req, res) => {
         links: result.links,
         pages: result.pages || [],
         ajax: result.ajax || null,
+        brands: result.brands || [],
       }));
     } catch (err) {
       if (err.extractionFailed) {
@@ -1235,19 +1253,26 @@ const server = http.createServer(async (req, res) => {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const kid = urlObj.searchParams.get('kid');
-      const cerez = urlObj.searchParams.get('cerez');
+      const cerez = urlObj.searchParams.get('cerez') || '';
       const limit = urlObj.searchParams.get('limit') || '31';
       const pageNo = urlObj.searchParams.get('page') || '2';
       const base = urlObj.searchParams.get('base') || 'https://www.epey.com/';
       const prefix = urlObj.searchParams.get('prefix') || '';
-      if (!kid || !cerez) {
+      // Optional brand/spec filter, e.g. "marka:1" (Samsung). When set, Epey's
+      // listing is scoped to that brand — the only way to reach the products
+      // the unfiltered listing caps off.
+      const filtre = urlObj.searchParams.get('filtre') || '';
+      if (!kid) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing kid/cerez' }));
+        res.end(JSON.stringify({ error: 'Missing kid' }));
         return;
       }
+      const postBody = { kategori_id: kid, limit, sayfa: pageNo };
+      if (cerez) postBody.cerez = cerez;
+      if (filtre) postBody.filtrele = filtre;
       const { html, status } = await plainPost(
         'https://www.epey.com/kat/listele/',
-        { kategori_id: kid, cerez, limit, sayfa: pageNo },
+        postBody,
         base,
       );
       const links = status === 200 ? extractListingLinksFromHtml(html, 1000, prefix) : [];

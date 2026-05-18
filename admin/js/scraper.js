@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260517v3-epey-balanced-cats';
+const SCRAPER_BUILD = '20260518v3-epey-per-brand';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -2635,7 +2635,7 @@ async function startBulkScrape() {
   if (mode === 'brand' && !searchTerm) { toast('Enter a brand or search term', 'w'); return; }
   if (mode === 'category' && !catValue) { toast('Select a category', 'w'); return; }
 
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
 
   scraperRunning = true; scraperAbort = false;
@@ -3378,17 +3378,38 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // One Epey AJAX listing page (epey.com/kat/listele/), driven by the caller
-  // so each page can be logged as it arrives.
-  const fetchAjaxPage = async (ajax, pageNo) => {
+  // One Epey AJAX listing page (epey.com/kat/listele/). `filtre` optionally
+  // scopes it to a brand, e.g. "marka:1".
+  const fetchAjaxPage = async (ajax, pageNo, filtre = '') => {
     const qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
-      `&cerez=${encodeURIComponent(ajax.cerez)}` +
+      `&cerez=${encodeURIComponent(ajax.cerez || '')}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
       `&page=${pageNo}` +
       `&base=${encodeURIComponent(ajax.base)}` +
-      `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
+      `&prefix=${encodeURIComponent(ajax.prefix || '')}` +
+      (filtre ? `&filtre=${encodeURIComponent(filtre)}` : '');
     const res = await fetch(`${PROXY_URL}/listing-ajax?${qs}`, { signal: AbortSignal.timeout(30000) });
     return res.ok ? await res.json() : null;
+  };
+
+  // Page one listing stream (a brand filter, or the unfiltered listing) to the
+  // end. A page thinner than the page size is the last page; two consecutive
+  // no-new-product pages also end it (covers Epey's clamp-repeat behaviour).
+  const paginateStream = async (ajax, filtre) => {
+    const pageSize = Number(ajax.limit) || 200;
+    let emptyStreak = 0;
+    for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
+      let got = null;
+      try {
+        got = await fetchAjaxPage(ajax, pageNo, filtre);
+      } catch (e) {
+        slog(`  ⚠️ sayfa ${pageNo} hatası: ${e.message}`, 'warn');
+        break;
+      }
+      const added = pushItems(itemsFromData(got));
+      if (added === 0) { if (++emptyStreak >= 2) break; } else emptyStreak = 0;
+      if ((Number(got?.count) || 0) < pageSize) break;
+    }
   };
 
   // ── CATEGORY mode: every product in the Epey category listing ──
@@ -3418,48 +3439,32 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         return [];
       }
       const firstAdded = pushItems(itemsFromData(data));
-      slog(`  ✓ Sayfa 1: +${firstAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstAdded ? 'success' : 'warn');
+      slog(`  ✓ Kategori sayfası: +${firstAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstAdded ? 'success' : 'warn');
 
-      // AJAX pagination — driven here so every page is logged live.
-      if (data?.ajax && data.ajax.kategoriId && allItems.length < maxProducts) {
-        const ajax = data.ajax;
-        // estPages is only a display hint — the real terminator is an empty
-        // page, so a wrong (too-low) hint never truncates the collection.
-        const hint = Math.min(Math.max(parseInt(ajax.estPages, 10) || 1, 1), 500);
-        const HARD_CAP = 500;
-        slog(`  ⏩ AJAX sayfalama: ~${hint} sayfa · ${ajax.limit} ürün/sayfa`, 'info');
-        let emptyStreak = 0;
-        for (let pageNo = 2; pageNo <= HARD_CAP && allItems.length < maxProducts && !scraperAbort; pageNo++) {
-          let added = 0;
-          try {
-            const got = await fetchAjaxPage(ajax, pageNo);
-            added = pushItems(itemsFromData(got));
-          } catch (e) {
-            slog(`  ⚠️ Sayfa ${pageNo} hatası: ${e.message}`, 'warn');
-            continue;
-          }
-          slog(`  ✓ Sayfa ${pageNo}/~${hint}: +${added} ürün → toplam ${allItems.length}`, added ? 'success' : 'warn');
-          // Two empty pages in a row = end of listing (one could be a blip).
-          if (added === 0) {
-            if (++emptyStreak >= 2) { slog(`  ⏹ Sayfalama bitti (${pageNo}. sayfa).`, 'info'); break; }
-          } else {
-            emptyStreak = 0;
-          }
+      const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
+      const brands = Array.isArray(data?.brands) ? data.brands : [];
+
+      if (ajax && brands.length && allItems.length < maxProducts) {
+        // FULL CATALOG — the unfiltered listing caps deep pagination at ~half
+        // the catalog, so we walk each brand filter instead. Biggest brands
+        // first, so a low product-limit still captures the mainstream ones.
+        const grand = brands.reduce((s, b) => s + (Number(b.count) || 0), 0);
+        slog(`  🏷  ${brands.length} marka · ~${grand} ürün — marka marka taranıyor`, 'info');
+        const ordered = [...brands].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
+        for (let bi = 0; bi < ordered.length && allItems.length < maxProducts && !scraperAbort; bi++) {
+          const brand = ordered[bi];
+          const before = allItems.length;
+          await paginateStream(ajax, `marka:${brand.id}`);
+          slog(`  ✓ [${bi + 1}/${ordered.length}] ${brand.name}: +${allItems.length - before} ürün → toplam ${allItems.length}`,
+            allItems.length > before ? 'success' : 'warn');
         }
-      } else if (Array.isArray(data?.pages) && data.pages.length && allItems.length < maxProducts) {
-        // Fallback: URL-based pagination (categories without AJAX tokens).
-        for (let pi = 0; pi < data.pages.length && allItems.length < maxProducts && !scraperAbort; pi++) {
-          let added = 0;
-          try {
-            added = pushItems(itemsFromData(await fetchLinks(data.pages[pi])));
-          } catch (e) {
-            slog(`  ⚠️ Sayfa ${pi + 2} hatası: ${e.message}`, 'warn');
-            continue;
-          }
-          slog(`  ✓ Sayfa ${pi + 2}/${data.pages.length + 1}: +${added} ürün → toplam ${allItems.length}`, added ? 'success' : 'warn');
-          if (added === 0) break;
-        }
+      } else if (ajax && allItems.length < maxProducts) {
+        // No brand sidebar — fall back to the unfiltered AJAX listing.
+        slog(`  ⏩ AJAX sayfalama (marka filtresi yok)`, 'info');
+        await paginateStream(ajax, '');
+        slog(`  ✓ Liste tarandı → toplam ${allItems.length}`, 'success');
       }
+
       slog(`📦 Toplam ${allItems.length} ürün URL'si toplandı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
       return allItems.slice(0, maxProducts);
     }
@@ -3586,7 +3591,7 @@ async function startBulkScrape() {
 
   const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
   if (!categoryId) { toast('Bir kategori seç', 'w'); return; }
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
+  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
 
   scraperRunning = true; scraperAbort = false;
