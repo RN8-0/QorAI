@@ -9,6 +9,7 @@ import { trackPageView } from './lib/analytics.js';
 import Home from './pages/Home.jsx';
 import Catalog from './pages/Catalog.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
+import Compare from './pages/Compare.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -29,7 +30,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/compare" element={<Placeholder title="Karşılaştır" emoji="⚖️" />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="/ai-chat" element={<Placeholder title="AI Sohbet" emoji="💬" />} />
           <Route path="/pc-builder" element={<Placeholder title="PC Toplama" emoji="🖥️" />} />
           <Route path="/link-analysis" element={<Placeholder title="Link Analizi" emoji="🔗" />} />

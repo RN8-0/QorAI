@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProduct } from '../lib/typesense';
+import { useCompare } from '../lib/compare';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const { has, toggle } = useCompare();
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('specs');
@@ -116,8 +118,23 @@ export default function ProductDetail() {
             )}
 
             <div className="pd-actions">
-              <Link to="/compare" className="btn btn-primary">⚖️ Karşılaştırmaya Ekle</Link>
-              <Link to="/ai-chat" className="btn btn-ghost">💬 Qor AI'a Sor</Link>
+              {has(p.id) ? (
+                <>
+                  <Link to="/compare" className="btn btn-primary">⚖️ Karşılaştırmayı Aç →</Link>
+                  <button className="btn btn-ghost" onClick={() => toggle(p.id)}>✓ Listede</button>
+                </>
+              ) : (
+                <button className="btn btn-primary"
+                  onClick={() => { if (!toggle(p.id)) alert('En fazla 4 ürün karşılaştırabilirsin.'); }}>
+                  ⚖️ Karşılaştırmaya Ekle
+                </button>
+              )}
+              <button className="btn btn-ghost"
+                onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
+                  detail: `${p.name} hakkında ne düşünüyorsun? Artıları ve eksileri neler?`,
+                }))}>
+                💬 Qor AI'a Sor
+              </button>
             </div>
           </div>
         </div>

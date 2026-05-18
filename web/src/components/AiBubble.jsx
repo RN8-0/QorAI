@@ -20,10 +20,23 @@ export default function AiBubble() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
+  const sendRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, busy, open]);
+
+  // Other components (e.g. the product page) can open the chat with a
+  // ready-made question via a `qor-open-ai` custom event.
+  useEffect(() => {
+    const onOpen = (e) => {
+      setOpen(true);
+      const q = e.detail;
+      if (q && typeof q === 'string') setTimeout(() => sendRef.current?.(q), 120);
+    };
+    window.addEventListener('qor-open-ai', onOpen);
+    return () => window.removeEventListener('qor-open-ai', onOpen);
+  }, []);
 
   async function send(text) {
     const q = (text ?? input).trim();
@@ -46,6 +59,8 @@ export default function AiBubble() {
       setBusy(false);
     }
   }
+
+  sendRef.current = send;
 
   return (
     <>

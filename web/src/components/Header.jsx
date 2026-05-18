@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
+import { useCompare } from '../lib/compare';
 import './Header.css';
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
 export default function Header() {
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
+  const { ids: compareIds } = useCompare();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
 
@@ -55,6 +57,13 @@ export default function Header() {
                 </svg>
               </a>
             </div>
+            <Link to="/compare" className="hd-icon hd-compare" aria-label="Karşılaştırma listesi">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              {compareIds.length > 0 && <span className="hd-compare-badge">{compareIds.length}</span>}
+            </Link>
             <button className="hd-icon" onClick={toggle} aria-label="Tema değiştir">
               {theme === 'dark' ? '🌙' : '☀️'}
             </button>
