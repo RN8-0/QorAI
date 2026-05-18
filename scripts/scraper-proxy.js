@@ -394,7 +394,9 @@ async function fetchWithFlareSolverr(url) {
 // falls back to local Puppeteer otherwise. After 3 consecutive Flare
 // failures we re-probe its health to decide if it's permanently down.
 async function fetchHtml(url, opts = {}) {
-  if (flaresolverrAvailable) {
+  // A request that needs a custom Referer (Epey gallery pages) must go through
+  // local Puppeteer — FlareSolverr cannot set per-request headers.
+  if (flaresolverrAvailable && !opts.referer) {
     try {
       const result = await fetchWithFlareSolverr(url);
       if (!result.isChallenge && result.status !== 403 && result.html) {
@@ -621,8 +623,10 @@ async function fetchWithPuppeteer(url, opts = {}) {
     }
     const status = response ? response.status() : 0;
 
-    // Small settle delay after DOM content loaded
-    await _humanDelay(800, 1500);
+    // Small settle delay after DOM content loaded. Kept short — once the CF
+    // clearance cookie is set Epey is not re-challenging, so the long
+    // anti-bot pauses below are only needed on an actual challenge.
+    await _humanDelay(200, 400);
 
     let title = await page.title().catch(() => '');
     const rawHtml = await page.content().catch(() => '');
@@ -655,11 +659,15 @@ async function fetchWithPuppeteer(url, opts = {}) {
       }
     }
 
-    if (!isChallenge) {
+    if (isChallenge) {
+      // Still challenged — keep the human-like mouse/scroll theatrics.
       await _humanScroll(page);
-      await _humanDelay(400, 800);
-      await page.evaluate(() => { window.scrollBy(0, Math.floor(Math.random() * 200 - 100)); }).catch(() => {});
       await _humanDelay(300, 600);
+    } else {
+      // Clean page: a single quick scroll to the bottom triggers lazy-loaded
+      // gallery thumbnails. No artificial pauses — this is the hot path.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
+      await _humanDelay(120, 220);
     }
 
     if (status === 404) return { html: null, status: 404, isChallenge: false };
@@ -1243,12 +1251,14 @@ const server = http.createServer(async (req, res) => {
       }
       const html = await withBrowserLock(async () => {
         const page = await getPage();
-        // The /kat/listele/ fetch must run from an epey.com document so it is
-        // same-origin and sends cf_clearance. Navigate there once; later pages
-        // reuse the already-loaded category document.
+        // The /kat/listele/ fetch must run from an epey.com document in THIS
+        // (local Puppeteer) browser so it is same-origin and sends
+        // cf_clearance. Navigate the local page there once via Puppeteer
+        // directly (not fetchHtml — that may route through FlareSolverr and
+        // leave the local page elsewhere). Later pages reuse the document.
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-        if (!onEpey) await fetchHtml(base);
+        if (!onEpey) await fetchWithPuppeteer(base);
         return await page.evaluate(async (kidV, limitV, sayfaV, filtreV) => {
           try {
             const body = new URLSearchParams({
