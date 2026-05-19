@@ -6,6 +6,7 @@ import { saveComparisonHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import { useSeo } from '../lib/seo';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -47,6 +48,11 @@ function rowWinners(key, values) {
 
 export default function Compare() {
   const t = useT();
+  useSeo({
+    title: `${t('cmp.title')} — Qor AI`,
+    description: t('cmp.subtitle', { max: COMPARE_MAX }),
+    path: '/compare',
+  });
   const { ids, remove, clear, add } = useCompare();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

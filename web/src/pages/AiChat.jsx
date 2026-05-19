@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useT } from '../i18n/index.jsx';
+import { useSeo } from '../lib/seo';
 import './Placeholder.css';
 
 // The AI chat lives in the floating bubble — this route just opens it.
 export default function AiChat() {
   const t = useT();
+  useSeo({ title: `${t('aichat.title')} — Qor AI`, description: t('aichat.desc'), path: '/ai-chat' });
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('qor-open-ai'));
   }, []);

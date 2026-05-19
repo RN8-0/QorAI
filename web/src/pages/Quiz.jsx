@@ -5,6 +5,7 @@ import { trackEvent } from '../lib/analytics';
 import { saveQuizHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
+import { useSeo } from '../lib/seo';
 import './Quiz.css';
 
 const QUESTIONS = [
@@ -24,6 +25,7 @@ const PROMPT = (answers, lang) =>
 
 export default function Quiz() {
   const { t, lang } = useI18n();
+  useSeo({ title: `${t('quiz.title')} — Qor AI`, description: t('quiz.subtitle'), path: '/quiz' });
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState('');

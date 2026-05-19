@@ -8,6 +8,7 @@ import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format'
 import ProductCard from '../components/ProductCard.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
+import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -101,6 +102,56 @@ function balanceSpecBricks(bricks) {
   return columns.filter((col) => col.length > 0);
 }
 
+// Builds title / description / Open Graph + Product & Breadcrumb JSON-LD.
+function buildProductSeo(p, t) {
+  if (!p) {
+    return { title: `${t('pd.notFound')} · Qor AI`, noindex: true };
+  }
+  const meta = catMeta(p.category);
+  const keySpecs = p.keySpecs && typeof p.keySpecs === 'object'
+    ? Object.entries(p.keySpecs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')
+    : '';
+  const score = Number(p.techScore) || 0;
+  const title = `${p.name} · ${meta.label} — Qor AI`;
+  const description = truncate(
+    p.description
+    || `${p.name}: ${p.brand ? `${p.brand}, ` : ''}${meta.label}. `
+       + `${score > 0 ? `Qor AI teknik skoru ${score}/100. ` : ''}`
+       + `${keySpecs ? `${keySpecs}. ` : ''}`
+       + 'Özellikleri incele, karşılaştır ve karar ver.',
+  );
+  const image = p.imageUrl || DEFAULT_OG_IMAGE;
+  const url = `${SITE_URL}/product/${p.id}`;
+  const price = Number(p.lowestPriceUSD) || 0;
+
+  const product = {
+    '@type': 'Product',
+    name: p.name,
+    image,
+    description,
+    ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
+    ...(p.category ? { category: meta.label } : {}),
+    ...(price > 0 ? {
+      offers: {
+        '@type': 'Offer', price: price.toFixed(2),
+        priceCurrency: 'USD', url, availability: 'https://schema.org/InStock',
+      },
+    } : {}),
+  };
+  const breadcrumb = {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: meta.label, item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 3, name: p.name, item: url },
+    ],
+  };
+  return {
+    title, description, image, type: 'product',
+    jsonLd: { '@context': 'https://schema.org', '@graph': [product, breadcrumb] },
+  };
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
   const { t, lang } = useI18n();
@@ -142,6 +193,8 @@ export default function ProductDetail() {
       .catch(() => setAiText(t('pd.aiError')))
       .finally(() => setAiBusy(false));
   }, [tab, p]); // eslint-disable-line
+
+  useSeo(buildProductSeo(p, t));
 
   if (loading) {
     return (

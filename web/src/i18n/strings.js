@@ -286,6 +286,7 @@ const en = {
   'nf.title': 'Page not found',
   'nf.desc': 'The page you are looking for may have moved or never existed.',
   'nf.back': 'Back to Home',
+  'seo.home': 'Discover, compare and decide on tech products and digital subscriptions with AI. Phones, laptops, GPUs and more — analysed and scored by Qor AI.',
 };
 
 const tr = {
@@ -555,6 +556,7 @@ const tr = {
   'nf.title': 'Sayfa bulunamadı',
   'nf.desc': 'Aradığın sayfa taşınmış ya da hiç var olmamış olabilir.',
   'nf.back': 'Ana Sayfaya Dön',
+  'seo.home': 'Teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile keşfet, karşılaştır ve karar ver. Telefonlar, laptoplar, GPU\'lar ve daha fazlası — Qor AI ile analiz edildi ve puanlandı.',
 };
 
 import de from './locales/de.js';

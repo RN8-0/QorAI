@@ -12,6 +12,7 @@ import {
 import { getProduct } from '../lib/typesense';
 import { catMeta } from '../lib/format';
 import { useT } from '../i18n/index.jsx';
+import { useSeo } from '../lib/seo';
 import AiText from '../components/AiText.jsx';
 import './Profile.css';
 
@@ -26,6 +27,7 @@ export default function Profile() {
   const { user, openAuth, logout } = useAuth();
   const { ids } = useCompare();
 
+  useSeo({ title: `${t('nav.profile')} — Qor AI`, noindex: true });
   useEffect(() => { if (user) refreshUser(); }, []); // eslint-disable-line
 
   if (!user) {

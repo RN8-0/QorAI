@@ -4,6 +4,7 @@ import { trackEvent } from '../lib/analytics';
 import { saveSubscriptionHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
+import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
 const PRESETS = [
@@ -20,6 +21,7 @@ const PROMPT = (subs, lang) =>
 
 export default function Subscriptions() {
   const { t, lang } = useI18n();
+  useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
   const [result, setResult] = useState('');

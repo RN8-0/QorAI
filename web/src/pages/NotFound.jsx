@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useT } from '../i18n/index.jsx';
+import { useSeo } from '../lib/seo';
 import './Placeholder.css';
 
 export default function NotFound() {
   const t = useT();
+  useSeo({ title: `${t('nf.title')} — Qor AI`, description: t('nf.desc'), noindex: true });
   return (
     <div className="container ph">
       <div className="ph-card fade-up">

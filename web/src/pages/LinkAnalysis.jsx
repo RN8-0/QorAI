@@ -4,6 +4,7 @@ import { trackEvent } from '../lib/analytics';
 import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from '../components/AiText.jsx';
+import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
@@ -34,6 +35,7 @@ function comparePrompt(urls, lang) {
 
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
+  useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
   const [urls, setUrls] = useState(['']);
   const [result, setResult] = useState('');
   const [busy, setBusy] = useState(false);

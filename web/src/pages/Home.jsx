@@ -5,6 +5,7 @@ import { catMeta, formatCount, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import './Home.css';
 
 const TOOLS = [
@@ -93,6 +94,30 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
+
+  useSeo({
+    title: `Qor AI — ${t('home.heroTitle')}`,
+    description: t('seo.home'),
+    path: '/',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          name: 'Qor AI', url: `${SITE_URL}/`, logo: DEFAULT_OG_IMAGE,
+        },
+        {
+          '@type': 'WebSite',
+          name: 'Qor AI', url: `${SITE_URL}/`,
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: `${SITE_URL}/?q={search_term_string}`,
+            'query-input': 'required name=search_term_string',
+          },
+        },
+      ],
+    },
+  });
 
   useEffect(() => {
     setQ(params.get('q') || '');
