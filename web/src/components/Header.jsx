@@ -123,6 +123,9 @@ export default function Header() {
                       <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>
                         {t('nav.profile')}
                       </Link>
+                      <Link to="/settings" className="hd-menu-item" onClick={() => setMenu(false)}>
+                        {t('nav.settings')}
+                      </Link>
                       <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>
                         {t('nav.signOut')}
                       </button>

@@ -9,6 +9,7 @@ import ProductCard from '../components/ProductCard.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
+import { pushRecent } from '../lib/recentViewed';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -164,6 +165,7 @@ export default function ProductDetail() {
         if (!live) return;
         setP(prod); setActiveImg(0); setTab('specs');
         if (prod) {
+          pushRecent(prod.id);
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
         }
       })

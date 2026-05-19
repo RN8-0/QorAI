@@ -6,6 +6,7 @@ import { saveSearchHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
+import { getRecentIds } from '../lib/recentViewed';
 import './Home.css';
 
 const TOOLS = [
@@ -198,6 +199,12 @@ export default function Home() {
 
   const featured = useMemo(() => all.filter((p) => p.imageUrl).slice(0, 10), [all]);
   const popular = useMemo(() => all.slice(0, 12), [all]);
+  const recentProducts = useMemo(() => {
+    const ids = getRecentIds();
+    if (!ids.length || !all.length) return [];
+    const byId = new Map(all.map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter(Boolean).slice(0, 12);
+  }, [all]);
   const groupedCategories = useMemo(() => {
     const map = new Map();
     stats.categoryCounts.forEach((c) => {
@@ -336,6 +343,16 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
+
+      {/* RECENTLY VIEWED */}
+      {!searchMode && recentProducts.length > 0 && (
+        <section className="container h-sec">
+          <div className="h-sec-head"><h2>{t('home.recent')}</h2></div>
+          <div className="card-grid">
+            {recentProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        </section>
       )}
 
       {resultMode && (

@@ -15,6 +15,7 @@ import AiChat from './pages/AiChat.jsx';
 import Subscriptions from './pages/Subscriptions.jsx';
 import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
+import Settings from './pages/Settings.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

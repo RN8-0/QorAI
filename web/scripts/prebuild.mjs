@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const site = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'website');
 const wipe = [
   'spa', 'catalog', 'compare', 'ai-chat', 'pc-builder',
-  'link-analysis', 'subscriptions', 'quiz', 'profile', 'product',
+  'link-analysis', 'subscriptions', 'quiz', 'profile', 'settings', 'product',
 ];
 
 for (const dir of wipe) {
