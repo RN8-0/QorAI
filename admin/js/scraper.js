@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260519v10-epey-fast-detail';
+const SCRAPER_BUILD = '20260519v12-collect-first-skip-verify';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -2450,70 +2450,88 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   }
 
   // SECOND-CHANCE VERIFICATION: the bulk preload (`_loadExistingSourceUrls`)
-  // can occasionally return an incomplete set when PocketBase paginates a
-  // large `getFullList` and a single page comes back short — the SDK then
-  // stops early and we miss thousands of records. The symptom we hit IRL:
-  // a category with 4061 products in PB only matched 2041, so the other
-  // ~2000 URLs were treated as "new" and re-fetched on every run.
+  // can return an incomplete set when PocketBase paginates a large
+  // `getFullList` and a single page comes back short — the SDK then stops
+  // early. The symptom we hit IRL: a category with 4061 products in PB
+  // only matched 2041, so the other ~2000 URLs were treated as "new" and
+  // re-fetched on every run.
   //
-  // To make skip behaviour reliable regardless of preload completeness, we
-  // batch-verify the supposedly-fresh URLs directly against PB using an
-  // OR-filter. Anything PB returns is moved back into the skipped list.
-  // 50 URLs per request keeps the filter under PB's URL/length limits.
+  // To make skip behaviour reliable, we batch-verify supposedly-fresh
+  // items directly against PB. The match is OR'd across THREE keys:
+  //   1. sourceUrl  — exact saved-URL match (post-fix records)
+  //   2. slug       — URL slug match (works even if sourceUrl drifts:
+  //                    http vs https, www vs no-www, trailing slash…)
+  //   3. id         — slug → id transform via generateProductId, since
+  //                    the document key in PB is sometimes that id.
+  // If PB returns ANY of those, the item is treated as already-saved.
+  // Batch of 25 keeps the OR-filter URL safely below PB's request size
+  // limits even when each predicate is repeated three ways per row.
   if (freshItems.length > 0) {
     try {
-      const VERIFY_BATCH = 50;
+      const VERIFY_BATCH = 25;
       let verifiedExtraSkips = 0;
+      const escFV = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       for (let bi = 0; bi < freshItems.length && !scraperAbort; bi += VERIFY_BATCH) {
         const slice = freshItems.slice(bi, bi + VERIFY_BATCH);
+        const sliceMeta = []; // parallel to slice with computed keys
         const orParts = [];
         for (const item of slice) {
           const norm = normalizeEpeyProductUrl(item.url) || normalizeScrapeUrlKey(item.url);
-          if (!norm) continue;
-          // Escape double-quotes and backslashes for the PB filter literal.
-          const safe = String(norm).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-          orParts.push(`sourceUrl="${safe}"`);
+          const slug = slugFromUrl(item.url) || '';
+          const idLike = slug ? generateProductId(slug) : '';
+          sliceMeta.push({ url: norm, slug, idLike });
+          if (norm) orParts.push(`sourceUrl="${escFV(norm)}"`);
+          if (slug) orParts.push(`slug="${escFV(slug)}"`);
+          if (idLike && idLike !== slug) orParts.push(`slug="${escFV(idLike)}"`);
         }
         if (!orParts.length) continue;
         try {
           const found = await pbGetAll('products', {
             filter: orParts.join(' || '),
             sort: 'id',
-            fields: 'id,sourceUrl',
-            batch: VERIFY_BATCH,
+            fields: 'id,sourceUrl,slug',
+            batch: 200,
           });
           if (!found.length) continue;
-          const foundKeys = new Set();
+          const foundUrlKeys = new Set();
+          const foundSlugs = new Set();
           for (const d of found) {
             const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-            const raw = String(data?.sourceUrl || '').trim();
-            if (!raw) continue;
-            const k = normalizeScrapeUrlKey(raw);
-            if (k) foundKeys.add(k);
+            const rawUrl = String(data?.sourceUrl || '').trim();
+            if (rawUrl) {
+              const k = normalizeScrapeUrlKey(rawUrl);
+              if (k) foundUrlKeys.add(k);
+            }
+            const slug = String(data?.slug || '').trim();
+            if (slug) foundSlugs.add(slug);
           }
-          if (!foundKeys.size) continue;
-          // Move any item whose normalized URL appears in foundKeys to skipped.
+          // Move any matched item to skipped.
           const stillFresh = [];
-          for (const item of slice) {
-            const k = normalizeScrapeUrlKey(item.url);
-            if (k && foundKeys.has(k)) {
+          for (let si = 0; si < slice.length; si++) {
+            const item = slice[si];
+            const meta = sliceMeta[si];
+            const matched =
+              (meta.url && foundUrlKeys.has(meta.url)) ||
+              (meta.slug && foundSlugs.has(meta.slug)) ||
+              (meta.idLike && foundSlugs.has(meta.idLike));
+            if (matched) {
               skippedExisting.push(item);
-              existingUrlKeys.add(k);
+              if (meta.url) existingUrlKeys.add(meta.url);
               verifiedExtraSkips++;
             } else {
               stillFresh.push(item);
             }
           }
-          // Replace the slice in-place inside freshItems.
           freshItems.splice(bi, slice.length, ...stillFresh);
-          // Adjust index because we shrunk the array by (slice.length - stillFresh.length).
           bi -= (slice.length - stillFresh.length);
         } catch (e) {
-          slog(`  (verify batch failed: ${e.message}) — skipping batch verification`, 'warn');
+          slog(`  (verify batch ${bi}+ failed: ${e.message})`, 'warn');
         }
       }
       if (verifiedExtraSkips > 0) {
         slog(`🔎 Verify pass caught ${verifiedExtraSkips} extra already-saved products the preload missed`, 'success');
+      } else {
+        slog(`🔎 Verify pass: 0 extra hits — preload was already complete`, 'info');
       }
     } catch (e) {
       slog(`  (URL verification pass failed: ${e.message})`, 'warn');
@@ -3888,25 +3906,81 @@ async function startBulkScrape() {
         finishScraping();
         return;
       }
-      const totals = { added: 0, updated: 0, skipped: 0, errors: 0 };
-      slog(`📚 ${cats.length} Epey kategorisi sırayla taranacak. Limit kategori başına ${maxProducts}.`, 'info');
+      const totals = { added: 0, updated: 0, skipped: 0, errors: 0, missingCats: [] };
+      // Surface admin categories that have NO epeyPath so the user knows
+      // up front which ones can never be scraped from Epey.
+      try {
+        const allAdminCats = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
+          ? QorAiCategories.getAll() : [];
+        const noEpey = allAdminCats.filter(c => c?.id && !c?.epeyPath).map(c => c.id);
+        if (noEpey.length) {
+          slog(`ℹ️ Epey path tanımlı olmayan ${noEpey.length} kategori atlanıyor: ${noEpey.join(', ')}`, 'info');
+        }
+      } catch (_) { /* non-fatal logging */ }
+      slog(`📚 ${cats.length} Epey kategorisi var. Önce TÜMÜNÜN URL'leri toplanacak, sonra çekme aşaması başlayacak.`, 'info');
+      slog(`   Sıralama: ${cats.map(c => c.id).join(' → ')}`, 'info');
 
+      // ── PHASE 1: collect every category's URLs upfront ────────────
+      // This way the user sees the full workload before any scraping
+      // burns proxy quota, and a single bad category cannot abort the
+      // collection for the rest.
+      const collected = []; // [{ cat, items }]
+      let totalUrls = 0;
+      const collectStart = Date.now();
+      slog(`\n┏━━ PHASE 1 / 2 — URL TOPLAMA (${cats.length} kategori) ━━┓`, 'info');
       for (let ci = 0; ci < cats.length && !scraperAbort; ci++) {
         const cat = cats[ci];
-        slog(`\n━━━ [${ci + 1}/${cats.length}] ${cat.name || cat.id} (${cat.id}) ━━━`, 'info');
-        const urlItems = await collectSearchProductUrls('', maxProducts, cat.id);
-        slog(`Found ${urlItems.length} Epey product URLs for ${cat.id}`, urlItems.length ? 'success' : 'warn');
-        if (!urlItems.length) {
-          totals.skipped++;
+        slog(`\n[Toplama ${ci + 1}/${cats.length}] ${cat.name || cat.id} (${cat.id})`, 'info');
+        let items = [];
+        try {
+          items = await collectSearchProductUrls('', maxProducts, cat.id);
+        } catch (e) {
+          slog(`  ❌ ${cat.id} URL toplama hatası: ${e.message}`, 'error');
+          totals.errors++;
+          totals.missingCats.push(cat.id);
           continue;
         }
-        const res = await sequentialScrape(urlItems.slice(0, maxProducts), cat.id, delay);
+        if (!items || !items.length) {
+          slog(`  ⚠️ ${cat.id}: 0 URL (kategori boş veya Epey path eksik)`, 'warn');
+          totals.missingCats.push(cat.id);
+          continue;
+        }
+        const trimmed = items.slice(0, maxProducts);
+        collected.push({ cat, items: trimmed });
+        totalUrls += trimmed.length;
+        slog(`  ✓ ${cat.id}: ${trimmed.length} URL toplandı (kümülatif ${totalUrls})`, 'success');
+      }
+      const collectSec = ((Date.now() - collectStart) / 1000).toFixed(1);
+      slog(`\n┗━━ PHASE 1 tamam: ${collected.length}/${cats.length} kategori, toplam ${totalUrls} URL (${collectSec}s) ━━┛`, 'success');
+      if (totals.missingCats.length) {
+        slog(`⚠️ Atlanan kategoriler: ${totals.missingCats.join(', ')}`, 'warn');
+      }
+
+      if (scraperAbort) {
+        slog('Stopped during URL collection.', 'warn');
+        finishScraping();
+        return;
+      }
+      if (!collected.length) {
+        slog('No URLs collected from any category.', 'error');
+        finishScraping();
+        return;
+      }
+
+      // ── PHASE 2: scrape each category's collected URLs ────────────
+      slog(`\n┏━━ PHASE 2 / 2 — ÇEKME (${collected.length} kategori, ${totalUrls} URL) ━━┓`, 'info');
+      let processed = 0;
+      for (let ci = 0; ci < collected.length && !scraperAbort; ci++) {
+        const { cat, items } = collected[ci];
+        slog(`\n━━━ [Çekme ${ci + 1}/${collected.length}] ${cat.name || cat.id} (${cat.id}) — ${items.length} URL ━━━`, 'info');
+        const res = await sequentialScrape(items, cat.id, delay);
         totals.added += res.added || 0;
         totals.updated += res.updated || 0;
         totals.skipped += res.skipped || 0;
         totals.errors += res.errors || 0;
-        slog(`━━━ ${cat.id} done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata ━━━`, 'success');
-        if (ci < cats.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
+        processed += items.length;
+        slog(`━━━ ${cat.id} done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata · ilerleme ${processed}/${totalUrls} URL ━━━`, 'success');
+        if (ci < collected.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
       }
 
       slog(`\n═══ All categories done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata${scraperAbort ? ' | STOPPED' : ''} ═══`, scraperAbort ? 'warn' : 'success');
