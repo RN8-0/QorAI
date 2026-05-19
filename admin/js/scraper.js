@@ -11,16 +11,16 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260519v14-parallel-detail-stop-score';
+const SCRAPER_BUILD = '20260519v15-eight-epey-images';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // Languages to translate Turkish specs into (skip tr since source is Turkish)
 const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
-// Product pages already expose the hero / inline gallery images. Fetching the
-// separate "-resimleri" page roughly doubles the hot-path Epey requests, so
-// keep it off for bulk imports unless a full image sweep is explicitly needed.
-const EPEY_FETCH_GALLERY_IMAGES = false;
+// Epey product pages usually expose only 2-3 inline images. The full product
+// photo set lives on the "-resimleri.html" gallery page, so keep this enabled
+// to satisfy the catalog requirement of up to 8 product-owned images.
+const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
 const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
 const EPEY_DETAIL_CONCURRENCY_MAX = 16;
@@ -3374,6 +3374,44 @@ function extractImages(doc, productSlug = '') {
     if (om) consider(om[1]);
   });
 
+  // Some Epey gallery pages keep the extra product photos in inline JS or
+  // escaped HTML fragments instead of regular <img> nodes. Use a slug-aware
+  // fallback so we can reach 8 images without pulling unrelated recommendations.
+  if (byKey.size < MAX_IMAGES_PER_PRODUCT && productSlug) {
+    const html = String(doc.documentElement?.innerHTML || '')
+      .replace(/\\\//g, '/')
+      .replace(/&amp;/g, '&');
+    const exactSlug = String(productSlug || '').toLowerCase();
+    const slugTokens = exactSlug
+      .replace(/-\d+(?:gb|tb|mb)\b/g, '')
+      .split(/[^a-z0-9]+/)
+      .filter(t => t.length >= 3 && !['html', 'resimleri'].includes(t));
+    const isLikelyOwnImage = (url) => {
+      const lower = String(url || '').toLowerCase();
+      if (!slugTokens.length) return false;
+      const hits = slugTokens.filter(t => lower.includes(t)).length;
+      return hits >= Math.min(2, slugTokens.length);
+    };
+    const imageFolder = (url) => (String(url || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';
+    const re = /https?:\/\/resim\.epey\.com\/[^,"'()<>\s\\]+/gi;
+    const matches = [];
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      matches.push(m[0].replace(/&quot;.*/i, '').replace(/['"].*$/i, ''));
+    }
+    for (const url of matches) {
+      if (byKey.size >= MAX_IMAGES_PER_PRODUCT) break;
+      if (exactSlug && String(url).toLowerCase().includes(exactSlug)) consider(url);
+    }
+    const allowedFolders = new Set([...byKey.values()].map(v => imageFolder(v.url)).filter(Boolean));
+    for (const url of matches) {
+      if (byKey.size >= MAX_IMAGES_PER_PRODUCT) break;
+      const folder = imageFolder(url);
+      if (allowedFolders.size && !allowedFolders.has(folder)) continue;
+      if (isLikelyOwnImage(url)) consider(url);
+    }
+  }
+
   return [...byKey.values()].map(v => v.url).slice(0, MAX_IMAGES_PER_PRODUCT);
 }
 
@@ -3394,7 +3432,7 @@ async function fetchGalleryImages(productUrl) {
     // retries=1: the gallery is a best-effort image top-up, not worth 3 retries.
     const html = await proxyFetch(galleryUrl, 1, productUrl);
     if (!html || isChallengePage(html)) return [];
-    return extractImages(parseHTML(html));
+    return extractImages(parseHTML(html), slugFromUrl(productUrl));
   } catch { return []; }
 }
 
