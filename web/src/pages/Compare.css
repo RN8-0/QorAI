@@ -121,6 +121,20 @@
 .cmp-row-score td { background: var(--accent-soft); }
 .cmp-row-score .cmp-td-spec { background: var(--accent-soft); color: var(--accent); }
 
+/* winning cell — best value in the row */
+.cmp-td-win {
+  background: rgba(34, 197, 94, 0.13);
+  box-shadow: inset 2px 0 0 #22c55e;
+  font-weight: 700; color: var(--text);
+}
+.cmp-row-score .cmp-td-win { background: rgba(34, 197, 94, 0.18); }
+.cmp-win-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-right: 5px; border-radius: 50%;
+  background: #22c55e; color: #fff; font-size: 9px; font-weight: 800;
+  vertical-align: middle;
+}
+
 @media (max-width: 920px) {
   .cmp-picks .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

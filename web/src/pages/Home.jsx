@@ -143,13 +143,12 @@ export default function Home() {
   function search(e) {
     e.preventDefault();
     const term = q.trim();
-    const first = searchResults[0];
-    if (first) {
-      saveSearchHistory(term, first.id);
-      nav(`/product/${first.id}`);
-      return;
-    }
-    setSuggestOpen(true);
+    if (!term) return;
+    saveSearchHistory(term);
+    setActiveCat('');
+    setHomeFilters(term, '', false);
+    setSuggestOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function openProduct(product) {
@@ -196,6 +195,8 @@ export default function Home() {
   const resultTitle = activeCat
       ? catMeta(activeCat).label
       : '';
+  const queryTerm = (params.get('q') || '').trim();
+  const searchMode = queryTerm.length > 0;
   // Category sections — top 3 categories with their best products.
   const catSections = useMemo(() => {
     return stats.categoryCounts.slice(0, 3).map((c) => ({
@@ -246,7 +247,7 @@ export default function Home() {
               </div>
             )}
           </div>
-          {resultMode && (
+          {(resultMode || searchMode) && (
             <button className="h-clear" type="button" onClick={clearFilters}>
               {t('catalog.clear')}
             </button>
@@ -254,7 +255,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* SEARCH RESULTS GRID */}
+      {searchMode && (
+        <section className="container h-sec h-results">
+          <div className="h-sec-head">
+            <h2>{t('catalog.searchTag', { q: queryTerm })}</h2>
+            {!searching && (
+              <span className="h-result-count">
+                {t('catalog.count', { n: searchResults.length.toLocaleString() })}
+              </span>
+            )}
+          </div>
+          {searching ? (
+            <div className="card-grid">
+              {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="card-grid">
+              {searchResults.map((p) => <ProductCard key={p.id} product={p} />)}
+            </div>
+          ) : (
+            <div className="h-empty">{t('catalog.emptySearch', { q: queryTerm })}</div>
+          )}
+        </section>
+      )}
+
       {/* HERO ROW — featured carousel + categories */}
+      {!searchMode && (
       <section className="container h-hero2">
         {loading ? <div className="h-feat skel" style={{ height: 340 }} /> : <Featured items={featured} t={t} />}
         <div className="h-cats-panel">
@@ -284,6 +311,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {resultMode && (
         <section className="container h-sec h-results">
@@ -303,6 +331,7 @@ export default function Home() {
       )}
 
       {/* POPULAR PRODUCTS */}
+      {!searchMode && (
       <section className="container h-sec">
         <div className="h-sec-head">
           <h2>{t('home.popular')}</h2>
@@ -314,9 +343,10 @@ export default function Home() {
             : popular.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
+      )}
 
       {/* CATEGORY SECTIONS */}
-      {!loading && catSections.map((sec) => {
+      {!loading && !searchMode && catSections.map((sec) => {
         const m = catMeta(sec.cat);
         if (!sec.products.length) return null;
         return (

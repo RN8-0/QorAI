@@ -25,6 +25,26 @@ function flatSpecs(p) {
   return flat;
 }
 
+// Specs where a smaller number is the better result.
+const LOWER_BETTER = /(ağırlık|agirlik|weight|kalınlık|kalinlik|thickness|fiyat|price|gecikme|latency|response|tepki|ping|tüketim|tuketim|consumption|emisyon)/i;
+
+function parseNum(s) {
+  if (s == null) return null;
+  const m = String(s).match(/-?\d+(?:[.,]\d+)?/);
+  return m ? parseFloat(m[0].replace(',', '.')) : null;
+}
+
+// Returns a boolean per cell — true marks the winning value(s) for the row.
+function rowWinners(key, values) {
+  const nums = values.map(parseNum);
+  const valid = nums.filter((n) => n != null && Number.isFinite(n));
+  if (valid.length < 2 || valid.every((n) => n === valid[0])) {
+    return values.map(() => false);
+  }
+  const best = LOWER_BETTER.test(key) ? Math.min(...valid) : Math.max(...valid);
+  return nums.map((n) => n != null && Number.isFinite(n) && n === best);
+}
+
 export default function Compare() {
   const t = useT();
   const { ids, remove, clear, add } = useCompare();
@@ -85,7 +105,15 @@ export default function Compare() {
     flats.forEach((f) => Object.keys(f).forEach((k) => {
       if (!seen.has(k)) { seen.add(k); keys.push(k); }
     }));
-    return keys.slice(0, 60).map((k) => ({ key: k, values: flats.map((f) => f[k] || '—') }));
+    return keys.slice(0, 60).map((k) => {
+      const values = flats.map((f) => f[k] || '—');
+      return { key: k, values, win: rowWinners(k, values) };
+    });
+  }, [products]);
+
+  const bestScore = useMemo(() => {
+    if (products.length < 2) return null;
+    return Math.max(...products.map((p) => Number(p.techScore) || 0));
   }, [products]);
 
   function pick(p) {
@@ -185,17 +213,24 @@ export default function Compare() {
               <tbody>
                 <tr className="cmp-row-score">
                   <td className="cmp-td-spec">{t('cmp.scoreRow')}</td>
-                  {slots.map((p) => (
-                    <td key={p.id}>
-                      <span className={`score ${scoreClass(p.techScore)}`}>{scoreLabel(p.techScore)}</span>
-                    </td>
-                  ))}
+                  {slots.map((p) => {
+                    const isBest = bestScore != null && (Number(p.techScore) || 0) === bestScore;
+                    return (
+                      <td key={p.id} className={isBest ? 'cmp-td-win' : ''}>
+                        <span className={`score ${scoreClass(p.techScore)}`}>{scoreLabel(p.techScore)}</span>
+                      </td>
+                    );
+                  })}
                 </tr>
                 {specRows.map((row) => (
                   <tr key={row.key}>
                     <td className="cmp-td-spec">{row.key}</td>
                     {row.values.map((v, i) => (
-                      <td key={i} className={v === '—' ? 'cmp-td-empty' : ''}>{v}</td>
+                      <td key={i}
+                        className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
+                        {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
+                        {v}
+                      </td>
                     ))}
                   </tr>
                 ))}

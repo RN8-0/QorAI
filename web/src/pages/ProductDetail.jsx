@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
-import { getReviews, createReview, averageRating } from '../lib/reviews';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
-import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
 import AiText from '../components/AiText.jsx';
+import Reviews from '../components/Reviews.jsx';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -106,7 +105,6 @@ export default function ProductDetail() {
   const { id } = useParams();
   const { t, lang } = useI18n();
   const { has, toggle } = useCompare();
-  const { user, openAuth } = useAuth();
 
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -117,23 +115,17 @@ export default function ProductDetail() {
   const [aiBusy, setAiBusy] = useState(false);
 
   const [similar, setSimilar] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [revRating, setRevRating] = useState(0);
-  const [revText, setRevText] = useState('');
-  const [revBusy, setRevBusy] = useState(false);
-  const [revMsg, setRevMsg] = useState('');
 
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiText(''); setSimilar([]); setReviews([]); setRevMsg(''); setRevRating(0); setRevText('');
+    setAiText(''); setSimilar([]);
     getProduct(id)
       .then((prod) => {
         if (!live) return;
         setP(prod); setActiveImg(0); setTab('specs');
         if (prod) {
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
-          getReviews(prod.id).then((r) => live && setReviews(r)).catch(() => {});
         }
       })
       .catch(() => {})
@@ -150,23 +142,6 @@ export default function ProductDetail() {
       .catch(() => setAiText(t('pd.aiError')))
       .finally(() => setAiBusy(false));
   }, [tab, p]); // eslint-disable-line
-
-  async function submitReview(e) {
-    e.preventDefault();
-    if (!user) { openAuth(); return; }
-    if (!revRating || !revText.trim()) return;
-    setRevBusy(true); setRevMsg('');
-    try {
-      await createReview(p.id, revRating, revText);
-      setRevText(''); setRevRating(0);
-      setRevMsg('ok');
-      setReviews(await getReviews(p.id));
-    } catch {
-      setRevMsg('err');
-    } finally {
-      setRevBusy(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -201,8 +176,6 @@ export default function ProductDetail() {
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'));
   const specColumns = balanceSpecBricks(bricks);
-
-  const avg = averageRating(reviews);
 
   return (
     <div className="pd">
@@ -359,83 +332,9 @@ export default function ProductDetail() {
         )}
 
         {/* REVIEWS */}
-        <section className="pd-section">
-          <div className="pd-section-head">
-            <h2>{t('pd.reviews')}</h2>
-            {reviews.length > 0 && (
-              <span className="pd-rev-avg">
-                <Stars value={Math.round(avg)} />
-                {t('pd.revAvg', { n: reviews.length, avg: avg.toFixed(1) })}
-              </span>
-            )}
-          </div>
-
-          <form className="pd-rev-form" onSubmit={submitReview}>
-            <div className="pd-rev-form-top">
-              <span className="pd-rev-label">{t('pd.revYour')}</span>
-              <StarPicker value={revRating} onChange={setRevRating} />
-            </div>
-            <textarea value={revText} onChange={(e) => setRevText(e.target.value)}
-              placeholder={t('pd.revPlaceholder')} rows={3} maxLength={1000} />
-            {revMsg === 'ok' && <div className="pd-rev-ok">{t('pd.revThanks')}</div>}
-            {revMsg === 'err' && <div className="pd-rev-er">{t('pd.revErr')}</div>}
-            {user ? (
-              <button type="submit" className="btn btn-primary"
-                disabled={revBusy || !revRating || !revText.trim()}>
-                {t('pd.revSubmit')}
-              </button>
-            ) : (
-              <button type="button" className="btn btn-ghost" onClick={openAuth}>
-                {t('pd.revSignIn')}
-              </button>
-            )}
-          </form>
-
-          {reviews.length === 0 ? (
-            <div className="pd-note">{t('pd.revNone')}</div>
-          ) : (
-            <div className="pd-rev-list">
-              {reviews.map((r) => (
-                <div className="pd-rev-item" key={r.id}>
-                  <div className="pd-rev-item-head">
-                    <div className="pd-rev-av">{(r.author || 'U')[0].toUpperCase()}</div>
-                    <div className="pd-rev-meta">
-                      <strong>{r.author || t('nav.profile')}</strong>
-                      <Stars value={r.rating} />
-                    </div>
-                    <span className="pd-rev-date">
-                      {r.created ? new Date(r.created).toLocaleDateString() : ''}
-                    </span>
-                  </div>
-                  {r.text && <p className="pd-rev-text">{r.text}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <Reviews productId={p.id} />
       </div>
     </div>
-  );
-}
-
-function Stars({ value }) {
-  return (
-    <span className="stars">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className={i <= value ? 'on' : ''}>★</span>
-      ))}
-    </span>
-  );
-}
-
-function StarPicker({ value, onChange }) {
-  return (
-    <span className="stars stars-pick">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <button type="button" key={i} className={i <= value ? 'on' : ''}
-          onClick={() => onChange(i)} aria-label={`${i}`}>★</button>
-      ))}
-    </span>
   );
 }
 
