@@ -25,18 +25,63 @@ export async function signIn(email, password) {
 }
 
 export async function register(email, password, name = '') {
+  const displayName = name || email.split('@')[0];
   await pb.collection('users').create({
     email,
     password,
     passwordConfirm: password,
-    name: name || email.split('@')[0],
+    name: displayName,
+    displayName,
     emailVisibility: true,
   });
-  return pb.collection('users').authWithPassword(email, password);
+  const auth = await pb.collection('users').authWithPassword(email, password);
+  // Fire off the verification email — never block sign-in if it fails.
+  try { await pb.collection('users').requestVerification(email); } catch { /* noop */ }
+  return auth;
 }
 
 export function signOut() {
   pb.authStore.clear();
+}
+
+// Sends a password-reset email. The link inside points to the
+// PocketBase-hosted reset page (see pb_hooks/password_reset_page.pb.js).
+export async function requestPasswordReset(email) {
+  return pb.collection('users').requestPasswordReset(email);
+}
+
+// Re-sends the address verification email for the given account.
+export async function requestVerification(email) {
+  return pb.collection('users').requestVerification(email);
+}
+
+// Pulls a fresh copy of the signed-in user (coin balance, verified flag,
+// history arrays) and writes it back into the auth store.
+export async function refreshUser() {
+  if (!pb.authStore.isValid) return null;
+  try {
+    const res = await pb.collection('users').authRefresh();
+    return res.record;
+  } catch {
+    return currentUser();
+  }
+}
+
+// Updates the signed-in user's record and keeps the auth store in sync
+// so the header / profile re-render immediately.
+export async function updateProfile(data) {
+  const user = currentUser();
+  if (!user) throw new Error('auth required');
+  const rec = await pb.collection('users').update(user.id, data);
+  pb.authStore.save(pb.authStore.token, rec);
+  return rec;
+}
+
+// Starts the email-confirmed account deletion flow. The backend
+// (pb_hooks/delete_account.pb.js) emails a signed confirmation link;
+// the account is only erased once the user clicks it.
+export async function requestAccountDeletion() {
+  return pb.send('/api/users/request-delete', { method: 'POST' });
 }
 
 // Returns an i18n string key for the given auth error.

@@ -60,6 +60,51 @@
 }
 .pf-link-row a:hover { border-color: var(--accent-ring); color: var(--accent); }
 
+/* email verification banner */
+.pf-verify {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px;
+}
+.pf-verify-ic { font-size: 22px; }
+.pf-verify-tx { flex: 1; min-width: 200px; }
+.pf-verify-tx strong { display: block; font-size: 13.5px; font-weight: 700; }
+.pf-verify-tx span { font-size: 12.5px; color: var(--text2); }
+.pf-verify-done { font-size: 12.5px; font-weight: 700; color: #4ade80; }
+.pf-verify-err { font-size: 12px; color: #f87171; width: 100%; }
+
+/* identity card — name editing */
+.pf-id-text h1 { display: flex; align-items: center; gap: 8px; }
+.pf-edit-btn { font-size: 13px; opacity: 0.6; }
+.pf-edit-btn:hover { opacity: 1; }
+.pf-verified {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 11px;
+  background: #22c55e; color: #fff; font-weight: 800;
+}
+.pf-name-edit { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pf-name-edit input {
+  flex: 1; min-width: 140px; padding: 8px 12px; font-size: 15px; font-weight: 700;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); outline: none;
+}
+.pf-name-edit input:focus { border-color: var(--accent); }
+.pf-name-edit .btn { padding: 8px 14px; font-size: 13px; }
+
+/* danger zone */
+.pf-danger { margin-top: 16px; border-color: rgba(239, 68, 68, 0.28); }
+.pf-danger h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #f87171; }
+.pf-danger p { font-size: 12.5px; color: var(--text2); margin-bottom: 12px; }
+.pf-danger-warn { color: var(--text) !important; font-weight: 600; }
+.pf-danger-sent { color: #4ade80 !important; font-weight: 600; margin-bottom: 0 !important; }
+.pf-danger-err { color: #f87171 !important; margin: 8px 0 0 !important; }
+.pf-danger-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.pf-danger-btn {
+  background: rgba(239, 68, 68, 0.14); color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.pf-danger-btn:hover { background: rgba(239, 68, 68, 0.24); }
+
 @media (max-width: 560px) {
   .pf-grid { grid-template-columns: 1fr; }
   .pf-id { flex-wrap: wrap; }
