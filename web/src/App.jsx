@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AuthModal from './components/AuthModal.jsx';
@@ -7,6 +7,7 @@ import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
 
 import Home from './pages/Home.jsx';
+import Catalog from './pages/Catalog.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import Compare from './pages/Compare.jsx';
 import LinkAnalysis from './pages/LinkAnalysis.jsx';
@@ -15,11 +16,6 @@ import Subscriptions from './pages/Subscriptions.jsx';
 import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
 import NotFound from './pages/NotFound.jsx';
-
-function CatalogRedirect() {
-  const loc = useLocation();
-  return <Navigate to={`/${loc.search || ''}`} replace />;
-}
 
 export default function App() {
   const loc = useLocation();
@@ -36,7 +32,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/catalog" element={<CatalogRedirect />} />
+          <Route path="/catalog" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/ai-chat" element={<AiChat />} />

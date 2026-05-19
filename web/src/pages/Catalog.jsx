@@ -5,6 +5,7 @@ import { catMeta } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import { useT } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import { useSeo } from '../lib/seo';
 import './Catalog.css';
 
 const SORTS = [
@@ -20,6 +21,7 @@ const PAGE = 24;
 
 export default function Catalog() {
   const t = useT();
+  useSeo({ title: `${t('catalog.title')} — Qor AI`, description: t('catalog.subtitle'), path: '/catalog' });
   const [params, setParams] = useSearchParams();
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);

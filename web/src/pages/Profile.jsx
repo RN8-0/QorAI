@@ -10,6 +10,7 @@ import {
   readSearchHistory, readQuizHistory,
 } from '../lib/pbHistory';
 import { getProduct } from '../lib/typesense';
+import { premiumStatus } from '../lib/premium';
 import { catMeta } from '../lib/format';
 import { useT } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
@@ -161,8 +162,24 @@ function Identity({ user, name, logout, t }) {
 /* ─── Overview tab ───────────────────────────────────────────────── */
 function Overview({ user, ids, t }) {
   const coins = Math.round(Number(user.bonusQCoins) || 0);
+  const prem = premiumStatus(user);
+  const premUntil = prem.expiresAt
+    ? new Date(prem.expiresAt).toLocaleDateString()
+    : '';
   return (
     <div className="fade-up">
+      <div className={'pf-card pf-membership' + (prem.isPremium ? ' is-premium' : '')}>
+        <div className="pf-mem-badge">{prem.isPremium ? '✦' : 'Q'}</div>
+        <div className="pf-mem-text">
+          <strong>{prem.isPremium ? t('pf.memberPremium') : t('pf.memberFree')}</strong>
+          <span>
+            {prem.isPremium
+              ? (premUntil ? t('pf.premiumUntil', { date: premUntil }) : t('pf.premiumActive'))
+              : t('pf.premiumApp')}
+          </span>
+        </div>
+      </div>
+
       <div className="pf-grid">
         <div className="pf-card pf-coins">
           <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>

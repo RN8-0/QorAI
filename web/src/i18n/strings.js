@@ -7,7 +7,7 @@
 const en = {
   // nav / header
   'nav.home': 'Home',
-  'nav.catalog': 'Home',
+  'nav.catalog': 'Catalog',
   'nav.compare': 'Compare',
   'nav.aiChat': 'AI Chat',
   'nav.pcBuilder': 'PC Builder',
@@ -22,6 +22,7 @@ const en = {
   'header.theme': 'Toggle theme',
   'header.menu': 'Menu',
   'header.coins': 'Your Qor Coin balance',
+  'header.premium': 'Premium member',
   // common
   'common.search': 'Search',
   'common.seeAll': 'See all',
@@ -198,6 +199,11 @@ const en = {
   'pf.compareCount': 'In your compare list',
   'pf.openList': 'Open List →',
   'pf.quickAccess': 'Quick Access',
+  'pf.memberPremium': 'Premium member',
+  'pf.memberFree': 'Free account',
+  'pf.premiumActive': 'Your premium subscription is active.',
+  'pf.premiumUntil': 'Premium active until {date}.',
+  'pf.premiumApp': 'Premium is available in the Qor AI mobile app.',
   'pf.save': 'Save',
   'pf.cancel': 'Cancel',
   'pf.editName': 'Edit name',
@@ -303,7 +309,7 @@ const en = {
 
 const tr = {
   'nav.home': 'Ana Sayfa',
-  'nav.catalog': 'Ana Sayfa',
+  'nav.catalog': 'Katalog',
   'nav.compare': 'Karşılaştır',
   'nav.aiChat': 'AI Sohbet',
   'nav.pcBuilder': 'PC Toplama',
@@ -318,6 +324,7 @@ const tr = {
   'header.theme': 'Tema değiştir',
   'header.menu': 'Menü',
   'header.coins': 'Qor Coin bakiyen',
+  'header.premium': 'Premium üye',
   'common.search': 'Ara',
   'common.seeAll': 'Tümü',
   'common.loading': 'Yükleniyor…',
@@ -485,6 +492,11 @@ const tr = {
   'pf.compareCount': 'Karşılaştırma listende',
   'pf.openList': 'Listeyi Aç →',
   'pf.quickAccess': 'Hızlı Erişim',
+  'pf.memberPremium': 'Premium üye',
+  'pf.memberFree': 'Ücretsiz hesap',
+  'pf.premiumActive': 'Premium aboneliğin aktif.',
+  'pf.premiumUntil': '{date} tarihine kadar Premium aktif.',
+  'pf.premiumApp': 'Premium üyelik Qor AI mobil uygulamasından alınabilir.',
   'pf.save': 'Kaydet',
   'pf.cancel': 'Vazgeç',
   'pf.editName': 'İsmi düzenle',

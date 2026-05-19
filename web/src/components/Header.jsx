@@ -3,11 +3,13 @@ import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { useCompare } from '../lib/compare';
+import { premiumStatus } from '../lib/premium';
 import { useI18n } from '../i18n/index.jsx';
 import './Header.css';
 
 const NAV = [
   { to: '/', key: 'nav.home', end: true },
+  { to: '/catalog', key: 'nav.catalog' },
   { to: '/compare', key: 'nav.compare' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
@@ -23,6 +25,7 @@ export default function Header() {
   const [langOpen, setLangOpen] = useState(false);
 
   const coins = user ? Math.round(Number(user.bonusQCoins) || 0) : 0;
+  const isPremium = premiumStatus(user).isPremium;
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
   const curLang = langs.find((l) => l.code === lang) || langs[0];
 
@@ -95,6 +98,7 @@ export default function Header() {
 
             {user ? (
               <div className="hd-user">
+                {isPremium && <span className="hd-pro" title={t('header.premium')}>PRO</span>}
                 <span className="hd-coins" title={t('header.coins')}>
                   <span className="coin-dot">Q</span>{coins}
                 </span>
@@ -106,7 +110,10 @@ export default function Header() {
                     <div className="hd-menu-backdrop" onClick={() => setMenu(false)} />
                     <div className="hd-menu fade-up">
                       <div className="hd-menu-head">
-                        <strong>{displayName}</strong>
+                        <strong>
+                          {displayName}
+                          {isPremium && <span className="hd-pro hd-pro-sm">PRO</span>}
+                        </strong>
                         <span>{user.email}</span>
                       </div>
                       <div className="hd-menu-coins">
