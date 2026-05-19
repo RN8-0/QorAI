@@ -415,7 +415,7 @@
           <h1>Scraper</h1>
           <div class="view-actions">
             <span class="proxy-status" id="proxyStatus">● Proxy: Checking...</span>
-            <button class="btn btn-ghost btn-sm" onclick="checkProxy()">Check Proxy</button>
+            <button class="btn btn-ghost btn-sm" onclick="checkProxy(true)">Check Proxy</button>
           </div>
         </div>
 
@@ -462,7 +462,7 @@
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir (satışta olan da olmayan da, tüm markalar). Ürün limiti kadarı işlenir.
+              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>

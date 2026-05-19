@@ -453,6 +453,8 @@
   const NO_ANCHOR_CAP = 75;          // hard ceiling when no anchor benchmark exists
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
+  const SCORE_MIN = 20;
+  const SCORE_MAX = 100;
 
   // ─────────────────────────────────────────────────────────────
   //  BRAND MODIFIER (epey/versus parity)
@@ -1097,6 +1099,33 @@
     return { score: 100, type: 'bool', raw: hit.value };
   }
 
+  function _averageSubscore(finalBreakdown, keys) {
+    const vals = keys
+      .map(k => finalBreakdown[k]?.norm)
+      .filter(v => Number.isFinite(Number(v)))
+      .map(Number);
+    if (!vals.length) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }
+
+  function _makeSubscores(finalBreakdown) {
+    const groups = {
+      performance: ['gpu','cpu','chipset','cores','threads','boost_clock','base_clock','cache_l3','process_nm'],
+      display: ['panel','resolution','refresh','screen_size','hdr','brightness','response_time'],
+      battery: ['battery','battery_life','charging','power'],
+      camera: ['main_camera','front_camera','sensor_size_phone','csensor','zoom','video'],
+      connectivity: ['wifi','bluetooth','network_5g','lan_speed','interface','ports'],
+      storage: ['storage','seq_read','seq_write','iops','tbw','ram','ram_speed','ram_cas','vram','bandwidth'],
+      build: ['weight','ip_rating','case_form','cooler_type','keyboard_type','panel_switch','headphone_water'],
+    };
+    const out = {};
+    for (const [name, keys] of Object.entries(groups)) {
+      const score = _averageSubscore(finalBreakdown, keys);
+      if (score != null) out[name] = Math.max(SCORE_MIN, Math.min(SCORE_MAX, score));
+    }
+    return out;
+  }
+
   // ─────────────────────────────────────────────────────────────
   //  CATEGORY SCORING (two-pass)
   // ─────────────────────────────────────────────────────────────
@@ -1253,11 +1282,15 @@
         stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
       }
       const bm = _brandModifier(c.row.p, cat);
-      const final = Math.max(1, Math.min(100, Math.round(stretched * c.decay * bm.mod)));
+      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.round(stretched * c.decay * bm.mod)));
+      const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
+      const subscores = _makeSubscores(c.finalBreakdown);
       return {
         id: c.row.p.id,
         name: c.row.p.name,
         score: final,
+        subscores,
+        confidence: +confidence.toFixed(3),
         baseScore: c.baseScore,
         cappedBase: c.cappedBase,
         stretched: +stretched.toFixed(2),
@@ -1307,6 +1340,6 @@
     GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,
     _matchRank, _matchLookup, _lookupRaw,
     NUMERIC_REFS, TIER_CAPS, ANCHOR_KEY_BY_CAT,
-    NO_ANCHOR_CAP, BAYESIAN_K, BAYESIAN_MIN_TRUST,
+    NO_ANCHOR_CAP, BAYESIAN_K, BAYESIAN_MIN_TRUST, SCORE_MIN, SCORE_MAX,
   };
 });

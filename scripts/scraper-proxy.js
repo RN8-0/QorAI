@@ -49,6 +49,7 @@ try {
 }
 
 const PORT = parseInt(process.argv[2]) || 3456;
+const SERVER_STARTED_AT = new Date();
 
 // ─── Icecat ingestion state (managed via /icecat/* endpoints) ────────────
 let icecatProc = null;
@@ -548,8 +549,49 @@ function extractListingLinksFromHtml(html, maxLinks = 1000, requirePrefix = '') 
   return links;
 }
 
+function extractListingLinksWithPrefixFallback(html, maxLinks = 1000, requirePrefix = '') {
+  const strict = extractListingLinksFromHtml(html, maxLinks, requirePrefix);
+  if (strict.length || !requirePrefix) return strict;
+  const unescaped = String(html || '')
+    .replace(/\\\//g, '/')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'");
+  if (unescaped !== String(html || '')) {
+    const decodedStrict = extractListingLinksFromHtml(unescaped, maxLinks, requirePrefix);
+    if (decodedStrict.length) return decodedStrict;
+  }
+  const loose = extractListingLinksFromHtml(html, maxLinks, '');
+  if (loose.length) {
+    console.warn(`  ⚠️ prefix "${requirePrefix}" matched 0 links; using unscoped listing links (${loose.length})`);
+    return loose;
+  }
+  if (unescaped !== String(html || '')) {
+    const decodedLoose = extractListingLinksFromHtml(unescaped, maxLinks, '');
+    if (decodedLoose.length) {
+      console.warn(`  ⚠️ decoded escaped AJAX listing links (${decodedLoose.length})`);
+      return decodedLoose;
+    }
+  }
+  return [];
+}
+
+function productPrefixFromLinks(links, fallbackPrefix = '') {
+  const prefixes = new Set();
+  for (const link of links || []) {
+    try {
+      const first = new URL(link).pathname.split('/').filter(Boolean)[0];
+      if (first) prefixes.add(`/${first}/`);
+    } catch {}
+  }
+  if (prefixes.size === 1) return [...prefixes][0];
+  if (prefixes.size > 1) return '';
+  return fallbackPrefix || '';
+}
+
 // Epey embeds the AJAX pagination tokens (category id + a per-session "cerez"
 // nonce + page size) in an inline script on the category page.
+const EPEY_AJAX_PAGE_SIZE = 31;
+
 function extractAjaxParams(html) {
   const kid = String(html).match(/kategori_id\s*:\s*['"]?(\d+)/i);
   if (!kid) return null;
@@ -558,7 +600,8 @@ function extractAjaxParams(html) {
   return {
     kategoriId: kid[1],
     cerez: cerez ? cerez[1] : '',
-    limit: Math.max(1, parseInt(limit?.[1] || '31', 10) || 31),
+    detectedLimit: Math.max(1, parseInt(limit?.[1] || String(EPEY_AJAX_PAGE_SIZE), 10) || EPEY_AJAX_PAGE_SIZE),
+    limit: EPEY_AJAX_PAGE_SIZE,
   };
 }
 
@@ -573,18 +616,42 @@ function extractAjaxParams(html) {
 //   <input ... onClick="filtre('GROUPID:VALUEID')"><label>…Name (count)</label>
 // Returns { groupId, values:['GID:VID',…], total } or null.
 function extractBestFilter(html) {
-  const re = /onclick="filtre\('(\d+):(\d+)'\)"[^>]*>\s*<label\b[^>]*>\s*(?:<span>\s*<\/span>)?\s*([^<(]+?)\s*\((\d+)\)/gi;
+  const source = String(html || '');
   const groups = new Map(); // groupId -> { values:Set, total, hasUnspecified }
-  let m;
-  while ((m = re.exec(String(html || ''))) !== null) {
-    const gid = m[1], vid = m[2];
-    const name = m[3].replace(/\s+/g, ' ').trim();
-    const count = parseInt(m[4], 10) || 0;
+
+  const addOption = (gid, vid, name, rawCount) => {
+    if (!gid || !vid) return;
+    const cleanName = String(name || '').replace(/\s+/g, ' ').trim();
+    const count = parseInt(String(rawCount || '0').replace(/\./g, ''), 10) || 0;
     let g = groups.get(gid);
     if (!g) { g = { values: new Map(), total: 0, hasUnspecified: false }; groups.set(gid, g); }
     if (!g.values.has(vid)) { g.values.set(vid, count); g.total += count; }
-    if (/^belirtilmemiş/i.test(name)) g.hasUnspecified = true;
+    if (/^belirtilmemiş/i.test(cleanName)) g.hasUnspecified = true;
+  };
+
+  // Common markup: input onclick="filtre('5711:464004')" followed by label text.
+  const strict = /onclick=["'][^"']*filtre\(['"]?(\d+):(\d+)['"]?\)[^"']*["'][\s\S]{0,500}?<label\b[^>]*>([\s\S]{0,220}?)<\/label>/gi;
+  let m;
+  while ((m = strict.exec(source)) !== null) {
+    const text = m[3].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const count = text.match(/\(([\d.]+)\)/);
+    addOption(m[1], m[2], text.replace(/\s*\([\d.]+\)\s*$/, ''), count?.[1]);
   }
+
+  // Fallback: find every filtre(GID:VID) token and inspect nearby text.
+  const loose = /filtre\(['"]?(\d+):(\d+)['"]?\)/gi;
+  while ((m = loose.exec(source)) !== null) {
+    const chunk = source.slice(m.index, m.index + 700);
+    const text = chunk.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const count = text.match(/\(([\d.]+)\)/);
+    const name = text.split(/\([\d.]+\)/)[0].replace(/.*filtre\(['"]?\d+:\d+['"]?\).*/i, '').trim();
+    addOption(m[1], m[2], name, count?.[1]);
+  }
+
   // A clean partition needs the catch-all "Belirtilmemiş" option. Among those,
   // take the group covering the most products; tie-break on fewer options.
   let best = null;
@@ -1157,11 +1224,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Health ──
-  if (req.url === '/health') {
+  if (req.url === '/health' || req.url.startsWith('/health?')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
+      ok: true,
       status: 'ok',
-      version: '4.2.0',
+      version: '4.3.0-epey-ajax-31',
+      pid: process.pid,
+      port: PORT,
+      startedAt: SERVER_STARTED_AT.toISOString(),
+      uptimeSec: process.uptime(),
       engine: flaresolverrAvailable ? `flaresolverr (${browserEngine} fallback)` : browserEngine,
       flaresolverr: { available: flaresolverrAvailable, session: flaresolverrSession, failures: flaresolverrFailureCount, url: FLARESOLVERR_URL },
       requests: requestCount, browserConnected: browser ? browser.isConnected() : false,
@@ -1199,17 +1271,18 @@ const server = http.createServer(async (req, res) => {
         let catPath = '';
         try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
         const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
-        const links = extractListingLinksFromHtml(html, maxLinks, prefix);
+        const links = extractListingLinksWithPrefixFallback(html, maxLinks, prefix);
+        const productPrefix = productPrefixFromLinks(links, prefix);
         const ajax = extractAjaxParams(html);
         const filter = extractBestFilter(html);
-        const AJAX_PAGE_SIZE = 200;
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
-          `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}`);
+          `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
+          `${productPrefix !== prefix ? ` · product prefix ${productPrefix}` : ''}`);
         result = {
           links, pages: [],
           ajax: ajax
-            ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: AJAX_PAGE_SIZE,
-                base: targetUrl, prefix }
+            ? { kategoriId: ajax.kategoriId, cerez: ajax.cerez, limit: EPEY_AJAX_PAGE_SIZE,
+                base: targetUrl, prefix: productPrefix }
             : null,
           filter,
         };
@@ -1256,10 +1329,12 @@ const server = http.createServer(async (req, res) => {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const kid = urlObj.searchParams.get('kid');
-      const limit = urlObj.searchParams.get('limit') || '200';
+      const limit = urlObj.searchParams.get('limit') || String(EPEY_AJAX_PAGE_SIZE);
       const pageNo = urlObj.searchParams.get('page') || '1';
       const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
       const prefix = urlObj.searchParams.get('prefix') || '';
+      const cerez = urlObj.searchParams.get('cerez') || '';
+      const debug = urlObj.searchParams.get('debug') === '1';
       // Filter values, e.g. ["5711:464004","5711:464003","5711:1118558"] —
       // all options of one partitioning group. Sent as PHP-array filtrele[].
       // Selecting every option = no real constraint, but it puts Epey in
@@ -1280,10 +1355,11 @@ const server = http.createServer(async (req, res) => {
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
         if (!onEpey) await fetchWithPuppeteer(base);
-        return await page.evaluate(async (kidV, limitV, sayfaV, filterVals) => {
+        return await page.evaluate(async (kidV, limitV, sayfaV, cerezV, filterVals) => {
           try {
             const body = new URLSearchParams();
             body.append('kategori_id', String(kidV));
+            if (cerezV) body.append('cerez', String(cerezV));
             body.append('limit', String(limitV));
             body.append('sayfa', String(sayfaV));
             for (const v of (filterVals || [])) body.append('filtrele[]', v);
@@ -1298,11 +1374,19 @@ const server = http.createServer(async (req, res) => {
             });
             return r.ok ? await r.text() : '';
           } catch { return ''; }
-        }, kid, limit, pageNo, fvs);
+        }, kid, limit, pageNo, cerez, fvs);
       });
-      const links = extractListingLinksFromHtml(html || '', 2000, prefix);
+      const links = extractListingLinksWithPrefixFallback(html || '', 2000, prefix);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ count: links.length, links, status: html ? 200 : 0 }));
+      res.end(JSON.stringify({
+        count: links.length,
+        links,
+        status: html ? 200 : 0,
+        ...(debug ? {
+          rawLength: String(html || '').length,
+          rawSnippet: String(html || '').slice(0, 1200),
+        } : {}),
+      }));
     } catch (err) {
       console.error(`  ❌ /listing-ajax: ${err.message}`);
       // Return JSON 200 with empty links so the caller treats it as an empty
@@ -1479,7 +1563,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.1 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);

@@ -95,6 +95,14 @@
         try {
           await pbUpdateDoc('products', row.id, {
             techScore: row.score,
+            techSubscores: {
+              ...(row.subscores || {}),
+              overall: row.score,
+              confidence: row.confidence,
+              tier: row.tier || null,
+              anchorKey: row.anchorKey || null,
+              engine: 'v6.1',
+            },
             scoreUpdatedAt: new Date().toISOString(),
           });
           updated++;
@@ -129,11 +137,12 @@
     opts = opts || {};
     const overwrite = opts.overwrite !== false;
     const concurrency = opts.concurrency || 10;
+    const auto = !!opts.auto;
 
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
-    if (typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`🚀 Score Engine v6 started${category ? ' — category: ' + category : ' — all categories'}`);
+    if (!auto && typeof clearScraperLog === 'function') clearScraperLog();
+    _slog(`🚀 Score Engine v6.1 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
     _setProgress('Loading', 0, 1);
@@ -275,4 +284,30 @@
   };
   global.stopScoreEngine = stopScoreEngine;
   global.startScoreEngine = startScoreEngine;
+
+  const _autoQueue = new Set();
+  let _autoTimer = null;
+  async function _flushAutoScoreQueue() {
+    if (_running) {
+      _autoTimer = setTimeout(_flushAutoScoreQueue, 15000);
+      return;
+    }
+    const cats = [..._autoQueue].filter(Boolean);
+    _autoQueue.clear();
+    for (const cat of cats) {
+      if (_abort) break;
+      await startScoreEngine(cat, { overwrite: true, concurrency: 6, auto: true });
+      await _sleep(250);
+    }
+  }
+  global.qoraiQueueScoreUpdate = function (category) {
+    if (!category) return;
+    _autoQueue.add(String(category));
+    clearTimeout(_autoTimer);
+    _autoTimer = setTimeout(_flushAutoScoreQueue, 15000);
+  };
+  global.addEventListener?.('qorai:product-saved', ev => {
+    const cat = ev?.detail?.product?.category || '';
+    global.qoraiQueueScoreUpdate(cat);
+  });
 })(typeof window !== 'undefined' ? window : globalThis);

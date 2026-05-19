@@ -11,12 +11,17 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260518v5-epey-full-filter';
+const SCRAPER_BUILD = '20260519v10-epey-fast-detail';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // Languages to translate Turkish specs into (skip tr since source is Turkish)
 const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// Product pages already expose the hero / inline gallery images. Fetching the
+// separate "-resimleri" page roughly doubles the hot-path Epey requests, so
+// keep it off for bulk imports unless a full image sweep is explicitly needed.
+const EPEY_FETCH_GALLERY_IMAGES = false;
+const SCRAPER_LOG_MAX_LINES = 900;
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -49,8 +54,12 @@ function slog(msg, type = 'info') {
     error: 'var(--red)', warn: 'var(--amber)'
   };
   const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
-  const escaped = escHtml(msg);
-  el.innerHTML += `<div class="slog-line" style="color:${colors[type] || colors.info}">[${ts}] ${icons[type] || ''} ${escaped}</div>`;
+  const line = document.createElement('div');
+  line.className = 'slog-line';
+  line.style.color = colors[type] || colors.info;
+  line.textContent = `[${ts}] ${icons[type] || ''} ${msg}`;
+  el.appendChild(line);
+  while (el.children.length > SCRAPER_LOG_MAX_LINES) el.removeChild(el.firstElementChild);
   el.scrollTop = el.scrollHeight;
 }
 
@@ -219,18 +228,56 @@ function normalizeLegacyProductUrl(url) {
 //  3. PROXY FETCH WITH RETRY
 // ═══════════════════════════════════════
 
-async function checkProxy() {
+function _proxyHealthLabel(data) {
+  if (!data || typeof data !== 'object') return 'Connected';
+  const bits = ['Connected'];
+  if (data.version) bits.push(`v${data.version}`);
+  if (data.pid) bits.push(`PID ${data.pid}`);
+  return bits.join(' · ');
+}
+
+function _proxyHealthTitle(data) {
+  if (!data || typeof data !== 'object') return PROXY_URL;
+  return [
+    `URL: ${PROXY_URL}`,
+    data.pid ? `PID: ${data.pid}` : '',
+    data.port ? `Port: ${data.port}` : '',
+    data.engine ? `Engine: ${data.engine}` : '',
+    Number.isFinite(data.requests) ? `Requests: ${data.requests}` : '',
+    Number.isFinite(data.uptimeSec) ? `Uptime: ${Math.round(data.uptimeSec)}s` : '',
+  ].filter(Boolean).join('\n');
+}
+
+async function checkProxy(manual = false) {
   const el = document.getElementById('proxyStatus');
   const card = document.getElementById('proxyInfoCard');
+  if (el) {
+    el.innerHTML = '<span style="color:var(--amber,#f59e0b)">● Proxy: Checking...</span>';
+    el.title = PROXY_URL;
+  }
   try {
-    const res = await fetch(`${PROXY_URL}/health`, { signal: AbortSignal.timeout(3000) });
-    if (res.ok) {
-      if (el) el.innerHTML = '<span style="color:var(--green)">● Proxy: Connected</span>';
+    const res = await fetch(`${PROXY_URL}/health`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && (data.status === 'ok' || data.ok === true)) {
+      const label = _proxyHealthLabel(data);
+      if (el) {
+        el.innerHTML = `<span style="color:var(--green)">● Proxy: ${label}</span>`;
+        el.title = _proxyHealthTitle(data);
+      }
       if (card) card.style.display = 'none';
+      if (manual && typeof toast === 'function') toast(`Proxy aktif: ${label}`, 's');
       return true;
     }
-  } catch {}
+    throw new Error(data.error || `HTTP ${res.status}`);
+  } catch (e) {
+    const msg = e?.name === 'TimeoutError' ? 'timeout' : (e?.message || 'unreachable');
+    if (manual && typeof toast === 'function') toast(`Proxy kapalı/ulaşılamıyor: ${msg}`, 'e');
+  }
   if (el) el.innerHTML = '<span style="color:var(--red)">● Proxy: Offline</span>';
+  if (el) el.title = `Cannot reach ${PROXY_URL}`;
   if (card) card.style.display = '';
   return false;
 }
@@ -258,7 +305,7 @@ async function startProxyFromBrowser() {
     const res = await fetch(`${PROXY_URL}/health`, { signal: AbortSignal.timeout(2000) });
     if (res.ok) {
       slog('Proxy is already running!', 'success');
-      checkProxy();
+      checkProxy(true);
       return;
     }
   } catch {}
@@ -359,7 +406,7 @@ function updateScrapeModeUI() {
   if (searchField) searchField.style.display = '';
   if (catField) catField.style.display = 'none';
   if (hint) {
-    hint.textContent = 'Kategori seç → o kategorideki TÜM Epey ürünleri çekilir (satışta olan da olmayan da, tüm markalar). Ürün limiti kadarı işlenir.';
+    hint.textContent = 'Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır.';
   }
 }
 window.updateScrapeModeUI = updateScrapeModeUI;
@@ -397,6 +444,33 @@ function normalizeProductDedupText(value) {
     .slice(0, 140);
 }
 
+const COUNTRY_CODE_TOKENS = [
+  'TR','TU','US','UK','EU','DE','FR','IT','ES','PT','NL','PL','NO','DK','FI',
+  'JP','CN','KR','IN','AE','SA','AU','NZ','CA','MX','BR'
+];
+
+function cleanCountryCodes(value) {
+  let s = String(value ?? '');
+  if (!s) return '';
+  const code = COUNTRY_CODE_TOKENS.join('|');
+  const skuTail = new RegExp(`\\b([A-Z0-9][A-Z0-9-]{2,}?-\\d{2,6})(${code})\\b`, 'g');
+  s = s
+    // MSI Raider B2WI-021TR -> MSI Raider B2WI-021
+    .replace(skuTail, '$1')
+    // Standalone country/market markers.
+    .replace(new RegExp(`(?:^|[\\s_/|,;()\\[\\]{}-])(${code})(?=$|[\\s_/|,;()\\[\\]{}-])`, 'g'), ' ')
+    // Common language/market words that leak into product names.
+    .replace(/\b(?:turkish|türkçe|turkce|türkiye|turkiye|german|deutsch|english|spanish|french|italian|portuguese|polish|swedish|japanese|chinese)\b/gi, ' ')
+    .replace(/\s+([,;:|)])/g, '$1')
+    .replace(/([(])\s+/g, '$1')
+    .replace(/\(\s*\)/g, ' ')
+    .replace(/\[\s*\]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+-\s*$/g, '')
+    .trim();
+  return s;
+}
+
 function modelFamilyKey({ name, brand, category }) {
   let s = String(name || '').toLowerCase();
   const b = String(brand || '').toLowerCase().trim();
@@ -417,6 +491,7 @@ function modelFamilyKey({ name, brand, category }) {
     /\b(v\d{2}\s+g\d+)\b/i,
     /\b(ideacentre\s+aio\s+\d+[a-z0-9]*)\b/i,
     /\b(ideacentre\s+[a-z]?\d{3})[-\s]?[a-z0-9]*\b/i,
+    /\b(legion\s+pro\s+\d+[a-z0-9-]*(?:\s+gen\s+\d+)?)\b/i,
     /\b(legion\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(yoga\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(elitebook\s+\d+\s*g\d+)\b/i,
@@ -432,10 +507,14 @@ function modelFamilyKey({ name, brand, category }) {
     /\b(xps\s+\d+[a-z0-9-]*)\b/i,
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
-    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro\s+max|pro|max|plus|mini|air|e))?)\b/i,
     /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(oppo\s+(?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
+    /\b(oppo\s+a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
+    /\b(honor\s+\d+[a-z]*(?:\s+(?:pro|lite|x|5g|max|plus))*)/i,
+    /\b(spark\s+\d+[a-z]*(?:\s+(?:air|pro|plus|go|5g))*)/i,
     /\b(redmi\s+pad(?:\s+se)?(?:\s+\d+(?:[.,]\d+)?)?(?:\s+pro)?)/i,
     /\b(watch\s+s?\d+(?:\s+\d+\s*mm)?)/i,
     /\b(smart\s+band\s+\d+)/i,
@@ -454,6 +533,13 @@ function modelFamilyKey({ name, brand, category }) {
     if (m && m[1]) {
       const fam = normalizeProductDedupText(m[1]);
       if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
+    }
+  }
+  if (b === 'oppo') {
+    const m = familyProbe.match(/\b((?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
+    if (m && m[1]) {
+      const fam = normalizeProductDedupText(`oppo ${m[1]}`);
+      if (fam) return fam.slice(0, 180);
     }
   }
   const mac = familyProbe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
@@ -482,9 +568,9 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/\b(?:dual\s*sim|single\s*sim|sim-free|usb\s*type[- ]?c|usb-c|5g|4g|lte|wi-fi|wifi|wlan|bluetooth)\b/gi, ' ')
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
-    .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
+    .replace(/\b(?:windows|macos|linux|freebsd|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
     .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
-    .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
+    .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|gb)\b/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -549,6 +635,7 @@ function configKeyFromProduct(product, variantGroup) {
 
 function prepareProductPayload(product) {
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
+  const cleanName = cleanCountryCodes(product.name || '');
   const category = window.QorAiCategories?.canonicalId
     ? window.QorAiCategories.canonicalId(product.category || '')
     : String(product.category || '').trim();
@@ -573,10 +660,15 @@ function prepareProductPayload(product) {
   }
   const primary = images[0] || product.imageUrl || '';
 
-  const variantGroup = String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200);
+  const variantGroup = String(
+    modelFamilyKey({ name: cleanName, brand: product.brand, category }) ||
+    product.variantGroup ||
+    productDedupKey({ ...product, name: cleanName }) ||
+    ''
+  ).trim().slice(0, 200);
   const payload = {
     slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
-    name: String(product.name || '').trim().slice(0, 500),
+    name: cleanName.slice(0, 500),
     brand: String(product.brand || '').trim().slice(0, 200),
     category: String(category || '').trim().slice(0, 100),
     source: String(product.source || 'epey.com').trim().slice(0, 100),
@@ -587,7 +679,11 @@ function prepareProductPayload(product) {
     images,
     specs: sanitized.specs,
     specSections: sanitized.sections,
-    keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
+    keySpecs: product.keySpecs && typeof product.keySpecs === 'object'
+      ? Object.fromEntries(Object.entries(product.keySpecs)
+          .map(([k, v]) => [cleanCountryCodes(k), cleanCountryCodes(v)])
+          .filter(([k, v]) => k && v && !isBlockedSpec(k, v)))
+      : {},
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
     specsCount: Object.keys(sanitized.specs).length,
     variantGroup,
@@ -618,6 +714,9 @@ function prepareProductPayload(product) {
 
 function isBlockedSpec(key, value) {
   const text = `${key || ''} ${value || ''}`.toLowerCase();
+  if (/\b(?:antutu|an\s*tu\s*tu|dxomark|dxo\s*mark|geekbench|benchmark|passmark|pcmark|3dmark|cinebench|basemark|gfxbench|ai\s*benchmark)\b/i.test(text)) {
+    return true;
+  }
   return [
     'letztes preisupdate',
     'preisupdate',
@@ -732,12 +831,12 @@ function sanitizeProductSpecs(rawSpecs, rawSections) {
   const specs = {};
   const sections = {};
   const add = (section, key, value) => {
-    const cleanKey = String(key || '').trim();
+    const cleanKey = cleanCountryCodes(key || '');
     if (!cleanKey || cleanKey.length > 120 || isBlockedSpec(cleanKey, value)) return;
-    const cleanValue = normalizeSpecValue(value);
+    const cleanValue = cleanCountryCodes(normalizeSpecValue(value));
     if (!cleanValue || cleanValue.length > 1200) return;
     specs[cleanKey] = cleanValue;
-    const sec = String(section || 'General').trim() || 'General';
+    const sec = cleanCountryCodes(section || 'General') || 'General';
     if (!sections[sec]) sections[sec] = {};
     sections[sec][cleanKey] = cleanValue;
   };
@@ -1870,7 +1969,6 @@ function isChallengePage(html) {
     'cf-turnstile',
     '__cf_chl',
     'jschl-answer',
-    'cdn-cgi/challenge-platform',
     'Checking if the site connection is secure',
     'Überprüfung ob die Verbindung',
   ];
@@ -2339,9 +2437,24 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
   const { urls: existingUrls, byVariantGroup: existingByVG } = await _loadExistingSourceUrls(categoryId);
   const beforeCount = urlItems.length;
-  urlItems = urlItems.filter(it => !existingUrls.has(it.url));
+  const existingUrlKeys = new Set([...existingUrls].map(normalizeScrapeUrlKey).filter(Boolean));
+  const freshItems = [];
+  const skippedExisting = [];
+  for (const item of urlItems) {
+    const key = normalizeScrapeUrlKey(item.url);
+    if (key && existingUrlKeys.has(key)) {
+      skippedExisting.push(item);
+      continue;
+    }
+    freshItems.push(item);
+  }
+  urlItems = freshItems;
   const skippedCount = beforeCount - urlItems.length;
   if (skippedCount > 0) {
+    skippedExisting.forEach((item, idx) => {
+      const slug = slugFromUrl(item.url) || normalizeScrapeUrlKey(item.url);
+      slog(`  ⏭ Skipped (already saved) [${idx + 1}/${skippedCount}]: ${slug}`, 'warn');
+    });
     slog(`⏭  Skipped ${skippedCount} already-saved products → ${urlItems.length} new to scrape`, 'success');
     results.skipped += skippedCount;
   } else {
@@ -2977,6 +3090,17 @@ function normalizeEpeyProductUrl(url) {
   } catch { return ''; }
 }
 
+function normalizeScrapeUrlKey(url) {
+  const epey = normalizeEpeyProductUrl(url);
+  if (epey) return epey;
+  try {
+    const u = new URL(url, EPEY_BASE);
+    return `${u.origin}${u.pathname}`.replace(/\/+$/g, '');
+  } catch {
+    return String(url || '').trim().split(/[?#]/)[0].replace(/\/+$/g, '');
+  }
+}
+
 function findCategoryByEpeyUrl(url) {
   if (!url || typeof QorAiCategories === 'undefined') return null;
   try {
@@ -3230,10 +3354,11 @@ async function scrapeProductDetail(html, url, categoryId = '') {
   const { specs: rawSpecs, specSections: rawSections, keySpecs: rawKeySpecs } = parseSpecs(doc);
   const ids = extractProductIdentifiersFromSpecs(rawSpecs);
   const brand = extractBrand(originalName, rawSpecs);
-  let category = categoryId || findCategoryByEpeyUrl(url)?.id || detectCategoryFromDoc(doc, categorySlugFromUrl(url)) || categorySlugFromUrl(url);
+  const urlCategory = findCategoryByEpeyUrl(url)?.id || detectCategoryFromDoc(doc, categorySlugFromUrl(url)) || categorySlugFromUrl(url);
+  let category = urlCategory || categoryId || '';
 
   let images = extractImages(doc, productSlug);
-  if (images.length < MAX_IMAGES_PER_PRODUCT) {
+  if (EPEY_FETCH_GALLERY_IMAGES && images.length < MAX_IMAGES_PER_PRODUCT) {
     const gallery = await fetchGalleryImages(url);
     const seen = new Set(images.map(x => _epeyImageKey(x)));
     for (const img of gallery) {
@@ -3386,8 +3511,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       `&page=${pageNo}` +
       `&base=${encodeURIComponent(ajax.base)}` +
       `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
+    if (ajax.cerez) qs += `&cerez=${encodeURIComponent(ajax.cerez)}`;
     for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
-    const res = await fetch(`${PROXY_URL}/listing-ajax?${qs}`, { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(`${PROXY_URL}/listing-ajax?${qs}`, { signal: AbortSignal.timeout(45000) });
     return res.ok ? await res.json() : null;
   };
 
@@ -3396,21 +3522,35 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   // (covers Epey's clamp-repeat behaviour). `onPage(pageNo, added, total)` is
   // called after every page so the caller can log live progress.
   const paginateStream = async (ajax, filterValues, onPage) => {
-    const pageSize = Number(ajax.limit) || 200;
+    const pageSize = Number(ajax.limit) || 31;
+    const startCount = allItems.length;
     let emptyStreak = 0;
     for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
       let got = null;
-      try {
-        got = await fetchAjaxPage(ajax, pageNo, filterValues);
-      } catch (e) {
-        slog(`  ⚠️ sayfa ${pageNo} hatası: ${e.message}`, 'warn');
-        break;
+      for (let attempt = 1; attempt <= 3 && !scraperAbort; attempt++) {
+        try {
+          got = await fetchAjaxPage(ajax, pageNo, filterValues);
+          if (got && Number(got.status || 0) !== 0) break;
+          if (attempt < 3) await sleep(1500 * attempt);
+        } catch (e) {
+          if (attempt >= 3) {
+            slog(`  ⚠️ sayfa ${pageNo} hatası: ${e.message}`, 'warn');
+          } else {
+            await sleep(1500 * attempt);
+          }
+        }
       }
+      if (!got) break;
       const added = pushItems(itemsFromData(got));
       if (typeof onPage === 'function') onPage(pageNo, added, allItems.length);
       if (added === 0) { if (++emptyStreak >= 2) break; } else emptyStreak = 0;
-      if ((Number(got?.count) || 0) < pageSize) break;
+      const returnedCount = Number(got?.count) || 0;
+      if (returnedCount > 0 && returnedCount < pageSize) break;
+      // Large "all catalog" runs can visit hundreds of listing pages; yield so
+      // Chrome can paint, process Stop clicks, and avoid "page not responding".
+      if (pageNo % 3 === 0) await sleep(0);
     }
+    return allItems.length - startCount;
   };
 
   // ── CATEGORY mode: every product in the Epey category listing ──
@@ -3430,7 +3570,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       slog(`📂 Kategori taranıyor: ${catDef.name || categoryId}${term ? ` · "${term}"` : ''}`, 'info');
       slog(`   ${baseUrl}`, 'info');
 
-      // Page 1 — the static category page.
+      // The static category page is used for AJAX tokens and the partition
+      // filter. URL collection itself is driven through /kat/listele/ with
+      // limit=31 so every listing page is collected before detail scraping.
       const t0 = Date.now();
       let data;
       try {
@@ -3439,27 +3581,41 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         slog(`  ❌ Kategori sayfası alınamadı: ${e.message}`, 'error');
         return [];
       }
-      const firstAdded = pushItems(itemsFromData(data));
-      slog(`  ✓ Kategori sayfası: +${firstAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstAdded ? 'success' : 'warn');
-
       const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
       const filter = data?.filter && Array.isArray(data.filter.values) && data.filter.values.length
         ? data.filter : null;
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
+      const firstPageAdded = pushItems(itemsFromData(data));
 
-      // ONE stream, paginated 1,2,3,… When a partition filter is available
-      // (a sidebar group with a "Belirtilmemiş" option, e.g. 5G) selecting
-      // ALL its options puts Epey in filtered-listing mode, which is NOT
-      // capped at ~2.5k — so this single stream reaches the FULL catalog.
-      if (ajax && filter && allItems.length < maxProducts) {
-        slog(`  ⏩ Tüm katalog sayfalanıyor — filtre grubu ${filter.groupId}, ~${filter.total} ürün (${ajax.limit}/sayfa)`, 'info');
-        await paginateStream(ajax, filter.values, logPage);
-      } else if (ajax && allItems.length < maxProducts) {
-        // No partition filter found — plain listing (Epey caps it at ~2.5k).
-        slog(`  ⏩ Kategori listesi sayfalanıyor — partition filtre yok (${ajax.limit}/sayfa)`, 'warn');
-        await paginateStream(ajax, [], logPage);
+      if (ajax) {
+        slog(`  ✓ Kategori metadata alındı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
+        if (firstPageAdded) {
+          slog(`  ✓ İlk sayfa yedek liste: +${firstPageAdded} ürün → toplam ${allItems.length}`, 'success');
+        }
+      }
+
+      // Smartphone-style path for EVERY category: first use the normal Epey
+      // category stream. Some partition filters return intermittent empty
+      // pages (pcie_nic did this), so using them first can stop at page 1.
+      if (ajax && allItems.length < maxProducts) {
+        slog(`  ⏩ Düz kategori sayfalaması başlıyor (${ajax.limit}/sayfa)`, 'info');
+        const addedPlain = await paginateStream(ajax, [], logPage);
+        if (addedPlain === 0 && allItems.length < maxProducts && !scraperAbort) {
+          slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi`, 'warn');
+        }
+
+        // Only after the normal stream fails to fill the requested limit do we
+        // try the partition filter for very deep catalogs.
+        if (filter && allItems.length < maxProducts && !scraperAbort) {
+          slog(`  ⏩ Ek derin sayfalama — filtre grubu ${filter.groupId}, ~${filter.total} ürün`, 'info');
+          const addedByFilter = await paginateStream(ajax, filter.values, logPage);
+          if (addedByFilter === 0) {
+            slog(`  ⚠️ Filtreli AJAX yeni ürün getirmedi`, 'warn');
+          }
+        }
       } else if (!ajax) {
+        slog(`  ✓ Kategori sayfası: +${firstPageAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstPageAdded ? 'success' : 'warn');
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
 
@@ -3559,18 +3715,33 @@ async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), byVariantGroup: new Map() };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
-    const filter = safeCategory ? `category="${safeCategory}"` : '';
+    const categoryFilter = safeCategory ? `category="${safeCategory}"` : '';
+    const epeyFilter = `(source="epey.com" || source="epey")`;
     // Project only the 4 fields we need — the catalog has 10k+ products and
     // pulling full records here times PocketBase out ("Something went wrong").
     // Also race a 60s timeout so a slow/sick PocketBase never hangs the scrape
     // — collection just proceeds without the preload (dedup degrades safely:
     // pbSetDoc still updates same-sourceUrl records instead of duplicating).
-    const docs = await Promise.race([
-      pbGetAll('products', {
-        ...(filter ? { filter } : {}),
+    const queries = [];
+    if (categoryFilter) {
+      queries.push(pbGetAll('products', {
+        filter: categoryFilter,
         sort: 'id',
-        fields: 'id,sourceUrl,variantGroup,source',
+        fields: 'id,name,sourceUrl,variantGroup,source',
         batch: 500,
+      }));
+    }
+    queries.push(pbGetAll('products', {
+      filter: epeyFilter,
+      sort: 'id',
+      fields: 'id,name,sourceUrl,variantGroup,source',
+      batch: 500,
+    }));
+    const docs = await Promise.race([
+      Promise.all(queries).then(groups => {
+        const byId = new Map();
+        groups.flat().forEach(d => { if (d?.id && !byId.has(d.id)) byId.set(d.id, d); });
+        return [...byId.values()];
       }),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('preload 60s zaman aşımı')), 60000)),
@@ -3579,7 +3750,12 @@ async function _loadExistingSourceUrls(categoryId) {
     const byVariantGroup = new Map();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      if (data?.sourceUrl) urls.add(String(data.sourceUrl).trim());
+      if (data?.sourceUrl) {
+        const rawUrl = String(data.sourceUrl).trim();
+        urls.add(rawUrl);
+        const normalized = normalizeScrapeUrlKey(rawUrl);
+        if (normalized) urls.add(normalized);
+      }
       const vg = String(data?.variantGroup || '').trim();
       if (vg && d.id) {
         const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };
@@ -3597,6 +3773,19 @@ async function _loadExistingSourceUrls(categoryId) {
   }
 }
 
+function getAllEpeyScrapeCategories() {
+  const all = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
+    ? QorAiCategories.getAll()
+    : [];
+  const byId = new Map();
+  for (const cat of all) {
+    const id = String(cat?.id || '').trim();
+    if (!id || !cat?.epeyPath || byId.has(id)) continue;
+    byId.set(id, cat);
+  }
+  return [...byId.values()];
+}
+
 async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
@@ -3611,9 +3800,49 @@ async function startBulkScrape() {
   document.getElementById('btnStopScrape').style.display = '';
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
-  slog(`Epey import: category=${categoryId} · max ${maxProducts}`, 'info');
+  const isAllCategories = categoryId === '__all_epey__';
+  slog(
+    isAllCategories
+      ? `Epey import: TÜM kategoriler · max ${maxProducts}/kategori`
+      : `Epey import: category=${categoryId} · max ${maxProducts}`,
+    'info'
+  );
 
   try {
+    if (isAllCategories) {
+      const cats = getAllEpeyScrapeCategories();
+      if (!cats.length) {
+        slog('No Epey-enabled categories found.', 'error');
+        finishScraping();
+        return;
+      }
+      const totals = { added: 0, updated: 0, skipped: 0, errors: 0 };
+      slog(`📚 ${cats.length} Epey kategorisi sırayla taranacak. Limit kategori başına ${maxProducts}.`, 'info');
+
+      for (let ci = 0; ci < cats.length && !scraperAbort; ci++) {
+        const cat = cats[ci];
+        slog(`\n━━━ [${ci + 1}/${cats.length}] ${cat.name || cat.id} (${cat.id}) ━━━`, 'info');
+        const urlItems = await collectSearchProductUrls('', maxProducts, cat.id);
+        slog(`Found ${urlItems.length} Epey product URLs for ${cat.id}`, urlItems.length ? 'success' : 'warn');
+        if (!urlItems.length) {
+          totals.skipped++;
+          continue;
+        }
+        const res = await sequentialScrape(urlItems.slice(0, maxProducts), cat.id, delay);
+        totals.added += res.added || 0;
+        totals.updated += res.updated || 0;
+        totals.skipped += res.skipped || 0;
+        totals.errors += res.errors || 0;
+        slog(`━━━ ${cat.id} done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata ━━━`, 'success');
+        if (ci < cats.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
+      }
+
+      slog(`\n═══ All categories done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata${scraperAbort ? ' | STOPPED' : ''} ═══`, scraperAbort ? 'warn' : 'success');
+      if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
+      finishScraping();
+      return;
+    }
+
     const urlItems = await collectSearchProductUrls('', maxProducts, categoryId);
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {

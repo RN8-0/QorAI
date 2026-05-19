@@ -26,6 +26,8 @@ const NEW_FIELDS = [
   { name: 'lowestPriceCurrency', type: 'text', max: 4 },
   { name: 'lowestPriceUSD',      type: 'number', min: 0 },
   { name: 'offerCount',          type: 'number', min: 0 },
+  { name: 'techSubscores',       type: 'json', maxSize: 50000 },
+  { name: 'scoreUpdatedAt',      type: 'date' },
 ];
 
 const NEW_INDEXES = [

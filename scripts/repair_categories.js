@@ -47,8 +47,64 @@ const ALIASES = {
   camcorders: 'video_cameras',
   portable_speakers: 'speakers',
   multifunction_printers: 'printers', laser_printers: 'printers', label_printers: 'printers',
-  switch2_consoles: 'gaming_consoles', switch2_accessories: 'gaming_accessories', switch2_games: 'games',
+  robot_vacuums: 'vacuums',
+  xbox_one: 'gaming_consoles', xbox_series: 'gaming_consoles',
+  ps5_consoles: 'gaming_consoles', switch2_consoles: 'gaming_consoles',
+  ps5_games: 'games', switch2_games: 'games',
+  xbox_accessories: 'gaming_accessories', ps5_accessories: 'gaming_accessories', switch2_accessories: 'gaming_accessories',
+  racing_wheels: 'gamepads', joysticks: 'gamepads',
+  desktop_keyboards: 'keyboards', numeric_keypads: 'keyboards', keyboard_accessories: 'keyboards',
+  mouse_pads: 'mice', trackballs: 'mice',
+  monitor_accessories: 'monitors',
+  tv_mounts: 'tvs', tv_remotes: 'tvs', signage_displays: 'tvs',
+  camera_lenses: 'digital_cameras', camera_objectives: 'digital_cameras', lenses: 'digital_cameras',
+  video_cameras: 'digital_cameras', film_cameras: 'digital_cameras',
+  hifi_receivers: 'speakers', surround_systems: 'speakers', subwoofers: 'speakers', compact_hifi: 'speakers',
+  multiroom_audio: 'speakers', wireless_audio: 'speakers', amplifiers: 'speakers', preamplifiers: 'speakers',
+  power_amplifiers: 'speakers', dj_turntables: 'speakers', dj_controllers: 'speakers', hifi_accessories: 'speakers', hifi_filters: 'speakers',
+  thin_clients: 'desktops', servers: 'desktops',
+  barebone_pcs: 'mini_pcs', nuc_pcs: 'mini_pcs',
+  rack19_barebones: 'desktops', rack19_servers: 'desktops',
+  laptop_docks: 'laptops', handheld_computers: 'tablets',
+  hdd_docks: 'hard_drives', hdd_enclosures: 'external_hdd', sata_cables: 'hard_drives',
+  drive_adapters: 'hard_drives', storage_systems: 'hard_drives', storage_accessories: 'hard_drives',
+  optical_drives: 'hard_drives', flash_drives: 'external_hdd', memory_cards: 'external_hdd', external_ssd: 'ssd',
+  cpu_amd_am4: 'cpus', cpu_intel_1151: 'cpus', cpu_server: 'cpus',
+  server_motherboards: 'motherboards', mb_cables: 'motherboards',
+  gpu_coolers: 'graphics_cards',
+  m2_coolers: 'cpu_coolers', thermal_paste: 'cpu_coolers', ram_coolers: 'cpu_coolers',
+  thermal_compounds: 'cpu_coolers', cooling_cables: 'cpu_coolers', cooling_accessories: 'cpu_coolers',
+  watercooling_kits: 'cpu_coolers', water_reservoirs: 'cpu_coolers', watercooling_systems: 'cpu_coolers',
+  water_pumps: 'cpu_coolers', radiators: 'cpu_coolers', water_fittings: 'cpu_coolers',
+  water_tubing: 'cpu_coolers', water_coolant: 'cpu_coolers', watercooling_acc: 'cpu_coolers', watercooling_zubeh: 'cpu_coolers',
+  psu_cables: 'psu', server_psu: 'psu',
+  pdu: 'ups', power_adapters: 'powerbanks', ups_accessories: 'ups',
+  dsl_modems: 'modem_routers', cordless_phones: 'smartphones',
+  firewalls: 'network_switches', media_converters: 'network_switches', wifi_antennas: 'wifi_routers', wifi_accessories: 'wifi_routers',
+  access_points: 'wifi_repeaters',
+  coffee_makers: 'small_appliances', dishwashers: 'small_appliances', microwaves: 'small_appliances',
+  tumble_dryers: 'small_appliances', washing_machines: 'small_appliances', hobs: 'small_appliances',
+  fridge_freezers: 'small_appliances', ovens: 'small_appliances',
+  led_bulbs: 'smart_home',
 };
+
+const CANONICAL_NAMES = {
+  smartphones: 'Smartphones', tablets: 'Tablets', smartwatches: 'Smartwatches', headphones: 'Headphones', powerbanks: 'Power Banks',
+  laptops: 'Laptops', desktops: 'Desktop PCs', mini_pcs: 'Mini PCs', monitors: 'Monitors', webcams: 'Webcams',
+  graphics_cards: 'Graphics Cards', cpus: 'Processors', motherboards: 'Motherboards', ram: 'RAM', ssd: 'SSDs',
+  hard_drives: 'Hard Drives', external_hdd: 'External Hard Drives', pc_cases: 'PC Cases', psu: 'Power Supplies (PSU)',
+  cpu_coolers: 'CPU Coolers', case_fans: 'Case Fans',
+  keyboards: 'Keyboards', mice: 'Mice', printers: 'Printers', gamepads: 'Gamepads',
+  tvs: 'TVs', projectors: 'Projectors', soundbars: 'Soundbars', speakers: 'Speakers',
+  modem_routers: 'Modem Routers', wifi_routers: 'WiFi Routers', routers: 'Routers', network_switches: 'Network Switches',
+  pcie_nic: 'PCIe Network Cards', wifi_repeaters: 'WiFi Repeaters',
+  digital_cameras: 'Digital Cameras', action_cameras: 'Action Cameras', security_cameras: 'Security Cameras', drones: 'Drones',
+  gaming_consoles: 'Game Consoles', gaming_accessories: 'Gaming Accessories', games: 'Games',
+  vacuums: 'Vacuum Cleaners', ups: 'UPS', small_appliances: 'Small Appliances', smart_home: 'Smart Home',
+  e_readers: 'E-Readers', electric_scooters: 'Electric Scooters',
+};
+
+const CANONICAL_SLUGS = new Set(Object.keys(CANONICAL_NAMES));
 
 function canon(slug) {
   const s = String(slug || '').trim().toLowerCase()
@@ -109,8 +165,8 @@ async function main() {
       // Ensure the canonical category exists before we delete the old one.
       if (!DRY) {
         const create = await req('POST', '/api/collections/categories/records', {
-          slug: target, name: target.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
-          nameEn: target.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
+          slug: target, name: CANONICAL_NAMES[target] || target.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
+          nameEn: CANONICAL_NAMES[target] || target.replace(/_/g, ' ').replace(/\b\w/g, s => s.toUpperCase()),
           icon: 'box', emoji: '', order: 1000, isActive: true, subcategories: [],
         });
         if ([200, 201].includes(create.status)) bySlug.set(target, create.body);
@@ -136,8 +192,10 @@ async function main() {
     const isActive = count > 0;
     isActive ? active++ : inactive++;
     const patch = { productCount: count, isActive };
-    // One-off: normalise the laptops display name.
-    if (cat.slug === 'laptops' && cat.name !== 'Laptops') { patch.name = 'Laptops'; patch.nameEn = 'Laptops'; }
+    if (CANONICAL_NAMES[cat.slug]) {
+      patch.name = CANONICAL_NAMES[cat.slug];
+      patch.nameEn = CANONICAL_NAMES[cat.slug];
+    }
     if (!DRY) {
       const u = await req('PATCH', `/api/collections/categories/records/${cat.id}`, patch);
       if (u.status !== 200) console.log(`   ! recount patch ${cat.slug} failed: ${u.status}`);

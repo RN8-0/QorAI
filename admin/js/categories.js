@@ -114,6 +114,106 @@ const CATEGORY_ALIASES = Object.freeze({
   multifunction_printers: 'printers',
   laser_printers: 'printers',
   label_printers: 'printers',
+  robot_vacuums: 'vacuums',
+  xbox_one: 'gaming_consoles',
+  xbox_series: 'gaming_consoles',
+  ps5_consoles: 'gaming_consoles',
+  switch2_consoles: 'gaming_consoles',
+  ps5_games: 'games',
+  switch2_games: 'games',
+  xbox_accessories: 'gaming_accessories',
+  ps5_accessories: 'gaming_accessories',
+  switch2_accessories: 'gaming_accessories',
+  racing_wheels: 'gamepads',
+  joysticks: 'gamepads',
+  desktop_keyboards: 'keyboards',
+  numeric_keypads: 'keyboards',
+  keyboard_accessories: 'keyboards',
+  mouse_pads: 'mice',
+  trackballs: 'mice',
+  monitor_accessories: 'monitors',
+  tv_mounts: 'tvs',
+  tv_remotes: 'tvs',
+  signage_displays: 'tvs',
+  camera_lenses: 'digital_cameras',
+  camera_objectives: 'digital_cameras',
+  lenses: 'digital_cameras',
+  video_cameras: 'digital_cameras',
+  film_cameras: 'digital_cameras',
+  hifi_receivers: 'speakers',
+  surround_systems: 'speakers',
+  subwoofers: 'speakers',
+  compact_hifi: 'speakers',
+  multiroom_audio: 'speakers',
+  wireless_audio: 'speakers',
+  amplifiers: 'speakers',
+  preamplifiers: 'speakers',
+  power_amplifiers: 'speakers',
+  dj_turntables: 'speakers',
+  dj_controllers: 'speakers',
+  hifi_accessories: 'speakers',
+  hifi_filters: 'speakers',
+  thin_clients: 'desktops',
+  servers: 'desktops',
+  barebone_pcs: 'mini_pcs',
+  nuc_pcs: 'mini_pcs',
+  rack19_barebones: 'desktops',
+  rack19_servers: 'desktops',
+  laptop_docks: 'laptops',
+  handheld_computers: 'tablets',
+  hdd_docks: 'hard_drives',
+  hdd_enclosures: 'external_hdd',
+  sata_cables: 'hard_drives',
+  drive_adapters: 'hard_drives',
+  storage_systems: 'nas_servers',
+  storage_accessories: 'hard_drives',
+  optical_drives: 'hard_drives',
+  flash_drives: 'external_hdd',
+  memory_cards: 'external_hdd',
+  external_ssd: 'ssd',
+  cpu_amd_am4: 'cpus',
+  cpu_intel_1151: 'cpus',
+  cpu_server: 'cpus',
+  server_motherboards: 'motherboards',
+  mb_cables: 'motherboards',
+  gpu_coolers: 'graphics_cards',
+  m2_coolers: 'cpu_coolers',
+  thermal_paste: 'cpu_coolers',
+  ram_coolers: 'cpu_coolers',
+  thermal_compounds: 'cpu_coolers',
+  cooling_cables: 'cpu_coolers',
+  cooling_accessories: 'cpu_coolers',
+  watercooling_kits: 'cpu_coolers',
+  water_reservoirs: 'cpu_coolers',
+  watercooling_systems: 'cpu_coolers',
+  water_pumps: 'cpu_coolers',
+  radiators: 'cpu_coolers',
+  water_fittings: 'cpu_coolers',
+  water_tubing: 'cpu_coolers',
+  water_coolant: 'cpu_coolers',
+  watercooling_acc: 'cpu_coolers',
+  watercooling_zubeh: 'cpu_coolers',
+  psu_cables: 'psu',
+  server_psu: 'psu',
+  ups_accessories: 'ups',
+  pdu: 'ups',
+  power_adapters: 'powerbanks',
+  dsl_modems: 'modem_routers',
+  cordless_phones: 'smartphones',
+  firewalls: 'network_switches',
+  media_converters: 'network_switches',
+  wifi_antennas: 'wifi_routers',
+  wifi_accessories: 'wifi_routers',
+  access_points: 'wifi_repeaters',
+  coffee_makers: 'small_appliances',
+  dishwashers: 'small_appliances',
+  microwaves: 'small_appliances',
+  tumble_dryers: 'small_appliances',
+  washing_machines: 'small_appliances',
+  hobs: 'small_appliances',
+  fridge_freezers: 'small_appliances',
+  ovens: 'small_appliances',
+  led_bulbs: 'smart_home',
   switch2_consoles: 'gaming_consoles',
   switch2_accessories: 'gaming_accessories',
   switch2_games: 'games',
@@ -124,41 +224,147 @@ const EPEY_PATHS = Object.freeze({
   tablets: 'tablet',
   laptops: 'laptop',
   desktops: 'masaustu-bilgisayar',
-  mini_pcs: 'mini-pc',
+  mini_pcs: 'masaustu-bilgisayar',
   cpus: 'islemci',
   graphics_cards: 'ekran-karti',
   ram: 'bellek-ram',
   ssd: 'depolama/cihaz-sinifi/ssd',
-  hard_drives: 'hard-disk',
+  external_ssd: 'depolama/tasinabilir-ssd',
+  hard_drives: 'depolama/cihaz-sinifi/hdd',
+  external_hdd: 'depolama/cihaz-tipi/tasinabilir-disk',
   motherboards: 'anakart',
   psu: 'power-supply-psu',
   pc_cases: 'bilgisayar-kasasi',
   cpu_coolers: 'islemci-sogutucu',
+  case_fans: 'kasa-fani',
   monitors: 'monitor',
   tvs: 'televizyon',
   projectors: 'projeksiyon-makinesi',
   headphones: 'kulaklik',
-  speakers: 'bluetooth-hoparlor',
+  speakers: 'ses-sistemi/urun-tipi/hoparlor',
   soundbars: 'ses-sistemi/urun-tipi/soundbar',
   smartwatches: 'akilli-saat',
   digital_cameras: 'fotograf-kamera',
   action_cameras: 'aksiyon-kamera',
-  security_cameras: 'guvenlik-kamerasi',
+  security_cameras: 'ip-kamera',
   gaming_consoles: 'oyun-konsolu',
+  games: 'oyun',
   gamepads: 'oyun-kolu',
   keyboards: 'klavye-mouse/urun-tipi/klavye',
   mice: 'klavye-mouse/urun-tipi/mouse',
   printers: 'yazici',
   webcams: 'webcam',
-  routers: 'modem',
+  routers: 'router',
   modem_routers: 'modem',
-  wifi_routers: 'modem',
+  wifi_routers: 'router',
+  network_switches: 'switch',
+  pcie_nic: 'kablosuz-adaptor',
+  access_points: 'menzil-genisletici',
+  wifi_repeaters: 'menzil-genisletici',
   robot_vacuums: 'robot-supurge',
   vacuums: 'robot-supurge',
   powerbanks: 'powerbank',
+  ups: 'ups',
   e_readers: 'e-kitap-okuyucu',
   drones: 'drone',
+  electric_scooters: 'elektrikli-scooter',
 });
+
+const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
+  {
+    name: 'Mobile',
+    categories: [
+      { id: 'smartphones',        name: 'Smartphones',              LegacySlug: 'umtsover' },
+      { id: 'tablets',            name: 'Tablets',                  LegacySlug: 'nbtabl' },
+      { id: 'smartwatches',       name: 'Smartwatches',             LegacySlug: 'uhrpm' },
+      { id: 'headphones',         name: 'Headphones',               LegacySlug: 'sphd' },
+      { id: 'powerbanks',         name: 'Power Banks',              LegacySlug: 'akkupw' },
+    ],
+  },
+  {
+    name: 'Computers',
+    categories: [
+      { id: 'laptops',            name: 'Laptops',                  LegacySlug: 'nb' },
+      { id: 'desktops',           name: 'Desktop PCs',              LegacySlug: 'sysdiv' },
+      { id: 'mini_pcs',           name: 'Mini PCs',                 LegacySlug: 'sysdiv' },
+      { id: 'monitors',           name: 'Monitors',                 LegacySlug: 'monlcd19wide' },
+      { id: 'webcams',            name: 'Webcams' },
+    ],
+  },
+  {
+    name: 'Components',
+    categories: [
+      { id: 'graphics_cards',     name: 'Graphics Cards',           LegacySlug: 'gra16_512' },
+      { id: 'cpus',               name: 'Processors',               LegacySlug: 'cpu' },
+      { id: 'motherboards',       name: 'Motherboards',             LegacySlug: 'mainboards' },
+      { id: 'ram',                name: 'RAM',                      LegacySlug: 'ramddr3' },
+      { id: 'ssd',                name: 'SSDs',                     LegacySlug: 'hdssd' },
+      { id: 'hard_drives',        name: 'Hard Drives',              LegacySlug: 'hdx' },
+      { id: 'external_hdd',       name: 'External Hard Drives',     LegacySlug: 'gehhd' },
+      { id: 'pc_cases',           name: 'PC Cases',                 LegacySlug: 'gehatx' },
+      { id: 'psu',                name: 'Power Supplies (PSU)',     LegacySlug: 'gehps' },
+      { id: 'cpu_coolers',        name: 'CPU Coolers',              LegacySlug: 'cpucooler' },
+      { id: 'case_fans',          name: 'Case Fans',                LegacySlug: 'coolfan' },
+    ],
+  },
+  {
+    name: 'Peripherals',
+    categories: [
+      { id: 'keyboards',          name: 'Keyboards',                LegacySlug: 'kb' },
+      { id: 'mice',               name: 'Mice',                     LegacySlug: 'mouse' },
+      { id: 'printers',           name: 'Printers',                 LegacySlug: 'pr' },
+      { id: 'gamepads',           name: 'Gamepads',                 LegacySlug: 'eggamepad' },
+    ],
+  },
+  {
+    name: 'TV & Audio',
+    categories: [
+      { id: 'tvs',                name: 'TVs',                      LegacySlug: 'tvlcd' },
+      { id: 'projectors',         name: 'Projectors' },
+      { id: 'soundbars',          name: 'Soundbars',                LegacySlug: 'scnbar' },
+      { id: 'speakers',           name: 'Speakers',                 LegacySlug: 'hifibox' },
+    ],
+  },
+  {
+    name: 'Networking',
+    categories: [
+      { id: 'modem_routers',      name: 'Modem Routers',            LegacySlug: 'wlanroutmod' },
+      { id: 'wifi_routers',       name: 'WiFi Routers',             LegacySlug: 'wlanrout' },
+      { id: 'routers',            name: 'Routers',                  LegacySlug: 'router' },
+      { id: 'network_switches',   name: 'Network Switches',         LegacySlug: 'switchgi' },
+      { id: 'pcie_nic',           name: 'PCIe Network Cards',       LegacySlug: 'nwpcie' },
+      { id: 'wifi_repeaters',     name: 'WiFi Repeaters',           LegacySlug: 'wlanrepeat' },
+    ],
+  },
+  {
+    name: 'Photo & Video',
+    categories: [
+      { id: 'digital_cameras',    name: 'Digital Cameras',          LegacySlug: 'dcam' },
+      { id: 'action_cameras',     name: 'Action Cameras',           LegacySlug: 'dvcamac' },
+      { id: 'security_cameras',   name: 'Security Cameras' },
+      { id: 'drones',             name: 'Drones' },
+    ],
+  },
+  {
+    name: 'Gaming',
+    categories: [
+      { id: 'gaming_consoles',    name: 'Game Consoles',            LegacySlug: 'con' },
+      { id: 'gaming_accessories', name: 'Gaming Accessories',       LegacySlug: 'egzub' },
+      { id: 'games',              name: 'Games',                    LegacySlug: 'games' },
+    ],
+  },
+  {
+    name: 'Smart Home',
+    categories: [
+      { id: 'vacuums',            name: 'Vacuum Cleaners',          LegacySlug: 'hsauger' },
+      { id: 'ups',                name: 'UPS',                      LegacySlug: 'gehups' },
+      { id: 'small_appliances',   name: 'Small Appliances' },
+      { id: 'smart_home',         name: 'Smart Home' },
+      { id: 'e_readers',          name: 'E-Readers' },
+      { id: 'electric_scooters',  name: 'Electric Scooters',        LegacySlug: 'escooter' },
+    ],
+  },
+]);
 
 function normalizeCategoryId(input) {
   const raw = String(input || '').trim().toLowerCase();
@@ -188,8 +394,14 @@ window.QorAiCategories = {
         { id: 'drive_adapters',        name: 'Drive Adapters',             LegacySlug: 'hdadko' },
         { id: 'storage_systems',       name: 'Storage Systems',            LegacySlug: 'hdesys' },
         { id: 'storage_accessories',   name: 'Storage Accessories',        LegacySlug: 'hdzub' },
+        { id: 'flash_drives',          name: 'USB Flash Drives' },
+        { id: 'memory_cards',          name: 'Memory Cards' },
+        { id: 'optical_drives',        name: 'Optical Drives' },
         { id: 'laptops',               name: 'Laptops',                    LegacySlug: 'nb' },
         { id: 'desktops',              name: 'Desktop PCs',                LegacySlug: 'sysdiv' },
+        { id: 'servers',               name: 'Servers' },
+        { id: 'laptop_docks',          name: 'Laptop Docks' },
+        { id: 'handheld_computers',    name: 'Handheld Mobile Computers' },
         { id: 'cpus',                  name: 'Processors',                 LegacySlug: 'cpu' },
         { id: 'cpu_amd_am4',           name: 'AMD AM4 CPUs',               LegacySlug: 'cpuamdam4' },
         { id: 'cpu_intel_1151',        name: 'Intel 1151 CPUs',            LegacySlug: 'cpu1151' },
@@ -207,6 +419,7 @@ window.QorAiCategories = {
         { id: 'gamepads',              name: 'Gamepads',                   LegacySlug: 'eggamepad' },
         { id: 'racing_wheels',         name: 'Racing Wheels',              LegacySlug: 'egglenkr' },
         { id: 'joysticks',             name: 'Joysticks',                  LegacySlug: 'eggjoystick' },
+        { id: 'webcams',               name: 'Webcams' },
         { id: 'drawing_tablets',       name: 'Drawing Tablets',            LegacySlug: 'pads' },
         { id: 'stylus_pens',           name: 'Stylus Pens',                LegacySlug: 'hweinstift' },
         { id: 'kvm_switches',          name: 'KVM Switches',               LegacySlug: 'kvmkon' },
@@ -272,11 +485,14 @@ window.QorAiCategories = {
         { id: 'xbox_one',              name: 'Xbox One',                   LegacySlug: 'conxone' },
         { id: 'xbox_accessories',      name: 'Xbox Accessories',           LegacySlug: 'xboxsxzub' },
         { id: 'tvs',                   name: 'TVs',                        LegacySlug: 'tvlcd' },
+        { id: 'signage_displays',      name: 'Signage Displays' },
+        { id: 'projectors',            name: 'Projectors' },
         { id: 'digital_cameras',       name: 'Digital Cameras',            LegacySlug: 'dcam' },
         { id: 'camera_lenses',         name: 'Camera Lenses',              LegacySlug: 'dcamsp' },
         { id: 'camera_objectives',     name: 'Camera Objectives',          LegacySlug: 'acamobjo' },
         { id: 'video_cameras',         name: 'Video Cameras',              LegacySlug: 'dvcam' },
         { id: 'action_cameras',        name: 'Action Cameras',             LegacySlug: 'dvcamac' },
+        { id: 'security_cameras',      name: 'Security Cameras' },
         { id: 'film_cameras',          name: '35mm Film Cameras',          LegacySlug: 'acam35' },
         { id: 'headphones',            name: 'Headphones',                 LegacySlug: 'sphd' },
         { id: 'hifi_receivers',        name: 'HiFi Receivers',             LegacySlug: 'hifirec' },
@@ -297,6 +513,18 @@ window.QorAiCategories = {
         { id: 'printers',              name: 'Printers',                   LegacySlug: 'pr' },
         { id: 'vacuums',               name: 'Vacuum Cleaners',            LegacySlug: 'hsauger' },
         { id: 'powerbanks',            name: 'Power Banks',                LegacySlug: 'akkupw' },
+        { id: 'e_readers',             name: 'E-Readers' },
+        { id: 'drones',                name: 'Drones' },
+        { id: 'power_adapters',        name: 'Power Adapters' },
+        { id: 'coffee_makers',         name: 'Coffee Makers' },
+        { id: 'dishwashers',           name: 'Dishwashers' },
+        { id: 'microwaves',            name: 'Microwaves' },
+        { id: 'tumble_dryers',         name: 'Tumble Dryers' },
+        { id: 'washing_machines',      name: 'Washing Machines' },
+        { id: 'hobs',                  name: 'Hobs' },
+        { id: 'fridge_freezers',       name: 'Fridge-Freezers' },
+        { id: 'ovens',                 name: 'Ovens' },
+        { id: 'led_bulbs',             name: 'LED Bulbs' },
         { id: 'electric_scooters',     name: 'Electric Scooters',          LegacySlug: 'escooter' },
       ]
     },
@@ -335,6 +563,14 @@ window.QorAiCategories = {
     return `https://www.epey.com/${cat.epeyPath}/`;
   }
 };
+
+// Keep every admin surface on the same Epey-style top-level category list.
+// The large legacy/Icecat-specific table above is retained only as alias input;
+// UI, product filters, scraper, and dictionary all read this canonical list.
+window.QorAiCategories.groups = CANONICAL_EPEY_CATEGORY_GROUPS.map(group => ({
+  name: group.name,
+  categories: group.categories.map(cat => ({ ...cat })),
+}));
 
 window.QorAiBrands = [
   'Apple', 'Samsung', 'Xiaomi', 'Huawei', 'Oppo', 'Vivo', 'OnePlus', 'Realme', 'Honor',
@@ -494,9 +730,11 @@ async function _loadCategoryCounts(sourceFilter = '') {
   try {
     const pb = getPb();
     if (!pb) return counts;
-    const opts = sourceFilter
-      ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
-      : { fields: 'id,category' };
+    const opts = sourceFilter === '__epey__'
+      ? { filter: '(source="epey.com" || source="epey")', fields: 'id,category' }
+      : sourceFilter
+        ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
+        : { fields: 'id,category' };
     const total = (await pb.collection('products').getList(1, 1, opts)).totalItems;
     const pages = Math.ceil(total / 500);
     for (let page = 1; page <= pages; page++) {
@@ -517,38 +755,33 @@ async function _loadCategoryCounts(sourceFilter = '') {
   return counts;
 }
 
-async function populateScraperCategories() {
-  if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
+function _scraperGroupForCat(cat) {
+  const id = String(cat.id || '');
+  if (/smartphone|tablet|watch|phone/.test(id)) return 'Mobile';
+  if (/laptop|notebook|mini_pc|barebone|nuc|thin_client|server|rack19/.test(id)) return 'Computers';
+  if (/graphics|cpu|motherboard|ram|pc_case|psu|cool|thermal|radiator|water/.test(id)) return 'Components';
+  if (/ssd|hdd|drive|storage|sata|nas/.test(id)) return 'Storage';
+  if (/mouse|keyboard|gamepad|joystick|wheel|kvm|pad|stylus/.test(id)) return 'Peripherals';
+  if (/network|router|wifi|modem|switch|access_point|firewall|antenna|media_converter/.test(id)) return 'Networking';
+  if (/tv|hifi|speaker|headphone|soundbar|audio|subwoofer|amplifier|remote|dj/.test(id)) return 'TV & Audio';
+  if (/camera|lens|objective|video|action|film/.test(id)) return 'Photo & Video';
+  if (/ps5|xbox|switch2|console|gaming/.test(id)) return 'Gaming';
+  if (/ups|pdu|power/.test(id)) return 'Power';
+  return 'Other';
+}
 
-  const counts = await _loadCategoryCounts();
-  // The Translate-Category panel only ever translates epey.com products
-  // (Icecat already ships multilingual specs), so its dropdown must list the
-  // categories that actually hold Epey products.
-  const epeyCounts = await _loadCategoryCounts('epey.com');
-
-  let bulkOpts = '<option value="">Select Category</option>';
+function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynced = true) {
+  let bulkOpts = '<option value="">Select Category</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   let dictOpts = '<option value="">Kategori seç</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
-  const groupForCat = (cat) => {
-    const id = String(cat.id || '');
-    if (/smartphone|tablet|watch|phone/.test(id)) return 'Mobile';
-    if (/laptop|notebook|mini_pc|barebone|nuc|thin_client|server|rack19/.test(id)) return 'Computers';
-    if (/graphics|cpu|motherboard|ram|pc_case|psu|cool|thermal|radiator|water/.test(id)) return 'Components';
-    if (/ssd|hdd|drive|storage|sata|nas/.test(id)) return 'Storage';
-    if (/mouse|keyboard|gamepad|joystick|wheel|kvm|pad|stylus/.test(id)) return 'Peripherals';
-    if (/network|router|wifi|modem|switch|access_point|firewall|antenna|media_converter/.test(id)) return 'Networking';
-    if (/tv|hifi|speaker|headphone|soundbar|audio|subwoofer|amplifier|remote|dj/.test(id)) return 'TV & Audio';
-    if (/camera|lens|objective|video|action|film/.test(id)) return 'Photo & Video';
-    if (/ps5|xbox|switch2|console|gaming/.test(id)) return 'Gaming';
-    if (/ups|pdu|power/.test(id)) return 'Power';
-    return 'Other';
-  };
-
   const grouped = {};
-  QorAiCategories.getAll().filter(cat => !cat.custom).forEach(cat => {
-    const group = groupForCat(cat);
-    (grouped[group] = grouped[group] || []).push(cat);
+  const canonicalGroups = Array.isArray(QorAiCategories.groups) ? QorAiCategories.groups : [];
+  canonicalGroups.forEach(group => {
+    (group.categories || []).forEach(cat => {
+      const full = QorAiCategories.getById?.(cat.id) || cat;
+      (grouped[group.name] = grouped[group.name] || []).push(full);
+    });
   });
 
   Object.entries(grouped).forEach(([groupName, cats]) => {
@@ -593,7 +826,7 @@ async function populateScraperCategories() {
   }
 
   const knownIds = new Set(QorAiCategories.getAll().map(cat => cat.id));
-  const syncedIds = Object.keys(counts).filter(id => id && !knownIds.has(id)).sort();
+  const syncedIds = includeSynced ? Object.keys(counts).filter(id => id && !knownIds.has(id)).sort() : [];
   if (syncedIds.length) {
     flatOpts += `<optgroup label="Synced">`;
     const dictSynced = [];
@@ -612,7 +845,17 @@ async function populateScraperCategories() {
     }
   }
 
-  const setSel = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  return { bulkOpts, dictOpts, flatOpts };
+}
+
+function _applyScraperCategoryOptions({ bulkOpts, dictOpts, flatOpts }) {
+  const setSel = (id, html) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = html;
+    if (prev && [...el.options].some(opt => opt.value === prev)) el.value = prev;
+  };
 
   setSel('scrapeCategory', bulkOpts);
   setSel('singleUrlCategory', flatOpts);
@@ -623,6 +866,30 @@ async function populateScraperCategories() {
   setSel('updateCategory', flatOpts);
   setSel('inventoryCategory', flatOpts);
   setSel('qualityScanCategory', flatOpts);
+}
+
+async function populateScraperCategories() {
+  if (typeof QorAiCategories === 'undefined' || !QorAiCategories.groups) return;
+
+  // First paint must be instant. Counts are nice-to-have metadata, not a
+  // blocker for opening the scraper tab or selecting a category.
+  _applyScraperCategoryOptions(_buildScraperCategoryOptions({}, {}, false));
+
+  let counts = {};
+  let epeyCounts = {};
+  try {
+    [counts, epeyCounts] = await Promise.all([
+      _loadCategoryCounts(),
+      // The Translate-Category panel only ever translates epey.com products
+      // (Icecat already ships multilingual specs), so its dropdown must list
+      // the categories that actually hold Epey products.
+      _loadCategoryCounts('__epey__'),
+    ]);
+  } catch (e) {
+    console.warn('[categories] count refresh failed:', e.message || e);
+  }
+
+  _applyScraperCategoryOptions(_buildScraperCategoryOptions(counts, epeyCounts, true));
 }
 
 // ────────────────────────────────────────────────────────────────

@@ -19,72 +19,105 @@
   const PROXY = (typeof PROXY_URL !== 'undefined') ? PROXY_URL : 'http://localhost:3456';
   let pollHandle = null;
 
-  // CAT_MAP mirror — keep in sync with scripts/icecat_ingest.js. Used to
-  // (1) show a checkbox per ingestable slug and (2) display nice labels.
-  // The proxy /icecat/discover endpoint provides live product counts.
+  // Canonical QorAi category presets. A single QorAi category may map to
+  // multiple Icecat CategoryIDs; the ingestor uses the same canonical slugs.
   const CAT_PRESET = [
-    // group, slug, catId, label, defaultChecked
-    ['Bilgisayar',        'laptops',                151,  'Laptops',                  true],
-    ['Bilgisayar',        'desktops',               153,  'Masaüstü PC',             true],
-    ['Bilgisayar',        'all-in-one-pcs',         2282, 'All-in-One PC',           true],
-    ['Bilgisayar',        'servers',                156,  'Sunucular',                false],
-    ['Bilgisayar',        'thin-clients',           896,  'Thin Client',              false],
-    ['Bilgisayar',        'laptop-docks',           152,  'Laptop Dock',              false],
-    ['Bilgisayar',        'handheld-computers',     154,  'El Bilgisayarı',           false],
-    ['Bileşen',           'cpus',                   989,  'CPU / İşlemci',            true],
-    ['Bileşen',           'ram',                    911,  'RAM / Bellek',             true],
-    ['Bileşen',           'motherboards',           164,  'Anakart',                  false],
-    ['Bileşen',           'cases',                  237,  'Kasa',                     false],
-    ['Bileşen',           'psus',                   963,  'Güç Kaynağı',              false],
-    ['Bileşen',           'coolers',                921,  'Soğutucu',                 false],
-    ['Depolama',          'hdds',                   219,  'HDD (Dahili)',             true],
-    ['Depolama',          'external-hdds',          1823, 'HDD (Harici)',             true],
-    ['Depolama',          'ssds',                   1563, 'SSD (Dahili)',             true],
-    ['Depolama',          'nas',                    932,  'NAS / Depolama',           false],
-    ['Depolama',          'flash-drives',           1554, 'USB Flash',                false],
-    ['Depolama',          'memory-cards',           902,  'Hafıza Kartı',             false],
-    ['Depolama',          'optical-drives',         214,  'Optik Sürücü',             false],
-    ['Ekran',             'monitors',               222,  'Monitör',                  true],
-    ['Ekran',             'tvs',                    1584, 'TV',                       true],
-    ['Ekran',             'signage-displays',       2672, 'Signage Ekran',            false],
-    ['Ekran',             'projectors',             567,  'Projektör',                false],
-    ['Ekran',             'monitor-accessories',    940,  'Monitör Aksesuarı',        false],
-    ['Ekran',             'tv-mounts',              1056, 'TV Standı',                false],
-    ['Mobil',             'smartphones',            1893, 'Akıllı Telefon',           true],
-    ['Mobil',             'mobile-phones',          119,  'Tuşlu Telefon',            false],
-    ['Mobil',             'tablets',                897,  'Tablet',                   true],
-    ['Görüntüleme',       'cameras',                575,  'Dijital Kamera',           false],
-    ['Görüntüleme',       'camcorders',             584,  'Video Kamera',             false],
-    ['Görüntüleme',       'security-cameras',       1557, 'Güvenlik Kamerası',        false],
-    ['Çevre Birimi',      'keyboards',              194,  'Klavye',                   false],
-    ['Çevre Birimi',      'mice',                   195,  'Fare',                     false],
-    ['Çevre Birimi',      'mobile-keyboards',       2813, 'Mobil Klavye',             false],
-    ['Yazıcı',            'multifunction-printers', 304,  'Çok Fonksiyonlu Yazıcı',  false],
-    ['Yazıcı',            'laser-printers',         235,  'Lazer Yazıcı',             false],
-    ['Yazıcı',            'label-printers',         229,  'Etiket Yazıcı',            false],
-    ['Ağ',                'network-switches',       258,  'Network Switch',           false],
-    ['Ağ',                'routers',                3982, 'Router (Kablosuz)',        false],
-    ['Ağ',                'network-cards',          182,  'Ağ Kartı',                 false],
-    ['Güç',               'ups',                    817,  'UPS',                      false],
-    ['Güç',               'pdus',                   984,  'PDU',                      false],
-    ['Güç',               'power-adapters',         827,  'Adaptör',                  false],
-    ['Ses',               'portable-speakers',      2315, 'Taşınabilir Hoparlör',     false],
-    ['Beyaz Eşya',        'vacuums',                1234, 'Süpürge',                  false],
-    ['Beyaz Eşya',        'coffee-makers',          1320, 'Kahve Makinesi',           false],
-    ['Beyaz Eşya',        'dishwashers',            1324, 'Bulaşık Makinesi',         false],
-    ['Beyaz Eşya',        'microwaves',             1325, 'Mikrodalga',               false],
-    ['Beyaz Eşya',        'tumble-dryers',          1330, 'Kurutma Makinesi',         false],
-    ['Beyaz Eşya',        'washing-machines',       1331, 'Çamaşır Makinesi',         false],
-    ['Beyaz Eşya',        'hobs',                   1864, 'Ocak',                     false],
-    ['Beyaz Eşya',        'fridge-freezers',        1873, 'Buzdolabı',                false],
-    ['Beyaz Eşya',        'ovens',                  2286, 'Fırın',                    false],
-    ['Aydınlatma',        'led-bulbs',              1661, 'LED Ampul',                false],
+    // group, slug, catIds, label
+    ['Bilgisayar',        'laptops',              [151],        'Laptops'],
+    ['Bilgisayar',        'desktops',             [153, 2282],  'Desktop PCs'],
+    ['Bilgisayar',        'servers',              [156],        'Servers'],
+    ['Bilgisayar',        'thin_clients',         [896],        'Thin Clients'],
+    ['Bilgisayar',        'laptop_docks',         [152],        'Laptop Docks'],
+    ['Bileşen',           'cpus',                 [989],        'Processors'],
+    ['Bileşen',           'ram',                  [911],        'RAM'],
+    ['Bileşen',           'motherboards',         [164],        'Motherboards'],
+    ['Bileşen',           'pc_cases',             [237],        'PC Cases'],
+    ['Bileşen',           'psu',                  [963],        'Power Supplies (PSU)'],
+    ['Bileşen',           'cpu_coolers',          [921],        'CPU Coolers'],
+    ['Depolama',          'hard_drives',          [219],        'Hard Drives'],
+    ['Depolama',          'external_hdd',         [1823],       'External Hard Drives'],
+    ['Depolama',          'ssd',                  [1563],       'SSDs'],
+    ['Depolama',          'nas_servers',          [932],        'NAS / Media Servers'],
+    ['Depolama',          'flash_drives',         [1554],       'USB Flash Drives'],
+    ['Depolama',          'memory_cards',         [902],        'Memory Cards'],
+    ['Depolama',          'optical_drives',       [214],        'Optical Drives'],
+    ['Ekran',             'monitors',             [222],        'Monitors'],
+    ['Ekran',             'tvs',                  [1584],       'TVs'],
+    ['Ekran',             'signage_displays',     [2672],       'Signage Displays'],
+    ['Ekran',             'projectors',           [567],        'Projectors'],
+    ['Mobil',             'smartphones',          [1893, 119],  'Smartphones'],
+    ['Mobil',             'tablets',              [897],        'Tablets'],
+    ['Görüntüleme',       'digital_cameras',      [575],        'Digital Cameras'],
+    ['Görüntüleme',       'video_cameras',        [584],        'Video Cameras'],
+    ['Görüntüleme',       'security_cameras',     [1557],       'Security Cameras'],
+    ['Çevre Birimi',      'keyboards',            [194, 2813],  'Keyboards'],
+    ['Çevre Birimi',      'mice',                 [195],        'Mice'],
+    ['Yazıcı',            'printers',             [304, 235, 229], 'Printers'],
+    ['Ağ',                'network_switches',     [258],        'Network Switches'],
+    ['Ağ',                'routers',              [3982],       'Routers'],
+    ['Ağ',                'pcie_nic',             [182],        'PCIe Network Cards'],
+    ['Gaming',            'games',                [94],         'Games'],
+    ['Güç',               'ups',                  [817],        'UPS'],
+    ['Güç',               'pdu',                  [984],        'PDUs'],
+    ['Güç',               'power_adapters',       [827],        'Power Adapters'],
+    ['Ses',               'speakers',             [2315],       'Speakers'],
+    ['Beyaz Eşya',        'vacuums',              [1234],       'Vacuum Cleaners'],
+    ['Beyaz Eşya',        'coffee_makers',        [1320],       'Coffee Makers'],
+    ['Beyaz Eşya',        'dishwashers',          [1324],       'Dishwashers'],
+    ['Beyaz Eşya',        'microwaves',           [1325],       'Microwaves'],
+    ['Beyaz Eşya',        'tumble_dryers',        [1330],       'Tumble Dryers'],
+    ['Beyaz Eşya',        'washing_machines',     [1331],       'Washing Machines'],
+    ['Beyaz Eşya',        'hobs',                 [1864],       'Hobs'],
+    ['Beyaz Eşya',        'fridge_freezers',      [1873],       'Fridge-Freezers'],
+    ['Beyaz Eşya',        'ovens',                [2286],       'Ovens'],
+    ['Aydınlatma',        'led_bulbs',            [1661],       'LED Bulbs'],
   ];
 
   // Live counts populated from /icecat/discover
   let CAT_COUNTS = null;
 
   function $(id) { return document.getElementById(id); }
+  function catIdsOf(row) {
+    if (Array.isArray(row?.catIds)) return row.catIds;
+    return Array.isArray(row?.[2]) ? row[2] : [row?.[2]].filter(Boolean);
+  }
+  function countForRow(row) {
+    if (!row || !CAT_COUNTS) return 0;
+    return catIdsOf(row).reduce((sum, id) => sum + (Number(CAT_COUNTS[id]) || 0), 0);
+  }
+  function labelForSlug(slug, fallback) {
+    return window.QorAiCategories?.getById?.(slug)?.name || fallback || slug;
+  }
+  function canonicalSlug(slug) {
+    return window.QorAiCategories?.canonicalId?.(slug) || slug;
+  }
+  function canonicalGroupMap() {
+    const map = new Map();
+    for (const group of (window.QorAiCategories?.groups || [])) {
+      for (const cat of (group.categories || [])) map.set(cat.id, group.name);
+    }
+    return map;
+  }
+  function canonicalPresetRows() {
+    const canonicalIds = new Set((window.QorAiCategories?.getAll?.() || []).map(c => c.id));
+    const groupById = canonicalGroupMap();
+    const bySlug = new Map();
+    for (const row of CAT_PRESET) {
+      const [fallbackGroup, rawSlug, rawCatIds, fallbackLabel] = row;
+      const slug = canonicalSlug(rawSlug);
+      if (canonicalIds.size && !canonicalIds.has(slug)) continue;
+      const current = bySlug.get(slug) || {
+        group: groupById.get(slug) || fallbackGroup,
+        slug,
+        catIds: [],
+        label: labelForSlug(slug, fallbackLabel),
+      };
+      current.catIds.push(...catIdsOf([null, null, rawCatIds]));
+      current.catIds = [...new Set(current.catIds)];
+      bySlug.set(slug, current);
+    }
+    return [...bySlug.values()];
+  }
 
   function setRunningUI(running) {
     const startBtn = $('btnIcecatStart');
@@ -130,9 +163,8 @@
     }
 
     const groups = {};
-    for (const row of CAT_PRESET) {
-      const [g, slug, catId, label] = row;
-      (groups[g] = groups[g] || []).push({ slug, catId, label });
+    for (const row of canonicalPresetRows()) {
+      (groups[row.group] = groups[row.group] || []).push(row);
     }
 
     const prev = ($('icecatCats').value || '').trim();
@@ -140,7 +172,7 @@
     for (const [g, items] of Object.entries(groups)) {
       html += `<optgroup label="${g}">`;
       for (const it of items) {
-        const count = (CAT_COUNTS && CAT_COUNTS[it.catId]) || 0;
+        const count = (it.catIds || []).reduce((sum, id) => sum + (Number(CAT_COUNTS?.[id]) || 0), 0);
         const countLabel = count ? ` (${count.toLocaleString('tr-TR')})` : '';
         html += `<option value="${it.slug}"${it.slug === prev ? ' selected' : ''}>${it.label}${countLabel}</option>`;
       }
@@ -156,10 +188,10 @@
     $('icecatCats').value = slug;
     const summary = $('icecatCatSummary');
     if (summary) {
-      const row = CAT_PRESET.find(r => r[1] === slug);
-      const count = (row && CAT_COUNTS) ? (CAT_COUNTS[row[2]] || 0) : 0;
+      const row = canonicalPresetRows().find(r => r.slug === slug);
+      const count = countForRow(row);
       summary.textContent = slug
-        ? `Seçili: ${row ? row[3] : slug}${count ? ` · ~${count.toLocaleString('tr-TR')} ürün` : ''}`
+        ? `Seçili: ${row ? row.label : labelForSlug(slug, slug)}${count ? ` · ~${count.toLocaleString('tr-TR')} ürün` : ''}`
         : 'Tek kategori seç — düzgün, sistematik çekim için';
     }
   }

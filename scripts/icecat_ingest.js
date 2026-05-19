@@ -84,14 +84,66 @@ process.on('SIGINT', () => {
 // comparable product families first, not every Icecat accessory/appliance row.
 // Use --cats=all for the full CAT_MAP.
 const CATS_FILTER = getOpt('cats', '');
+function normalizeCatFilterSlug(input) {
+  const s = String(input || '').trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const aliases = {
+    laptop: 'laptops',
+    notebook: 'laptops',
+    notebooks: 'laptops',
+    notebooks_laptops: 'laptops',
+    all_in_one_pcs: 'desktops',
+    cpu: 'cpus',
+    processor: 'cpus',
+    processors: 'cpus',
+    ssds: 'ssd',
+    internal_ssds: 'ssd',
+    hdd: 'hard_drives',
+    hdds: 'hard_drives',
+    external_hdds: 'external_hdd',
+    psus: 'psu',
+    power_supplies: 'psu',
+    cases: 'pc_cases',
+    computer_cases: 'pc_cases',
+    coolers: 'cpu_coolers',
+    computer_cooling_systems: 'cpu_coolers',
+    nas: 'nas_servers',
+    network_cards: 'pcie_nic',
+    mobile_phones: 'smartphones',
+    cameras: 'digital_cameras',
+    camcorders: 'video_cameras',
+    portable_speakers: 'speakers',
+    multifunction_printers: 'printers',
+    laser_printers: 'printers',
+    label_printers: 'printers',
+    xbox_one: 'gaming_consoles',
+    xbox_series: 'gaming_consoles',
+    ps5_consoles: 'gaming_consoles',
+    switch2_consoles: 'gaming_consoles',
+    ps5_games: 'games',
+    switch2_games: 'games',
+    xbox_accessories: 'gaming_accessories',
+    ps5_accessories: 'gaming_accessories',
+    switch2_accessories: 'gaming_accessories',
+    pdu: 'ups',
+    power_adapters: 'powerbanks',
+    video_cameras: 'digital_cameras',
+    signage_displays: 'tvs',
+    flash_drives: 'external_hdd',
+    memory_cards: 'external_hdd',
+    optical_drives: 'hard_drives',
+  };
+  return aliases[s] || s;
+}
 const DEFAULT_CAT_SLUGS = new Set([
-  'laptops', 'desktops', 'all-in-one-pcs',
+  'laptops', 'desktops',
   'smartphones', 'tablets',
   'monitors', 'tvs',
-  'cpus', 'ram', 'ssds', 'hdds', 'external-hdds',
+  'cpus', 'ram', 'ssd', 'hard_drives', 'external_hdd',
 ]);
 const CAT_WHITELIST = CATS_FILTER && CATS_FILTER.trim().toLowerCase() !== 'all'
-  ? new Set(CATS_FILTER.split(',').map(s => s.trim().toLowerCase()))
+  ? new Set(CATS_FILTER.split(',').map(normalizeCatFilterSlug).filter(Boolean))
   : CATS_FILTER.trim().toLowerCase() === 'all'
     ? null
     : DEFAULT_CAT_SLUGS;
@@ -111,7 +163,7 @@ function catsKey() {
 }
 
 function isAllowedCatId(catId) {
-  const slug = CAT_MAP[Number(catId)];
+  const slug = canonicalCategory(CAT_MAP[Number(catId)]);
   return !!(slug && TARGET_CATS.has(Number(catId)) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)));
 }
 
@@ -134,74 +186,75 @@ const CAT_MAP = {
   // ── Computing ───────────────────────────────────────────────
   151:  'laptops',                  // 877k
   153:  'desktops',                 // 340k  (PCs/Workstations)
-  2282: 'all-in-one-pcs',           // 44k
+  2282: 'desktops',                 // 44k   (All-in-One PCs/Workstations)
   156:  'servers',                  // 24k
-  896:  'thin-clients',             //  5k
-  152:  'laptop-docks',             //  5k
-  154:  'handheld-computers',       //  3k
+  896:  'thin_clients',             //  5k
+  152:  'laptop_docks',             //  5k
+  154:  'handheld_computers',       //  3k
   // ── Components ──────────────────────────────────────────────
   989:  'cpus',                     // 14k  (Processors)
   911:  'ram',                      // 54k  (Memory Modules)
   164:  'motherboards',             //  9k
-  237:  'cases',                    //  4k
-  963:  'psus',                     //  4k
-  921:  'coolers',                  //  3k  (Computer Cooling Systems)
+  237:  'pc_cases',                 //  4k
+  963:  'psu',                      //  4k
+  921:  'cpu_coolers',              //  3k  (Computer Cooling Systems)
   // ── Storage ─────────────────────────────────────────────────
-  219:  'hdds',                     // 36k  (Internal HDDs)
-  1823: 'external-hdds',            //  4k
-  1563: 'ssds',                     // 27k  (Internal SSDs)
-  932:  'nas',                      // 46k  (NAS & Storage Servers)
-  1554: 'flash-drives',             //  6k
-  902:  'memory-cards',             //  4k
-  214:  'optical-drives',           //  4k
+  219:  'hard_drives',              // 36k  (Internal HDDs)
+  1823: 'external_hdd',             //  4k
+  1563: 'ssd',                      // 27k  (Internal SSDs)
+  932:  'nas_servers',              // 46k  (NAS & Storage Servers)
+  1554: 'flash_drives',             //  6k
+  902:  'memory_cards',             //  4k
+  214:  'optical_drives',           //  4k
   // ── Display & TV ────────────────────────────────────────────
   222:  'monitors',                 // 42k  (Computer Monitors)
   1584: 'tvs',                      // 42k
-  2672: 'signage-displays',         //  6k
+  2672: 'signage_displays',         //  6k
   567:  'projectors',               //  8k  (Data Projectors)
-  940:  'monitor-accessories',      //  6k
-  1056: 'tv-mounts',                //  6k
+  940:  'monitor_accessories',      //  6k
+  1056: 'tv_mounts',                //  6k
   // ── Mobile ──────────────────────────────────────────────────
   1893: 'smartphones',              // 29k  (Smartphones)
-  119:  'mobile-phones',            //  4k  (Feature phones)
+  119:  'smartphones',              //  4k  (Feature phones)
   897:  'tablets',                  // 27k
   // ── Imaging ─────────────────────────────────────────────────
-  575:  'cameras',                  // 12k  (Digital Cameras)
-  584:  'camcorders',               //  3k
-  1557: 'security-cameras',         //  5k
+  575:  'digital_cameras',          // 12k  (Digital Cameras)
+  584:  'video_cameras',            //  3k
+  1557: 'security_cameras',         //  5k
   // ── Peripherals ─────────────────────────────────────────────
   194:  'keyboards',                // 26k  (Keyboards)
   195:  'mice',                     //  9k
-  2813: 'mobile-keyboards',         //  5k
+  2813: 'keyboards',                //  5k
   // ── Printing ────────────────────────────────────────────────
-  304:  'multifunction-printers',   // 11k
-  235:  'laser-printers',           //  4k
-  229:  'label-printers',           //  5k
+  304:  'printers',                 // 11k
+  235:  'printers',                 //  4k
+  229:  'printers',                 //  5k
   // ── Networking ──────────────────────────────────────────────
-  258:  'network-switches',         //  9k
+  258:  'network_switches',         //  9k
   3982: 'routers',                  //  3k  (Wireless Routers)
-  182:  'network-cards',            //  6k
+  182:  'pcie_nic',                 //  6k
   // ── Power ───────────────────────────────────────────────────
   817:  'ups',                      //  6k  (UPSs)
-  984:  'pdus',                     //  4k  (Power Distribution Units)
-  827:  'power-adapters',           // 22k
+  984:  'pdu',                      //  4k  (Power Distribution Units)
+  827:  'power_adapters',           // 22k
   // ── Audio ───────────────────────────────────────────────────
-  2315: 'portable-speakers',        //  5k
+  2315: 'speakers',                 //  5k
+  94:   'games',                    // 26k
   // ── Smart home / appliances (electronics) ───────────────────
   1234: 'vacuums',                  //  5k
-  1320: 'coffee-makers',            //  7k
+  1320: 'coffee_makers',            //  7k
   1324: 'dishwashers',              //  9k
   1325: 'microwaves',               //  4k
-  1330: 'tumble-dryers',            //  5k
-  1331: 'washing-machines',         // 16k
+  1330: 'tumble_dryers',            //  5k
+  1331: 'washing_machines',         // 16k
   1864: 'hobs',                     //  7k
-  1873: 'fridge-freezers',          // 14k
+  1873: 'fridge_freezers',          // 14k
   2286: 'ovens',                    //  8k
-  1661: 'led-bulbs',                // 11k
+  1661: 'led_bulbs',                // 11k
 };
 
 const TARGET_CATS = new Set(Object.keys(CAT_MAP).map(Number));
-const VALID_CAT_SLUGS = new Set(Object.values(CAT_MAP));
+const VALID_CAT_SLUGS = new Set(Object.values(CAT_MAP).map(canonicalCategory));
 if (CAT_WHITELIST) {
   const unknownCats = [...CAT_WHITELIST].filter(slug => !VALID_CAT_SLUGS.has(slug));
   if (unknownCats.length) {
@@ -210,7 +263,7 @@ if (CAT_WHITELIST) {
 }
 
 function canonicalCategory(slug) {
-  const s = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const s = normalizeCatFilterSlug(slug);
   if (['laptop', 'laptops', 'notebook', 'notebooks', 'notebooks_laptops'].includes(s)) return 'laptops';
   const aliases = {
     all_in_one_pcs: 'desktops',
@@ -236,6 +289,37 @@ function canonicalCategory(slug) {
     multifunction_printers: 'printers',
     laser_printers: 'printers',
     label_printers: 'printers',
+    xbox_one: 'gaming_consoles',
+    xbox_series: 'gaming_consoles',
+    ps5_consoles: 'gaming_consoles',
+    switch2_consoles: 'gaming_consoles',
+    ps5_games: 'games',
+    switch2_games: 'games',
+    xbox_accessories: 'gaming_accessories',
+    ps5_accessories: 'gaming_accessories',
+    switch2_accessories: 'gaming_accessories',
+    pdu: 'ups',
+    power_adapters: 'powerbanks',
+    signage_displays: 'tvs',
+    flash_drives: 'external_hdd',
+    memory_cards: 'external_hdd',
+    optical_drives: 'hard_drives',
+    video_cameras: 'digital_cameras',
+    servers: 'desktops',
+    thin_clients: 'desktops',
+    laptop_docks: 'laptops',
+    handheld_computers: 'tablets',
+    monitor_accessories: 'monitors',
+    tv_mounts: 'tvs',
+    coffee_makers: 'small_appliances',
+    dishwashers: 'small_appliances',
+    microwaves: 'small_appliances',
+    tumble_dryers: 'small_appliances',
+    washing_machines: 'small_appliances',
+    hobs: 'small_appliances',
+    fridge_freezers: 'small_appliances',
+    ovens: 'small_appliances',
+    led_bulbs: 'smart_home',
   };
   return aliases[s] || s;
 }
@@ -613,29 +697,73 @@ function passesIcecatQuality(payload) {
 
 const CATEGORY_NAMES = {
   laptops: 'Laptops',
-  desktops: 'Desktops',
+  desktops: 'Desktop PCs',
+  mini_pcs: 'Mini PCs',
+  servers: 'Servers',
+  thin_clients: 'Thin Clients',
+  laptop_docks: 'Laptop Docks',
   smartphones: 'Smartphones',
   tablets: 'Tablets',
+  smartwatches: 'Smartwatches',
+  headphones: 'Headphones',
+  powerbanks: 'Power Banks',
+  webcams: 'Webcams',
+  graphics_cards: 'Graphics Cards',
   monitors: 'Monitors',
   tvs: 'TVs',
+  signage_displays: 'Signage Displays',
+  projectors: 'Projectors',
   ram: 'RAM',
   ssd: 'SSDs',
-  ssds: 'SSDs',
   hard_drives: 'Hard Drives',
   external_hdd: 'External Hard Drives',
-  hdds: 'Hard Drives',
-  cpus: 'CPUs',
-  psu: 'Power Supplies',
+  flash_drives: 'USB Flash Drives',
+  memory_cards: 'Memory Cards',
+  optical_drives: 'Optical Drives',
+  nas_servers: 'NAS / Media Servers',
+  cpus: 'Processors',
+  psu: 'Power Supplies (PSU)',
   pc_cases: 'PC Cases',
   cpu_coolers: 'CPU Coolers',
+  case_fans: 'Case Fans',
   motherboards: 'Motherboards',
   keyboards: 'Keyboards',
   mice: 'Mice',
   digital_cameras: 'Digital Cameras',
-  cameras: 'Cameras',
+  video_cameras: 'Video Cameras',
+  security_cameras: 'Security Cameras',
   routers: 'Routers',
+  network_switches: 'Network Switches',
+  pcie_nic: 'PCIe Network Cards',
   ups: 'UPS',
+  pdu: 'PDUs',
+  power_adapters: 'Power Adapters',
   printers: 'Printers',
+  speakers: 'Speakers',
+  soundbars: 'Soundbars',
+  modem_routers: 'Modem Routers',
+  wifi_routers: 'WiFi Routers',
+  wifi_repeaters: 'WiFi Repeaters',
+  action_cameras: 'Action Cameras',
+  drones: 'Drones',
+  gaming_consoles: 'Game Consoles',
+  gaming_accessories: 'Gaming Accessories',
+  gamepads: 'Gamepads',
+  games: 'Games',
+  coffee_makers: 'Coffee Makers',
+  dishwashers: 'Dishwashers',
+  microwaves: 'Microwaves',
+  tumble_dryers: 'Tumble Dryers',
+  washing_machines: 'Washing Machines',
+  hobs: 'Hobs',
+  fridge_freezers: 'Fridge-Freezers',
+  ovens: 'Ovens',
+  led_bulbs: 'LED Bulbs',
+  small_appliances: 'Small Appliances',
+  smart_home: 'Smart Home',
+  vacuums: 'Vacuum Cleaners',
+  e_readers: 'E-Readers',
+  electric_scooters: 'Electric Scooters',
 };
 const ensuredCategories = new Set();
 const touchedCategories = new Set();
@@ -779,6 +907,32 @@ async function isCosmeticDuplicate(icecatId, category, ck) {
   // No row for this config yet — this product becomes its representative.
   configOwner.set(key, Number(icecatId) || 0);
   return false;
+}
+
+function pbFilterValue(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function isEpeyRecord(record = {}) {
+  return /epey/i.test(String(record.source || '')) ||
+    /(^|\.)epey\.com\//i.test(String(record.sourceUrl || ''));
+}
+
+async function findExistingEpeyProduct(payload) {
+  const filters = [];
+  if (payload.gtin) filters.push(`gtin="${pbFilterValue(payload.gtin)}"`);
+  if (payload.mpn && payload.brand) {
+    filters.push(`mpn="${pbFilterValue(payload.mpn)}" && brand="${pbFilterValue(payload.brand)}"`);
+  }
+  if (payload.category && payload.configKey) {
+    filters.push(`category="${pbFilterValue(payload.category)}" && configKey="${pbFilterValue(payload.configKey)}"`);
+  }
+  if (!filters.length) return null;
+
+  const filter = encodeURIComponent(filters.join(' || '));
+  const r = await pbReq('GET', `/api/collections/products/records?filter=${filter}&perPage=5&skipTotal=1&fields=id,name,source,sourceUrl`);
+  if (r.status !== 200) return null;
+  return (r.body.items || []).find(isEpeyRecord) || null;
 }
 
 function reconcileVariantsNow() {
@@ -925,6 +1079,16 @@ async function phase23_enrichImport() {
           const minSpecs = minSpecsForCategory(pbData.category);
           prog.skipped = (prog.skipped || 0) + 1;
           log(`  Skip id=${icecatId} (${name || brand}): only ${pbData.specsCount || 0} specs, need ${minSpecs}+`, 'warn');
+          prog.done++;
+          if (prog.done % 10 === 0) saveProgress(prog);
+          await sleep(DELAY);
+          continue;
+        }
+
+        const existingEpey = await findExistingEpeyProduct(pbData);
+        if (existingEpey) {
+          prog.skipped = (prog.skipped || 0) + 1;
+          log(`  Skip id=${icecatId} (${pbData.name}): already exists from Epey (${existingEpey.name || existingEpey.id})`, 'ok');
           prog.done++;
           if (prog.done % 10 === 0) saveProgress(prog);
           await sleep(DELAY);
