@@ -53,3 +53,8 @@ export function useCompare() {
 
   return { ids, has, toggle, add, remove, clear, max: COMPARE_MAX };
 }
+
+// Replaces the whole compare selection — used to open a saved comparison.
+export function setCompareList(ids) {
+  write((ids || []).filter(Boolean).slice(0, COMPARE_MAX));
+}

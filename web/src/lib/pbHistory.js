@@ -140,6 +140,94 @@ export async function saveSubscriptionHistory({ services, analysis }) {
   }
 }
 
+// ─── Readers — surface the shared history back in the Profile ─────
+
+// Saved comparisons (same `comparisons` collection the app writes).
+export async function getComparisons(limit = 40) {
+  const user = currentUser();
+  if (!user) return [];
+  try {
+    const res = await pb.collection('comparisons').getList(1, limit, {
+      filter: `userId = "${user.id}"`,
+      sort: '-updated',
+    });
+    return res.items.map((c) => {
+      const notes = c.notes && typeof c.notes === 'object' ? c.notes : {};
+      return {
+        id: c.id,
+        productIds: uniq(c.productIds || c.items || []),
+        title: c.title || 'Comparison',
+        category: notes.category || '',
+        count: Number(notes.occurrenceCount || 1),
+        at: notes.lastComparedAt || c.updated || c.created,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Saved link / subscription analyses (`saved_analyses` collection).
+export async function getSavedAnalyses(limit = 40) {
+  const user = currentUser();
+  if (!user) return [];
+  try {
+    const res = await pb.collection('saved_analyses').getList(1, limit, {
+      filter: `userId = "${user.id}"`,
+      sort: '-created',
+    });
+    return res.items
+      .filter((a) => ['link_history', 'subscription_history'].includes(a.category))
+      .map((a) => {
+        const d = a.analysisData && typeof a.analysisData === 'object' ? a.analysisData : {};
+        return {
+          id: a.id,
+          title: a.title || d.url || '',
+          kind: a.category === 'subscription_history' ? 'subscription' : 'link',
+          analysis: d.analysis || d.analysisResult || a.aiSummary || '',
+          urls: Array.isArray(d.urls) ? d.urls : [],
+          services: Array.isArray(d.services) ? d.services : [],
+          at: a.savedAt || d.timestamp || a.created,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+// Reviews written by the signed-in user.
+export async function getMyReviews(limit = 50) {
+  const user = currentUser();
+  if (!user) return [];
+  try {
+    const res = await pb.collection('reviews').getList(1, limit, {
+      filter: `userId = "${user.id}"`,
+      sort: '-created',
+    });
+    return res.items.map((r) => ({
+      id: r.id,
+      productId: r.productId || '',
+      rating: Number(r.rating) || 0,
+      text: r.text || '',
+      created: r.created,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteMyReview(id) {
+  return pb.collection('reviews').delete(id);
+}
+
+// Search / quiz history live as arrays on the user record itself.
+export function readSearchHistory(user) {
+  return Array.isArray(user?.searchHistory) ? user.searchHistory : [];
+}
+export function readQuizHistory(user) {
+  return Array.isArray(user?.quizHistory) ? user.quizHistory : [];
+}
+
 export async function saveQuizHistory({ answers, result }) {
   const user = currentUser();
   if (!user || !answers || !result) return;

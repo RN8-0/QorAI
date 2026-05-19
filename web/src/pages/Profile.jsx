@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { useCompare } from '../lib/compare';
+import { useCompare, setCompareList } from '../lib/compare';
 import {
   refreshUser, updateProfile, requestVerification, requestAccountDeletion,
 } from '../lib/pocketbase';
+import {
+  getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview,
+  readSearchHistory, readQuizHistory,
+} from '../lib/pbHistory';
+import { getProduct } from '../lib/typesense';
+import { catMeta } from '../lib/format';
 import { useT } from '../i18n/index.jsx';
+import AiText from '../components/AiText.jsx';
 import './Profile.css';
+
+function fmtDate(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+}
 
 export default function Profile() {
   const t = useT();
   const { user, openAuth, logout } = useAuth();
   const { ids } = useCompare();
 
-  // Pull a fresh copy on mount so the coin balance / verified flag are current.
   useEffect(() => { if (user) refreshUser(); }, []); // eslint-disable-line
 
   if (!user) {
@@ -32,106 +44,125 @@ export default function Profile() {
 
 function ProfileBody({ user, ids, logout, t }) {
   const name = user.name || user.displayName || user.email?.split('@')[0] || 'User';
-  const coins = Math.round(Number(user.bonusQCoins) || 0);
+  const [tab, setTab] = useState('overview');
+
+  const TABS = [
+    { key: 'overview', label: t('pf.tabOverview') },
+    { key: 'comparisons', label: t('pf.tabComparisons') },
+    { key: 'analyses', label: t('pf.tabAnalyses') },
+    { key: 'reviews', label: t('pf.tabReviews') },
+    { key: 'history', label: t('pf.tabHistory') },
+  ];
+
+  return (
+    <div className="container pf">
+      {!user.verified && <VerifyBanner user={user} t={t} />}
+
+      <Identity user={user} name={name} logout={logout} t={t} />
+
+      <div className="pf-tabs">
+        {TABS.map((tb) => (
+          <button key={tb.key}
+            className={'pf-tab' + (tab === tb.key ? ' active' : '')}
+            onClick={() => setTab(tb.key)}>
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'overview' && <Overview user={user} ids={ids} t={t} />}
+      {tab === 'comparisons' && <ComparisonsTab t={t} />}
+      {tab === 'analyses' && <AnalysesTab t={t} />}
+      {tab === 'reviews' && <ReviewsTab t={t} />}
+      {tab === 'history' && <HistoryTab user={user} t={t} />}
+    </div>
+  );
+}
+
+/* ─── Email verification banner ──────────────────────────────────── */
+function VerifyBanner({ user, t }) {
+  const [state, setState] = useState('');
+  async function resend() {
+    setState('sending');
+    try { await requestVerification(user.email); setState('sent'); }
+    catch { setState('error'); }
+  }
+  return (
+    <div className="pf-verify fade-up">
+      <span className="pf-verify-ic">✉️</span>
+      <div className="pf-verify-tx">
+        <strong>{t('pf.verifyTitle')}</strong>
+        <span>{t('pf.verifyDesc', { email: user.email })}</span>
+      </div>
+      {state === 'sent' ? (
+        <span className="pf-verify-done">{t('pf.verifySent')}</span>
+      ) : (
+        <button className="btn btn-ghost" disabled={state === 'sending'} onClick={resend}>
+          {state === 'sending' ? '…' : t('pf.verifyResend')}
+        </button>
+      )}
+      {state === 'error' && <span className="pf-verify-err">{t('pf.verifyErr')}</span>}
+    </div>
+  );
+}
+
+/* ─── Identity card with inline name editing ─────────────────────── */
+function Identity({ user, name, logout, t }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [saving, setSaving] = useState(false);
   const joined = user.created
     ? new Date(user.created).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
     : '—';
 
-  // ── Name editing ───────────────────────────────────────────────
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(name);
-  const [savingName, setSavingName] = useState(false);
-
-  async function saveName() {
+  async function save() {
     const next = draft.trim();
     if (!next || next === name) { setEditing(false); return; }
-    setSavingName(true);
-    try {
-      await updateProfile({ name: next, displayName: next });
-      setEditing(false);
-    } catch { /* keep editing open on failure */ }
-    finally { setSavingName(false); }
-  }
-
-  // ── Email verification ─────────────────────────────────────────
-  const [verifyState, setVerifyState] = useState(''); // '' | 'sending' | 'sent' | 'error'
-  async function resendVerification() {
-    setVerifyState('sending');
-    try {
-      await requestVerification(user.email);
-      setVerifyState('sent');
-    } catch {
-      setVerifyState('error');
-    }
-  }
-
-  // ── Account deletion ───────────────────────────────────────────
-  const [delOpen, setDelOpen] = useState(false);
-  const [delState, setDelState] = useState(''); // '' | 'sending' | 'sent' | 'error'
-  async function confirmDelete() {
-    setDelState('sending');
-    try {
-      await requestAccountDeletion();
-      setDelState('sent');
-    } catch {
-      setDelState('error');
-    }
+    setSaving(true);
+    try { await updateProfile({ name: next, displayName: next }); setEditing(false); }
+    catch { /* keep open */ }
+    finally { setSaving(false); }
   }
 
   return (
-    <div className="container pf">
-      {/* EMAIL VERIFICATION BANNER */}
-      {!user.verified && (
-        <div className="pf-verify fade-up">
-          <span className="pf-verify-ic">✉️</span>
-          <div className="pf-verify-tx">
-            <strong>{t('pf.verifyTitle')}</strong>
-            <span>{t('pf.verifyDesc', { email: user.email })}</span>
-          </div>
-          {verifyState === 'sent' ? (
-            <span className="pf-verify-done">{t('pf.verifySent')}</span>
-          ) : (
-            <button className="btn btn-ghost" disabled={verifyState === 'sending'}
-              onClick={resendVerification}>
-              {verifyState === 'sending' ? '…' : t('pf.verifyResend')}
+    <div className="pf-card pf-id fade-up">
+      <div className="pf-avatar">{name[0]?.toUpperCase() || 'U'}</div>
+      <div className="pf-id-text">
+        {editing ? (
+          <div className="pf-name-edit">
+            <input value={draft} onChange={(e) => setDraft(e.target.value)}
+              maxLength={60} autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+            <button className="btn btn-primary" disabled={saving} onClick={save}>
+              {saving ? '…' : t('pf.save')}
             </button>
-          )}
-          {verifyState === 'error' && <span className="pf-verify-err">{t('pf.verifyErr')}</span>}
-        </div>
-      )}
-
-      {/* IDENTITY */}
-      <div className="pf-card pf-id fade-up">
-        <div className="pf-avatar">{name[0]?.toUpperCase() || 'U'}</div>
-        <div className="pf-id-text">
-          {editing ? (
-            <div className="pf-name-edit">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)}
-                maxLength={60} autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') saveName(); }} />
-              <button className="btn btn-primary" disabled={savingName} onClick={saveName}>
-                {savingName ? '…' : t('pf.save')}
-              </button>
-              <button className="btn btn-ghost" onClick={() => { setDraft(name); setEditing(false); }}>
-                {t('pf.cancel')}
-              </button>
-            </div>
-          ) : (
-            <h1>
-              {name}
-              <button className="pf-edit-btn" onClick={() => { setDraft(name); setEditing(true); }}
-                aria-label={t('pf.editName')} title={t('pf.editName')}>✏️</button>
-              {user.verified && <span className="pf-verified" title={t('pf.verified')}>✓</span>}
-            </h1>
-          )}
-          <span>{user.email}</span>
-          <small>{t('pf.member', { date: joined })}</small>
-        </div>
-        <button className="btn btn-ghost pf-signout" onClick={logout}>{t('pf.signOut')}</button>
+            <button className="btn btn-ghost" onClick={() => { setDraft(name); setEditing(false); }}>
+              {t('pf.cancel')}
+            </button>
+          </div>
+        ) : (
+          <h1>
+            {name}
+            <button className="pf-edit-btn" onClick={() => { setDraft(name); setEditing(true); }}
+              aria-label={t('pf.editName')} title={t('pf.editName')}>✏️</button>
+            {user.verified && <span className="pf-verified" title={t('pf.verified')}>✓</span>}
+          </h1>
+        )}
+        <span>{user.email}</span>
+        <small>{t('pf.member', { date: joined })}</small>
       </div>
+      <button className="btn btn-ghost pf-signout" onClick={logout}>{t('pf.signOut')}</button>
+    </div>
+  );
+}
 
+/* ─── Overview tab ───────────────────────────────────────────────── */
+function Overview({ user, ids, t }) {
+  const coins = Math.round(Number(user.bonusQCoins) || 0);
+  return (
+    <div className="fade-up">
       <div className="pf-grid">
-        <div className="pf-card pf-coins fade-up">
+        <div className="pf-card pf-coins">
           <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>
           <div>
             <div className="pf-coin-num">{coins}</div>
@@ -139,15 +170,14 @@ function ProfileBody({ user, ids, logout, t }) {
           </div>
           <p>{t('pf.coinDesc')}</p>
         </div>
-
-        <div className="pf-card pf-stat fade-up">
+        <div className="pf-card pf-stat">
           <div className="pf-stat-num">{ids.length}</div>
           <div className="pf-stat-lbl">{t('pf.compareCount')}</div>
           <Link to="/compare" className="btn btn-ghost">{t('pf.openList')}</Link>
         </div>
       </div>
 
-      <div className="pf-card pf-links fade-up">
+      <div className="pf-card pf-links">
         <h3>{t('pf.quickAccess')}</h3>
         <div className="pf-link-row">
           <Link to="/">📦 {t('nav.home')}</Link>
@@ -157,34 +187,235 @@ function ProfileBody({ user, ids, logout, t }) {
         </div>
       </div>
 
-      {/* DANGER ZONE — account deletion */}
-      <div className="pf-card pf-danger fade-up">
-        <h3>{t('pf.dangerTitle')}</h3>
-        {delState === 'sent' ? (
-          <p className="pf-danger-sent">{t('pf.deleteSent', { email: user.email })}</p>
-        ) : !delOpen ? (
-          <>
-            <p>{t('pf.deleteDesc')}</p>
-            <button className="btn pf-danger-btn" onClick={() => setDelOpen(true)}>
-              {t('pf.deleteAccount')}
+      <DangerZone user={user} t={t} />
+    </div>
+  );
+}
+
+/* ─── Danger zone — account deletion ─────────────────────────────── */
+function DangerZone({ user, t }) {
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState('');
+  async function confirm() {
+    setState('sending');
+    try { await requestAccountDeletion(); setState('sent'); }
+    catch { setState('error'); }
+  }
+  return (
+    <div className="pf-card pf-danger">
+      <h3>{t('pf.dangerTitle')}</h3>
+      {state === 'sent' ? (
+        <p className="pf-danger-sent">{t('pf.deleteSent', { email: user.email })}</p>
+      ) : !open ? (
+        <>
+          <p>{t('pf.deleteDesc')}</p>
+          <button className="btn pf-danger-btn" onClick={() => setOpen(true)}>
+            {t('pf.deleteAccount')}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="pf-danger-warn">{t('pf.deleteConfirm')}</p>
+          <div className="pf-danger-actions">
+            <button className="btn pf-danger-btn" disabled={state === 'sending'} onClick={confirm}>
+              {state === 'sending' ? '…' : t('pf.deleteYes')}
             </button>
-          </>
-        ) : (
-          <>
-            <p className="pf-danger-warn">{t('pf.deleteConfirm')}</p>
-            <div className="pf-danger-actions">
-              <button className="btn pf-danger-btn" disabled={delState === 'sending'}
-                onClick={confirmDelete}>
-                {delState === 'sending' ? '…' : t('pf.deleteYes')}
-              </button>
-              <button className="btn btn-ghost" onClick={() => { setDelOpen(false); setDelState(''); }}>
-                {t('pf.cancel')}
-              </button>
-            </div>
-            {delState === 'error' && <p className="pf-danger-err">{t('pf.deleteErr')}</p>}
-          </>
-        )}
-      </div>
+            <button className="btn btn-ghost" onClick={() => { setOpen(false); setState(''); }}>
+              {t('pf.cancel')}
+            </button>
+          </div>
+          {state === 'error' && <p className="pf-danger-err">{t('pf.deleteErr')}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── Shared empty / loading states ──────────────────────────────── */
+function Loading({ t }) {
+  return <div className="pf-list-state"><div className="spinner" /> {t('common.loading')}</div>;
+}
+function Empty({ icon, text }) {
+  return <div className="pf-empty"><div className="pf-empty-ic">{icon}</div><p>{text}</p></div>;
+}
+
+/* ─── Comparisons tab ────────────────────────────────────────────── */
+function ComparisonsTab({ t }) {
+  const nav = useNavigate();
+  const [items, setItems] = useState(null);
+  useEffect(() => { getComparisons().then(setItems); }, []);
+
+  if (items === null) return <Loading t={t} />;
+  if (!items.length) return <Empty icon="⚖️" text={t('pf.noComparisons')} />;
+
+  function open(c) {
+    setCompareList(c.productIds);
+    nav('/compare');
+  }
+  return (
+    <div className="pf-list fade-up">
+      {items.map((c) => (
+        <button key={c.id} className="pf-row" onClick={() => open(c)}>
+          <span className="pf-row-ic">⚖️</span>
+          <span className="pf-row-main">
+            <b>{c.title}</b>
+            <small>
+              {c.category && `${catMeta(c.category).label} · `}
+              {t('pf.cmpProducts', { n: c.productIds.length })}
+              {fmtDate(c.at) && ` · ${fmtDate(c.at)}`}
+            </small>
+          </span>
+          <span className="pf-row-go">{t('pf.open')} →</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Analyses tab ───────────────────────────────────────────────── */
+function AnalysesTab({ t }) {
+  const [items, setItems] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  useEffect(() => { getSavedAnalyses().then(setItems); }, []);
+
+  if (items === null) return <Loading t={t} />;
+  if (!items.length) return <Empty icon="🔗" text={t('pf.noAnalyses')} />;
+
+  return (
+    <div className="pf-list fade-up">
+      {items.map((a) => {
+        const isOpen = expanded === a.id;
+        return (
+          <div key={a.id} className={'pf-acard' + (isOpen ? ' open' : '')}>
+            <button className="pf-row" onClick={() => setExpanded(isOpen ? null : a.id)}>
+              <span className="pf-row-ic">{a.kind === 'subscription' ? '📺' : '🔗'}</span>
+              <span className="pf-row-main">
+                <b>{a.title || t('pf.untitledAnalysis')}</b>
+                <small>
+                  {t(a.kind === 'subscription' ? 'pf.kindSubscription' : 'pf.kindLink')}
+                  {fmtDate(a.at) && ` · ${fmtDate(a.at)}`}
+                </small>
+              </span>
+              <span className="pf-row-go">{isOpen ? '▲' : '▼'}</span>
+            </button>
+            {isOpen && a.analysis && (
+              <div className="pf-acard-body"><AiText text={a.analysis} /></div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Reviews tab ────────────────────────────────────────────────── */
+function ReviewsTab({ t }) {
+  const [items, setItems] = useState(null);
+  const [names, setNames] = useState({});
+
+  useEffect(() => {
+    getMyReviews().then(async (revs) => {
+      setItems(revs);
+      const map = {};
+      await Promise.all(revs.map(async (r) => {
+        if (!r.productId) return;
+        try {
+          const p = await getProduct(r.productId);
+          if (p) map[r.productId] = p.name;
+        } catch { /* noop */ }
+      }));
+      setNames(map);
+    });
+  }, []);
+
+  async function remove(id) {
+    setItems((list) => list.filter((r) => r.id !== id));
+    try { await deleteMyReview(id); } catch { /* noop */ }
+  }
+
+  if (items === null) return <Loading t={t} />;
+  if (!items.length) return <Empty icon="⭐" text={t('pf.noReviews')} />;
+
+  return (
+    <div className="pf-list fade-up">
+      {items.map((r) => (
+        <div key={r.id} className="pf-rev">
+          <div className="pf-rev-top">
+            <span className="pf-stars">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <span key={i} className={i <= r.rating ? 'on' : ''}>★</span>
+              ))}
+            </span>
+            <span className="pf-rev-date">{fmtDate(r.created)}</span>
+            <button className="pf-rev-del" onClick={() => remove(r.id)}
+              aria-label={t('pf.delete')} title={t('pf.delete')}>🗑</button>
+          </div>
+          {r.text && <p className="pf-rev-text">{r.text}</p>}
+          {r.productId && (
+            <Link to={`/product/${r.productId}`} className="pf-rev-link">
+              {names[r.productId] || t('pf.viewProduct')} →
+            </Link>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── History tab — search + quiz ────────────────────────────────── */
+function HistoryTab({ user, t }) {
+  const search = readSearchHistory(user);
+  const quiz = readQuizHistory(user);
+  const [openQuiz, setOpenQuiz] = useState(null);
+
+  if (!search.length && !quiz.length) {
+    return <Empty icon="🕘" text={t('pf.noHistory')} />;
+  }
+  return (
+    <div className="fade-up">
+      {search.length > 0 && (
+        <div className="pf-card pf-hist">
+          <h3>🔍 {t('pf.searchHistory')}</h3>
+          <div className="pf-chips">
+            {search.slice(0, 30).map((s, i) => (
+              s.productId ? (
+                <Link key={i} to={`/product/${s.productId}`} className="pf-chip">{s.query}</Link>
+              ) : (
+                <Link key={i} to={`/?q=${encodeURIComponent(s.query || '')}`} className="pf-chip">
+                  {s.query}
+                </Link>
+              )
+            ))}
+          </div>
+        </div>
+      )}
+      {quiz.length > 0 && (
+        <div className="pf-card pf-hist">
+          <h3>🎯 {t('pf.quizHistory')}</h3>
+          <div className="pf-list">
+            {quiz.slice(0, 20).map((q, i) => {
+              const isOpen = openQuiz === i;
+              return (
+                <div key={i} className={'pf-acard' + (isOpen ? ' open' : '')}>
+                  <button className="pf-row" onClick={() => setOpenQuiz(isOpen ? null : i)}>
+                    <span className="pf-row-ic">🎯</span>
+                    <span className="pf-row-main">
+                      <b>{t('pf.quizEntry', { n: i + 1 })}</b>
+                      <small>{fmtDate(q.timestamp)}</small>
+                    </span>
+                    <span className="pf-row-go">{isOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {isOpen && (q.result || q.recommendation) && (
+                    <div className="pf-acard-body">
+                      <AiText text={q.result || q.recommendation} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
