@@ -17,7 +17,7 @@ if (!existsSync(indexHtml)) {
 }
 
 const ROUTES = [
-  'catalog', 'compare', 'ai-chat',
+  'category', 'compare', 'ai-chat',
   'link-analysis', 'subscriptions', 'quiz', 'profile',
 ];
 

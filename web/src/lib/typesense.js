@@ -1,33 +1,15 @@
 // ═══════════════════════════════════════════════════════════════
 //  Product data layer — Qor AI website
 //  --------------------------------------------------------------
-//  Primary path: the PocketBase search proxy (pb_hooks/search_proxy)
-//  keeps the Typesense key server-side so the catalog can't be
-//  scraped from the bundle.
-//
-//  Fallback path: if the proxy isn't deployed yet / is unreachable,
-//  every call transparently falls back to a *constrained* direct
-//  Typesense query so the site never breaks. Once the proxy hook is
-//  confirmed live, set ALLOW_DIRECT_FALLBACK = false (and the key
-//  below can be removed) for full anti-scraping protection.
+//  All product reads go through the PocketBase search proxy
+//  (pb_hooks/search_proxy.pb.js). The Typesense key never reaches
+//  the browser, so the catalog can't be scraped from the bundle.
+//  Results are paginated + light-field only; nothing bulk-loads.
 // ═══════════════════════════════════════════════════════════════
 
 import { PB_URL } from './pocketbase';
 
 const API = `${PB_URL}/api`;
-
-const ALLOW_DIRECT_FALLBACK = true;
-const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
-const TS_COLLECTION = 'products';
-const LIGHT_FIELDS =
-  'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,' +
-  'price_segment,lowestPriceUSD,keySpecsText,filterTokens,screenSizeValue,' +
-  'batteryCapacityValue,weightValueKg';
-const SORT_MAP = {
-  score: 'techScore:desc', trend: 'trendScore:desc',
-  priceUp: 'lowestPriceUSD:asc', priceDown: 'lowestPriceUSD:desc',
-};
 
 async function apiGet(path) {
   const res = await fetch(`${API}${path}`);
@@ -35,23 +17,9 @@ async function apiGet(path) {
   return res.json();
 }
 
-// Direct (constrained) Typesense query — fallback only.
-async function tsSearch(params) {
-  if (!ALLOW_DIRECT_FALLBACK) throw new Error('proxy unavailable');
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(
-    `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`,
-    { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } },
-  );
-  if (!res.ok) throw new Error(`typesense ${res.status}`);
-  return res.json();
-}
-const tsHits = (r) => (r && r.hits ? r.hits.map((h) => h.document) : []);
-const tsLit = (v) => '`' + String(v).replace(/`/g, '') + '`';
-
-// A proxy/Typesense doc carries the full PocketBase record as a `_raw`
-// JSON string only on the single-product endpoint. List results ship
-// light fields alone — enough for grid cards, never the full spec blob.
+// A proxy doc carries the full PocketBase record as a `_raw` JSON string
+// only on the single-product endpoint. List endpoints ship light fields
+// alone — enough for grid cards, never the detailed spec blob.
 export function docToProduct(doc) {
   let base = {};
   if (doc && doc._raw) {
@@ -92,24 +60,7 @@ export async function getHomeFeed(prefCats = []) {
       categories: data.categories || [],
     };
   } catch {
-    // Direct fallback — proxy not deployed yet.
-    const base = { q: '*', query_by: 'name', include_fields: LIGHT_FIELDS, per_page: 16 };
-    const [trendR, scoreR, facetR] = await Promise.all([
-      tsSearch({ ...base, sort_by: 'trendScore:desc' }),
-      tsSearch({
-        ...base, sort_by: 'techScore:desc',
-        ...(cats.length ? { filter_by: `category:[${cats.map(tsLit).join(',')}]` } : {}),
-      }),
-      tsSearch({ q: '*', query_by: 'name', per_page: 1, facet_by: 'category', max_facet_values: 100 }),
-    ]);
-    const fresh = await tsSearch({ ...base, sort_by: 'techScore:desc', page: 2 }).catch(() => null);
-    const fc = (facetR.facet_counts || []).find((f) => f.field_name === 'category');
-    return {
-      forYou: tsHits(scoreR).map(docToProduct),
-      trending: tsHits(trendR).map(docToProduct),
-      newArrivals: fresh ? tsHits(fresh).map(docToProduct) : [],
-      categories: fc ? fc.counts : [],
-    };
+    return { forYou: [], trending: [], newArrivals: [], categories: [] };
   }
 }
 
@@ -117,16 +68,11 @@ export async function getHomeFeed(prefCats = []) {
 export async function searchProducts(query, limit = 40) {
   const q = (query || '').trim();
   if (!q) return [];
-  const perPage = Math.min(limit, 40);
   try {
-    const data = await apiGet(`/qts?q=${encodeURIComponent(q)}&per_page=${perPage}`);
+    const data = await apiGet(`/qts?q=${encodeURIComponent(q)}&per_page=${Math.min(limit, 40)}`);
     return (data.hits || []).map(docToProduct);
   } catch {
-    const r = await tsSearch({
-      q, query_by: 'name,brand,keySpecsText,category', query_by_weights: '5,3,1,2',
-      sort_by: '_text_match:desc,techScore:desc', per_page: perPage, include_fields: LIGHT_FIELDS,
-    });
-    return tsHits(r).map(docToProduct);
+    return [];
   }
 }
 
@@ -152,30 +98,7 @@ export async function getCategoryPage(opts = {}) {
       hits: (data.hits || []).map(docToProduct), facets: data.facets || [],
     };
   } catch {
-    const filters = [];
-    if (opts.category) filters.push(`category:=${tsLit(opts.category)}`);
-    if (opts.brands && opts.brands.length) filters.push(`brand:[${opts.brands.map(tsLit).join(',')}]`);
-    if (opts.segment) filters.push(`price_segment:=${tsLit(opts.segment)}`);
-    if (opts.tokens && opts.tokens.length) filters.push(`filterTokens:[${opts.tokens.map(tsLit).join(',')}]`);
-    if (opts.score === 'high') filters.push('techScore:>=80');
-    else if (opts.score === 'mid') filters.push('techScore:[60..79]');
-    else if (opts.score === 'low') filters.push('techScore:<60');
-    const isSearch = Boolean(opts.q);
-    const params = {
-      q: isSearch ? opts.q : '*',
-      query_by: isSearch ? 'name,brand,keySpecsText,category' : 'name',
-      per_page: perPage, page, include_fields: LIGHT_FIELDS,
-      sort_by: isSearch
-        ? `_text_match:desc,${SORT_MAP[opts.sort] || SORT_MAP.score}`
-        : (SORT_MAP[opts.sort] || SORT_MAP.score),
-    };
-    if (filters.length) params.filter_by = filters.join(' && ');
-    if (opts.facets) { params.facet_by = 'brand,price_segment,filterTokens'; params.max_facet_values = 200; }
-    const r = await tsSearch(params);
-    return {
-      found: r.found || 0, page,
-      hits: tsHits(r).map(docToProduct), facets: r.facet_counts || [],
-    };
+    return { found: 0, page, hits: [], facets: [] };
   }
 }
 
@@ -186,16 +109,7 @@ export async function getProduct(id) {
     const doc = await apiGet(`/qproduct?id=${encodeURIComponent(id)}`);
     return docToProduct(doc);
   } catch {
-    try {
-      const res = await fetch(
-        `${TS_URL}/collections/${TS_COLLECTION}/documents/${encodeURIComponent(id)}`,
-        { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } },
-      );
-      if (!res.ok) return null;
-      return docToProduct(await res.json());
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -208,15 +122,7 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
     const data = await apiGet(`/qsimilar?${p.toString()}`);
     return (data.hits || []).map(docToProduct).slice(0, limit);
   } catch {
-    try {
-      const r = await tsSearch({
-        q: '*', query_by: 'name', filter_by: `category:=${tsLit(category)}`,
-        sort_by: 'techScore:desc', per_page: 24, include_fields: LIGHT_FIELDS,
-      });
-      return tsHits(r).map(docToProduct).filter((p) => p.id !== excludeId).slice(0, limit);
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 

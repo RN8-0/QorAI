@@ -174,10 +174,10 @@ const STATIC_ROUTES = [
     },
   },
   {
-    dir: 'catalog', path: '/catalog', changefreq: 'daily', priority: '0.9',
+    dir: 'category', path: '/category', changefreq: 'daily', priority: '0.9',
     seo: {
-      title: 'Kataloğu Keşfet — Qor AI',
-      description: 'AI puanlı teknoloji ürünleri kataloğu. Kategori, marka ve özelliklere göre filtrele; akıllı telefon, laptop, GPU ve daha fazlasını karşılaştır.',
+      title: 'Kategoriler — Qor AI',
+      description: 'AI puanlı teknoloji ürünlerini kategoriye göre keşfet. Marka, fiyat ve özelliklere göre filtrele; akıllı telefon, laptop, GPU ve daha fazlasını karşılaştır.',
     },
   },
   {
