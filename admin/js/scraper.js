@@ -2448,6 +2448,78 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
     }
     freshItems.push(item);
   }
+
+  // SECOND-CHANCE VERIFICATION: the bulk preload (`_loadExistingSourceUrls`)
+  // can occasionally return an incomplete set when PocketBase paginates a
+  // large `getFullList` and a single page comes back short — the SDK then
+  // stops early and we miss thousands of records. The symptom we hit IRL:
+  // a category with 4061 products in PB only matched 2041, so the other
+  // ~2000 URLs were treated as "new" and re-fetched on every run.
+  //
+  // To make skip behaviour reliable regardless of preload completeness, we
+  // batch-verify the supposedly-fresh URLs directly against PB using an
+  // OR-filter. Anything PB returns is moved back into the skipped list.
+  // 50 URLs per request keeps the filter under PB's URL/length limits.
+  if (freshItems.length > 0) {
+    try {
+      const VERIFY_BATCH = 50;
+      let verifiedExtraSkips = 0;
+      for (let bi = 0; bi < freshItems.length && !scraperAbort; bi += VERIFY_BATCH) {
+        const slice = freshItems.slice(bi, bi + VERIFY_BATCH);
+        const orParts = [];
+        for (const item of slice) {
+          const norm = normalizeEpeyProductUrl(item.url) || normalizeScrapeUrlKey(item.url);
+          if (!norm) continue;
+          // Escape double-quotes and backslashes for the PB filter literal.
+          const safe = String(norm).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+          orParts.push(`sourceUrl="${safe}"`);
+        }
+        if (!orParts.length) continue;
+        try {
+          const found = await pbGetAll('products', {
+            filter: orParts.join(' || '),
+            sort: 'id',
+            fields: 'id,sourceUrl',
+            batch: VERIFY_BATCH,
+          });
+          if (!found.length) continue;
+          const foundKeys = new Set();
+          for (const d of found) {
+            const data = typeof d.data === 'function' ? d.data() : (d.data || d);
+            const raw = String(data?.sourceUrl || '').trim();
+            if (!raw) continue;
+            const k = normalizeScrapeUrlKey(raw);
+            if (k) foundKeys.add(k);
+          }
+          if (!foundKeys.size) continue;
+          // Move any item whose normalized URL appears in foundKeys to skipped.
+          const stillFresh = [];
+          for (const item of slice) {
+            const k = normalizeScrapeUrlKey(item.url);
+            if (k && foundKeys.has(k)) {
+              skippedExisting.push(item);
+              existingUrlKeys.add(k);
+              verifiedExtraSkips++;
+            } else {
+              stillFresh.push(item);
+            }
+          }
+          // Replace the slice in-place inside freshItems.
+          freshItems.splice(bi, slice.length, ...stillFresh);
+          // Adjust index because we shrunk the array by (slice.length - stillFresh.length).
+          bi -= (slice.length - stillFresh.length);
+        } catch (e) {
+          slog(`  (verify batch failed: ${e.message}) — skipping batch verification`, 'warn');
+        }
+      }
+      if (verifiedExtraSkips > 0) {
+        slog(`🔎 Verify pass caught ${verifiedExtraSkips} extra already-saved products the preload missed`, 'success');
+      }
+    } catch (e) {
+      slog(`  (URL verification pass failed: ${e.message})`, 'warn');
+    }
+  }
+
   urlItems = freshItems;
   const skippedCount = beforeCount - urlItems.length;
   if (skippedCount > 0) {
