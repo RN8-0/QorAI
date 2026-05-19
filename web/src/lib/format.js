@@ -62,6 +62,13 @@ export function formatCount(n) {
   return String(n || 0);
 }
 
+// Lowest tracked price (USD). Returns '' when unknown so cards can hide it.
+export function formatPrice(usd) {
+  const n = Number(usd);
+  if (!n || n <= 0) return '';
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
 const clamp = (n) => Math.max(6, Math.min(100, Math.round(n)));
 
 // Pulls the four headline specs (screen / RAM / storage / battery) from a

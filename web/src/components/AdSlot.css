@@ -1,0 +1,7 @@
+.adslot {
+  margin: 30px 0 0;
+  min-height: 90px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.adslot .adsbygoogle { display: block; width: 100%; }

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
-import { catMeta, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta, scoreClass, scoreLabel, keySpecChips, formatPrice, PLACEHOLDER_IMG } from '../lib/format';
 import { useT } from '../i18n/index.jsx';
 import './ProductCard.css';
 
 export default function ProductCard({ product: p }) {
   const t = useT();
   const meta = catMeta(p.category);
-  const chips = keySpecChips(p);
+  const chips = keySpecChips(p).slice(0, 4);
+  const price = formatPrice(p.lowestPriceUSD);
 
   return (
     <Link to={`/product/${p.id}`} className="pcard">
@@ -31,8 +32,8 @@ export default function ProductCard({ product: p }) {
             {chips.map((c) => (
               <div className="pcard-spec" key={c.labelKey}>
                 <span className="pcard-spec-label">{t(c.labelKey)}</span>
-                <span className="pcard-spec-val">{c.value}</span>
                 <span className="pcard-spec-bar"><i style={{ width: `${c.pct}%` }} /></span>
+                <span className="pcard-spec-val">{c.value}</span>
               </div>
             ))}
           </div>
@@ -40,7 +41,11 @@ export default function ProductCard({ product: p }) {
           <div className="pcard-cat-row">{meta.icon} {meta.label}</div>
         )}
 
-        <span className="pcard-go">{t('card.review')}</span>
+        <div className="pcard-foot">
+          {price ? <span className="pcard-price">{price}</span>
+                 : <span className="pcard-cat-tag">{meta.icon} {meta.label}</span>}
+          <span className="pcard-go">{t('card.review')}</span>
+        </div>
       </div>
     </Link>
   );
@@ -53,7 +58,8 @@ export function ProductCardSkeleton() {
       <div className="pcard-body">
         <div className="skel" style={{ height: 11, width: '35%' }} />
         <div className="skel" style={{ height: 15, width: '85%', marginTop: 8 }} />
-        <div className="skel" style={{ height: 52, width: '100%', marginTop: 10 }} />
+        <div className="skel" style={{ height: 56, width: '100%', marginTop: 10 }} />
+        <div className="skel" style={{ height: 14, width: '40%', marginTop: 'auto' }} />
       </div>
     </div>
   );

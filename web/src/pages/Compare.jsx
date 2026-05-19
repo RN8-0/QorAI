@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getProduct, loadAllProducts, searchProducts } from '../lib/typesense';
+import { getProduct, popularProducts, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonHistory } from '../lib/pbHistory';
 import { useT } from '../i18n/index.jsx';
@@ -74,11 +74,10 @@ export default function Compare() {
 
   useEffect(() => {
     let live = true;
-    loadAllProducts((batch) => {
-      if (live) { setPopular(batch.slice(0, 12)); setPopularLoading(false); }
-    })
-      .then((full) => { if (live) setPopular(full.slice(0, 12)); })
-      .catch(() => { if (live) setPopularLoading(false); });
+    popularProducts(12)
+      .then((list) => { if (live) setPopular(list); })
+      .catch(() => {})
+      .finally(() => { if (live) setPopularLoading(false); });
     return () => { live = false; };
   }, []);
 

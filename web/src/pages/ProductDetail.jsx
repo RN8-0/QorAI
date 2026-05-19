@@ -165,7 +165,7 @@ export default function ProductDetail() {
         if (!live) return;
         setP(prod); setActiveImg(0); setTab('specs');
         if (prod) {
-          pushRecent(prod.id);
+          pushRecent(prod);
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
         }
       })

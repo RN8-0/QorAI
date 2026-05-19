@@ -11,7 +11,7 @@
 }
 
 .pcard-img {
-  width: 96px; height: 116px; flex-shrink: 0;
+  width: 104px; height: 128px; flex-shrink: 0;
   background: #ffffff; border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
@@ -29,29 +29,37 @@
   overflow: hidden;
 }
 
-.pcard-specs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
-  margin-top: 9px;
+/* 4 headline specs as labelled mini bars beside the image */
+.pcard-specs { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; }
+.pcard-spec {
+  display: grid; grid-template-columns: 52px 1fr auto;
+  column-gap: 8px; align-items: center;
 }
-.pcard-spec { display: grid; grid-template-columns: auto 1fr; column-gap: 6px; align-items: baseline; }
-.pcard-spec-label { font-size: 10.5px; color: var(--text3); }
-.pcard-spec-val { font-size: 11.5px; font-weight: 700; color: var(--text); text-align: right; }
+.pcard-spec-label { font-size: 10px; color: var(--text3); white-space: nowrap; }
+.pcard-spec-val {
+  font-size: 11px; font-weight: 700; color: var(--text);
+  text-align: right; white-space: nowrap;
+}
 .pcard-spec-bar {
-  grid-column: 1 / -1; height: 3px; margin-top: 3px;
-  background: var(--bg4); border-radius: 999px; overflow: hidden;
+  height: 4px; background: var(--bg4); border-radius: 999px; overflow: hidden;
 }
 .pcard-spec-bar i { display: block; height: 100%; background: var(--brand-grad); border-radius: 999px; }
 
 .pcard-cat-row { font-size: 12px; color: var(--text2); margin-top: 9px; }
 
-.pcard-go {
+.pcard-foot {
   margin-top: auto; padding-top: 9px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.pcard-price { font-size: 14px; font-weight: 800; color: var(--text); }
+.pcard-cat-tag { font-size: 11.5px; color: var(--text3); }
+.pcard-go {
   font-size: 11.5px; font-weight: 700; color: var(--text3);
-  transition: color 0.13s;
+  transition: color 0.13s; white-space: nowrap;
 }
 .pcard:hover .pcard-go { color: var(--accent); }
 
 @media (max-width: 480px) {
-  .pcard-img { width: 84px; height: 104px; }
+  .pcard-img { width: 92px; height: 116px; }
   .pcard-name { font-size: 13px; }
 }
