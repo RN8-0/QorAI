@@ -34,7 +34,7 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState(params.get('cat') || 'all');
+  const [cat, setCat] = useState((params.get('cat') || 'all').toLowerCase());
   const [sort, setSort] = useState('score');
   const [score, setScore] = useState('all');
   const [brands, setBrands] = useState([]);   // multi-select

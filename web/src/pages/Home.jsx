@@ -183,11 +183,9 @@ export default function Home() {
     nav(`/product/${product.id}`);
   }
 
+  // Categories lead to the full filterable catalog, not a bare in-page grid.
   function pickCategory(cat) {
-    setQ('');
-    setActiveCat(cat);
-    setHomeFilters('', cat, false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    nav(`/catalog?cat=${encodeURIComponent(cat)}`);
   }
 
   function clearFilters() {
