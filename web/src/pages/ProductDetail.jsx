@@ -89,18 +89,6 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle) {
   return bricks;
 }
 
-function balanceSpecBricks(bricks) {
-  const columns = [[], []];
-  const weights = [0, 0];
-  bricks.forEach((brick) => {
-    const rows = Array.isArray(brick.rows) ? brick.rows : [];
-    const weight = 2 + rows.length;
-    const side = weights[0] <= weights[1] ? 0 : 1;
-    columns[side].push(brick);
-    weights[side] += weight;
-  });
-  return columns.filter((col) => col.length > 0);
-}
 
 // Builds title / description / Open Graph + Product & Breadcrumb JSON-LD.
 function buildProductSeo(p, t) {
@@ -228,7 +216,6 @@ export default function ProductDetail() {
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'));
-  const specColumns = balanceSpecBricks(bricks);
 
   return (
     <div className="pd">
@@ -342,11 +329,7 @@ export default function ProductDetail() {
               )}
               {bricks.length > 0 ? (
                 <div className="pd-bricks">
-                  {specColumns.map((col, colIndex) => (
-                    <div className="pd-brick-col" key={colIndex}>
-                      {col.map((b, i) => <SpecBrick key={`${colIndex}-${i}`} brick={b} />)}
-                    </div>
-                  ))}
+                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} />)}
                 </div>
               ) : (
                 !p.description && <div className="pd-note">{t('pd.noSpecs')}</div>

@@ -85,12 +85,14 @@
 
 /* ─── Spec bricks (admin-panel style) ────────────────────────── */
 /* JS-balanced columns keep long spec groups from leaving a dead side. */
-.pd-bricks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.pd-brick-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Spec sections flow into 2 balanced columns — the browser equalises
+   the column heights, so no column is left half-empty. */
+.pd-bricks { column-count: 2; column-gap: 16px; }
 .pd-brick {
   width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 12px; overflow: hidden;
+  break-inside: avoid; margin-bottom: 16px;
 }
 .pd-brick-head {
   padding: 9px 13px; font-size: 11.5px; font-weight: 800;
@@ -251,7 +253,7 @@
 .rv-reply-form .btn { padding: 8px 14px; font-size: 12.5px; }
 
 @media (max-width: 720px) {
-  .pd-bricks { grid-template-columns: 1fr; }
+  .pd-bricks { column-count: 1; }
 }
 @media (max-width: 560px) {
   .pd-pc { grid-template-columns: 1fr; }

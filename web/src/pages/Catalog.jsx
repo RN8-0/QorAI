@@ -11,6 +11,8 @@ import './Catalog.css';
 const SORTS = [
   { id: 'score', key: 'catalog.sortScore' },
   { id: 'name', key: 'catalog.sortName' },
+  { id: 'priceUp', key: 'catalog.sortPriceUp' },
+  { id: 'priceDown', key: 'catalog.sortPriceDown' },
 ];
 const SCORES = [
   { id: 'high', key: 'catalog.scoreHigh', test: (s) => s >= 80 },
@@ -18,6 +20,13 @@ const SCORES = [
   { id: 'low', key: 'catalog.scoreLow', test: (s) => s > 0 && s < 60 },
 ];
 const PAGE = 24;
+const BRANDS_COLLAPSED = 10;
+
+function prettify(s) {
+  return String(s || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export default function Catalog() {
   const t = useT();
@@ -28,7 +37,10 @@ export default function Catalog() {
   const [cat, setCat] = useState(params.get('cat') || 'all');
   const [sort, setSort] = useState('score');
   const [score, setScore] = useState('all');
-  const [brand, setBrand] = useState('all');
+  const [brands, setBrands] = useState([]);   // multi-select
+  const [segments, setSegments] = useState([]); // multi-select
+  const [brandQuery, setBrandQuery] = useState('');
+  const [brandsOpen, setBrandsOpen] = useState(false);
   const [shown, setShown] = useState(PAGE);
   const [q, setQ] = useState(params.get('q') || '');
   const [hits, setHits] = useState(null);
@@ -45,20 +57,26 @@ export default function Catalog() {
     return () => { live = false; };
   }, []);
 
+  // Keep q + cat in the URL (shareable / SEO-friendly category pages).
+  useEffect(() => {
+    const next = new URLSearchParams();
+    const term = q.trim();
+    if (term) next.set('q', term);
+    if (cat !== 'all') next.set('cat', cat);
+    setParams(next, { replace: true });
+  }, [q, cat]); // eslint-disable-line
+
   useEffect(() => {
     const term = q.trim();
-    const next = new URLSearchParams(params);
-    if (term) next.set('q', term); else next.delete('q');
-    setParams(next, { replace: true });
     if (!term) { setHits(null); setSearching(false); return; }
     setSearching(true);
     const tm = setTimeout(async () => {
-      try { setHits(await searchProducts(term, 200)); trackEvent('catalog_search', { query: term }); }
+      try { setHits(await searchProducts(term, 250)); trackEvent('catalog_search', { query: term }); }
       catch { setHits([]); }
       finally { setSearching(false); }
     }, 280);
     return () => clearTimeout(tm);
-  }, [q]); // eslint-disable-line
+  }, [q]);
 
   const categories = useMemo(() => {
     const c = {};
@@ -66,31 +84,64 @@ export default function Catalog() {
     return Object.entries(c).sort((a, b) => b[1] - a[1]);
   }, [all]);
 
-  const brands = useMemo(() => {
+  // Brand / segment facet counts respect the active category so the
+  // sidebar only offers brands that actually exist in the selection.
+  const scoped = useMemo(() => {
+    if (cat === 'all') return all;
+    return all.filter((p) => (p.category || '').toLowerCase() === cat);
+  }, [all, cat]);
+
+  const brandFacet = useMemo(() => {
     const c = {};
-    all.forEach((p) => { if (p.brand) c[p.brand] = (c[p.brand] || 0) + 1; });
-    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 14);
-  }, [all]);
+    scoped.forEach((p) => { if (p.brand) c[p.brand] = (c[p.brand] || 0) + 1; });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]);
+  }, [scoped]);
+
+  const segmentFacet = useMemo(() => {
+    const c = {};
+    scoped.forEach((p) => {
+      const s = p.price_segment;
+      if (s) c[s] = (c[s] || 0) + 1;
+    });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]);
+  }, [scoped]);
 
   const view = useMemo(() => {
     let v = q.trim() ? hits || [] : all;
     if (cat !== 'all') v = v.filter((p) => (p.category || '').toLowerCase() === cat);
-    if (brand !== 'all') v = v.filter((p) => p.brand === brand);
+    if (brands.length) v = v.filter((p) => brands.includes(p.brand));
+    if (segments.length) v = v.filter((p) => segments.includes(p.price_segment));
     if (score !== 'all') {
       const rule = SCORES.find((s) => s.id === score);
       if (rule) v = v.filter((p) => rule.test(Number(p.techScore) || 0));
     }
     v = [...v];
     if (sort === 'name') v.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    else if (sort === 'priceUp') v.sort((a, b) => (a.lowestPriceUSD || 1e12) - (b.lowestPriceUSD || 1e12));
+    else if (sort === 'priceDown') v.sort((a, b) => (b.lowestPriceUSD || 0) - (a.lowestPriceUSD || 0));
     else v.sort((a, b) => (b.techScore || 0) - (a.techScore || 0));
     return v;
-  }, [all, hits, cat, brand, score, q, sort]);
+  }, [all, hits, cat, brands, segments, score, q, sort]);
 
-  useEffect(() => { setShown(PAGE); }, [cat, brand, score, q, sort]);
+  useEffect(() => { setShown(PAGE); }, [cat, brands, segments, score, q, sort]);
+  // Drop brand/segment selections that no longer exist in the category.
+  useEffect(() => {
+    setBrands((b) => b.filter((x) => brandFacet.some(([n]) => n === x)));
+    setSegments((s) => s.filter((x) => segmentFacet.some(([n]) => n === x)));
+  }, [cat]); // eslint-disable-line
 
   const busy = q.trim() ? searching : loading;
-  const hasFilters = cat !== 'all' || brand !== 'all' || score !== 'all';
-  function clearFilters() { setCat('all'); setBrand('all'); setScore('all'); }
+  const hasFilters = cat !== 'all' || brands.length > 0 || segments.length > 0 || score !== 'all';
+  function clearFilters() {
+    setCat('all'); setBrands([]); setSegments([]); setScore('all'); setBrandQuery('');
+  }
+  const toggle = (list, setList, value) =>
+    setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
+
+  const filteredBrands = brandFacet.filter(
+    ([b]) => !brandQuery || b.toLowerCase().includes(brandQuery.toLowerCase()),
+  );
+  const visibleBrands = brandsOpen || brandQuery ? filteredBrands : filteredBrands.slice(0, BRANDS_COLLAPSED);
 
   const sidebar = (
     <aside className={'cat-side' + (drawer ? ' open' : '')}>
@@ -130,17 +181,43 @@ export default function Catalog() {
         ))}
       </div>
 
-      {brands.length > 1 && (
+      {segmentFacet.length > 1 && (
+        <div className="cat-fgroup">
+          <h4>{t('catalog.priceSegment')}</h4>
+          {segmentFacet.map(([s, n]) => (
+            <label key={s} className={'cat-check' + (segments.includes(s) ? ' on' : '')}>
+              <input type="checkbox" checked={segments.includes(s)}
+                onChange={() => toggle(segments, setSegments, s)} />
+              <span>{prettify(s)}</span>
+              <em>{n}</em>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {brandFacet.length > 1 && (
         <div className="cat-fgroup">
           <h4>{t('catalog.brand')}</h4>
-          <button className={'cat-fopt' + (brand === 'all' ? ' on' : '')} onClick={() => setBrand('all')}>
-            {t('catalog.all')}
-          </button>
-          {brands.map(([b, n]) => (
-            <button key={b} className={'cat-fopt' + (brand === b ? ' on' : '')} onClick={() => setBrand(b)}>
-              {b} <span>{n}</span>
-            </button>
+          {brandFacet.length > BRANDS_COLLAPSED && (
+            <input className="cat-brand-search" value={brandQuery}
+              onChange={(e) => setBrandQuery(e.target.value)}
+              placeholder={t('catalog.brandSearch')} />
+          )}
+          {visibleBrands.map(([b, n]) => (
+            <label key={b} className={'cat-check' + (brands.includes(b) ? ' on' : '')}>
+              <input type="checkbox" checked={brands.includes(b)}
+                onChange={() => toggle(brands, setBrands, b)} />
+              <span>{b}</span>
+              <em>{n}</em>
+            </label>
           ))}
+          {!brandQuery && filteredBrands.length > BRANDS_COLLAPSED && (
+            <button className="cat-brand-more" onClick={() => setBrandsOpen((o) => !o)}>
+              {brandsOpen
+                ? t('catalog.showLess')
+                : t('catalog.showAllBrands', { n: filteredBrands.length - BRANDS_COLLAPSED })}
+            </button>
+          )}
         </div>
       )}
     </aside>
@@ -171,6 +248,7 @@ export default function Catalog() {
           <div className="cat-toolbar">
             <button className="cat-filter-btn" onClick={() => setDrawer(true)}>
               ☰ {t('catalog.filters')}
+              {hasFilters && <i className="cat-filter-dot" />}
             </button>
             <span className="cat-count">
               {busy ? t('common.loading') : t('catalog.count', { n: view.length.toLocaleString() })}
@@ -183,6 +261,21 @@ export default function Catalog() {
               ))}
             </div>
           </div>
+
+          {(brands.length > 0 || segments.length > 0) && (
+            <div className="cat-chips">
+              {brands.map((b) => (
+                <button key={`b-${b}`} className="cat-chip" onClick={() => toggle(brands, setBrands, b)}>
+                  {b} <span>✕</span>
+                </button>
+              ))}
+              {segments.map((s) => (
+                <button key={`s-${s}`} className="cat-chip" onClick={() => toggle(segments, setSegments, s)}>
+                  {prettify(s)} <span>✕</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="cat-grid">
             {busy
