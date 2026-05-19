@@ -24,20 +24,28 @@ export async function signIn(email, password) {
   return pb.collection('users').authWithPassword(email, password);
 }
 
-export async function register(email, password, name = '') {
-  const displayName = name || email.split('@')[0];
-  await pb.collection('users').create({
+// Mirrors the mobile app's signUpWithEmail body exactly (auth_repo.dart):
+// email, password, passwordConfirm, name + optional birthDate / gender.
+export async function register({ email, password, name, birthDate, gender }) {
+  const body = {
     email,
     password,
     passwordConfirm: password,
-    name: displayName,
-    displayName,
-    emailVisibility: true,
-  });
+    name: name || email.split('@')[0],
+  };
+  if (birthDate) body.birthDate = birthDate;
+  if (gender) body.gender = gender;
+  await pb.collection('users').create(body);
   const auth = await pb.collection('users').authWithPassword(email, password);
   // Fire off the verification email — never block sign-in if it fails.
   try { await pb.collection('users').requestVerification(email); } catch { /* noop */ }
   return auth;
+}
+
+// Google sign-in via PocketBase's OAuth2 (provider must be enabled in the
+// PocketBase admin → users collection → OAuth2 settings).
+export async function signInWithGoogle() {
+  return pb.collection('users').authWithOAuth2({ provider: 'google' });
 }
 
 export function signOut() {
@@ -84,16 +92,26 @@ export async function requestAccountDeletion() {
   return pb.send('/api/users/request-delete', { method: 'POST' });
 }
 
-// Returns an i18n string key for the given auth error.
+// Returns an i18n string key for the given auth error. Inspects both the
+// top-level message and PocketBase's per-field validation errors.
 export function authErrorKey(error) {
-  const msg = (error?.message || error?.data?.message || '').toLowerCase();
+  const fields = error?.data?.data || error?.response?.data || {};
+  const fieldText = Object.entries(fields)
+    .map(([k, v]) => `${k} ${(v && v.code) || ''} ${(v && v.message) || ''}`)
+    .join(' ');
+  const msg = `${error?.message || ''} ${error?.data?.message || ''} ${fieldText}`.toLowerCase();
+
   if (msg.includes('invalid credentials') || msg.includes('failed to authenticate'))
     return 'auth.errCreds';
-  if (msg.includes('already exists') || msg.includes('unique') || msg.includes('validation_not_unique'))
+  if (msg.includes('not unique') || msg.includes('already exists') || msg.includes('validation_not_unique'))
     return 'auth.errExists';
+  if (msg.includes('email') && (msg.includes('invalid') || msg.includes('valid')))
+    return 'auth.errEmail';
   if (msg.includes('password')) return 'auth.errPassword';
-  if (msg.includes('email')) return 'auth.errEmail';
-  if (msg.includes('failed to fetch') || msg.includes('network')) return 'auth.errNetwork';
+  if (msg.includes('validation_required') || msg.includes('cannot be blank'))
+    return 'auth.errFields';
+  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('aborted'))
+    return 'auth.errNetwork';
   return 'auth.errGeneric';
 }
 
