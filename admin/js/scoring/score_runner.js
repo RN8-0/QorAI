@@ -288,7 +288,13 @@
   const _autoQueue = new Set();
   let _autoTimer = null;
   async function _flushAutoScoreQueue() {
-    if (_running) {
+    // Defer when:
+    //   - a manual score run is already in flight (`_running`)
+    //   - OR a bulk scrape is active — running a 4000-product score
+    //     calculation in parallel with the scraper was eating CPU + PB
+    //     bandwidth and froze the admin UI for 2-3 minutes at a time.
+    //     The queue is preserved; we'll flush once the scrape ends.
+    if (_running || global.qoraiScrapeActive) {
       _autoTimer = setTimeout(_flushAutoScoreQueue, 15000);
       return;
     }
@@ -302,12 +308,23 @@
   }
   global.qoraiQueueScoreUpdate = function (category) {
     if (!category) return;
+    if (global.qoraiAutoScoreSuppressed) return;
     _autoQueue.add(String(category));
     clearTimeout(_autoTimer);
-    _autoTimer = setTimeout(_flushAutoScoreQueue, 15000);
+    // Use a longer debounce while a scrape is active so we don't burn CPU
+    // re-arming the timer for every saved product. 30s is plenty: the final
+    // flush will catch the whole batch once the scrape finishes.
+    const debounce = global.qoraiScrapeActive ? 30000 : 15000;
+    _autoTimer = setTimeout(_flushAutoScoreQueue, debounce);
   };
   global.addEventListener?.('qorai:product-saved', ev => {
     const cat = ev?.detail?.product?.category || '';
     global.qoraiQueueScoreUpdate(cat);
   });
+  global.qoraiCancelQueuedScoreUpdates = function () {
+    _autoQueue.clear();
+    clearTimeout(_autoTimer);
+    _autoTimer = null;
+    if (_running) stopScoreEngine();
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

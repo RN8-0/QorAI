@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260519v12-collect-first-skip-verify';
+const SCRAPER_BUILD = '20260519v14-parallel-detail-stop-score';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -22,12 +22,44 @@ const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // keep it off for bulk imports unless a full image sweep is explicitly needed.
 const EPEY_FETCH_GALLERY_IMAGES = false;
 const SCRAPER_LOG_MAX_LINES = 900;
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
+const EPEY_DETAIL_CONCURRENCY_MAX = 16;
 
 let scraperRunning = false;
 let scraperAbort = false;
 let _scrapeStartTime = null;
 let _scrapeProductCount = 0;
 let _proxyPollTimer = null;
+
+// Global flag (`window.qoraiScrapeActive`) is checked by Score Engine and the
+// products-list event listener to pause expensive work during a scrape.
+// They re-engage automatically when finishScraping() clears the flag.
+if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
+
+function getEpeyDetailConcurrency() {
+  const raw = parseInt(document.getElementById('scrapeConcurrency')?.value || '', 10);
+  const n = Number.isFinite(raw) && raw > 0 ? raw : EPEY_DETAIL_CONCURRENCY_DEFAULT;
+  return Math.max(1, Math.min(EPEY_DETAIL_CONCURRENCY_MAX, n));
+}
+
+// In-flight AbortControllers — flipped by stopScraping() so the Stop button
+// drops the current proxy fetches immediately instead of waiting up to 120s
+// for the per-request timeout.
+const _scrapeAbortControllers = new Set();
+function _newScrapeAbortController() {
+  const ac = new AbortController();
+  _scrapeAbortControllers.add(ac);
+  return ac;
+}
+function _disposeScrapeAbortController(ac) {
+  if (ac) _scrapeAbortControllers.delete(ac);
+}
+function _abortAllScrapeControllers() {
+  for (const ac of _scrapeAbortControllers) {
+    try { ac.abort(); } catch (_) {}
+  }
+  _scrapeAbortControllers.clear();
+}
 
 // Pending untranslated Turkish terms (shared with dictionary.js collectUntranslatedTerms)
 const _pendingAITerms = new Set();
@@ -45,25 +77,59 @@ function escHtml(value) {
 //  1. LOGGING & PROGRESS
 // ═══════════════════════════════════════
 
-function slog(msg, type = 'info') {
+// Batched log writer — `slog` used to do a synchronous DOM append + forced
+// reflow (`scrollTop = scrollHeight`) on every call. Bursts of >1000 calls
+// (e.g. the 2134 skipped-product lines) froze the main thread for many
+// seconds and made the Stop button unresponsive. We now buffer entries and
+// flush them inside a single requestAnimationFrame, building one
+// DocumentFragment so the browser does at most ONE layout per frame.
+const _SLOG_COLORS = {
+  info: 'var(--text2)', success: 'var(--green)',
+  error: 'var(--red)', warn: 'var(--amber)',
+};
+const _SLOG_ICONS = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
+const _slogBuffer = [];
+let _slogFlushScheduled = false;
+function _flushSlog() {
+  _slogFlushScheduled = false;
   const el = document.getElementById('scraperLog');
-  if (!el) { console.log(`[scraper:${type}]`, msg); return; }
-  const ts = new Date().toLocaleTimeString();
-  const colors = {
-    info: 'var(--text2)', success: 'var(--green)',
-    error: 'var(--red)', warn: 'var(--amber)'
-  };
-  const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
-  const line = document.createElement('div');
-  line.className = 'slog-line';
-  line.style.color = colors[type] || colors.info;
-  line.textContent = `[${ts}] ${icons[type] || ''} ${msg}`;
-  el.appendChild(line);
-  while (el.children.length > SCRAPER_LOG_MAX_LINES) el.removeChild(el.firstElementChild);
+  if (!el || !_slogBuffer.length) { _slogBuffer.length = 0; return; }
+  const frag = document.createDocumentFragment();
+  // Drain the buffer in one shot (the array may have grown while we waited
+  // for rAF — drain whatever is there, leave new arrivals for the next tick).
+  const drained = _slogBuffer.splice(0, _slogBuffer.length);
+  for (const entry of drained) {
+    const line = document.createElement('div');
+    line.className = 'slog-line';
+    line.style.color = _SLOG_COLORS[entry.type] || _SLOG_COLORS.info;
+    line.textContent = `[${entry.ts}] ${_SLOG_ICONS[entry.type] || ''} ${entry.msg}`;
+    frag.appendChild(line);
+  }
+  el.appendChild(frag);
+  // Trim from the top in a single pass instead of one removeChild per line.
+  const over = el.children.length - SCRAPER_LOG_MAX_LINES;
+  if (over > 0) {
+    for (let i = 0; i < over; i++) {
+      const first = el.firstElementChild;
+      if (!first) break;
+      el.removeChild(first);
+    }
+  }
+  // One reflow per frame is plenty.
   el.scrollTop = el.scrollHeight;
+}
+function slog(msg, type = 'info') {
+  const el = typeof document !== 'undefined' ? document.getElementById('scraperLog') : null;
+  if (!el) { console.log(`[scraper:${type}]`, msg); return; }
+  _slogBuffer.push({ msg: String(msg), type, ts: new Date().toLocaleTimeString() });
+  if (!_slogFlushScheduled) {
+    _slogFlushScheduled = true;
+    (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (cb) => setTimeout(cb, 16))(_flushSlog);
+  }
 }
 
 function clearScraperLog() {
+  _slogBuffer.length = 0;
   const el = document.getElementById('scraperLog');
   if (el) el.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
   const pg = document.getElementById('scraperProgress');
@@ -91,8 +157,25 @@ function updateProgress(current, total, label) {
 //  2. HELPERS
 // ═══════════════════════════════════════
 
+// Interruptible sleep — wakes immediately on scraperAbort so the Stop button
+// no longer has to wait through a 15s "proactive cooldown" before returning.
+// Falls back to plain setTimeout when the scraper is not running.
 function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise(resolve => {
+    if (ms <= 0) { resolve(); return; }
+    if (!scraperRunning) { setTimeout(resolve, ms); return; }
+    let done = false;
+    const POLL = 100;
+    const deadline = Date.now() + ms;
+    const tick = () => {
+      if (done) return;
+      if (scraperAbort) { done = true; resolve(); return; }
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) { done = true; resolve(); return; }
+      setTimeout(tick, Math.min(POLL, remaining));
+    };
+    tick();
+  });
 }
 
 function parseHTML(html) {
@@ -339,25 +422,36 @@ function ensureProxyPolling() {
 async function proxyFetch(url, retries = 3, referer = '') {
   const refQuery = referer ? `&referer=${encodeURIComponent(referer)}` : '';
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (scraperAbort) throw new Error('aborted');
+    // Combine the per-request timeout with the user-controlled abort signal so
+    // pressing Stop tears down the in-flight fetch instead of waiting 120s.
+    const ac = _newScrapeAbortController();
+    const timeoutId = setTimeout(() => { try { ac.abort(); } catch (_) {} }, 120000);
     try {
       const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}${refQuery}`, {
-        // 120s: covers proxy 45s nav + 15s challenge wait + one internal fresh-page retry
-        signal: AbortSignal.timeout(120000)
+        signal: ac.signal,
       });
       if (res.status === 429) {
         const delay = Math.min(15000 * Math.pow(2, attempt), 120000) + Math.random() * 5000;
         slog(`Rate limited, waiting ${(delay / 1000).toFixed(0)}s...`, 'warn');
         await sleep(delay);
+        if (scraperAbort) throw new Error('aborted');
         continue;
       }
       if (res.status === 404 || res.status === 410) return null;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.text();
     } catch (e) {
+      // If the user stopped the scrape, propagate immediately — no retry,
+      // no backoff, no further logs that the user has to wait through.
+      if (scraperAbort || e.name === 'AbortError') throw new Error('aborted');
       if (attempt === retries) throw e;
       const delay = Math.min(5000 * Math.pow(2, attempt), 60000) + Math.random() * 3000;
       slog(`Retry ${attempt + 1}/${retries}: ${e.message}, waiting ${(delay / 1000).toFixed(0)}s...`, 'warn');
       await sleep(delay);
+    } finally {
+      clearTimeout(timeoutId);
+      _disposeScrapeAbortController(ac);
     }
   }
 }
@@ -2327,7 +2421,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
 }
 
 // ═══════════════════════════════════════
-//  15. SEQUENTIAL SCRAPING (NO parallel / NO Promise.all)
+//  15. BULK DETAIL SCRAPING (parallel workers + checkpoint resume)
 // ═══════════════════════════════════════
 
 // ── Checkpoint helpers (Resume after interruption) ──
@@ -2370,12 +2464,15 @@ async function resumeBulkScrape() {
   if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
   if (!(await checkProxy())) { toast('Önce proxy başlat', 'e'); return; }
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
+  const concurrency = getEpeyDetailConcurrency();
   scraperRunning = true; scraperAbort = false;
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
+  if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = false;
   const btn = document.getElementById('btnBulkScrape'); if (btn) btn.style.display = 'none';
   const stp = document.getElementById('btnStopScrape'); if (stp) stp.style.display = '';
   clearScraperLog();
   slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (category: ${cp.categoryId})`, 'info');
-  const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay);
+  const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay, concurrency);
   slog(`═══ Resume done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
   _clearCheckpoint();
   finishScraping();
@@ -2408,7 +2505,7 @@ window.updateResumeUI = updateResumeUI;
 // bulk scrape can skip it. This makes resume "free": even after a PC restart
 // the next run skips everything already saved and continues with new URLs.
 
-async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
+async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrencyArg = 0) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
   const isBrandSearch = !String(categoryId || '').trim();
   let errorStreak = 0;
@@ -2541,10 +2638,28 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   urlItems = freshItems;
   const skippedCount = beforeCount - urlItems.length;
   if (skippedCount > 0) {
-    skippedExisting.forEach((item, idx) => {
+    // Log only a small head+tail sample of skipped slugs — the previous code
+    // appended ALL skipped lines to the DOM synchronously, which froze the
+    // main thread for several seconds on big categories (2134 lines = ~3s
+    // of layout work + 2134 reflows). The user still has the full list in
+    // PocketBase; the log just needs to show that skipping happened.
+    const SAMPLE = 5;
+    const head = skippedExisting.slice(0, SAMPLE);
+    const tail = skippedExisting.slice(-SAMPLE);
+    head.forEach((item, idx) => {
       const slug = slugFromUrl(item.url) || normalizeScrapeUrlKey(item.url);
-      slog(`  ⏭ Skipped (already saved) [${idx + 1}/${skippedCount}]: ${slug}`, 'warn');
+      slog(`  ⏭ Skipped [${idx + 1}/${skippedCount}]: ${slug}`, 'warn');
     });
+    if (skippedCount > SAMPLE * 2) {
+      slog(`  ⏭ … (${skippedCount - SAMPLE * 2} ürün daha) …`, 'warn');
+    }
+    if (skippedCount > SAMPLE) {
+      tail.forEach((item, idx) => {
+        const slug = slugFromUrl(item.url) || normalizeScrapeUrlKey(item.url);
+        const realIdx = skippedCount - tail.length + idx + 1;
+        slog(`  ⏭ Skipped [${realIdx}/${skippedCount}]: ${slug}`, 'warn');
+      });
+    }
     slog(`⏭  Skipped ${skippedCount} already-saved products → ${urlItems.length} new to scrape`, 'success');
     results.skipped += skippedCount;
   } else {
@@ -2558,127 +2673,45 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
 
-  // PRE-FETCH OVERLAP: while product i is being parsed + persisted to PB,
-  // we fetch product i+1's HTML in the background so the next iteration
-  // does not pay the proxy round-trip cost again. Translation is no longer
-  // in this loop (see Dictionary → "Translate Category"), so this overlap
-  // mostly hides the PB write + parse cost (~200-400ms).
-  let nextHtmlPromise = null;
-  const prefetchNext = (idx) => {
-    if (idx >= urlItems.length || scraperAbort) return null;
-    return proxyFetch(urlItems[idx].url).catch(err => {
-      // Keep the rejection so the consumer can react; we don't want to lose it.
-      return { __error: err };
-    });
-  };
+  const concurrency = Math.max(1, Math.min(EPEY_DETAIL_CONCURRENCY_MAX, parseInt(concurrencyArg, 10) || getEpeyDetailConcurrency()));
+  let cursor = 0;
+  let completed = 0;
+  let lastSummary = 0;
+  slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${Math.min(delayMs || 0, 250)}ms/işçi`, 'info');
 
-  for (let i = 0; i < urlItems.length && !scraperAbort; i++) {
-    const item = urlItems[i];
-    _scrapeProductCount++;
-    const productNum = _scrapeProductCount;
+  const scrapeOne = async (item, index) => {
+    const productNum = index + 1;
     const slug = slugFromUrl(item.url);
-    updateProgress(productNum, urlItems.length, 'Products');
-
-    // Apply user delay BEFORE each fetch (except the very first).
-    // If we already have a prefetched HTML in flight we keep the delay
-    // shorter — the browser has been working in the background.
-    if (i > 0 && !nextHtmlPromise) {
-      const recentSlice = recent.slice(-20);
-      const okCount = recentSlice.filter(x => x === 'ok').length;
-      const successRate = recentSlice.length ? okCount / recentSlice.length : 1;
-      const adaptiveDelay = successRate < 0.6 ? delayMs * 2 : delayMs;
-      await sleep(adaptiveDelay);
-    } else if (i > 0) {
-      // Light delay even with prefetch to be polite to Cloudflare
-      await sleep(Math.min(delayMs, 500));
-    }
-
+    if (scraperAbort) return;
     try {
       slog(`[${productNum}/${urlItems.length}] ${slug}`);
-      // Take prefetched HTML if available, otherwise fetch now
-      let html;
-      if (nextHtmlPromise) {
-        const res = await nextHtmlPromise;
-        nextHtmlPromise = null;
-        if (res && res.__error) throw res.__error;
-        html = res;
-      } else {
-        html = await proxyFetch(item.url);
-      }
+      const html = await proxyFetch(item.url, 1);
       if (!html) {
         slog(`  → 404/gone: ${slug}`, 'warn');
         results.skipped++;
-        nextHtmlPromise = prefetchNext(i + 1);
-        continue;
+        return;
       }
 
       if (isChallengePage(html)) {
         challengeStreak++;
         recent.push('cf');
-        slog(`  → Challenge page: ${slug} (streak ${challengeStreak})`, 'warn');
-
-        // Hard abort: rotating the session has stopped helping, the proxy or
-        // upstream IP pool is fully burned. Checkpoint so the user can
-        // Resume later with a fresh proxy restart.
-        if (challengeStreak >= _CF_HARD_ABORT_STREAK) {
-          slog(`🛑 ${_CF_HARD_ABORT_STREAK} ardışık Cloudflare bloğu. Proxy/IP havuzu yandı. Checkpoint kaydedildi — proxy'i yeniden başlatıp Resume kullan.`, 'error');
-          _saveCheckpoint(urlItems, i, categoryId, results);
-          scraperAbort = true;
-          break;
-        }
-
-        // Recovery flow: rotate browser fingerprint, wait briefly for the
-        // edge to "forget" us, then re-attempt the SAME URL once. Only count
-        // the product as skipped if even the post-reset retry fails — this
-        // keeps us from leaking the entire CF-streak window into the
-        // skipped list (which previously caused 20+ products to be silently
-        // dropped while the scraper looked busy).
-        if (challengeStreak >= _CF_STREAK_BEFORE_RESET && cfRetryUrl !== item.url) {
-          await resetProxySessionShared(`${challengeStreak} ardışık CF`);
-          productsSinceReset = 0;
-          slog(`❄️ Recovery cooldown ${(_CF_RECOVERY_MS / 1000).toFixed(0)}s — aynı ürün tekrar denenecek…`, 'info');
-          await sleep(_CF_RECOVERY_MS);
-          // Drop any in-flight prefetch — its session is the old, burned one.
-          nextHtmlPromise = null;
-          cfRetryUrl = item.url;
-          i--; // re-iterate the same product index
-          _scrapeProductCount--; // un-count the failed attempt
-          continue;
-        }
-
         results.skipped++;
-        cfRetryUrl = null;
-        nextHtmlPromise = prefetchNext(i + 1);
-        continue;
+        slog(`  → Challenge page: ${slug} (streak ${challengeStreak})`, 'warn');
+        if (challengeStreak >= _CF_STREAK_BEFORE_RESET) {
+          slog(`🛑 ${challengeStreak} ardışık challenge. Paralel çekim durduruldu; proxy'i yenileyip Resume kullan.`, 'error');
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+          scraperAbort = true;
+          _abortAllScrapeControllers();
+        }
+        return;
       }
       challengeStreak = 0;
-      cfRetryUrl = null;
-      productsSinceReset++;
-
-      // Proactive rotation mirrors Phase-1's "every N pages" rule. Doing it
-      // BEFORE Cloudflare retaliates is far cheaper than the recovery path
-      // above (no wasted product attempts).
-      if (productsSinceReset >= _PROACTIVE_RESET_EVERY) {
-        productsSinceReset = 0;
-        await resetProxySessionShared(`proactive after ${_PROACTIVE_RESET_EVERY} products`);
-        slog(`❄️ Proactive cooldown ${(_PROACTIVE_COOLDOWN_MS / 1000).toFixed(0)}s…`, 'info');
-        await sleep(_PROACTIVE_COOLDOWN_MS);
-        nextHtmlPromise = null;
-      }
-
-      // ── Kick off prefetch of the NEXT product's HTML NOW, so it downloads
-      // in parallel with this product's gallery fetch + parse + PB save.
-      // Translation is intentionally DECOUPLED from the scrape loop — products
-      // are persisted in the source language, and the admin runs the
-      // Dictionary → "Translate Category" action when ready. This keeps the
-      // scrape at network-bound speed (~1-2s/product). ──
-      nextHtmlPromise = prefetchNext(i + 1);
 
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
         slog(`  → Skipped (no data): ${slug}`, 'warn');
         results.skipped++;
-        continue;
+        return;
       }
 
       const clean = prepareProductPayload(product);
@@ -2707,8 +2740,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         errorStreak = 0;
         recent.push('ok');
         slog(`  ↻ Güncellendi (Epey verisi + Icecat affiliate korundu): ${product.name}`, 'success');
-        if ((results.added + results.updated) % 25 === 0) _saveCheckpoint(urlItems, i + 1, categoryId, results);
-        continue;
+        if ((results.added + results.updated) % 50 === 0) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+        return;
       }
 
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
@@ -2718,11 +2751,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       recent.push('ok');
       slog(`  → Eklendi: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'success');
 
-      // Adaptive checkpoint every 25 products
-      if (results.added > 0 && results.added % 25 === 0) {
-        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+      // Adaptive checkpoint every 50 saved products. In parallel mode the
+      // cursor may be ahead of completed workers; durable skip-existing makes
+      // Resume safe even if a few in-flight URLs are retried later.
+      if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
       }
     } catch (e) {
+      if (scraperAbort || e.message === 'aborted') return;
       results.errors++;
       errorStreak++;
       recent.push('err');
@@ -2735,18 +2771,39 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       // HARD ABORT: too many consecutive errors → likely IP-banned / browser dead
       if (errorStreak >= _MAX_CONSEC_ERRORS) {
         slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık hata. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
-        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
         scraperAbort = true;
-        break;
+        _abortAllScrapeControllers();
+        return;
       }
 
       if (errorStreak >= 3) {
-        const backoff = Math.min(10000 * Math.pow(2, errorStreak - 3), 120000);
+        const backoff = Math.min(2000 * Math.pow(2, errorStreak - 3), 15000);
         slog(`Error streak (${errorStreak}), backing off ${(backoff / 1000).toFixed(0)}s...`, 'warn');
         await sleep(backoff);
       }
     }
-  }
+  };
+
+  const worker = async () => {
+    while (!scraperAbort) {
+      const index = cursor++;
+      if (index >= urlItems.length) return;
+      await scrapeOne(urlItems[index], index);
+      completed++;
+      _scrapeProductCount = completed;
+      updateProgress(completed, urlItems.length, 'Products');
+      if (completed - lastSummary >= 100 || completed === urlItems.length) {
+        lastSummary = completed;
+        slog(`  ↳ progress ${completed}/${urlItems.length} · added ${results.added} · updated ${results.updated} · skipped ${results.skipped} · errors ${results.errors}`, 'info');
+      }
+      if (delayMs > 0 && !scraperAbort) await sleep(Math.min(delayMs, 250));
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
+  await Promise.all(workers);
+  if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
 
   // Final checkpoint clear (success path)
   if (!scraperAbort) _clearCheckpoint();
@@ -2842,6 +2899,7 @@ async function startBulkScrape() {
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
 
   scraperRunning = true; scraperAbort = false;
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
 
@@ -3107,12 +3165,24 @@ async function startScoreUpdate() {
 
 function stopScraping() {
   scraperAbort = true;
-  slog('Stopping... (will finish current requests)', 'warn');
+  if (typeof window !== 'undefined') {
+    window.qoraiAutoScoreSuppressed = true;
+    try { window.qoraiCancelQueuedScoreUpdates?.(); } catch (_) {}
+    try { window.stopScoreEngine?.(); } catch (_) {}
+  }
+  // Abort every in-flight proxy fetch immediately. Without this the user had
+  // to wait for the 120s per-request timeout — Stop felt unresponsive.
+  _abortAllScrapeControllers();
+  slog('Stopping... (aborting in-flight scrape + score queue)', 'warn');
 }
 
 function finishScraping() {
   scraperRunning = false;
   scraperAbort = false;
+  // Clear the global gate so the Score Engine and product-list listener
+  // resume their normal behaviour now that the scrape is done.
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
+  _abortAllScrapeControllers();
   _scrapeStartTime = null;
   _scrapeProductCount = 0;
 
@@ -3884,8 +3954,11 @@ async function startBulkScrape() {
   if (!categoryId) { toast('Bir kategori seç', 'w'); return; }
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
+  const concurrency = getEpeyDetailConcurrency();
 
   scraperRunning = true; scraperAbort = false;
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
+  if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = false;
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
   clearScraperLog();
@@ -3973,7 +4046,7 @@ async function startBulkScrape() {
       for (let ci = 0; ci < collected.length && !scraperAbort; ci++) {
         const { cat, items } = collected[ci];
         slog(`\n━━━ [Çekme ${ci + 1}/${collected.length}] ${cat.name || cat.id} (${cat.id}) — ${items.length} URL ━━━`, 'info');
-        const res = await sequentialScrape(items, cat.id, delay);
+        const res = await sequentialScrape(items, cat.id, delay, concurrency);
         totals.added += res.added || 0;
         totals.updated += res.updated || 0;
         totals.skipped += res.skipped || 0;
@@ -3996,7 +4069,7 @@ async function startBulkScrape() {
       finishScraping();
       return;
     }
-    const results = await sequentialScrape(urlItems.slice(0, maxProducts), categoryId, delay);
+    const results = await sequentialScrape(urlItems.slice(0, maxProducts), categoryId, delay, concurrency);
     slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {

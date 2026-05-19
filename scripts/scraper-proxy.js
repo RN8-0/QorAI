@@ -8,7 +8,7 @@
  * 1. STRICT selectors for category links — ONLY scrapes links inside the
  *    main product listing container (#productlist / .productlist).
  *    Sidebar, carousel, "Top-10", "Popular" links are NEVER collected.
- * 2. SEQUENTIAL product scraping — no Promise.all, no parallel channels.
+ * 2. Parallel-friendly product detail proxy with plain HTTPS fast path.
  *    Products are processed one-by-one with configurable delays.
  *
  * Usage:
@@ -779,6 +779,38 @@ async function fetchWithPuppeteer(url, opts = {}) {
   }
 }
 
+async function fetchWithBrowserFetch(url) {
+  await withBrowserLock(async () => {
+    const page = await getPage();
+    let onEpey = false;
+    try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
+    if (!onEpey) await fetchWithPuppeteer('https://www.epey.com/');
+  });
+  const page = activePage;
+  if (!page || page.isClosed()) return { html: '', status: 0, isChallenge: false };
+  requestCount++;
+  const result = await page.evaluate(async (target) => {
+    try {
+      const r = await fetch(target, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+      });
+      return { html: await r.text(), status: r.status };
+    } catch (e) {
+      return { html: '', status: 0, error: e.message };
+    }
+  }, url);
+  const html = result?.html || '';
+  return {
+    html,
+    status: result?.status || 0,
+    isChallenge: _isChallengeContent(html),
+  };
+}
+
 function setCORSHeaders(res, origin) {
   const isLocal = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin || '');
   const allowed = !origin || origin === 'null' || isLocal || ALLOWED_ORIGINS.includes(origin)
@@ -1229,7 +1261,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.0-epey-ajax-31',
+      version: '4.3.2-browser-fetch-parallel',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1531,6 +1563,29 @@ const server = http.createServer(async (req, res) => {
 
   try {
     console.log(`  [${requestCount + 1}] → ${targetUrl}`);
+    // Fast path: product/detail HTML on Epey is usually reachable with a
+    // normal browser-like HTTPS request. This path is NOT browser-locked, so
+    // the admin can fetch many product detail pages in parallel. If Epey ever
+    // returns a real challenge/403/empty body, we fall back to Puppeteer below.
+    const fast = await plainFetch(targetUrl, 4, referer);
+    if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeContent(fast.html)) {
+      requestCount++;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Status-Code', String(fast.status || 200));
+      res.setHeader('X-Fetch-Engine', 'plain');
+      res.writeHead(200);
+      res.end(fast.html);
+      return;
+    }
+    const browserFetch = await fetchWithBrowserFetch(targetUrl);
+    if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Status-Code', String(browserFetch.status || 200));
+      res.setHeader('X-Fetch-Engine', 'browser-fetch');
+      res.writeHead(200);
+      res.end(browserFetch.html);
+      return;
+    }
     // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
     // (GET or POST) to epey.com is always answered with a 403 challenge — only
     // the real browser gets through. Everything therefore goes via Puppeteer.
@@ -1545,6 +1600,7 @@ const server = http.createServer(async (req, res) => {
     }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Status-Code', String(status));
+    res.setHeader('X-Fetch-Engine', 'puppeteer');
     res.writeHead(200);
     res.end(html);
   } catch (err) {
@@ -1563,11 +1619,11 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.2 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);
-  console.log(`  🐢 SEQUENTIAL scraping — parallel disabled`);
+  console.log(`  ⚡ Product details: plain HTTPS fast path + Puppeteer fallback`);
 
   // Probe FlareSolverr first — if it's running we'll route through it.
   console.log(`  🔍 Probing FlareSolverr at ${FLARESOLVERR_URL}…`);

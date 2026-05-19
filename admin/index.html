@@ -460,9 +460,13 @@
                 <label>Delay (ms)</label>
                 <input class="input" type="number" id="scrapeDelay" value="600" min="0" step="100">
               </div>
+              <div class="form-field">
+                <label>Paralel Detay</label>
+                <input class="input" type="number" id="scrapeConcurrency" value="8" min="1" max="16" step="1">
+              </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır.
+              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır. Detay çekimi paralel çalışır.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
