@@ -18,6 +18,12 @@ const TOOLS = [
   { to: '/quiz', emoji: '🎯', t: 'home.tQuiz', d: 'home.tQuizD' },
 ];
 
+const CATEGORY_ORDER = [
+  'smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops',
+  'speakers', 'soundbars', 'action_cameras', 'security_cameras', 'gaming_consoles',
+  'headphones', 'monitors', 'gpus', 'cpus', 'motherboards', 'ram', 'powerbanks',
+];
+
 // One product section — title, optional "see all", responsive card grid.
 function Section({ title, products, loading, seeAllTo, t }) {
   if (!loading && (!products || products.length === 0)) return null;
@@ -132,8 +138,13 @@ export default function Home() {
   // Top categories as a 4×3 grid (mirrors the app's category screen).
   const categories = useMemo(() => {
     return [...(feed.categories || [])]
-      .sort((a, b) => (b.count || 0) - (a.count || 0))
-      .slice(0, 12)
+      .sort((a, b) => {
+        const ai = CATEGORY_ORDER.indexOf(a.value);
+        const bi = CATEGORY_ORDER.indexOf(b.value);
+        if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        return (b.count || 0) - (a.count || 0);
+      })
+      .slice(0, 18)
       .map((c) => ({ value: c.value, meta: catMeta(c.value) }));
   }, [feed.categories]);
 
@@ -215,7 +226,7 @@ export default function Home() {
               {(categories.length ? categories : Array.from({ length: 12 }).map((_, i) => null))
                 .map((c, i) => c ? (
                   <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`}
-                    className="h-cat">
+                    className="h-cat" style={{ '--cat-color': c.meta.color }}>
                     <span className="h-cat-ic">{c.meta.icon}</span>
                     <span className="h-cat-label">{c.meta.label}</span>
                   </Link>

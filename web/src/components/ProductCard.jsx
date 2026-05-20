@@ -3,14 +3,15 @@ import { catMeta, scoreClass, scoreLabel, keySpecChips, formatPrice, PLACEHOLDER
 import { useT } from '../i18n/index.jsx';
 import './ProductCard.css';
 
-export default function ProductCard({ product: p }) {
+export default function ProductCard({ product: p, variant = 'card' }) {
   const t = useT();
   const meta = catMeta(p.category);
   const chips = keySpecChips(p).slice(0, 4);
   const price = formatPrice(p.lowestPriceUSD);
+  const list = variant === 'list';
 
   return (
-    <Link to={`/product/${p.id}`} className="pcard">
+    <Link to={`/product/${p.id}`} className={'pcard' + (list ? ' pcard-list' : '')}>
       <div className="pcard-img">
         <img
           src={p.imageUrl || PLACEHOLDER_IMG}
@@ -47,6 +48,21 @@ export default function ProductCard({ product: p }) {
           <span className="pcard-go">{t('card.review')}</span>
         </div>
       </div>
+      {list && (
+        <div className="pcard-list-metrics" aria-hidden="true">
+          {chips.length > 0 ? chips.map((c) => (
+            <span key={c.labelKey}>
+              <small>{t(c.labelKey)}</small>
+              <b>{c.value}</b>
+            </span>
+          )) : (
+            <span>
+              <small>{meta.label}</small>
+              <b>{meta.icon}</b>
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   );
 }

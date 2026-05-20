@@ -42,8 +42,9 @@
 .ft-col a:hover { color: var(--text); }
 
 .ft-bottom {
-  min-height: 46px;
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  min-height: 68px;
+  padding-top: 14px;
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   font-size: 12.5px; color: var(--text3);
 }
 .ft-made { opacity: 0.8; }

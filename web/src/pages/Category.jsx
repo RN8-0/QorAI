@@ -264,7 +264,7 @@ export default function Category() {
     <div className="catalog">
       <div className="cat-hero">
         <div className="container">
-          <h1>{meta.icon} {meta.label}</h1>
+          <h1><span style={{ '--cat-color': meta.color }}>{meta.icon}</span> {meta.label}</h1>
           <p>{t('catalog.subtitle')}</p>
         </div>
       </div>
@@ -293,7 +293,7 @@ export default function Category() {
               ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : items.map((p, i) => (
                   <div key={p.id} className="cat-list-item" style={{ '--row': i }}>
-                    <ProductCard product={p} />
+                    <ProductCard product={p} variant="list" />
                   </div>
                 ))}
           </div>

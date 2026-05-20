@@ -1,16 +1,18 @@
 /* ─── Search strip ───────────────────────────────────────────── */
 .h-searchbar {
-  padding: 34px 0 24px; text-align: center;
+  padding: 42px 0 26px; text-align: center;
   border-bottom: 1px solid var(--border);
-  background: radial-gradient(ellipse 70% 130% at 50% 0%, rgba(0, 229, 255, 0.08), transparent 70%);
+  background:
+    radial-gradient(ellipse 70% 130% at 50% 0%, rgba(0, 229, 255, 0.09), transparent 70%),
+    linear-gradient(180deg, rgba(0, 229, 255, 0.025), transparent 76%);
 }
-.h-searchbar h1 { font-size: clamp(24px, 4vw, 38px); font-weight: 800; letter-spacing: -0.025em; }
+.h-searchbar h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 900; letter-spacing: 0; }
 .h-searchbar > .container > p { color: var(--text2); font-size: 14px; margin-top: 6px; }
 .h-search {
   display: flex; align-items: center; gap: 8px;
   width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 7px 7px 7px 15px;
+  border-radius: 16px; padding: 8px 8px 8px 15px;
   transition: border-color 0.14s, box-shadow 0.14s;
 }
 .h-search-wrap { position: relative; max-width: 620px; margin: 18px auto 0; }
@@ -51,21 +53,24 @@
 .h-suggest-state { padding: 16px; color: var(--text2); font-size: 13px; text-align: center; }
 
 /* ─── Categories — 4×3 grid ──────────────────────────────────── */
-.h-catgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.h-catgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 .h-cat {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 9px; padding: 20px 12px; border-radius: var(--radius);
+  gap: 10px; min-height: 112px; padding: 18px 10px; border-radius: 20px;
   background: var(--bg2); border: 1px solid var(--border);
-  transition: border-color 0.13s, transform 0.13s, background 0.13s;
+  transition: border-color 0.13s, transform 0.13s, background 0.13s, box-shadow 0.13s;
   text-align: center;
 }
 .h-cat:hover {
-  border-color: var(--accent-ring); background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--cat-color, var(--accent)) 45%, var(--border));
+  background: color-mix(in srgb, var(--cat-color, var(--accent)) 12%, var(--bg2));
   transform: translateY(-2px);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--cat-color, var(--accent)) 12%, transparent);
 }
 .h-cat-ic {
-  width: 46px; height: 46px; border-radius: 13px;
-  background: var(--accent-soft);
+  width: 60px; height: 60px; border-radius: 20px;
+  background: color-mix(in srgb, var(--cat-color, var(--accent)) 22%, transparent);
+  color: var(--cat-color, var(--accent));
   display: flex; align-items: center; justify-content: center; font-size: 23px;
 }
 .h-cat-label {
@@ -107,12 +112,19 @@
 .h-tool span { font-size: 12.5px; color: var(--text2); }
 
 @media (max-width: 920px) {
-  .h-catgrid { grid-template-columns: repeat(3, 1fr); }
+  .h-catgrid {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+  .h-cat { min-width: 98px; min-height: 92px; scroll-snap-align: start; }
+  .h-cat-ic { width: 58px; height: 58px; }
   .card-grid { grid-template-columns: repeat(2, 1fr); }
   .h-tools { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
-  .h-catgrid { grid-template-columns: repeat(2, 1fr); }
   .card-grid { grid-template-columns: 1fr; }
   .h-tools { grid-template-columns: 1fr; }
   .h-search { flex-wrap: wrap; }

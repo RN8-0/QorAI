@@ -3,31 +3,43 @@
 // Icon + display label per category. Labels are intentionally English
 // here (category names are universal-ish); the icon is the main signal.
 export const CATEGORY_META = {
-  smartphones: { icon: '📱', label: 'Smartphones' },
-  laptops: { icon: '💻', label: 'Laptops' },
-  tablets: { icon: '📟', label: 'Tablets' },
-  headphones: { icon: '🎧', label: 'Headphones' },
-  earbuds: { icon: '🎧', label: 'Earbuds' },
-  gpus: { icon: '🎮', label: 'Graphics Cards' },
-  cpus: { icon: '🧠', label: 'Processors' },
-  motherboards: { icon: '🔲', label: 'Motherboards' },
-  ram: { icon: '💾', label: 'RAM' },
-  storage: { icon: '💿', label: 'Storage' },
-  ssds: { icon: '💿', label: 'SSDs' },
-  psus: { icon: '🔌', label: 'Power Supplies' },
-  cases: { icon: '🗄️', label: 'PC Cases' },
-  cpu_coolers: { icon: '❄️', label: 'CPU Coolers' },
-  coolers: { icon: '❄️', label: 'Coolers' },
-  desktops: { icon: '🖥️', label: 'Desktops' },
-  monitors: { icon: '🖥️', label: 'Monitors' },
-  tvs: { icon: '📺', label: 'TVs' },
-  smartwatches: { icon: '⌚', label: 'Smartwatches' },
-  cameras: { icon: '📷', label: 'Cameras' },
-  speakers: { icon: '🔊', label: 'Speakers' },
-  keyboards: { icon: '⌨️', label: 'Keyboards' },
-  mice: { icon: '🖱️', label: 'Mice' },
-  consoles: { icon: '🎮', label: 'Consoles' },
-  printers: { icon: '🖨️', label: 'Printers' },
+  smartphones: { icon: '📱', label: 'Smartphones', color: '#3B82F6' },
+  laptops: { icon: '💻', label: 'Laptops', color: '#6366F1' },
+  tablets: { icon: '📱', label: 'Tablets', color: '#3B82F6' },
+  headphones: { icon: '🎧', label: 'Headphones', color: '#EC4899' },
+  earbuds: { icon: '🎧', label: 'Earbuds', color: '#EC4899' },
+  earphones: { icon: '🎧', label: 'Earphones', color: '#EC4899' },
+  gpus: { icon: '🎮', label: 'Graphics Cards', color: '#8B5CF6' },
+  graphics_cards: { icon: '🎮', label: 'Graphics Cards', color: '#8B5CF6' },
+  cpus: { icon: '🧠', label: 'Processors', color: '#06B6D4' },
+  motherboards: { icon: '🔲', label: 'Motherboards', color: '#06B6D4' },
+  ram: { icon: '💾', label: 'RAM', color: '#06B6D4' },
+  storage: { icon: '💿', label: 'Storage', color: '#06B6D4' },
+  ssd: { icon: '💿', label: 'SSD & Storage', color: '#06B6D4' },
+  ssds: { icon: '💿', label: 'SSDs', color: '#06B6D4' },
+  psu: { icon: '🔌', label: 'Power Supplies', color: '#06B6D4' },
+  psus: { icon: '🔌', label: 'Power Supplies', color: '#06B6D4' },
+  cases: { icon: '📦', label: 'PC Cases', color: '#06B6D4' },
+  pc_cases: { icon: '📦', label: 'PC Cases', color: '#06B6D4' },
+  cpu_coolers: { icon: '❄️', label: 'CPU Coolers', color: '#06B6D4' },
+  coolers: { icon: '❄️', label: 'Coolers', color: '#06B6D4' },
+  desktops: { icon: '🖥️', label: 'Desktops', color: '#6366F1' },
+  monitors: { icon: '🖥️', label: 'Monitors', color: '#10B981' },
+  tvs: { icon: '📺', label: 'TVs & Displays', color: '#10B981' },
+  smartwatches: { icon: '⌚', label: 'Smartwatches', color: '#14B8A6' },
+  cameras: { icon: '📷', label: 'Cameras', color: '#F97316' },
+  action_cameras: { icon: '🎥', label: 'Action Cameras', color: '#F97316' },
+  security_cameras: { icon: '🛡️', label: 'Security Cameras', color: '#F97316' },
+  speakers: { icon: '🔊', label: 'Speakers', color: '#EC4899' },
+  soundbars: { icon: '🔊', label: 'Soundbars', color: '#EC4899' },
+  keyboards: { icon: '⌨️', label: 'Keyboards', color: '#0EA5E9' },
+  mice: { icon: '🖱️', label: 'Mice', color: '#0EA5E9' },
+  consoles: { icon: '🎮', label: 'Consoles', color: '#8B5CF6' },
+  gaming_consoles: { icon: '🎮', label: 'Gaming Consoles', color: '#8B5CF6' },
+  printers: { icon: '🖨️', label: 'Printers', color: '#0EA5E9' },
+  powerbanks: { icon: '🔋', label: 'Power Banks', color: '#22C55E' },
+  routers: { icon: '📡', label: 'Networking', color: '#3B82F6' },
+  wifi_routers: { icon: '📡', label: 'WiFi Routers', color: '#3B82F6' },
 };
 
 // Turns an unknown slug like "cpu_coolers" into "Cpu Coolers".
@@ -39,7 +51,7 @@ function prettifySlug(slug) {
 
 export function catMeta(category) {
   const key = (category || '').toLowerCase();
-  return CATEGORY_META[key] || { icon: '📦', label: prettifySlug(category) };
+  return CATEGORY_META[key] || { icon: '📦', label: prettifySlug(category), color: '#2196F3' };
 }
 
 export function scoreClass(score) {
