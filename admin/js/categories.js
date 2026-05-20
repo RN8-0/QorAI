@@ -890,6 +890,15 @@ function _syncScrapeCategoryChecklistFromSelect() {
   const panel = document.getElementById('scrapeCategoryChecklist');
   if (!select || !panel) return;
 
+  const splitOptionLabel = (text) => {
+    const raw = String(text || '').trim();
+    const m = raw.match(/^(.*)\s+\((\d+)\)$/);
+    return {
+      name: (m ? m[1] : raw).trim(),
+      count: m ? m[2] : '',
+    };
+  };
+
   const previous = new Set(
     [...panel.querySelectorAll('input[type="checkbox"]:checked')]
       .map(cb => cb.value)
@@ -903,11 +912,15 @@ function _syncScrapeCategoryChecklistFromSelect() {
       parts.push(`<div class="scrape-category-group">${escHtml(node.label || 'Categories')}</div>`);
       opts.forEach(opt => {
         const checked = previous.has(opt.value) ? ' checked' : '';
-        parts.push(`<label class="scrape-category-option"><input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"><span>${escHtml(opt.textContent || opt.value)}</span></label>`);
+        const label = splitOptionLabel(opt.textContent || opt.value);
+        const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">0 ürün</span>';
+        parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
       });
     } else if (node.tagName === 'OPTION' && node.value && node.value !== '__all_epey__') {
       const checked = previous.has(node.value) ? ' checked' : '';
-      parts.push(`<label class="scrape-category-option"><input type="checkbox" value="${escHtml(node.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"><span>${escHtml(node.textContent || node.value)}</span></label>`);
+      const label = splitOptionLabel(node.textContent || node.value);
+      const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">0 ürün</span>';
+      parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(node.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
     }
   }
   panel.innerHTML = parts.join('') || '<div class="text-muted" style="font-size:12px">Epey kategorisi bulunamadı.</div>';
