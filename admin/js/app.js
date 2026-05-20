@@ -2109,21 +2109,22 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
+            const provider = ev.provider === 'azure' ? 'Azure' : 'DeepSeek';
             if (ev.phase === 'chunk-start') {
               inFlight.set(ev.chunkIndex, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
-              _xlateLog(`→ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+              _xlateLog(`→ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
             } else if (ev.phase === 'chunk-done') {
               inFlight.delete(ev.chunkIndex);
               doneChunks++;
               const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-              _xlateLog(`✓ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
+              _xlateLog(`✓ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
               _refreshDictionaryStatsOnly();
               _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks done`);
             } else if (ev.phase === 'chunk-error') {
               inFlight.delete(ev.chunkIndex);
               doneChunks++;
-              if (ev.error !== 'aborted') _xlateLog(`✗ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+              if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
             }
           }, () => _catXlateAbort);
         } finally {
@@ -4011,6 +4012,8 @@ const RC_KEYS = [
   { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
   { id: 'rc_gemini_api_key',                  key: 'gemini_api_key',                   type: 'string', def: '' },
   { id: 'rc_deepseek_api_key',                key: 'deepseek_api_key',                 type: 'string', def: '' },
+  { id: 'rc_azure_translator_key',            key: 'azure_translator_key',             type: 'string', def: '' },
+  { id: 'rc_azure_translator_region',         key: 'azure_translator_region',          type: 'string', def: '' },
   { id: 'rc_typesense_host',                  key: 'typesense_host',                   type: 'string', def: '' },
   { id: 'rc_typesense_api_key',               key: 'typesense_api_key',                type: 'string', def: '' },
   { id: 'rc_scraper_frequency',               key: 'scraper_frequency',                type: 'string', def: 'manual' },

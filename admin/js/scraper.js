@@ -1341,6 +1341,7 @@ let _deDictLoaded = false;
 let _deDictDirty = false;
 let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
+let _azureTranslatorDisabled = false;
 
 function _seedStaticEnglishDict() {
   const staticDict = (typeof window !== 'undefined' && (window.QorAiStaticDict || _staticQorAiDict)) || null;
@@ -1429,6 +1430,9 @@ const _ACRONYMS = new Set([
   'WPA2','WPA3','WUXGA','YUV','3D','4G','5G','6E','8K','4K','2K','HD','LDAC',
   'AAC','LDAC','SBC','APT-X','APTX','EDR','BT','CCT','HDR10','HDR10+','XDR',
   'PIN','UV','IPX','IPX4','IPX5','IPX7','IPX8','RTX','GTX','AMD','MTK','SOC',
+  'DISPLAYPORT','MINI-DISPLAYPORT','THUNDERBOLT','ETHERNET','RJ45','VGA','DVI',
+  'HDCP','ARC','EARC','DSC','VRR','ALLM','HFR','NIT','NITS','NTSC',
+  'DCI-P3','SRGB','ADOBE','DOLBY','DTS','HI-RES','HIRES','TWS',
   'F','G','MB','GB','TB','KB','KHZ','MHZ','BAR','DPI','TDP','TBW','PCIE','PCI',
   'M.2','M2','MM','CM','SDXC','SDHC','VA','W','V','A','KW','KWH'
 ]);
@@ -1483,6 +1487,47 @@ function _shouldTranslateProductName(name) {
   // Turkish wording such as "akıllı saat" or "oyuncu monitörü".
   if (/[çğıöşüÇĞİÖŞÜ]/.test(s)) return true;
   return /\b(akilli|akıllı|oyuncu|kablolu|kablosuz|sarj|şarj|kulaklik|kulaklık|telefon|saat|monitor|monitör|kamera|yazici|yazıcı)\b/i.test(s);
+}
+
+const _TECH_PROTECTED_TERMS = new Set([
+  'DISPLAYPORT','MINI-DISPLAYPORT','USB','USB-C','HDMI','THUNDERBOLT','ETHERNET',
+  'WI-FI','WIFI','BLUETOOTH','NFC','LTE','OLED','AMOLED','QLED','LCD','LED',
+  'HDR','HDR10','HDR10+','DOLBY','DTS','PCIE','PCI-E','UFS','SSD','HDD','RAM',
+  'ROM','CPU','GPU','IP68','IP67','IP69','DCI-P3','SRGB','ADOBE','RTX','GTX'
+]);
+
+function _escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function _shouldProtectTranslatorToken(token) {
+  const core = String(token || '').trim();
+  if (!core) return false;
+  const up = core.toUpperCase();
+  if (_TECH_PROTECTED_TERMS.has(up)) return true;
+  if (_shouldPreserve(core)) return true;
+  if (/[A-Z]/.test(core) && /[a-z]/.test(core) && /[A-Z].*[A-Z]/.test(core)) return true; // DisplayPort-style camel tech terms
+  return false;
+}
+
+function _protectTranslatorText(text) {
+  const restore = [];
+  let n = 0;
+  const protectedText = String(text || '').replace(/[A-Za-z][A-Za-z0-9.+#/-]*/g, (token) => {
+    if (!_shouldProtectTranslatorToken(token)) return token;
+    const placeholder = `ZXQOR${n++}ZX`;
+    restore.push([placeholder, token]);
+    return placeholder;
+  });
+  return { text: protectedText, restore };
+}
+
+function _restoreTranslatorText(translated, restore) {
+  let out = String(translated || '');
+  for (const [placeholder, original] of restore || []) {
+    out = out.replace(new RegExp(_escapeRegExp(placeholder), 'gi'), original);
+  }
+  return out;
 }
 
 // Title-case a single token while keeping acronyms / units intact.
@@ -1648,6 +1693,114 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
+async function _azureTranslateAllLangsBatch(turkishTexts, targetLangs, onProgress, shouldAbort) {
+  const token = getPb()?.authStore?.token;
+  if (!token) return false;
+  if (_azureTranslatorDisabled) return false;
+
+  let uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
+    .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return true;
+
+  const CHUNK = 100;
+  const MAX_REQUEST_CHARS = 45000;
+  const CONCURRENCY = 6;
+  const jobs = [];
+  let batch = [];
+  let batchChars = 0;
+  for (const text of uncached) {
+    const cost = Math.max(1, String(text).length) * Math.max(1, targetLangs.length);
+    if (batch.length && (batch.length >= CHUNK || batchChars + cost > MAX_REQUEST_CHARS)) {
+      jobs.push({ chunkIdx: jobs.length, batch });
+      batch = [];
+      batchChars = 0;
+    }
+    batch.push(text);
+    batchChars += cost;
+  }
+  if (batch.length) jobs.push({ chunkIdx: jobs.length, batch });
+  const totalChunks = jobs.length;
+  const report = (phase, idx, extra) => {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress({ provider: 'azure', phase, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+  };
+
+  async function processChunk(chunkIdx, batch) {
+    if (typeof shouldAbort === 'function' && shouldAbort()) {
+      report('chunk-error', chunkIdx, { error: 'aborted', elapsedMs: 0 });
+      return { ok: true, stored: 0 };
+    }
+
+    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+    const chunkStart = Date.now();
+    const protectedRows = batch.map((source) => ({ source, ..._protectTranslatorText(source) }));
+
+    try {
+      const response = await fetch(`${PB_URL}/api/translate/azure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: token },
+        body: JSON.stringify({
+          from: 'tr',
+          to: targetLangs,
+          texts: protectedRows.map(r => r.text),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        const err = data.message || data.detail || data.error || `Azure Translator ${response.status}`;
+        if (response.status === 404 || response.status === 501 || response.status === 503) {
+          _azureTranslatorDisabled = true;
+          report('chunk-error', chunkIdx, { error: err, elapsedMs: Date.now() - chunkStart });
+          return { ok: false, stored: 0, error: err };
+        }
+        throw new Error(err);
+      }
+
+      const translations = data.translations || {};
+      let storedForChunk = 0;
+      for (let i = 0; i < protectedRows.length; i++) {
+        const row = protectedRows[i];
+        const entry = translations[row.text] || translations[row.source];
+        if (!entry || typeof entry !== 'object') continue;
+        for (const lang of targetLangs) {
+          const raw = entry[lang];
+          if (typeof raw === 'string' && raw.trim()) {
+            _deDictStore(row.source, lang, _restoreTranslatorText(raw, row.restore));
+            storedForChunk++;
+          }
+        }
+      }
+      if (storedForChunk > 0) await _saveDeDict();
+      report('chunk-done', chunkIdx, {
+        batchSize: batch.length,
+        stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
+        elapsedMs: Date.now() - chunkStart,
+      });
+      return { ok: true, stored: storedForChunk };
+    } catch (e) {
+      console.warn('[tr-translate] azure batch error:', e.message);
+      report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
+      return { ok: false, stored: 0, error: e.message };
+    }
+  }
+
+  let cursor = 0;
+  let usable = true;
+  const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
+    while (cursor < jobs.length) {
+      if (!usable || (typeof shouldAbort === 'function' && shouldAbort())) break;
+      const job = jobs[cursor++];
+      const result = await processChunk(job.chunkIdx, job.batch);
+      if (!result.ok) usable = false;
+    }
+  });
+  await Promise.all(workers);
+  await _saveDeDict();
+  return usable;
+}
+
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
   const token = getPb()?.authStore?.token;
   if (!token) {
@@ -1663,7 +1816,12 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   }
   if (missingByText.size === 0) return; // everything cached — no API hit
 
-  const uncached = [...missingByText.keys()];
+  let uncached = [...missingByText.keys()];
+  const azureUsable = await _azureTranslateAllLangsBatch(uncached, targetLangs, onProgress, shouldAbort);
+  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return;
+  if (azureUsable && typeof shouldAbort === 'function' && shouldAbort()) return;
+
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
   // lets us safely use a slightly larger batch than the old 12.
@@ -2003,8 +2161,8 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 32,
-  CONCURRENCY: 8,
+  CHUNK_SIZE: 100,
+  CONCURRENCY: 6,
 };
 
 // ═══════════════════════════════════════

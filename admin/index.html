@@ -666,10 +666,10 @@
           <div class="card" style="margin-bottom:14px">
             <div class="card-title">🌍 Translate Category (Bulk)</div>
             <p class="text-muted" style="margin-bottom:12px">
-              Pick a category. Only products with source=epey.com are translated;
+              Pick a category. Only Epey product names and specs are translated;
               Icecat records are skipped because they already include multilingual specs.
               Terms already in the dictionary are reused (zero API cost); only new atoms hit
-              DeepSeek and are then learned for the next run.
+              Azure Translator first and DeepSeek only as fallback, then learned for the next run.
             </p>
             <div class="form-grid" style="grid-template-columns:2fr auto auto;gap:8px;align-items:end">
               <div class="form-field">
@@ -1025,6 +1025,8 @@
           <div class="form-grid">
             <div class="form-field"><label>Gemini API Key</label><input class="input" type="password" id="rc_gemini_api_key" placeholder="Stored in public_config for server-side hooks"></div>
             <div class="form-field"><label>DeepSeek API Key</label><input class="input" type="password" id="rc_deepseek_api_key" placeholder="Stored in public_config for server-side hooks"></div>
+            <div class="form-field"><label>Azure Translator Key</label><input class="input" type="password" id="rc_azure_translator_key" placeholder="Stored in public_config for server-side translation"></div>
+            <div class="form-field"><label>Azure Translator Region</label><input class="input" type="text" id="rc_azure_translator_region" placeholder="e.g. westeurope, global"></div>
             <div class="form-field"><label>Typesense Host</label><input class="input" type="text" id="rc_typesense_host" placeholder="https://search.example.com"></div>
             <div class="form-field"><label>Typesense API Key</label><input class="input" type="password" id="rc_typesense_api_key" placeholder="Search write/read key"></div>
           </div>
