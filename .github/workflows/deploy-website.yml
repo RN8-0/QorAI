@@ -17,7 +17,6 @@ jobs:
           COOLIFY_WEBSITE_UUID: ${{ secrets.COOLIFY_WEBSITE_UUID }}
           COOLIFY_ADMIN_UUID: ${{ secrets.COOLIFY_ADMIN_UUID }}
           COOLIFY_POCKETBASE_UUID: ${{ secrets.COOLIFY_POCKETBASE_UUID }}
-          COOLIFY_TYPESENSE_UUID: ${{ secrets.COOLIFY_TYPESENSE_UUID }}
         run: |
           set -euo pipefail
           : "${COOLIFY_URL:?COOLIFY_URL secret is missing}"
@@ -25,7 +24,6 @@ jobs:
           : "${COOLIFY_WEBSITE_UUID:?COOLIFY_WEBSITE_UUID secret is missing}"
           : "${COOLIFY_ADMIN_UUID:?COOLIFY_ADMIN_UUID secret is missing}"
           : "${COOLIFY_POCKETBASE_UUID:?COOLIFY_POCKETBASE_UUID secret is missing}"
-          : "${COOLIFY_TYPESENSE_UUID:?COOLIFY_TYPESENSE_UUID secret is missing}"
 
           base="${COOLIFY_URL%/}"
           deploy() {
@@ -43,4 +41,3 @@ jobs:
           deploy "qorai-website" "${COOLIFY_WEBSITE_UUID}"
           deploy "qorai-admin" "${COOLIFY_ADMIN_UUID}"
           deploy "pocketbase-qorai" "${COOLIFY_POCKETBASE_UUID}"
-          deploy "typesense-qorai" "${COOLIFY_TYPESENSE_UUID}"
