@@ -2017,7 +2017,7 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
-const QORAI_TRANSLATION_BUILD = 'local-nllb-required-20260520-2148';
+const QORAI_TRANSLATION_BUILD = 'local-nllb-live-progress-20260520-2230';
 
 async function _ensureLocalTranslatorReady(){
   const controller = new AbortController();
@@ -2129,6 +2129,19 @@ async function startCategoryTranslation(){
             const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
             const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
             _xlateLog(`→ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+          } else if (ev.phase === 'chunk-progress') {
+            // Live in-chunk progress reported via worker /status polling.
+            const lang = ev.lang || '??';
+            const langPos = `${(ev.langIndex || 0) + 1}/${ev.langTotal || 0}`;
+            const batchPos = `${ev.batchDone || 0}/${ev.batchTotal || 0}`;
+            const avgMs = ev.avgBatchMs ? `${(ev.avgBatchMs / 1000).toFixed(1)}s/batch` : '';
+            const etaSec = ev.etaMs ? `eta ${Math.round(ev.etaMs / 1000)}s` : '';
+            const itemsPct = ev.itemsTotal ? ` · ${Math.floor((ev.itemsDone / ev.itemsTotal) * 100)}%` : '';
+            if (ev.langChanged) {
+              _xlateLog(`  · chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · lang ${lang} (${langPos}) batch ${batchPos}${itemsPct} · ${avgMs} ${etaSec}`);
+            }
+            const sec = ((Date.now() - (inFlight.get(`${ev.pass || 1}:${ev.chunkIndex}`) || Date.now())) / 1000).toFixed(0);
+            _xlateProgress(0, products.length, `Dictionary prefill: ${doneChunks}/${chunks} · chunk ${ev.chunkIndex + 1} · ${lang} ${batchPos}${itemsPct} · ${sec}s in-flight`);
           } else if (ev.phase === 'chunk-done') {
             inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
             doneChunks++;
@@ -2195,6 +2208,18 @@ async function startCategoryTranslation(){
               inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
               _xlateLog(`→ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+            } else if (ev.phase === 'chunk-progress') {
+              const lang = ev.lang || '??';
+              const langPos = `${(ev.langIndex || 0) + 1}/${ev.langTotal || 0}`;
+              const batchPos = `${ev.batchDone || 0}/${ev.batchTotal || 0}`;
+              const avgMs = ev.avgBatchMs ? `${(ev.avgBatchMs / 1000).toFixed(1)}s/batch` : '';
+              const etaSec = ev.etaMs ? `eta ${Math.round(ev.etaMs / 1000)}s` : '';
+              const itemsPct = ev.itemsTotal ? ` · ${Math.floor((ev.itemsDone / ev.itemsTotal) * 100)}%` : '';
+              if (ev.langChanged) {
+                _xlateLog(`  · batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · lang ${lang} (${langPos}) batch ${batchPos}${itemsPct} · ${avgMs} ${etaSec}`);
+              }
+              const sec = ((Date.now() - (inFlight.get(`${ev.pass || 1}:${ev.chunkIndex}`) || Date.now())) / 1000).toFixed(0);
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: chunk ${ev.chunkIndex + 1} · ${lang} ${batchPos}${itemsPct} · ${sec}s in-flight`);
             } else if (ev.phase === 'chunk-done') {
               inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
               doneChunks++;

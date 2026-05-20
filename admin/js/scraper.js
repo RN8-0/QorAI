@@ -1692,12 +1692,26 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
+async function _fetchLocalTranslatorStatus() {
+  try {
+    const res = await fetch('http://127.0.0.1:8797/status', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 async function _localTranslateAllLangsBatch(turkishTexts, targetLangs, onProgress, shouldAbort) {
   const uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
     .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
   if (!uncached.length) return true;
 
-  const CHUNK = 120;
+  const CHUNK = 60;
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
@@ -1714,6 +1728,38 @@ async function _localTranslateAllLangsBatch(turkishTexts, targetLangs, onProgres
     const started = Date.now();
     report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
     const protectedRows = batch.map((source) => ({ source, ..._protectTranslatorText(source) }));
+
+    // Poll the worker's /status endpoint every 2s while the chunk is in flight
+    // and surface the per-language progress to the caller via 'chunk-progress'.
+    let lastLang = null;
+    const poll = setInterval(async () => {
+      const st = await _fetchLocalTranslatorStatus();
+      if (!st || !st.busy) return;
+      if (typeof onProgress !== 'function') return;
+      const same = st.lang === lastLang;
+      lastLang = st.lang;
+      try {
+        onProgress({
+          provider: 'local-nllb',
+          phase: 'chunk-progress',
+          pass: 1,
+          chunkIndex: chunkIdx,
+          totalChunks,
+          chunkSize: CHUNK,
+          lang: st.lang,
+          langIndex: st.langIndex,
+          langTotal: st.langTotal,
+          batchDone: st.batchDone,
+          batchTotal: st.batchTotal,
+          itemsDone: st.itemsDone,
+          itemsTotal: st.itemsTotal,
+          avgBatchMs: st.avgBatchMs,
+          etaMs: st.etaMs,
+          langChanged: !same,
+        });
+      } catch {}
+    }, 2000);
+
     try {
       const res = await fetch('http://127.0.0.1:8797/translate', {
         method: 'POST',
@@ -1753,6 +1799,8 @@ async function _localTranslateAllLangsBatch(turkishTexts, targetLangs, onProgres
       report('chunk-error', chunkIdx, { error: message, elapsedMs: Date.now() - started });
       console.warn('[local-translate] batch error:', message);
       return false;
+    } finally {
+      clearInterval(poll);
     }
   }
   await _saveDeDict();
@@ -2134,8 +2182,10 @@ window.QorAiBulkTranslate = {
   // Persist the dictionary cache to PocketBase (force-save)
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
-  // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 120,
+  // Estimated chunk count for progress reporting — must match the real CHUNK
+  // used in _localTranslateAllLangsBatch (currently 60). Worker has its own
+  // /status endpoint that the UI polls for in-chunk live progress.
+  CHUNK_SIZE: 60,
   CONCURRENCY: 1,
 };
 
