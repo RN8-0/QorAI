@@ -745,7 +745,7 @@ async function _loadCategoryCounts(sourceFilter = '') {
           if (!id) continue;
           counts[id] = Math.max(counts[id] || 0, Number(c.productCount) || 0);
         }
-        if (Object.keys(counts).length) {
+        if (Object.values(counts).some(n => Number(n) > 0)) {
           window._catCountCache = {
             ...(window._catCountCache || {}),
             [cacheKey]: { ts: now, data: counts },
@@ -821,7 +821,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
     if (epeyCats.length) {
       bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
       epeyCats.forEach(cat => {
-        const cnt = counts[cat.id] || 0;
+        const cnt = Math.max(Number(epeyCounts[cat.id]) || 0, Number(counts[cat.id]) || 0);
         const label = cnt > 0 ? ` (${cnt})` : '';
         bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       });
@@ -842,8 +842,8 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
   if (customs.length) {
     bulkOpts += `<optgroup label="Custom">`;
     customs.forEach(cat => {
-      const cnt = counts[cat.id] || 0;
       const ghCnt = epeyCounts[cat.id] || 0;
+      const cnt = Math.max(Number(ghCnt) || 0, Number(counts[cat.id]) || 0);
       const label = cnt > 0 ? ` (${cnt})` : '';
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
@@ -913,13 +913,13 @@ function _syncScrapeCategoryChecklistFromSelect() {
       opts.forEach(opt => {
         const checked = previous.has(opt.value) ? ' checked' : '';
         const label = splitOptionLabel(opt.textContent || opt.value);
-        const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">0 ürün</span>';
+        const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>';
         parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
       });
     } else if (node.tagName === 'OPTION' && node.value && node.value !== '__all_epey__') {
       const checked = previous.has(node.value) ? ' checked' : '';
       const label = splitOptionLabel(node.textContent || node.value);
-      const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">0 ürün</span>';
+      const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>';
       parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(node.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
     }
   }
