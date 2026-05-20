@@ -1,25 +1,53 @@
-// ═══════════════════════════════════════════════════════════════
-//  Product data layer — Qor AI website
-//  --------------------------------------------------------------
-//  All product reads go through the PocketBase search proxy
-//  (pb_hooks/search_proxy.pb.js). The Typesense key never reaches
-//  the browser, so the catalog can't be scraped from the bundle.
-//  Results are paginated + light-field only; nothing bulk-loads.
-// ═══════════════════════════════════════════════════════════════
+// Product data layer for qorai.net.
+//
+// Keep this boring on purpose: the public website reads products directly from
+// the Typesense search-only key. PocketBase remains for auth, reviews and AI,
+// but catalog listing/search/detail no longer depends on PB hooks being live.
 
-import { PB_URL } from './pocketbase';
+const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
+const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+const COLLECTION = 'products';
+const SEARCH_PATH = `/collections/${COLLECTION}/documents/search`;
+const LIST_FIELDS = [
+  'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
+  'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
+  'keySpecsText', 'filterTokens', 'screenSizeValue', 'batteryCapacityValue',
+  'weightValueKg',
+].join(',');
 
-const API = `${PB_URL}/api`;
-
-async function apiGet(path) {
-  const res = await fetch(`${API}${path}`);
-  if (!res.ok) throw new Error(`proxy ${res.status}`);
-  return res.json();
+function lit(v) {
+  return `\`${String(v || '').replace(/`/g, '')}\``;
 }
 
-// A proxy doc carries the full PocketBase record as a `_raw` JSON string
-// only on the single-product endpoint. List endpoints ship light fields
-// alone — enough for grid cards, never the detailed spec blob.
+function toQuery(params) {
+  return Object.entries(params)
+    .filter(([, v]) => v !== '' && v != null)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+}
+
+async function tsGet(path, params = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const qs = toQuery(params);
+    const res = await fetch(`${TS_URL}${path}${qs ? `?${qs}` : ''}`, {
+      headers: { 'X-TYPESENSE-API-KEY': TS_KEY },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`typesense ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function docs(result) {
+  return ((result && result.hits) || []).map((hit) => hit.document);
+}
+
+// A Typesense doc carries the full PocketBase record as `_raw` only when the
+// document endpoint is used. Search/list endpoints return lightweight fields.
 export function docToProduct(doc) {
   let base = {};
   if (doc && doc._raw) {
@@ -46,87 +74,146 @@ export function docToProduct(doc) {
   };
 }
 
-// ── Home feed ───────────────────────────────────────────────────
-// { forYou, trending, newArrivals, categories } — the exact sections
-// the mobile app's home screen shows.
+async function searchDocs(params) {
+  return tsGet(SEARCH_PATH, params);
+}
+
 export async function getHomeFeed(prefCats = []) {
   const cats = (prefCats || []).filter(Boolean).slice(0, 5);
   try {
-    const data = await apiGet(`/qhome${cats.length ? `?cats=${encodeURIComponent(cats.join(','))}` : ''}`);
+    const [trendingRes, forYouRes, newRes, facetRes] = await Promise.all([
+      searchDocs({
+        q: '*', query_by: 'name', sort_by: 'trendScore:desc',
+        per_page: 16, include_fields: LIST_FIELDS,
+      }),
+      searchDocs({
+        q: '*', query_by: 'name', sort_by: 'techScore:desc',
+        per_page: 16, include_fields: LIST_FIELDS,
+        filter_by: cats.length ? `category:[${cats.map(lit).join(',')}]` : '',
+      }),
+      searchDocs({
+        q: '*', query_by: 'name', sort_by: 'specsCount:desc',
+        per_page: 16, include_fields: LIST_FIELDS,
+      }),
+      searchDocs({
+        q: '*', query_by: 'name', per_page: 1,
+        facet_by: 'category', max_facet_values: 100,
+      }),
+    ]);
+    const categoryFacet = (facetRes.facet_counts || [])
+      .find((facet) => facet.field_name === 'category');
     return {
-      forYou: (data.forYou || []).map(docToProduct),
-      trending: (data.trending || []).map(docToProduct),
-      newArrivals: (data.newArrivals || []).map(docToProduct),
-      categories: data.categories || [],
+      forYou: docs(forYouRes).map(docToProduct),
+      trending: docs(trendingRes).map(docToProduct),
+      newArrivals: docs(newRes).map(docToProduct),
+      categories: categoryFacet ? categoryFacet.counts : [],
     };
-  } catch {
+  } catch (err) {
+    console.warn('[catalog] home feed failed', err);
     return { forYou: [], trending: [], newArrivals: [], categories: [] };
   }
 }
 
-// ── Search (typo-tolerant) ──────────────────────────────────────
 export async function searchProducts(query, limit = 40) {
   const q = (query || '').trim();
   if (!q) return [];
   try {
-    const data = await apiGet(`/qts?q=${encodeURIComponent(q)}&per_page=${Math.min(limit, 40)}`);
-    return (data.hits || []).map(docToProduct);
-  } catch {
+    const data = await searchDocs({
+      q,
+      query_by: 'name,brand,keySpecsText,category',
+      query_by_weights: '5,3,1,2',
+      sort_by: '_text_match:desc,techScore:desc',
+      per_page: Math.min(limit, 40),
+      include_fields: LIST_FIELDS,
+    });
+    return docs(data).map(docToProduct);
+  } catch (err) {
+    console.warn('[catalog] search failed', err);
     return [];
   }
 }
 
-// ── Category listing + facets (epey-style filtered browse) ──────
 export async function getCategoryPage(opts = {}) {
   const perPage = Math.min(opts.perPage || 24, 40);
   const page = opts.page || 1;
   try {
-    const p = new URLSearchParams();
-    if (opts.category) p.set('category', opts.category);
-    if (opts.q) p.set('q', opts.q);
-    if (opts.brands && opts.brands.length) p.set('brands', opts.brands.join(','));
-    if (opts.segment) p.set('segment', opts.segment);
-    if (opts.tokens && opts.tokens.length) p.set('tokens', opts.tokens.join(','));
-    if (opts.score && opts.score !== 'all') p.set('score', opts.score);
-    if (opts.sort) p.set('sort', opts.sort);
-    p.set('page', String(page));
-    p.set('per_page', String(perPage));
-    if (opts.facets) p.set('facets', '1');
-    const data = await apiGet(`/qts?${p.toString()}`);
-    return {
-      found: data.found || 0, page: data.page || page,
-      hits: (data.hits || []).map(docToProduct), facets: data.facets || [],
+    const isSearch = Boolean((opts.q || '').trim());
+    const filters = [];
+    if (opts.category) filters.push(`category:=${lit(String(opts.category).toLowerCase())}`);
+    if (opts.brands && opts.brands.length) {
+      filters.push(`brand:[${opts.brands.slice(0, 12).map(lit).join(',')}]`);
+    }
+    if (opts.segment) filters.push(`price_segment:=${lit(opts.segment)}`);
+    if (opts.tokens && opts.tokens.length) {
+      filters.push(`filterTokens:[${opts.tokens.slice(0, 16).map(lit).join(',')}]`);
+    }
+    if (opts.score === 'high') filters.push('techScore:>=80');
+    else if (opts.score === 'mid') filters.push('techScore:[60..79]');
+    else if (opts.score === 'low') filters.push('techScore:<60');
+
+    const sortMap = {
+      score: 'techScore:desc',
+      trend: 'trendScore:desc',
+      priceUp: 'lowestPriceUSD:asc',
+      priceDown: 'lowestPriceUSD:desc',
     };
-  } catch {
+    const sort = sortMap[opts.sort] || sortMap.score;
+    const data = await searchDocs({
+      q: isSearch ? opts.q.trim() : '*',
+      query_by: isSearch ? 'name,brand,keySpecsText,category' : 'name',
+      query_by_weights: isSearch ? '5,3,1,2' : '',
+      sort_by: isSearch ? `_text_match:desc,${sort}` : sort,
+      filter_by: filters.join(' && '),
+      page,
+      per_page: perPage,
+      include_fields: LIST_FIELDS,
+      facet_by: opts.facets ? 'brand,price_segment,filterTokens' : '',
+      max_facet_values: opts.facets ? 200 : '',
+    });
+    return {
+      found: data.found || 0,
+      page,
+      hits: docs(data).map(docToProduct),
+      facets: data.facet_counts || [],
+    };
+  } catch (err) {
+    console.warn('[catalog] category failed', err);
     return { found: 0, page, hits: [], facets: [] };
   }
 }
 
-// ── Single product (full record incl. specs) ────────────────────
 export async function getProduct(id) {
   if (!id) return null;
   try {
-    const doc = await apiGet(`/qproduct?id=${encodeURIComponent(id)}`);
+    const doc = await tsGet(`/collections/${COLLECTION}/documents/${encodeURIComponent(id)}`);
     return docToProduct(doc);
-  } catch {
+  } catch (err) {
+    console.warn('[catalog] product failed', err);
     return null;
   }
 }
 
-// ── Similar products for a detail page ──────────────────────────
 export async function getSimilar(category, _techScore, excludeId, limit = 12) {
   if (!category) return [];
   try {
-    const p = new URLSearchParams({ category });
-    if (excludeId) p.set('exclude', excludeId);
-    const data = await apiGet(`/qsimilar?${p.toString()}`);
-    return (data.hits || []).map(docToProduct).slice(0, limit);
-  } catch {
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      filter_by: `category:=${lit(String(category).toLowerCase())}`,
+      sort_by: 'techScore:desc',
+      per_page: Math.max(limit + 4, 16),
+      include_fields: LIST_FIELDS,
+    });
+    return docs(data)
+      .filter((doc) => doc.id !== excludeId)
+      .slice(0, limit)
+      .map(docToProduct);
+  } catch (err) {
+    console.warn('[catalog] similar failed', err);
     return [];
   }
 }
 
-// ── Popular products (compare picker, etc.) ─────────────────────
 export async function popularProducts(limit = 12) {
   try {
     const feed = await getHomeFeed();
