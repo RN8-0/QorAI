@@ -1,10 +1,9 @@
 /// <reference path="../pb_data/types.d.ts" />
-// PocketBase hook: POST /api/translate/azure
-// Server-side Azure AI Translator proxy for the admin dictionary translator.
-// Keeps the Azure key out of the browser bundle and lets the scraper batch
-// many Turkish spec atoms into one multi-target translation request.
+// PocketBase hook: POST /api/translate/google
+// Server-side Google Cloud Translation Basic proxy for the admin dictionary
+// translator. Uses a simple API key stored in public_config or env.
 
-routerAdd("POST", "/api/translate/azure", (e) => {
+routerAdd("POST", "/api/translate/google", (e) => {
   function readConfigValue(key) {
     try {
       const rec = $app.findFirstRecordByData("public_config", "key", key);
@@ -49,7 +48,7 @@ routerAdd("POST", "/api/translate/azure", (e) => {
     if (!texts.length) return e.json(400, { error: "texts_required" });
     if (texts.length > 100) return e.json(400, { error: "too_many_texts", max: 100 });
 
-    const from = String(body.from || "tr").trim().toLowerCase() || "tr";
+    const source = String(body.from || "tr").trim().toLowerCase() || "tr";
     const targets = normalizeLangs(body.to || body.targets);
     if (!targets.length) return e.json(400, { error: "targets_required" });
 
@@ -61,63 +60,54 @@ routerAdd("POST", "/api/translate/azure", (e) => {
     }
 
     const key = String(
-      $os.getenv("AZURE_TRANSLATOR_KEY") ||
-      $os.getenv("QORAI_AZURE_TRANSLATOR_KEY") ||
-      readConfigValue("azure_translator_key") ||
+      $os.getenv("GOOGLE_TRANSLATE_API_KEY") ||
+      $os.getenv("QORAI_GOOGLE_TRANSLATE_API_KEY") ||
+      readConfigValue("google_translate_api_key") ||
       ""
     ).trim();
-    if (!key) return e.json(503, { error: "azure_not_configured" });
-
-    const region = String(
-      $os.getenv("AZURE_TRANSLATOR_REGION") ||
-      $os.getenv("QORAI_AZURE_TRANSLATOR_REGION") ||
-      readConfigValue("azure_translator_region") ||
-      ""
-    ).trim();
-
-    let qs = "api-version=3.0&from=" + encodeURIComponent(from);
-    for (let i = 0; i < targets.length; i++) qs += "&to=" + encodeURIComponent(targets[i]);
-
-    const headers = {
-      "Ocp-Apim-Subscription-Key": key,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    };
-    if (region && region.toLowerCase() !== "global") {
-      headers["Ocp-Apim-Subscription-Region"] = region;
-    }
-
-    const res = $http.send({
-      url: "https://api.cognitive.microsofttranslator.com/translate?" + qs,
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(texts.map((text) => ({ Text: text }))),
-      timeout: 20,
-    });
-
-    const payload = res.json != null ? res.json : JSON.parse(res.raw || "null");
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      return e.json(res.statusCode || 502, {
-        error: "azure_translate_failed",
-        detail: payload || res.raw || "",
-      });
-    }
+    if (!key) return e.json(503, { error: "google_translate_not_configured" });
 
     const translations = {};
-    for (let i = 0; i < texts.length; i++) {
-      const row = payload && payload[i] ? payload[i] : {};
-      const entry = {};
-      const tx = Array.isArray(row.translations) ? row.translations : [];
-      for (let j = 0; j < tx.length; j++) {
-        const lang = String(tx[j].to || "").toLowerCase();
-        if (lang) entry[lang] = String(tx[j].text || "");
+    for (let i = 0; i < texts.length; i++) translations[texts[i]] = {};
+
+    for (let t = 0; t < targets.length; t++) {
+      const target = targets[t];
+      const res = $http.send({
+        url: "https://translation.googleapis.com/language/translate/v2?key=" + encodeURIComponent(key),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          q: texts,
+          source: source,
+          target: target,
+          format: "text",
+        }),
+        timeout: 20,
+      });
+
+      const payload = res.json != null ? res.json : JSON.parse(res.raw || "null");
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return e.json(res.statusCode || 502, {
+          error: "google_translate_failed",
+          target: target,
+          detail: payload || res.raw || "",
+        });
       }
-      translations[texts[i]] = entry;
+
+      const rows = payload && payload.data && Array.isArray(payload.data.translations)
+        ? payload.data.translations
+        : [];
+      for (let i = 0; i < texts.length; i++) {
+        translations[texts[i]][target] = String((rows[i] && rows[i].translatedText) || "");
+      }
     }
 
     return e.json(200, {
-      provider: "azure",
-      from: from,
+      provider: "google",
+      from: source,
       to: targets,
       count: texts.length,
       chars: requestChars,

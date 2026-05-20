@@ -2109,7 +2109,7 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-            const provider = ev.provider === 'azure' ? 'Azure' : 'DeepSeek';
+            const provider = ev.provider === 'google' ? 'Google' : 'DeepSeek';
             if (ev.phase === 'chunk-start') {
               inFlight.set(ev.chunkIndex, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
@@ -4017,8 +4017,7 @@ const RC_KEYS = [
   { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
   { id: 'rc_gemini_api_key',                  key: 'gemini_api_key',                   type: 'string', def: '' },
   { id: 'rc_deepseek_api_key',                key: 'deepseek_api_key',                 type: 'string', def: '' },
-  { id: 'rc_azure_translator_key',            key: 'azure_translator_key',             type: 'string', def: '' },
-  { id: 'rc_azure_translator_region',         key: 'azure_translator_region',          type: 'string', def: '' },
+  { id: 'rc_google_translate_api_key',        key: 'google_translate_api_key',         type: 'string', def: '' },
   { id: 'rc_typesense_host',                  key: 'typesense_host',                   type: 'string', def: '' },
   { id: 'rc_typesense_api_key',               key: 'typesense_api_key',                type: 'string', def: '' },
   { id: 'rc_scraper_frequency',               key: 'scraper_frequency',                type: 'string', def: 'manual' },
