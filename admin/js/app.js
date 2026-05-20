@@ -2043,7 +2043,7 @@ async function stopCategoryTranslation(){
   }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-live-checkpoint-20260521-0115';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-live-checkpoint-20260521-0135';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }

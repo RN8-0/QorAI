@@ -37,6 +37,7 @@ const { collectIcecatImages } = require('./lib/icecat_images');
 
 const ROOT          = path.resolve(__dirname, '..');
 const QUEUE_FILE    = path.join(__dirname, 'icecat_queue.jsonl');
+const QUEUE_META_FILE = path.join(__dirname, 'icecat_queue_meta.json');
 const PROGRESS_FILE = path.join(__dirname, 'icecat_progress.json');
 
 const envRaw = fs.readFileSync(path.join(ROOT, 'migration', '.env'), 'utf8');
@@ -60,6 +61,7 @@ const getOpt  = (name, def) => {
 const SKIP_PHASE1 = hasFlag('resume') || getOpt('phase', '1') === '2';
 const FAST_MODE   = hasFlag('fast');
 const LIMIT       = parseInt(getOpt('limit',   '0'));
+const MAX_TOTAL_PRODUCTS = parseInt(getOpt('maxTotalProducts', '300000'), 10);
 const DELAY       = parseInt(getOpt('delay',   FAST_MODE ? '150' : '800'));
 const WORKERS     = parseInt(getOpt('workers', FAST_MODE ? '8' : '3'));
 // Phase 1 cap: at most N index entries per model name. Icecat lists thousands
@@ -160,6 +162,47 @@ const BAD_PRODUCT_RE = /\b(?:spare\s*part|replacement\s*part|service\s*part|repa
 function catsKey() {
   if (!CAT_WHITELIST) return 'all';
   return [...CAT_WHITELIST].sort().join(',');
+}
+
+function readQueueMeta() {
+  try { return JSON.parse(fs.readFileSync(QUEUE_META_FILE, 'utf8')); }
+  catch { return null; }
+}
+
+function writeQueueMeta(count) {
+  try {
+    fs.writeFileSync(QUEUE_META_FILE, JSON.stringify({
+      catsKey: catsKey(),
+      count,
+      maxPerModel: MAX_PER_MODEL,
+      createdAt: new Date().toISOString(),
+    }, null, 2));
+  } catch (e) {
+    log(`Queue meta write failed: ${e.message}`, 'warn');
+  }
+}
+
+async function inspectQueueForSelectedCats() {
+  if (!fs.existsSync(QUEUE_FILE)) return { total: 0, allowed: 0 };
+  let total = 0;
+  let allowed = 0;
+  const rl = readline.createInterface({ input: fs.createReadStream(QUEUE_FILE), crlfDelay: Infinity });
+  for await (const line of rl) {
+    if (!line.trim()) continue;
+    total++;
+    try {
+      const item = JSON.parse(line);
+      if (isAllowedCatId(item.catId) && !isBlockedCatalogText(item.name, item.brand)) allowed++;
+    } catch {}
+    if (allowed > 0 && total > 1000) break;
+  }
+  return { total, allowed };
+}
+
+async function getCatalogProductCount() {
+  const r = await pbReq('GET', '/api/collections/products/records?perPage=1&page=1&skipTotal=false&fields=id');
+  if (r.status !== 200) return 0;
+  return Number(r.body.totalItems || 0);
 }
 
 function isAllowedCatId(catId) {
@@ -534,7 +577,10 @@ async function phase1_index() {
         collected.sort((a, b) => parseInt(b.id) - parseInt(a.id));
         const outStream = fs.createWriteStream(QUEUE_FILE);
         for (const rec of collected) outStream.write(JSON.stringify(rec) + '\n');
-        outStream.end(resolve);
+        outStream.end(() => {
+          writeQueueMeta(collected.length);
+          resolve();
+        });
       });
 
       stream.on('error', reject);
@@ -1021,6 +1067,11 @@ async function phase23_enrichImport() {
   if (!ICECAT_USER) {
     throw new Error('ICECAT_USERNAME not set in migration/.env');
   }
+  const currentCatalogCount = await getCatalogProductCount();
+  if (MAX_TOTAL_PRODUCTS > 0 && currentCatalogCount >= MAX_TOTAL_PRODUCTS) {
+    log(`Catalog cap reached: ${currentCatalogCount.toLocaleString()} / ${MAX_TOTAL_PRODUCTS.toLocaleString()} products. Icecat import stopped before new writes.`, 'warn');
+    return;
+  }
 
   // Load queue into array (readline async iteration)
   log('Phase 2+3 — Loading product queue...');
@@ -1063,10 +1114,11 @@ async function phase23_enrichImport() {
     catsKey: catsKey(), total: categoryTotal, alreadyDone,
     done: 0, created: 0, updated: 0, deduped: 0, skipped: 0, errors: 0,
   };
-  const end = LIMIT > 0 ? Math.min(LIMIT, queue.length) : queue.length;
+  const remainingCatalogSlots = MAX_TOTAL_PRODUCTS > 0 ? Math.max(0, MAX_TOTAL_PRODUCTS - currentCatalogCount) : queue.length;
+  const end = Math.min(LIMIT > 0 ? LIMIT : queue.length, queue.length, remainingCatalogSlots);
   saveProgress(prog);
 
-  log(`Category total: ${categoryTotal.toLocaleString()} | Already saved: ${alreadyDone.toLocaleString()} | To process now: ${end.toLocaleString()}`);
+  log(`Category total: ${categoryTotal.toLocaleString()} | Already saved: ${alreadyDone.toLocaleString()} | Catalog: ${currentCatalogCount.toLocaleString()}/${MAX_TOTAL_PRODUCTS.toLocaleString()} | To process now: ${end.toLocaleString()}`);
   log(`Workers: ${WORKERS} | Delay: ${DELAY}ms | Languages: ${LANGS.join(', ')}`);
 
   if (end === 0) {
@@ -1203,6 +1255,7 @@ async function main() {
   log(`User: ${ICECAT_USER || '(NOT SET)'} | Langs: ${LANGS.join(',')} | Workers: ${WORKERS} | Delay: ${DELAY}ms`);
   log(`Mode: ${SKIP_PHASE1 ? 'Resume (Phase 2+3 only)' : 'Full run (Phase 1 + 2+3)'}`);
   if (LIMIT) log(`Limit: ${LIMIT} products`);
+  if (MAX_TOTAL_PRODUCTS) log(`Catalog hard cap: ${MAX_TOTAL_PRODUCTS.toLocaleString()} total products`);
   console.log('');
 
   if (!ICECAT_USER) throw new Error('ICECAT_USERNAME not set in migration/.env — add it and retry');
@@ -1218,7 +1271,18 @@ async function main() {
     if (CATS_FILTER) {
       log(`Resume uses selected category filter: ${catsKey()}`);
     }
-    log('Skipping Phase 1 (--resume or --phase=2)');
+    const meta = readQueueMeta();
+    const selectedKey = catsKey();
+    const inspected = await inspectQueueForSelectedCats();
+    const metaMismatch = !meta || meta.catsKey !== selectedKey;
+    if (!fs.existsSync(QUEUE_FILE) || inspected.total === 0 || inspected.allowed === 0 || metaMismatch) {
+      if (metaMismatch) log(`Queue belongs to ${meta?.catsKey || 'unknown'} but selected ${selectedKey}; rebuilding Phase 1.`, 'warn');
+      else log(`Existing queue has ${inspected.allowed}/${inspected.total} usable rows for ${selectedKey}; rebuilding Phase 1.`, 'warn');
+      if (fs.existsSync(PROGRESS_FILE)) fs.unlinkSync(PROGRESS_FILE);
+      await phase1_index();
+    } else {
+      log(`Skipping Phase 1 (--resume or --phase=2); queue usable for ${selectedKey} (${inspected.allowed.toLocaleString()} sample match).`);
+    }
   }
 
   await phase23_enrichImport();

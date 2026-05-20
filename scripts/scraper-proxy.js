@@ -1086,6 +1086,7 @@ const server = http.createServer(async (req, res) => {
         args.push(`--cats=${cats.join(',')}`);
         if (opts.langs)   args.push(`--langs=${opts.langs}`);
         if (opts.limit)   args.push(`--limit=${opts.limit}`);
+        if (opts.maxTotalProducts) args.push(`--maxTotalProducts=${opts.maxTotalProducts}`);
         if (opts.workers) args.push(`--workers=${opts.workers}`);
         if (opts.delay)   args.push(`--delay=${opts.delay}`);
         // Optional brand filter — only products of this brand are saved.

@@ -1790,8 +1790,12 @@ Rules:
           }
           let pbSaved = true;
           if (storedForChunk > 0) {
-            await _saveDeDict();
-            pbSaved = !_deDictDirty;
+            pbSaved = false;
+            for (let saveAttempt = 0; saveAttempt < 4; saveAttempt++) {
+              await _saveDeDict();
+              if (!_deDictDirty) { pbSaved = true; break; }
+              await sleep(1000 + saveAttempt * 1500);
+            }
           }
           report('chunk-done', chunkIdx, {
             batchSize: batch.length,
