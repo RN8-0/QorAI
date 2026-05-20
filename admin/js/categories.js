@@ -833,12 +833,15 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
       });
       bulkOpts += '</optgroup>';
     }
-    const epeyTranslateCats = cats.filter(c => c.epeyPath && !c.scrapeDisabled);
-    if (epeyTranslateCats.length) {
+    // Dictionary translation should never be hidden behind Epey path/count
+    // metadata. Show all known catalog categories; startCategoryTranslation()
+    // already filters to actual Epey records and logs clearly if none exist.
+    const dictCats = cats.filter(c => c.id && !c.scrapeDisabled);
+    if (dictCats.length) {
       dictOpts += `<optgroup label="${escHtml(groupName)}">`;
-      epeyTranslateCats.forEach(cat => {
-        const ghCnt = epeyCounts[cat.id] || 0;
-        const label = ghCnt > 0 ? ` (${ghCnt})` : '';
+      dictCats.forEach(cat => {
+        const cnt = Math.max(Number(epeyCounts[cat.id]) || 0, Number(counts[cat.id]) || 0);
+        const label = cnt > 0 ? ` (${cnt})` : '';
         dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
       });
       dictOpts += '</optgroup>';
@@ -861,9 +864,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
-      if (cat.epeyPath && !cat.scrapeDisabled) {
-        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${ghCnt > 0 ? ` (${ghCnt})` : ''}</option>`;
-      }
+      dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${cnt > 0 ? ` (${cnt})` : ''}</option>`;
     });
     bulkOpts += '</optgroup>';
   }
@@ -889,6 +890,28 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
   }
 
   return { bulkOpts, dictOpts, flatOpts };
+}
+
+function _buildFallbackDictCategoryOptions(counts = {}, epeyCounts = {}) {
+  let html = '<option value="">Kategori seç</option>';
+  const all = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
+    ? QorAiCategories.getAll().filter(c => c?.id && !c.scrapeDisabled)
+    : [];
+  if (!all.length) return html;
+  const grouped = {};
+  all.forEach(cat => {
+    const group = _scraperGroupForCat(cat);
+    (grouped[group] = grouped[group] || []).push(cat);
+  });
+  Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).forEach(([group, cats]) => {
+    html += `<optgroup label="${escHtml(group)}">`;
+    cats.sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id))).forEach(cat => {
+      const cnt = Math.max(Number(epeyCounts[cat.id]) || 0, Number(counts[cat.id]) || 0);
+      html += `<option value="${escHtml(cat.id)}">${escHtml(cat.name || cat.id)}${cnt > 0 ? ` (${cnt})` : ''}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  return html;
 }
 
 function updateScrapeCategorySelectedCount() {
@@ -953,6 +976,14 @@ function clearScrapeCategories() {
 }
 
 function _applyScraperCategoryOptions({ bulkOpts, dictOpts, flatOpts }) {
+  const optionCount = (html) => {
+    const matches = String(html || '').match(/<option\b/gi);
+    return matches ? matches.length : 0;
+  };
+  if (optionCount(dictOpts) <= 1) {
+    dictOpts = _buildFallbackDictCategoryOptions();
+    console.warn('[categories] Dictionary category options were empty; fallback list applied');
+  }
   const setSel = (id, html) => {
     const el = document.getElementById(id);
     if (!el) return;
