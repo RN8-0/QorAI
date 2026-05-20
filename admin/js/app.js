@@ -1928,15 +1928,11 @@ async function saveDictionary(){
 
 // ─── BULK CATEGORY TRANSLATION (Dictionary tab) ──────────────────────────
 // Decoupled from the scrape loop. Pick a category → load every product →
-// collect unique atoms across the whole batch → translate ONLY the atoms
-// missing from the dictionary (one DeepSeek batch for all 11 langs) → save
-// dictionary → write per-product `multiLangSpecs`, `multiLangSections`,
-// `nameTranslated` patches via dict lookups (no further API calls).
-//
-// Why this layout: aircraft-carrier rule — the heavy work (DeepSeek) runs
-// EXACTLY ONCE per unique term across the whole catalog. The 100th product
-// in a category usually triggers zero new API calls because every atom
-// already lives in the dictionary.
+// process small product batches → translate only atoms missing from the
+// shared dictionary → save the dictionary → immediately patch that batch
+// with `multiLangSpecs`, `multiLangSections`, and `nameTranslated`.
+// Later batches reuse everything learned earlier, so progress appears in the
+// product modal while the longer category job is still running.
 let _catXlateAbort = false;
 let _catXlateRunning = false;
 
@@ -1961,6 +1957,20 @@ function _xlateProgress(done, total, status){
   if (bar) bar.style.width = total > 0 ? `${Math.min(100, (done / total) * 100)}%` : '0%';
   if (cnt) cnt.textContent = total > 0 ? `${done} / ${total}` : '';
   if (stat && status) stat.textContent = status;
+}
+
+function _refreshDictionaryStatsOnly(){
+  try {
+    const stats = document.getElementById('dictStats');
+    if (!stats || !window.QorAiDict?.cache) return;
+    const cache = window.QorAiDict.cache();
+    const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
+    const allKeys = Object.keys(cache);
+    const visible = q
+      ? allKeys.filter(k => k.includes(q) || DICT_VIEW_LANGS.some(l => String(cache[k]?.[l] || '').toLowerCase().includes(q))).length
+      : allKeys.length;
+    stats.textContent = `${visible} / ${allKeys.length} term`;
+  } catch {}
 }
 
 function stopCategoryTranslation(){
@@ -1994,17 +2004,24 @@ async function startCategoryTranslation(){
 
     _xlateProgress(0, 0, 'Fetching products…');
     // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
-    // Unwrap so we can access fields directly. Filter server-side by
-    // category for efficiency.
+    // Fetch only fields needed by the translator: Epey source, product name,
+    // and spec payloads.
     const safeCategory = String(categoryId).replace(/"/g, '\\"');
-    const filter = `category="${safeCategory}" && (source="epey.com" || source="epey")`;
-    const rawDocs = await pbGetAll('products', { filter });
+    // Query by category only, then filter Epey client-side. Older records may
+    // have sourceUrl=epey.com but a stale/migrated source value, and the old
+    // strict source filter made the translator skip exactly those products.
+    const filter = `category="${safeCategory}"`;
+    const rawDocs = await pbGetAll('products', {
+      filter,
+      fields: 'id,name,category,source,sourceUrl,specs,specSections,keySpecs',
+      batch: 500,
+    });
     const products = (rawDocs || [])
       .map(d => {
         const body = (typeof d.data === 'function') ? d.data() : d;
         return { id: d.id || body.id, ...body };
       })
-      .filter(p => ['epey.com', 'epey'].includes(String(p?.source || '').toLowerCase()))
+      .filter(p => window.QorAiBulkTranslate?.isEpeyProduct ? window.QorAiBulkTranslate.isEpeyProduct(p) : /epey/i.test(String(p?.source || p?.sourceUrl || '')))
       .filter(p => p && p.specs && Object.keys(p.specs).length);
     if (!products.length) {
       _xlateLog(`No Epey products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
@@ -2014,104 +2031,119 @@ async function startCategoryTranslation(){
     _xlateLog(`Found ${products.length} Epey products. Icecat records will not be patched by dictionary translation.`);
 
     _xlateProgress(0, 0, 'Collecting atoms…');
-    const atoms = window.QorAiBulkTranslate.collectAtoms(products);
     const targets = window.QorAiBulkTranslate.targetLangs();
-    const missing = window.QorAiBulkTranslate.missingAtoms(atoms, targets);
-    _xlateLog(`Atoms: ${atoms.length} total · ${missing.length} missing · ${atoms.length - missing.length} cached`);
+    const atoms = window.QorAiBulkTranslate.collectAtoms(products);
+    const initialMissing = window.QorAiBulkTranslate.missingAtoms(atoms, targets);
+    _xlateLog(`Atoms: ${atoms.length} total · ${initialMissing.length} missing · ${atoms.length - initialMissing.length} cached`);
+    _refreshDictionaryStatsOnly();
 
     if (_catXlateAbort) throw new Error('aborted');
 
-    if (missing.length > 0) {
-      const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 12;
-      const chunks = Math.ceil(missing.length / chunkSize);
-      const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 4;
-      _xlateProgress(0, chunks, `Translating ${missing.length} new atoms × ${targets.length} langs (${chunks} DeepSeek call${chunks > 1 ? 's' : ''}, ${concurrency} parallel)…`);
-      _xlateLog(`⚙ DeepSeek plan: ${chunks} chunks × ≤${chunkSize} atoms × ${targets.length} langs · concurrency=${concurrency}`);
+    let done = 0, failed = 0;
+    let learned = 0;
+    const PRODUCT_BATCH = 20;
+    const PATCH_CONCURRENCY = 25;
+    const totalBatches = Math.ceil(products.length / PRODUCT_BATCH);
+    _xlateProgress(0, products.length, 'Starting streaming translate + patch…');
 
-      // With parallel chunks we track aggregate state, not "the" current
-      // chunk. inFlight = number of API calls awaiting a response right now.
-      // doneCount = chunks that have finished (success OR error).
-      const startedAt = Date.now();
-      const inFlight = new Map(); // chunkIdx → start ms
-      let doneCount = 0;
-      const heartbeat = setInterval(() => {
-        if (inFlight.size === 0) return;
-        const oldest = Math.min(...inFlight.values());
-        const sec = ((Date.now() - oldest) / 1000).toFixed(0);
-        _xlateProgress(doneCount, chunks, `${doneCount}/${chunks} done · ${inFlight.size} in flight · oldest ${sec}s`);
-      }, 1000);
+    for (let offset = 0; offset < products.length && !_catXlateAbort; offset += PRODUCT_BATCH) {
+      const batchNo = Math.floor(offset / PRODUCT_BATCH) + 1;
+      const productBatch = products.slice(offset, offset + PRODUCT_BATCH);
+      const batchAtoms = window.QorAiBulkTranslate.collectAtoms(productBatch);
+      const missing = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets);
 
-      try {
-        await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-          if (ev.phase === 'chunk-start') {
-            inFlight.set(ev.chunkIndex, Date.now());
-            const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
-            _xlateLog(`→ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
-          } else if (ev.phase === 'chunk-done') {
-            inFlight.delete(ev.chunkIndex);
-            doneCount++;
-            const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-            _xlateLog(`✓ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} done · ${ev.stored} translations · ${sec}s`, 'success');
-            _xlateProgress(doneCount, chunks, `${doneCount}/${chunks} done · ${inFlight.size} in flight`);
-          } else if (ev.phase === 'chunk-error') {
-            inFlight.delete(ev.chunkIndex);
-            doneCount++;
-            _xlateLog(`✗ Chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+      if (missing.length > 0) {
+        const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 32;
+        const chunks = Math.ceil(missing.length / chunkSize);
+        const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 8;
+        _xlateLog(`⚙ Batch ${batchNo}/${totalBatches}: ${productBatch.length} products · ${missing.length}/${batchAtoms.length} missing atoms · ${chunks} calls · ${concurrency} parallel`);
+
+        const chunkStartedAt = Date.now();
+        const inFlight = new Map();
+        let doneChunks = 0;
+        const heartbeat = setInterval(() => {
+          if (inFlight.size === 0) return;
+          const oldest = Math.min(...inFlight.values());
+          const sec = ((Date.now() - oldest) / 1000).toFixed(0);
+          _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks · ${inFlight.size} in flight · oldest ${sec}s`);
+        }, 1000);
+
+        try {
+          await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
+            if (ev.phase === 'chunk-start') {
+              inFlight.set(ev.chunkIndex, Date.now());
+              const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
+              _xlateLog(`→ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+            } else if (ev.phase === 'chunk-done') {
+              inFlight.delete(ev.chunkIndex);
+              doneChunks++;
+              const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
+              _xlateLog(`✓ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
+              _refreshDictionaryStatsOnly();
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks done`);
+            } else if (ev.phase === 'chunk-error') {
+              inFlight.delete(ev.chunkIndex);
+              doneChunks++;
+              if (ev.error !== 'aborted') _xlateLog(`✗ Batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+            }
+          }, () => _catXlateAbort);
+        } finally {
+          clearInterval(heartbeat);
+        }
+        if (_catXlateAbort) throw new Error('aborted');
+        learned += missing.length;
+        const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
+        _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`);
+        await window.QorAiBulkTranslate.saveDict();
+        try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
+        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${missing.length} atoms · ${sec}s)`, 'success');
+      } else {
+        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: ${batchAtoms.length} atoms already cached`, 'success');
+      }
+
+      _xlateProgress(done + failed, products.length, `Patching batch ${batchNo}/${totalBatches}…`);
+      for (let i = 0; i < productBatch.length && !_catXlateAbort; i += PATCH_CONCURRENCY) {
+        const patchBatch = productBatch.slice(i, i + PATCH_CONCURRENCY);
+        const settled = await Promise.allSettled(patchBatch.map(async (p) => {
+          const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
+          const patch = {
+            multiLangSpecs: payload.multiLangSpecs,
+            multiLangSections: payload.multiLangSections,
+            nameTranslated: payload.nameTranslated,
+          };
+          // Provide English primary spec view too (used by some downstream UI)
+          if (payload.multiLangSpecs?.en && Object.keys(payload.multiLangSpecs.en).length) {
+            const specsEn = {};
+            for (const [k, v] of Object.entries(p.specs || {})) {
+              specsEn[payload.multiLangSpecs.en[k] || k] = payload.multiLangSpecs.en[String(v)] || v;
+            }
+            patch.specsEn = specsEn;
+          }
+          await pbUpdateDoc('products', p.id, patch);
+          return p;
+        }));
+
+        settled.forEach((result, idx) => {
+          const p = patchBatch[idx];
+          if (result.status === 'fulfilled') {
+            done++;
+            if (done <= 3 || done % 25 === 0 || done === products.length) {
+              _xlateLog(`✓ ${done}/${products.length} patched · ${p.name?.substring(0, 50) || p.id}`, 'success');
+            }
+          } else {
+            failed++;
+            _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${result.reason?.message || result.reason}`, 'error');
           }
         });
-      } finally {
-        clearInterval(heartbeat);
+        _xlateProgress(done + failed, products.length, `Patched ${done} ok, ${failed} fail · batch ${batchNo}/${totalBatches}`);
       }
-      const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
-      _xlateProgress(chunks, chunks, 'Saving dictionary…');
-      await window.QorAiBulkTranslate.saveDict();
-      _xlateLog(`✓ Dictionary updated (+${missing.length} terms · ${totalSec}s wall-clock)`, 'success');
-    } else {
-      _xlateLog('All atoms already in dictionary — no API call needed', 'success');
-    }
-
-    if (_catXlateAbort) throw new Error('aborted');
-
-    _xlateProgress(0, products.length, 'Patching products…');
-    let done = 0, failed = 0;
-    for (const p of products) {
-      if (_catXlateAbort) break;
-      if (!['epey.com', 'epey'].includes(String(p?.source || '').toLowerCase())) {
-        _xlateLog(`↷ skipped non-Epey product: ${p?.name || p?.id || 'unknown'}`, 'warn');
-        continue;
-      }
-      try {
-        const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
-        const patch = {
-          multiLangSpecs:    payload.multiLangSpecs,
-          multiLangSections: payload.multiLangSections,
-          nameTranslated:    payload.nameTranslated,
-        };
-        // Provide English primary spec view too (used by some downstream UI)
-        if (payload.multiLangSpecs?.en && Object.keys(payload.multiLangSpecs.en).length) {
-          const specsEn = {};
-          for (const [k, v] of Object.entries(p.specs || {})) {
-            specsEn[payload.multiLangSpecs.en[k] || k] = payload.multiLangSpecs.en[String(v)] || v;
-          }
-          patch.specsEn = specsEn;
-        }
-        await pbUpdateDoc('products', p.id, patch);
-        done++;
-        if (done <= 3 || done % 10 === 0 || done === products.length) {
-          _xlateLog(`✓ ${done}/${products.length} · ${p.name?.substring(0, 50) || p.id}`, 'success');
-        }
-      } catch (e) {
-        failed++;
-        _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${e.message}`, 'error');
-      }
-      _xlateProgress(done + failed, products.length, `Patching products (${done} ok, ${failed} fail)…`);
     }
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     _xlateProgress(done + failed, products.length, _catXlateAbort ? 'Stopped' : 'Done');
     _xlateLog(`✅ Completed: ${done} translated · ${failed} failed · ${elapsed}s`, 'success');
     toast(`✅ ${done}/${products.length} ürün çevrildi`, done ? 's' : 'w');
-    try { logActivity('category_translation', `${categoryId}: ${done}/${products.length} (+${missing.length} new terms)`); } catch {}
+    try { logActivity('category_translation', `${categoryId}: ${done}/${products.length} (+${learned} new terms)`); } catch {}
 
     // Refresh dict table + in-memory product list so modals show the new data
     try { renderDictionaryTable(); } catch {}
@@ -2421,12 +2453,12 @@ function _renderProductModal(p,variants=[]){
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
-  // Build localized sections on the fly: keep the original German section
+  // Build localized sections on the fly: keep the original Turkish section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
   // inside via the cached multiLangSpecs lookup.
   let sections = normalizeSpecSectionsShape(p.specSections);
   let directLocalizedSections = false;
-  const rawLangSections = (lang !== 'de' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
+  const rawLangSections = (lang !== 'tr' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
   const isSimpleSectionNameMap = rawLangSections && !Array.isArray(rawLangSections) && typeof rawLangSections === 'object' &&
     Object.values(rawLangSections).every(v => typeof v === 'string');
   if (rawLangSections && !isSimpleSectionNameMap) {
@@ -2497,7 +2529,7 @@ function _renderProductModal(p,variants=[]){
     // individual bullet (e.g. "fest verbaut" → "sabit takılı"). The scraper's
     // translateGermanSpecs now stores both block- and line-level entries, so
     // this lookup typically succeeds for unrelated locales as well.
-    const localized = (ml && lang !== 'de')
+    const localized = (ml && lang !== 'tr')
       ? lines.map(line => (typeof ml[line] === 'string' && ml[line]) ? ml[line] : line)
       : lines;
     if(localized.length>1)return`<div class="pm-v-list">${localized.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
@@ -2507,18 +2539,18 @@ function _renderProductModal(p,variants=[]){
     const s=String(v),y=_isYesV(s),n=_isNoV(s);
     return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const flat=p.specs||{};const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>Specifications</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(ml&&lang!=='tr')?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[ml[k]||k,ml[String(v)]||v])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
   // Build the language picker chip. Every language is selectable; when a
-  // translation is missing the renderer silently falls back to German so the
+  // translation is missing the renderer silently falls back to Turkish so the
   // UI never goes blank. We only annotate "(fallback)" so the admin knows.
-  // True when at least one German spec key was actually translated for this
+  // True when at least one Turkish spec key was actually translated for this
   // language. An empty `{}` payload still counts as "fallback" so the admin
   // can see at a glance which langs are missing translations.
   const has = (code) => {
-    if (code === 'de') return true;
+    if (code === 'tr') return true;
     const m = p.multiLangSpecs && p.multiLangSpecs[code];
     return !!m && Object.keys(m).length > 0;
   };

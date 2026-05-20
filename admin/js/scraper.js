@@ -1274,7 +1274,7 @@ function parseSpecs(doc) {
 // ═══════════════════════════════════════
 
 function getDict() {
-  return (typeof window !== 'undefined' && window.QorAiDict) ? window.QorAiDict : null;
+  return (typeof window !== 'undefined' && (window.QorAiStaticDict || window.QorAiDict)) ? (window.QorAiStaticDict || window.QorAiDict) : null;
 }
 
 function translateSpecsObject(rawSpecs) {
@@ -1327,11 +1327,33 @@ function filterSpecs(specs, sections) {
 //  12b. TURKISH → MULTI-LANG TRANSLATION (DeepSeek v3 + Dictionary Cache)
 // ═══════════════════════════════════════
 
+// Keep the large static TR→EN dictionary from dictionary.js. The async
+// PocketBase cache below adds admin-editable translations, but should not
+// hide the old translateKey / translateValue helpers from scraper code.
+const _staticQorAiDict = (typeof window !== 'undefined' && window.QorAiDict) ? window.QorAiDict : null;
+if (typeof window !== 'undefined' && _staticQorAiDict && !window.QorAiStaticDict) {
+  window.QorAiStaticDict = _staticQorAiDict;
+}
+
 // In-memory TR→target dictionary cache (lazy-loaded from PB)
 const _deDictCache = {}; // { 'some turkish text': { en: '...', de: '...', ... } }
 let _deDictLoaded = false;
 let _deDictDirty = false;
+let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
+
+function _seedStaticEnglishDict() {
+  const staticDict = (typeof window !== 'undefined' && (window.QorAiStaticDict || _staticQorAiDict)) || null;
+  const trEn = staticDict?.TR_EN;
+  if (!trEn || typeof trEn !== 'object') return;
+  for (const [rawKey, rawValue] of Object.entries(trEn)) {
+    const key = String(rawKey || '').toLowerCase().trim();
+    const value = String(rawValue || '').trim();
+    if (!key || !value) continue;
+    if (!_deDictCache[key]) _deDictCache[key] = {};
+    if (!_deDictCache[key].en) _deDictCache[key].en = _applyTitleCase(value);
+  }
+}
 
 async function _loadDeDict() {
   if (_deDictLoaded) return;
@@ -1347,21 +1369,40 @@ async function _loadDeDict() {
   } catch (e) {
     console.warn('[de-dict] load failed:', e.message);
   }
+  _seedStaticEnglishDict();
   _deDictLoaded = true;
 }
 
 async function _saveDeDict() {
   if (!_deDictDirty) return;
-  _deDictDirty = false;
+  if (_deDictSavePromise) {
+    await _deDictSavePromise;
+    if (!_deDictDirty) return;
+  }
+  _deDictSavePromise = (async () => {
+    while (_deDictDirty) {
+      _deDictDirty = false;
+      // Snapshot the cache so overlapping chunk completions cannot mutate the
+      // payload while PocketBase is serializing it. If new terms arrive during
+      // the request, _deDictDirty flips back to true and the loop writes again.
+      const snapshot = JSON.parse(JSON.stringify(_deDictCache));
+      try {
+        await pbSetDoc('public_config', DE_DICT_PB_KEY, {
+          key: DE_DICT_PB_KEY,
+          value: snapshot,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn('[de-dict] save failed:', e.message);
+        _deDictDirty = true; // retry next time
+        break;
+      }
+    }
+  })();
   try {
-    await pbSetDoc('public_config', DE_DICT_PB_KEY, {
-      key: DE_DICT_PB_KEY,
-      value: _deDictCache,
-      updatedAt: new Date().toISOString()
-    });
-  } catch (e) {
-    console.warn('[de-dict] save failed:', e.message);
-    _deDictDirty = true; // retry next time
+    await _deDictSavePromise;
+  } finally {
+    _deDictSavePromise = null;
   }
 }
 
@@ -1432,6 +1473,16 @@ function _shouldTranslateAtom(text) {
     return false;
   }
   return true;
+}
+
+function _shouldTranslateProductName(name) {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  // Product names are usually brand/model identifiers and should stay as-is
+  // across languages. Only spend AI budget when the name actually contains
+  // Turkish wording such as "akıllı saat" or "oyuncu monitörü".
+  if (/[çğıöşüÇĞİÖŞÜ]/.test(s)) return true;
+  return /\b(akilli|akıllı|oyuncu|kablolu|kablosuz|sarj|şarj|kulaklik|kulaklık|telefon|saat|monitor|monitör|kamera|yazici|yazıcı)\b/i.test(s);
 }
 
 // Title-case a single token while keeping acronyms / units intact.
@@ -1511,6 +1562,7 @@ function _deDictStore(turkishText, targetLang, translation) {
 // admin can persist edits even if no _deDictStore call was made (e.g. the
 // admin only edited an existing entry).
 window.QorAiDict = {
+  ...(_staticQorAiDict || {}),
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
   set:     (turkishText, lang, translation) => _deDictStore(turkishText, lang, translation),
@@ -1596,7 +1648,7 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
-async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
+async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
   const token = getPb()?.authStore?.token;
   if (!token) {
     console.warn('[tr-translate] No auth token');
@@ -1615,7 +1667,7 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
   // lets us safely use a slightly larger batch than the old 12.
-  const CHUNK = 18;
+  const CHUNK = 32;
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
@@ -1629,6 +1681,10 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   // _deDictStore — last-write-wins, but identical inputs produce identical
   // output so this is safe).
   async function processChunk(chunkIdx, batch) {
+    if (typeof shouldAbort === 'function' && shouldAbort()) {
+      report('chunk-error', chunkIdx, { error: 'aborted', elapsedMs: 0 });
+      return;
+    }
     report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
     const chunkStart = Date.now();
     const textsJson = JSON.stringify(batch);
@@ -1682,9 +1738,11 @@ Rules:
           }
         }
       }
+      if (storedForChunk > 0) await _saveDeDict();
       report('chunk-done', chunkIdx, {
         batchSize: batch.length,
         stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
         elapsedMs: Date.now() - chunkStart,
       });
     } catch (e) {
@@ -1699,14 +1757,14 @@ Rules:
     jobs.push({ chunkIdx: Math.floor(i / CHUNK), batch: uncached.slice(i, i + CHUNK) });
   }
 
-  // Concurrency-limited worker pool. DeepSeek's standard tier accepts ~60
-  // req/min — at 4 in-flight requests with ~15-30s latency we stay well
-  // below that ceiling. End-to-end runtime drops from N×latency to
-  // (N/CONCURRENCY)×latency, so a 9-chunk run goes from ~225s → ~60s.
-  const CONCURRENCY = 4;
+  // Concurrency-limited worker pool. Category translation runs from the admin
+  // panel and needs fast feedback, so keep several chunks in flight while
+  // staying under typical API rate limits.
+  const CONCURRENCY = 8;
   let cursor = 0;
   const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
     while (cursor < jobs.length) {
+      if (typeof shouldAbort === 'function' && shouldAbort()) break;
       const job = jobs[cursor++];
       await processChunk(job.chunkIdx, job.batch);
     }
@@ -1813,6 +1871,9 @@ async function translateSpecSections(specSections, targetLangs = TARGET_LANGS) {
 // Translate single Turkish product name to all languages (single API call)
 async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
+  if (!_shouldTranslateProductName(germanName)) {
+    return Object.fromEntries(targetLangs.map(lang => [lang, germanName]));
+  }
   await _deepSeekAllLangsBatch([germanName], targetLangs);
   const names = {};
   for (const lang of targetLangs) {
@@ -1824,10 +1885,15 @@ async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
 // ── Bulk Category Translation API ───────────────────────────────────────
 // Atomize every translatable string across a list of products, hit DeepSeek
 // ONCE for the union of missing atoms (chunked), persist the dictionary, then
-// build per-product multiLangSpecs / nameTranslated / multiLangSections from
+// build per-product multiLangSpecs / multiLangSections / nameTranslated from
 // dictionary lookups only — no further API calls. This is the engine behind
 // the Dictionary tab's "Translate Category" panel.
+function _isEpeyTranslateProduct(p) {
+  return /epey/i.test(String(p?.source || p?.sourceUrl || ''));
+}
+
 function _collectAtomsFromProduct(p, sink) {
+  if (!_isEpeyTranslateProduct(p)) return;
   const add = (t) => {
     const s = String(t || '').trim();
     if (!s) return;
@@ -1839,9 +1905,13 @@ function _collectAtomsFromProduct(p, sink) {
       }
     }
   };
-  if (p.name) add(p.name);
+  if (_shouldTranslateProductName(p.name)) add(p.name);
+
+  // Only translate product name + Epey spec content. Category names and
+  // scraper metadata are intentionally left out so this panel stays fast.
   const specs = p.specs || {};
   for (const [k, v] of Object.entries(specs)) { add(k); add(v); }
+
   const sections = p.specSections || {};
   for (const [secName, body] of Object.entries(sections)) {
     add(secName);
@@ -1854,8 +1924,12 @@ function _collectAtomsFromProduct(p, sink) {
 }
 
 function _buildProductTranslations(p, targetLangs) {
-  // For each lang, build flat source→localized map covering specs keys/values
-  // and atomized sub-lines, plus product name + section names.
+  if (!_isEpeyTranslateProduct(p)) {
+    return { multiLangSpecs: {}, multiLangSections: {}, nameTranslated: {} };
+  }
+
+  // For each lang, build flat source→localized map covering only Epey spec
+  // keys/values and atomized sub-lines, plus the product name.
   const multiLangSpecs = {};
   const multiLangSections = {};
   const nameTranslated = {};
@@ -1877,6 +1951,16 @@ function _buildProductTranslations(p, targetLangs) {
     for (const [k, v] of Object.entries(p.keySpecs || {})) {
       addToMap(k); addToMap(v);
     }
+    for (const body of Object.values(p.specSections || {})) {
+      if (body && typeof body === 'object') {
+        for (const [k, v] of Object.entries(body)) {
+          addToMap(k);
+          const vs = String(v);
+          addToMap(vs);
+          if (vs.includes('\n')) for (const line of vs.split('\n')) addToMap(line);
+        }
+      }
+    }
     multiLangSpecs[lang] = map;
 
     const secMap = {};
@@ -1885,13 +1969,14 @@ function _buildProductTranslations(p, targetLangs) {
     }
     multiLangSections[lang] = secMap;
 
-    nameTranslated[lang] = _deDictLookup(p.name, lang) || p.name;
+    nameTranslated[lang] = _shouldTranslateProductName(p.name) ? (_deDictLookup(p.name, lang) || p.name) : p.name;
   }
   return { multiLangSpecs, multiLangSections, nameTranslated };
 }
 
 // Public API consumed by app.js category translator panel
 window.QorAiBulkTranslate = {
+  isEpeyProduct: _isEpeyTranslateProduct,
   // Pre-load dictionary
   loadDict: () => _loadDeDict(),
   // Collect unique atoms across a batch of products
@@ -1907,8 +1992,8 @@ window.QorAiBulkTranslate = {
   // Hit DeepSeek for the supplied (already filtered) atoms. Chunked & batched.
   // `onProgress` receives { phase, chunkIndex, totalChunks, ... } per chunk so
   // the UI can render a live progress bar and ETA.
-  translateAtoms(atoms, targetLangs = TARGET_LANGS, onProgress) {
-    return _deepSeekAllLangsBatch(atoms, targetLangs, onProgress);
+  translateAtoms(atoms, targetLangs = TARGET_LANGS, onProgress, shouldAbort) {
+    return _deepSeekAllLangsBatch(atoms, targetLangs, onProgress, shouldAbort);
   },
   // Build the per-product translation payload from dict only (no API calls).
   buildPayload(product, targetLangs = TARGET_LANGS) {
@@ -1918,8 +2003,8 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 18,
-  CONCURRENCY: 4,
+  CHUNK_SIZE: 32,
+  CONCURRENCY: 8,
 };
 
 // ═══════════════════════════════════════
@@ -2017,8 +2102,9 @@ async function scrapeProductDetail(html, url, categoryId) {
 // After scraping, translate specs to all target languages using DeepSeek v3
 async function translateScrapedProduct(product) {
   if (!product || !product.specs || !Object.keys(product.specs).length) return product;
+  if (!_isEpeyTranslateProduct(product)) return product;
 
-  slog(`Translating Turkish specs for: ${product.name?.substring(0, 50)}...`, 'info');
+  slog(`Translating Epey name/specs for: ${product.name?.substring(0, 50)}...`, 'info');
 
   try {
     // Translate specs to all languages
