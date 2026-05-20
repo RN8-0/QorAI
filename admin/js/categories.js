@@ -730,6 +730,37 @@ async function _loadCategoryCounts(sourceFilter = '') {
   try {
     const pb = getPb();
     if (!pb) return counts;
+
+    // Fast path: the canonical productCount written by repair_categories.js
+    // and the bulk scraper itself lives on the `categories` collection. One
+    // tiny request is enough to populate every option label — no 138-page
+    // product scan, no scraper-tab freeze.
+    if (!sourceFilter) {
+      try {
+        const res = await pb.collection('categories').getList(1, 500, {
+          $autoCancel: false,
+          fields: 'slug,productCount',
+        });
+        for (const c of (res.items || [])) {
+          const id = normalizeCategoryId(c.slug);
+          if (!id) continue;
+          counts[id] = Math.max(counts[id] || 0, Number(c.productCount) || 0);
+        }
+        if (Object.keys(counts).length) {
+          window._catCountCache = {
+            ...(window._catCountCache || {}),
+            [cacheKey]: { ts: now, data: counts },
+          };
+          return counts;
+        }
+      } catch (e) {
+        console.warn('[cat-count] categories fast-path failed:', e.message || e);
+      }
+    }
+
+    // Slow path: brute-force scan. Only used when the source-filter is set
+    // (e.g. Epey-only counts for the Translate-Category dropdown) or the
+    // categories collection isn't usable yet.
     const opts = sourceFilter === '__epey__'
       ? { filter: '(source="epey.com" || source="epey")', fields: 'id,category' }
       : sourceFilter

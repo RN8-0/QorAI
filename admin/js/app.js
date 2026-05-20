@@ -1087,7 +1087,7 @@ function updateCategoryChart(catCounts){
 // ═══════════════════════════════════════
 let allProducts=[],filteredProducts=[],displayProducts=[],currentPage=1,selectedIds=new Set(),viewMode='grid';
 // Grouped product view — one card per model family. Toggled from the toolbar.
-let _groupVariants=true;
+let _groupVariants=false;
 // Raw SKU total (every variant) — shown in the header so it matches the
 // dashboard, while pagination shows the grouped model count.
 let _rawProductTotal=0;
@@ -1151,9 +1151,9 @@ function _adminCategoryFilterVariants(categoryId){
     video_cameras:['video_cameras','video-cameras','camcorders'],
     speakers:['speakers','portable_speakers','portable-speakers'],
     printers:['printers','multifunction_printers','multifunction-printers','laser_printers','laser-printers','label_printers','label-printers'],
-    gaming_consoles:['gaming_consoles','gaming-consoles','switch2_consoles','switch2-consoles'],
-    gaming_accessories:['gaming_accessories','gaming-accessories','switch2_accessories','switch2-accessories'],
-    games:['games','switch2_games','switch2-games'],
+    gaming_consoles:['gaming_consoles','gaming-consoles','switch2_consoles','switch2-consoles','ps5_consoles','ps5-consoles','xbox_one','xbox-one','xbox_series','xbox-series'],
+    gaming_accessories:['gaming_accessories','gaming-accessories','switch2_accessories','switch2-accessories','ps5_accessories','ps5-accessories','xbox_accessories','xbox-accessories'],
+    games:['games','switch2_games','switch2-games','ps5_games','ps5-games'],
   };
   return [...new Set([canonical,...(aliases[canonical]||[])].filter(Boolean))];
 }
@@ -1185,6 +1185,8 @@ function mergeProductLists(existing,incoming){
 async function loadProducts(){
   const g=document.getElementById('productGrid');
   const countEl=document.getElementById('productCount');
+  const groupBtn=document.getElementById('groupVariantsBtn');
+  if(groupBtn)groupBtn.textContent=_groupVariants?'⊞ Gruplu':'≣ Tüm SKU';
   if(countEl)countEl.textContent='...';
   g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading products...</div>';
   try{
@@ -1205,7 +1207,10 @@ async function refreshRawProductTotal(){
     const r=await getPb().collection('products').getList(1,1,{$autoCancel:false,fields:'id'});
     if(r&&typeof r.totalItems==='number')_rawProductTotal=r.totalItems;
     const el=document.getElementById('productCount');
-    if(el)el.textContent=(_rawProductTotal||totalProductCount||0).toLocaleString();
+    // Only refresh the header with the raw catalog total when no filter is
+    // active. With an active filter the count must reflect the filtered total
+    // (set by renderProductsPage from totalProductCount).
+    if(el&&!_hasActiveProductFilters())el.textContent=(_rawProductTotal||totalProductCount||0).toLocaleString();
   }catch(_){/* non-fatal */}
 }
 
@@ -1258,19 +1263,41 @@ async function productsLiveTick(){
 window.startProductsLivePoll=startProductsLivePoll;
 window.stopProductsLivePoll=stopProductsLivePoll;
 
+// During a bulk scrape we throttle list/grid re-renders aggressively: doing
+// a full mergeProductLists + renderProductsPage on every single saved product
+// was burning ~30-50ms of layout on each row and blocking the Stop button.
+let _scrapeRefreshTimer=null;
+function _scheduleScrapeBatchRefresh(){
+  if(_scrapeRefreshTimer)return;
+  _scrapeRefreshTimer=setTimeout(()=>{
+    _scrapeRefreshTimer=null;
+    _productFacetCache.ts=0;
+    if(document.getElementById('productsView')?.classList.contains('active')){
+      queueProductsRefresh();
+    }
+  },5000);
+}
 window.addEventListener('qorai:product-saved',e=>{
   const p=e.detail?.product;
-  _productFacetCache.ts=0;
+  // While a bulk scrape is running we keep the in-memory list updated but skip
+  // the heavy DOM render on every save — a single batched refresh every 5s is
+  // plenty to keep the Products grid roughly current, and it stops the admin
+  // UI from freezing while the scraper hammers PB with new rows.
+  const scraping=!!window.qoraiScrapeActive;
+  if(!scraping)_productFacetCache.ts=0;
   if(p&&Array.isArray(allProducts)){
     const item={id:e.detail?.id||p.id||p.slug,...p};
     const before=allProducts.length;
     allProducts=mergeProductLists(allProducts,[item]);
     totalProductCount=Math.max(totalProductCount||0,totalProductCount+(allProducts.length>before?1:0),allProducts.length);
-    const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
-    displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||normalizeAdminCategoryValue(x.category,x).toLowerCase().includes(searchQ)):allProducts;
-    if(currentPage===1&&document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
+    if(!scraping){
+      const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
+      displayProducts=searchQ?allProducts.filter(x=>(x.name||'').toLowerCase().includes(searchQ)||(x.brand||'').toLowerCase().includes(searchQ)||normalizeAdminCategoryValue(x.category,x).toLowerCase().includes(searchQ)):allProducts;
+      if(currentPage===1&&document.getElementById('productsView')?.classList.contains('active'))renderProductsPage();
+    }
   }
-  queueProductsRefresh();
+  if(scraping)_scheduleScrapeBatchRefresh();
+  else queueProductsRefresh();
 });
 
 let _productFacetCache={ts:0,brands:[],cats:[]};
@@ -1381,7 +1408,7 @@ async function populateCategoryFilterFromCollection(){
       if(!id)continue;
       const count=Number(c.productCount)||0;
       const ex=byId.get(id);
-      if(!ex||count>ex.count)byId.set(id,{id,name:c.name||_adminCategoryLabel(id),count});
+      if(!ex||count>ex.count)byId.set(id,{id,name:_adminCategoryLabel(id),count});
     }
     const list=[...byId.values()].sort((a,b)=>a.name.localeCompare(b.name));
     if(list.length)_applySelectOptions('categoryFilter',_categoryOptionsHtml(list));
@@ -1425,6 +1452,15 @@ async function warmProductFacetsInBackground(){
   }
 }
 
+function _hasActiveProductFilters(){
+  const brand=(document.getElementById('brandFilter')?.value||'').trim();
+  const cat=(document.getElementById('categoryFilter')?.value||'').trim();
+  const date=(document.getElementById('dateFilter')?.value||'').trim();
+  const offer=(document.getElementById('offerFilter')?.value||'').trim();
+  const search=(document.getElementById('searchInput')?.value||'').trim();
+  return !!(brand||cat||date||offer||search);
+}
+
 function buildQuery(){
   const brand=document.getElementById('brandFilter')?.value||'';
   const cat=document.getElementById('categoryFilter')?.value||'';
@@ -1434,8 +1470,8 @@ function buildQuery(){
   const filters=[];
   if(offer==='with')filters.push('offerCount>0');
   else if(offer==='without')filters.push('offerCount<1');
-  // Grouped view: show one card per model family (variantPrimary), not one
-  // per SKU/colour. Icecat dumps every variant as its own product row.
+  // Grouped view is opt-in. The default Products view must show every product
+  // / SKU, while the product modal still links exact same-model variants.
   if(_groupVariants)filters.push('variantPrimary=true');
   if(brand)filters.push(`brand="${brand.replace(/"/g,'\\"')}"`);
   if(cat){
@@ -1493,7 +1529,7 @@ function _adminNormalizeFamilyName(p){
     /\b(latitude\s+\d+)\b/i,
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
-    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro\s+max|pro|max|plus|mini|air|e))?)\b/i,
     /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
   ];
   for(const re of patterns){
@@ -1512,7 +1548,7 @@ function _adminNormalizeFamilyName(p){
     .replace(/\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b/gi,'')
     .replace(/\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b/gi,'')
     .replace(/\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b/gi,'')
-    .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,'')
+    .replace(/\b(?:windows|macos|linux|freebsd|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,'')
     .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|titanium|siyah|beyaz|gri|mavi)\b/gi,'')
     .replace(/[^a-z0-9]+/g,'-')
     .replace(/^-|-$/g,'');
@@ -1624,9 +1660,17 @@ function renderProductsPage(){
   const g=document.getElementById('productGrid');
   const countEl=document.getElementById('productCount');
   const products=displayProducts||[];
-  // Header shows the raw catalog size (matches the Dashboard); the grouped
-  // model count is shown in the pagination summary below.
-  if(countEl)countEl.textContent=(_rawProductTotal||totalProductCount||allProducts.length||products.length).toLocaleString();
+  // Header shows the raw catalog size when no filter is set (matches the
+  // Dashboard); the moment any filter / brand / category / search is applied
+  // it switches to the filtered total so the badge always reflects what the
+  // grid is actually showing.
+  if(countEl){
+    const filtered=_hasActiveProductFilters();
+    const headerCount=filtered
+      ?(totalProductCount||allProducts.length||products.length||0)
+      :(_rawProductTotal||totalProductCount||allProducts.length||products.length||0);
+    countEl.textContent=headerCount.toLocaleString();
+  }
   if(!products.length){g.innerHTML='<div class="placeholder">No products found</div>';document.getElementById('pagination').innerHTML='';return}
   g.innerHTML=products.map(p=>{
     const s=p.techScore||0,sc=s>=75?'#22c55e':s>=50?'#f59e0b':'#ef4444';
@@ -2096,26 +2140,65 @@ async function wipeAllProducts(){
   if (phrase !== 'WIPE') { toast('İptal edildi', 'w'); return; }
   toast('Tüm ürünler siliniyor...', 'i', 60000);
   try {
-    // Fetch every product ID (in batches handled by SDK), then parallel-delete in
-    // chunks of 25 to keep PB happy.
-    const docs = await pbGetAll('products', {});
-    const ids = docs.map(d => d.id).filter(Boolean);
-    let done = 0;
-    const CHUNK = 25;
-    for (let i = 0; i < ids.length; i += CHUNK) {
-      const slice = ids.slice(i, i + CHUNK);
-      await Promise.all(slice.map(id => pbDeleteDoc('products', id).catch(() => null)));
-      done += slice.length;
-      toast(`Silindi: ${done}/${ids.length}`, 'i', 2000);
+    const CHUNK = 20;
+    async function wipeCollectionRecords(collection, label, options = {}) {
+      let deleted = 0;
+      let guard = 0;
+      while (guard++ < 1000) {
+        const page = await pbGetList(collection, 1, 500, {
+          filter: options.filter || '',
+          fields: 'id',
+          sort: 'id',
+        }).catch(e => {
+          if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
+            return { items: [], totalItems: 0 };
+          }
+          throw e;
+        });
+        const ids = (page.items || []).map(x => x.id).filter(Boolean);
+        if (!ids.length) break;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const slice = ids.slice(i, i + CHUNK);
+          const settled = await Promise.allSettled(slice.map(id => pbDeleteDoc(collection, id)));
+          const failed = settled.filter(r => r.status === 'rejected');
+          if (failed.length) {
+            throw new Error(`${label}: ${failed.length} kayıt silinemedi (${failed[0].reason?.message || 'unknown'})`);
+          }
+          deleted += slice.length;
+          toast(`${label}: ${deleted} silindi`, 'i', 1500);
+        }
+      }
+      return deleted;
     }
-    logActivity('product_wipe', `${ids.length} products wiped from DB`);
+
+    // Product relations can block deletion, so clear catalog-owned references
+    // first. Missing collections are ignored for older PocketBase schemas.
+    const related = [
+      'offers',
+      'recently_viewed',
+      'favorites',
+      'collection_items',
+      'review_replies',
+      'reviews',
+      'comparison_reviews',
+      'comparisons',
+    ];
+    let relatedDeleted = 0;
+    for (const collection of related) {
+      relatedDeleted += await wipeCollectionRecords(collection, collection);
+    }
+    const productDeleted = await wipeCollectionRecords('products', 'products');
+    logActivity('product_wipe', `${productDeleted} products wiped from DB (${relatedDeleted} related records)`);
     allProducts = [];
     totalProductCount = 0;
     selectedIds.clear();
-    document.getElementById('selectionBar').style.display = 'none';
+    const bar = document.getElementById('selectionBar');
+    if (bar) bar.style.display = 'none';
+    _productUiPages = new Map();
+    _rawProductTotal = 0;
     renderProductsPage();
     try { await window.QorAiCategorySync?.syncAllProductCategories?.(); } catch {}
-    toast(`✅ ${ids.length} ürün silindi`, 's');
+    toast(`✅ ${productDeleted} ürün silindi`, 's');
   } catch (e) {
     toast('Hata: ' + e.message, 'e');
   }
