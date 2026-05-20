@@ -2131,12 +2131,17 @@ async function startCategoryTranslation(){
           clearInterval(heartbeat);
         }
         if (_catXlateAbort) throw new Error('aborted');
-        learned += missing.length;
+        const stillMissing = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets);
+        const learnedNow = Math.max(0, missing.length - stillMissing.length);
+        learned += learnedNow;
+        if (stillMissing.length > 0) {
+          throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom çevrilemedi; ürün patch durduruldu.`);
+        }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
         _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`);
         await window.QorAiBulkTranslate.saveDict();
         try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
-        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${missing.length} atoms · ${sec}s)`, 'success');
+        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${learnedNow} atoms · ${sec}s)`, 'success');
       } else {
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: ${batchAtoms.length} atoms already cached`, 'success');
       }

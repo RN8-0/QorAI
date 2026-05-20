@@ -1342,6 +1342,7 @@ let _deDictDirty = false;
 let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
 let _azureTranslatorDisabled = false;
+let _azureTranslatorLastError = '';
 
 function _seedStaticEnglishDict() {
   const staticDict = (typeof window !== 'undefined' && (window.QorAiStaticDict || _staticQorAiDict)) || null;
@@ -1697,6 +1698,7 @@ async function _azureTranslateAllLangsBatch(turkishTexts, targetLangs, onProgres
   const token = getPb()?.authStore?.token;
   if (!token) return false;
   if (_azureTranslatorDisabled) return false;
+  _azureTranslatorLastError = '';
 
   let uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
     .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
@@ -1749,6 +1751,7 @@ async function _azureTranslateAllLangsBatch(turkishTexts, targetLangs, onProgres
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
         const err = data.message || data.detail || data.error || `Azure Translator ${response.status}`;
+        _azureTranslatorLastError = typeof err === 'string' ? err : JSON.stringify(err);
         if (response.status === 404 || response.status === 501 || response.status === 503) {
           _azureTranslatorDisabled = true;
           report('chunk-error', chunkIdx, { error: err, elapsedMs: Date.now() - chunkStart });
@@ -1781,6 +1784,7 @@ async function _azureTranslateAllLangsBatch(turkishTexts, targetLangs, onProgres
       return { ok: true, stored: storedForChunk };
     } catch (e) {
       console.warn('[tr-translate] azure batch error:', e.message);
+      _azureTranslatorLastError = e.message || 'Azure Translator failed';
       report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
       return { ok: false, stored: 0, error: e.message };
     }
@@ -1817,9 +1821,14 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   if (missingByText.size === 0) return; // everything cached — no API hit
 
   let uncached = [...missingByText.keys()];
+  const bulkMode = typeof onProgress === 'function';
   const azureUsable = await _azureTranslateAllLangsBatch(uncached, targetLangs, onProgress, shouldAbort);
   uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
   if (!uncached.length) return;
+  if (bulkMode) {
+    const reason = _azureTranslatorLastError || (azureUsable ? `${uncached.length} atoms still missing after Azure` : 'Azure Translator unavailable');
+    throw new Error(`Azure Translator kullanılamadı: ${reason}. Bulk çeviride DeepSeek fallback kapatıldı; Settings > API Keys altına Azure Translator Key ve Region gir.`);
+  }
   if (azureUsable && typeof shouldAbort === 'function' && shouldAbort()) return;
 
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
