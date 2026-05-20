@@ -1692,6 +1692,73 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
+async function _localTranslateAllLangsBatch(turkishTexts, targetLangs, onProgress, shouldAbort) {
+  const uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
+    .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return true;
+
+  const CHUNK = 120;
+  const totalChunks = Math.ceil(uncached.length / CHUNK);
+  const report = (phase, idx, extra) => {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress({ provider: 'local-nllb', phase, pass: 1, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+  };
+
+  for (let i = 0; i < uncached.length; i += CHUNK) {
+    if (typeof shouldAbort === 'function' && shouldAbort()) {
+      report('chunk-error', Math.floor(i / CHUNK), { error: 'aborted', elapsedMs: 0 });
+      return false;
+    }
+    const chunkIdx = Math.floor(i / CHUNK);
+    const batch = uncached.slice(i, i + CHUNK);
+    const started = Date.now();
+    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+    const protectedRows = batch.map((source) => ({ source, ..._protectTranslatorText(source) }));
+    try {
+      const res = await fetch('http://127.0.0.1:8797/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'tr',
+          to: targetLangs,
+          texts: protectedRows.map(r => r.text),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        throw new Error(data.detail || data.error || `Local translator ${res.status}`);
+      }
+      const translations = data.translations || {};
+      let storedForChunk = 0;
+      for (const row of protectedRows) {
+        const entry = translations[row.text] || translations[row.source];
+        if (!entry || typeof entry !== 'object') continue;
+        for (const lang of targetLangs) {
+          const raw = entry[lang];
+          if (typeof raw === 'string' && raw.trim()) {
+            _deDictStore(row.source, lang, _restoreTranslatorText(raw, row.restore));
+            storedForChunk++;
+          }
+        }
+      }
+      if (storedForChunk > 0) await _saveDeDict();
+      report('chunk-done', chunkIdx, {
+        batchSize: batch.length,
+        stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
+        elapsedMs: Date.now() - started,
+      });
+    } catch (e) {
+      const message = e.message || String(e);
+      report('chunk-error', chunkIdx, { error: message, elapsedMs: Date.now() - started });
+      console.warn('[local-translate] batch error:', message);
+      return false;
+    }
+  }
+  await _saveDeDict();
+  return true;
+}
+
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
   const token = getPb()?.authStore?.token;
   if (!token) {
@@ -1709,6 +1776,12 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
 
   let uncached = [...missingByText.keys()];
   if (!uncached.length) return;
+  const localOk = await _localTranslateAllLangsBatch(uncached, targetLangs, onProgress, shouldAbort);
+  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return;
+  if (typeof onProgress === 'function') {
+    throw new Error('Local NLLB translator çalışmıyor veya bazı atomları çeviremedi. scripts/local-translate-worker.mjs worker açık olmalı; DeepSeek bulk fallback kapalı.');
+  }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   const isRateLimit = (msg) => /rate|limit|300 requests|try later/i.test(String(msg || ''));
@@ -2061,8 +2134,8 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 200,
-  CONCURRENCY: 2,
+  CHUNK_SIZE: 120,
+  CONCURRENCY: 1,
 };
 
 // ═══════════════════════════════════════

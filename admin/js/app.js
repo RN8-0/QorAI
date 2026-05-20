@@ -2038,18 +2038,19 @@ async function startCategoryTranslation(){
 
   try {
     _xlateProgress(0, 0, 'Loading dictionary…');
-    _xlateLog(`▶ Translating Epey products in category: ${categoryId}`);
+    _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
 
     _xlateProgress(0, 0, 'Fetching products…');
     // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
     // Fetch only fields needed by the translator: Epey source, product name,
     // and spec payloads.
+    const allEpey = categoryId === '__all_epey__';
     const safeCategory = String(categoryId).replace(/"/g, '\\"');
     // Query by category only, then filter Epey client-side. Older records may
     // have sourceUrl=epey.com but a stale/migrated source value, and the old
     // strict source filter made the translator skip exactly those products.
-    const filter = `category="${safeCategory}"`;
+    const filter = allEpey ? '' : `category="${safeCategory}"`;
     const rawDocs = await pbGetAll('products', {
       filter,
       fields: 'id,name,category,source,sourceUrl,specs,specSections,keySpecs',
@@ -2102,18 +2103,21 @@ async function startCategoryTranslation(){
           if (ev.phase === 'chunk-start') {
             inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
             const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
-            _xlateLog(`→ DeepSeek prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+            _xlateLog(`→ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
           } else if (ev.phase === 'chunk-done') {
             inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
             doneChunks++;
             const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-            _xlateLog(`✓ DeepSeek prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
+            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+            _xlateLog(`✓ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
             _refreshDictionaryStatsOnly();
             _xlateProgress(0, products.length, `Dictionary prefill: ${doneChunks}/${chunks} chunks done`);
           } else if (ev.phase === 'chunk-error') {
             inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
             doneChunks++;
-            if (ev.error !== 'aborted') _xlateLog(`✗ DeepSeek prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+            if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
           }
         }, () => _catXlateAbort);
       } finally {
@@ -2162,7 +2166,7 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-            const provider = 'DeepSeek';
+            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
             if (ev.phase === 'chunk-start') {
               inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');

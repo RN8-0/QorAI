@@ -14,6 +14,7 @@
     "scraper:repair-products-schema": "node scripts/repair_products_schema.js",
     "scraper:test-pb": "node scripts/test_scraper_pb.js 10",
     "scraper:proxy": "node scripts/scraper-proxy.js",
+    "translate:worker": "node scripts/local-translate-worker.mjs",
     "icecat:migrate": "node scripts/icecat_schema_migrate.js",
     "icecat:ingest": "node scripts/icecat_ingest.js --workers=3 --delay=800",
     "icecat:ingest:fast": "node scripts/icecat_ingest.js --langs=EN --workers=5 --delay=500",
@@ -26,6 +27,7 @@
   "license": "ISC",
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.5",
+    "@xenova/transformers": "^2.17.2",
     "axios": "^1.16.0",
     "cheerio": "^1.2.0",
     "csv-parser": "^3.2.0",

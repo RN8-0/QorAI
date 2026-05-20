@@ -808,7 +808,7 @@ function _scraperGroupForCat(cat) {
 
 function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynced = true) {
   let bulkOpts = '<option value="">Select Category</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
-  let dictOpts = '<option value="">Kategori seç</option>';
+  let dictOpts = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   let flatOpts = '<option value="">All Categories</option>';
 
   const grouped = {};
@@ -893,7 +893,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
 }
 
 function _buildFallbackDictCategoryOptions(counts = {}, epeyCounts = {}) {
-  let html = '<option value="">Kategori seç</option>';
+  let html = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   const all = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
     ? QorAiCategories.getAll().filter(c => c?.id && !c.scrapeDisabled)
     : [];
