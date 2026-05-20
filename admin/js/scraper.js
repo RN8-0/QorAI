@@ -1692,121 +1692,6 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
-async function _fetchLocalTranslatorStatus() {
-  try {
-    const res = await fetch('http://127.0.0.1:8797/status', {
-      method: 'GET',
-      cache: 'no-store',
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-async function _localTranslateAllLangsBatch(turkishTexts, targetLangs, onProgress, shouldAbort) {
-  const uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
-    .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
-  if (!uncached.length) return true;
-
-  const CHUNK = 60;
-  const totalChunks = Math.ceil(uncached.length / CHUNK);
-  const report = (phase, idx, extra) => {
-    if (typeof onProgress !== 'function') return;
-    try { onProgress({ provider: 'local-nllb', phase, pass: 1, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
-  };
-
-  for (let i = 0; i < uncached.length; i += CHUNK) {
-    if (typeof shouldAbort === 'function' && shouldAbort()) {
-      report('chunk-error', Math.floor(i / CHUNK), { error: 'aborted', elapsedMs: 0 });
-      return false;
-    }
-    const chunkIdx = Math.floor(i / CHUNK);
-    const batch = uncached.slice(i, i + CHUNK);
-    const started = Date.now();
-    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
-    const protectedRows = batch.map((source) => ({ source, ..._protectTranslatorText(source) }));
-
-    // Poll the worker's /status endpoint every 2s while the chunk is in flight
-    // and surface the per-language progress to the caller via 'chunk-progress'.
-    let lastLang = null;
-    const poll = setInterval(async () => {
-      const st = await _fetchLocalTranslatorStatus();
-      if (!st || !st.busy) return;
-      if (typeof onProgress !== 'function') return;
-      const same = st.lang === lastLang;
-      lastLang = st.lang;
-      try {
-        onProgress({
-          provider: 'local-nllb',
-          phase: 'chunk-progress',
-          pass: 1,
-          chunkIndex: chunkIdx,
-          totalChunks,
-          chunkSize: CHUNK,
-          lang: st.lang,
-          langIndex: st.langIndex,
-          langTotal: st.langTotal,
-          batchDone: st.batchDone,
-          batchTotal: st.batchTotal,
-          itemsDone: st.itemsDone,
-          itemsTotal: st.itemsTotal,
-          avgBatchMs: st.avgBatchMs,
-          etaMs: st.etaMs,
-          langChanged: !same,
-        });
-      } catch {}
-    }, 2000);
-
-    try {
-      const res = await fetch('http://127.0.0.1:8797/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'tr',
-          to: targetLangs,
-          texts: protectedRows.map(r => r.text),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) {
-        throw new Error(data.detail || data.error || `Local translator ${res.status}`);
-      }
-      const translations = data.translations || {};
-      let storedForChunk = 0;
-      for (const row of protectedRows) {
-        const entry = translations[row.text] || translations[row.source];
-        if (!entry || typeof entry !== 'object') continue;
-        for (const lang of targetLangs) {
-          const raw = entry[lang];
-          if (typeof raw === 'string' && raw.trim()) {
-            _deDictStore(row.source, lang, _restoreTranslatorText(raw, row.restore));
-            storedForChunk++;
-          }
-        }
-      }
-      if (storedForChunk > 0) await _saveDeDict();
-      report('chunk-done', chunkIdx, {
-        batchSize: batch.length,
-        stored: storedForChunk,
-        dictSize: Object.keys(_deDictCache).length,
-        elapsedMs: Date.now() - started,
-      });
-    } catch (e) {
-      const message = e.message || String(e);
-      report('chunk-error', chunkIdx, { error: message, elapsedMs: Date.now() - started });
-      console.warn('[local-translate] batch error:', message);
-      return false;
-    } finally {
-      clearInterval(poll);
-    }
-  }
-  await _saveDeDict();
-  return true;
-}
-
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
   const token = getPb()?.authStore?.token;
   if (!token) {
@@ -1824,12 +1709,6 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
 
   let uncached = [...missingByText.keys()];
   if (!uncached.length) return;
-  const localOk = await _localTranslateAllLangsBatch(uncached, targetLangs, onProgress, shouldAbort);
-  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
-  if (!uncached.length) return;
-  if (typeof onProgress === 'function') {
-    throw new Error('Local NLLB translator çalışmıyor veya bazı atomları çeviremedi. scripts/local-translate-worker.mjs worker açık olmalı; DeepSeek bulk fallback kapalı.');
-  }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   const isRateLimit = (msg) => /rate|limit|300 requests|try later/i.test(String(msg || ''));
@@ -1906,6 +1785,9 @@ Rules:
               }
             }
           }
+          if (storedForChunk === 0) {
+            throw new Error('DeepSeek returned no usable translations');
+          }
           if (storedForChunk > 0) await _saveDeDict();
           report('chunk-done', chunkIdx, {
             batchSize: batch.length,
@@ -1941,9 +1823,9 @@ Rules:
   }
 
   const passes = [
-    { size: 200, concurrency: 2 },
-    { size: 80, concurrency: 1 },
-    { size: 40, concurrency: 1 },
+    { size: 120, concurrency: 2 },
+    { size: 60, concurrency: 1 },
+    { size: 30, concurrency: 1 },
   ];
   for (let pass = 0; pass < passes.length; pass++) {
     const current = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
@@ -2185,8 +2067,8 @@ window.QorAiBulkTranslate = {
   // Estimated chunk count for progress reporting — must match the real CHUNK
   // used in _localTranslateAllLangsBatch (currently 60). Worker has its own
   // /status endpoint that the UI polls for in-chunk live progress.
-  CHUNK_SIZE: 60,
-  CONCURRENCY: 1,
+  CHUNK_SIZE: 120,
+  CONCURRENCY: 2,
 };
 
 // ═══════════════════════════════════════

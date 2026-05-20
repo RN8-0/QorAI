@@ -2017,24 +2017,7 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
-const QORAI_TRANSLATION_BUILD = 'local-nllb-live-progress-20260520-2230';
-
-async function _ensureLocalTranslatorReady(){
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch('http://127.0.0.1:8797/health', {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-20260521-0001';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2057,10 +2040,6 @@ async function startCategoryTranslation(){
 
   try {
     _xlateLog(`Build: ${QORAI_TRANSLATION_BUILD}`);
-    _xlateProgress(0, 0, 'Checking local translator…');
-    const localStatus = await _ensureLocalTranslatorReady();
-    _xlateLog(`✓ Local NLLB translator ready · ${localStatus.model || 'model'} · cache ${localStatus.cache || 0}`, 'success');
-
     _xlateProgress(0, 0, 'Loading dictionary…');
     _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
@@ -2105,79 +2084,10 @@ async function startCategoryTranslation(){
 
     let done = 0, failed = 0;
     let learned = 0;
-    if (initialMissing.length > 0) {
-      const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 200;
-      const chunks = Math.ceil(initialMissing.length / chunkSize);
-      const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 2;
-      _xlateLog(`⚙ Dictionary prefill: ${initialMissing.length} missing atoms · ~${chunks} bulk calls · ${concurrency} parallel`);
-      _xlateProgress(0, products.length, `Dictionary prefill: 0/${chunks} chunks`);
-
-      const prefillStartedAt = Date.now();
-      const inFlight = new Map();
-      let doneChunks = 0;
-      const heartbeat = setInterval(() => {
-        if (inFlight.size === 0) return;
-        const oldest = Math.min(...inFlight.values());
-        const sec = ((Date.now() - oldest) / 1000).toFixed(0);
-        _xlateProgress(0, products.length, `Dictionary prefill: ${doneChunks}/${chunks} chunks · ${inFlight.size} in flight · oldest ${sec}s`);
-      }, 1000);
-
-      try {
-        await window.QorAiBulkTranslate.translateAtoms(initialMissing, targets, (ev) => {
-          if (ev.phase === 'chunk-start') {
-            inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
-            const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
-            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
-            _xlateLog(`→ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
-          } else if (ev.phase === 'chunk-progress') {
-            // Live in-chunk progress reported via worker /status polling.
-            const lang = ev.lang || '??';
-            const langPos = `${(ev.langIndex || 0) + 1}/${ev.langTotal || 0}`;
-            const batchPos = `${ev.batchDone || 0}/${ev.batchTotal || 0}`;
-            const avgMs = ev.avgBatchMs ? `${(ev.avgBatchMs / 1000).toFixed(1)}s/batch` : '';
-            const etaSec = ev.etaMs ? `eta ${Math.round(ev.etaMs / 1000)}s` : '';
-            const itemsPct = ev.itemsTotal ? ` · ${Math.floor((ev.itemsDone / ev.itemsTotal) * 100)}%` : '';
-            if (ev.langChanged) {
-              _xlateLog(`  · chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · lang ${lang} (${langPos}) batch ${batchPos}${itemsPct} · ${avgMs} ${etaSec}`);
-            }
-            const sec = ((Date.now() - (inFlight.get(`${ev.pass || 1}:${ev.chunkIndex}`) || Date.now())) / 1000).toFixed(0);
-            _xlateProgress(0, products.length, `Dictionary prefill: ${doneChunks}/${chunks} · chunk ${ev.chunkIndex + 1} · ${lang} ${batchPos}${itemsPct} · ${sec}s in-flight`);
-          } else if (ev.phase === 'chunk-done') {
-            inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
-            doneChunks++;
-            const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
-            _xlateLog(`✓ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
-            _refreshDictionaryStatsOnly();
-            _xlateProgress(0, products.length, `Dictionary prefill: ${doneChunks}/${chunks} chunks done`);
-          } else if (ev.phase === 'chunk-error') {
-            inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
-            doneChunks++;
-            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
-            if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} prefill pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
-          }
-        }, () => _catXlateAbort);
-      } finally {
-        clearInterval(heartbeat);
-      }
-
-      if (_catXlateAbort) throw new Error('aborted');
-      const stillMissing = window.QorAiBulkTranslate.missingAtoms(atoms, targets);
-      const learnedNow = Math.max(0, initialMissing.length - stillMissing.length);
-      learned += learnedNow;
-      await window.QorAiBulkTranslate.saveDict();
-      try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
-      const sec = ((Date.now() - prefillStartedAt) / 1000).toFixed(1);
-      _xlateLog(`✓ Dictionary prefill saved (+${learnedNow} atoms · ${sec}s)`, 'success');
-      if (stillMissing.length > 0) {
-        _xlateLog(`⚠ ${stillMissing.length} atoms still missing after bulk pass; 50-product patch loop will retry only affected products.`, 'warn');
-      }
-    }
-
-    const PRODUCT_BATCH = 50;
+    const PRODUCT_BATCH = 100;
     const PATCH_CONCURRENCY = 25;
     const totalBatches = Math.ceil(products.length / PRODUCT_BATCH);
-    _xlateProgress(0, products.length, 'Starting dictionary-backed patch…');
+    _xlateProgress(0, products.length, 'Starting DeepSeek depot translate + patch…');
 
     for (let offset = 0; offset < products.length && !_catXlateAbort; offset += PRODUCT_BATCH) {
       const batchNo = Math.floor(offset / PRODUCT_BATCH) + 1;
@@ -2186,10 +2096,10 @@ async function startCategoryTranslation(){
       const missing = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets);
 
       if (missing.length > 0) {
-        const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 32;
+        const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 120;
         const chunks = Math.ceil(missing.length / chunkSize);
-        const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 8;
-        _xlateLog(`⚙ Batch ${batchNo}/${totalBatches}: ${productBatch.length} products · ${missing.length}/${batchAtoms.length} missing atoms · ${chunks} calls · ${concurrency} parallel`);
+        const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 2;
+        _xlateLog(`⚙ DeepSeek depot ${batchNo}/${totalBatches}: ${productBatch.length} products · ${missing.length}/${batchAtoms.length} missing atoms · ~${chunks} bulk calls · ${concurrency} parallel`);
 
         const chunkStartedAt = Date.now();
         const inFlight = new Map();
@@ -2203,11 +2113,11 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+            const provider = 'DeepSeek';
             if (ev.phase === 'chunk-start') {
               inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
-              _xlateLog(`→ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+              _xlateLog(`→ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
             } else if (ev.phase === 'chunk-progress') {
               const lang = ev.lang || '??';
               const langPos = `${(ev.langIndex || 0) + 1}/${ev.langTotal || 0}`;
@@ -2224,13 +2134,13 @@ async function startCategoryTranslation(){
               inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
               doneChunks++;
               const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-              _xlateLog(`✓ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
+              _xlateLog(`✓ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
               _refreshDictionaryStatsOnly();
               _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks done`);
             } else if (ev.phase === 'chunk-error') {
               inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
               doneChunks++;
-              if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+              if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
             }
           }, () => _catXlateAbort);
         } finally {
@@ -2241,7 +2151,10 @@ async function startCategoryTranslation(){
         const learnedNow = Math.max(0, missing.length - stillMissing.length);
         learned += learnedNow;
         if (stillMissing.length > 0) {
-          throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom çevrilemedi; ürün patch durduruldu.`);
+          if (learnedNow === 0) {
+            throw new Error(`Batch ${batchNo}: DeepSeek hiç yeni atom çeviremedi; ${stillMissing.length}/${missing.length} atom eksik kaldı. Ürün patch durduruldu.`);
+          }
+          _xlateLog(`⚠ Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik; mevcut sözlükle patch ediliyor.`, 'warn');
         }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
         _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`);
@@ -2301,9 +2214,7 @@ async function startCategoryTranslation(){
     try { await loadProducts?.(); } catch {}
   } catch (e) {
     if (e.message !== 'aborted') {
-      const msg = e.name === 'AbortError'
-        ? 'Local NLLB translator cevap vermiyor. Yerel worker açık olmalı.'
-        : (e.message || String(e));
+      const msg = e.message || String(e);
       _xlateLog('✗ ' + msg, 'error');
       toast('Çeviri hatası: ' + msg, 'e');
     }
