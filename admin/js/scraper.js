@@ -4001,12 +4001,27 @@ function getAllEpeyScrapeCategories() {
   return [...byId.values()];
 }
 
+function getCheckedEpeyScrapeCategories() {
+  if (typeof document === 'undefined' || typeof QorAiCategories === 'undefined') return [];
+  const ids = [...document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]:checked')]
+    .map(cb => String(cb.value || '').trim())
+    .filter(Boolean);
+  const byId = new Map();
+  ids.forEach(id => {
+    const cat = QorAiCategories.getById?.(id);
+    if (!cat?.id || !cat.epeyPath || cat.scrapeDisabled || byId.has(cat.id)) return;
+    byId.set(cat.id, cat);
+  });
+  return [...byId.values()];
+}
+
 async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
   const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
-  if (!categoryId) { toast('Bir kategori seç', 'w'); return; }
+  const checkedCats = getCheckedEpeyScrapeCategories();
+  if (!categoryId && !checkedCats.length) { toast('En az bir kategori seç', 'w'); return; }
   const selectedCat = categoryId !== '__all_epey__' && typeof QorAiCategories !== 'undefined'
     ? QorAiCategories.getById?.(categoryId)
     : null;
@@ -4028,16 +4043,21 @@ async function startBulkScrape() {
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
   const isAllCategories = categoryId === '__all_epey__';
+  const catsForRun = isAllCategories
+    ? getAllEpeyScrapeCategories()
+    : (checkedCats.length ? checkedCats : (selectedCat ? [selectedCat] : []));
   slog(
     isAllCategories
       ? `Epey import: TÜM kategoriler · max ${maxProducts}/kategori`
-      : `Epey import: category=${categoryId} · max ${maxProducts}`,
+      : catsForRun.length > 1
+        ? `Epey import: ${catsForRun.length} seçili kategori · max ${maxProducts}/kategori`
+        : `Epey import: category=${catsForRun[0]?.id || categoryId} · max ${maxProducts}`,
     'info'
   );
 
   try {
-    if (isAllCategories) {
-      const cats = getAllEpeyScrapeCategories();
+    if (catsForRun.length !== 1 || isAllCategories) {
+      const cats = catsForRun;
       if (!cats.length) {
         slog('No Epey-enabled categories found.', 'error');
         finishScraping();
@@ -4126,14 +4146,15 @@ async function startBulkScrape() {
       return;
     }
 
-    const urlItems = await collectSearchProductUrls('', maxProducts, categoryId);
+    const singleCat = catsForRun[0];
+    const urlItems = await collectSearchProductUrls('', maxProducts, singleCat?.id || categoryId);
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {
       slog('No product URLs found. Check the category or proxy.', 'error');
       finishScraping();
       return;
     }
-    const results = await sequentialScrape(urlItems.slice(0, maxProducts), categoryId, delay, concurrency);
+    const results = await sequentialScrape(urlItems.slice(0, maxProducts), singleCat?.id || categoryId, delay, concurrency);
     slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {

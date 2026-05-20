@@ -878,6 +878,54 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
   return { bulkOpts, dictOpts, flatOpts };
 }
 
+function updateScrapeCategorySelectedCount() {
+  const countEl = document.getElementById('scrapeCategorySelectedCount');
+  const boxes = [...document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]')];
+  const selected = boxes.filter(cb => cb.checked).length;
+  if (countEl) countEl.textContent = `${selected} kategori seçili`;
+}
+
+function _syncScrapeCategoryChecklistFromSelect() {
+  const select = document.getElementById('scrapeCategory');
+  const panel = document.getElementById('scrapeCategoryChecklist');
+  if (!select || !panel) return;
+
+  const previous = new Set(
+    [...panel.querySelectorAll('input[type="checkbox"]:checked')]
+      .map(cb => cb.value)
+      .filter(Boolean)
+  );
+  const parts = [];
+  for (const node of [...select.children]) {
+    if (node.tagName === 'OPTGROUP') {
+      const opts = [...node.children].filter(opt => opt.value && opt.value !== '__all_epey__');
+      if (!opts.length) continue;
+      parts.push(`<div class="scrape-category-group">${escHtml(node.label || 'Categories')}</div>`);
+      opts.forEach(opt => {
+        const checked = previous.has(opt.value) ? ' checked' : '';
+        parts.push(`<label class="scrape-category-option"><input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"><span>${escHtml(opt.textContent || opt.value)}</span></label>`);
+      });
+    } else if (node.tagName === 'OPTION' && node.value && node.value !== '__all_epey__') {
+      const checked = previous.has(node.value) ? ' checked' : '';
+      parts.push(`<label class="scrape-category-option"><input type="checkbox" value="${escHtml(node.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"><span>${escHtml(node.textContent || node.value)}</span></label>`);
+    }
+  }
+  panel.innerHTML = parts.join('') || '<div class="text-muted" style="font-size:12px">Epey kategorisi bulunamadı.</div>';
+  updateScrapeCategorySelectedCount();
+}
+
+function selectAllScrapeCategories() {
+  document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+  updateScrapeCategorySelectedCount();
+}
+
+function clearScrapeCategories() {
+  document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  const select = document.getElementById('scrapeCategory');
+  if (select) select.value = '';
+  updateScrapeCategorySelectedCount();
+}
+
 function _applyScraperCategoryOptions({ bulkOpts, dictOpts, flatOpts }) {
   const setSel = (id, html) => {
     const el = document.getElementById(id);
@@ -888,6 +936,7 @@ function _applyScraperCategoryOptions({ bulkOpts, dictOpts, flatOpts }) {
   };
 
   setSel('scrapeCategory', bulkOpts);
+  _syncScrapeCategoryChecklistFromSelect();
   setSel('singleUrlCategory', flatOpts);
   setSel('offersCategory', flatOpts);
   setSel('scoreCategory', flatOpts);
@@ -1016,6 +1065,9 @@ window.addCustomCategory = addCustomCategory;
 window.removeCustomCategory = removeCustomCategory;
 window.importCategoriesFromText = importCategoriesFromText;
 window.renderCustomCategoriesList = renderCustomCategoriesList;
+window.selectAllScrapeCategories = selectAllScrapeCategories;
+window.clearScrapeCategories = clearScrapeCategories;
+window.updateScrapeCategorySelectedCount = updateScrapeCategorySelectedCount;
 window.QorAiCategorySync = { syncCategoryRecord, syncAllProductCategories };
 
 window.addEventListener('qorai:product-saved', (event) => {

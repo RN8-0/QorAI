@@ -450,7 +450,13 @@
             <div class="form-grid">
               <div class="form-field" style="grid-column:span 2">
                 <label>Kategori</label>
-                <select class="input" id="scrapeCategory"></select>
+                <div class="scrape-category-actions">
+                  <button type="button" class="btn btn-sm btn-ghost" onclick="selectAllScrapeCategories()">Tümünü seç</button>
+                  <button type="button" class="btn btn-sm btn-ghost" onclick="clearScrapeCategories()">Temizle</button>
+                  <span class="text-muted" id="scrapeCategorySelectedCount">0 kategori seçili</span>
+                </div>
+                <div class="scrape-category-checklist" id="scrapeCategoryChecklist"></div>
+                <select class="input" id="scrapeCategory" style="display:none"></select>
               </div>
               <div class="form-field">
                 <label>Ürün Limiti</label>
@@ -466,7 +472,7 @@
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır. Detay çekimi paralel çalışır.
+              Tiklenen kategoriler tek seferde sırayla çekilir. Ürün limiti kategori başına uygulanır. Detay çekimi paralel çalışır.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
