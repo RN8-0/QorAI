@@ -1124,7 +1124,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 _buildError(quizState.error!),
                 const SizedBox(height: 6),
               ],
-              Expanded(child: SingleChildScrollView(child: _buildInfoCards())),
+              Expanded(child: _buildInfoCards()),
             ],
           ),
         );
@@ -1436,9 +1436,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
               ),
               const SizedBox(height: 9),
-              Expanded(
-                child: SingleChildScrollView(child: _buildCompareInfoCards()),
-              ),
+              Expanded(child: _buildCompareInfoCards()),
             ],
           ),
         );
@@ -2042,9 +2040,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Row(
             children: [
               Container(
@@ -2080,14 +2079,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final (icon, title, desc, color) = steps[i];
           final isLast = i == steps.length - 1;
           return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
                     color: context.isDarkMode
                         ? Colors.white.withValues(alpha: 0.04)
                         : Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: color.withValues(
                         alpha: context.isDarkMode ? 0.18 : 0.15,
@@ -2102,38 +2104,38 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 28,
+                        width: 24,
                         child: Text(
                           '0${i + 1}',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                            fontSize: 12,
                             color: color.withValues(alpha: 0.4),
                             letterSpacing: -0.5,
                           ),
                         ),
                       ),
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [color, color.withValues(alpha: 0.65)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(11),
                           boxShadow: [
                             BoxShadow(
                               color: color.withValues(alpha: 0.3),
-                              blurRadius: 10,
+                              blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Icon(icon, size: 20, color: Colors.white),
+                        child: Icon(icon, size: 18, color: Colors.white),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2147,7 +2149,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
                               desc,
                               maxLines: 2,
@@ -2156,7 +2158,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: context.textSecondary,
-                                height: 1.4,
+                                height: 1.22,
                               ),
                             ),
                           ],
@@ -4627,10 +4629,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Section header with subtle accent line
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Row(
             children: [
               Container(
@@ -4660,7 +4663,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppTheme.brandCyan.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: AppTheme.brandCyan.withValues(alpha: 0.15),
                   ),
@@ -4694,14 +4697,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final (icon, title, desc, color) = steps[i];
           final isLast = i == steps.length - 1;
           return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
                     color: context.isDarkMode
                         ? Colors.white.withValues(alpha: 0.04)
                         : Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: color.withValues(
                         alpha: context.isDarkMode ? 0.18 : 0.15,
@@ -4716,38 +4722,38 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 28,
+                        width: 24,
                         child: Text(
                           '0${i + 1}',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                            fontSize: 12,
                             color: color.withValues(alpha: 0.4),
                             letterSpacing: -0.5,
                           ),
                         ),
                       ),
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [color, color.withValues(alpha: 0.65)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(11),
                           boxShadow: [
                             BoxShadow(
                               color: color.withValues(alpha: 0.3),
-                              blurRadius: 10,
+                              blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Icon(icon, size: 20, color: Colors.white),
+                        child: Icon(icon, size: 18, color: Colors.white),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4761,7 +4767,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
                               desc,
                               maxLines: 2,
@@ -4770,7 +4776,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: context.textSecondary,
-                                height: 1.4,
+                                height: 1.22,
                               ),
                             ),
                           ],
