@@ -2017,6 +2017,8 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
+const QORAI_TRANSLATION_BUILD = 'local-nllb-required-20260520-2148';
+
 async function _ensureLocalTranslatorReady(){
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
@@ -2054,6 +2056,7 @@ async function startCategoryTranslation(){
   const startedAt = Date.now();
 
   try {
+    _xlateLog(`Build: ${QORAI_TRANSLATION_BUILD}`);
     _xlateProgress(0, 0, 'Checking local translator…');
     const localStatus = await _ensureLocalTranslatorReady();
     _xlateLog(`✓ Local NLLB translator ready · ${localStatus.model || 'model'} · cache ${localStatus.cache || 0}`, 'success');

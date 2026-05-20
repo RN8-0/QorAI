@@ -34,7 +34,7 @@ jobs:
               --request GET \
               --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
               --header "Accept: application/json" \
-              "${base}/api/v1/deploy?uuid=${uuid}&force=false"
+              "${base}/api/v1/deploy?uuid=${uuid}&force=true"
             echo
           }
 
