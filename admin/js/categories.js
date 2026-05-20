@@ -760,8 +760,13 @@ async function _loadCategoryCounts(sourceFilter = '') {
     // Slow path: brute-force scan. Only used when the source-filter is set
     // (e.g. Epey-only counts for the Translate-Category dropdown) or the
     // categories collection isn't usable yet.
-    const opts = sourceFilter === '__epey__'
-      ? { filter: '(source="epey.com" || source="epey")', fields: 'id,category' }
+    const epeyScan = sourceFilter === '__epey__';
+    const opts = epeyScan
+      // Do not server-filter Epey here. Older merged records may have
+      // source="icecat" while their Epey data is still identifiable from
+      // sourceUrl, and strict source filtering made the Dictionary dropdown
+      // collapse to only one visible category.
+      ? { fields: 'id,category,source,sourceUrl' }
       : sourceFilter
         ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
         : { fields: 'id,category' };
@@ -770,6 +775,7 @@ async function _loadCategoryCounts(sourceFilter = '') {
     for (let page = 1; page <= pages; page++) {
       const res = await pb.collection('products').getList(page, 500, opts);
       res.items.forEach(p => {
+        if (epeyScan && !/epey/i.test(String(p.source || p.sourceUrl || ''))) return;
         const c = normalizeCategoryId(p.category);
         if (c) counts[c] = (counts[c] || 0) + 1;
       });
@@ -827,14 +833,21 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
       });
       bulkOpts += '</optgroup>';
     }
+    const epeyTranslateCats = cats.filter(c => c.epeyPath && !c.scrapeDisabled);
+    if (epeyTranslateCats.length) {
+      dictOpts += `<optgroup label="${escHtml(groupName)}">`;
+      epeyTranslateCats.forEach(cat => {
+        const ghCnt = epeyCounts[cat.id] || 0;
+        const label = ghCnt > 0 ? ` (${ghCnt})` : '';
+        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
+      });
+      dictOpts += '</optgroup>';
+    }
+
     cats.forEach(cat => {
       const cnt = counts[cat.id] || 0;
-      const ghCnt = epeyCounts[cat.id] || 0;
       const label = cnt > 0 ? ` (${cnt})` : '';
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
-      if (ghCnt > 0) {
-        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)} (${ghCnt})</option>`;
-      }
     });
   });
 
@@ -848,8 +861,8 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
       const de = cat.nameDe ? ` · ${escHtml(cat.nameDe)}` : '';
       bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
       flatOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${label}</option>`;
-      if (ghCnt > 0) {
-        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de} (${ghCnt})</option>`;
+      if (cat.epeyPath && !cat.scrapeDisabled) {
+        dictOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${de}${ghCnt > 0 ? ` (${ghCnt})` : ''}</option>`;
       }
     });
     bulkOpts += '</optgroup>';

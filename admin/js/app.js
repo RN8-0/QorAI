@@ -1824,7 +1824,17 @@ const DICT_VIEW_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar']
 async function openDictionaryPanel(){
   if (!window.QorAiDict) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
   try {
-    await window.QorAiDict.load();
+    _seedDictionaryFromStaticFallback();
+    renderDictionaryTable();
+    const loadPromise = window.QorAiDict.load();
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+    try {
+      await Promise.race([loadPromise, timeout]);
+    } catch (e) {
+      console.warn('[dictionary] PB load slow/failed:', e.message || e);
+      toast('Sözlük DB yavaş; statik sözlük gösteriliyor, yeni kayıtlar geldikçe eklenecek', 'w', 5000);
+    }
+    _seedDictionaryFromStaticFallback();
     renderDictionaryTable();
     // Ensure the category dropdown for the bulk translator is populated.
     if (typeof populateScraperCategories === 'function') {
@@ -1832,6 +1842,27 @@ async function openDictionaryPanel(){
     }
   } catch (e) {
     toast('Sözlük yüklenemedi: ' + e.message, 'e');
+  }
+}
+
+function _seedDictionaryFromStaticFallback(){
+  try {
+    if (!window.QorAiDict?.cache) return 0;
+    const cache = window.QorAiDict.cache();
+    const trEn = window.QorAiStaticDict?.TR_EN || window.QorAiDict?.TR_EN || null;
+    if (!trEn || typeof trEn !== 'object') return 0;
+    let added = 0;
+    for (const [rawKey, rawValue] of Object.entries(trEn)) {
+      const key = String(rawKey || '').toLowerCase().trim();
+      const value = String(rawValue || '').trim();
+      if (!key || !value) continue;
+      if (!cache[key]) { cache[key] = {}; added++; }
+      if (!cache[key].en) cache[key].en = value;
+    }
+    return added;
+  } catch (e) {
+    console.warn('[dictionary] static seed failed:', e.message || e);
+    return 0;
   }
 }
 
@@ -1851,7 +1882,15 @@ function renderDictionaryTable(){
 
   const cache = window.QorAiDict.cache();
   const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
-  const allKeys = Object.keys(cache).sort();
+  const scoreKey = (k) => DICT_VIEW_LANGS.reduce((n, l) => n + (cache[k]?.[l] ? 1 : 0), 0);
+  const allKeys = Object.keys(cache).sort((a, b) => {
+    const scoreDelta = scoreKey(b) - scoreKey(a);
+    if (scoreDelta) return scoreDelta;
+    const bMulti = DICT_VIEW_LANGS.some(l => l !== 'en' && cache[b]?.[l]);
+    const aMulti = DICT_VIEW_LANGS.some(l => l !== 'en' && cache[a]?.[l]);
+    if (bMulti !== aMulti) return bMulti ? 1 : -1;
+    return a.localeCompare(b);
+  });
   const keys = q ? allKeys.filter(k => k.includes(q) || DICT_VIEW_LANGS.some(l => String(cache[k]?.[l] || '').toLowerCase().includes(q))) : allKeys;
 
   if (stats) stats.textContent = `${keys.length} / ${allKeys.length} term`;
