@@ -1917,6 +1917,18 @@ function renderDictionaryTable(){
 let _dictDirty = false;
 function markDictDirty(){ _dictDirty = true; }
 
+let _dictLiveRenderTimer = null;
+function _scheduleDictionaryLiveRender(detail = '', delay = 350){
+  _refreshDictionaryStatsOnly();
+  const detailEl = document.getElementById('dictXlateDetail');
+  if (detail && detailEl) detailEl.textContent = detail;
+  if (_dictLiveRenderTimer) return;
+  _dictLiveRenderTimer = setTimeout(() => {
+    _dictLiveRenderTimer = null;
+    try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
+  }, delay);
+}
+
 function addDictionaryRow(){
   const term = (prompt('Yeni Türkçe terim:') || '').trim();
   if (!term) return;
@@ -1987,15 +1999,20 @@ function _xlateLog(msg, level = 'info'){
   box.scrollTop = box.scrollHeight;
 }
 
-function _xlateProgress(done, total, status){
+function _xlateProgress(done, total, status, opts = {}){
   const wrap = document.getElementById('dictXlateProgress');
   const bar  = document.getElementById('dictXlateBar');
   const cnt  = document.getElementById('dictXlateCounter');
   const stat = document.getElementById('dictXlateStatus');
+  const detail = document.getElementById('dictXlateDetail');
+  const pct = typeof opts.pct === 'number'
+    ? Math.max(0, Math.min(100, opts.pct))
+    : (total > 0 ? Math.min(100, (done / total) * 100) : 0);
   if (wrap) wrap.style.display = '';
-  if (bar) bar.style.width = total > 0 ? `${Math.min(100, (done / total) * 100)}%` : '0%';
-  if (cnt) cnt.textContent = total > 0 ? `${done} / ${total}` : '';
+  if (bar) bar.style.width = `${pct}%`;
+  if (cnt) cnt.textContent = opts.counter || (total > 0 ? `${done} / ${total}` : '');
   if (stat && status) stat.textContent = status;
+  if (detail && opts.detail !== undefined) detail.textContent = opts.detail || '';
 }
 
 function _refreshDictionaryStatsOnly(){
@@ -2012,12 +2029,21 @@ function _refreshDictionaryStatsOnly(){
   } catch {}
 }
 
-function stopCategoryTranslation(){
+async function stopCategoryTranslation(){
   _catXlateAbort = true;
-  _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
+  _xlateLog('⏹ Stop requested — current in-flight chunk will finish, completed chunks stay saved in PocketBase.', 'warn');
+  try {
+    if (window.QorAiBulkTranslate?.saveDict) {
+      await window.QorAiBulkTranslate.saveDict();
+      _scheduleDictionaryLiveRender('Stop checkpoint saved to PocketBase.', 50);
+      _xlateLog('✓ Dictionary checkpoint saved after stop request.', 'success');
+    }
+  } catch (e) {
+    _xlateLog(`⚠ Stop checkpoint save failed: ${e.message || e}`, 'warn');
+  }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-150-strict-20260521-0045';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-live-checkpoint-20260521-0115';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2037,6 +2063,10 @@ async function startCategoryTranslation(){
   _catXlateRunning = true;
   _catXlateAbort = false;
   const startedAt = Date.now();
+  let products = [];
+  let done = 0;
+  let failed = 0;
+  let learned = 0;
 
   try {
     _xlateLog(`Build: ${QORAI_TRANSLATION_BUILD}`);
@@ -2059,7 +2089,7 @@ async function startCategoryTranslation(){
       fields: 'id,name,category,source,sourceUrl,specs,specSections,keySpecs',
       batch: 500,
     });
-    const products = (rawDocs || [])
+    products = (rawDocs || [])
       .map(d => {
         const body = (typeof d.data === 'function') ? d.data() : d;
         return { id: d.id || body.id, ...body };
@@ -2082,8 +2112,6 @@ async function startCategoryTranslation(){
 
     if (_catXlateAbort) throw new Error('aborted');
 
-    let done = 0, failed = 0;
-    let learned = 0;
     const PRODUCT_BATCH = 150;
     const PATCH_CONCURRENCY = 25;
     const totalBatches = Math.ceil(products.length / PRODUCT_BATCH);
@@ -2103,21 +2131,47 @@ async function startCategoryTranslation(){
 
         const chunkStartedAt = Date.now();
         const inFlight = new Map();
-        let doneChunks = 0;
+        let passNo = 1;
+        let passDoneChunks = 0;
+        let passTotalChunks = chunks;
+        let currentPassStarted = Date.now();
+        const depotCounter = () => `Depot pass ${passNo}: ${passDoneChunks}/${passTotalChunks} chunks · products patched ${done}/${products.length}`;
+        const depotPct = () => {
+          const batchPct = passTotalChunks > 0 ? Math.min(0.9, (passDoneChunks / passTotalChunks) * 0.9) : 0;
+          return ((offset + (productBatch.length * batchPct)) / products.length) * 100;
+        };
         const heartbeat = setInterval(() => {
           if (inFlight.size === 0) return;
           const oldest = Math.min(...inFlight.values());
           const sec = ((Date.now() - oldest) / 1000).toFixed(0);
-          _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks · ${inFlight.size} in flight · oldest ${sec}s`);
+          _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: DeepSeek pass ${passNo} · ${inFlight.size} in flight · oldest ${sec}s`, {
+            pct: depotPct(),
+            counter: depotCounter(),
+            detail: `Dictionary writes live to PocketBase after every ✓ chunk. Current batch atoms: ${batchAtoms.length}.`,
+          });
         }, 1000);
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
             const provider = 'DeepSeek';
+            if (ev.pass && ev.pass !== passNo) {
+              passNo = ev.pass;
+              passDoneChunks = 0;
+              passTotalChunks = ev.totalChunks || passTotalChunks || 1;
+              currentPassStarted = Date.now();
+              _xlateLog(`↻ ${provider} depot ${batchNo} pass ${passNo}: retrying remaining atoms in ${passTotalChunks} smaller chunks`, 'warn');
+            } else {
+              passTotalChunks = ev.totalChunks || passTotalChunks || 1;
+            }
             if (ev.phase === 'chunk-start') {
               inFlight.set(`${ev.pass || 1}:${ev.chunkIndex}`, Date.now());
               const preview = (ev.sample || []).map(s => s.length > 24 ? s.slice(0, 22) + '…' : s).join(', ');
               _xlateLog(`→ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atoms (${preview || '…'})`);
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: DeepSeek pass ${passNo} chunk ${ev.chunkIndex + 1}/${passTotalChunks}`, {
+                pct: depotPct(),
+                counter: depotCounter(),
+                detail: `In flight: ${inFlight.size} · dictionary size ${Object.keys(window.QorAiDict?.cache?.() || {}).length}`,
+              });
             } else if (ev.phase === 'chunk-progress') {
               const lang = ev.lang || '??';
               const langPos = `${(ev.langIndex || 0) + 1}/${ev.langTotal || 0}`;
@@ -2129,18 +2183,33 @@ async function startCategoryTranslation(){
                 _xlateLog(`  · batch ${batchNo} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · lang ${lang} (${langPos}) batch ${batchPos}${itemsPct} · ${avgMs} ${etaSec}`);
               }
               const sec = ((Date.now() - (inFlight.get(`${ev.pass || 1}:${ev.chunkIndex}`) || Date.now())) / 1000).toFixed(0);
-              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: chunk ${ev.chunkIndex + 1} · ${lang} ${batchPos}${itemsPct} · ${sec}s in-flight`);
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: chunk ${ev.chunkIndex + 1} · ${lang} ${batchPos}${itemsPct} · ${sec}s in-flight`, {
+                pct: depotPct(),
+                counter: depotCounter(),
+                detail: `${avgMs || 'working'} ${etaSec || ''}`.trim(),
+              });
             } else if (ev.phase === 'chunk-done') {
               inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
-              doneChunks++;
+              passDoneChunks++;
               const sec = ((ev.elapsedMs || 0) / 1000).toFixed(1);
-              _xlateLog(`✓ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''}`, 'success');
-              _refreshDictionaryStatsOnly();
-              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: ${doneChunks}/${chunks} chunks done`);
+              const remainingNow = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets).length;
+              _xlateLog(`✓ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.stored} translations · ${sec}s · dict ${ev.dictSize || ''} · PB ${ev.pbSaved === false ? 'pending retry' : 'saved'}`, ev.pbSaved === false ? 'warn' : 'success');
+              _xlateLog(`  ↳ batch ${batchNo}: ${Math.max(0, batchAtoms.length - remainingNow)}/${batchAtoms.length} atoms ready · ${remainingNow} still missing`, remainingNow ? 'info' : 'success');
+              _scheduleDictionaryLiveRender(`Dictionary ${ev.dictSize || Object.keys(window.QorAiDict?.cache?.() || {}).length} terms · PB ${ev.pbSaved === false ? 'save pending retry' : 'saved'} · batch missing ${remainingNow}`, 250);
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: DeepSeek pass ${passNo} ${passDoneChunks}/${passTotalChunks} chunks`, {
+                pct: depotPct(),
+                counter: depotCounter(),
+                detail: `Pass runtime ${((Date.now() - currentPassStarted) / 1000).toFixed(0)}s · dictionary saved live`,
+              });
             } else if (ev.phase === 'chunk-error') {
               inFlight.delete(`${ev.pass || 1}:${ev.chunkIndex}`);
-              doneChunks++;
+              passDoneChunks++;
               if (ev.error !== 'aborted') _xlateLog(`✗ ${provider} depot ${batchNo} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} failed · ${ev.error}`, 'error');
+              _xlateProgress(done + failed, products.length, `Batch ${batchNo}/${totalBatches}: DeepSeek pass ${passNo} ${passDoneChunks}/${passTotalChunks} chunks`, {
+                pct: depotPct(),
+                counter: depotCounter(),
+                detail: 'Failed chunks are retried in the next smaller pass when possible.',
+              });
             }
           }, () => _catXlateAbort);
         } finally {
@@ -2154,7 +2223,11 @@ async function startCategoryTranslation(){
           throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik kaldı. Ürün patch durduruldu; tekrar başlatınca aynı batch eksikleri yeniden DeepSeek deposuna atılır.`);
         }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
-        _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`);
+        _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`, {
+          pct: ((offset + productBatch.length * 0.95) / products.length) * 100,
+          counter: `Depot complete · products patched ${done}/${products.length}`,
+          detail: `Batch ${batchNo}: ${learnedNow} atoms learned, final checkpoint writing to PocketBase.`,
+        });
         await window.QorAiBulkTranslate.saveDict();
         try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${learnedNow} atoms · ${sec}s)`, 'success');
@@ -2162,7 +2235,10 @@ async function startCategoryTranslation(){
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: ${batchAtoms.length} atoms already cached`, 'success');
       }
 
-      _xlateProgress(done + failed, products.length, `Patching batch ${batchNo}/${totalBatches}…`);
+      _xlateProgress(done + failed, products.length, `Patching batch ${batchNo}/${totalBatches}…`, {
+        counter: `Products ${done}/${products.length} · dictionary ${Object.keys(window.QorAiDict?.cache?.() || {}).length} terms`,
+        detail: 'Now writing multiLangSpecs, multiLangSections, nameTranslated into products.',
+      });
       for (let i = 0; i < productBatch.length && !_catXlateAbort; i += PATCH_CONCURRENCY) {
         const patchBatch = productBatch.slice(i, i + PATCH_CONCURRENCY);
         const settled = await Promise.allSettled(patchBatch.map(async (p) => {
@@ -2196,7 +2272,10 @@ async function startCategoryTranslation(){
             _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${result.reason?.message || result.reason}`, 'error');
           }
         });
-        _xlateProgress(done + failed, products.length, `Patched ${done} ok, ${failed} fail · batch ${batchNo}/${totalBatches}`);
+        _xlateProgress(done + failed, products.length, `Patched ${done} ok, ${failed} fail · batch ${batchNo}/${totalBatches}`, {
+          counter: `Products ${done + failed}/${products.length}`,
+          detail: `Last patch sub-batch ${Math.min(i + PATCH_CONCURRENCY, productBatch.length)}/${productBatch.length} in batch ${batchNo}.`,
+        });
       }
     }
 
@@ -2214,6 +2293,22 @@ async function startCategoryTranslation(){
       const msg = e.message || String(e);
       _xlateLog('✗ ' + msg, 'error');
       toast('Çeviri hatası: ' + msg, 'e');
+    } else {
+      _xlateLog('⏹ Stopped by user. Saving dictionary checkpoint…', 'warn');
+    }
+    try {
+      await window.QorAiBulkTranslate.saveDict();
+      _scheduleDictionaryLiveRender('Dictionary checkpoint saved after stop/error.', 50);
+      _xlateLog('✓ Dictionary checkpoint saved to PocketBase.', 'success');
+    } catch (saveErr) {
+      _xlateLog(`⚠ Dictionary checkpoint save failed: ${saveErr.message || saveErr}`, 'warn');
+    }
+    if (e.message === 'aborted') {
+      _xlateProgress(done + failed, products.length || 0, 'Stopped · dictionary checkpoint saved', {
+        counter: products.length ? `Products ${done + failed}/${products.length}` : '',
+        detail: 'Completed DeepSeek chunks stay in the dictionary. Restart resumes from missing atoms.',
+      });
+      toast('Durduruldu; tamamlanan sözlük chunkları kaydedildi', 'w');
     }
   } finally {
     _catXlateRunning = false;
@@ -2453,10 +2548,8 @@ async function _adminFetchProductVariants(p){
 
 async function openProduct(id){
   let p=allProducts.find(x=>x.id===id);
-  if(!p||p._partial){
-    const doc=await pbGetDoc('products',id).catch(()=>null);
-    if(doc?.exists)p={id:doc.id,...doc.data()};
-  }
+  const doc=await pbGetDoc('products',id).catch(()=>null);
+  if(doc?.exists)p={id:doc.id,...doc.data()};
   if(!p)return;
   // Default to user's saved preference (else Turkish source)
   _modalLang = localStorage.getItem('qorai_modal_lang') || 'tr';

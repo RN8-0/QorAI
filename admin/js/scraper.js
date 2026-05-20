@@ -1788,11 +1788,16 @@ Rules:
           if (storedForChunk === 0) {
             throw new Error('DeepSeek returned no usable translations');
           }
-          if (storedForChunk > 0) await _saveDeDict();
+          let pbSaved = true;
+          if (storedForChunk > 0) {
+            await _saveDeDict();
+            pbSaved = !_deDictDirty;
+          }
           report('chunk-done', chunkIdx, {
             batchSize: batch.length,
             stored: storedForChunk,
             dictSize: Object.keys(_deDictCache).length,
+            pbSaved,
             elapsedMs: Date.now() - chunkStart,
           });
           return;
