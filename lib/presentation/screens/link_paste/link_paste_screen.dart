@@ -1,4 +1,4 @@
-﻿/// Qor AI - Link Paste Screen (AI Quiz-Enhanced Analysis)
+/// Qor AI - Link Paste Screen (AI Quiz-Enhanced Analysis)
 ///
 /// Flow: Paste URL -> AI validates product -> Generates quiz -> User answers ->
 /// Enhanced compatibility score with detailed breakdown.
@@ -289,54 +289,67 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       child: AnimatedGradientInputShell(
         child: AbsorbPointer(
           absorbing: !isEditMode,
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            readOnly: !isEditMode,
-            keyboardType: TextInputType.url,
-            textInputAction: textInputAction,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: context.textPrimary,
-            ),
-            onTapOutside: (_) {
-              focusNode.unfocus();
-              setState(() => _editModeFocusNodes.remove(focusNode));
-            },
-            onSubmitted: onSubmitted,
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: context.textTertiaryColor.withValues(alpha: 0.6),
-              ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.only(left: 14, right: 8),
-                child: Icon(
-                  prefixIconData,
-                  color: AppTheme.brandBlue.withValues(alpha: 0.7),
-                  size: 18,
+          child: SizedBox(
+            height: 48,
+            child: Center(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                readOnly: !isEditMode,
+                keyboardType: TextInputType.url,
+                textInputAction: textInputAction,
+                autocorrect: false,
+                enableSuggestions: false,
+                maxLines: 1,
+                textAlignVertical: TextAlignVertical.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: context.textPrimary,
                 ),
-              ),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 0,
-                minHeight: 0,
-              ),
-              suffixIcon: trailing != null
-                  ? Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: trailing,
-                    )
-                  : null,
-              border: InputBorder.none,
-              filled: false,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 0,
-                vertical: 12,
+                onTapOutside: (_) {
+                  focusNode.unfocus();
+                  setState(() => _editModeFocusNodes.remove(focusNode));
+                },
+                onSubmitted: onSubmitted,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: hintText,
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: context.textTertiaryColor.withValues(alpha: 0.6),
+                  ),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 14, right: 8),
+                    child: Icon(
+                      prefixIconData,
+                      color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                      size: 18,
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 44,
+                  ),
+                  suffixIcon: trailing != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: trailing,
+                        )
+                      : null,
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 44,
+                  ),
+                  border: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.only(
+                    top: 12,
+                    bottom: 12,
+                    right: 8,
+                  ),
+                ),
               ),
             ),
           ),
@@ -614,10 +627,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           _buildBackgroundOrbs(),
           NestedScrollView(
+            physics: showBack ? null : const NeverScrollableScrollPhysics(),
             headerSliverBuilder: (context, innerBoxScrolled) => [
               SliverAppBar(
                 backgroundColor: context.backgroundColor,
@@ -665,7 +680,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           titleText,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800,
-                            fontSize: 17,
+                            fontSize: 18,
                             color: Colors.white,
                             letterSpacing: -0.5,
                           ),
@@ -676,7 +691,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       titleText,
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w800,
-                        fontSize: 17,
+                        fontSize: 18,
                         color: AppTheme.brandBlue,
                         letterSpacing: -0.5,
                       ),
@@ -709,7 +724,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     (quizState.phase == LinkFlowPhase.idle &&
                         compareState.phase == ComparePhase.idle)
                     ? PreferredSize(
-                        preferredSize: const Size.fromHeight(48),
+                        preferredSize: const Size.fromHeight(56),
                         child: _buildTabBar(),
                       )
                     : null,
@@ -921,9 +936,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
 
     // Idle state — show tabs
-    return TabBarView(
-      controller: _tabController,
-      children: [_buildSingleAnalysisTab(isWorking), _buildCompareTab()],
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, _) => IndexedStack(
+        index: _tabController.index,
+        children: [_buildSingleAnalysisTab(isWorking), _buildCompareTab()],
+      ),
     );
   }
 
@@ -931,171 +949,186 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   Widget _buildSingleAnalysisTab(bool isWorking) {
     final quizState = ref.watch(linkQuizProvider);
     final singleWorking = isWorking || _singleSubmitInFlight;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        children: [
-          // Single URL input card
-          GlassContainer(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return LayoutBuilder(
+      builder: (context, _) {
+        final bottomInset =
+            AppTheme.navBarTotalClearance +
+            MediaQuery.of(context).padding.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, bottomInset),
+          child: Column(
+            children: [
+              // Single URL input card
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.brandBlue, AppTheme.brandSkyBlue],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.link_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l10n?.pasteProductLinkCardTitle ??
-                                'Paste Product Link',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: context.textPrimary,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          Text(
-                            context.l10n?.pasteProductLinkSubtitle ??
-                                'Get AI-powered analysis with quiz',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: context.textTertiaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!ref.watch(premiumProvider))
-                      QorAmountBadge(
-                        amount: AppConstants.creditCostForFeature(
-                          'link_analysis',
-                        ),
-                        unlimited: false,
-                        color: AppTheme.brandBlue,
-                        fontSize: 10,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildModernUrlField(
-                  controller: _singleUrlController,
-                  focusNode: _singleFocusNode,
-                  textInputAction: TextInputAction.go,
-                  hintText: 'https://www.amazon.com/product...',
-                  onSubmitted: (_) => _startSingleAnalysis(),
-                  prefixIconData: Icons.link_rounded,
-                ),
-                const SizedBox(height: 14),
-                // Supported stores text
-                Center(
-                  child: Text(
-                    context.l10n?.allShoppingSitesSupported ??
-                        'Tüm alışveriş siteleri desteklenir',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: context.textTertiaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Analyze button
-                Opacity(
-                  opacity: singleWorking ? 0.7 : 1,
-                  child: GradientButton(
-                    width: double.infinity,
-                    height: 54,
-                    borderRadius: BorderRadius.circular(27),
-                    gradient: const LinearGradient(
-                      colors: [
-                        AppTheme.brandBlue,
-                        AppTheme.brandDeepBlue,
-                        AppTheme.brandSkyBlue,
-                      ],
-                    ),
-                    onPressed: singleWorking
-                        ? null
-                        : () {
-                            FocusScope.of(context).unfocus();
-                            _startSingleAnalysis();
-                          },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
+                    Row(
                       children: [
-                        if (singleWorking) ...[
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.brandBlue,
+                                AppTheme.brandSkyBlue,
+                              ],
                             ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ] else ...[
-                          const Icon(
-                            Icons.auto_awesome,
+                          child: const Icon(
+                            Icons.link_rounded,
                             color: Colors.white,
                             size: 20,
                           ),
-                        ],
-                        const SizedBox(width: 8),
-                        Text(
-                          context.l10n?.analyzeWithAi ?? 'Analyze with AI',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.l10n?.pasteProductLinkCardTitle ??
+                                    'Paste Product Link',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: context.textPrimary,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              Text(
+                                context.l10n?.pasteProductLinkSubtitle ??
+                                    'Get AI-powered analysis with quiz',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (!ref.watch(premiumProvider))
+                          QorAmountBadge(
+                            amount: AppConstants.creditCostForFeature(
+                              'link_analysis',
+                            ),
+                            unlimited: false,
+                            color: AppTheme.brandBlue,
+                            fontSize: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                          ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 52,
+                      child: _buildModernUrlField(
+                        controller: _singleUrlController,
+                        focusNode: _singleFocusNode,
+                        textInputAction: TextInputAction.go,
+                        hintText: 'https://www.amazon.com/product...',
+                        onSubmitted: (_) => _startSingleAnalysis(),
+                        prefixIconData: Icons.link_rounded,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        context.l10n?.allShoppingSitesSupported ??
+                            'Tüm alışveriş siteleri desteklenir',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: context.textTertiaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Opacity(
+                      opacity: singleWorking ? 0.7 : 1,
+                      child: GradientButton(
+                        width: double.infinity,
+                        height: 56,
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [
+                            AppTheme.brandBlue,
+                            AppTheme.brandDeepBlue,
+                            AppTheme.brandSkyBlue,
+                          ],
+                        ),
+                        onPressed: singleWorking
+                            ? null
+                            : () {
+                                FocusScope.of(context).unfocus();
+                                _startSingleAnalysis();
+                              },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (singleWorking) ...[
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+                              const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ],
+                            const SizedBox(width: 7),
+                            Flexible(
+                              child: Text(
+                                context.l10n?.analyzeWithAi ??
+                                    'Analyze with AI',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 9),
+              if (quizState.error != null) ...[
+                _buildError(quizState.error!),
+                const SizedBox(height: 6),
               ],
-            ),
+              Expanded(child: SingleChildScrollView(child: _buildInfoCards())),
+            ],
           ),
-          const SizedBox(height: 20),
-          if (quizState.error != null) ...[
-            _buildError(quizState.error!),
-            const SizedBox(height: 16),
-          ],
-          // How it works — new modernized design
-          _buildInfoCards(),
-          SizedBox(
-            height:
-                AppTheme.navBarTotalClearance +
-                MediaQuery.of(context).padding.bottom +
-                60,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1213,188 +1246,203 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   /// TAB 2: Compare (2-4 products)
   Widget _buildCompareTab() {
     final sub = ref.watch(subscriptionServiceProvider);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        children: [
-          GlassContainer(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return LayoutBuilder(
+      builder: (context, _) {
+        final bottomInset =
+            AppTheme.navBarTotalClearance +
+            MediaQuery.of(context).padding.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, bottomInset),
+          child: Column(
+            children: [
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.brandCyan, AppTheme.brandBlue],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.compare_arrows_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l10n?.compareProducts ?? 'Compare Products',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: context.textPrimary,
-                              letterSpacing: -0.3,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.brandCyan, AppTheme.brandBlue],
                             ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          Text(
-                            context.l10n?.compareProductsSubtitle ??
-                                'Add 2-4 product links to compare',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: context.textTertiaryColor,
-                            ),
+                          child: const Icon(
+                            Icons.compare_arrows_rounded,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                        ],
-                      ),
-                    ),
-                    if (!sub.isPremium)
-                      QorAmountBadge(
-                        amount: sub.creditCostForFeature('link_compare'),
-                        unlimited: false,
-                        color: AppTheme.brandCyan,
-                        fontSize: 10,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // URL input fields (2-4)
-                ...List.generate(
-                  _visibleCompareFields,
-                  (i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildCompareUrlField(i),
-                  ),
-                ),
-                // Add product button (if less than 4)
-                if (_visibleCompareFields < 4)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: GestureDetector(
-                      onTap: () => setState(() {
-                        _visibleCompareFields++;
-                      }),
-                      child: Container(
-                        height: 52,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.brandBlue.withValues(alpha: 0.10),
-                              AppTheme.brandCyan.withValues(alpha: 0.05),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.l10n?.compareProducts ??
+                                    'Compare Products',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: context.textPrimary,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              Text(
+                                context.l10n?.compareProductsSubtitle ??
+                                    'Add 2-4 product links to compare',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppTheme.brandBlue.withValues(alpha: 0.3),
+                        ),
+                        if (!sub.isPremium)
+                          QorAmountBadge(
+                            amount: sub.creditCostForFeature('link_compare'),
+                            unlimited: false,
+                            color: AppTheme.brandCyan,
+                            fontSize: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
                           ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...List.generate(
+                      _visibleCompareFields,
+                      (i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 7),
+                        child: SizedBox(
+                          height: 52,
+                          child: _buildCompareUrlField(i),
+                        ),
+                      ),
+                    ),
+                    if (_visibleCompareFields < 4)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GestureDetector(
+                          onTap: () => setState(() {
+                            _visibleCompareFields++;
+                          }),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.brandBlue.withValues(alpha: 0.10),
+                                  AppTheme.brandCyan.withValues(alpha: 0.05),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppTheme.brandBlue.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.brandBlue.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_rounded,
+                                  color: AppTheme.brandBlue,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  context.l10n?.addProductLabel ??
+                                      'Add Product',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: AppTheme.brandBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    GestureDetector(
+                      onTap: _startCompareAnalysis,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppTheme.brandCyan,
+                              AppTheme.brandBlue,
+                              AppTheme.brandDeepBlue,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.08),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
+                              color: AppTheme.brandCyan.withValues(alpha: 0.35),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.add_rounded,
-                              color: AppTheme.brandBlue,
+                            const Icon(
+                              Icons.compare_arrows_rounded,
+                              color: Colors.white,
                               size: 20,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              context.l10n?.addProductLabel ?? 'Add Product',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: AppTheme.brandBlue,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                context.l10n?.compare ?? 'Compare',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: 6),
-                // Compare button
-                GestureDetector(
-                  onTap: _startCompareAnalysis,
-                  child: Container(
-                    height: 54,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppTheme.brandCyan,
-                          AppTheme.brandBlue,
-                          AppTheme.brandDeepBlue,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(27),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.brandCyan.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.compare_arrows_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          context.l10n?.compare ?? 'Compare',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 9),
+              Expanded(
+                child: SingleChildScrollView(child: _buildCompareInfoCards()),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          // How comparison works
-          _buildCompareInfoCards(),
-          SizedBox(
-            height:
-                AppTheme.navBarTotalClearance +
-                MediaQuery.of(context).padding.bottom +
-                60,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1996,12 +2044,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Row(
             children: [
               Container(
                 width: 4,
-                height: 20,
+                height: 16,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
@@ -2012,13 +2060,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                isTr ? 'Karşılaştırma Nasıl Çalışır' : 'How Comparison Works',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: context.textPrimary,
-                  letterSpacing: -0.3,
+              Expanded(
+                child: Text(
+                  isTr ? 'Karşılaştırma Nasıl Çalışır' : 'How Comparison Works',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: context.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
               ),
             ],
@@ -2028,119 +2080,90 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final (icon, title, desc, color) = steps[i];
           final isLast = i == steps.length - 1;
           return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [color, color.withValues(alpha: 0.65)],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.28),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              '0${i + 1}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (!isLast)
-                          Container(
-                            width: 2,
-                            height: 20,
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  color.withValues(alpha: 0.35),
-                                  color.withValues(alpha: 0.05),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: color.withValues(
+                        alpha: context.isDarkMode ? 0.18 : 0.15,
+                      ),
+                      width: 0.8,
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? color.withValues(alpha: 0.06)
-                              : Colors.white.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: color.withValues(
-                              alpha: context.isDarkMode ? 0.15 : 0.18,
-                            ),
+                    boxShadow: context.isDarkMode
+                        ? null
+                        : AppTheme.cardShadowLight,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '0${i + 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: color.withValues(alpha: 0.4),
+                            letterSpacing: -0.5,
                           ),
-                          boxShadow: context.isDarkMode
-                              ? null
-                              : AppTheme.cardShadowLight,
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(icon, size: 20, color: color),
+                      ),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color, color.withValues(alpha: 0.65)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.textPrimary,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    desc,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: context.textTertiaryColor,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
+                          ],
+                        ),
+                        child: Icon(icon, size: 20, color: Colors.white),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              desc,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: context.textSecondary,
+                                height: 1.4,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )
               .animate()
@@ -4605,16 +4628,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 20),
-
         // Section header with subtle accent line
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Row(
             children: [
               Container(
                 width: 4,
-                height: 20,
+                height: 16,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
@@ -4636,10 +4657,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppTheme.brandCyan.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
@@ -4652,14 +4670,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   children: [
                     const Icon(
                       Icons.auto_awesome_rounded,
-                      size: 11,
+                      size: 12,
                       color: AppTheme.brandCyan,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       isTr ? 'AI + İnternet' : 'AI + Web',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.brandCyan,
                       ),
@@ -4676,169 +4694,96 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           final (icon, title, desc, color) = steps[i];
           final isLast = i == steps.length - 1;
           return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [color, color.withValues(alpha: 0.65)],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.28),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              '0${i + 1}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (!isLast)
-                          Container(
-                            width: 2,
-                            height: 20,
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  color.withValues(alpha: 0.35),
-                                  color.withValues(alpha: 0.05),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: color.withValues(
+                        alpha: context.isDarkMode ? 0.18 : 0.15,
+                      ),
+                      width: 0.8,
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? color.withValues(alpha: 0.06)
-                              : Colors.white.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: color.withValues(
-                              alpha: context.isDarkMode ? 0.15 : 0.18,
-                            ),
+                    boxShadow: context.isDarkMode
+                        ? null
+                        : AppTheme.cardShadowLight,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '0${i + 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: color.withValues(alpha: 0.4),
+                            letterSpacing: -0.5,
                           ),
-                          boxShadow: context.isDarkMode
-                              ? null
-                              : AppTheme.cardShadowLight,
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(icon, size: 20, color: color),
+                      ),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color, color.withValues(alpha: 0.65)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.textPrimary,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    desc,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: context.textTertiaryColor,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
+                          ],
+                        ),
+                        child: Icon(icon, size: 20, color: Colors.white),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              desc,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: context.textSecondary,
+                                height: 1.4,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )
               .animate()
               .fadeIn(delay: (80 * i).ms, duration: 380.ms)
               .slideX(begin: 0.04);
         }),
-
-        const SizedBox(height: 18),
-
-        // AI Powers - horizontal scroll cards
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _PowerCard(
-                icon: Icons.forum_rounded,
-                color: AppTheme.brandCyan,
-                title: isTr ? 'İnternet\nYorumları' : 'Community\nReviews',
-                emoji: '💬',
-              ),
-              _PowerCard(
-                icon: Icons.memory_rounded,
-                color: AppTheme.brandBlue,
-                title: context.l10n?.specAnalysis ?? 'Spec\nAnalysis',
-                emoji: '🔬',
-              ),
-              _PowerCard(
-                icon: Icons.swap_horiz_rounded,
-                color: AppTheme.brandSkyBlue,
-                title: context.l10n?.smartAlternatives ?? 'Smart\nAlternatives',
-                emoji: '🔄',
-              ),
-              _PowerCard(
-                icon: Icons.star_rounded,
-                color: AppTheme.scoreAverage,
-                title: context.l10n?.reviewDigest ?? 'Review\nDigest',
-                emoji: '⭐',
-              ),
-              _PowerCard(
-                icon: Icons.person_rounded,
-                color: AppTheme.brandDeepBlue,
-                title: context.l10n?.personalMatch ?? 'Personal\nMatch',
-                emoji: '🎯',
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
       ],
     );
   }
