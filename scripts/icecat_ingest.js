@@ -930,9 +930,22 @@ async function findExistingEpeyProduct(payload) {
   if (!filters.length) return null;
 
   const filter = encodeURIComponent(filters.join(' || '));
-  const r = await pbReq('GET', `/api/collections/products/records?filter=${filter}&perPage=5&skipTotal=1&fields=id,name,source,sourceUrl`);
+  const r = await pbReq('GET', `/api/collections/products/records?filter=${filter}&perPage=5&skipTotal=1&fields=id,name,source,sourceUrl,gtin,mpn,icecatId`);
   if (r.status !== 200) return null;
   return (r.body.items || []).find(isEpeyRecord) || null;
+}
+
+async function enrichExistingEpeyIdentifiers(existing, payload) {
+  if (!existing || !existing.id || !payload) return false;
+  const patch = {};
+  if (!existing.gtin && payload.gtin) patch.gtin = String(payload.gtin).trim().slice(0, 200);
+  if (!existing.mpn && payload.mpn) patch.mpn = String(payload.mpn).trim().slice(0, 200);
+  if (!existing.icecatId && payload.icecatId) patch.icecatId = Number(payload.icecatId) || 0;
+  if (!Object.keys(patch).length) return false;
+
+  const r = await pbReq('PATCH', `/api/collections/products/records/${existing.id}`, patch);
+  if (r.status !== 200) throw new Error(`PATCH existing Epey identifiers ${existing.id}: ${JSON.stringify(r.body).slice(0, 300)}`);
+  return true;
 }
 
 function reconcileVariantsNow() {
@@ -1087,8 +1100,10 @@ async function phase23_enrichImport() {
 
         const existingEpey = await findExistingEpeyProduct(pbData);
         if (existingEpey) {
-          prog.skipped = (prog.skipped || 0) + 1;
-          log(`  Skip id=${icecatId} (${pbData.name}): already exists from Epey (${existingEpey.name || existingEpey.id})`, 'ok');
+          const enriched = await enrichExistingEpeyIdentifiers(existingEpey, pbData);
+          if (enriched) prog.updated++;
+          else prog.skipped = (prog.skipped || 0) + 1;
+          log(`  ${enriched ? 'Linked' : 'Skip'} id=${icecatId} (${pbData.name}): already exists from Epey (${existingEpey.name || existingEpey.id})${enriched ? ' — added affiliate identifiers' : ''}`, 'ok');
           prog.done++;
           if (prog.done % 10 === 0) saveProgress(prog);
           await sleep(DELAY);

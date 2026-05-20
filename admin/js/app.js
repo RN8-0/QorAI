@@ -2017,7 +2017,7 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-150-20260521-0015';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-150-strict-20260521-0045';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2151,10 +2151,7 @@ async function startCategoryTranslation(){
         const learnedNow = Math.max(0, missing.length - stillMissing.length);
         learned += learnedNow;
         if (stillMissing.length > 0) {
-          if (learnedNow === 0) {
-            throw new Error(`Batch ${batchNo}: DeepSeek hiç yeni atom çeviremedi; ${stillMissing.length}/${missing.length} atom eksik kaldı. Ürün patch durduruldu.`);
-          }
-          _xlateLog(`⚠ Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik; mevcut sözlükle patch ediliyor.`, 'warn');
+          throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik kaldı. Ürün patch durduruldu; tekrar başlatınca aynı batch eksikleri yeniden DeepSeek deposuna atılır.`);
         }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
         _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`);
