@@ -224,7 +224,6 @@ const EPEY_PATHS = Object.freeze({
   tablets: 'tablet',
   laptops: 'laptop',
   desktops: 'masaustu-bilgisayar',
-  mini_pcs: 'masaustu-bilgisayar',
   cpus: 'islemci',
   graphics_cards: 'ekran-karti',
   ram: 'bellek-ram',
@@ -286,7 +285,7 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
     categories: [
       { id: 'laptops',            name: 'Laptops',                  LegacySlug: 'nb' },
       { id: 'desktops',           name: 'Desktop PCs',              LegacySlug: 'sysdiv' },
-      { id: 'mini_pcs',           name: 'Mini PCs',                 LegacySlug: 'sysdiv' },
+      { id: 'mini_pcs',           name: 'Mini PCs',                 LegacySlug: 'sysdiv', scrapeDisabled: true },
       { id: 'monitors',           name: 'Monitors',                 LegacySlug: 'monlcd19wide' },
       { id: 'webcams',            name: 'Webcams' },
     ],
@@ -818,7 +817,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
   Object.entries(grouped).forEach(([groupName, cats]) => {
     // Bulk Scrape is Epey-only and category-based — list just the categories
     // that have an Epey path, and skip a group entirely if it has none.
-    const epeyCats = cats.filter(c => c.epeyPath);
+    const epeyCats = cats.filter(c => c.epeyPath && !c.scrapeDisabled);
     if (epeyCats.length) {
       bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
       epeyCats.forEach(cat => {

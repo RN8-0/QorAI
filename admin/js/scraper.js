@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260519v15-eight-epey-images';
+const SCRAPER_BUILD = '20260520v16-sane-preload-no-autoscore';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -33,8 +33,10 @@ let _proxyPollTimer = null;
 
 // Global flag (`window.qoraiScrapeActive`) is checked by Score Engine and the
 // products-list event listener to pause expensive work during a scrape.
-// They re-engage automatically when finishScraping() clears the flag.
 if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
+// Technical scores are run from the dedicated Score Engine tab. Product saves
+// from scraper/import flows must not enqueue an automatic score run.
+if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = true;
 
 function getEpeyDetailConcurrency() {
   const raw = parseInt(document.getElementById('scrapeConcurrency')?.value || '', 10);
@@ -2467,7 +2469,9 @@ async function resumeBulkScrape() {
   const concurrency = getEpeyDetailConcurrency();
   scraperRunning = true; scraperAbort = false;
   if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
-  if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = false;
+  if (typeof window !== 'undefined') {
+    window.qoraiAutoScoreSuppressed = true;
+  }
   const btn = document.getElementById('btnBulkScrape'); if (btn) btn.style.display = 'none';
   const stp = document.getElementById('btnStopScrape'); if (stp) stp.style.display = '';
   clearScraperLog();
@@ -2532,14 +2536,19 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const { urls: existingUrls, byVariantGroup: existingByVG } = await _loadExistingSourceUrls(categoryId);
+  const { urls: existingUrls, slugs: existingSlugs, byVariantGroup: existingByVG } = await _loadExistingSourceUrls(categoryId);
   const beforeCount = urlItems.length;
   const existingUrlKeys = new Set([...existingUrls].map(normalizeScrapeUrlKey).filter(Boolean));
+  const existingSlugKeys = new Set([...(existingSlugs || [])].map(v => String(v || '').trim()).filter(Boolean));
   const freshItems = [];
   const skippedExisting = [];
   for (const item of urlItems) {
     const key = normalizeScrapeUrlKey(item.url);
-    if (key && existingUrlKeys.has(key)) {
+    const slug = slugFromUrl(item.url) || '';
+    const idLike = slug ? generateProductId(slug) : '';
+    if ((key && existingUrlKeys.has(key)) ||
+        (slug && existingSlugKeys.has(slug)) ||
+        (idLike && existingSlugKeys.has(idLike))) {
       skippedExisting.push(item);
       continue;
     }
@@ -2563,7 +2572,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // If PB returns ANY of those, the item is treated as already-saved.
   // Batch of 25 keeps the OR-filter URL safely below PB's request size
   // limits even when each predicate is repeated three ways per row.
-  if (freshItems.length > 0) {
+  if (freshItems.length > 0 && freshItems.length <= 1000) {
     try {
       const VERIFY_BATCH = 25;
       let verifiedExtraSkips = 0;
@@ -2583,12 +2592,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         }
         if (!orParts.length) continue;
         try {
-          const found = await pbGetAll('products', {
+          const found = await _pbGetAllPaged('products', {
             filter: orParts.join(' || '),
             sort: 'id',
             fields: 'id,sourceUrl,slug',
-            batch: 200,
-          });
+          }, 100, 30000);
           if (!found.length) continue;
           const foundUrlKeys = new Set();
           const foundSlugs = new Set();
@@ -2633,6 +2641,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     } catch (e) {
       slog(`  (URL verification pass failed: ${e.message})`, 'warn');
     }
+  } else if (freshItems.length > 1000) {
+    slog(`🔎 Verify pass skipped for ${freshItems.length} fresh URLs; paged preload already handled existing products.`, 'info');
   }
 
   urlItems = freshItems;
@@ -2900,6 +2910,9 @@ async function startBulkScrape() {
 
   scraperRunning = true; scraperAbort = false;
   if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
+  if (typeof window !== 'undefined') {
+    window.qoraiAutoScoreSuppressed = true;
+  }
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
 
@@ -3179,9 +3192,10 @@ function stopScraping() {
 function finishScraping() {
   scraperRunning = false;
   scraperAbort = false;
-  // Clear the global gate so the Score Engine and product-list listener
-  // resume their normal behaviour now that the scrape is done.
-  if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
+  if (typeof window !== 'undefined') {
+    window.qoraiScrapeActive = false;
+    window.qoraiAutoScoreSuppressed = true;
+  }
   _abortAllScrapeControllers();
   _scrapeStartTime = null;
   _scrapeProductCount = 0;
@@ -3901,50 +3915,47 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   return allItems.slice(0, maxProducts);
 }
 
+async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs = 120000) {
+  const started = Date.now();
+  const docs = [];
+  for (let page = 1; ; page++) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(`paged query ${Math.round(timeoutMs / 1000)}s zaman aşımı`);
+    }
+    const res = await pbGetList(collection, page, perPage, options);
+    docs.push(...(res.docs || []));
+    if (!res.docs?.length || page >= (res.totalPages || page)) break;
+    if (page % 5 === 0) await sleep(0);
+  }
+  return docs;
+}
+
 // Loads what is ALREADY in the catalog for a category so the bulk scrape can
 // reconcile against it. Returns:
 //   urls         — every sourceUrl on record (URL-level skip for Epey re-runs)
+//   slugs        — saved slug/id keys (survives sourceUrl drift)
 //   byVariantGroup — Map(variantGroup → { id, source, name }). variantGroup is
 //                  the cross-source identity key (modelFamilyKey). When a
 //                  family has both an Icecat and an Epey record the ICECAT one
 //                  is kept as the merge target — its record id (and the
 //                  affiliate offers linked to it) is what we keep alive.
 async function _loadExistingSourceUrls(categoryId) {
-  const empty = { urls: new Set(), byVariantGroup: new Map() };
+  const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const categoryFilter = safeCategory ? `category="${safeCategory}"` : '';
     const epeyFilter = `(source="epey.com" || source="epey")`;
-    // Project only the 4 fields we need — the catalog has 10k+ products and
-    // pulling full records here times PocketBase out ("Something went wrong").
-    // Also race a 60s timeout so a slow/sick PocketBase never hangs the scrape
-    // — collection just proceeds without the preload (dedup degrades safely:
-    // pbSetDoc still updates same-sourceUrl records instead of duplicating).
-    const queries = [];
-    if (categoryFilter) {
-      queries.push(pbGetAll('products', {
-        filter: categoryFilter,
-        sort: 'id',
-        fields: 'id,name,sourceUrl,variantGroup,source',
-        batch: 500,
-      }));
-    }
-    queries.push(pbGetAll('products', {
-      filter: epeyFilter,
+    const filter = categoryFilter || epeyFilter;
+    // Use explicit paged getList calls instead of SDK getFullList. Large
+    // categories like mice/desktops were timing out or returning generic
+    // PocketBase errors during this preload step.
+    const docs = await _pbGetAllPaged('products', {
+      filter,
       sort: 'id',
-      fields: 'id,name,sourceUrl,variantGroup,source',
-      batch: 500,
-    }));
-    const docs = await Promise.race([
-      Promise.all(queries).then(groups => {
-        const byId = new Map();
-        groups.flat().forEach(d => { if (d?.id && !byId.has(d.id)) byId.set(d.id, d); });
-        return [...byId.values()];
-      }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('preload 60s zaman aşımı')), 60000)),
-    ]);
+      fields: 'id,name,sourceUrl,slug,variantGroup,source',
+    }, 500, safeCategory ? 120000 : 45000);
     const urls = new Set();
+    const slugs = new Set();
     const byVariantGroup = new Map();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
@@ -3953,7 +3964,12 @@ async function _loadExistingSourceUrls(categoryId) {
         urls.add(rawUrl);
         const normalized = normalizeScrapeUrlKey(rawUrl);
         if (normalized) urls.add(normalized);
+        const urlSlug = slugFromUrl(rawUrl);
+        if (urlSlug) slugs.add(urlSlug);
       }
+      if (d.id) slugs.add(String(d.id));
+      const savedSlug = String(data?.slug || '').trim();
+      if (savedSlug) slugs.add(savedSlug);
       const vg = String(data?.variantGroup || '').trim();
       if (vg && d.id) {
         const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };
@@ -3964,7 +3980,8 @@ async function _loadExistingSourceUrls(categoryId) {
         if (!prev || (isIcecat && !prevIcecat)) byVariantGroup.set(vg, rec);
       }
     }
-    return { urls, byVariantGroup };
+    slog(`  preload OK: ${docs.length} kayıt, ${urls.size} URL key, ${slugs.size} slug key`, 'success');
+    return { urls, slugs, byVariantGroup };
   } catch (e) {
     slog(`  (existing-product preload failed: ${e.message})`, 'warn');
     return empty;
@@ -3978,7 +3995,7 @@ function getAllEpeyScrapeCategories() {
   const byId = new Map();
   for (const cat of all) {
     const id = String(cat?.id || '').trim();
-    if (!id || !cat?.epeyPath || byId.has(id)) continue;
+    if (!id || !cat?.epeyPath || cat?.scrapeDisabled || byId.has(id)) continue;
     byId.set(id, cat);
   }
   return [...byId.values()];
@@ -3990,13 +4007,22 @@ async function startBulkScrape() {
 
   const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
   if (!categoryId) { toast('Bir kategori seç', 'w'); return; }
+  const selectedCat = categoryId !== '__all_epey__' && typeof QorAiCategories !== 'undefined'
+    ? QorAiCategories.getById?.(categoryId)
+    : null;
+  if (selectedCat?.scrapeDisabled) {
+    toast('Bu kategori Epey scrape için kapalı; Desktop PCs ile aynı kaynağa gidiyor.', 'w');
+    return;
+  }
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
   const concurrency = getEpeyDetailConcurrency();
 
   scraperRunning = true; scraperAbort = false;
   if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
-  if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = false;
+  if (typeof window !== 'undefined') {
+    window.qoraiAutoScoreSuppressed = true;
+  }
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
   clearScraperLog();

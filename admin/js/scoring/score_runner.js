@@ -287,6 +287,7 @@
 
   const _autoQueue = new Set();
   let _autoTimer = null;
+  const AUTO_SCORE_FROM_PRODUCT_SAVE = false;
   async function _flushAutoScoreQueue() {
     // Defer when:
     //   - a manual score run is already in flight (`_running`)
@@ -308,6 +309,7 @@
   }
   global.qoraiQueueScoreUpdate = function (category) {
     if (!category) return;
+    if (!AUTO_SCORE_FROM_PRODUCT_SAVE) return;
     if (global.qoraiAutoScoreSuppressed) return;
     _autoQueue.add(String(category));
     clearTimeout(_autoTimer);
