@@ -2017,6 +2017,23 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
+async function _ensureLocalTranslatorReady(){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch('http://127.0.0.1:8797/health', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
   if (!window.QorAiBulkTranslate) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
@@ -2037,6 +2054,10 @@ async function startCategoryTranslation(){
   const startedAt = Date.now();
 
   try {
+    _xlateProgress(0, 0, 'Checking local translator…');
+    const localStatus = await _ensureLocalTranslatorReady();
+    _xlateLog(`✓ Local NLLB translator ready · ${localStatus.model || 'model'} · cache ${localStatus.cache || 0}`, 'success');
+
     _xlateProgress(0, 0, 'Loading dictionary…');
     _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
@@ -2252,8 +2273,11 @@ async function startCategoryTranslation(){
     try { await loadProducts?.(); } catch {}
   } catch (e) {
     if (e.message !== 'aborted') {
-      _xlateLog('✗ ' + e.message, 'error');
-      toast('Çeviri hatası: ' + e.message, 'e');
+      const msg = e.name === 'AbortError'
+        ? 'Local NLLB translator cevap vermiyor. Yerel worker açık olmalı.'
+        : (e.message || String(e));
+      _xlateLog('✗ ' + msg, 'error');
+      toast('Çeviri hatası: ' + msg, 'e');
     }
   } finally {
     _catXlateRunning = false;

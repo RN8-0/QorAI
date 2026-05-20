@@ -1838,7 +1838,8 @@ Rules:
 
           const data = await response.json().catch(() => ({}));
           if (!response.ok || data.error) {
-            throw new Error(data.message || data.error || 'DeepSeek API error');
+            const detail = data.message || data.error || data.detail || 'DeepSeek API error';
+            throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
           }
 
           const content = data.choices?.[0]?.message?.content || '{}';
@@ -1866,7 +1867,7 @@ Rules:
           });
           return;
         } catch (e) {
-          const msg = e.message || String(e);
+          const msg = e.message || (typeof e === 'string' ? e : JSON.stringify(e));
           if (attempt === 0 && isRateLimit(msg)) {
             report('chunk-error', chunkIdx, { error: `${msg} · waiting 305s then retrying`, elapsedMs: Date.now() - chunkStart });
             await sleep(305000);
