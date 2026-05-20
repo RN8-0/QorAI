@@ -13,7 +13,7 @@ const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260520v16-sane-preload-no-autoscore';
 const DEEPSEEK_URL = '/api/ai/deepseek';
-const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
+const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // Languages to translate Turkish specs into (skip tr since source is Turkish)
 const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -1823,9 +1823,9 @@ Rules:
   }
 
   const passes = [
-    { size: 120, concurrency: 2 },
-    { size: 60, concurrency: 1 },
-    { size: 30, concurrency: 1 },
+    { size: 150, concurrency: 2 },
+    { size: 75, concurrency: 1 },
+    { size: 35, concurrency: 1 },
   ];
   for (let pass = 0; pass < passes.length; pass++) {
     const current = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
@@ -2064,10 +2064,9 @@ window.QorAiBulkTranslate = {
   // Persist the dictionary cache to PocketBase (force-save)
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
-  // Estimated chunk count for progress reporting — must match the real CHUNK
-  // used in _localTranslateAllLangsBatch (currently 60). Worker has its own
-  // /status endpoint that the UI polls for in-chunk live progress.
-  CHUNK_SIZE: 120,
+  // Estimated chunk count for progress reporting; must match the first
+  // DeepSeek depot pass size above.
+  CHUNK_SIZE: 150,
   CONCURRENCY: 2,
 };
 

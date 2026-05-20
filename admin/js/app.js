@@ -2017,7 +2017,7 @@ function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — finishing current step…', 'warn');
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-20260521-0001';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-150-20260521-0015';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2084,7 +2084,7 @@ async function startCategoryTranslation(){
 
     let done = 0, failed = 0;
     let learned = 0;
-    const PRODUCT_BATCH = 100;
+    const PRODUCT_BATCH = 150;
     const PATCH_CONCURRENCY = 25;
     const totalBatches = Math.ceil(products.length / PRODUCT_BATCH);
     _xlateProgress(0, products.length, 'Starting DeepSeek depot translate + patch…');
@@ -2096,7 +2096,7 @@ async function startCategoryTranslation(){
       const missing = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets);
 
       if (missing.length > 0) {
-        const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 120;
+        const chunkSize = window.QorAiBulkTranslate.CHUNK_SIZE || 150;
         const chunks = Math.ceil(missing.length / chunkSize);
         const concurrency = window.QorAiBulkTranslate.CONCURRENCY || 2;
         _xlateLog(`⚙ DeepSeek depot ${batchNo}/${totalBatches}: ${productBatch.length} products · ${missing.length}/${batchAtoms.length} missing atoms · ~${chunks} bulk calls · ${concurrency} parallel`);
