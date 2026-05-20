@@ -1341,8 +1341,6 @@ let _deDictLoaded = false;
 let _deDictDirty = false;
 let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
-let _googleTranslatorDisabled = false;
-let _googleTranslatorLastError = '';
 
 function _seedStaticEnglishDict() {
   const staticDict = (typeof window !== 'undefined' && (window.QorAiStaticDict || _staticQorAiDict)) || null;
@@ -1694,117 +1692,6 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
-async function _googleTranslateAllLangsBatch(turkishTexts, targetLangs, onProgress, shouldAbort) {
-  const token = getPb()?.authStore?.token;
-  if (!token) return false;
-  if (_googleTranslatorDisabled) return false;
-  _googleTranslatorLastError = '';
-
-  let uncached = [...new Set((turkishTexts || []).filter(_shouldTranslateAtom))]
-    .filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
-  if (!uncached.length) return true;
-
-  const CHUNK = 100;
-  const MAX_REQUEST_CHARS = 45000;
-  const CONCURRENCY = 6;
-  const jobs = [];
-  let batch = [];
-  let batchChars = 0;
-  for (const text of uncached) {
-    const cost = Math.max(1, String(text).length) * Math.max(1, targetLangs.length);
-    if (batch.length && (batch.length >= CHUNK || batchChars + cost > MAX_REQUEST_CHARS)) {
-      jobs.push({ chunkIdx: jobs.length, batch });
-      batch = [];
-      batchChars = 0;
-    }
-    batch.push(text);
-    batchChars += cost;
-  }
-  if (batch.length) jobs.push({ chunkIdx: jobs.length, batch });
-  const totalChunks = jobs.length;
-  const report = (phase, idx, extra) => {
-    if (typeof onProgress !== 'function') return;
-    try { onProgress({ provider: 'google', phase, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
-  };
-
-  async function processChunk(chunkIdx, batch) {
-    if (typeof shouldAbort === 'function' && shouldAbort()) {
-      report('chunk-error', chunkIdx, { error: 'aborted', elapsedMs: 0 });
-      return { ok: true, stored: 0 };
-    }
-
-    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
-    const chunkStart = Date.now();
-    const protectedRows = batch.map((source) => ({ source, ..._protectTranslatorText(source) }));
-
-    try {
-      const response = await fetch(`${PB_URL}/api/translate/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: token },
-        body: JSON.stringify({
-          from: 'tr',
-          to: targetLangs,
-          texts: protectedRows.map(r => r.text),
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) {
-        const err = data.message || data.detail || data.error || `Google Translate ${response.status}`;
-        _googleTranslatorLastError = typeof err === 'string' ? err : JSON.stringify(err);
-        if (response.status === 404 || response.status === 501 || response.status === 503) {
-          _googleTranslatorDisabled = true;
-          report('chunk-error', chunkIdx, { error: err, elapsedMs: Date.now() - chunkStart });
-          return { ok: false, stored: 0, error: err };
-        }
-        throw new Error(err);
-      }
-
-      const translations = data.translations || {};
-      let storedForChunk = 0;
-      for (let i = 0; i < protectedRows.length; i++) {
-        const row = protectedRows[i];
-        const entry = translations[row.text] || translations[row.source];
-        if (!entry || typeof entry !== 'object') continue;
-        for (const lang of targetLangs) {
-          const raw = entry[lang];
-          if (typeof raw === 'string' && raw.trim()) {
-            _deDictStore(row.source, lang, _restoreTranslatorText(raw, row.restore));
-            storedForChunk++;
-          }
-        }
-      }
-      if (storedForChunk > 0) await _saveDeDict();
-      report('chunk-done', chunkIdx, {
-        batchSize: batch.length,
-        stored: storedForChunk,
-        dictSize: Object.keys(_deDictCache).length,
-        elapsedMs: Date.now() - chunkStart,
-      });
-      return { ok: true, stored: storedForChunk };
-    } catch (e) {
-      console.warn('[tr-translate] google batch error:', e.message);
-      _googleTranslatorLastError = e.message || 'Google Translate failed';
-      report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
-      return { ok: false, stored: 0, error: e.message };
-    }
-  }
-
-  let cursor = 0;
-  let usable = true;
-  const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
-    while (cursor < jobs.length) {
-      if (!usable || (typeof shouldAbort === 'function' && shouldAbort())) break;
-      const job = jobs[cursor++];
-      const result = await processChunk(job.chunkIdx, job.batch);
-      if (!result.ok) usable = false;
-    }
-  });
-  await Promise.all(workers);
-  await _saveDeDict();
-  return usable;
-}
-
 async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
   const token = getPb()?.authStore?.token;
   if (!token) {
@@ -1821,50 +1708,42 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   if (missingByText.size === 0) return; // everything cached — no API hit
 
   let uncached = [...missingByText.keys()];
-  const bulkMode = typeof onProgress === 'function';
-  const googleUsable = await _googleTranslateAllLangsBatch(uncached, targetLangs, onProgress, shouldAbort);
-  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
   if (!uncached.length) return;
-  if (bulkMode) {
-    const reason = _googleTranslatorLastError || (googleUsable ? `${uncached.length} atoms still missing after Google` : 'Google Translate unavailable');
-    throw new Error(`Google Translate kullanılamadı: ${reason}. Bulk çeviride DeepSeek fallback kapatıldı; Settings > API Keys altına Google Translate API Key gir.`);
-  }
-  if (googleUsable && typeof shouldAbort === 'function' && shouldAbort()) return;
-
-  // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
-  // moderate. The atom filter above removes model codes/numbers first, which
-  // lets us safely use a slightly larger batch than the old 12.
-  const CHUNK = 32;
-  const totalChunks = Math.ceil(uncached.length / CHUNK);
-  const report = (phase, idx, extra) => {
-    if (typeof onProgress !== 'function') return;
-    try { onProgress({ phase, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
-  };
   const langCodes = targetLangs.join(',');
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const isRateLimit = (msg) => /rate|limit|300 requests|try later/i.test(String(msg || ''));
 
-  // Process a single chunk: send → parse → store. Self-contained so we can
-  // run multiple chunks concurrently without races (each chunk owns its own
-  // Date.now() timer and writes to the shared dict via the idempotent
-  // _deDictStore — last-write-wins, but identical inputs produce identical
-  // output so this is safe).
-  async function processChunk(chunkIdx, batch) {
-    if (typeof shouldAbort === 'function' && shouldAbort()) {
-      report('chunk-error', chunkIdx, { error: 'aborted', elapsedMs: 0 });
-      return;
+  async function runPass(passNo, passAtoms, CHUNK, CONCURRENCY) {
+    const totalChunks = Math.ceil(passAtoms.length / CHUNK);
+    const report = (phase, idx, extra) => {
+      if (typeof onProgress !== 'function') return;
+      try { onProgress({ provider: 'deepseek', phase, pass: passNo, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+    };
+
+    const jobs = [];
+    for (let i = 0; i < passAtoms.length; i += CHUNK) {
+      jobs.push({ chunkIdx: Math.floor(i / CHUNK), batch: passAtoms.slice(i, i + CHUNK) });
     }
-    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
-    const chunkStart = Date.now();
-    const textsJson = JSON.stringify(batch);
-    try {
-      const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: token },
-        body: JSON.stringify({
-          model: DEEPSEEK_MODEL,
-          messages: [
-            {
-              role: 'system',
-              content: `You are a technical product specification translator. For each Turkish tech spec term, return a JSON object mapping the original Turkish text to translations in the following languages: ${langCodes}.
+
+    async function processChunk(chunkIdx, batch) {
+      if (typeof shouldAbort === 'function' && shouldAbort()) {
+        report('chunk-error', chunkIdx, { error: 'aborted', elapsedMs: 0 });
+        return;
+      }
+      report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+      const chunkStart = Date.now();
+      const textsJson = JSON.stringify(batch);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: token },
+            body: JSON.stringify({
+              model: DEEPSEEK_MODEL,
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are a technical product specification translator. For each Turkish tech spec term, return a JSON object mapping the original Turkish text to translations in the following languages: ${langCodes}.
 Rules:
 - Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
 - Product names / brand names stay as-is.
@@ -1872,71 +1751,83 @@ Rules:
 - Return ONLY a single JSON object of the form:
   {"<turkish text>": {"en":"...", "de":"...", "es":"...", ...}, ...}
 - The inner object MUST contain exactly these language codes: ${langCodes}.`
-            },
-            {
-              role: 'user',
-              content: `Translate these ${batch.length} Turkish product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
-            }
-          ],
-          max_tokens: 8000,
-          temperature: 0.1,
-          response_format: { type: 'json_object' }
-        })
-      });
+                },
+                {
+                  role: 'user',
+                  content: `Translate these ${batch.length} Turkish product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
+                }
+              ],
+              max_tokens: 8000,
+              temperature: 0.1,
+              response_format: { type: 'json_object' }
+            })
+          });
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) {
-        throw new Error(data.message || data.error || 'DeepSeek API error');
-      }
-
-      const content = data.choices?.[0]?.message?.content || '{}';
-      let translations;
-      try { translations = JSON.parse(content); }
-      catch { translations = _salvageTruncatedJson(content); }
-
-      let storedForChunk = 0;
-      for (const t of batch) {
-        const entry = translations[t];
-        if (!entry || typeof entry !== 'object') continue;
-        for (const lang of targetLangs) {
-          if (typeof entry[lang] === 'string' && entry[lang].trim()) {
-            _deDictStore(t, lang, entry[lang]);
-            storedForChunk++;
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || data.error) {
+            throw new Error(data.message || data.error || 'DeepSeek API error');
           }
+
+          const content = data.choices?.[0]?.message?.content || '{}';
+          let translations;
+          try { translations = JSON.parse(content); }
+          catch { translations = _salvageTruncatedJson(content); }
+
+          let storedForChunk = 0;
+          for (const t of batch) {
+            const entry = translations[t];
+            if (!entry || typeof entry !== 'object') continue;
+            for (const lang of targetLangs) {
+              if (typeof entry[lang] === 'string' && entry[lang].trim()) {
+                _deDictStore(t, lang, entry[lang]);
+                storedForChunk++;
+              }
+            }
+          }
+          if (storedForChunk > 0) await _saveDeDict();
+          report('chunk-done', chunkIdx, {
+            batchSize: batch.length,
+            stored: storedForChunk,
+            dictSize: Object.keys(_deDictCache).length,
+            elapsedMs: Date.now() - chunkStart,
+          });
+          return;
+        } catch (e) {
+          const msg = e.message || String(e);
+          if (attempt === 0 && isRateLimit(msg)) {
+            report('chunk-error', chunkIdx, { error: `${msg} · waiting 305s then retrying`, elapsedMs: Date.now() - chunkStart });
+            await sleep(305000);
+            continue;
+          }
+          console.warn('[tr-translate] all-langs batch error:', msg);
+          report('chunk-error', chunkIdx, { error: msg, elapsedMs: Date.now() - chunkStart });
+          return;
         }
       }
-      if (storedForChunk > 0) await _saveDeDict();
-      report('chunk-done', chunkIdx, {
-        batchSize: batch.length,
-        stored: storedForChunk,
-        dictSize: Object.keys(_deDictCache).length,
-        elapsedMs: Date.now() - chunkStart,
-      });
-    } catch (e) {
-      console.warn('[tr-translate] all-langs batch error:', e.message);
-      report('chunk-error', chunkIdx, { error: e.message, elapsedMs: Date.now() - chunkStart });
     }
+
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
+      while (cursor < jobs.length) {
+        if (typeof shouldAbort === 'function' && shouldAbort()) break;
+        const job = jobs[cursor++];
+        await processChunk(job.chunkIdx, job.batch);
+      }
+    });
+    await Promise.all(workers);
+    await _saveDeDict();
   }
 
-  // Build the list of (chunkIdx, batch) jobs.
-  const jobs = [];
-  for (let i = 0; i < uncached.length; i += CHUNK) {
-    jobs.push({ chunkIdx: Math.floor(i / CHUNK), batch: uncached.slice(i, i + CHUNK) });
+  const passes = [
+    { size: 200, concurrency: 2 },
+    { size: 80, concurrency: 1 },
+    { size: 40, concurrency: 1 },
+  ];
+  for (let pass = 0; pass < passes.length; pass++) {
+    const current = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+    if (!current.length) break;
+    await runPass(pass + 1, current, passes[pass].size, passes[pass].concurrency);
   }
-
-  // Concurrency-limited worker pool. Category translation runs from the admin
-  // panel and needs fast feedback, so keep several chunks in flight while
-  // staying under typical API rate limits.
-  const CONCURRENCY = 8;
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
-    while (cursor < jobs.length) {
-      if (typeof shouldAbort === 'function' && shouldAbort()) break;
-      const job = jobs[cursor++];
-      await processChunk(job.chunkIdx, job.batch);
-    }
-  });
-  await Promise.all(workers);
 
   await _saveDeDict();
 }
@@ -2170,8 +2061,8 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting
-  CHUNK_SIZE: 100,
-  CONCURRENCY: 6,
+  CHUNK_SIZE: 200,
+  CONCURRENCY: 2,
 };
 
 // ═══════════════════════════════════════
