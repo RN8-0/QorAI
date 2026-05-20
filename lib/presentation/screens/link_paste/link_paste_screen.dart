@@ -1256,14 +1256,17 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           child: Column(
             children: [
               GlassContainer(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [AppTheme.brandCyan, AppTheme.brandBlue],
@@ -1273,7 +1276,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           child: const Icon(
                             Icons.compare_arrows_rounded,
                             color: Colors.white,
-                            size: 20,
+                            size: 18,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1319,26 +1322,26 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 7),
                     ...List.generate(
                       _visibleCompareFields,
                       (i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 7),
+                        padding: const EdgeInsets.only(bottom: 6),
                         child: SizedBox(
-                          height: 52,
+                          height: 46,
                           child: _buildCompareUrlField(i),
                         ),
                       ),
                     ),
                     if (_visibleCompareFields < 4)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: 6),
                         child: GestureDetector(
                           onTap: () => setState(() {
                             _visibleCompareFields++;
                           }),
                           child: Container(
-                            height: 48,
+                            height: 42,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -1368,7 +1371,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                                 Icon(
                                   Icons.add_rounded,
                                   color: AppTheme.brandBlue,
-                                  size: 20,
+                                  size: 18,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
@@ -1388,7 +1391,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     GestureDetector(
                       onTap: _startCompareAnalysis,
                       child: Container(
-                        height: 56,
+                        height: 50,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [
@@ -1412,7 +1415,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             const Icon(
                               Icons.compare_arrows_rounded,
                               color: Colors.white,
-                              size: 20,
+                              size: 18,
                             ),
                             const SizedBox(width: 8),
                             Flexible(
