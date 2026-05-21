@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  QOR AI ADMIN — Tech Score Runner v6
+//  QOR AI ADMIN — Tech Score Runner v7
 //  3-phase progress (Load → Compute → Persist) + parallel writes
 // ═══════════════════════════════════════════════════════════════
 
@@ -36,9 +36,19 @@
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   // ─── Data ────────────────────────────────────────────────────
+  const SCORE_LOAD_FIELDS = [
+    'id', 'name', 'brand', 'category', 'source', 'sourceUrl',
+    'specs', 'specSections', 'keySpecs', 'specsEn',
+    'techScore', 'specsCount', 'scrapedAt', 'created',
+  ].join(',');
+
   async function _loadProducts(category) {
     const filter = category ? `category="${category}"` : '';
-    const items = await pbGetAll('products', filter ? { filter } : {});
+    const items = await pbGetAll('products', {
+      ...(filter ? { filter } : {}),
+      fields: SCORE_LOAD_FIELDS,
+      batch: 300,
+    });
     return items.map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) }));
   }
   function _groupByCategory(products) {
@@ -101,7 +111,8 @@
               confidence: row.confidence,
               tier: row.tier || null,
               anchorKey: row.anchorKey || null,
-              engine: 'v6.1',
+              evidence: row.evidence || null,
+              engine: 'v7',
             },
             scoreUpdatedAt: new Date().toISOString(),
           });
@@ -142,7 +153,7 @@
     _running = true; _abort = false; _startTime = Date.now();
     _hideSummary();
     if (!auto && typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`🚀 Score Engine v6.1 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
+    _slog(`🚀 Score Engine v7 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
     _setProgress('Loading', 0, 1);

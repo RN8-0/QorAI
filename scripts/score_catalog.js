@@ -77,7 +77,7 @@ async function main() {
       const had = Number(cur.techScore) || 0;
       if (!OVERWRITE && had !== 0) continue;     // keep existing scores
       if (had === score) continue;               // no change
-      updates.push({ id: row.id, score });
+      updates.push({ id: row.id, score, row });
       changed++;
     }
     console.log(`  ${cat.padEnd(20)} ${String(list.length).padStart(6)} products → ${changed} to update`);
@@ -89,7 +89,19 @@ async function main() {
 
   let ok = 0, fail = 0;
   await runPool(updates, async (u) => {
-    const r = await req('PATCH', `/api/collections/products/records/${u.id}`, { techScore: u.score });
+    const r = await req('PATCH', `/api/collections/products/records/${u.id}`, {
+      techScore: u.score,
+      techSubscores: {
+        ...(u.row.subscores || {}),
+        overall: u.score,
+        confidence: u.row.confidence,
+        tier: u.row.tier || null,
+        anchorKey: u.row.anchorKey || null,
+        evidence: u.row.evidence || null,
+        engine: 'v7',
+      },
+      scoreUpdatedAt: new Date().toISOString(),
+    });
     if (r.status === 200) ok++;
     else { fail++; if (fail <= 8) console.log(`   ! ${u.id}: ${r.status}`); }
   });

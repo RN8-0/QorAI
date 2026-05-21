@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  QOR AI — Tech Score Engine v6 (Anchored + Stretched + Brand)
+//  QOR AI — Tech Score Engine v7 (Canonical Specs + Anchored + Brand)
 //  • Mutlak rank-based GPU/CPU/Chipset (future-proof)
 //  • Log-scale numeric normalization against global references
 //  • Tier caps (flagship/upper-mid/mid/entry) — stops mid-segment inflation
@@ -73,6 +73,9 @@
   ];
 
   const CPU_DESKTOP = [
+    ['Threadripper Pro 9995WX', 100], ['Threadripper Pro 9985WX', 97],
+    ['Threadripper 9980X', 96], ['Threadripper Pro 7995WX', 92],
+    ['Threadripper 7970X', 86], ['Threadripper 7960X', 82],
     ['Ryzen 9 9950X', 100], ['Core i9-14900K', 98], ['Ryzen 9 7950X', 95],
     ['Core i9-13900K', 92], ['Ryzen 9 9900X', 88], ['Core i7-14700K', 84],
     ['Ryzen 7 9700X', 80], ['Core i7-13700K', 77], ['Ryzen 7 7700X', 73],
@@ -109,6 +112,7 @@
 
   // Family detection for interpolation (longest first)
   const FAMILIES = [
+    'Threadripper Pro', 'Threadripper',
     'Core Ultra 9', 'Core Ultra 7', 'Core Ultra 5',
     'Core i9', 'Core i7', 'Core i5', 'Core i3',
     'Ryzen 9', 'Ryzen 7', 'Ryzen 5', 'Ryzen 3',
@@ -128,7 +132,7 @@
       ['Super AMOLED', 95], ['AMOLED', 95], ['Mini-LED', 82], ['MiniLED', 82],
       ['QD-OLED', 100], ['OLED', 100], ['QLED', 85], ['Retina', 92],
       ['IPS LCD', 70], ['IPS', 70], ['VA', 65], ['PLS', 65],
-      ['LCD', 55], ['TFT', 40], ['TN', 30], ['E-Ink', 60],
+      ['LED', 62], ['LCD', 55], ['TFT', 40], ['TN', 30], ['E-Ink', 60],
     ],
     resolution: [
       ['8K', 100], ['7680', 100], ['4320', 100],
@@ -220,43 +224,43 @@
 
   const FIELDS = {
     gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics Card', 'Graphics', 'Dedicated GPU', 'Discrete GPU', 'Ekran Kartı', 'Ekran Karti', 'Harici Ekran Kartı', 'GPU'],
-    cpu:        ['Processor Model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci'],
+    cpu:        ['Processor Model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci', 'İşlemci Modeli'],
     ram:        ['Memory (RAM)', 'RAM Capacity', 'RAM (GB)', 'System Memory', 'Installed RAM', 'RAM', 'Memory', 'Bellek', 'Sistem Belleği', 'Sistem Bellegi'],
     storage:    ['Hard Disk (SSD) Size', 'SSD Size', 'SSD Capacity', 'Storage Capacity', 'Internal Storage', 'Hard Disk Size', 'Hard Disk', 'Storage', 'Depolama', 'Dahili Hafıza', 'Dahili Hafiza'],
     battery:    ['Battery Capacity (Typical)', 'Battery Capacity', 'Battery Power', 'Battery (mAh)', 'Battery', 'Batarya Kapasitesi', 'Batarya', 'Pil'],
     battery_life: ['Battery Life', 'Listening Time', 'Music Time', 'Talk Time', 'Pil Ömrü', 'Calma Suresi', 'Çalma Süresi'],
-    screen_size:['Display Size', 'Screen Size', 'Ekran Boyutu', 'Display Size (Diagonal)', 'Diagonal'],
-    refresh:    ['Screen Refresh Rate', 'Display Refresh Rate', 'Refresh Rate', 'Yenileme Hızı', 'Yenileme Hizi'],
+    screen_size:['Display Size', 'Screen Size', 'Display Diagonal', 'Ekran Boyutu', 'Ekran Boyutu (İnç)', 'Ekran Boyutu (Inc)', 'Display Size (Diagonal)', 'Diagonal'],
+    refresh:    ['Screen Refresh Rate', 'Display Refresh Rate', 'Refresh Rate', 'Yenileme Hızı', 'Yenileme Hizi', 'Yenileme Hızı (DP)', 'Yenileme Hızı (HDMI)'],
     chipset:    ['Chipset', 'System Chip', 'SoC', 'Ana İşlemci', 'Ana Islemci', 'CPU', 'Processor', 'İşlemci', 'Islemci'],
-    panel:      ['Screen Technology', 'Panel Type', 'Display Technology', 'Display Type', 'Panel Tipi', 'Ekran Tipi', 'Ekran Teknolojisi'],
-    resolution: ['Display Resolution', 'Screen Resolution', 'Resolution', 'Çözünürlük', 'Cozunurluk', 'Ekran Çözünürlüğü'],
-    main_camera:['Main Camera', 'Main Camera Resolution', 'Rear Camera', 'Primary Camera', 'Ana Kamera', 'Arka Kamera'],
+    panel:      ['Screen Technology', 'Panel Type', 'Display Technology', 'Display Type', 'Display', 'Panel Tipi', 'Ekran Tipi', 'Ekran Teknolojisi', 'Ekran'],
+    resolution: ['Display Resolution', 'Screen Resolution', 'Resolution', 'Resolution Standard', 'Çözünürlük', 'Cozunurluk', 'Ekran Çözünürlüğü', 'Çözünürlük Standardı'],
+    main_camera:['Main Camera', 'Main Camera Resolution', 'Rear Camera', 'Primary Camera', 'Camera Resolution', 'Ana Kamera', 'Arka Kamera', 'Kamera Çözünürlüğü'],
     front_camera:['Front Camera', 'Selfie Camera', 'Ön Kamera', 'On Kamera', 'Selfie'],
     network_5g: ['Network', 'Cellular', 'Mobile Network', 'Mobil Ağ', 'Mobil Ag', 'Şebeke', 'Sebeke', 'Generation'],
     weight:     ['Weight', 'Ağırlık', 'Agirlik'],
     wifi:       ['Wi-Fi', 'WiFi', 'Wireless', 'Kablosuz Bağlantı', 'Kablosuz Baglanti'],
-    bluetooth:  ['Bluetooth', 'Bluetooth Version', 'Bluetooth Versiyonu'],
+    bluetooth:  ['Bluetooth', 'Bluetooth Version', 'Bluetooth Standard', 'Bluetooth Standardı', 'Bluetooth Versiyonu'],
     release_year: ['Release Date', 'Release Year', 'Announcement Date', 'Tanıtım Tarihi', 'Tanitim Tarihi', 'Çıkış Tarihi', 'Cikis Tarihi', 'Çıkış Yılı'],
     ip_rating:  ['Water Resistance', 'IP Rating', 'Su Geçirmezlik', 'Su Gecirmezlik', 'Sertifika'],
     // GPU
     vram:       ['Memory Size', 'Video Memory', 'VRAM', 'Bellek Boyutu', 'Memory'],
     bandwidth:  ['Memory Bandwidth', 'Bandwidth', 'Bant Genişliği'],
-    boost_clock:['Boost Clock', 'Game Clock', 'Boost Frequency'],
-    base_clock: ['Base Clock', 'Base Frequency', 'Core Clock'],
-    cores:      ['Core Count', 'Number of Cores', 'CUDA Cores', 'Stream Processors', 'Çekirdek Sayısı', 'Cekirdek Sayisi'],
-    threads:    ['Thread Count', 'Number of Threads', 'Threads', 'İş Parçacığı'],
-    cache_l3:   ['L3 Cache', 'Cache (L3)', 'Cache'],
-    tdp:        ['TDP', 'Thermal Design Power', 'Power Consumption'],
+    boost_clock:['Boost Clock', 'Game Clock', 'Boost Frequency', 'Artırılmış Frekans', 'Artirilmis Frekans', 'Turbo Frequency'],
+    base_clock: ['Base Clock', 'Base Frequency', 'Core Clock', 'Temel Frekans'],
+    cores:      ['Core Count', 'Number of Cores', 'CUDA Cores', 'Stream Processors', 'Çekirdek Sayısı', 'Cekirdek Sayisi', 'Çekirdek', 'Performans Çekirdeği'],
+    threads:    ['Thread Count', 'Number of Threads', 'Threads', 'İş Parçacığı', 'Is Parçacığı', 'İzlek'],
+    cache_l3:   ['L3 Cache', 'Cache (L3)', 'Cache', 'Önbellek L3', 'Onbellek L3'],
+    tdp:        ['TDP', 'Thermal Design Power', 'Power Consumption', 'Isı Yayma Kapasitesi (TDP)', 'Isi Yayma Kapasitesi'],
     process_nm: ['Process', 'Manufacturing Process', 'Lithography', 'İşlem'],
     igpu:       ['Integrated Graphics', 'iGPU', 'Tümleşik Ekran Kartı'],
     // RAM
-    ram_speed:  ['Memory Speed', 'Speed', 'Frequency', 'Hız'],
+    ram_speed:  ['Memory Speed', 'Memory Frequency', 'Bellek Hızı', 'Bellek Frekansı', 'Speed', 'Frequency', 'Hız'],
     ram_cas:    ['CAS Latency', 'CL', 'Latency'],
     // SSD
     seq_read:   ['Sequential Read', 'Read Speed', 'Max Read', 'Okuma Hızı'],
     seq_write:  ['Sequential Write', 'Write Speed', 'Max Write', 'Yazma Hızı'],
     iops:       ['Random Read IOPS', 'Random IOPS', 'IOPS'],
-    interface:  ['Interface', 'Form Factor', 'Bus'],
+    interface:  ['Interface', 'Form Factor', 'Bus', 'PCIe Sürümü', 'PCIe Version', 'PCI Express Version'],
     tbw:        ['TBW', 'Endurance', 'Total Bytes Written'],
     // PSU
     watt:       ['Wattage', 'Total Power', 'Power', 'Güç'],
@@ -264,12 +268,12 @@
     modular:    ['Modular', 'Modülerlik'],
     fan_size:   ['Fan Size', 'Fan Boyutu'],
     // Audio
-    driver:     ['Driver Size', 'Driver', 'Sürücü', 'Surucu'],
-    anc:        ['ANC', 'Active Noise Cancellation', 'Aktif Gürültü Engelleme', 'Noise Cancellation'],
+    driver:     ['Driver Size', 'Driver', 'Sürücü', 'Surucu', 'Sürücü Çapı'],
+    anc:        ['ANC', 'Active Noise Cancellation', 'Aktif Gürültü Engelleme', 'Noise Cancellation', 'Gürültü Engelleme (Dinleme)', 'Konuşma Gürültü Engelleme (ENC)'],
     watt_rms:   ['Output Power (RMS)', 'RMS Power', 'Output Power', 'Çıkış Gücü'],
     channels:   ['Channels', 'Channel Configuration', 'Kanal'],
     // Camera
-    sensor:     ['Sensor Size', 'Sensor', 'Sensör Boyutu', 'Sensor Boyutu'],
+    sensor:     ['Sensor Size', 'Camera Sensor Size', 'Main Sensor Size', 'Sensor', 'Sensör Boyutu', 'Sensor Boyutu', 'Kamera Sensör Boyutu'],
     megapixels: ['Megapixels', 'Resolution', 'Çözünürlük (MP)', 'Effective Pixels'],
     iso:        ['ISO Range', 'Max ISO', 'ISO'],
     fps_burst:  ['Continuous Shooting', 'Burst Rate', 'FPS', 'Frames Per Second'],
@@ -300,12 +304,13 @@
     // VR
     fov:        ['Field of View', 'FOV', 'Görüş Açısı'],
     // Others
-    type:       ['Type', 'Tür', 'Tip'],
+    type:       ['Type', 'Tür', 'Tip', 'Bağlantı Tipi', 'Connection Type', 'Kulaklık Tipi'],
     audio_watt: ['Audio Power', 'Speaker Power', 'Audio Output'],
     contrast:   ['Contrast Ratio', 'Contrast', 'Kontrast'],
     lumens:     ['Brightness', 'ANSI Lumens', 'Lumens'],
-    response_ms:['Response Time', 'Tepki Süresi'],
-    color_gamut:['Color Gamut', 'sRGB', 'DCI-P3', 'Renk Gamutu'],
+    response_ms:['Response Time', 'Response Time (GtG)', 'Tepki Süresi', 'Tepki Suresi'],
+    color_gamut:['Color Gamut', 'Colour Gamut', 'sRGB', 'DCI-P3', 'DCI-P3 Coverage', 'DCI-P3 Kapsamı', 'Adobe RGB', 'Adobe RGB Kapsamı', 'Renk Gamutu'],
+    charging:   ['Fast Charging Power (Max.)', 'Fast Charging Power', 'Charging Power', 'Hızlı Şarj Gücü (Maks.)', 'Hizli Sarj Gucu', 'Şarj Gücü'],
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -313,18 +318,18 @@
   // ─────────────────────────────────────────────────────────────
 
   const WEIGHTS = {
-    smartphones: { chipset: 22, main_camera: 14, front_camera: 4, ram: 10, storage: 8, battery: 10, panel: 8, refresh: 6, resolution: 8, screen_size: 4, network_5g: 4 },
+    smartphones: { chipset: 24, main_camera: 10, sensor_size_phone: 6, front_camera: 4, ram: 9, storage: 8, battery: 8, charging: 4, panel: 8, refresh: 6, resolution: 7, screen_size: 3, network_5g: 3 },
     tablets:     { chipset: 22, ram: 12, storage: 10, battery: 12, screen_size: 10, refresh: 6, resolution: 10, panel: 8, main_camera: 5, network_5g: 5 },
     laptops:     { cpu: 25, gpu: 18, ram: 13, storage: 10, battery: 8, screen_size: 4, refresh: 4, resolution: 6, panel: 5, weight_lo: 4, wifi: 3 },
     desktops:    { cpu: 28, gpu: 22, ram: 15, storage: 15, watt: 6, cooler_type: 6, lan: 4, case_form: 4 },
     monitors:    { screen_size: 16, resolution: 22, refresh: 18, panel: 14, response_ms_lo: 10, hdr: 8, color_gamut: 8, curved: 4 },
     tvs:         { screen_size: 18, resolution: 18, panel: 22, refresh: 14, hdr: 12, smart_os: 6, hdmi21: 10 },
-    headphones:  { anc: 22, driver: 18, battery_life: 18, bluetooth: 12, codec: 18, headphone_water: 6, weight_lo: 6 },
-    earphones:   { anc: 22, driver: 18, battery_life: 18, bluetooth: 12, codec: 18, headphone_water: 6, weight_lo: 6 },
+    headphones:  { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
+    earphones:   { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
     speakers:    { watt_rms: 28, drivers: 16, bluetooth: 10, wifi: 12, battery_life: 14, ip_rating: 10, bass: 10 },
     cameras:     { csensor: 22, megapixels: 16, iso: 16, fps_burst: 14, video_res: 14, ibis: 8, shutter: 6, evf: 4 },
     gpus:        { gpu_rank: 30, vram: 18, bandwidth: 12, cores: 12, boost_clock: 10, tdp_lo: 8, ray_tracing: 10 },
-    cpus:        { cores: 18, threads: 12, base_clock: 12, boost_clock: 18, cache_l3: 12, tdp_lo: 8, process_nm_lo: 12, igpu: 8 },
+    cpus:        { cpu_rank: 28, cores: 16, threads: 8, base_clock: 6, boost_clock: 14, cache_l3: 10, ram_speed: 5, pcie_gen: 5, tdp_lo: 4, process_nm_lo: 4 },
     motherboards:{ chipset_tier: 25, ram_max: 15, m2_slots: 15, pcie_gen: 12, vrm: 10, lan_speed: 8, wifi_gen: 8, usbc: 7 },
     ram:         { ram: 28, ram_speed: 28, ram_cas_lo: 20, ram_gen: 14, dual_channel: 10 },
     ssd:         { storage: 22, seq_read: 22, seq_write: 18, iops: 14, interface: 14, tbw: 10 },
@@ -391,7 +396,7 @@
     radiator_mm: 420, max_gpu: 500, max_speed: 100, wind_resist: 15,
     warranty: 10, lamp_life: 30000, io_ports: 16, throw: 3,
     sample_rate: 192000, bit_depth: 32, noise: 50,
-    front_camera: 60, main_camera: 200, water_depth: 100,
+    front_camera: 60, main_camera: 200, charging: 120, water_depth: 100,
   };
 
   function _logScale(val, ref) {
@@ -420,7 +425,7 @@
   const ANCHOR_KEY_BY_CAT = {
     smartphones: ['chipset'], tablets: ['chipset'],
     laptops: ['gpu', 'cpu'], desktops: ['gpu', 'cpu'],
-    gpus: ['gpu_rank'], cpus: ['cpu'],
+    gpus: ['gpu_rank'], cpus: ['cpu_rank', 'cores'],
     consoles: ['cpu'], 'vr-headsets': ['cpu'],
   };
   function _tierFor(anchorScore) {
@@ -450,7 +455,13 @@
   //      collapse toward the middle and can no longer "win" their
   //      category by default.
   // ─────────────────────────────────────────────────────────────
-  const NO_ANCHOR_CAP = 75;          // hard ceiling when no anchor benchmark exists
+  const NO_ANCHOR_CAP = 75;          // fallback ceiling when no anchor benchmark exists
+  const NO_ANCHOR_CAP_BY_CAT = {
+    cpus: 100, gpus: 100, monitors: 96, tvs: 95, ram: 100, ssd: 100,
+    psu: 92, motherboards: 92, cameras: 95, lenses: 92, projectors: 92,
+    headphones: 88, earphones: 88, speakers: 88, soundbars: 90,
+    routers: 88, printers: 86, drones: 92, smartwatches: 92,
+  };
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
   const SCORE_MIN = 20;
@@ -568,7 +579,18 @@
   //  PRIMITIVES
   // ─────────────────────────────────────────────────────────────
 
-  function _normKey(s) { return String(s || '').toLowerCase().replace(/[\s_\-:()]+/g, ''); }
+  function _foldText(s) {
+    return String(s || '')
+      .replace(/İ/g, 'I').replace(/ı/g, 'i')
+      .replace(/Ş/g, 'S').replace(/ş/g, 's')
+      .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+      .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+      .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+      .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+  function _normKey(s) { return _foldText(s).replace(/[\s_\-:()\/.]+/g, ''); }
 
   function _firstNumber(s) {
     if (s == null) return null;
@@ -623,11 +645,36 @@
   // Fetch by candidate field names from flat specs + nested specSections
   function _lookupRaw(p, candidates) {
     const specs = p.specs || {};
+    const keySpecs = p.keySpecs || {};
+    const specsEn = p.specsEn || {};
     const sections = p.specSections || {};
+    const multiLangSpecs = p.multiLangSpecs || {};
     const wantSet = new Set(candidates.map(_normKey));
 
-    // Build a unified [key, value, sectionName] list (also walks nested objects in specs[*])
+    // Build a unified [key, value, sectionName] list. Epey, Icecat, repaired
+    // English specs and admin keySpecs all use different labels; score v7
+    // treats them as one canonical probe surface.
     const flatPairs = [];
+    function pushMap(obj, sectionPrefix) {
+      if (!obj || typeof obj !== 'object') return;
+      for (const [k, v] of Object.entries(obj)) {
+        const cleanKey = String(k || '').replace(/\s*:\s*$/, '');
+        if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+          for (const [k2, v2] of Object.entries(v)) {
+            flatPairs.push([String(k2 || '').replace(/\s*:\s*$/, ''), v2, sectionPrefix || cleanKey]);
+          }
+        } else {
+          flatPairs.push([cleanKey, v, sectionPrefix || '']);
+        }
+      }
+    }
+    pushMap(keySpecs, 'keySpecs');
+    pushMap(specsEn, 'specsEn');
+    pushMap(specs, '');
+    if (multiLangSpecs && typeof multiLangSpecs === 'object') {
+      pushMap(multiLangSpecs.en, 'multiLangSpecs.en');
+      pushMap(multiLangSpecs.tr, 'multiLangSpecs.tr');
+    }
     for (const [k, v] of Object.entries(specs)) {
       if (v != null && typeof v === 'object' && !Array.isArray(v)) {
         for (const [k2, v2] of Object.entries(v)) flatPairs.push([k2, v2, k]);
@@ -672,10 +719,10 @@
 
   function _matchRank(model, list) {
     if (!model) return null;
-    const lower = String(model).toLowerCase();
+    const lower = _foldText(model);
     let best = null;
     for (const [name, score] of list) {
-      const nm = name.toLowerCase();
+      const nm = _foldText(name);
       if (lower.includes(nm)) {
         if (!best || nm.length > best.len) best = { score, len: nm.length, key: name, exact: true };
       }
@@ -716,10 +763,10 @@
 
   function _matchLookup(value, table) {
     if (!value) return null;
-    const lower = String(value).toLowerCase();
+    const lower = _foldText(value);
     let best = null;
     for (const [name, score] of table) {
-      const nm = name.toLowerCase();
+      const nm = _foldText(name);
       if (lower.includes(nm)) {
         if (!best || nm.length > best.len) best = { score, len: nm.length, key: name };
       }
@@ -762,6 +809,15 @@
         const m = _matchRank(s, list);
         return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
       }
+      case 'cpu_rank': {
+        const list = isLaptop ? CPU_LAPTOP : CPU_DESKTOP;
+        const candidates = [_lookupStr(p, 'cpu'), p.name].filter(Boolean);
+        for (const s of candidates) {
+          const m = _matchRank(s, list);
+          if (m) return { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+        }
+        return null;
+      }
       case 'gpu': {
         const s = _lookupStr(p, 'gpu');
         if (!s) return null;
@@ -786,7 +842,12 @@
       // ── LOOKUP SPECS ──
       case 'panel': return _l(p, 'panel', LOOKUPS.panel);
       case 'resolution': return _l(p, 'resolution', LOOKUPS.resolution);
-      case 'hdr': return _l(p, 'hdr', LOOKUPS.hdr) || _l(p, 'panel', LOOKUPS.hdr);
+      case 'hdr': {
+        const ranked = _l(p, 'hdr', LOOKUPS.hdr) || _l(p, 'panel', LOOKUPS.hdr);
+        if (ranked) return ranked;
+        const yes = _hasBool(p, ['HDR', 'High Dynamic Range']);
+        return yes ? { ...yes, score: yes.score ? 75 : 0, type: 'bool' } : null;
+      }
       case 'wifi': return _l(p, 'wifi', LOOKUPS.wifi);
       case 'wifi_gen': return _l(p, 'wifi', LOOKUPS.wifi);
       case 'bluetooth': return _l(p, 'bluetooth', LOOKUPS.bluetooth);
@@ -795,6 +856,7 @@
       case 'lan_speed': return _l(p, 'wifi', LOOKUPS.lan_speed) || _l(p, 'lan', LOOKUPS.lan_speed);
       case 'smart_os': return _l(p, 'panel', LOOKUPS.smart_os) || _hitOnAny(p, LOOKUPS.smart_os);
       case 'network_5g': return _l(p, 'network_5g', LOOKUPS.network_5g);
+      case 'sensor_size_phone': return _l(p, 'sensor', LOOKUPS.sensor_size_phone);
       case 'ip_rating':
       case 'water_resistance': return _l(p, 'ip_rating', LOOKUPS.ip_rating);
       case 'csensor': return _l(p, 'sensor', LOOKUPS.csensor);
@@ -803,6 +865,14 @@
       case 'case_form': return _l(p, 'type', LOOKUPS.case_form) || _l(p, 'panel', LOOKUPS.case_form);
       case 'cooler_type': return _l(p, 'type', LOOKUPS.cooler_type);
       case 'headphone_water': return _l(p, 'ip_rating', LOOKUPS.headphone_water);
+      case 'connection_quality': {
+        const s = _lookupStr(p, 'type') || _lookupStr(p, 'wifi') || _lookupStr(p, 'bluetooth') || '';
+        if (/tam\s*kablosuz|true\s*wireless|tws/i.test(s)) return { score: 92, type: 'lookup', raw: s || 'true wireless' };
+        if (/kablosuz|wireless|bluetooth/i.test(s)) return { score: 82, type: 'lookup', raw: s || 'wireless' };
+        if (/usb-c|type-c|lightning/i.test(s)) return { score: 60, type: 'lookup', raw: s || 'digital wired' };
+        if (/kablolu|wired|3\.5|aux/i.test(s)) return { score: 42, type: 'lookup', raw: s || 'wired' };
+        return null;
+      }
 
       // ── NUMERIC (higher better) ──
       case 'ram': {
@@ -818,7 +888,13 @@
         return n == null ? null : { score: n, type: 'num', raw: s };
       }
       case 'battery': return _num(p, 'battery');
-      case 'battery_life': return _num(p, 'battery_life') || _num(p, 'battery');
+      case 'battery_life': {
+        const life = _num(p, 'battery_life');
+        if (life) return life;
+        if (/headphones|earphones/i.test(cat)) return null;
+        return _num(p, 'battery');
+      }
+      case 'charging': return _num(p, 'charging');
       case 'screen_size': return _num(p, 'screen_size');
       case 'refresh': return _num(p, 'refresh');
       case 'main_camera': return _num(p, 'main_camera');
@@ -1069,22 +1145,22 @@
 
   // Helper to produce a numeric (higher=better) extract result
   function _num(p, fieldKey) {
-    const s = _lookupStr(p, fieldKey);
-    if (s == null) return null;
-    const n = _firstNumber(s);
-    return n == null ? null : { score: n, type: 'num', raw: s };
+    const hit = _lookupRaw(p, FIELDS[fieldKey] || [fieldKey]);
+    if (!hit) return null;
+    const n = _firstNumber(hit.value);
+    return n == null ? null : { score: n, type: 'num', raw: hit.value, source: hit.key };
   }
   function _numLo(p, fieldKey) {
-    const s = _lookupStr(p, fieldKey);
-    if (s == null) return null;
-    const n = _firstNumber(s);
-    return n == null ? null : { score: n, type: 'num_lo', raw: s };
+    const hit = _lookupRaw(p, FIELDS[fieldKey] || [fieldKey]);
+    if (!hit) return null;
+    const n = _firstNumber(hit.value);
+    return n == null ? null : { score: n, type: 'num_lo', raw: hit.value, source: hit.key };
   }
   function _l(p, fieldKey, table) {
-    const s = _lookupStr(p, fieldKey);
-    if (!s) return null;
-    const m = _matchLookup(s, table);
-    return m && { score: m.score, type: 'lookup', raw: s, source: m.key };
+    const hit = _lookupRaw(p, FIELDS[fieldKey] || [fieldKey]);
+    if (!hit) return null;
+    const m = _matchLookup(hit.value, table);
+    return m && { score: m.score, type: 'lookup', raw: hit.value, source: m.key || hit.key };
   }
   function _hitOnAny(p, table) {
     const all = JSON.stringify(p.specs || {}) + ' ' + JSON.stringify(p.specSections || {});
@@ -1095,8 +1171,11 @@
     const hit = _lookupRaw(p, candidates);
     if (!hit) return null;
     const v = String(hit.value).toLowerCase().trim();
-    if (/^(yok|no|false|0|—|-|✗|hayır|hayir|desteklemez|❌)$/i.test(v)) return { score: 0, type: 'bool', raw: 'no' };
-    return { score: 100, type: 'bool', raw: hit.value };
+    if (/^(yok|no|false|0|—|-|✗|hayır|hayir|desteklemez|❌)$/i.test(v) ||
+        /\b(yok|no|false|hayır|hayir|desteklemez|not supported|without)\b/i.test(v)) {
+      return { score: 0, type: 'bool', raw: hit.value, source: hit.key };
+    }
+    return { score: 100, type: 'bool', raw: hit.value, source: hit.key };
   }
 
   function _averageSubscore(finalBreakdown, keys) {
@@ -1110,13 +1189,13 @@
 
   function _makeSubscores(finalBreakdown) {
     const groups = {
-      performance: ['gpu','cpu','chipset','cores','threads','boost_clock','base_clock','cache_l3','process_nm'],
-      display: ['panel','resolution','refresh','screen_size','hdr','brightness','response_time'],
+      performance: ['gpu','cpu','cpu_rank','chipset','gpu_rank','cores','threads','boost_clock','base_clock','cache_l3','process_nm_lo'],
+      display: ['panel','resolution','refresh','screen_size','hdr','color_gamut','response_ms_lo','lumens'],
       battery: ['battery','battery_life','charging','power'],
-      camera: ['main_camera','front_camera','sensor_size_phone','csensor','zoom','video'],
+      camera: ['main_camera','front_camera','sensor_size_phone','csensor','megapixels','video_res','ibis'],
       connectivity: ['wifi','bluetooth','network_5g','lan_speed','interface','ports'],
-      storage: ['storage','seq_read','seq_write','iops','tbw','ram','ram_speed','ram_cas','vram','bandwidth'],
-      build: ['weight','ip_rating','case_form','cooler_type','keyboard_type','panel_switch','headphone_water'],
+      storage: ['storage','seq_read','seq_write','iops','tbw','ram','ram_speed','ram_cas_lo','vram','bandwidth'],
+      build: ['weight_lo','ip_rating','case_form','cooler_type','keyboard_type','panel_switch','headphone_water','connection_quality'],
     };
     const out = {};
     for (const [name, keys] of Object.entries(groups)) {
@@ -1124,6 +1203,25 @@
       if (score != null) out[name] = Math.max(SCORE_MIN, Math.min(SCORE_MAX, score));
     }
     return out;
+  }
+
+  function _makeEvidence(finalBreakdown, missing, limit) {
+    const hits = Object.entries(finalBreakdown || {})
+      .map(([key, v]) => ({
+        key,
+        score: Math.round(Number(v.norm) || 0),
+        weight: Number(v.weight) || 0,
+        raw: v.raw,
+        source: v.source || null,
+        type: v.type,
+      }))
+      .sort((a, b) => (b.score * b.weight) - (a.score * a.weight))
+      .slice(0, limit || 8);
+    return {
+      engine: 'v7',
+      topSignals: hits,
+      missing: (missing || []).slice(0, 12),
+    };
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1222,8 +1320,9 @@
       // a product "flagship", so cap the score at NO_ANCHOR_CAP. Without this,
       // small / niche categories produce 100-scored Zyxel-class products.
       if (!anchorKey) {
-        cappedBase = Math.min(cappedBase, NO_ANCHOR_CAP);
-        tierCap = Math.min(tierCap, NO_ANCHOR_CAP);
+        const noAnchorCap = NO_ANCHOR_CAP_BY_CAT[cat] || NO_ANCHOR_CAP;
+        cappedBase = Math.min(cappedBase, noAnchorCap);
+        tierCap = Math.min(tierCap, noAnchorCap);
       }
 
       return {
@@ -1282,14 +1381,17 @@
         stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
       }
       const bm = _brandModifier(c.row.p, cat);
-      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.round(stretched * c.decay * bm.mod)));
+      const rawFinal = Math.round(stretched * c.decay * bm.mod);
+      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, rawFinal)));
       const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
       const subscores = _makeSubscores(c.finalBreakdown);
+      const evidence = _makeEvidence(c.finalBreakdown, c.row.missing);
       return {
         id: c.row.p.id,
         name: c.row.p.name,
         score: final,
         subscores,
+        evidence,
         confidence: +confidence.toFixed(3),
         baseScore: c.baseScore,
         cappedBase: c.cappedBase,
@@ -1340,6 +1442,6 @@
     GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,
     _matchRank, _matchLookup, _lookupRaw,
     NUMERIC_REFS, TIER_CAPS, ANCHOR_KEY_BY_CAT,
-    NO_ANCHOR_CAP, BAYESIAN_K, BAYESIAN_MIN_TRUST, SCORE_MIN, SCORE_MAX,
+    NO_ANCHOR_CAP, NO_ANCHOR_CAP_BY_CAT, BAYESIAN_K, BAYESIAN_MIN_TRUST, SCORE_MIN, SCORE_MAX,
   };
 });
