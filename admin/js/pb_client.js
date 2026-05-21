@@ -259,13 +259,14 @@ async function pbGetList(collection, page, perPage, options = {}) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
   try {
-    const result = await getPb().collection(collection).getList(page, perPage, {
+    const listOpts = {
       sort: options.sort || 'id',
       filter: options.filter || '',
       fields: options.fields || undefined,
-      skipTotal: options.skipTotal === undefined ? undefined : !!options.skipTotal,
       $autoCancel: false
-    });
+    };
+    if (options.skipTotal !== undefined) listOpts.skipTotal = !!options.skipTotal;
+    const result = await getPb().collection(collection).getList(page, perPage, listOpts);
     return {
       items: result.items,
       totalItems: result.totalItems,
@@ -285,9 +286,9 @@ async function pbGetList(collection, page, perPage, options = {}) {
       const retryOptions = {
         filter: options.filter || '',
         fields: options.fields || undefined,
-        skipTotal: options.skipTotal === undefined ? undefined : !!options.skipTotal,
         $autoCancel: false
       };
+      if (options.skipTotal !== undefined) retryOptions.skipTotal = !!options.skipTotal;
       const result = await getPb().collection(collection).getList(page, perPage, retryOptions);
       return {
         items: result.items,
