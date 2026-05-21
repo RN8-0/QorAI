@@ -144,10 +144,33 @@ const DEFAULT_CAT_SLUGS = new Set([
   'monitors', 'tvs',
   'cpus', 'ram', 'ssd', 'hard_drives', 'external_hdd',
 ]);
+const BLOCKED_ICECAT_SLUGS = new Set([
+  'vacuums',
+  'small_appliances',
+  'coffee_makers',
+  'dishwashers',
+  'microwaves',
+  'tumble_dryers',
+  'washing_machines',
+  'hobs',
+  'fridge_freezers',
+  'ovens',
+  'smart_home',
+  'led_bulbs',
+]);
+const ALL_CAT_SLUGS = new Set([
+  'laptops', 'desktops', 'servers', 'thin_clients', 'laptop_docks', 'handheld_computers',
+  'cpus', 'ram', 'motherboards', 'pc_cases', 'psu', 'cpu_coolers',
+  'hard_drives', 'external_hdd', 'ssd', 'nas_servers', 'flash_drives', 'memory_cards', 'optical_drives',
+  'monitors', 'tvs', 'signage_displays', 'projectors', 'monitor_accessories', 'tv_mounts',
+  'smartphones', 'tablets', 'digital_cameras', 'video_cameras', 'security_cameras',
+  'keyboards', 'mice', 'printers', 'network_switches', 'routers', 'pcie_nic',
+  'ups', 'pdu', 'power_adapters', 'speakers', 'games',
+].filter(slug => !BLOCKED_ICECAT_SLUGS.has(slug)));
 const CAT_WHITELIST = CATS_FILTER && CATS_FILTER.trim().toLowerCase() !== 'all'
-  ? new Set(CATS_FILTER.split(',').map(normalizeCatFilterSlug).filter(Boolean))
+  ? new Set(CATS_FILTER.split(',').map(normalizeCatFilterSlug).filter(slug => slug && !BLOCKED_ICECAT_SLUGS.has(slug)))
   : CATS_FILTER.trim().toLowerCase() === 'all'
-    ? null
+    ? ALL_CAT_SLUGS
     : DEFAULT_CAT_SLUGS;
 
 // Optional brand filter — e.g. --brand=apple. Only products whose Icecat
@@ -207,7 +230,7 @@ async function getCatalogProductCount() {
 
 function isAllowedCatId(catId) {
   const slug = canonicalCategory(CAT_MAP[Number(catId)]);
-  return !!(slug && TARGET_CATS.has(Number(catId)) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)));
+  return !!(slug && TARGET_CATS.has(Number(catId)) && !BLOCKED_ICECAT_SLUGS.has(slug) && (!CAT_WHITELIST || CAT_WHITELIST.has(slug)));
 }
 
 function isBlockedCatalogText(...parts) {

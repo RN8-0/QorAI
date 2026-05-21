@@ -18,6 +18,20 @@
 
   const PROXY = (typeof PROXY_URL !== 'undefined') ? PROXY_URL : 'http://localhost:3456';
   let pollHandle = null;
+  const DISABLED_SLUGS = new Set([
+    'vacuums',
+    'small_appliances',
+    'coffee_makers',
+    'dishwashers',
+    'microwaves',
+    'tumble_dryers',
+    'washing_machines',
+    'hobs',
+    'fridge_freezers',
+    'ovens',
+    'smart_home',
+    'led_bulbs',
+  ]);
 
   // Canonical QorAi category presets. A single QorAi category may map to
   // multiple Icecat CategoryIDs; the ingestor uses the same canonical slugs.
@@ -105,6 +119,7 @@
     for (const row of CAT_PRESET) {
       const [fallbackGroup, rawSlug, rawCatIds, fallbackLabel] = row;
       const slug = canonicalSlug(rawSlug);
+      if (DISABLED_SLUGS.has(slug) || /beyaz eşya/i.test(fallbackGroup)) continue;
       if (canonicalIds.size && !canonicalIds.has(slug)) continue;
       const current = bySlug.get(slug) || {
         group: groupById.get(slug) || fallbackGroup,

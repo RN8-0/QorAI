@@ -2043,7 +2043,7 @@ async function stopCategoryTranslation(){
   }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-live-checkpoint-20260521-0135';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-tolerant-patch-20260521-0950';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2220,7 +2220,11 @@ async function startCategoryTranslation(){
         const learnedNow = Math.max(0, missing.length - stillMissing.length);
         learned += learnedNow;
         if (stillMissing.length > 0) {
-          throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik kaldı. Ürün patch durduruldu; tekrar başlatınca aynı batch eksikleri yeniden DeepSeek deposuna atılır.`);
+          const toleratedMissing = Math.max(50, Math.ceil(batchAtoms.length * 0.02));
+          if (stillMissing.length > toleratedMissing) {
+            throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik kaldı. Ürün patch durduruldu; tekrar başlatınca aynı batch eksikleri yeniden DeepSeek deposuna atılır.`);
+          }
+          _xlateLog(`⚠ Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik; küçük oran olduğu için ürünler mevcut sözlükle patch edilecek. Eksikler sonraki koşuda tekrar denenecek. Örnek: ${stillMissing.slice(0, 5).join(', ')}`, 'warn');
         }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
         _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`, {

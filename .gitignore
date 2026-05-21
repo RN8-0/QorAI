@@ -80,5 +80,6 @@ migration/ios_cfg.json
 
 # Icecat runtime artifacts (rebuilt by scripts/icecat_ingest.js)
 scripts/icecat_queue.jsonl
+scripts/icecat_queue_meta.json
 scripts/icecat_progress.json
 
