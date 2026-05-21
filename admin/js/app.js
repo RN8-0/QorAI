@@ -1951,7 +1951,6 @@ async function openDictionaryPanel(){
     if (typeof populateScraperCategories === 'function') {
       try { await populateScraperCategories(); } catch {}
     }
-    _disableLegacyDictionaryBulkTranslator();
   } catch (e) {
     toast('Sözlük yüklenemedi: ' + e.message, 'e');
   }
@@ -2158,29 +2157,7 @@ async function stopCategoryTranslation(){
 
 const QORAI_TRANSLATION_BUILD = 'canonical-english-runtime-locale-20260521';
 
-function _disableLegacyDictionaryBulkTranslator(){
-  const sel = document.getElementById('dictXlateCategory');
-  const startBtn = document.getElementById('btnDictXlateStart');
-  const stopBtn = document.getElementById('btnDictXlateStop');
-  if (sel) sel.disabled = true;
-  if (startBtn) {
-    startBtn.disabled = true;
-    startBtn.textContent = 'Canonical scrape active';
-    startBtn.title = 'Eski toplu AI çeviri kapalı; scraper artık specs kayıt anında canonical English yazar.';
-  }
-  if (stopBtn) stopBtn.style.display = 'none';
-  _xlateProgress(0, 0, 'Toplu kategori çevirisi kapalı; sözlük düzenleme aktif.', {
-    detail: 'Yeni ürünlerde canonical English scrape sırasında yazılır. Bu panelde mevcut sözlük satırlarını düzenleyip Save All yapabilirsin.',
-  });
-}
-
 async function startCategoryTranslation(){
-  const logBox   = document.getElementById('dictXlateLog');
-  if (logBox) logBox.innerHTML = '';
-  _disableLegacyDictionaryBulkTranslator();
-  _xlateLog('Toplu AI çeviri akışı kapalı. Yeni akış: scraper specs değerlerini kayıt anında hızlı lokal sözlükle canonical English olarak yazar; uygulama/website kullanıcı diline render sırasında çevirir, eksikte İngilizce gösterir.');
-  toast('Toplu kategori çevirisi kapalı; sözlük düzenleme ve kaydetme aktif.', 'i', 5000);
-  return;
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
   if (!window.QorAiBulkTranslate) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
 
@@ -2190,6 +2167,8 @@ async function startCategoryTranslation(){
 
   const startBtn = document.getElementById('btnDictXlateStart');
   const stopBtn  = document.getElementById('btnDictXlateStop');
+  const logBox   = document.getElementById('dictXlateLog');
+  if (logBox) logBox.innerHTML = '';
   if (startBtn) startBtn.disabled = true;
   if (stopBtn)  stopBtn.style.display = '';
 
@@ -2352,16 +2331,12 @@ async function startCategoryTranslation(){
         } finally {
           clearInterval(heartbeat);
         }
-        if (_catXlateAbort) throw new Error('aborted');
+        const abortAfterCheckpoint = _catXlateAbort;
         const stillMissing = window.QorAiBulkTranslate.missingAtoms(batchAtoms, targets);
         const learnedNow = Math.max(0, missing.length - stillMissing.length);
         learned += learnedNow;
         if (stillMissing.length > 0) {
-          const toleratedMissing = Math.max(50, Math.ceil(batchAtoms.length * 0.02));
-          if (stillMissing.length > toleratedMissing) {
-            throw new Error(`Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik kaldı. Ürün patch durduruldu; tekrar başlatınca aynı batch eksikleri yeniden DeepSeek deposuna atılır.`);
-          }
-          _xlateLog(`⚠ Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik; küçük oran olduğu için ürünler mevcut sözlükle patch edilecek. Eksikler sonraki koşuda tekrar denenecek. Örnek: ${stillMissing.slice(0, 5).join(', ')}`, 'warn');
+          _xlateLog(`⚠ Batch ${batchNo}: ${stillMissing.length}/${missing.length} atom hâlâ eksik; ürünler mevcut sözlükle yine PB'ye patch edilecek. Eksikler sonraki koşuda yeniden denenecek. Örnek: ${stillMissing.slice(0, 5).join(', ')}`, 'warn');
         }
         const sec = ((Date.now() - chunkStartedAt) / 1000).toFixed(1);
         _xlateProgress(done + failed, products.length, `Saving dictionary after batch ${batchNo}…`, {
@@ -2373,6 +2348,9 @@ async function startCategoryTranslation(){
         if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
         try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${learnedNow} atoms · ${sec}s)`, 'success');
+        if (abortAfterCheckpoint) {
+          _xlateLog(`⏹ Stop detected after dictionary checkpoint; patching batch ${batchNo} with available translations before exit.`, 'warn');
+        }
       } else {
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: ${batchAtoms.length} atoms already cached`, 'success');
       }
@@ -2381,7 +2359,7 @@ async function startCategoryTranslation(){
         counter: `Products ${done}/${products.length} · dictionary ${Object.keys(window.QorAiDict?.cache?.() || {}).length} terms`,
         detail: 'Now writing multiLangSpecs, multiLangSections, nameTranslated into products.',
       });
-      for (let i = 0; i < productBatch.length && !_catXlateAbort; i += PATCH_CONCURRENCY) {
+      for (let i = 0; i < productBatch.length; i += PATCH_CONCURRENCY) {
         const patchBatch = productBatch.slice(i, i + PATCH_CONCURRENCY);
         const settled = await Promise.allSettled(patchBatch.map(async (p) => {
           const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
@@ -2419,6 +2397,7 @@ async function startCategoryTranslation(){
           detail: `Last patch sub-batch ${Math.min(i + PATCH_CONCURRENCY, productBatch.length)}/${productBatch.length} in batch ${batchNo}.`,
         });
       }
+      if (_catXlateAbort) throw new Error('aborted');
     }
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);

@@ -459,12 +459,18 @@
   //      collapse toward the middle and can no longer "win" their
   //      category by default.
   // ─────────────────────────────────────────────────────────────
-  const NO_ANCHOR_CAP = 75;          // fallback ceiling when no anchor benchmark exists
+  const NO_ANCHOR_CAP = 92;          // fallback ceiling when no anchor benchmark exists
   const NO_ANCHOR_CAP_BY_CAT = {
-    cpus: 100, gpus: 100, monitors: 96, tvs: 95, ram: 100, ssd: 100,
-    psu: 92, motherboards: 92, cameras: 95, lenses: 92, projectors: 92,
-    headphones: 88, earphones: 88, speakers: 88, soundbars: 90,
-    routers: 88, printers: 86, drones: 92, smartwatches: 92,
+    cpus: 100, gpus: 100, monitors: 100, tvs: 100, ram: 100, ssd: 100,
+    psu: 95, motherboards: 96, cameras: 100, lenses: 96, projectors: 100,
+    headphones: 94, earphones: 94, speakers: 94, soundbars: 96,
+    routers: 94, printers: 92, drones: 96, smartwatches: 96,
+    tablets: 100, laptops: 100, desktops: 100, smartphones: 100,
+    cases: 92, coolers: 94, 'smart-rings': 92, 'e-readers': 94,
+    microphones: 94, 'action-cameras': 96, dashcams: 94, webcams: 94,
+    gimbals: 94, tripods: 92, consoles: 98, gamepads: 94,
+    'vr-headsets': 98, 'media-players': 94, keyboards: 94, mice: 94,
+    'robot-vacuums': 94,
   };
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
@@ -533,7 +539,7 @@
       xiaomi: 0.96, redmi: 0.93, honor: 0.95, oppo: 0.97,
       jlab: 0.90, anker: 0.95, soundcore: 0.95,
     },
-    televisions: {
+    tvs: {
       sony: 1.05, lg: 1.04, samsung: 1.04, 'sony bravia': 1.05,
       panasonic: 1.03, philips: 1.0, hisense: 0.96, tcl: 0.95,
       xiaomi: 0.94, vestel: 0.92, arçelik: 0.94, beko: 0.92,
@@ -1474,22 +1480,34 @@
       }
     }
 
-    // Pass 4: category-wide stretch — pull the top flagship up to 100 so the
-    // distribution actually uses the full 1-100 range. Only stretches *within*
-    // the flagship tier; lower-tier caps are still respected.
+    // Pass 4: category-wide stretch — pull the strongest well-evidenced item
+    // in each category toward that category's cap so TV/projector/audio/etc.
+    // can use the full 1-100 range even without a CPU/GPU/chipset anchor.
+    // Tier caps are still respected for anchored categories.
     const flagshipScores = computed.filter(c => c.tier === 'flagship').map(c => c.cappedBase);
-    const topFlagship = flagshipScores.length ? Math.max(...flagshipScores) : 0;
-    const stretchFactor = topFlagship > 0 && topFlagship < 100 ? Math.min(1.18, 100 / topFlagship) : 1.0;
+    const totalCatWeightForStretch = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+    const categoryCap = NO_ANCHOR_CAP_BY_CAT[cat] || NO_ANCHOR_CAP;
+    const eligibleScores = computed
+      .filter(c => {
+        const trust = (c.sumW || 0) / totalCatWeightForStretch;
+        return trust >= 0.55 && c.cappedBase > 0;
+      })
+      .map(c => c.cappedBase);
+    const topReference = flagshipScores.length ? Math.max(...flagshipScores) : (eligibleScores.length ? Math.max(...eligibleScores) : 0);
+    const stretchTarget = flagshipScores.length ? 100 : categoryCap;
+    const stretchFactor = topReference > 0 && topReference < stretchTarget ? Math.min(1.25, stretchTarget / topReference) : 1.0;
 
     return computed.map(c => {
       let stretched = c.cappedBase;
-      if (c.tier === 'flagship' && stretchFactor > 1) {
+      const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
+      const canStretch = c.tier === 'flagship' || (!c.anchorKey && confidence >= 0.55);
+      if (canStretch && stretchFactor > 1) {
         stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
       }
       const bm = _brandModifier(c.row.p, cat);
       const rawFinal = Math.round(stretched * c.decay * bm.mod);
-      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, rawFinal)));
-      const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
+      const evidenceCap = confidence < 0.45 ? 82 : confidence < 0.65 ? 92 : SCORE_MAX;
+      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, evidenceCap, rawFinal)));
       const subscores = _makeSubscores(c.finalBreakdown);
       const evidence = _makeEvidence(c.finalBreakdown, c.row.missing);
       return {
