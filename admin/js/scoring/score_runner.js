@@ -66,42 +66,34 @@
   // ─── Data ────────────────────────────────────────────────────
   const SCORE_LOAD_FIELDS = [
     'id', 'name', 'brand', 'category', 'source', 'sourceUrl',
-    'specs', 'specSections', 'keySpecs', 'specsEn',
+    'specs', 'keySpecs', 'specsEn',
     'techScore', 'specsCount', 'scrapedAt', 'created',
   ].join(',');
 
   async function _loadProducts(category) {
     const filter = category ? `category="${category}"` : '';
-    const perPage = category ? 100 : 60;
+    const perPage = 500;
     const loaded = [];
 
     _slog(`  • Load filter: ${filter || '(all products)'}`);
     _slog(`  • Fields: ${SCORE_LOAD_FIELDS}`);
     _slog(`  • Page size: ${perPage}`);
 
-    let first;
     try {
-      first = await _withHeartbeat(
-        pbGetList('products', 1, perPage, {
-          ...(filter ? { filter } : {}),
-          fields: SCORE_LOAD_FIELDS,
-          sort: 'id',
-        }),
-        'PocketBase page 1',
+      _slog('  • Counting products with a lightweight query...');
+      var total = await _withHeartbeat(
+        pbCountWhere('products', filter),
+        'PocketBase count',
         10000,
       );
     } catch (e) {
-      throw new Error(`page 1 failed · ${_formatPbError(e)}`);
+      throw new Error(`count failed · ${_formatPbError(e)}`);
     }
 
-    const total = first.totalItems || first.items.length || 0;
-    const totalPages = Math.max(1, first.totalPages || Math.ceil(total / perPage));
+    const totalPages = Math.max(1, Math.ceil((total || 0) / perPage));
     _slog(`  • PocketBase count: ${total} products · ${totalPages} pages`);
-    loaded.push(...(first.docs || []).map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) })));
-    _setProgress('Loading', loaded.length, total || loaded.length, `page 1/${totalPages}`);
-    _slog(`  ✓ page 1/${totalPages}: ${first.items.length} products loaded · total ${loaded.length}/${total}`);
 
-    for (let page = 2; page <= totalPages; page++) {
+    for (let page = 1; page <= totalPages; page++) {
       if (_abort) break;
       const started = Date.now();
       try {
@@ -110,6 +102,7 @@
             ...(filter ? { filter } : {}),
             fields: SCORE_LOAD_FIELDS,
             sort: 'id',
+            skipTotal: true,
           }),
           `PocketBase page ${page}/${totalPages}`,
           10000,
@@ -221,7 +214,7 @@
     if (!global.ScoreEngine) { _slog('ScoreEngine not loaded', 'error'); return; }
     opts = opts || {};
     const overwrite = opts.overwrite !== false;
-    const concurrency = opts.concurrency || 10;
+    const concurrency = opts.concurrency || 20;
     const auto = !!opts.auto;
 
     _running = true; _abort = false; _startTime = Date.now();

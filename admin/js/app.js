@@ -1749,18 +1749,73 @@ async function _pbSearch(q){
   return {items:result.items||[],total:result.totalItems||0,source:'PocketBase'};
 }
 
+function _tsParseProductHit(hit){
+  const doc=hit?.document||hit||{};
+  let raw=null;
+  if(doc._raw){
+    try{raw=typeof doc._raw==='string'?JSON.parse(doc._raw):doc._raw}catch{}
+  }
+  return {
+    ...(raw||{}),
+    id: raw?.id||doc.id,
+    name: raw?.name||doc.name||'',
+    brand: raw?.brand||doc.brand||'',
+    category: raw?.category||doc.category||'',
+    imageUrl: raw?.imageUrl||doc.imageUrl||'',
+    techScore: Number(raw?.techScore??doc.techScore)||0,
+    lowestPriceUSD: Number(raw?.lowestPriceUSD??doc.lowestPriceUSD)||0,
+    specsCount: raw?.specsCount??doc.specsCount??0,
+    keySpecs: raw?.keySpecs||{},
+    _partial:true,
+    _searchScore: hit?.text_match||0,
+  };
+}
+
+function _tsAdminFilterBy(){
+  const filters=[];
+  const brand=(document.getElementById('brandFilter')?.value||'').trim();
+  const cat=(document.getElementById('categoryFilter')?.value||'').trim();
+  const offer=(document.getElementById('offerFilter')?.value||'').trim();
+  const esc=v=>String(v||'').replace(/[`\\]/g,'').replace(/"/g,'\\"');
+  if(brand)filters.push(`brand:="${esc(brand)}"`);
+  if(cat){
+    const cats=_adminCategoryFilterVariants(cat).map(esc).filter(Boolean);
+    if(cats.length===1)filters.push(`category:="${cats[0]}"`);
+    else if(cats.length)filters.push(`category:=[${cats.map(c=>`"${c}"`).join(',')}]`);
+  }
+  if(offer==='with')filters.push('lowestPriceUSD:>0');
+  else if(offer==='without')filters.push('lowestPriceUSD:<=0');
+  return filters.join(' && ');
+}
+
+async function _tsAdminSearch(q){
+  if(!window.TsClient?.search)throw new Error('Typesense client not loaded');
+  const filterBy=_tsAdminFilterBy();
+  const res=await window.TsClient.search(q,{perPage:120,page:1,filterBy});
+  return {
+    items:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
+    total:res.found||0,
+    source:'Typesense',
+  };
+}
+
 async function serverSearch(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
   if(!q){currentPage=1;await loadPage();return}
   const g=document.getElementById('productGrid');
-  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor…</div>';
+  g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Aranıyor… <span class="text-muted">Typesense hızlı indeks</span></div>';
   const seq=++_loadPageSeq;
   try{
-    // PocketBase is the search source: it always holds the complete catalog
-    // and the tokenised LIKE query is fast at this scale. (Typesense is kept
-    // in sync for the mobile app, but the admin must never miss a product
-    // because the TS mirror lagged behind a bulk ingest.)
-    const res=await _pbSearch(q);
+    const started=Date.now();
+    let res;
+    try{
+      res=await _tsAdminSearch(q);
+    }catch(tsErr){
+      console.warn('[admin search] Typesense failed; falling back to PocketBase:',tsErr.message||tsErr);
+      if(seq===_loadPageSeq)g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Typesense cevap vermedi, PocketBase fallback aranıyor…</div>';
+      res=await _pbSearch(q);
+      res.source='PocketBase fallback';
+    }
     if(seq!==_loadPageSeq)return;
     const qLow=q.toLowerCase();
     // Sort: exact name match first, then starts-with, then contains, rest by score.
@@ -1779,7 +1834,7 @@ async function serverSearch(){
     allProducts=sorted;
     _productUiPages=new Map();
     renderProductsPage();
-    document.getElementById('productCount').textContent=sorted.length+' sonuç';
+    document.getElementById('productCount').textContent=`${(res.total||sorted.length).toLocaleString()} sonuç · ${res.source} · ${((Date.now()-started)/1000).toFixed(1)}s`;
     if(!sorted.length)toast('"'+q+'" için sonuç bulunamadı','i');
   }catch(e){g.innerHTML='<div class="placeholder" style="color:var(--red)">Arama hatası: '+escHtml(e.message)+'</div>'}
 }
@@ -2044,7 +2099,7 @@ async function stopCategoryTranslation(){
   }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-local-proxy-dict-fix-20260521-1145';
+const QORAI_TRANSLATION_BUILD = 'canonical-english-runtime-locale-20260521';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2058,6 +2113,10 @@ async function startCategoryTranslation(){
   const stopBtn  = document.getElementById('btnDictXlateStop');
   const logBox   = document.getElementById('dictXlateLog');
   if (logBox) logBox.innerHTML = '';
+  _xlateLog('Bu eski toplu AI çeviri akışı kapatıldı. Yeni akış: Epey specs kayıt anında hızlı lokal sözlükle İngilizce canonical olarak kaydedilir; uygulama/website cihaz diline render sırasında çevirir, eksikte İngilizce gösterir.');
+  _xlateProgress(0, 0, 'Disabled: canonical English is now generated during scrape.');
+  toast('Toplu AI çeviri kapalı; yeni scraper İngilizce canonical specs yazar.', 'i', 6000);
+  return;
   if (startBtn) startBtn.disabled = true;
   if (stopBtn)  stopBtn.style.display = '';
 

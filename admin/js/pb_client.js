@@ -245,6 +245,7 @@ async function pbGetAll(collection, options = {}) {
     // requested columns are transferred. `batch` tunes the per-request page.
     if (options.fields) listOpts.fields = options.fields;
     if (options.batch) listOpts.batch = options.batch;
+    if (options.skipTotal !== undefined) listOpts.skipTotal = !!options.skipTotal;
     const items = await getPb().collection(collection).getFullList(listOpts);
     return items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }));
   } catch (e) {
@@ -262,6 +263,7 @@ async function pbGetList(collection, page, perPage, options = {}) {
       sort: options.sort || 'id',
       filter: options.filter || '',
       fields: options.fields || undefined,
+      skipTotal: options.skipTotal === undefined ? undefined : !!options.skipTotal,
       $autoCancel: false
     });
     return {
@@ -283,6 +285,7 @@ async function pbGetList(collection, page, perPage, options = {}) {
       const retryOptions = {
         filter: options.filter || '',
         fields: options.fields || undefined,
+        skipTotal: options.skipTotal === undefined ? undefined : !!options.skipTotal,
         $autoCancel: false
       };
       const result = await getPb().collection(collection).getList(page, perPage, retryOptions);

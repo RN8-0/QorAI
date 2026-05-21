@@ -24,20 +24,20 @@ const OVERWRITE = argv.includes('--overwrite');
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
 const CONCURRENCY = 16;
 
-// Score engine probes specs / keySpecs / specSections — load those, skip the
-// heavy multiLang* fields so the whole catalog fits comfortably in memory.
-const FIELDS = 'id,category,name,brand,specs,keySpecs,specSections,specsCount,techScore,scrapedAt';
+// Score engine probes specs / keySpecs / specsEn. Avoid specSections here:
+// it is the largest field and makes category runs crawl over the admin tunnel.
+const FIELDS = 'id,category,name,brand,specs,keySpecs,specsEn,specsCount,techScore,scrapedAt';
 
 async function fetchAll() {
   const out = [];
   let page = 1;
   const filter = ONLY_CAT ? `&filter=${encodeURIComponent(`category="${ONLY_CAT}"`)}` : '';
   for (;;) {
-    const r = await req('GET', `/api/collections/products/records?perPage=500&page=${page}&sort=id&fields=${FIELDS}${filter}`);
+    const r = await req('GET', `/api/collections/products/records?perPage=500&page=${page}&sort=id&skipTotal=1&fields=${FIELDS}${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${JSON.stringify(r.body).slice(0, 200)}`);
     const items = r.body.items || [];
     out.push(...items);
-    if (items.length < 500 || page >= (r.body.totalPages || 1)) break;
+    if (items.length < 500) break;
     page++;
   }
   return out;
