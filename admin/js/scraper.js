@@ -13,6 +13,7 @@ const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260520v16-sane-preload-no-autoscore';
 const DEEPSEEK_URL = '/api/ai/deepseek';
+const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // Languages to translate Turkish specs into (skip tr since source is Turkish)
@@ -1341,6 +1342,81 @@ let _deDictLoaded = false;
 let _deDictDirty = false;
 let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
+const DE_DICT_MANIFEST_KEY = `${DE_DICT_PB_KEY}_manifest`;
+const DE_DICT_SHARD_PREFIX = `${DE_DICT_PB_KEY}__part_`;
+const DE_DICT_SHARD_MAX_BYTES = 180000;
+
+function _dictDocValue(doc) {
+  const data = typeof doc?.data === 'function' ? doc.data() : doc;
+  return data?.value || {};
+}
+
+function _isDictEntry(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.values(value).some(v => typeof v === 'string' && v.trim());
+}
+
+function _mergeDictObject(source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return 0;
+  const terms = source.terms && typeof source.terms === 'object' ? source.terms : source;
+  let merged = 0;
+  for (const [rawKey, rawEntry] of Object.entries(terms)) {
+    const key = String(rawKey || '').toLowerCase().trim();
+    if (!key || !_isDictEntry(rawEntry)) continue;
+    if (!_deDictCache[key]) _deDictCache[key] = {};
+    for (const [lang, value] of Object.entries(rawEntry)) {
+      if (typeof value === 'string' && value.trim()) _deDictCache[key][lang] = value.trim();
+    }
+    merged++;
+  }
+  return merged;
+}
+
+function _buildDictShards(snapshot) {
+  const entries = Object.entries(snapshot).sort(([a], [b]) => a.localeCompare(b));
+  const shards = [];
+  let shard = {};
+  let shardBytes = 2;
+
+  for (const [key, value] of entries) {
+    const nextBytes = BufferLikeJsonSize({ [key]: value }) + 1;
+    if (Object.keys(shard).length && shardBytes + nextBytes > DE_DICT_SHARD_MAX_BYTES) {
+      shards.push(shard);
+      shard = {};
+      shardBytes = 2;
+    }
+    shard[key] = value;
+    shardBytes += nextBytes;
+  }
+  if (Object.keys(shard).length || !shards.length) shards.push(shard);
+  return shards;
+}
+
+function BufferLikeJsonSize(value) {
+  return new Blob([JSON.stringify(value)]).size;
+}
+
+async function _loadDeDictShards() {
+  const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
+  if (!manifestDoc.exists) return 0;
+  const manifest = _dictDocValue(manifestDoc);
+  const batchId = manifest?.batchId || '';
+  if (!manifest?.sharded || !batchId) return 0;
+
+  const docs = await pbGetAll('public_config', {
+    filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
+    fields: 'key,value',
+    batch: 200,
+  }).catch(() => []);
+
+  let merged = 0;
+  for (const doc of docs.sort((a, b) => String(a.data().key || '').localeCompare(String(b.data().key || '')))) {
+    const value = _dictDocValue(doc);
+    if (value?.batchId !== batchId) continue;
+    merged += _mergeDictObject(value.terms || {});
+  }
+  return merged;
+}
 
 function _seedStaticEnglishDict() {
   const staticDict = (typeof window !== 'undefined' && (window.QorAiStaticDict || _staticQorAiDict)) || null;
@@ -1360,12 +1436,10 @@ async function _loadDeDict() {
   try {
     const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
     if (doc.exists) {
-      const data = typeof doc.data === 'function' ? doc.data() : doc;
-      const stored = data?.value || data || {};
-      if (typeof stored === 'object' && !Array.isArray(stored)) {
-        Object.assign(_deDictCache, stored);
-      }
+      const stored = _dictDocValue(doc);
+      if (!stored?.sharded) _mergeDictObject(stored);
     }
+    await _loadDeDictShards();
   } catch (e) {
     console.warn('[de-dict] load failed:', e.message);
   }
@@ -1388,10 +1462,44 @@ async function _saveDeDict() {
       // the request, _deDictDirty flips back to true and the loop writes again.
       const snapshot = JSON.parse(JSON.stringify(_deDictCache));
       try {
+        const shards = _buildDictShards(snapshot);
+        const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const updatedAt = new Date().toISOString();
+        for (let i = 0; i < shards.length; i++) {
+          const key = `${DE_DICT_SHARD_PREFIX}${String(i).padStart(4, '0')}`;
+          await pbSetDoc('public_config', key, {
+            key,
+            value: {
+              sharded: true,
+              batchId,
+              index: i,
+              total: shards.length,
+              terms: shards[i],
+            },
+            updatedAt,
+          });
+        }
+        await pbSetDoc('public_config', DE_DICT_MANIFEST_KEY, {
+          key: DE_DICT_MANIFEST_KEY,
+          value: {
+            sharded: true,
+            batchId,
+            totalShards: shards.length,
+            totalTerms: Object.keys(snapshot).length,
+            updatedAt,
+          },
+          updatedAt,
+        });
         await pbSetDoc('public_config', DE_DICT_PB_KEY, {
           key: DE_DICT_PB_KEY,
-          value: snapshot,
-          updatedAt: new Date().toISOString()
+          value: {
+            sharded: true,
+            manifestKey: DE_DICT_MANIFEST_KEY,
+            totalShards: shards.length,
+            totalTerms: Object.keys(snapshot).length,
+            updatedAt,
+          },
+          updatedAt,
         });
       } catch (e) {
         console.warn('[de-dict] save failed:', e.message);
@@ -1739,9 +1847,9 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
       const textsJson = JSON.stringify(batch);
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const response = await fetch(`${PB_URL}/api/ai/deepseek`, {
+          const response = await fetch(LOCAL_DEEPSEEK_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: token },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: DEEPSEEK_MODEL,
               messages: [

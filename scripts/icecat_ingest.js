@@ -64,10 +64,26 @@ const LIMIT       = parseInt(getOpt('limit',   '0'));
 const MAX_TOTAL_PRODUCTS = parseInt(getOpt('maxTotalProducts', '300000'), 10);
 const DELAY       = parseInt(getOpt('delay',   FAST_MODE ? '150' : '800'));
 const WORKERS     = parseInt(getOpt('workers', FAST_MODE ? '8' : '3'));
+const MIN_YEAR    = parseInt(getOpt('minYear', '2015'), 10);
 // Phase 1 cap: at most N index entries per model name. Icecat lists thousands
 // of cosmetic SKUs per model; ~400 random samples still cover every real
 // CPU/RAM/storage configuration. Set --maxPerModel=0 to disable the cap.
 const MAX_PER_MODEL = parseInt(getOpt('maxPerModel', '400'));
+function defaultMinIcecatIdForYear(year) {
+  if (!Number.isFinite(year) || year <= 0) return 0;
+  if (year >= 2024) return 120000000;
+  if (year === 2023) return 105000000;
+  if (year === 2022) return 92000000;
+  if (year === 2021) return 80000000;
+  if (year === 2020) return 70000000;
+  if (year === 2019) return 60000000;
+  if (year === 2018) return 50000000;
+  if (year === 2017) return 42000000;
+  if (year === 2016) return 34000000;
+  if (year === 2015) return 28000000;
+  return 0;
+}
+const MIN_ICECAT_ID = parseInt(getOpt('minIcecatId', String(defaultMinIcecatIdForYear(MIN_YEAR))), 10);
 // 12 languages matching the Flutter app's l10n files
 const LANGS_DEFAULT = FAST_MODE ? 'EN' : 'EN,TR,DE,FR,ES,IT,JA,NL,PL,PT,SV,AR';
 const LANGS         = getOpt('langs', LANGS_DEFAULT).split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -198,6 +214,8 @@ function writeQueueMeta(count) {
       catsKey: catsKey(),
       count,
       maxPerModel: MAX_PER_MODEL,
+      minYear: MIN_YEAR,
+      minIcecatId: MIN_ICECAT_ID,
       createdAt: new Date().toISOString(),
     }, null, 2));
   } catch (e) {
@@ -538,7 +556,14 @@ async function phase1_index() {
         if (!cur.id || !cur.catId) { cur = {}; return; }
         const catId = parseInt(cur.catId);
         const slug = CAT_MAP[catId];
-        if (isAllowedCatId(catId) && !seenIcecatIds.has(cur.id) && !isBlockedCatalogText(cur.name)) {
+        const icecatIdNum = Number(cur.id) || 0;
+        if (
+          isAllowedCatId(catId) &&
+          !seenIcecatIds.has(cur.id) &&
+          !isBlockedCatalogText(cur.name) &&
+          cur.onMarket !== '0' &&
+          (!MIN_ICECAT_ID || icecatIdNum >= MIN_ICECAT_ID)
+        ) {
           // Per-model-family cap — drop cosmetic SKUs beyond the sampling
           // limit before the expensive live API phase. The key strips
           // colour/language/region/RAM/storage/CPU tokens, so repeated
@@ -572,9 +597,11 @@ async function phase1_index() {
             const mId   = ln.match(/Product_ID="(\d+)"/);
             const mCat  = ln.match(/Catid="(\d+)"/);
             const mName = ln.match(/Model_Name="([^"]*)"/);
+            const mMarket = ln.match(/On_Market="([^"]*)"/);
             if (mId)   cur.id    = mId[1];
             if (mCat)  cur.catId = mCat[1];
             if (mName) cur.name  = mName[1];
+            if (mMarket) cur.onMarket = mMarket[1];
           }
 
           // First approved EAN from child <EAN_UPC> lines
@@ -750,16 +777,45 @@ function buildKeySpecs(category, specs) {
 }
 
 function minSpecsForCategory(category) {
-  if (['laptops', 'smartphones', 'tablets'].includes(category)) return 20;
-  if (['tvs', 'monitors', 'desktops', 'digital_cameras'].includes(category)) return 15;
-  return 8;
+  return 5;
+}
+
+function inferReleaseYear(payload) {
+  const currentYear = new Date().getFullYear() + 1;
+  const specs = payload?.specs || {};
+  const candidates = [];
+  for (const [k, v] of Object.entries(specs)) {
+    if (/(release|launch|announc|introduced|introduction|year|date|çıkış|duyuru|tanıtım|piyasaya)/i.test(k)) {
+      candidates.push(`${k} ${v}`);
+    }
+  }
+  candidates.push(payload?.name || '', payload?.sourceUrl || '');
+  for (const text of candidates) {
+    const matches = String(text || '').match(/\b(19[8-9]\d|20[0-3]\d)\b/g) || [];
+    for (const m of matches) {
+      const year = Number(m);
+      if (year >= 1980 && year <= currentYear) return year;
+    }
+  }
+  return 0;
+}
+
+function icecatQualityFailure(payload) {
+  const count = Number(payload.specsCount || Object.keys(payload.specs || {}).length);
+  if (!payload.imageUrl || !Array.isArray(payload.images) || !payload.images.length) return 'no_valid_product_image';
+  if (isBlockedCatalogText(payload.name, payload.brand, payload.mpn)) return 'blocked_refurbished_or_non_catalog_product';
+  const minSpecs = minSpecsForCategory(payload.category);
+  if (count < minSpecs) return `too_few_specs:${count}<${minSpecs}`;
+  const releaseYear = inferReleaseYear(payload);
+  if (MIN_YEAR > 0 && releaseYear && releaseYear < MIN_YEAR) return `too_old:${releaseYear}<${MIN_YEAR}`;
+  if (MIN_ICECAT_ID > 0 && !releaseYear && Number(payload.icecatId || 0) < MIN_ICECAT_ID) {
+    return `too_old_by_id:${payload.icecatId}<${MIN_ICECAT_ID}`;
+  }
+  return '';
 }
 
 function passesIcecatQuality(payload) {
-  const count = Number(payload.specsCount || Object.keys(payload.specs || {}).length);
-  if (!payload.imageUrl || !Array.isArray(payload.images) || !payload.images.length) return false;
-  if (isBlockedCatalogText(payload.name, payload.brand, payload.mpn)) return false;
-  return count >= minSpecsForCategory(payload.category);
+  return !icecatQualityFailure(payload);
 }
 
 // ─── Category sync ────────────────────────────────────────────────────────────
@@ -1165,10 +1221,13 @@ async function phase23_enrichImport() {
         const enJson = await fetchIcecatJson(icecatId, 'EN');
         const pbData = mapToPb(enJson, 'EN', item);
         pbData.keySpecs = buildKeySpecs(pbData.category, pbData.specs);
-        if (!passesIcecatQuality(pbData)) {
-          const minSpecs = minSpecsForCategory(pbData.category);
+        const qualityFailure = icecatQualityFailure(pbData);
+        if (qualityFailure) {
           prog.skipped = (prog.skipped || 0) + 1;
-          log(`  Skip id=${icecatId} (${name || brand}): only ${pbData.specsCount || 0} specs, need ${minSpecs}+`, 'warn');
+          let reason = qualityFailure;
+          const m = qualityFailure.match(/^too_few_specs:(\d+)<(\d+)/);
+          if (m) reason = `only ${m[1]} specs, need ${m[2]}+`;
+          log(`  Skip id=${icecatId} (${name || brand}): ${reason}`, 'warn');
           prog.done++;
           if (prog.done % 10 === 0) saveProgress(prog);
           await sleep(DELAY);
@@ -1211,14 +1270,24 @@ async function phase23_enrichImport() {
           const results = await Promise.allSettled(
             extraLangs.map(lang => fetchIcecatJson(icecatId, lang).then(j => ({ lang, json: j })))
           );
+          const missingLangs = [];
           for (const r of results) {
-            if (r.status !== 'fulfilled') continue; // EN already covered
+            if (r.status !== 'fulfilled') {
+              missingLangs.push('?');
+              continue;
+            }
             const { lang, json } = r.value;
             const xData = mapToPb(json, lang, item);
             const key = lang.toLowerCase();
             multiSpecs[key]    = xData.specs;
             multiSections[key] = xData.specSections;
             nameTrans[key]     = xData.name;
+          }
+          for (const lang of extraLangs) {
+            if (!multiSpecs[lang.toLowerCase()]) missingLangs.push(lang);
+          }
+          if (missingLangs.length) {
+            throw new Error(`missing_localized_specs:${[...new Set(missingLangs)].join(',')}`);
           }
         }
 
@@ -1233,7 +1302,7 @@ async function phase23_enrichImport() {
       } catch (e) {
         // Filtered-out rows (wrong brand, refurbished, junk, off-category)
         // are expected noise — count them as skipped, not hard errors.
-        const filtered = /^(brand_filtered|blocked_|category_not_selected|too_few)/.test(e.message || '');
+        const filtered = /^(brand_filtered|blocked_|category_not_selected|too_few|missing_localized_specs)/.test(e.message || '');
         log(`  Skip id=${icecatId} (${name || brand}): ${e.message}`, 'warn');
         if (filtered) prog.skipped = (prog.skipped || 0) + 1;
         else prog.errors++;
@@ -1281,6 +1350,7 @@ async function main() {
   log(`Mode: ${SKIP_PHASE1 ? 'Resume (Phase 2+3 only)' : 'Full run (Phase 1 + 2+3)'}`);
   if (LIMIT) log(`Limit: ${LIMIT} products`);
   if (MAX_TOTAL_PRODUCTS) log(`Catalog hard cap: ${MAX_TOTAL_PRODUCTS.toLocaleString()} total products`);
+  if (MIN_YEAR || MIN_ICECAT_ID) log(`Freshness gate: minYear=${MIN_YEAR || 0}, minIcecatId=${MIN_ICECAT_ID || 0}`);
   console.log('');
 
   if (!ICECAT_USER) throw new Error('ICECAT_USERNAME not set in migration/.env — add it and retry');
@@ -1299,7 +1369,10 @@ async function main() {
     const meta = readQueueMeta();
     const selectedKey = catsKey();
     const inspected = await inspectQueueForSelectedCats();
-    const metaMismatch = !meta || meta.catsKey !== selectedKey;
+    const metaMismatch = !meta ||
+      meta.catsKey !== selectedKey ||
+      Number(meta.minYear || 0) !== Number(MIN_YEAR || 0) ||
+      Number(meta.minIcecatId || 0) !== Number(MIN_ICECAT_ID || 0);
     if (!fs.existsSync(QUEUE_FILE) || inspected.total === 0 || inspected.allowed === 0 || metaMismatch) {
       if (metaMismatch) log(`Queue belongs to ${meta?.catsKey || 'unknown'} but selected ${selectedKey}; rebuilding Phase 1.`, 'warn');
       else log(`Existing queue has ${inspected.allowed}/${inspected.total} usable rows for ${selectedKey}; rebuilding Phase 1.`, 'warn');

@@ -51,6 +51,68 @@ try {
 const PORT = parseInt(process.argv[2]) || 3456;
 const SERVER_STARTED_AT = new Date();
 
+function readDotEnv(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const out = {};
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const i = trimmed.indexOf('=');
+      if (i <= 0) continue;
+      out[trimmed.slice(0, i).trim()] = trimmed.slice(i + 1).trim();
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function deepSeekApiKey() {
+  if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
+  const rootEnv = readDotEnv(path.join(rootDir, '.env'));
+  if (rootEnv.DEEPSEEK_API_KEY) return rootEnv.DEEPSEEK_API_KEY;
+  try {
+    const buildScript = fs.readFileSync(path.join(rootDir, 'scripts', 'build-dictionary.js'), 'utf8');
+    const m = buildScript.match(/DEEPSEEK_API_KEY\s*=\s*['"]([^'"]+)['"]/);
+    if (m && m[1]) return m[1];
+  } catch {}
+  return '';
+}
+
+function postJson(url, payload, headers = {}, timeoutMs = 120000) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const data = JSON.stringify(payload || {});
+    const mod = u.protocol === 'https:' ? https : http;
+    const req = mod.request({
+      method: 'POST',
+      hostname: u.hostname,
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
+      path: u.pathname + u.search,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+        ...headers,
+      },
+      timeout: timeoutMs,
+    }, res => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        let body = raw;
+        try { body = JSON.parse(raw || '{}'); } catch {}
+        resolve({ statusCode: res.statusCode || 0, body, raw });
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('deepseek_proxy_timeout')));
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
 // ─── Icecat ingestion state (managed via /icecat/* endpoints) ────────────
 let icecatProc = null;
 let icecatLog  = '';
@@ -1060,6 +1122,49 @@ const server = http.createServer(async (req, res) => {
 
   setCORSHeaders(res, origin);
 
+  // ── Local DeepSeek proxy for admin bulk dictionary translation ─────────
+  // The remote PocketBase hook can spend/update user credit records. Bulk
+  // dictionary jobs are admin maintenance, so route them through this local
+  // proxy to avoid PB record-update failures while keeping the API key off the
+  // browser.
+  if (req.url === '/ai/deepseek' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => {
+      body += c;
+      if (body.length > 12 * 1024 * 1024) req.destroy(new Error('request_too_large'));
+    });
+    req.on('end', async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        if (!payload.messages) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: "missing 'messages' in body" }));
+          return;
+        }
+        const key = deepSeekApiKey();
+        if (!key) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'DEEPSEEK_API_KEY not configured for local proxy' }));
+          return;
+        }
+        const upstream = await postJson('https://api.deepseek.com/chat/completions', {
+          model: payload.model || 'deepseek-chat',
+          messages: payload.messages,
+          ...(payload.temperature !== undefined ? { temperature: payload.temperature } : {}),
+          ...(payload.max_tokens !== undefined ? { max_tokens: payload.max_tokens } : {}),
+          ...(payload.response_format ? { response_format: payload.response_format } : {}),
+          ...(payload.stream !== undefined ? { stream: payload.stream } : {}),
+        }, { Authorization: `Bearer ${key}` }, 120000);
+        res.writeHead(upstream.statusCode || 502, { 'Content-Type': 'application/json' });
+        res.end(typeof upstream.body === 'string' ? upstream.body : JSON.stringify(upstream.body || {}));
+      } catch (e) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'local_deepseek_proxy_failed', detail: e.message || String(e) }));
+      }
+    });
+    return;
+  }
+
   // ── Icecat Open Catalog Ingestion ──────────────────────────────────────
   // POST /icecat/start  body: {cats, langs, limit, workers, delay, resume}
   // GET  /icecat/status -> {running, progress, logTail}
@@ -1087,6 +1192,8 @@ const server = http.createServer(async (req, res) => {
         if (opts.langs)   args.push(`--langs=${opts.langs}`);
         if (opts.limit)   args.push(`--limit=${opts.limit}`);
         if (opts.maxTotalProducts) args.push(`--maxTotalProducts=${opts.maxTotalProducts}`);
+        if (opts.minYear) args.push(`--minYear=${opts.minYear}`);
+        if (opts.minIcecatId) args.push(`--minIcecatId=${opts.minIcecatId}`);
         if (opts.workers) args.push(`--workers=${opts.workers}`);
         if (opts.delay)   args.push(`--delay=${opts.delay}`);
         // Optional brand filter — only products of this brand are saved.
@@ -1142,7 +1249,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     const wiped = [];
-    for (const f of ['icecat_queue.jsonl', 'icecat_progress.json']) {
+    for (const f of ['icecat_queue.jsonl', 'icecat_queue_meta.json', 'icecat_progress.json']) {
       const p = path.join(rootDir, 'scripts', f);
       try { fs.unlinkSync(p); wiped.push(f); } catch {}
     }

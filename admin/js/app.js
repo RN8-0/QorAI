@@ -2044,7 +2044,7 @@ async function stopCategoryTranslation(){
   }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-persist-fix-20260521-1030';
+const QORAI_TRANSLATION_BUILD = 'deepseek-local-proxy-dict-fix-20260521-1145';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }

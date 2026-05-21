@@ -183,10 +183,7 @@
     }
 
     const prev = ($('icecatCats').value || '').trim();
-    let allCount = 0;
-    for (const row of canonicalPresetRows()) allCount += countForRow(row);
     let html = '<option value="">— Kategori seç —</option>';
-    html += `<option value="all"${prev === 'all' ? ' selected' : ''}>Tüm Kategoriler${allCount ? ` (~${allCount.toLocaleString('tr-TR')} ürün)` : ''}</option>`;
     for (const [g, items] of Object.entries(groups)) {
       html += `<optgroup label="${g}">`;
       for (const it of items) {
@@ -209,9 +206,7 @@
       const row = canonicalPresetRows().find(r => r.slug === slug);
       const count = countForRow(row);
       summary.textContent = slug
-        ? (slug === 'all'
-          ? `Seçili: Tüm kategoriler${allCount ? ` · ~${allCount.toLocaleString('tr-TR')} ürün` : ''} · toplam katalog cap 300.000`
-          : `Seçili: ${row ? row.label : labelForSlug(slug, slug)}${count ? ` · ~${count.toLocaleString('tr-TR')} ürün` : ''}`)
+        ? `Seçili: ${row ? row.label : labelForSlug(slug, slug)}${count ? ` · ~${count.toLocaleString('tr-TR')} ürün` : ''}`
         : 'Tek kategori seç — düzgün, sistematik çekim için';
     }
   }
@@ -236,6 +231,7 @@
       brand:   ($('icecatBrand')?.value || '').trim(),
       langs:   $('icecatLangs').value.trim(),
       limit:   parseInt($('icecatLimit').value) || 0,
+      minYear: parseInt($('icecatMinYear')?.value) || 2015,
       workers: parseInt($('icecatWorkers').value) || 3,
       delay:   parseInt($('icecatDelay').value) || 600,
       maxTotalProducts: 300000,
