@@ -94,10 +94,12 @@
   ];
 
   const CHIPSET_PHONE = [
-    ['Snapdragon 8 Elite', 100], ['Apple A18 Pro', 100], ['Dimensity 9400', 98],
-    ['Exynos 2500', 94], ['Snapdragon 8 Gen 3', 90], ['Apple A17 Pro', 90],
+    ['Snapdragon 8 Elite Gen 5', 100], ['Apple A19 Pro', 100], ['Dimensity 9500', 99],
+    ['Apple A19', 97], ['Snapdragon 8 Gen 5', 94],
+    ['Snapdragon 8 Elite', 93], ['Apple A18 Pro', 93], ['Dimensity 9400', 91],
+    ['Exynos 2600', 90], ['Exynos 2500', 88], ['Snapdragon 8 Gen 3', 86], ['Apple A17 Pro', 86],
     ['Dimensity 9300', 87], ['Exynos 2400', 84], ['Snapdragon 8 Gen 2', 80],
-    ['Apple A16', 80], ['Dimensity 9200', 77], ['Kirin 9000S', 72],
+    ['Apple A18', 84], ['Apple A16', 78], ['Dimensity 9200', 77], ['Kirin 9000S', 72],
     ['Snapdragon 7s Gen 3', 65], ['Dimensity 8300', 63],
     ['Snapdragon 7 Gen 3', 61], ['Exynos 1480', 58],
     ['Snapdragon 6 Gen 3', 50], ['Dimensity 7300', 48], ['Helio G99 Ultra', 45],
@@ -105,7 +107,7 @@
     ['Helio G88', 26], ['Snapdragon 4 Gen 2', 24], ['Dimensity 6100+', 22],
     ['Helio G85', 16], ['Snapdragon 4s Gen 2', 12], ['Helio G36', 6],
     // Apple A older
-    ['Apple A18', 95], ['Apple A17', 88], ['Apple A15', 70], ['Apple A14', 60], ['Apple A13', 48],
+    ['Apple A17', 82], ['Apple A15', 70], ['Apple A14', 60], ['Apple A13', 48],
     // Apple M (tablets/phones)
     ['Apple M5', 100], ['Apple M4', 96], ['Apple M3', 90], ['Apple M2', 82], ['Apple M1', 72],
   ];
@@ -235,12 +237,12 @@
     panel:      ['Screen Technology', 'Panel Type', 'Display Technology', 'Display Type', 'Display', 'Panel Tipi', 'Ekran Tipi', 'Ekran Teknolojisi', 'Ekran'],
     resolution: ['Display Resolution', 'Screen Resolution', 'Resolution', 'Resolution Standard', 'Çözünürlük', 'Cozunurluk', 'Ekran Çözünürlüğü', 'Çözünürlük Standardı'],
     main_camera:['Main Camera', 'Main Camera Resolution', 'Rear Camera', 'Primary Camera', 'Camera Resolution', 'Ana Kamera', 'Arka Kamera', 'Kamera Çözünürlüğü'],
-    front_camera:['Front Camera', 'Selfie Camera', 'Ön Kamera', 'On Kamera', 'Selfie'],
-    network_5g: ['Network', 'Cellular', 'Mobile Network', 'Mobil Ağ', 'Mobil Ag', 'Şebeke', 'Sebeke', 'Generation'],
+    front_camera:['Front Camera Resolution', 'Selfie Camera Resolution', 'Ön Kamera Çözünürlüğü', 'On Kamera Cozunurlugu', 'Front Camera', 'Selfie Camera', 'Ön Kamera', 'On Kamera', 'Selfie'],
+    network_5g: ['5G', '5G Support', '4.5G Support', 'Network', 'Cellular', 'Mobile Network', 'Mobil Ağ', 'Mobil Ag', 'Şebeke', 'Sebeke', 'Generation'],
     weight:     ['Weight', 'Ağırlık', 'Agirlik'],
     wifi:       ['Wi-Fi', 'WiFi', 'Wireless', 'Kablosuz Bağlantı', 'Kablosuz Baglanti'],
     bluetooth:  ['Bluetooth', 'Bluetooth Version', 'Bluetooth Standard', 'Bluetooth Standardı', 'Bluetooth Versiyonu'],
-    release_year: ['Release Date', 'Release Year', 'Announcement Date', 'Tanıtım Tarihi', 'Tanitim Tarihi', 'Çıkış Tarihi', 'Cikis Tarihi', 'Çıkış Yılı'],
+    release_year: ['Release Date', 'Release Year', 'Announcement Date', 'Duyurulma Tarihi', 'Tanıtım Tarihi', 'Tanitim Tarihi', 'Çıkış Tarihi', 'Cikis Tarihi', 'Çıkış Yılı'],
     ip_rating:  ['Water Resistance', 'IP Rating', 'Su Geçirmezlik', 'Su Gecirmezlik', 'Sertifika'],
     // GPU
     vram:       ['Memory Size', 'Video Memory', 'VRAM', 'Bellek Boyutu', 'Memory'],
@@ -311,6 +313,8 @@
     response_ms:['Response Time', 'Response Time (GtG)', 'Tepki Süresi', 'Tepki Suresi'],
     color_gamut:['Color Gamut', 'Colour Gamut', 'sRGB', 'DCI-P3', 'DCI-P3 Coverage', 'DCI-P3 Kapsamı', 'Adobe RGB', 'Adobe RGB Kapsamı', 'Renk Gamutu'],
     charging:   ['Fast Charging Power (Max.)', 'Fast Charging Power', 'Charging Power', 'Hızlı Şarj Gücü (Maks.)', 'Hizli Sarj Gucu', 'Şarj Gücü'],
+    display_features: ['Display Features', 'Screen Features', 'Ekran Özellikleri', 'Ekran Ozellikleri'],
+    camera_system: ['Camera Features', 'Video Recording Features', 'Second Rear Camera', 'Third Rear Camera', 'OIS Feature', 'Optical Image Stabilization (OIS)', 'Kamera Özellikleri', 'Video Kayıt Özellikleri', 'İkinci Arka Kamera', 'Üçüncü Arka Kamera', 'Optik Görüntü Sabitleyici (OIS)'],
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -318,18 +322,18 @@
   // ─────────────────────────────────────────────────────────────
 
   const WEIGHTS = {
-    smartphones: { chipset: 24, main_camera: 10, sensor_size_phone: 6, front_camera: 4, ram: 9, storage: 8, battery: 8, charging: 4, panel: 8, refresh: 6, resolution: 7, screen_size: 3, network_5g: 3 },
-    tablets:     { chipset: 22, ram: 12, storage: 10, battery: 12, screen_size: 10, refresh: 6, resolution: 10, panel: 8, main_camera: 5, network_5g: 5 },
-    laptops:     { cpu: 25, gpu: 18, ram: 13, storage: 10, battery: 8, screen_size: 4, refresh: 4, resolution: 6, panel: 5, weight_lo: 4, wifi: 3 },
-    desktops:    { cpu: 28, gpu: 22, ram: 15, storage: 15, watt: 6, cooler_type: 6, lan: 4, case_form: 4 },
-    monitors:    { screen_size: 16, resolution: 22, refresh: 18, panel: 14, response_ms_lo: 10, hdr: 8, color_gamut: 8, curved: 4 },
-    tvs:         { screen_size: 18, resolution: 18, panel: 22, refresh: 14, hdr: 12, smart_os: 6, hdmi21: 10 },
+    smartphones: { chipset: 30, release_year: 8, main_camera: 8, camera_system: 8, sensor_size_phone: 4, front_camera: 3, ram: 7, storage: 6, battery: 7, charging: 3, panel: 6, display_features: 5, refresh: 4, resolution: 3, screen_size: 2, network_5g: 3, wifi: 3 },
+    tablets:     { chipset: 24, release_year: 8, ram: 10, storage: 9, battery: 10, screen_size: 8, refresh: 5, resolution: 9, panel: 8, display_features: 5, main_camera: 3, network_5g: 3 },
+    laptops:     { gpu: 28, cpu: 25, release_year: 8, ram: 9, storage: 8, battery: 4, screen_size: 3, refresh: 4, resolution: 5, panel: 5, weight_lo: 3, wifi: 2 },
+    desktops:    { gpu: 32, cpu: 28, release_year: 8, ram: 10, storage: 8, watt: 4, cooler_type: 4, lan: 3, case_form: 3 },
+    monitors:    { release_year: 6, screen_size: 14, resolution: 20, refresh: 18, panel: 16, display_features: 8, response_ms_lo: 9, hdr: 5, color_gamut: 4 },
+    tvs:         { release_year: 7, screen_size: 16, resolution: 16, panel: 22, display_features: 10, refresh: 12, hdr: 10, smart_os: 4, hdmi21: 3 },
     headphones:  { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
     earphones:   { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
     speakers:    { watt_rms: 28, drivers: 16, bluetooth: 10, wifi: 12, battery_life: 14, ip_rating: 10, bass: 10 },
     cameras:     { csensor: 22, megapixels: 16, iso: 16, fps_burst: 14, video_res: 14, ibis: 8, shutter: 6, evf: 4 },
-    gpus:        { gpu_rank: 30, vram: 18, bandwidth: 12, cores: 12, boost_clock: 10, tdp_lo: 8, ray_tracing: 10 },
-    cpus:        { cpu_rank: 28, cores: 16, threads: 8, base_clock: 6, boost_clock: 14, cache_l3: 10, ram_speed: 5, pcie_gen: 5, tdp_lo: 4, process_nm_lo: 4 },
+    gpus:        { gpu_rank: 42, release_year: 8, vram: 16, bandwidth: 10, cores: 8, boost_clock: 6, tdp_lo: 4, ray_tracing: 6 },
+    cpus:        { cpu_rank: 38, release_year: 8, cores: 14, threads: 7, base_clock: 5, boost_clock: 12, cache_l3: 8, ram_speed: 4, pcie_gen: 4 },
     motherboards:{ chipset_tier: 25, ram_max: 15, m2_slots: 15, pcie_gen: 12, vrm: 10, lan_speed: 8, wifi_gen: 8, usbc: 7 },
     ram:         { ram: 28, ram_speed: 28, ram_cas_lo: 20, ram_gen: 14, dual_channel: 10 },
     ssd:         { storage: 22, seq_read: 22, seq_write: 18, iops: 14, interface: 14, tbw: 10 },
@@ -564,15 +568,51 @@
     return { mod: best + osBonus, reason: bestKey, osBonus };
   }
 
-  // Year decay table (smartphone-style — applied to all categories)
-  function _yearDecay(year) {
+  function _yearScore(year) {
+    if (!year) return null;
+    if (year >= 2025) return 100;
+    if (year === 2024) return 94;
+    if (year === 2023) return 86;
+    if (year === 2022) return 78;
+    if (year === 2021) return 70;
+    if (year === 2020) return 60;
+    if (year === 2019) return 50;
+    if (year === 2018) return 42;
+    if (year === 2017) return 35;
+    if (year === 2016) return 28;
+    return 20;
+  }
+
+  // Year decay table: fast-moving categories age harder than displays.
+  function _yearDecay(year, cat) {
     if (!year) return 1.0;
     if (year >= 2025) return 1.0;
+    const c = String(cat || '').toLowerCase();
+    const fastMoving = /smartphones|tablets|laptops|desktops|gpus|cpus|consoles|vr-headsets/.test(c);
+    const display = /monitors|tvs|projectors/.test(c);
+    if (fastMoving) {
+      if (year === 2024) return 0.96;
+      if (year === 2023) return 0.90;
+      if (year === 2022) return 0.84;
+      if (year === 2021) return 0.78;
+      if (year === 2020) return 0.72;
+      if (year === 2019) return 0.66;
+      if (year === 2018) return 0.60;
+      return 0.55;
+    }
+    if (display) {
+      if (year === 2024) return 0.98;
+      if (year === 2023) return 0.95;
+      if (year === 2022) return 0.92;
+      if (year === 2021) return 0.88;
+      if (year === 2020) return 0.84;
+      return 0.78;
+    }
     if (year === 2024) return 0.97;
-    if (year === 2023) return 0.94;
-    if (year === 2022) return 0.91;
-    if (year === 2021) return 0.88;
-    return 0.85;
+    if (year === 2023) return 0.93;
+    if (year === 2022) return 0.89;
+    if (year === 2021) return 0.84;
+    return 0.78;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -713,6 +753,57 @@
     return hit ? String(hit.value) : null;
   }
 
+  function _allSpecText(p) {
+    const chunks = [p?.name || '', p?.brand || ''];
+    function walk(v) {
+      if (v == null) return;
+      if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+        chunks.push(String(v));
+      } else if (Array.isArray(v)) {
+        v.forEach(walk);
+      } else if (typeof v === 'object') {
+        for (const [k, val] of Object.entries(v)) {
+          chunks.push(String(k));
+          walk(val);
+        }
+      }
+    }
+    walk(p?.keySpecs);
+    walk(p?.specsEn);
+    walk(p?.specs);
+    walk(p?.specSections);
+    return chunks.join(' ');
+  }
+
+  function _featureScore(p, kind) {
+    const text = _foldText(_allSpecText(p));
+    let score = 0;
+    if (kind === 'camera_system') {
+      if (/prores|dolby vision|apple log|raw/.test(text)) score += 18;
+      if (/ois|optical image stabilization|optik goruntu|sensor-shift/.test(text)) score += 16;
+      if (/telephoto|periscope|optical zoom|optik zoom/.test(text)) score += 16;
+      if (/ultra wide|extra wide|ekstra genis|macro/.test(text)) score += 12;
+      if (/lidar|tof|laser/.test(text)) score += 10;
+      if (/4k|2160p/.test(text)) score += 10;
+      if (/8k|4320p/.test(text)) score += 8;
+      if (/hdr/.test(text)) score += 6;
+      if (/third rear camera|ucuncu arka kamera/.test(text)) score += 4;
+      return score ? { score: Math.min(100, score + 20), type: 'lookup', raw: 'camera feature stack', source: 'camera_system' } : null;
+    }
+    if (kind === 'display_features') {
+      if (/ltpo|promotion|adaptive/.test(text)) score += 22;
+      if (/dolby vision/.test(text)) score += 18;
+      if (/hdr10\+|hdr10|hdr/.test(text)) score += 14;
+      if (/dci-p3|wide color|renk uzayi|color gamut/.test(text)) score += 12;
+      if (/always-on|always on|surekli acik/.test(text)) score += 8;
+      const nit = [...text.matchAll(/(\d{3,4})\s*(?:cd\/m|nit)/g)]
+        .map(m => parseInt(m[1], 10)).filter(Boolean);
+      if (nit.length) score += Math.min(18, Math.max(...nit) >= 2500 ? 18 : Math.max(...nit) >= 1500 ? 12 : 6);
+      return score ? { score: Math.min(100, score + 15), type: 'lookup', raw: 'display feature stack', source: 'display_features' } : null;
+    }
+    return null;
+  }
+
   // ─────────────────────────────────────────────────────────────
   //  RANK MATCHING (longest prefix wins, then interpolation)
   // ─────────────────────────────────────────────────────────────
@@ -776,7 +867,7 @@
 
   // Year extraction
   function _extractYear(p) {
-    const candidates = ['Release Date', 'Release Year', 'Announcement Date', 'Tanıtım Tarihi', 'Çıkış Tarihi', 'Çıkış Yılı'];
+    const candidates = ['Release Date', 'Release Year', 'Announcement Date', 'Duyurulma Tarihi', 'Tanıtım Tarihi', 'Tanitim Tarihi', 'Çıkış Tarihi', 'Cikis Tarihi', 'Çıkış Yılı'];
     const hit = _lookupRaw(p, candidates);
     if (hit) {
       const m = String(hit.value).match(/(20\d{2}|19\d{2})/);
@@ -834,10 +925,13 @@
         return m && { score: m.score, type: 'rank', raw: raw, source: m.key, exact: m.exact };
       }
       case 'chipset': {
-        const s = _lookupStr(p, 'chipset');
-        if (!s) return null;
-        const m = _matchRank(s, CHIPSET_PHONE);
-        return m && { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+        const specific = _lookupRaw(p, ['Yonga Seti (Chipset)', 'Chipset', 'System Chip', 'SoC', 'Yonga Seti']);
+        const candidates = [specific && String(specific.value), _lookupStr(p, 'chipset'), p.name].filter(Boolean);
+        for (const s of candidates) {
+          const m = _matchRank(s, CHIPSET_PHONE);
+          if (m) return { score: m.score, type: 'rank', raw: s, source: m.key, exact: m.exact };
+        }
+        return null;
       }
       // ── LOOKUP SPECS ──
       case 'panel': return _l(p, 'panel', LOOKUPS.panel);
@@ -855,8 +949,15 @@
       case 'efficiency': return _l(p, 'efficiency', LOOKUPS.psu_efficiency);
       case 'lan_speed': return _l(p, 'wifi', LOOKUPS.lan_speed) || _l(p, 'lan', LOOKUPS.lan_speed);
       case 'smart_os': return _l(p, 'panel', LOOKUPS.smart_os) || _hitOnAny(p, LOOKUPS.smart_os);
-      case 'network_5g': return _l(p, 'network_5g', LOOKUPS.network_5g);
+      case 'network_5g': {
+        const ranked = _l(p, 'network_5g', LOOKUPS.network_5g);
+        if (ranked) return ranked;
+        const yes = _hasBool(p, ['5G', '5G Support', '5G Desteği']);
+        return yes ? { ...yes, score: yes.score ? 100 : 0, type: 'bool' } : null;
+      }
+      case 'display_features': return _featureScore(p, 'display_features');
       case 'sensor_size_phone': return _l(p, 'sensor', LOOKUPS.sensor_size_phone);
+      case 'camera_system': return _featureScore(p, 'camera_system');
       case 'ip_rating':
       case 'water_resistance': return _l(p, 'ip_rating', LOOKUPS.ip_rating);
       case 'csensor': return _l(p, 'sensor', LOOKUPS.csensor);
@@ -899,6 +1000,11 @@
       case 'refresh': return _num(p, 'refresh');
       case 'main_camera': return _num(p, 'main_camera');
       case 'front_camera': return _num(p, 'front_camera');
+      case 'release_year': {
+        const year = _extractYear(p);
+        const score = _yearScore(year);
+        return score == null ? null : { score, type: 'lookup', raw: String(year), source: 'release_year' };
+      }
       case 'vram': {
         const n = _firstNumber(_lookupStr(p, 'vram'));
         return n ? { score: n, type: 'num', raw: n + ' GB' } : null;
@@ -1300,7 +1406,7 @@
       }
       // Renormalize weights for missing specs
       const baseScore = sumW > 0 ? weightedSum / sumW : 0;
-      const decay = _yearDecay(r.year);
+      const decay = _yearDecay(r.year, cat);
 
       // Tier cap: try each anchor key in order (e.g. gpu → cpu for laptops)
       let cappedBase = baseScore;
