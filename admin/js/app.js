@@ -1242,9 +1242,15 @@ async function productsLiveTick(){
   if(!view||!view.classList.contains('active')){stopProductsLivePoll();return;}
   if(document.hidden)return;
   try{
-    const {filter}=buildQuery();
-    const res=await pbGetList('products',1,1,{filter,fields:'id'});
-    const total=res.totalItems||0;
+    let total=0;
+    try{
+      const res=await _tsAdminList(1,1,{countOnly:true});
+      total=res.total||0;
+    }catch(_){
+      const {filter}=buildQuery();
+      const res=await pbGetList('products',1,1,{filter,fields:'id'});
+      total=res.totalItems||0;
+    }
     if(!total||total===totalProductCount)return;
     const searching=!!(document.getElementById('searchInput')?.value||'').trim();
     const sort=document.getElementById('sortFilter')?.value||'newest';
@@ -1614,7 +1620,16 @@ async function loadPage(direction,pageOverride){
     if(g&&!g.querySelector('.spinner')){
       g.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>';
     }
-    const result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
+    let result;
+    let usedTypesense=false;
+    try{
+      const tsResult=await _tsAdminList(currentPage,PRODUCT_RAW_PER);
+      result={items:tsResult.items,totalItems:tsResult.total,empty:!tsResult.items.length};
+      usedTypesense=true;
+    }catch(tsErr){
+      console.warn('[products] Typesense list failed; falling back to PocketBase:',tsErr.message||tsErr);
+      result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
+    }
     if(seq!==_loadPageSeq)return; // a newer query superseded this one
     if(result.empty&&direction==='next'){currentPage--;toast('Last page','i');return}
 
@@ -1631,9 +1646,10 @@ async function loadPage(direction,pageOverride){
     populateFiltersFromCurrentPage();
     if(!_productFacetCache.ts)populateFiltersFromData().catch(()=>{});
 
-    // Client-side search filter
+    // PocketBase fallback still needs client-side search because the fast path
+    // delegates the query to Typesense.
     const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
-    if(searchQ){
+    if(searchQ&&!usedTypesense){
       displayProducts=allProducts.filter(p=>
         (p.name||'').toLowerCase().includes(searchQ)||
         (p.brand||'').toLowerCase().includes(searchQ)||
@@ -1788,10 +1804,42 @@ function _tsAdminFilterBy(){
   return filters.join(' && ');
 }
 
+function _tsAdminSortBy(q=''){
+  const sort=(document.getElementById('sortFilter')?.value||'newest').trim();
+  const hasQuery=!!String(q||'').trim();
+  switch(sort){
+    case 'score-high': return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
+    case 'oldest': return 'techScore:asc';
+    case 'name-az': return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
+    case 'newest':
+    default:
+      // Typesense's current schema has no sortable scrapedAt/name field. Use
+      // the indexed technical rank so admin filters/page changes return fast
+      // instead of waiting on a heavy PocketBase count+sort scan.
+      return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
+  }
+}
+
+async function _tsAdminList(page=1,perPage=PRODUCT_RAW_PER,opts={}){
+  if(!window.TsClient?.search)throw new Error('Typesense client not loaded');
+  const q=(document.getElementById('searchInput')?.value||'').trim();
+  const res=await window.TsClient.search(q||'*',{
+    perPage,
+    page,
+    filterBy:_tsAdminFilterBy(),
+    sortBy:_tsAdminSortBy(q),
+  });
+  return {
+    items:opts.countOnly?[]:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
+    total:res.found||0,
+    source:'Typesense',
+  };
+}
+
 async function _tsAdminSearch(q){
   if(!window.TsClient?.search)throw new Error('Typesense client not loaded');
   const filterBy=_tsAdminFilterBy();
-  const res=await window.TsClient.search(q,{perPage:120,page:1,filterBy});
+  const res=await window.TsClient.search(q,{perPage:120,page:1,filterBy,sortBy:_tsAdminSortBy(q)});
   return {
     items:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
     total:res.found||0,
@@ -1832,6 +1880,7 @@ async function serverSearch(){
     });
     displayProducts=sorted;
     allProducts=sorted;
+    totalProductCount=res.total||sorted.length;
     _productUiPages=new Map();
     renderProductsPage();
     document.getElementById('productCount').textContent=`${(res.total||sorted.length).toLocaleString()} sonuç · ${res.source} · ${((Date.now()-started)/1000).toFixed(1)}s`;
@@ -1895,6 +1944,7 @@ async function openDictionaryPanel(){
     if (typeof populateScraperCategories === 'function') {
       try { await populateScraperCategories(); } catch {}
     }
+    _disableLegacyDictionaryBulkTranslator();
   } catch (e) {
     toast('Sözlük yüklenemedi: ' + e.message, 'e');
   }
@@ -2101,7 +2151,29 @@ async function stopCategoryTranslation(){
 
 const QORAI_TRANSLATION_BUILD = 'canonical-english-runtime-locale-20260521';
 
+function _disableLegacyDictionaryBulkTranslator(){
+  const sel = document.getElementById('dictXlateCategory');
+  const startBtn = document.getElementById('btnDictXlateStart');
+  const stopBtn = document.getElementById('btnDictXlateStop');
+  if (sel) sel.disabled = true;
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.textContent = 'Canonical scrape active';
+    startBtn.title = 'Eski toplu AI çeviri kapalı; scraper artık specs kayıt anında canonical English yazar.';
+  }
+  if (stopBtn) stopBtn.style.display = 'none';
+  _xlateProgress(0, 0, 'Toplu kategori çevirisi kapalı; sözlük düzenleme aktif.', {
+    detail: 'Yeni ürünlerde canonical English scrape sırasında yazılır. Bu panelde mevcut sözlük satırlarını düzenleyip Save All yapabilirsin.',
+  });
+}
+
 async function startCategoryTranslation(){
+  const logBox   = document.getElementById('dictXlateLog');
+  if (logBox) logBox.innerHTML = '';
+  _disableLegacyDictionaryBulkTranslator();
+  _xlateLog('Toplu AI çeviri akışı kapalı. Yeni akış: scraper specs değerlerini kayıt anında hızlı lokal sözlükle canonical English olarak yazar; uygulama/website kullanıcı diline render sırasında çevirir, eksikte İngilizce gösterir.');
+  toast('Toplu kategori çevirisi kapalı; sözlük düzenleme ve kaydetme aktif.', 'i', 5000);
+  return;
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
   if (!window.QorAiBulkTranslate) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
 
@@ -2111,12 +2183,6 @@ async function startCategoryTranslation(){
 
   const startBtn = document.getElementById('btnDictXlateStart');
   const stopBtn  = document.getElementById('btnDictXlateStop');
-  const logBox   = document.getElementById('dictXlateLog');
-  if (logBox) logBox.innerHTML = '';
-  _xlateLog('Bu eski toplu AI çeviri akışı kapatıldı. Yeni akış: Epey specs kayıt anında hızlı lokal sözlükle İngilizce canonical olarak kaydedilir; uygulama/website cihaz diline render sırasında çevirir, eksikte İngilizce gösterir.');
-  _xlateProgress(0, 0, 'Disabled: canonical English is now generated during scrape.');
-  toast('Toplu AI çeviri kapalı; yeni scraper İngilizce canonical specs yazar.', 'i', 6000);
-  return;
   if (startBtn) startBtn.disabled = true;
   if (stopBtn)  stopBtn.style.display = '';
 

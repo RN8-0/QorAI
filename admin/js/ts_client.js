@@ -207,7 +207,7 @@ async function tsSearch(query, opts = {}) {
     q: String(query || '').trim() || '*',
     query_by: 'name,brand,category,keySpecsText',
     query_by_weights: '5,3,2,1',
-    sort_by: '_text_match:desc,techScore:desc',
+    sort_by: opts.sortBy || (String(query || '').trim() ? '_text_match:desc,techScore:desc' : 'techScore:desc'),
     per_page: String(Math.min(250, Math.max(1, opts.perPage || 100))),
     page: String(opts.page || 1),
     num_typos: '2',
