@@ -1380,6 +1380,7 @@ async function _saveDeDict() {
     if (!_deDictDirty) return;
   }
   _deDictSavePromise = (async () => {
+    let failure = null;
     while (_deDictDirty) {
       _deDictDirty = false;
       // Snapshot the cache so overlapping chunk completions cannot mutate the
@@ -1395,9 +1396,11 @@ async function _saveDeDict() {
       } catch (e) {
         console.warn('[de-dict] save failed:', e.message);
         _deDictDirty = true; // retry next time
+        failure = e;
         break;
       }
     }
+    if (failure) throw failure;
   })();
   try {
     await _deDictSavePromise;
@@ -1609,6 +1612,7 @@ window.QorAiDict = {
   ...(_staticQorAiDict || {}),
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
+  isDirty: () => _deDictDirty,
   set:     (turkishText, lang, translation) => _deDictStore(turkishText, lang, translation),
   remove:  (turkishText) => {
     const key = String(turkishText || '').toLowerCase().trim();

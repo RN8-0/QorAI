@@ -166,9 +166,9 @@ const ALL_CAT_SLUGS = new Set([
   'smartphones', 'tablets', 'digital_cameras', 'video_cameras', 'security_cameras',
   'keyboards', 'mice', 'printers', 'network_switches', 'routers', 'pcie_nic',
   'ups', 'pdu', 'power_adapters', 'speakers', 'games',
-].filter(slug => !BLOCKED_ICECAT_SLUGS.has(slug)));
+].map(canonicalCategory).filter(slug => slug && !BLOCKED_ICECAT_SLUGS.has(slug)));
 const CAT_WHITELIST = CATS_FILTER && CATS_FILTER.trim().toLowerCase() !== 'all'
-  ? new Set(CATS_FILTER.split(',').map(normalizeCatFilterSlug).filter(slug => slug && !BLOCKED_ICECAT_SLUGS.has(slug)))
+  ? new Set(CATS_FILTER.split(',').map(canonicalCategory).filter(slug => slug && !BLOCKED_ICECAT_SLUGS.has(slug)))
   : CATS_FILTER.trim().toLowerCase() === 'all'
     ? ALL_CAT_SLUGS
     : DEFAULT_CAT_SLUGS;

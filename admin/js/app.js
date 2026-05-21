@@ -2035,6 +2035,7 @@ async function stopCategoryTranslation(){
   try {
     if (window.QorAiBulkTranslate?.saveDict) {
       await window.QorAiBulkTranslate.saveDict();
+      if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
       _scheduleDictionaryLiveRender('Stop checkpoint saved to PocketBase.', 50);
       _xlateLog('✓ Dictionary checkpoint saved after stop request.', 'success');
     }
@@ -2043,7 +2044,7 @@ async function stopCategoryTranslation(){
   }
 }
 
-const QORAI_TRANSLATION_BUILD = 'deepseek-depot-tolerant-patch-20260521-0950';
+const QORAI_TRANSLATION_BUILD = 'deepseek-depot-persist-fix-20260521-1030';
 
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
@@ -2073,6 +2074,10 @@ async function startCategoryTranslation(){
     _xlateProgress(0, 0, 'Loading dictionary…');
     _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
     await window.QorAiBulkTranslate.loadDict();
+    const loadedTerms = Object.keys(window.QorAiDict?.cache?.() || {}).length;
+    _refreshDictionaryStatsOnly();
+    try { renderDictionaryTable(); } catch {}
+    _xlateLog(`✓ Dictionary loaded: ${loadedTerms} terms`);
 
     _xlateProgress(0, 0, 'Fetching products…');
     // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
@@ -2233,6 +2238,7 @@ async function startCategoryTranslation(){
           detail: `Batch ${batchNo}: ${learnedNow} atoms learned, final checkpoint writing to PocketBase.`,
         });
         await window.QorAiBulkTranslate.saveDict();
+        if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
         try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
         _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${learnedNow} atoms · ${sec}s)`, 'success');
       } else {
@@ -2302,6 +2308,7 @@ async function startCategoryTranslation(){
     }
     try {
       await window.QorAiBulkTranslate.saveDict();
+      if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
       _scheduleDictionaryLiveRender('Dictionary checkpoint saved after stop/error.', 50);
       _xlateLog('✓ Dictionary checkpoint saved to PocketBase.', 'success');
     } catch (saveErr) {
