@@ -2498,6 +2498,10 @@ function _adminVariantLabel(p){
     ||text.match(/\b(?:celeron|pentium|xeon)\s+\w+\b/i)
     ||text.match(/\bm[1-9]\s*(?:pro|max|ultra)?\b/i);
   if(cpuM)parts.push(cpuM[0].replace(/\s+/g,' ').trim());
+  const gpuM=text.match(/\b(?:nvidia\s+)?(?:geforce\s+)?(?:rtx|gtx|mx)\s*\d{3,5}(?:\s*(?:ti|super|laptop))?\b/i)
+    ||text.match(/\b(?:amd\s+)?radeon\s+(?:rx\s*)?\d{3,5}(?:\s*(?:xt|m|mobile|graphics))?\b/i)
+    ||text.match(/\b(?:intel\s+)?(?:arc\s+[a-z]\d+|iris\s+xe|uhd|hd)\s+graphics\b/i);
+  if(gpuM)parts.push(gpuM[0].replace(/\s+/g,' ').trim());
   // Capacity tokens — storage is the largest, RAM the largest GB token ≤64.
   const caps=[...String(text).matchAll(/\b(\d+)\s*(TB|GB)\b/gi)].map(m=>{
     const n=parseInt(m[1],10)||0,unit=m[2].toUpperCase();
@@ -2539,7 +2543,13 @@ async function _adminFetchProductVariants(p){
     const byId=new Map();
     items.forEach(v=>byId.set(v.id,v));
     if(!byId.has(p.id))byId.set(p.id,p);
-    return [...byId.values()].sort((a,b)=>{
+    const byConfig=new Map();
+    for(const v of byId.values()){
+      const key=String(v.configKey||_adminVariantLabel(v)||v.id);
+      const prev=byConfig.get(key);
+      if(!prev||Number(v.specsCount||0)>Number(prev.specsCount||0))byConfig.set(key,v);
+    }
+    return [...byConfig.values()].sort((a,b)=>{
       const storageDelta=_adminVariantStorageMB(a)-_adminVariantStorageMB(b);
       if(storageDelta)return storageDelta;
       return String(a.name||'').localeCompare(String(b.name||''));

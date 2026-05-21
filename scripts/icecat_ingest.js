@@ -963,6 +963,10 @@ async function isCosmeticDuplicate(icecatId, category, ck) {
   const key = `${category}|${ck}`;
   const owner = configOwner.get(key);
   if (owner !== undefined) return Number(owner) !== Number(icecatId);
+  // Claim the config before awaiting PocketBase. Multiple Icecat workers can
+  // hit the same SKU family concurrently; without this provisional claim they
+  // can all see "no owner yet" and create duplicate variants.
+  configOwner.set(key, Number(icecatId) || 0);
 
   const filter = encodeURIComponent(
     `category="${String(category).replace(/"/g, '\\"')}" && configKey="${String(ck).replace(/"/g, '\\"')}"`
@@ -973,8 +977,6 @@ async function isCosmeticDuplicate(icecatId, category, ck) {
     configOwner.set(key, ownerId);
     return ownerId !== Number(icecatId);
   }
-  // No row for this config yet — this product becomes its representative.
-  configOwner.set(key, Number(icecatId) || 0);
   return false;
 }
 
