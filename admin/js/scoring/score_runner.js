@@ -34,6 +34,34 @@
     if (el) el.style.display = 'none';
   }
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function _formatPbError(e) {
+    const parts = [];
+    if (e?.status) parts.push(`HTTP ${e.status}`);
+    if (e?.url) parts.push(e.url);
+    if (e?.message) parts.push(e.message);
+    const data = e?.data || e?.response?.data;
+    if (data && typeof data === 'object') {
+      const msg = data.message || data.error || '';
+      if (msg && !parts.includes(msg)) parts.push(msg);
+      const fields = data.data && typeof data.data === 'object'
+        ? Object.entries(data.data).slice(0, 5).map(([k, v]) => `${k}: ${v?.message || JSON.stringify(v)}`).join(' | ')
+        : '';
+      if (fields) parts.push(fields);
+    }
+    return parts.filter(Boolean).join(' · ') || String(e || 'Unknown error');
+  }
+  async function _withHeartbeat(promise, label, everyMs) {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const seconds = ((Date.now() - started) / 1000).toFixed(0);
+      _slog(`  … ${label} still waiting (${seconds}s)`, 'warn');
+    }, everyMs || 10000);
+    try {
+      return await promise;
+    } finally {
+      clearInterval(timer);
+    }
+  }
 
   // ─── Data ────────────────────────────────────────────────────
   const SCORE_LOAD_FIELDS = [
@@ -44,12 +72,58 @@
 
   async function _loadProducts(category) {
     const filter = category ? `category="${category}"` : '';
-    const items = await pbGetAll('products', {
-      ...(filter ? { filter } : {}),
-      fields: SCORE_LOAD_FIELDS,
-      batch: 300,
-    });
-    return items.map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) }));
+    const perPage = category ? 100 : 60;
+    const loaded = [];
+
+    _slog(`  • Load filter: ${filter || '(all products)'}`);
+    _slog(`  • Fields: ${SCORE_LOAD_FIELDS}`);
+    _slog(`  • Page size: ${perPage}`);
+
+    let first;
+    try {
+      first = await _withHeartbeat(
+        pbGetList('products', 1, perPage, {
+          ...(filter ? { filter } : {}),
+          fields: SCORE_LOAD_FIELDS,
+          sort: 'id',
+        }),
+        'PocketBase page 1',
+        10000,
+      );
+    } catch (e) {
+      throw new Error(`page 1 failed · ${_formatPbError(e)}`);
+    }
+
+    const total = first.totalItems || first.items.length || 0;
+    const totalPages = Math.max(1, first.totalPages || Math.ceil(total / perPage));
+    _slog(`  • PocketBase count: ${total} products · ${totalPages} pages`);
+    loaded.push(...(first.docs || []).map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) })));
+    _setProgress('Loading', loaded.length, total || loaded.length, `page 1/${totalPages}`);
+    _slog(`  ✓ page 1/${totalPages}: ${first.items.length} products loaded · total ${loaded.length}/${total}`);
+
+    for (let page = 2; page <= totalPages; page++) {
+      if (_abort) break;
+      const started = Date.now();
+      try {
+        const res = await _withHeartbeat(
+          pbGetList('products', page, perPage, {
+            ...(filter ? { filter } : {}),
+            fields: SCORE_LOAD_FIELDS,
+            sort: 'id',
+          }),
+          `PocketBase page ${page}/${totalPages}`,
+          10000,
+        );
+        loaded.push(...(res.docs || []).map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) })));
+        const elapsed = ((Date.now() - started) / 1000).toFixed(1);
+        _setProgress('Loading', loaded.length, total || loaded.length, `page ${page}/${totalPages}`);
+        _slog(`  ✓ page ${page}/${totalPages}: ${res.items.length} products · ${elapsed}s · total ${loaded.length}/${total}`);
+        await _sleep(0);
+      } catch (e) {
+        throw new Error(`page ${page}/${totalPages} failed after ${((Date.now() - started) / 1000).toFixed(1)}s · ${_formatPbError(e)}`);
+      }
+    }
+    return loaded;
   }
   function _groupByCategory(products) {
     const groups = {};
