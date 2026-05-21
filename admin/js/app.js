@@ -1828,6 +1828,7 @@ async function _tsAdminList(page=1,perPage=PRODUCT_RAW_PER,opts={}){
     page,
     filterBy:_tsAdminFilterBy(),
     sortBy:_tsAdminSortBy(q),
+    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount',
   });
   return {
     items:opts.countOnly?[]:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
@@ -1839,7 +1840,13 @@ async function _tsAdminList(page=1,perPage=PRODUCT_RAW_PER,opts={}){
 async function _tsAdminSearch(q){
   if(!window.TsClient?.search)throw new Error('Typesense client not loaded');
   const filterBy=_tsAdminFilterBy();
-  const res=await window.TsClient.search(q,{perPage:120,page:1,filterBy,sortBy:_tsAdminSortBy(q)});
+  const res=await window.TsClient.search(q,{
+    perPage:120,
+    page:1,
+    filterBy,
+    sortBy:_tsAdminSortBy(q),
+    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount',
+  });
   return {
     items:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
     total:res.found||0,

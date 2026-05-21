@@ -216,6 +216,7 @@ async function tsSearch(query, opts = {}) {
     prefix: 'true',
   });
   if (opts.filterBy) params.set('filter_by', opts.filterBy);
+  if (opts.includeFields) params.set('include_fields', opts.includeFields);
   return tsRequest('GET', `/collections/${TS_COLLECTION}/documents/search?${params.toString()}`);
 }
 
