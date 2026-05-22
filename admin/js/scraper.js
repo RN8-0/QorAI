@@ -4826,8 +4826,9 @@ function _resolveScrapeSource() {
 function _detectSourceFromUrl(rawUrl) {
   const u = String(rawUrl || '').toLowerCase();
   if (!u) return null;
-  if (/(^|\.)geizhals\.(eu|at|de|com)\//.test(u)) return 'geizhals';
-  if (/(^|\.)epey\.com\//.test(u)) return 'epey';
+  // Match host even when preceded by "//" (any URL scheme).
+  if (/geizhals\.(eu|at|de|com)\//.test(u)) return 'geizhals';
+  if (/(?:^|\/\/|\.)epey\.com\//.test(u)) return 'epey';
   return null;
 }
 

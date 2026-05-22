@@ -511,43 +511,67 @@ class AppCategories {
   static const String realEstate = 'realEstate';
   static const String vehicles = 'vehicles';
 
+  // Canonical 49-category whitelist (EU pivot 2026-05-23).
+  // Must stay in sync with admin/js/categories.js → CANONICAL_EPEY_CATEGORY_GROUPS.
   static const Map<String, List<String>> subcategories = {
     tech: [
+      // Mobile
       'smartphones',
-      'tablets',
+      'feature_phones',
       'smartwatches',
+      'smart_rings',
       'headphones',
       'powerbanks',
+      'chargers',
+      // Computing
       'laptops',
       'desktops',
-      'cpus',
+      'tablets',
+      'e_readers',
+      'vr_headsets',
+      // Components
       'graphics_cards',
+      'cpus',
+      'motherboards',
       'ram',
       'ssd',
-      'motherboards',
       'psu',
       'pc_cases',
+      'ups',
+      'flash_drives',
+      // Cooling
       'cpu_coolers',
+      'laptop_coolers',
       'case_fans',
-      'monitors',
-      'tvs',
-      'soundbars',
-      'speakers',
-      'action_cameras',
-      'security_cameras',
-      'drones',
+      // Peripherals
+      'keyboards',
+      'mice',
       'gamepads',
       'gaming_consoles',
-      'games',
+      'webcams',
+      'microphones',
       'printers',
-      'mice',
-      'network_switches',
-      'wifi_routers',
+      '3d_printers',
+      // Display & Audio
+      'monitors',
+      'tvs',
+      'projectors',
+      'speakers',
+      'audio_systems',
+      'av_receivers',
+      'media_players',
+      // Photo & Video
+      'camera_lenses',
+      'ip_cameras',
+      'dashcams',
+      'gimbals',
+      'drones',
+      // Network & Smart Home
+      'routers',
       'modem_routers',
-      'pcie_nic',
-      'ups',
-      'vacuums',
       'robot_vacuums',
+      'coffee_makers',
+      'hardware_wallets',
     ],
     subscription: ['streaming', 'music', 'vpn', 'ai_tools', 'cloud_storage'],
     gaming: [
