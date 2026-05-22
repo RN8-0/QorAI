@@ -732,6 +732,31 @@ function extractBestFilter(html) {
   };
 }
 
+function extractBrandFilter(html) {
+  const source = String(html || '');
+  const values = [];
+  const seen = new Set();
+  const re = /filtre\(['"]?(marka:\d+)['"]?\)[^>]*>[\s\S]{0,260}?<label\b[^>]*>([\s\S]{0,220}?)<\/label>/gi;
+  let m;
+  while ((m = re.exec(source)) !== null) {
+    const value = m[1];
+    if (seen.has(value)) continue;
+    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const count = parseInt((text.match(/\(([\d.]+)\)/)?.[1] || '0').replace(/\./g, ''), 10) || 0;
+    if (count <= 0) continue;
+    seen.add(value);
+    values.push({
+      value,
+      name: text.replace(/\s*\([\d.]+\)\s*$/, '').trim(),
+      count,
+    });
+  }
+  values.sort((a, b) => b.count - a.count);
+  return values.length
+    ? { groupId: 'marka', total: values.reduce((n, x) => n + x.count, 0), values }
+    : null;
+}
+
 // Highest page number referenced by the listing's pagination block.
 function extractMaxListingPage(html, catPath) {
   if (!catPath) return 1;
@@ -1415,8 +1440,10 @@ const server = http.createServer(async (req, res) => {
         const productPrefix = productPrefixFromLinks(links, prefix);
         const ajax = extractAjaxParams(html);
         const filter = extractBestFilter(html);
+        const brandFilter = extractBrandFilter(html);
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
           `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
+          `${brandFilter ? ` · brand partitions ${brandFilter.values.length} (~${brandFilter.total} ürün)` : ''}` +
           `${productPrefix !== prefix ? ` · product prefix ${productPrefix}` : ''}`);
         result = {
           links, pages: [],
@@ -1425,6 +1452,7 @@ const server = http.createServer(async (req, res) => {
                 base: targetUrl, prefix: productPrefix }
             : null,
           filter,
+          brandFilter,
         };
       }
 
@@ -1436,6 +1464,7 @@ const server = http.createServer(async (req, res) => {
         pages: result.pages || [],
         ajax: result.ajax || null,
         filter: result.filter || null,
+        brandFilter: result.brandFilter || null,
       }));
     } catch (err) {
       if (err.extractionFailed) {

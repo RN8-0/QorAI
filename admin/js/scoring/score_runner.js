@@ -66,23 +66,23 @@
   // ─── Data ────────────────────────────────────────────────────
   const SCORE_LOAD_FIELDS = [
     'id', 'name', 'brand', 'category', 'source', 'sourceUrl',
-    'specs', 'keySpecs', 'specsEn',
+    'keySpecs',
     'techScore', 'specsCount', 'scrapedAt', 'created',
   ].join(',');
 
   async function _loadProducts(category) {
-    const filter = category ? `category="${category}"` : '';
+    const baseFilter = category ? `category="${category}"` : '';
     const perPage = 500;
     const loaded = [];
 
-    _slog(`  • Load filter: ${filter || '(all products)'}`);
+    _slog(`  • Load filter: ${baseFilter || '(all products)'}`);
     _slog(`  • Fields: ${SCORE_LOAD_FIELDS}`);
-    _slog(`  • Page size: ${perPage}`);
+    _slog(`  • Page size: ${perPage} · cursor pagination by id`);
 
     try {
       _slog('  • Counting products with a lightweight query...');
       var total = await _withHeartbeat(
-        pbCountWhere('products', filter),
+        pbCountWhere('products', baseFilter),
         'PocketBase count',
         10000,
       );
@@ -91,14 +91,18 @@
     }
 
     const totalPages = Math.max(1, Math.ceil((total || 0) / perPage));
-    _slog(`  • PocketBase count: ${total} products · ${totalPages} pages`);
+    _slog(`  • PocketBase count: ${total} products · ~${totalPages} cursor pages`);
 
-    for (let page = 1; page <= totalPages; page++) {
+    let page = 1;
+    let lastId = '';
+    while (!_abort) {
       if (_abort) break;
       const started = Date.now();
+      const cursorFilter = lastId ? `id>"${lastId.replace(/"/g, '\\"')}"` : '';
+      const filter = [baseFilter, cursorFilter].filter(Boolean).join(' && ');
       try {
         const res = await _withHeartbeat(
-          pbGetList('products', page, perPage, {
+          pbGetList('products', 1, perPage, {
             ...(filter ? { filter } : {}),
             fields: SCORE_LOAD_FIELDS,
             sort: 'id',
@@ -107,10 +111,15 @@
           `PocketBase page ${page}/${totalPages}`,
           10000,
         );
-        loaded.push(...(res.docs || []).map(d => ({ id: d.id, ...(typeof d.data === 'function' ? d.data() : d) })));
+        const items = res.items || [];
+        loaded.push(...items.map(item => ({ id: item.id, ...(typeof item.data === 'function' ? item.data() : item) })));
+        if (!items.length) break;
+        lastId = items[items.length - 1].id;
         const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-        _setProgress('Loading', loaded.length, total || loaded.length, `page ${page}/${totalPages}`);
-        _slog(`  ✓ page ${page}/${totalPages}: ${res.items.length} products · ${elapsed}s · total ${loaded.length}/${total}`);
+        _setProgress('Loading', Math.min(loaded.length, total || loaded.length), total || loaded.length, `page ${page}/${totalPages}`);
+        _slog(`  ✓ page ${page}/${totalPages}: ${items.length} products · ${elapsed}s · total ${loaded.length}/${total} · cursor ${lastId}`);
+        if (items.length < perPage || (total && loaded.length >= total)) break;
+        page++;
         await _sleep(0);
       } catch (e) {
         throw new Error(`page ${page}/${totalPages} failed after ${((Date.now() - started) / 1000).toFixed(1)}s · ${_formatPbError(e)}`);

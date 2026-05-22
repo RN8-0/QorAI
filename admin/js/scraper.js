@@ -4163,6 +4163,8 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
       const filter = data?.filter && Array.isArray(data.filter.values) && data.filter.values.length
         ? data.filter : null;
+      const brandFilter = data?.brandFilter && Array.isArray(data.brandFilter.values) && data.brandFilter.values.length
+        ? data.brandFilter : null;
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
       const firstPageAdded = pushItems(itemsFromData(data));
@@ -4191,6 +4193,22 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           const addedByFilter = await paginateStream(ajax, filter.values, logPage);
           if (addedByFilter === 0) {
             slog(`  ⚠️ Filtreli AJAX yeni ürün getirmedi`, 'warn');
+          }
+        }
+
+        if (brandFilter && allItems.length < maxProducts && !scraperAbort) {
+          slog(`  ⏩ Marka partition taraması — ${brandFilter.values.length} marka, ~${brandFilter.total} ürün`, 'info');
+          for (let bi = 0; bi < brandFilter.values.length && allItems.length < maxProducts && !scraperAbort; bi++) {
+            const brand = brandFilter.values[bi];
+            const beforeBrand = allItems.length;
+            slog(`  • Marka ${bi + 1}/${brandFilter.values.length}: ${brand.name || brand.value} (~${brand.count})`, 'info');
+            await paginateStream(ajax, [brand.value], (pageNo, added, total) => {
+              if (pageNo === 1 || added || pageNo % 10 === 0) {
+                slog(`    ✓ ${brand.name || brand.value} sayfa ${pageNo}: +${added} → toplam ${total}`, added ? 'success' : 'warn');
+              }
+            });
+            const brandAdded = allItems.length - beforeBrand;
+            slog(`    ↳ ${brand.name || brand.value}: +${brandAdded} yeni URL`, brandAdded ? 'success' : 'warn');
           }
         }
       } else if (!ajax) {
@@ -4308,6 +4326,9 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 //                  affiliate offers linked to it) is what we keep alive.
 async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
+  const isEpeySavedRecord = (record = {}) =>
+    /epey/i.test(String(record.source || '')) ||
+    /(^|\.)epey\.com\//i.test(String(record.sourceUrl || ''));
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const categoryFilter = safeCategory ? `category="${safeCategory}"` : '';
@@ -4326,7 +4347,8 @@ async function _loadExistingSourceUrls(categoryId) {
     const byVariantGroup = new Map();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      if (data?.sourceUrl) {
+      const isEpey = isEpeySavedRecord(data);
+      if (isEpey && data?.sourceUrl) {
         const rawUrl = String(data.sourceUrl).trim();
         urls.add(rawUrl);
         const normalized = normalizeScrapeUrlKey(rawUrl);
@@ -4334,9 +4356,9 @@ async function _loadExistingSourceUrls(categoryId) {
         const urlSlug = slugFromUrl(rawUrl);
         if (urlSlug) slugs.add(urlSlug);
       }
-      if (d.id) slugs.add(String(d.id));
+      if (isEpey && d.id) slugs.add(String(d.id));
       const savedSlug = String(data?.slug || '').trim();
-      if (savedSlug) slugs.add(savedSlug);
+      if (isEpey && savedSlug) slugs.add(savedSlug);
       const vg = String(data?.variantGroup || '').trim();
       if (vg && d.id) {
         const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };

@@ -147,7 +147,6 @@ function normalizeCatFilterSlug(input) {
     pdu: 'ups',
     power_adapters: 'powerbanks',
     video_cameras: 'digital_cameras',
-    signage_displays: 'tvs',
     flash_drives: 'external_hdd',
     memory_cards: 'external_hdd',
     optical_drives: 'hard_drives',
@@ -391,10 +390,7 @@ function canonicalCategory(slug) {
     video_cameras: 'digital_cameras',
     servers: 'desktops',
     thin_clients: 'desktops',
-    laptop_docks: 'laptops',
     handheld_computers: 'tablets',
-    monitor_accessories: 'monitors',
-    tv_mounts: 'tvs',
     coffee_makers: 'small_appliances',
     dishwashers: 'small_appliances',
     microwaves: 'small_appliances',
@@ -411,8 +407,8 @@ function canonicalCategory(slug) {
 // ─── Key specs per category (displayed in compare + AI prompts) ───────────────
 
 const KEY_SPEC_NAMES = {
-  laptops:                ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
-  notebooks:              ['Processor Model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
+  laptops:                ['Processor Model','Graphics adapter model','Discrete graphics card model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
+  notebooks:              ['Processor Model','Graphics adapter model','Discrete graphics card model','Memory (RAM)','Hard Disk (SSD) Size','Display diagonal','Display resolution','Operating System','Battery Life'],
   smartphones:            ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Main Camera','Battery Capacity (Typical)','Network'],
   tablets:                ['Processor Model','Memory (RAM)','Internal Storage','Display diagonal','Display resolution','Operating System','Battery Capacity (Typical)'],
   smartwatches:           ['Display diagonal','Display resolution','Battery Life','Water resistance','Operating System','Bluetooth','GPS'],
@@ -557,12 +553,14 @@ async function phase1_index() {
         const catId = parseInt(cur.catId);
         const slug = CAT_MAP[catId];
         const icecatIdNum = Number(cur.id) || 0;
+        const nameYear = inferReleaseYearFromTexts([cur.name || '']);
         if (
           isAllowedCatId(catId) &&
           !seenIcecatIds.has(cur.id) &&
           !isBlockedCatalogText(cur.name) &&
           cur.onMarket !== '0' &&
-          (!MIN_ICECAT_ID || icecatIdNum >= MIN_ICECAT_ID)
+          (!MIN_ICECAT_ID || icecatIdNum >= MIN_ICECAT_ID) &&
+          (!MIN_YEAR || !nameYear || nameYear >= MIN_YEAR)
         ) {
           // Per-model-family cap — drop cosmetic SKUs beyond the sampling
           // limit before the expensive live API phase. The key strips
@@ -780,8 +778,25 @@ function minSpecsForCategory(category) {
   return 5;
 }
 
-function inferReleaseYear(payload) {
+function extractCandidateYears(text) {
+  const years = [];
+  const s = String(text || '');
+  const matches = s.matchAll(/(?:^|[^0-9])(19[8-9]\d|20[0-3]\d)(?=$|[^0-9])/g);
+  for (const m of matches) years.push(Number(m[1]));
+  return years;
+}
+
+function inferReleaseYearFromTexts(texts) {
   const currentYear = new Date().getFullYear() + 1;
+  for (const text of texts || []) {
+    for (const year of extractCandidateYears(text)) {
+      if (year >= 1980 && year <= currentYear) return year;
+    }
+  }
+  return 0;
+}
+
+function inferReleaseYear(payload) {
   const specs = payload?.specs || {};
   const candidates = [];
   for (const [k, v] of Object.entries(specs)) {
@@ -790,14 +805,7 @@ function inferReleaseYear(payload) {
     }
   }
   candidates.push(payload?.name || '', payload?.sourceUrl || '');
-  for (const text of candidates) {
-    const matches = String(text || '').match(/\b(19[8-9]\d|20[0-3]\d)\b/g) || [];
-    for (const m of matches) {
-      const year = Number(m);
-      if (year >= 1980 && year <= currentYear) return year;
-    }
-  }
-  return 0;
+  return inferReleaseYearFromTexts(candidates);
 }
 
 function icecatQualityFailure(payload) {
@@ -856,7 +864,9 @@ const CATEGORY_NAMES = {
   webcams: 'Webcams',
   graphics_cards: 'Graphics Cards',
   monitors: 'Monitors',
+  monitor_accessories: 'Monitor Accessories',
   tvs: 'TVs',
+  tv_mounts: 'TV Mounts',
   signage_displays: 'Signage Displays',
   projectors: 'Projectors',
   ram: 'RAM',

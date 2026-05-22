@@ -16,6 +16,7 @@
 
 const path = require('path');
 const { req } = require('../migration/pb');
+const { req: tsReq } = require('../migration/ts');
 const ScoreEngine = require(path.join(__dirname, '..', 'admin', 'js', 'scoring', 'score_engine.js'));
 
 const argv = process.argv.slice(2);
@@ -23,20 +24,27 @@ const DRY = argv.includes('--dry');
 const OVERWRITE = argv.includes('--overwrite');
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
 const CONCURRENCY = 16;
+const SYNC_TS = !argv.includes('--no-ts');
 
 // Score engine probes specs / keySpecs / specsEn. Avoid specSections here:
 // it is the largest field and makes category runs crawl over the admin tunnel.
-const FIELDS = 'id,category,name,brand,specs,keySpecs,specsEn,specsCount,techScore,scrapedAt';
+const FIELDS = 'id,category,name,brand,keySpecs,specsCount,techScore,scrapedAt,created';
 
 async function fetchAll() {
   const out = [];
   let page = 1;
-  const filter = ONLY_CAT ? `&filter=${encodeURIComponent(`category="${ONLY_CAT}"`)}` : '';
+  let lastId = '';
   for (;;) {
-    const r = await req('GET', `/api/collections/products/records?perPage=500&page=${page}&sort=id&skipTotal=1&fields=${FIELDS}${filter}`);
+    const filters = [];
+    if (ONLY_CAT) filters.push(`category="${ONLY_CAT}"`);
+    if (lastId) filters.push(`id>"${lastId.replace(/"/g, '\\"')}"`);
+    const filter = filters.length ? `&filter=${encodeURIComponent(filters.join(' && '))}` : '';
+    const r = await req('GET', `/api/collections/products/records?perPage=500&page=1&sort=id&skipTotal=1&fields=${FIELDS}${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${JSON.stringify(r.body).slice(0, 200)}`);
     const items = r.body.items || [];
     out.push(...items);
+    if (items.length) lastId = items[items.length - 1].id;
+    console.log(`  load page ${page}: ${items.length} products · total ${out.length}${lastId ? ` · cursor ${lastId}` : ''}`);
     if (items.length < 500) break;
     page++;
   }
@@ -83,11 +91,11 @@ async function main() {
     console.log(`  ${cat.padEnd(20)} ${String(list.length).padStart(6)} products → ${changed} to update`);
   }
 
-  console.log(`\n  ${updates.length} record(s) need a techScore write`);
+  console.log(`\n  ${updates.length} record(s) need a techScore write${SYNC_TS ? ' + Typesense patch' : ''}`);
   if (DRY) { console.log('  Dry run — nothing written.\n'); return; }
   if (!updates.length) { console.log('  Already scored.\n'); return; }
 
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, tsOk = 0, tsFail = 0;
   await runPool(updates, async (u) => {
     const r = await req('PATCH', `/api/collections/products/records/${u.id}`, {
       techScore: u.score,
@@ -102,10 +110,24 @@ async function main() {
       },
       scoreUpdatedAt: new Date().toISOString(),
     });
-    if (r.status === 200) ok++;
-    else { fail++; if (fail <= 8) console.log(`   ! ${u.id}: ${r.status}`); }
+    if (r.status === 200) {
+      ok++;
+      if (SYNC_TS) {
+        const tr = await tsReq('PATCH', `/collections/products/documents/${encodeURIComponent(u.id)}`, {
+          techScore: u.score,
+        });
+        if (tr.status >= 200 && tr.status < 300) tsOk++;
+        else {
+          tsFail++;
+          if (tsFail <= 8) console.log(`   ! ts ${u.id}: ${tr.status}`);
+        }
+      }
+    } else {
+      fail++;
+      if (fail <= 8) console.log(`   ! pb ${u.id}: ${r.status}`);
+    }
   });
-  console.log(`\n  Done — ${ok} scored, ${fail} failed.\n`);
+  console.log(`\n  Done — PB ${ok} scored, ${fail} failed${SYNC_TS ? ` · TS ${tsOk} patched, ${tsFail} failed` : ''}.\n`);
 }
 
 main().catch(e => { console.error('  ✗', e.message); process.exit(1); });

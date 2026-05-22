@@ -46,8 +46,8 @@
   ];
 
   const GPU_LAPTOP = [
-    ['RTX 5090 Laptop', 94], ['RTX 5080 Laptop', 88], ['RTX 5070 Ti Laptop', 82],
-    ['RTX 5070 Laptop', 76], ['RTX 5060 Laptop', 65],
+    ['RTX 5090 Laptop', 100], ['RTX 5080 Laptop', 94], ['RTX 5070 Ti Laptop', 86],
+    ['RTX 5070 Laptop', 78], ['RTX 5060 Laptop', 67],
     ['RTX 4090 Laptop', 80], ['RTX 4080 Laptop', 72], ['RTX 4070 Laptop', 62],
     ['RTX 4060 Laptop', 50], ['RTX 4050 Laptop', 40],
     ['RTX 3060 Laptop', 30], ['RTX 3050 Laptop', 22],
@@ -225,8 +225,8 @@
   // ─────────────────────────────────────────────────────────────
 
   const FIELDS = {
-    gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics Card', 'Graphics', 'Dedicated GPU', 'Discrete GPU', 'Ekran Kartı', 'Ekran Karti', 'Harici Ekran Kartı', 'GPU'],
-    cpu:        ['Processor Model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci', 'İşlemci Modeli'],
+    gpu:        ['GPU Model', 'External Graphics Processor (GPU)', 'Graphics Processor (GPU)', 'Graphics Processor', 'Graphics adapter model', 'Discrete graphics adapter model', 'On-board graphics adapter model', 'Graphics Card', 'Graphics', 'Dedicated GPU', 'Discrete GPU', 'Ekran Kartı', 'Ekran Karti', 'Harici Ekran Kartı', 'GPU'],
+    cpu:        ['Processor Model', 'Processor family', 'Processor model', 'Main Processor (CPU)', 'CPU Model', 'CPU', 'Processor', 'İşlemci', 'Islemci', 'Ana İşlemci', 'Ana Islemci', 'İşlemci Modeli'],
     ram:        ['Memory (RAM)', 'RAM Capacity', 'RAM (GB)', 'System Memory', 'Installed RAM', 'RAM', 'Memory', 'Bellek', 'Sistem Belleği', 'Sistem Bellegi'],
     storage:    ['Hard Disk (SSD) Size', 'SSD Size', 'SSD Capacity', 'Storage Capacity', 'Internal Storage', 'Hard Disk Size', 'Hard Disk', 'Storage', 'Depolama', 'Dahili Hafıza', 'Dahili Hafiza'],
     battery:    ['Battery Capacity (Typical)', 'Battery Capacity', 'Battery Power', 'Battery (mAh)', 'Battery', 'Batarya Kapasitesi', 'Batarya', 'Pil'],
@@ -420,7 +420,9 @@
   // Flagship anchors can reach 100; mid-range capped harder so Redmi/budget devices stay
   // clearly below flagships (epey/versus parity).
   const TIER_CAPS = [
-    { min: 82, cap: 100, tier: 'flagship'  },
+    { min: 98, cap: 100, tier: 'flagship'  },
+    { min: 94, cap: 97,  tier: 'near-flagship' },
+    { min: 82, cap: 92,  tier: 'high-end'  },
     { min: 62, cap: 84,  tier: 'upper-mid' },
     { min: 42, cap: 68,  tier: 'mid'       },
     { min: 22, cap: 52,  tier: 'entry'     },
@@ -472,6 +474,74 @@
     'vr-headsets': 98, 'media-players': 94, keyboards: 94, mice: 94,
     'robot-vacuums': 94,
   };
+
+  const CATEGORY_WEIGHT_ALIASES = {
+    graphics_cards: 'gpus',
+    gpu_coolers: 'coolers',
+    cpu_coolers: 'coolers',
+    m2_coolers: 'coolers',
+    pc_cases: 'cases',
+    laptop_docks: 'routers',
+    monitor_accessories: 'monitors',
+    tv_mounts: 'cases',
+    tv_remotes: 'gamepads',
+    signage_displays: 'tvs',
+    gaming_consoles: 'consoles',
+    digital_cameras: 'cameras',
+    action_cameras: 'action-cameras',
+    video_cameras: 'cameras',
+    camera_lenses: 'lenses',
+    modem_routers: 'routers',
+    wifi_routers: 'routers',
+    wifi_repeaters: 'routers',
+    access_points: 'routers',
+    network_switches: 'routers',
+    pcie_nic: 'routers',
+    vacuums: 'robot-vacuums',
+    e_readers: 'e-readers',
+    media_players: 'media-players',
+    vr_headsets: 'vr-headsets',
+    smart_rings: 'smart-rings',
+    smartwatches: 'smartwatches',
+    hard_drives: 'ssd',
+    external_hdd: 'ssd',
+    external_ssd: 'ssd',
+    nas_servers: 'ssd',
+    flash_drives: 'ssd',
+    memory_cards: 'ssd',
+    optical_drives: 'ssd',
+    powerbanks: 'speakers',
+    ups: 'psu',
+    case_fans: 'coolers',
+    webcams: 'webcams',
+    printers: 'printers',
+    projectors: 'projectors',
+    soundbars: 'soundbars',
+    speakers: 'speakers',
+    headphones: 'headphones',
+    earphones: 'earphones',
+    gamepads: 'gamepads',
+    keyboards: 'keyboards',
+    desktop_keyboards: 'keyboards',
+    numeric_keypads: 'keyboards',
+    keyboard_accessories: 'keyboards',
+    mice: 'mice',
+    mouse_pads: 'mice',
+    trackballs: 'mice',
+    monitors: 'monitors',
+    tvs: 'tvs',
+    laptops: 'laptops',
+    desktops: 'desktops',
+    cpus: 'cpus',
+    motherboards: 'motherboards',
+    ram: 'ram',
+    ssd: 'ssd',
+  };
+
+  function _scoreCategoryKey(category) {
+    const c = String(category || '').toLowerCase().replace(/-/g, '_');
+    return CATEGORY_WEIGHT_ALIASES[c] || CATEGORY_WEIGHT_ALIASES[c.replace(/_/g, '-')] || c;
+  }
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
   const SCORE_MIN = 20;
@@ -663,6 +733,22 @@
     if (unit === 'mb' || unit === 'm') return n / 1024;
     if (unit === 'kb' || unit === 'k') return n / (1024 * 1024);
     return n;
+  }
+
+  function _parseRamGbFromText(s) {
+    const text = String(s || '');
+    const m = text.match(/(\d+(?:[.,]\d+)?)\s*(tb|gb)\s*(?:ddr|lpddr|sdram|ram|memory|bellek)/i);
+    if (m) return _parseGb(`${m[1]} ${m[2]}`);
+    const m2 = text.match(/\b(?:ram|memory|bellek)\D{0,16}(\d+(?:[.,]\d+)?)\s*(tb|gb)\b/i);
+    return m2 ? _parseGb(`${m2[1]} ${m2[2]}`) : null;
+  }
+
+  function _parseStorageGbFromText(s) {
+    const text = String(s || '');
+    const m = text.match(/(\d+(?:[.,]\d+)?)\s*(tb|gb)\s*(?:ssd|hdd|nvme|storage|depolama|disk)/i);
+    if (m) return _parseGb(`${m[1]} ${m[2]}`);
+    const m2 = text.match(/\b(?:ssd|hdd|nvme|storage|depolama|disk)\D{0,16}(\d+(?:[.,]\d+)?)\s*(tb|gb)\b/i);
+    return m2 ? _parseGb(`${m2[1]} ${m2[2]}`) : null;
   }
 
   // Clean a GPU model string to its canonical short name.
@@ -900,7 +986,7 @@
     switch (weightKey) {
       // ── RANK SPECS ──
       case 'cpu': {
-        const s = _lookupStr(p, 'cpu');
+        const s = _lookupStr(p, 'cpu') || p.name || _allSpecText(p);
         if (!s) return null;
         const list = isLaptop ? CPU_LAPTOP : (cat === 'cpus' || cat === 'desktops' ? CPU_DESKTOP : CPU_LAPTOP);
         const m = _matchRank(s, list);
@@ -916,7 +1002,7 @@
         return null;
       }
       case 'gpu': {
-        const s = _lookupStr(p, 'gpu');
+        const s = _lookupStr(p, 'gpu') || p.name || _allSpecText(p);
         if (!s) return null;
         const cleaned = _cleanGpuModel(s);
         const list = isLaptop ? GPU_LAPTOP : GPU_DESKTOP;
@@ -983,15 +1069,15 @@
 
       // ── NUMERIC (higher better) ──
       case 'ram': {
-        const s = _lookupStr(p, 'ram');
+        const s = _lookupStr(p, 'ram') || p.name || _allSpecText(p);
         if (s == null) return null;
-        const n = _parseGb(s);
+        const n = _parseRamGbFromText(s) ?? _parseGb(s);
         return n == null ? null : { score: n, type: 'num', raw: s };
       }
       case 'storage': {
-        const s = _lookupStr(p, 'storage');
+        const s = _lookupStr(p, 'storage') || p.name || _allSpecText(p);
         if (s == null) return null;
-        const n = _parseGb(s);
+        const n = _parseStorageGbFromText(s) ?? _parseGb(s);
         return n == null ? null : { score: n, type: 'num', raw: s };
       }
       case 'battery': return _num(p, 'battery');
@@ -1344,8 +1430,13 @@
     opts = opts || {};
     if (!products || !products.length) return [];
 
-    // Pick weights by first product's category (assume homogeneous)
-    const cat = String((products[0].category || '')).toLowerCase();
+    // Pick weights by first product's category (assume homogeneous).
+    // Many catalog slugs are UI/source categories (graphics_cards,
+    // cpu_coolers, pc_cases...) while the scorer has reusable scoring
+    // profiles (gpus, coolers, cases...). Resolve that once here so every
+    // category still gets a real 1-100 distribution instead of a flat 50.
+    const rawCat = String((products[0].category || '')).toLowerCase();
+    const cat = _scoreCategoryKey(rawCat);
     const weights = WEIGHTS[cat] || WEIGHTS[cat.replace(/_/g, '-')] || WEIGHTS[cat.replace(/-/g, '_')];
     if (!weights) {
       return products.map(p => ({ id: p.id, name: p.name, score: 50, missing: ['unknown_category'], breakdown: {} }));
@@ -1544,7 +1635,13 @@
         for (const r of results) {
           r.preCategoryStretchScore = r.score;
           r.categoryFinalStretch = +finalStretch.toFixed(3);
-          r.score = Math.max(1, Math.min(SCORE_MAX, Math.round(r.score * finalStretch)));
+          // Relative category stretch is for calibration, not for turning an
+          // upper-mid anchor (RTX 5070 / Core i5 class) into a fake flagship.
+          // Anchor-less categories can still use the full 1-100 range.
+          const stretchCap = r.anchorKey && r.tier !== 'flagship'
+            ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
+            : SCORE_MAX;
+          r.score = Math.max(1, Math.min(stretchCap, Math.round(r.score * finalStretch)));
         }
       }
     }
