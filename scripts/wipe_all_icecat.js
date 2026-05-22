@@ -33,32 +33,67 @@ const DRY_RUN = !YES;
 const PER_PAGE = Math.max(50, Math.min(1000, Number(opt('perPage', '300')) || 300));
 const FILTER = 'source="icecat"';
 
-async function countTotal() {
-  const r = await req('GET',
-    `/api/collections/products/records?perPage=1&page=1&skipTotal=0&filter=${encodeURIComponent(FILTER)}&fields=id`);
-  if (r.status !== 200) {
-    throw new Error(`count failed: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`);
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/// Run `fn` with up to `maxRetries` linearly backed-off attempts when the
+/// PB call returns 5xx (typical during a Coolify rolling deploy) or the
+/// HTTP layer outright fails (DNS, ECONNRESET, fetch failed).
+async function withRetry(label, fn, maxRetries = 8) {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const msg = (e && e.message) || String(e);
+      const transient = /5\d\d|fetch failed|ECONNRESET|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|socket hang up|Bad Gateway|Service Unavailable/i.test(msg);
+      if (!transient || attempt === maxRetries) throw e;
+      const backoff = Math.min(30000, 2000 * attempt);
+      console.warn(`  ! ${label} attempt ${attempt}/${maxRetries} failed (${msg.slice(0, 120)}) — retrying in ${backoff}ms`);
+      await sleep(backoff);
+    }
   }
-  return Number(r.body.totalItems || 0);
+  throw lastErr;
+}
+
+async function countTotal() {
+  return withRetry('countTotal', async () => {
+    const r = await req('GET',
+      `/api/collections/products/records?perPage=1&page=1&skipTotal=0&filter=${encodeURIComponent(FILTER)}&fields=id`);
+    if (r.status !== 200) {
+      throw new Error(`count failed: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`);
+    }
+    return Number(r.body.totalItems || 0);
+  });
 }
 
 async function fetchBatch(page) {
-  const fields = 'id,name,brand,category,icecatId,specsCount,techScore';
-  const r = await req('GET',
-    `/api/collections/products/records?perPage=${PER_PAGE}&page=${page}&sort=created&filter=${encodeURIComponent(FILTER)}&fields=${encodeURIComponent(fields)}`);
-  if (r.status !== 200) {
-    throw new Error(`fetch failed: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`);
-  }
-  return r.body;
+  return withRetry('fetchBatch', async () => {
+    const fields = 'id,name,brand,category,icecatId,specsCount,techScore';
+    const r = await req('GET',
+      `/api/collections/products/records?perPage=${PER_PAGE}&page=${page}&sort=created&filter=${encodeURIComponent(FILTER)}&fields=${encodeURIComponent(fields)}`);
+    if (r.status !== 200) {
+      throw new Error(`fetch failed: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`);
+    }
+    return r.body;
+  });
 }
 
 async function deleteOne(id) {
-  const r = await req('DELETE', `/api/collections/products/records/${id}`);
-  if (![200, 204].includes(r.status)) {
-    console.warn(`  ! delete failed ${id}: ${r.status} ${JSON.stringify(r.body).slice(0, 160)}`);
+  try {
+    return await withRetry(`deleteOne ${id}`, async () => {
+      const r = await req('DELETE', `/api/collections/products/records/${id}`);
+      if (![200, 204, 404].includes(r.status)) {
+        throw new Error(`delete ${id} returned ${r.status}: ${JSON.stringify(r.body).slice(0, 160)}`);
+      }
+      return true;
+    }, 4);
+  } catch (e) {
+    console.warn(`  ! delete failed permanently ${id}: ${(e.message || e).slice(0, 160)}`);
     return false;
   }
-  return true;
 }
 
 async function main() {
