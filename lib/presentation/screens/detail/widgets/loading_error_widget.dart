@@ -91,80 +91,93 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            // Swipeable images
-            PageView.builder(
-              controller: _pageController,
-              itemCount: widget.images.length,
-              onPageChanged: (i) => setState(() => _currentIndex = i),
-              itemBuilder: (context, index) {
-                return Center(
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: InteractiveViewer(
-                      minScale: 0.5,
-                      maxScale: 4.0,
-                      child: CachedNetworkImage(
-                        imageUrl: widget.images[index],
-                        fit: BoxFit.contain,
-                        placeholder: (_, _) => Center(
-                          child: CircularProgressIndicator(
-                            color: context.surfaceVariantColor, strokeWidth: 2)),
-                        errorWidget: (_, _, _) =>
-                            Icon(Icons.broken_image, color: context.textPrimary.withValues(alpha: 0.54), size: 64),
-                      ),
+    // Always white backdrop (product photos are shot on white) — works in
+    // both light and dark themes.
+    const bgColor = Colors.white;
+    const fgColor = Colors.black;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+    final screenW = MediaQuery.sizeOf(context).width;
+    final fullCacheWidth = (screenW * dpr).round().clamp(1080, 2400);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: Stack(
+        children: [
+          // Swipeable images — PageView drives the swipe gesture.
+          // (InteractiveViewer was conflicting with horizontal swipe;
+          // pinch-to-zoom removed for now in favor of reliable paging.)
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.images.length,
+            onPageChanged: (i) => setState(() => _currentIndex = i),
+            itemBuilder: (context, index) => GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: widget.images[index],
+                  fit: BoxFit.contain,
+                  memCacheWidth: fullCacheWidth,
+                  maxWidthDiskCache: fullCacheWidth,
+                  placeholder: (_, _) => Center(
+                    child: CircularProgressIndicator(
+                      color: fgColor.withValues(alpha: 0.6),
+                      strokeWidth: 2,
                     ),
                   ),
-                );
-              },
+                  errorWidget: (_, _, _) => Icon(
+                    Icons.broken_image,
+                    color: fgColor.withValues(alpha: 0.5),
+                    size: 64,
+                  ),
+                ),
+              ),
             ),
+          ),
 
-            // Close button
+          // Close button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 12,
+            right: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: fgColor.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: fgColor.withValues(alpha: 0.15)),
+                ),
+                child: Icon(Icons.close, color: fgColor, size: 20),
+              ),
+            ),
+          ),
+
+          // Page indicator
+          if (widget.images.length > 1)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
-              right: 16,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    shape: BoxShape.circle),
-                  child: Icon(Icons.close, color: context.surfaceVariantColor, size: 20),
-                ),
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.images.length, (i) {
+                  final isActive = i == _currentIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: isActive ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: isActive ? fgColor : fgColor.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
               ),
             ),
-
-            // Page indicator
-            if (widget.images.length > 1)
-              Positioned(
-                bottom: MediaQuery.of(context).padding.bottom + 24,
-                left: 0, right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(widget.images.length, (i) {
-                    final isActive = i == _currentIndex;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: isActive ? 24 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? context.textPrimary
-                            : Colors.white.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(4)),
-                    );
-                  }),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

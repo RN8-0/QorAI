@@ -50,23 +50,33 @@ class ProductModel extends ProductEntity {
       _deepCastMap(data['prices']).forEach((k, v) {
         if (v is num) prices[k] = v.toDouble();
       });
-    } else if (data.containsKey('priceRange') && data['priceRange'] is Map) {
+    }
+
+    if (prices.isEmpty &&
+        data.containsKey('priceRange') &&
+        data['priceRange'] is Map) {
       final pr = _deepCastMap(data['priceRange']);
       final current = (pr['current'] as num?)?.toDouble();
       final currency = pr['currency'] as String?;
 
       if (current != null) {
-        if (currency == 'USD') {
-          prices['US'] = current;
-        } else if (currency == 'EUR') {
-          prices['DE'] = current;
-        } else if (currency == 'GBP') {
-          prices['UK'] = current;
-        } else if (currency == 'TRY') {
-          prices['TR'] = current;
-        } else if (currency == 'INR') {
-          prices['IN'] = current;
+        final country = _countryForCurrency(currency);
+        if (country != null) {
+          prices[country] = current;
         }
+      }
+    }
+
+    if (prices.isEmpty) {
+      final lowestPrice = (data['lowestPrice'] as num?)?.toDouble();
+      final currency = data['lowestPriceCurrency'] as String?;
+      final country = _countryForCurrency(currency);
+      if (lowestPrice != null && lowestPrice > 0 && country != null) {
+        prices[country] = lowestPrice;
+      }
+      final lowestUsd = (data['lowestPriceUSD'] as num?)?.toDouble();
+      if (lowestUsd != null && lowestUsd > 0) {
+        prices.putIfAbsent('US', () => lowestUsd);
       }
     }
 
@@ -99,6 +109,37 @@ class ProductModel extends ProductEntity {
           }
         }
       });
+    }
+
+    if (data.containsKey('affiliateLinksByCountry') &&
+        data['affiliateLinksByCountry'] is Map) {
+      final byCountry = _deepCastMap(data['affiliateLinksByCountry']);
+      byCountry.forEach((countryKey, storesRaw) {
+        if (storesRaw is! Map) return;
+        final country = countryKey.toString().toUpperCase();
+        final stores = <String, String>{};
+        storesRaw.forEach((storeKey, urlRaw) {
+          final url = urlRaw?.toString() ?? '';
+          if (url.isNotEmpty) stores[storeKey.toString()] = url;
+        });
+        if (stores.isNotEmpty) affiliateLinksByCountry[country] = stores;
+      });
+    }
+
+    final lowestOfferUrl = (data['lowestOfferUrl'] ?? '').toString();
+    if (lowestOfferUrl.isNotEmpty) {
+      final store = (data['lowestOfferStore'] ?? 'Best Offer').toString();
+      affiliateLinks.putIfAbsent('default', () => lowestOfferUrl);
+      final country = _countryForCurrency(
+        data['lowestPriceCurrency'] as String?,
+      );
+      if (country != null) {
+        affiliateLinksByCountry.putIfAbsent(country, () => <String, String>{});
+        affiliateLinksByCountry[country]!.putIfAbsent(
+          store,
+          () => lowestOfferUrl,
+        );
+      }
     }
 
     const legacyScoreKey =
@@ -171,6 +212,29 @@ class ProductModel extends ProductEntity {
     return null;
   }
 
+  static String? _countryForCurrency(String? currency) {
+    switch ((currency ?? '').toUpperCase()) {
+      case 'USD':
+        return 'US';
+      case 'EUR':
+        return 'DE';
+      case 'GBP':
+        return 'GB';
+      case 'TRY':
+        return 'TR';
+      case 'INR':
+        return 'IN';
+      case 'JPY':
+        return 'JP';
+      case 'CAD':
+        return 'CA';
+      case 'AUD':
+        return 'AU';
+      default:
+        return null;
+    }
+  }
+
   /// Write to Map (for PocketBase / cache)
   Map<String, dynamic> toMap() {
     return {
@@ -184,6 +248,7 @@ class ProductModel extends ProductEntity {
       'imageURL': imageURL,
       'prices': prices,
       'affiliateLinks': affiliateLinks,
+      'affiliateLinksByCountry': affiliateLinksByCountry,
       'specs': specs,
       'specSections': specSections,
       'keySpecs': keySpecs,
@@ -255,11 +320,48 @@ class ProductModel extends ProductEntity {
     final prices = pricesData.map(
       (key, value) => MapEntry(key, (value as num).toDouble()),
     );
+    if (prices.isEmpty) {
+      final lowestPrice = (data['lowestPrice'] as num?)?.toDouble();
+      final country = _countryForCurrency(
+        data['lowestPriceCurrency'] as String?,
+      );
+      if (lowestPrice != null && lowestPrice > 0 && country != null) {
+        prices[country] = lowestPrice;
+      }
+      final lowestUsd = (data['lowestPriceUSD'] as num?)?.toDouble();
+      if (lowestUsd != null && lowestUsd > 0) {
+        prices.putIfAbsent('US', () => lowestUsd);
+      }
+    }
 
     final affiliateData = data['affiliateLinks'] as Map<String, dynamic>? ?? {};
     final affiliateLinks = affiliateData.map(
       (key, value) => MapEntry(key, value.toString()),
     );
+    final affiliateLinksByCountry = <String, Map<String, String>>{};
+    final affiliateByCountryData =
+        data['affiliateLinksByCountry'] as Map<String, dynamic>? ?? {};
+    affiliateByCountryData.forEach((countryKey, storesRaw) {
+      if (storesRaw is! Map) return;
+      affiliateLinksByCountry[countryKey.toUpperCase()] = storesRaw.map(
+        (key, value) => MapEntry(key.toString(), value.toString()),
+      );
+    });
+    final lowestOfferUrl = (data['lowestOfferUrl'] ?? '').toString();
+    if (lowestOfferUrl.isNotEmpty) {
+      final store = (data['lowestOfferStore'] ?? 'Best Offer').toString();
+      affiliateLinks.putIfAbsent('default', () => lowestOfferUrl);
+      final country = _countryForCurrency(
+        data['lowestPriceCurrency'] as String?,
+      );
+      if (country != null) {
+        affiliateLinksByCountry.putIfAbsent(country, () => <String, String>{});
+        affiliateLinksByCountry[country]!.putIfAbsent(
+          store,
+          () => lowestOfferUrl,
+        );
+      }
+    }
 
     final ratingsData = _deepCastMap(data['ratings']);
     final ratings = ProductRatings(
@@ -286,6 +388,7 @@ class ProductModel extends ProductEntity {
       imageURL: data['imageURL'] ?? data['imageUrl'] ?? '',
       prices: prices,
       affiliateLinks: affiliateLinks,
+      affiliateLinksByCountry: affiliateLinksByCountry,
       specs: _deepCastMap(data['specs']),
       specSections: _deepCastMap(data['specSections']),
       keySpecs: _castStringMap(data['keySpecs']),

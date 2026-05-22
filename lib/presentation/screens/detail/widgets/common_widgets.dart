@@ -211,9 +211,10 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
       child: AnimatedBuilder(
         animation: controller.animation!,
         builder: (context, _) {
-          final isPremiumSelected =
-              (controller.animation?.value.round() ?? controller.index) == 3;
-          final activeTabColor = isPremiumSelected
+          final selectedIndex =
+              controller.animation?.value.round() ?? controller.index;
+          final isAiSelected = selectedIndex == 2;
+          final activeTabColor = isAiSelected
               ? AppTheme.premiumGold
               : Theme.of(context).colorScheme.primary;
           return TabBar(
@@ -239,10 +240,9 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
               fontWeight: FontWeight.w500,
             ),
             tabs: [
+              Tab(text: _detailPricesTabLabel(context)),
               Tab(text: context.l10n?.specsTab ?? 'Specs'),
-              Tab(text: _detailPreviewTabLabel(context)),
-              Tab(text: context.l10n?.similarTab ?? 'Similar'),
-              Tab(text: context.l10n?.proTab ?? 'Premium'),
+              Tab(text: _detailAiAnalysesTabLabel(context)),
             ],
           );
         },
@@ -254,32 +254,61 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_StickyTabBarDelegate oldDelegate) => false;
 }
 
-String _detailPreviewTabLabel(BuildContext context) {
+String _detailPricesTabLabel(BuildContext context) {
   switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
     case 'tr':
-      return 'Önizleme';
+      return 'Fiyatlar';
     case 'de':
-      return 'Vorschau';
+      return 'Preise';
     case 'fr':
-      return 'Aperçu';
+      return 'Prix';
     case 'es':
-      return 'Vista previa';
+      return 'Precios';
     case 'it':
-      return 'Anteprima';
+      return 'Prezzi';
     case 'pt':
-      return 'Prévia';
+      return 'Preços';
     case 'ar':
-      return 'معاينة';
+      return 'الأسعار';
     case 'ja':
-      return 'プレビュー';
+      return '価格';
     case 'nl':
-      return 'Voorbeeld';
+      return 'Prijzen';
     case 'pl':
-      return 'Podgląd';
+      return 'Ceny';
     case 'sv':
-      return 'Förhandsvisning';
+      return 'Priser';
     default:
-      return 'Preview';
+      return 'Prices';
+  }
+}
+
+String _detailAiAnalysesTabLabel(BuildContext context) {
+  switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
+    case 'tr':
+      return 'AI Analizleri';
+    case 'de':
+      return 'KI-Analysen';
+    case 'fr':
+      return 'Analyses IA';
+    case 'es':
+      return 'Análisis IA';
+    case 'it':
+      return 'Analisi IA';
+    case 'pt':
+      return 'Análises IA';
+    case 'ar':
+      return 'تحليلات الذكاء الاصطناعي';
+    case 'ja':
+      return 'AI 分析';
+    case 'nl':
+      return 'AI-analyses';
+    case 'pl':
+      return 'Analizy AI';
+    case 'sv':
+      return 'AI-analyser';
+    default:
+      return 'AI Analyses';
   }
 }
 

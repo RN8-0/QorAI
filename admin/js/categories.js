@@ -261,101 +261,118 @@ const EPEY_PATHS = Object.freeze({
   electric_scooters: 'elektrikli-scooter',
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// CANONICAL CATEGORY LIST — European pivot (2026-05-23). Locked to the
+// 49 categories the user has approved. Anything outside this list is
+// considered legacy/junk and will not appear in admin/scraper/app UIs.
+//
+//   id          → PB category code (kebab/snake_case)
+//   name        → English admin label
+//   tr          → Turkish label shown in the localized UIs
+//   LegacySlug  → Geizhals ?cat= slug (existing scraper input)
+//   epeyPath    → Epey URL path segment (e.g. 'laptop' → epey.com/laptop)
+//
+// When both LegacySlug and epeyPath are present the scraper can pull from
+// either source — the products land in the SAME PB category id.
+// ────────────────────────────────────────────────────────────────────────────
 const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
   {
     name: 'Mobile',
     categories: [
-      { id: 'smartphones',        name: 'Smartphones',              LegacySlug: 'umtsover' },
-      { id: 'tablets',            name: 'Tablets',                  LegacySlug: 'nbtabl' },
-      { id: 'smartwatches',       name: 'Smartwatches',             LegacySlug: 'uhrpm' },
-      { id: 'headphones',         name: 'Headphones',               LegacySlug: 'sphd' },
-      { id: 'powerbanks',         name: 'Power Banks',              LegacySlug: 'akkupw' },
+      { id: 'smartphones',       name: 'Smartphones',           tr: 'Akıllı Telefon',           LegacySlug: 'umtsover',    epeyPath: 'akilli-telefonlar' },
+      { id: 'feature_phones',    name: 'Feature Phones',        tr: 'Tuşlu Telefon',            LegacySlug: 'phonmob',     epeyPath: 'tuslu-telefon' },
+      { id: 'smartwatches',      name: 'Smartwatches',          tr: 'Akıllı Saat',              LegacySlug: 'uhrpm',       epeyPath: 'akilli-saat' },
+      { id: 'smart_rings',       name: 'Smart Rings',           tr: 'Akıllı Yüzük',             epeyPath: 'akilli-yuzuk' },
+      { id: 'headphones',        name: 'Headphones',            tr: 'Kulaklık',                 LegacySlug: 'sphd',        epeyPath: 'kulaklik' },
+      { id: 'powerbanks',        name: 'Power Banks',           tr: 'Powerbank',                LegacySlug: 'akkupw',      epeyPath: 'powerbank' },
+      { id: 'chargers',          name: 'Chargers',              tr: 'Şarj Aleti',               epeyPath: 'sarj-aleti' },
     ],
   },
   {
-    name: 'Computers',
+    name: 'Computing',
     categories: [
-      { id: 'laptops',            name: 'Laptops',                  LegacySlug: 'nb' },
-      { id: 'desktops',           name: 'Desktop PCs',              LegacySlug: 'sysdiv' },
-      { id: 'mini_pcs',           name: 'Mini PCs',                 LegacySlug: 'sysdiv', scrapeDisabled: true },
-      { id: 'monitors',           name: 'Monitors',                 LegacySlug: 'monlcd19wide' },
-      { id: 'webcams',            name: 'Webcams' },
+      { id: 'laptops',           name: 'Laptops',               tr: 'Laptop',                   LegacySlug: 'nb',          epeyPath: 'laptop' },
+      { id: 'desktops',          name: 'Desktop PCs',           tr: 'Masaüstü PC',              LegacySlug: 'sysdiv',      epeyPath: 'masaustu-bilgisayar' },
+      { id: 'tablets',           name: 'Tablets',               tr: 'Tablet',                   LegacySlug: 'nbtabl',      epeyPath: 'tablet' },
+      { id: 'e_readers',         name: 'E-Readers',             tr: 'E-Kitap Okuyucu',          epeyPath: 'e-kitap-okuyucu' },
+      { id: 'vr_headsets',       name: 'VR Headsets',           tr: 'Sanal Gerçeklik Gözlüğü',  epeyPath: 'sanal-gerceklik-gozlugu' },
     ],
   },
   {
     name: 'Components',
     categories: [
-      { id: 'graphics_cards',     name: 'Graphics Cards',           LegacySlug: 'gra16_512' },
-      { id: 'cpus',               name: 'Processors',               LegacySlug: 'cpu' },
-      { id: 'motherboards',       name: 'Motherboards',             LegacySlug: 'mainboards' },
-      { id: 'ram',                name: 'RAM',                      LegacySlug: 'ramddr3' },
-      { id: 'ssd',                name: 'SSDs',                     LegacySlug: 'hdssd' },
-      { id: 'hard_drives',        name: 'Hard Drives',              LegacySlug: 'hdx' },
-      { id: 'external_hdd',       name: 'External Hard Drives',     LegacySlug: 'gehhd' },
-      { id: 'pc_cases',           name: 'PC Cases',                 LegacySlug: 'gehatx' },
-      { id: 'psu',                name: 'Power Supplies (PSU)',     LegacySlug: 'gehps' },
-      { id: 'cpu_coolers',        name: 'CPU Coolers',              LegacySlug: 'cpucooler' },
-      { id: 'case_fans',          name: 'Case Fans',                LegacySlug: 'coolfan' },
+      { id: 'graphics_cards',    name: 'Graphics Cards',        tr: 'Ekran Kartı',              LegacySlug: 'gra16_512',   epeyPath: 'ekran-karti' },
+      { id: 'cpus',              name: 'Processors',            tr: 'İşlemci',                  LegacySlug: 'cpu',         epeyPath: 'islemci' },
+      { id: 'motherboards',      name: 'Motherboards',          tr: 'Anakart',                  LegacySlug: 'mainboards',  epeyPath: 'anakart' },
+      { id: 'ram',               name: 'RAM',                   tr: 'RAM',                      LegacySlug: 'ramddr3',     epeyPath: 'ram' },
+      { id: 'ssd',               name: 'SSDs',                  tr: 'SSD',                      LegacySlug: 'hdssd',       epeyPath: 'ssd' },
+      { id: 'psu',               name: 'Power Supplies (PSU)',  tr: 'PSU (Güç Kaynağı)',        LegacySlug: 'gehps',       epeyPath: 'power-supply' },
+      { id: 'pc_cases',          name: 'PC Cases',              tr: 'Kasa',                     LegacySlug: 'gehatx',      epeyPath: 'kasa' },
+      { id: 'ups',               name: 'UPS',                   tr: 'UPS / Kesintisiz Güç',     LegacySlug: 'gehups',      epeyPath: 'ups' },
+      { id: 'flash_drives',      name: 'USB Flash Drives',      tr: 'USB Bellek',               epeyPath: 'usb-bellek' },
+    ],
+  },
+  {
+    name: 'Cooling',
+    categories: [
+      { id: 'cpu_coolers',       name: 'CPU Coolers',           tr: 'İşlemci Soğutucu',         LegacySlug: 'cpucooler',   epeyPath: 'islemci-sogutucu' },
+      { id: 'laptop_coolers',    name: 'Laptop Coolers',        tr: 'Laptop Soğutucu',          epeyPath: 'laptop-sogutucu' },
+      { id: 'case_fans',         name: 'Case Fans',             tr: 'Kasa Fanı',                LegacySlug: 'coolfan',     epeyPath: 'kasa-fani' },
     ],
   },
   {
     name: 'Peripherals',
     categories: [
-      { id: 'keyboards',          name: 'Keyboards',                LegacySlug: 'kb' },
-      { id: 'mice',               name: 'Mice',                     LegacySlug: 'mouse' },
-      { id: 'printers',           name: 'Printers',                 LegacySlug: 'pr' },
-      { id: 'gamepads',           name: 'Gamepads',                 LegacySlug: 'eggamepad' },
+      { id: 'keyboards',         name: 'Keyboards',             tr: 'Klavye',                   LegacySlug: 'kb',          epeyPath: 'klavye' },
+      { id: 'mice',              name: 'Mice',                  tr: 'Mouse',                    LegacySlug: 'mouse',       epeyPath: 'mouse' },
+      { id: 'gamepads',          name: 'Gamepads',              tr: 'Oyun Kolu',                LegacySlug: 'eggamepad',   epeyPath: 'oyun-kolu' },
+      { id: 'gaming_consoles',   name: 'Game Consoles',         tr: 'Oyun Konsolu',             LegacySlug: 'con',         epeyPath: 'oyun-konsolu' },
+      { id: 'webcams',           name: 'Webcams',               tr: 'Webcam',                   epeyPath: 'webcam' },
+      { id: 'microphones',       name: 'Microphones',           tr: 'Mikrofon',                 epeyPath: 'mikrofon' },
+      { id: 'printers',          name: 'Printers',              tr: 'Yazıcı',                   LegacySlug: 'pr',          epeyPath: 'yazici' },
+      { id: '3d_printers',       name: '3D Printers',           tr: '3D Yazıcı',                epeyPath: '3d-yazici' },
     ],
   },
   {
-    name: 'TV & Audio',
+    name: 'Display & Audio',
     categories: [
-      { id: 'tvs',                name: 'TVs',                      LegacySlug: 'tvlcd' },
-      { id: 'projectors',         name: 'Projectors' },
-      { id: 'soundbars',          name: 'Soundbars',                LegacySlug: 'scnbar' },
-      { id: 'speakers',           name: 'Speakers',                 LegacySlug: 'hifibox' },
-    ],
-  },
-  {
-    name: 'Networking',
-    categories: [
-      { id: 'modem_routers',      name: 'Modem Routers',            LegacySlug: 'wlanroutmod' },
-      { id: 'wifi_routers',       name: 'WiFi Routers',             LegacySlug: 'wlanrout' },
-      { id: 'routers',            name: 'Routers',                  LegacySlug: 'router' },
-      { id: 'network_switches',   name: 'Network Switches',         LegacySlug: 'switchgi' },
-      { id: 'pcie_nic',           name: 'PCIe Network Cards',       LegacySlug: 'nwpcie' },
-      { id: 'wifi_repeaters',     name: 'WiFi Repeaters',           LegacySlug: 'wlanrepeat' },
+      { id: 'monitors',          name: 'Monitors',              tr: 'Monitör',                  LegacySlug: 'monlcd19wide', epeyPath: 'monitor' },
+      { id: 'tvs',               name: 'TVs',                   tr: 'Televizyon',               LegacySlug: 'tvlcd',       epeyPath: 'televizyon' },
+      { id: 'projectors',        name: 'Projectors',            tr: 'Projeksiyon',              epeyPath: 'projeksiyon' },
+      { id: 'speakers',          name: 'Speakers',              tr: 'Hoparlör',                 LegacySlug: 'hifibox',     epeyPath: 'hoparlor' },
+      { id: 'audio_systems',     name: 'Audio Systems',         tr: 'Ses Sistemi',              epeyPath: 'ses-sistemi' },
+      { id: 'av_receivers',      name: 'AV Receivers',          tr: 'Görüntü ve Ses Aktarıcı',  LegacySlug: 'hifirec',     epeyPath: 'goruntu-ses-aktarici' },
+      { id: 'media_players',     name: 'Media Players',         tr: 'Medya Oynatıcı',           epeyPath: 'medya-oynatici' },
     ],
   },
   {
     name: 'Photo & Video',
     categories: [
-      { id: 'digital_cameras',    name: 'Digital Cameras',          LegacySlug: 'dcam' },
-      { id: 'action_cameras',     name: 'Action Cameras',           LegacySlug: 'dvcamac' },
-      { id: 'security_cameras',   name: 'Security Cameras' },
-      { id: 'drones',             name: 'Drones' },
+      { id: 'camera_lenses',     name: 'Camera Lenses',         tr: 'Lens',                     LegacySlug: 'dcamsp',      epeyPath: 'lens' },
+      { id: 'ip_cameras',        name: 'IP Cameras',            tr: 'IP Kamera',                epeyPath: 'ip-kamera' },
+      { id: 'dashcams',          name: 'Dash Cameras',          tr: 'Araç İçi Kamera',          epeyPath: 'arac-ici-kamera' },
+      { id: 'gimbals',           name: 'Gimbals',               tr: 'Gimbal',                   epeyPath: 'gimbal' },
+      { id: 'drones',            name: 'Drones',                tr: 'Drone',                    epeyPath: 'drone' },
     ],
   },
   {
-    name: 'Gaming',
+    name: 'Network & Smart Home',
     categories: [
-      { id: 'gaming_consoles',    name: 'Game Consoles',            LegacySlug: 'con' },
-      { id: 'gaming_accessories', name: 'Gaming Accessories',       LegacySlug: 'egzub' },
-      { id: 'games',              name: 'Games',                    LegacySlug: 'games' },
-    ],
-  },
-  {
-    name: 'Smart Home',
-    categories: [
-      { id: 'vacuums',            name: 'Vacuum Cleaners',          LegacySlug: 'hsauger' },
-      { id: 'ups',                name: 'UPS',                      LegacySlug: 'gehups' },
-      { id: 'small_appliances',   name: 'Small Appliances' },
-      { id: 'smart_home',         name: 'Smart Home' },
-      { id: 'e_readers',          name: 'E-Readers' },
-      { id: 'electric_scooters',  name: 'Electric Scooters',        LegacySlug: 'escooter' },
+      { id: 'routers',           name: 'Routers',               tr: 'Router',                   LegacySlug: 'router',      epeyPath: 'router' },
+      { id: 'modem_routers',     name: 'Modems',                tr: 'Modem',                    LegacySlug: 'wlanroutmod', epeyPath: 'modem' },
+      { id: 'robot_vacuums',     name: 'Robot Vacuums',         tr: 'Robot Süpürge',            LegacySlug: 'hsauger',     epeyPath: 'robot-supurge' },
+      { id: 'coffee_makers',     name: 'Coffee Makers',         tr: 'Kahve Makinesi',           epeyPath: 'kahve-makinesi' },
+      { id: 'hardware_wallets',  name: 'Hardware Wallets',      tr: 'Soğuk Cüzdan',             epeyPath: 'soguk-cuzdan' },
     ],
   },
 ]);
+
+// Whitelisted PB category IDs — used by getAll()/normalize to drop legacy
+// scraped categories that have no place in the new EU catalog.
+const ALLOWED_CATEGORY_IDS = new Set(
+  CANONICAL_EPEY_CATEGORY_GROUPS.flatMap(g => g.categories.map(c => c.id))
+);
+window.QorAiAllowedCategoryIds = ALLOWED_CATEGORY_IDS;
 
 function normalizeCategoryId(input) {
   const raw = String(input || '').trim().toLowerCase();
@@ -555,8 +572,7 @@ window.QorAiCategories = {
   }
 };
 
-// Keep every admin surface on the same Epey-style top-level category list.
-// The large legacy/Icecat-specific table above is retained only as alias input;
+// Keep every admin surface on the same canonical category list.
 // UI, product filters, scraper, and dictionary all read this canonical list.
 window.QorAiCategories.groups = CANONICAL_EPEY_CATEGORY_GROUPS.map(group => ({
   name: group.name,
@@ -639,7 +655,7 @@ async function syncCategoryRecord(categoryId) {
   let productCount = 0;
   try {
     const res = await getPb().collection('products').getList(1, 1, {
-      filter: `category="${_safePbFilterValue(slug)}"`,
+      filter: `category = "${_safePbFilterValue(slug)}"`,
       $autoCancel: false,
     });
     productCount = Number(res.totalItems || 0);
@@ -754,13 +770,9 @@ async function _loadCategoryCounts(sourceFilter = '') {
     // categories collection isn't usable yet.
     const epeyScan = sourceFilter === '__epey__';
     const opts = epeyScan
-      // Do not server-filter Epey here. Older merged records may have
-      // source="icecat" while their Epey data is still identifiable from
-      // sourceUrl, and strict source filtering made the Dictionary dropdown
-      // collapse to only one visible category.
       ? { fields: 'id,category,source,sourceUrl' }
       : sourceFilter
-        ? { filter: `source="${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
+        ? { filter: `source = "${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
         : { fields: 'id,category' };
     const total = (await pb.collection('products').getList(1, 1, opts)).totalItems;
     const pages = Math.ceil(total / 500);
@@ -1008,9 +1020,8 @@ async function populateScraperCategories() {
   try {
     [counts, epeyCounts] = await Promise.all([
       _loadCategoryCounts(),
-      // The Translate-Category panel only ever translates epey.com products
-      // (Icecat already ships multilingual specs), so its dropdown must list
-      // the categories that actually hold Epey products.
+      // The Translate-Category panel only translates scraped products
+      // (Epey + Geizhals), so its dropdown lists those categories.
       _loadCategoryCounts('__epey__'),
     ]);
   } catch (e) {

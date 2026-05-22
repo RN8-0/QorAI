@@ -139,19 +139,15 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
 class LocaleNotifier extends StateNotifier<Locale?> {
   final CacheService _cacheService;
 
-  /// Supported language codes matching AppLocalizations.supportedLocales
+  /// Supported language codes matching AppLocalizations.supportedLocales.
+  /// Reduced from 12 → 7 (European-market pivot). RU added; AR/IT/JA/NL/PL/SV dropped.
   static const _supported = {
-    'ar',
     'de',
     'en',
     'es',
     'fr',
-    'it',
-    'ja',
-    'nl',
-    'pl',
     'pt',
-    'sv',
+    'ru',
     'tr',
   };
 
@@ -199,7 +195,7 @@ class LocaleNotifier extends StateNotifier<Locale?> {
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Home page selected tab index
-final bottomNavIndexProvider = StateProvider<int>((ref) => 1);
+final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Hide bottom nav bar (e.g. when Compare result screen is active)
 final hideNavBarProvider = StateProvider<bool>((ref) => false);
@@ -290,17 +286,19 @@ final productDetailProvider = FutureProvider.autoDispose
 final categoriesProvider = FutureProvider<Result<List<CategoryModel>>>((
   ref,
 ) async {
+  const cacheKey = 'categories_v2';
   // Try Hive cache first (categories rarely change)
   try {
     final cacheService = ref.read(cacheServiceProvider);
-    final cached = cacheService.getLocal<List>('categories_v1');
+    final cached = cacheService.getLocal<List>(cacheKey);
     if (cached != null && cached.isNotEmpty) {
       final cats = cached
           .map(
             (e) => CategoryModel.fromMap(Map<String, dynamic>.from(e as Map)),
           )
+          .where((c) => c.isActive && c.productCount > 0)
           .toList();
-      return Success(cats);
+      if (cats.isNotEmpty) return Success(cats);
     }
   } catch (_) {}
 
@@ -310,9 +308,9 @@ final categoriesProvider = FutureProvider<Result<List<CategoryModel>>>((
     try {
       final cacheService = ref.read(cacheServiceProvider);
       await cacheService.setLocal(
-        'categories_v1',
+        cacheKey,
         result.data.map((c) => c.toMap()).toList(),
-        duration: const Duration(hours: 24),
+        duration: const Duration(minutes: 30),
       );
     } catch (_) {}
   }
@@ -335,7 +333,9 @@ String normalizeProductName(String name) {
     RegExp(r'\b(zbook\s+[a-z0-9]+\s*g\d+)\b'),
     RegExp(r'\b(latitude\s+\d+)\b'),
     RegExp(r'\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b'),
-    RegExp(r'\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b'),
+    RegExp(
+      r'\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b',
+    ),
     RegExp(r'\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b'),
     RegExp(r'\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b'),
   ];
@@ -347,7 +347,9 @@ String normalizeProductName(String name) {
     r'\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)',
   ).firstMatch(probe);
   if (mac != null) {
-    final chip = RegExp(r'\b(m\d+(?:\s*(?:pro|max|ultra))?)\b').firstMatch(probe);
+    final chip = RegExp(
+      r'\b(m\d+(?:\s*(?:pro|max|ultra))?)\b',
+    ).firstMatch(probe);
     return '${mac.group(1)} ${chip?.group(1) ?? ''}'
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
@@ -359,10 +361,26 @@ String normalizeProductName(String name) {
       .replaceAll(RegExp(r'\b\d+\s*GB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+\s*MB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+/\d+\b'), '') // 8/256 RAM/Storage combos
-      .replaceAll(RegExp(r'\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b'), '')
-      .replaceAll(RegExp(r'\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b'), '')
-      .replaceAll(RegExp(r'\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b'), '')
-      .replaceAll(RegExp(r'\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b'), '')
+      .replaceAll(
+        RegExp(r'\b(?:intel\s+)?core\s+(?:ultra\s+)?[3579]\s+[a-z0-9-]+\b'),
+        '',
+      )
+      .replaceAll(
+        RegExp(r'\b(?:amd\s+)?ryzen\s+(?:ai\s+)?[3579]\s+[a-z0-9-]+\b'),
+        '',
+      )
+      .replaceAll(
+        RegExp(
+          r'\b(?:ddr\d|lpddr\d[x]?|sdram|ssd|hdd|nvme|wuxga|fhd|uhd|qhd)\b',
+        ),
+        '',
+      )
+      .replaceAll(
+        RegExp(
+          r'\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b',
+        ),
+        '',
+      )
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim()
       .toLowerCase();

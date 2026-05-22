@@ -120,111 +120,72 @@ final pcPickerProvider = StateNotifierProvider.autoDispose
 
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
-const int _homeFeedInitialCategoryCount = 24;
+const int _homeFeedInitialCategoryCount = 40;
 // Home feed now exposes richer shelves: each visible shelf can keep scrolling
 // without needing an immediate refetch, while ListView.builder still renders lazily.
 const int _homeFeedInitialPerCategory = 28;
 
-/// All category aliases — used by category browse providers.
-const pcCategoryAliases = <String, List<String>>{
-  'cpus': [
-    'cpus',
-    'cpu',
-    'processors',
-    'processor',
-    'islemci',
-    'işlemci',
-    'işlemciler',
-    'işlemci',
-  ],
-  'gpus': [
+/// Category aliases used by category browse providers and legacy deep links.
+/// The first item in each list is the current PocketBase slug.
+const catalogCategoryAliases = <String, List<String>>{
+  'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
+  'tablets': ['tablets', 'tablet'],
+  'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
+  'headphones': ['headphones', 'headsets', 'headset', 'kulaklık'],
+  'powerbanks': ['powerbanks', 'power_banks', 'power-banks', 'power bank'],
+  'laptops': ['laptops', 'laptop', 'notebook', 'notebooks', 'dizüstü'],
+  'desktops': ['desktops', 'desktop', 'masaüstü'],
+  'cpus': ['cpus', 'cpu', 'processors', 'processor', 'işlemci', 'islemci'],
+  'graphics_cards': [
+    'graphics_cards',
     'gpus',
     'gpu',
     'graphics-cards',
     'graphics-card',
     'ekran-karti',
-    'ekran kartı',
-    'ekran-kartlari',
   ],
-  'motherboards': [
-    'motherboards',
-    'motherboard',
-    'anakart',
-    'mainboard',
-    'anakartlar',
-  ],
-  'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram', 'bellek-ram'],
-  'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama', 'hard-disk', 'hdd-ssd'],
-  'psu': [
-    'psu',
-    'power-supply-psu',
-    'power-supply',
-    'güç kaynağı',
-    'guc-kaynagi',
-  ],
-  'cases': ['cases', 'case', 'bilgisayar-kasasi', 'kasa', 'kasalar'],
-  'coolers': [
-    'coolers',
-    'cooler',
-    'islemci-sogutucu',
-    'soğutucu',
-    'cpu-cooler',
-  ],
-  'monitors': ['monitors', 'monitor', 'monitör', 'monitörler'],
-  'keyboards': ['keyboards', 'keyboard', 'klavye', 'klavyeler'],
-  'mice': ['mice', 'mouse', 'fare', 'fareler'],
-  'headsets': ['headsets', 'headset', 'headphones', 'kulaklık', 'kulaklıklar'],
+  'gpus': ['graphics_cards', 'gpus', 'graphics-cards'],
+  'ram': ['ram', 'bellek-ram', 'memory', 'bellek'],
+  'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama', 'hard-disk'],
+  'motherboards': ['motherboards', 'motherboard', 'anakart', 'mainboard'],
+  'psu': ['psu', 'power_supplies', 'power-supply', 'güç kaynağı'],
+  'pc_cases': ['pc_cases', 'cases', 'case', 'bilgisayar-kasasi', 'kasa'],
+  'cases': ['pc_cases', 'cases', 'case'],
+  'cpu_coolers': ['cpu_coolers', 'coolers', 'cpu-coolers', 'cooler'],
+  'coolers': ['cpu_coolers', 'coolers', 'cooler'],
+  'case_fans': ['case_fans', 'case-fans', 'fans'],
+  'monitors': ['monitors', 'monitor', 'monitör'],
+  'tvs': ['tvs', 'tv', 'televizyon'],
+  'soundbars': ['soundbars', 'soundbar'],
+  'speakers': ['speakers', 'speaker', 'hoparlör'],
+  'action_cameras': ['action_cameras', 'action-cameras', 'action camera'],
+  'security_cameras': ['security_cameras', 'security-cameras', 'ip-cameras'],
+  'drones': ['drones', 'drone'],
+  'gamepads': ['gamepads', 'gamepad', 'controller', 'oyun kolu'],
+  'gaming_consoles': ['gaming_consoles', 'consoles', 'console', 'oyun konsolu'],
+  'consoles': ['gaming_consoles', 'consoles', 'console'],
+  'games': ['games', 'game', 'oyun'],
+  'printers': ['printers', 'printer', 'yazıcı'],
+  'mice': ['mice', 'mouse', 'fare'],
+  'network_switches': ['network_switches', 'network-switches', 'switches'],
+  'wifi_routers': ['wifi_routers', 'wifi-routers', 'routers', 'router'],
+  'routers': ['wifi_routers', 'routers', 'router'],
+  'modem_routers': ['modem_routers', 'modem-routers', 'modem'],
+  'pcie_nic': ['pcie_nic', 'pcie-network-cards', 'network cards'],
+  'ups': ['ups', 'uninterruptible power supply'],
+  'vacuums': ['vacuums', 'vacuum-cleaners', 'vacuum cleaners'],
+  'robot_vacuums': ['robot_vacuums', 'robot-vacuums', 'robot vacuum'],
+  'robot-vacuums': ['robot_vacuums', 'robot-vacuums'],
 };
+
+const pcCategoryAliases = catalogCategoryAliases;
 
 /// Cloud Function keyword search queries per PC component
 final productsByCategoryProvider = FutureProvider.autoDispose
     .family<Result<List<ProductEntity>>, String>((ref, category) async {
-      const categoryAliases = <String, List<String>>{
-        'cpus': ['cpus', 'cpu', 'processors', 'işlemciler', 'islemci'],
-        'gpus': ['gpus', 'gpu', 'graphics-cards', 'ekran-karti', 'ekran kartı'],
-        'motherboards': ['motherboards', 'anakart', 'mainboard', 'motherboard'],
-        'ram': ['ram', 'bellek-ram', 'memory', 'bellek', 'RAM', 'Ram'],
-        'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama'],
-        'psu': ['psu', 'power-supply-psu', 'power-supply', 'güç kaynağı'],
-        'cases': ['cases', 'bilgisayar-kasasi', 'case', 'kasa'],
-        'coolers': ['coolers', 'islemci-sogutucu', 'cooler', 'soğutucu'],
-        'monitors': ['monitors', 'monitor', 'monitör'],
-        'keyboards': ['keyboards', 'keyboard', 'klavye'],
-        'mice': ['mice', 'mouse', 'fare'],
-        'headsets': ['headsets', 'headset', 'kulaklık', 'headphones'],
-        'laptops': ['laptops', 'laptop', 'dizüstü'],
-        'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
-        'tablets': ['tablets', 'tablet'],
-        'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
-        'cameras': ['cameras', 'camera', 'kamera', 'fotoğraf makinesi'],
-        'tvs': ['tvs', 'tv', 'televizyon'],
-        'speakers': ['speakers', 'speaker', 'hoparlör'],
-        'consoles': ['consoles', 'console', 'oyun konsolu'],
-        'routers': ['routers', 'router', 'modem'],
-        'dashcams': ['dashcams', 'dashcam', 'araç kamerası'],
-        'drones': ['drones', 'drone'],
-        'desktops': ['desktops', 'desktop', 'masaüstü'],
-        'earphones': ['earphones', 'earphone', 'kulak içi kulaklık'],
-        'printers': ['printers', 'printer', 'yazıcı'],
-        'projectors': ['projectors', 'projector', 'projeksiyon'],
-        'robot-vacuums': ['robot-vacuums', 'robot vacuum', 'robot süpürge'],
-        'webcams': ['webcams', 'webcam', 'web kamerası'],
-        'gamepads': ['gamepads', 'gamepad', 'oyun kolu'],
-        'media-players': ['media-players', 'media player'],
-        'action-cameras': ['action-cameras', 'aksiyon-kamera', 'action camera'],
-        'ip-cameras': ['ip-cameras', 'ip-kamera', 'ip camera'],
-        'smart-rings': ['smart-rings', 'akıllı yüzük', 'smart ring'],
-        'soundbars': ['soundbars', 'soundbar'],
-        'microphones': ['microphones', 'microphone', 'mikrofon'],
-        'vr-headsets': ['vr-headsets', 'sanal gerçeklik', 'vr headset'],
-        'gimbals': ['gimbals', 'gimbal'],
-        'tripods': ['tripods', 'tripod'],
-        'lenses': ['lenses', 'lens'],
-      };
-
       final normalizedCategory = category.toLowerCase().trim();
       final aliases =
-          categoryAliases[normalizedCategory] ?? [normalizedCategory];
+          catalogCategoryAliases[normalizedCategory] ?? [normalizedCategory];
 
       // Defunct brands to suppress
       const defunctBrands = {
@@ -581,7 +542,7 @@ class HomeFeed {
   });
 }
 
-const _homeFeedReadyCacheVersion = 'v2';
+const _homeFeedReadyCacheVersion = 'v4';
 
 String _homeFeedReadyCacheKey(String country, UserEntity? user) {
   return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';
@@ -1605,46 +1566,44 @@ HomeFeed _buildHomeFeed(
   );
 }
 
-// Known Firestore categories (ALL from scraper SOURCES config)
+// Current non-empty PocketBase technology categories. Home feed tries the live
+// categories collection first; this is the offline/fallback order.
 const _feedCategories = [
-  'laptops',
-  'smartphones',
-  'tablets',
   'headphones',
+  'smartphones',
   'smartwatches',
-  'gpus',
-  'monitors',
-  'keyboards',
-  'mice',
-  'desktops',
-  'cameras',
-  'speakers',
-  'tvs',
-  'consoles',
-  'routers',
-  'gamepads',
-  'webcams',
-  'dashcams',
-  'media-players',
-  'cases',
-  'cpus',
-  'drones',
-  'robot-vacuums',
-  'soundbars',
-  'microphones',
-  'smart-rings',
-  'e-readers',
-  'vr-headsets',
-  'motherboards',
+  'tablets',
   'ram',
-  'ssd',
+  'desktops',
+  'action_cameras',
+  'drones',
+  'network_switches',
+  'powerbanks',
+  'security_cameras',
+  'ups',
+  'wifi_routers',
+  'case_fans',
+  'cpu_coolers',
+  'cpus',
+  'mice',
+  'monitors',
+  'motherboards',
+  'tvs',
+  'gamepads',
+  'pc_cases',
   'psu',
-  'coolers',
+  'laptops',
+  'vacuums',
+  'ssd',
+  'graphics_cards',
+  'modem_routers',
+  'pcie_nic',
+  'robot_vacuums',
+  'soundbars',
+  'speakers',
+  'gaming_consoles',
+  'games',
   'printers',
-  'projectors',
-  'gimbals',
-  'tripods',
-  'lenses',
 ];
 
 /// In-memory feed cache for instant access across providers
@@ -1656,6 +1615,40 @@ void clearInMemoryFeedCache() {
   _inMemoryFeed = null;
   _cachedViewedBehaviorSnapshot = null;
   _cachedViewedBehaviorAt = null;
+}
+
+Future<void> invalidateProductCatalogCaches(
+  WidgetRef ref, {
+  bool clearPersistent = false,
+}) async {
+  clearInMemoryFeedCache();
+  _categoryCacheMap.clear();
+  _pendingFeedFetch = null;
+  _isRefreshingFeed = false;
+  ref.read(pbDataSourceProvider).clearProductRuntimeCaches();
+
+  if (clearPersistent) {
+    final cache = ref.read(cacheServiceProvider);
+    final country = ref.read(selectedCountryProvider);
+    final user = ref.read(userProfileProvider).valueOrNull;
+    final owners = <String>{user?.uid ?? 'anon', 'anon'};
+    for (final owner in owners) {
+      await cache.delete('home_feed_v30_$owner');
+      await cache.delete('home_feed_v31_$owner');
+      await cache.delete('home_feed_v32_$owner');
+      await cache.delete(
+        'home_feed_ready_${country.toLowerCase()}_${owner}_v2',
+      );
+      await cache.delete(
+        'home_feed_ready_${country.toLowerCase()}_${owner}_v3',
+      );
+      await cache.delete(
+        'home_feed_ready_${country.toLowerCase()}_${owner}_v4',
+      );
+    }
+  }
+
+  ref.invalidate(homeFeedProvider);
 }
 
 /// Update an already-cached product in the in-memory feed with fresh data
@@ -1710,6 +1703,10 @@ void _scheduleLegacyFeedCacheCleanup(CacheService cache, UserEntity? user) {
     'v26',
     'v27',
     'v28',
+    'v29',
+    'v30',
+    'v31',
+    'v32',
   ]) {
     final key = ver == 'v17_modern'
         ? 'home_feed_$ver'
@@ -1756,7 +1753,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   await SchedulerBinding.instance.endOfFrame;
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v30_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v32_${user?.uid ?? "anon"}';
   _scheduleLegacyFeedCacheCleanup(cache, user);
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)
@@ -2090,10 +2087,10 @@ Future<List<ProductEntity>> _fetchAllProducts(
 
   final sw = Stopwatch()..start();
 
-  // Keep first-load payload lighter to reduce startup jank on low/mid devices.
-  final categories = _feedCategories
-      .take(_homeFeedInitialCategoryCount)
-      .toList();
+  // Keep first-load payload lighter to reduce startup jank on low/mid devices,
+  // but take the category order from PocketBase whenever it is available so
+  // newly added scraper categories become visible without shipping a new app.
+  final categories = await _resolveHomeFeedCategories(repo, disabledCats);
   if (_verboseHomeFeedFetchLogs) {
     debugPrint(
       '=== QOR AI: TS MULTI-CAT fetch — ${categories.length} categories, $_homeFeedInitialPerCategory each ===',
@@ -2192,6 +2189,41 @@ Future<List<ProductEntity>> _fetchAllProducts(
     );
   }
   return allProducts;
+}
+
+Future<List<String>> _resolveHomeFeedCategories(
+  ProductRepository repo,
+  List<String> disabledCats,
+) async {
+  final disabled = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
+  final seen = <String>{};
+
+  List<String> takeUseful(Iterable<String> ids) => ids
+      .map((id) => id.toLowerCase().trim())
+      .where((id) => id.isNotEmpty && !disabled.contains(id))
+      .where(seen.add)
+      .take(_homeFeedInitialCategoryCount)
+      .toList(growable: false);
+
+  try {
+    final result = await repo.getCategories().timeout(
+      const Duration(seconds: 5),
+    );
+    if (result is Success<List<CategoryModel>>) {
+      final live = List<CategoryModel>.from(result.data)
+        ..sort((a, b) {
+          final countCmp = b.productCount.compareTo(a.productCount);
+          if (countCmp != 0) return countCmp;
+          return a.order.compareTo(b.order);
+        });
+      final ids = takeUseful(
+        live.where((c) => c.isActive && c.productCount > 0).map((c) => c.id),
+      );
+      if (ids.isNotEmpty) return ids;
+    }
+  } catch (_) {}
+
+  return takeUseful(_feedCategories);
 }
 
 void _saveProductsToCache(

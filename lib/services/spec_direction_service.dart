@@ -127,7 +127,13 @@ class SpecDirectionService {
     '5g upload': SpecDirection.higher,
     'wifi speed': SpecDirection.higher,
     'bluetooth version': SpecDirection.higher,
+    'bluetooth standard': SpecDirection.higher,
+    'bluetooth': SpecDirection.higher,
+    'wi fi standard': SpecDirection.higher,
+    'wifi standard': SpecDirection.higher,
+    'wireless standard': SpecDirection.higher,
     'usb version': SpecDirection.higher,
+    'usb standard': SpecDirection.higher,
     'number of lines': SpecDirection.higher,
 
     // ─ Safety / SAR — LOWER IS BETTER (radiation exposure)
@@ -359,58 +365,93 @@ class SpecDirectionService {
     return SpecDirection.neutral;
   }
 
-  /// Given a spec key and list of string values, returns the index of the
+  /// Given a spec key and list of string values, returns the first index of the
   /// "better" value, or -1 if undecidable.
   int findBetterIndex(String specKey, List<String> values) {
-    if (values.length < 2) return -1;
-    if (values.any((v) => v == '—')) return -1;
+    final winners = findBetterIndexes(specKey, values);
+    return winners.isEmpty ? -1 : winners.first;
+  }
+
+  /// Returns all winning indexes. This matters for 3-4 product comparisons,
+  /// where two products can share the best value.
+  Set<int> findBetterIndexes(String specKey, List<String> values) {
+    if (values.length < 2) return {};
+
+    final indexed = values
+        .asMap()
+        .entries
+        .where((entry) {
+          return !_isMissingSpecValue(entry.value);
+        })
+        .toList(growable: false);
+    if (indexed.length < 2) return {};
+
+    final comparableValues = indexed.map((entry) => entry.value).toList();
+    final normalizedSet = comparableValues
+        .map((v) => v.trim().toLowerCase())
+        .toSet();
+    if (normalizedSet.length == 1) return {};
 
     // 1. Boolean check
-    final lowers = values.map((v) => v.toLowerCase()).toList();
-    final allBool = lowers.every(
-      (v) =>
-          v == 'yes' ||
-          v == 'no' ||
-          v == '✓ yes' ||
-          v == '✗ no' ||
-          v.startsWith('✓') ||
-          v.startsWith('✗'),
-    );
-    if (allBool) {
-      final yesIdx = lowers.indexWhere(
-        (v) => v.contains('yes') || v.startsWith('✓'),
+    final boolScores = comparableValues.map(_boolScore).toList();
+    if (boolScores.every((score) => score != null) &&
+        boolScores.toSet().length > 1) {
+      final maxScore = boolScores.whereType<int>().reduce(
+        (a, b) => a > b ? a : b,
       );
-      final hasNo = lowers.any((v) => v.contains('no') || v.startsWith('✗'));
-      if (yesIdx >= 0 && hasNo) return yesIdx;
-      return -1;
+      return {
+        for (var i = 0; i < boolScores.length; i++)
+          if (boolScores[i] == maxScore) indexed[i].key,
+      };
     }
 
-    // 2. Try component ranking (processor/GPU names)
-    final componentResult = _compareByComponentRanking(specKey, values);
-    if (componentResult >= 0) return componentResult;
+    // 2. Text-only feature quality (ANC > passive noise isolation, OLED > LCD,
+    // NVMe > SATA/HDD, newer wireless standards, better audio codecs, etc.).
+    final qualitativeScores = comparableValues
+        .map((value) => _scoreQualitativeValue(specKey, value))
+        .toList();
+    if (qualitativeScores.every((score) => score != null) &&
+        qualitativeScores.toSet().length > 1) {
+      final maxScore = qualitativeScores.whereType<double>().reduce(
+        (a, b) => a > b ? a : b,
+      );
+      return {
+        for (var i = 0; i < qualitativeScores.length; i++)
+          if (qualitativeScores[i] == maxScore) indexed[i].key,
+      };
+    }
 
-    // 3. Extract comparable numeric values (unit-aware + resolution-aware)
-    final nums = values
+    // 3. Try component ranking (processor/GPU names)
+    final componentResult = _compareByComponentRanking(
+      specKey,
+      comparableValues,
+    );
+    if (componentResult >= 0) return {indexed[componentResult].key};
+
+    // 4. Extract comparable numeric values (unit-aware + resolution-aware)
+    final nums = comparableValues
         .map((value) => _extractComparableNumber(specKey, value))
         .toList();
     if (nums.every((n) => n != null)) {
       final doubles = nums.cast<double>();
       final maxVal = doubles.reduce((a, b) => a > b ? a : b);
       final minVal = doubles.reduce((a, b) => a < b ? a : b);
-      if (maxVal == minVal) return -1;
+      if (maxVal == minVal) return {};
 
       final direction = getDirection(specKey);
-      switch (direction) {
-        case SpecDirection.higher:
-          return doubles.indexWhere((n) => n == maxVal);
-        case SpecDirection.lower:
-          return doubles.indexWhere((n) => n == minVal);
-        case SpecDirection.neutral:
-          return -1;
-      }
+      final target = switch (direction) {
+        SpecDirection.higher => maxVal,
+        SpecDirection.lower => minVal,
+        SpecDirection.neutral => null,
+      };
+      if (target == null) return {};
+      return {
+        for (var i = 0; i < doubles.length; i++)
+          if (doubles[i] == target) indexed[i].key,
+      };
     }
 
-    return -1;
+    return {};
   }
 
   // ─── Component Ranking ────────────────────────────────────────────────────
@@ -453,10 +494,195 @@ class SpecDirectionService {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
+  static bool _isMissingSpecValue(String value) {
+    final trimmed = value.trim().toLowerCase();
+    return trimmed.isEmpty ||
+        trimmed == '—' ||
+        trimmed == '-' ||
+        trimmed == '?' ||
+        trimmed == 'null' ||
+        trimmed == '{}' ||
+        trimmed == '[]' ||
+        trimmed == 'n/a' ||
+        trimmed == 'na';
+  }
+
+  static int? _boolScore(String value) {
+    final v = value.trim().toLowerCase();
+    if (v.startsWith('✓') ||
+        v == 'yes' ||
+        v == 'var' ||
+        v == 'evet' ||
+        v == 'true' ||
+        v == 'available' ||
+        v == 'ja' ||
+        v == 'oui' ||
+        v == 'sí' ||
+        v == 'si' ||
+        v == 'sim' ||
+        v == 'tak') {
+      return 1;
+    }
+    if (v.startsWith('✗') ||
+        v.startsWith('×') ||
+        v == 'no' ||
+        v == 'yok' ||
+        v == 'hayır' ||
+        v == 'hayir' ||
+        v == 'false' ||
+        v == 'not available' ||
+        v == 'nein' ||
+        v == 'non' ||
+        v == 'não' ||
+        v == 'nao' ||
+        v == 'nie') {
+      return 0;
+    }
+    return null;
+  }
+
+  static double? _scoreQualitativeValue(String specKey, String value) {
+    final key = _normalizeKey(specKey);
+    final v = _normalizeKey(value);
+    if (v.isEmpty) return null;
+
+    final boolScore = _boolScore(value);
+    if (boolScore != null) return boolScore.toDouble();
+
+    final isNoiseSpec =
+        key.contains('noise') ||
+        key.contains('gurultu') ||
+        key.contains('cancellation') ||
+        key.contains('engelleme') ||
+        key.contains('anc');
+    if (isNoiseSpec) {
+      if (v.contains('adaptive') ||
+          v.contains('hybrid') ||
+          v.contains('active') ||
+          v.contains('aktif') ||
+          v.contains('anc')) {
+        return 100;
+      }
+      if (v.contains('passive') || v.contains('pasif') || v.contains('pnc')) {
+        return 45;
+      }
+      if (v.contains('none') || v.contains('no ') || v.contains('yok')) {
+        return 0;
+      }
+    }
+
+    final isDisplaySpec =
+        key.contains('display') ||
+        key.contains('screen') ||
+        key.contains('ekran') ||
+        key.contains('panel');
+    if (isDisplaySpec) {
+      if (v.contains('micro led')) return 98;
+      if (v.contains('mini led')) return 94;
+      if (v.contains('oled') || v.contains('amoled')) return 90;
+      if (v.contains('ips')) return 66;
+      if (v.contains('lcd') || v.contains('led')) return 50;
+      if (v.contains('tn')) return 30;
+    }
+
+    final isStorageSpec =
+        key.contains('storage') ||
+        key.contains('depolama') ||
+        key.contains('disk') ||
+        key.contains('ssd') ||
+        key.contains('hdd');
+    if (isStorageSpec) {
+      if (v.contains('nvme') || v.contains('pcie')) return 95;
+      if (v.contains('ufs 4')) return 90;
+      if (v.contains('ufs 3')) return 82;
+      if (v.contains('ssd')) return 74;
+      if (v.contains('ufs')) return 68;
+      if (v.contains('emmc')) return 44;
+      if (v.contains('hdd')) return 32;
+    }
+
+    final wirelessScore = _scoreWirelessStandard(key, v);
+    if (wirelessScore != null) return wirelessScore;
+
+    final codecScore = _scoreAudioCodec(key, v);
+    if (codecScore != null) return codecScore;
+
+    final listScore = _scoreListRichness(key, value);
+    if (listScore != null) return listScore;
+
+    return null;
+  }
+
+  static double? _scoreWirelessStandard(String key, String value) {
+    final isWirelessSpec =
+        key.contains('wifi') ||
+        key.contains('wi fi') ||
+        key.contains('wireless') ||
+        key.contains('bluetooth') ||
+        key.contains('standard') ||
+        key.contains('connect') ||
+        key.contains('baglanti');
+    if (!isWirelessSpec) return null;
+
+    if (value.contains('wi fi 7') || value.contains('wifi 7')) return 97;
+    if (value.contains('802 11be')) return 97;
+    if (value.contains('wi fi 6e') || value.contains('wifi 6e')) return 90;
+    if (value.contains('wi fi 6') || value.contains('wifi 6')) return 84;
+    if (value.contains('802 11ax')) return 84;
+    if (value.contains('wi fi 5') || value.contains('wifi 5')) return 72;
+    if (value.contains('802 11ac')) return 72;
+    if (value.contains('802 11n')) return 54;
+    return null;
+  }
+
+  static double? _scoreAudioCodec(String key, String value) {
+    final isCodecSpec =
+        key.contains('codec') ||
+        key.contains('audio') ||
+        key.contains('ses') ||
+        key.contains('bluetooth');
+    if (!isCodecSpec) return null;
+
+    if (value.contains('ldac') || value.contains('aptx lossless')) return 96;
+    if (value.contains('aptx adaptive')) return 90;
+    if (value.contains('aptx hd')) return 84;
+    if (value.contains('aptx')) return 76;
+    if (value.contains('aac')) return 66;
+    if (value.contains('sbc')) return 48;
+    return null;
+  }
+
+  static double? _scoreListRichness(String key, String value) {
+    final isRichListSpec =
+        key.contains('feature') ||
+        key.contains('ozellik') ||
+        key.contains('profile') ||
+        key.contains('codec') ||
+        key.contains('sensor') ||
+        key.contains('port') ||
+        key.contains('standard');
+    if (!isRichListSpec) return null;
+
+    final parts = value
+        .split(RegExp(r'[,;/|]\s*|\n+'))
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toSet();
+    return parts.length > 1 ? parts.length.toDouble() : null;
+  }
+
   static String _normalizeKey(String key) {
     return key
         .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ç', 'c')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ö', 'o')
+        .replaceAll('ş', 's')
+        .replaceAll('ü', 'u')
         .replaceAll(RegExp(r'[_\-\/]'), ' ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
@@ -464,6 +690,12 @@ class SpecDirectionService {
   static double? _extractComparableNumber(String specKey, String value) {
     final normalizedKey = _normalizeKey(specKey);
     final normalizedValue = value.toLowerCase().trim();
+
+    final frequencyRangeScore = _extractFrequencyRangeScore(
+      normalizedKey,
+      normalizedValue,
+    );
+    if (frequencyRangeScore != null) return frequencyRangeScore;
 
     final resolutionScore = _extractResolutionScore(
       normalizedKey,
@@ -494,9 +726,11 @@ class SpecDirectionService {
   static double? _extractResolutionScore(String key, String value) {
     final looksLikeResolution =
         key.contains('resolution') ||
+        key.contains('cozunurluk') ||
         key.contains('video recording') ||
         key.contains('recording') ||
         key.contains('display') ||
+        key.contains('ekran') ||
         key.contains('screen') ||
         RegExp(r'\d+\s*[kp]\b', caseSensitive: false).hasMatch(value) ||
         RegExp(
@@ -526,8 +760,11 @@ class SpecDirectionService {
   static double? _extractStorageInGb(String key, String value) {
     final looksLikeStorage =
         key.contains('storage') ||
+        key.contains('depolama') ||
         key.contains('memory') ||
+        key.contains('bellek') ||
         key.contains('ram') ||
+        key.contains('onbellek') ||
         key.contains('cache') ||
         key.contains('vram');
     if (!looksLikeStorage) return null;
@@ -554,7 +791,7 @@ class SpecDirectionService {
   }
 
   static double? _extractWeightInGrams(String key, String value) {
-    if (!key.contains('weight')) return null;
+    if (!key.contains('weight') && !key.contains('agirlik')) return null;
 
     final match = RegExp(
       r'(\d+(?:\.\d+)?)\s*(kg|g|lb|lbs|oz)',
@@ -599,22 +836,59 @@ class SpecDirectionService {
     '720p': 1280 * 720,
   };
 
+  static double? _extractFrequencyRangeScore(String key, String value) {
+    final looksLikeFrequency =
+        key.contains('frequency response') ||
+        key.contains('frekans tepkisi') ||
+        key.contains('frequency range') ||
+        key.contains('frekans araligi');
+    if (!looksLikeFrequency) return null;
+
+    final matches = RegExp(
+      r'(\d+(?:[.,]\d+)?)\s*(hz|khz)?',
+      caseSensitive: false,
+    ).allMatches(value).toList();
+    if (matches.length < 2) return null;
+
+    double? asHz(RegExpMatch match) {
+      final amount = double.tryParse(match.group(1)!.replaceAll(',', '.'));
+      if (amount == null) return null;
+      final unit = match.group(2)?.toLowerCase();
+      return unit == 'khz' ? amount * 1000 : amount;
+    }
+
+    final first = asHz(matches.first);
+    final last = asHz(matches.last);
+    if (first == null || last == null || last <= first) return null;
+    return last - first;
+  }
+
   static bool _matchesLowerBetter(String key) {
     const lowerKeywords = [
       'weight',
+      'agirlik',
       'thickness',
+      'kalinlik',
       'price',
+      'fiyat',
       'watt',
       'tdp',
+      'rms noise',
       'noise',
+      'gurultu',
       'latency',
+      'gecikme',
       'response time',
+      'tepki',
       'heat',
       'temperature',
+      'sicaklik',
       'lag',
       'power consumption',
+      'guc tuketimi',
       'idle',
       'nm',
+      'nanometre',
       'sar',
       'radiation',
       'thd',
@@ -627,25 +901,57 @@ class SpecDirectionService {
   static bool _matchesHigherBetter(String key) {
     const higherKeywords = [
       'score',
+      'puan',
+      'version',
+      'versiyon',
+      'standard',
+      'standardi',
+      'bluetooth',
+      'wifi',
+      'wi fi',
+      'usb',
+      'generation',
+      'nesil',
       'speed',
+      'hiz',
       'capacity',
+      'kapasite',
       'resolution',
+      'cozunurluk',
       'frequency',
+      'frekans',
       'rate',
+      'oran',
+      'yenileme',
       'bandwidth',
+      'bant genisligi',
       'core',
+      'cekirdek',
       'thread',
+      'is parcacigi',
+      'izlek',
       'cache',
+      'onbellek',
       'memory',
+      'bellek',
       'storage',
+      'depolama',
       'battery',
+      'batarya',
+      'pil',
       'playback',
       'camera',
+      'kamera',
       'zoom',
       'fps',
       'benchmark',
       'ratio',
+      'kapsam',
+      'boyut',
+      'boyutu',
       'density',
+      'parlaklik',
+      'renk',
     ];
     return higherKeywords.any((kw) => key.contains(kw));
   }

@@ -30,8 +30,8 @@ const PB    = env.POCKETBASE_URL;
 const PB_MAIL = env.POCKETBASE_ADMIN_EMAIL;
 const PB_PASS = env.POCKETBASE_ADMIN_PASSWORD;
 
-const EBAY_ID  = 'Harunnge-QorAI-PRD-06c21b7a2-be6f2f7e';
-const EBAY_SEC = 'PRD-6c21b7a28dfa-f544-41e3-b556-ca4f';
+const EBAY_ID = env.EBAY_CLIENT_ID || '';
+const EBAY_SEC = env.EBAY_CLIENT_SECRET || '';
 const EBAY_BASIC = Buffer.from(`${EBAY_ID}:${EBAY_SEC}`).toString('base64');
 
 const DRY     = process.argv.includes('--dry-run');

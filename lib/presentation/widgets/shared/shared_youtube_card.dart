@@ -30,6 +30,10 @@ class SharedYouTubeReviewsCard extends ConsumerStatefulWidget {
   /// When true, renders as a compact expandable section (collapsed by default).
   final bool collapsible;
 
+  /// When true, hide the internal "YouTube Reviews" header row — useful when
+  /// the surrounding sheet already shows a title.
+  final bool hideHeader;
+
   const SharedYouTubeReviewsCard({
     super.key,
     required this.product,
@@ -39,6 +43,7 @@ class SharedYouTubeReviewsCard extends ConsumerStatefulWidget {
     this.onVideoTap,
     this.titleOverride,
     this.collapsible = false,
+    this.hideHeader = false,
   });
 
   @override
@@ -64,8 +69,13 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
     _chevronTurns = Tween<double>(begin: 0, end: 0.25).animate(
       CurvedAnimation(parent: _chevronController, curve: Curves.easeInOut),
     );
-    // Non-collapsible mode doesn't need expand state
-    if (!widget.collapsible) _expanded = true;
+    // Non-collapsible mode doesn't need expand state; also auto-fetches
+    if (!widget.collapsible) {
+      _expanded = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_loaded && !_loading) _fetchVideos();
+      });
+    }
   }
 
   @override
@@ -218,55 +228,57 @@ class _SharedYouTubeReviewsCardState extends ConsumerState<SharedYouTubeReviewsC
     }
   }
 
-  /// Classic layout with "Load Review Videos" button (detail screen)
+  /// Classic layout — auto-fetches videos and shows them directly.
   Widget _buildClassic(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: widget.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8)],
-      ),
+      padding: EdgeInsets.all(widget.hideHeader ? 0 : 16),
+      decoration: widget.hideHeader
+          ? null
+          : BoxDecoration(
+              color: widget.cardBg,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+          if (!widget.hideHeader) ...[
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.play_circle_fill,
+                    color: AppTheme.error,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(Icons.play_circle_fill, color: AppTheme.error, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.titleOverride ?? context.l10n?.youtubeReviews ?? 'YouTube Reviews',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.titleOverride ??
+                        context.l10n?.youtubeReviews ??
+                        'YouTube Reviews',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (!_loaded && !_loading)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _fetchVideos,
-                icon: const Icon(Icons.play_arrow),
-                label: Text(context.l10n?.loadReviewVideos ?? 'Load Review Videos'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+              ],
             ),
-          if (_loading)
+            const SizedBox(height: 12),
+          ],
+          if (_loading || (!_loaded && !_loading))
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),

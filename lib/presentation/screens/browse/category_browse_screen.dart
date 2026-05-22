@@ -21,6 +21,7 @@ import 'package:qor_ai/presentation/models/filter_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shared/compact_product_row.dart';
 
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/data/models/product_model.dart';
@@ -1199,15 +1200,19 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
   }
 
+  /// Returns the number of products to display in the sort bar.
+  /// Returns -1 when no filter / no search is applied — the sort bar uses
+  /// this to hide the count entirely. Per UX guideline: only show the
+  /// count when the user has narrowed the list via search or filters.
   int _displayProductCount(int filteredCount) {
     if (_searchQuery.isNotEmpty) return filteredCount;
-    if (_usesServerSideFiltering() && _totalProductCount > 0) {
-      return _totalProductCount;
+    if (_filterState.isActive) {
+      if (_usesServerSideFiltering() && _totalProductCount > 0) {
+        return _totalProductCount;
+      }
+      return filteredCount;
     }
-    if (_filterState.isActive) return filteredCount;
-    // Return real total only — local list snapshot during cache/feed warmup
-    // would otherwise show e.g. 50 then jump to 4186.
-    return _totalProductCount;
+    return -1; // hide
   }
 
   Future<void> _changeSortOption(_SortOption option) async {
@@ -1720,17 +1725,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // Product count
-          Text(
-            _fetchingAll || _loading
-                ? '...'
-                : '${_totalProductCount > 0 ? _totalProductCount : _visibleProducts.length} ${_fallbackText(en: 'Products', tr: 'Ürün')}',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: context.textSecondary,
+          // Product count — hidden when nothing is filtered/searched.
+          if (productCount >= 0)
+            Text(
+              _fetchingAll || _loading
+                  ? '...'
+                  : '$productCount ${_fallbackText(en: 'Products', tr: 'Ürün')}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
             ),
-          ),
           if (_searchQuery.isNotEmpty) ...[
             const SizedBox(width: 8),
             Expanded(
@@ -2157,13 +2163,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
                   ),
                 );
               }
+              final p = products[index];
               return RepaintBoundary(
-                child: _ProductListTile(
-                  product: products[index],
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    context.push('/product/${products[index].id}');
-                  },
+                child: CompactProductRow(
+                  product: p,
+                  country: ref.watch(selectedCountryProvider),
                 ),
               );
             },
@@ -2313,6 +2317,7 @@ class _IsolatedSearchBarState extends State<_IsolatedSearchBar> {
 // Product List Tile (horizontal card for list view)
 // ---------------------------------------------------------------------------
 
+// ignore: unused_element
 class _ProductListTile extends StatelessWidget {
   const _ProductListTile({required this.product, required this.onTap});
 

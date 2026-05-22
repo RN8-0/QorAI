@@ -147,90 +147,53 @@ class _TitlePriceSection extends ConsumerWidget {
         : 'USD';
     final locale = Localizations.localeOf(context).languageCode;
     final displayName = localizeProductName(product.name, locale);
-    final cacheKey = _detailLocalizedProductKey(ref, context, product);
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
-    final isPremium = ref.watch(
-      subscriptionServiceProvider.select((service) => service.isPremium),
-    );
-    final detailMatchCost = ref.watch(
-      subscriptionServiceProvider.select(
-        (service) => service.creditCostForFeature('detail_match'),
-      ),
-    );
-    final matchAsync = ref.watch(geminiMatchScoreProvider(cacheKey));
-    final showAiAction =
-        (userProfile?.quizCompleted ?? false) &&
-        !isPremium &&
-        !matchAsync.isLoading &&
-        matchAsync.valueOrNull == null;
 
     return Container(
       width: double.infinity,
       color: context.backgroundColor,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (product.brand != null && product.brand!.isNotEmpty)
-                  Text(
-                    product.brand!.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryBlue,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  displayName,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                    height: 1.25,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                if (price != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          AppUtils.formatCurrency(price, currency),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: context.surfaceVariantColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+          if (product.brand != null && product.brand!.isNotEmpty)
+            Text(
+              product.brand!.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primaryBlue,
+                letterSpacing: 1.4,
+              ),
+            ),
+          const SizedBox(height: 4),
+          Text(
+            displayName,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+              height: 1.25,
+              letterSpacing: -0.2,
             ),
           ),
-          if (showAiAction) ...[
-            const SizedBox(width: 12),
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: _HeroAiMatchTrigger(
-                amount: detailMatchCost,
-                onTap: () => _requestDetailAiMatch(context, ref, product),
+          if (price != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                AppUtils.formatCurrency(price, currency),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: context.surfaceVariantColor,
+                ),
               ),
             ),
           ],

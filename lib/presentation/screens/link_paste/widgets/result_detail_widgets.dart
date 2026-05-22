@@ -1,5 +1,4 @@
-﻿part of '../link_paste_screen.dart';
-
+part of '../link_paste_screen.dart';
 
 class _FactorRow extends StatefulWidget {
   final CompatibilityFactor factor;
@@ -47,34 +46,43 @@ class _FactorRowState extends State<_FactorRow>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Text(factor.emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(factor.label,
-                style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: context.textPrimary)),
-          ),
-          AnimatedBuilder(
-            animation: _barAnimation,
-            builder: (context, _) => Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: _barColor(factor.score).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+        Row(
+          children: [
+            Text(factor.emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
+                factor.label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: context.textPrimary,
+                ),
+              ),
+            ),
+            AnimatedBuilder(
+              animation: _barAnimation,
+              builder: (context, _) => Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: _barColor(factor.score).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
                   '${(_barAnimation.value * 100).toStringAsFixed(0)}%',
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: _barColor(factor.score))),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: _barColor(factor.score),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
         const SizedBox(height: 8),
         AnimatedBuilder(
           animation: _barAnimation,
@@ -113,36 +121,48 @@ class _ProConCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(title,
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
                   style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: color)),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(color == AppTheme.success ? '\u2705' : '\u26a0\ufe0f',
-                        style: const TextStyle(fontSize: 12)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(item,
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: context.textSecondary,
-                              height: 1.4)),
-                    ),
-                  ],
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: color,
+                  ),
                 ),
-              )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    color == AppTheme.success ? '\u2705' : '\u26a0\ufe0f',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -164,7 +184,9 @@ class _CompatibilityGauge extends StatelessWidget {
 
   String _getLabel(BuildContext context, [double? s]) {
     final v = s ?? score;
-    if (v >= 90) return context.l10n?.perfectMatch ?? 'Perfect Match! \u{1F3AF}';
+    if (v >= 90) {
+      return context.l10n?.perfectMatch ?? 'Perfect Match! \u{1F3AF}';
+    }
     if (v >= 75) return context.l10n?.greatMatch ?? 'Great Match \u{1F44D}';
     if (v >= 60) return context.l10n?.goodMatch ?? 'Good Match';
     if (v >= 40) return context.l10n?.averageMatch ?? 'Average Match';
@@ -190,55 +212,77 @@ class _CompatibilityGauge extends StatelessWidget {
   }
 
   Widget _buildGaugeContent(BuildContext context, double currentScore) {
-    return Row(children: [
-      SizedBox(
-        width: 100,
-        height: 100,
-        child: CustomPaint(
-          painter: _GaugePainter(score: currentScore, color: _getColor(currentScore)),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('${currentScore.toStringAsFixed(0)}%',
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          height: 100,
+          child: CustomPaint(
+            painter: _GaugePainter(
+              score: currentScore,
+              color: _getColor(currentScore),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${currentScore.toStringAsFixed(0)}%',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: _getColor(currentScore))),
-                Text('match',
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: _getColor(currentScore),
+                    ),
+                  ),
+                  Text(
+                    'match',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: context.textTertiaryColor)),
-              ],
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: context.textTertiaryColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      const SizedBox(width: 24),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(context.l10n?.yourCompatibility ?? 'Your Compatibility',
+        const SizedBox(width: 24),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n?.yourCompatibility ?? 'Your Compatibility',
                 style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: context.textPrimary)),
-            const SizedBox(height: 4),
-            Text(_getLabel(context, currentScore),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _getLabel(context, currentScore),
                 style: GoogleFonts.plusJakartaSans(
-                    color: _getColor(currentScore),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15)),
-            const SizedBox(height: 6),
-            Text(context.l10n?.basedOnProfilePrefs ?? 'Based on your profile, quiz answers & preferences',
+                  color: _getColor(currentScore),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.l10n?.basedOnProfilePrefs ??
+                    'Based on your profile, quiz answers & preferences',
                 style: GoogleFonts.plusJakartaSans(
-                    color: context.textTertiaryColor, fontSize: 12)),
-          ],
+                  color: context.textTertiaryColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 }
 
@@ -260,7 +304,10 @@ class _GaugePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi * 0.75, pi * 1.5, false, bgPaint,
+      -pi * 0.75,
+      pi * 1.5,
+      false,
+      bgPaint,
     );
 
     // Gradient score arc
@@ -326,7 +373,8 @@ class _StepRow extends StatelessWidget {
           height: 36,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [color, color.withValues(alpha: 0.7)]),
+              colors: [color, color.withValues(alpha: 0.7)],
+            ),
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -343,16 +391,22 @@ class _StepRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: context.textPrimary)),
-              Text(subtitle,
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: context.textTertiaryColor,
-                      fontWeight: FontWeight.w500)),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: context.textPrimary,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: context.textTertiaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -414,35 +468,50 @@ class _MiniFeatureCard extends StatelessWidget {
             child: Icon(icon, size: 20, color: color),
           ),
           const SizedBox(height: 8),
-          Text(label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.textSecondary,
-                  height: 1.3)),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: context.textSecondary,
+              height: 1.3,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _PowerCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String title;
   final String emoji;
-  const _PowerCard({required this.icon, required this.color, required this.title, required this.emoji});
+  const _PowerCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.emoji,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 100, height: 120,
+      width: 100,
+      height: 120,
       margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)]),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.12),
+            color.withValues(alpha: 0.04),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
@@ -451,10 +520,16 @@ class _PowerCard extends StatelessWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 24)),
           const SizedBox(height: 8),
-          Text(title, textAlign: TextAlign.center,
+          Text(
+            title,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              fontSize: 11, fontWeight: FontWeight.w700,
-              color: context.textPrimary, height: 1.2)),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+              height: 1.2,
+            ),
+          ),
         ],
       ),
     );
@@ -467,14 +542,20 @@ class _CompactStep extends StatelessWidget {
   final Color color;
   final String title;
   final String step;
-  const _CompactStep({required this.icon, required this.color, required this.title, required this.step});
+  const _CompactStep({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.step,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Container(
-          width: 44, height: 44,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(14),
@@ -483,22 +564,40 @@ class _CompactStep extends StatelessWidget {
             children: [
               Center(child: Icon(icon, size: 20, color: color)),
               Positioned(
-                top: 2, right: 4,
+                top: 2,
+                right: 4,
                 child: Container(
-                  width: 14, height: 14,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  child: Center(child: Text(step,
-                    style: GoogleFonts.inter(
-                      fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white))),
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      step,
+                      style: GoogleFonts.inter(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 6),
-        Text(title, textAlign: TextAlign.center,
+        Text(
+          title,
+          textAlign: TextAlign.center,
           style: GoogleFonts.inter(
-            fontSize: 11, fontWeight: FontWeight.w600, color: context.textSecondary)),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: context.textSecondary,
+          ),
+        ),
       ],
     );
   }
@@ -510,8 +609,11 @@ class _StepArrow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
-      child: Icon(Icons.arrow_forward_rounded, size: 16,
-        color: AppTheme.brandBlue.withValues(alpha: 0.4)),
+      child: Icon(
+        Icons.arrow_forward_rounded,
+        size: 16,
+        color: AppTheme.brandBlue.withValues(alpha: 0.4),
+      ),
     );
   }
 }
@@ -522,7 +624,12 @@ class _FeatureTile extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
-  const _FeatureTile({required this.icon, required this.color, required this.title, required this.subtitle});
+  const _FeatureTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -536,25 +643,41 @@ class _FeatureTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.6)]),
-              borderRadius: BorderRadius.circular(10)),
+              gradient: LinearGradient(
+                colors: [color, color.withValues(alpha: 0.6)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(icon, size: 18, color: Colors.white),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: GoogleFonts.inter(
-                fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary)),
-              Text(subtitle, style: GoogleFonts.inter(
-                fontSize: 10, color: context.textTertiaryColor)),
-            ],
-          )),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: context.textTertiaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
-

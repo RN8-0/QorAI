@@ -7,6 +7,7 @@ import { useT } from '../i18n/index.jsx';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import { useSeo } from '../lib/seo';
+import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -18,10 +19,11 @@ function flatSpecs(p) {
       });
     }
   };
-  put(p.keySpecs);
-  put(p.specs);
-  if (p.specSections && typeof p.specSections === 'object') {
-    Object.values(p.specSections).forEach(put);
+  const canonical = canonicalizeSpecMaps(p);
+  put(canonical.keySpecs);
+  put(canonical.specs);
+  if (canonical.specSections && typeof canonical.specSections === 'object') {
+    Object.values(canonical.specSections).forEach(put);
   }
   return flat;
 }

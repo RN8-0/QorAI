@@ -14,7 +14,6 @@ class _OverviewContent extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _DeferredVariantsSection(product: product),
           if (product.description.isNotEmpty) ...[
             _DescCard(text: product.description, cardBg: cardBg, isDark: isDark),
             const SizedBox(height: 12),

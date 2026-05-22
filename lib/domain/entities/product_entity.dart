@@ -97,19 +97,15 @@ class ProductEntity extends Equatable {
 
   Map<String, dynamic> specsForLanguage(String languageCode) {
     final code = languageCode.toLowerCase().trim();
-    if (source == 'icecat') {
-      final localized = multiLangSpecs[code];
-      if (localized != null && localized.isNotEmpty) return localized;
-    }
+    final localized = multiLangSpecs[code];
+    if (localized != null && localized.isNotEmpty) return localized;
     return specs;
   }
 
   Map<String, dynamic> specSectionsForLanguage(String languageCode) {
     final code = languageCode.toLowerCase().trim();
-    if (source == 'icecat') {
-      final localized = multiLangSections[code];
-      if (localized != null && localized.isNotEmpty) return localized;
-    }
+    final localized = multiLangSections[code];
+    if (localized != null && localized.isNotEmpty) return localized;
     return specSections;
   }
 

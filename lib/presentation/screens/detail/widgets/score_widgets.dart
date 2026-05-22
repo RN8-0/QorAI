@@ -48,6 +48,7 @@ String _localizedMatchLoadingText(BuildContext context) {
   return labels[languageCode] ?? labels['en']!;
 }
 
+// ignore: unused_element
 class _ScoreDuo extends ConsumerStatefulWidget {
   final ProductEntity product;
   const _ScoreDuo({required this.product});

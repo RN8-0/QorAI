@@ -61,13 +61,15 @@ class PbDataSource {
   static const _filterCatalogCacheTtl = Duration(hours: 6);
 
   // Lean field projection for product list queries (feed/grid cards).
-  // Excludes heavy fields (specs, specSections, keySpecs, description,
-  // affiliateLinks, images[], pros, cons) — detail view refetches via getOne().
+  // Keeps gallery/offer rollups so cards, price sorting and affiliate CTAs can
+  // update without a detail refetch.
   static const _productListFields =
       'id,collectionId,collectionName,created,updated,'
-      'name,brand,category,subcategory,'
-      'imageUrl,imageURL,techScore,trendScore,techSubscores,'
-      'price_segment,priceRange,prices,tags,ratings,'
+      'name,brand,category,subcategory,source,'
+      'imageUrl,imageURL,images,techScore,trendScore,techSubscores,'
+      'price_segment,priceRange,prices,lowestPrice,lowestPriceCurrency,'
+      'lowestPriceUSD,lowestOfferUrl,lowestOfferStore,offerCount,'
+      'affiliateLinks,affiliateLinksByCountry,tags,ratings,'
       'isActive,variantGroup,configKey,scrapedAt,lastUpdated';
 
   PbDataSource({PocketBase? client}) : _pb = client ?? pb {
@@ -2090,6 +2092,12 @@ class PbDataSource {
     if (products.isNotEmpty) _homeFeedProducts = products;
   }
 
+  void clearProductRuntimeCaches() {
+    _homeFeedProducts = null;
+    _searchResultCache.clear();
+    _filterCatalogCache.clear();
+  }
+
   void preWarmSearchFunction() {}
 
   Future<List<ProductModel>> searchProducts({
@@ -2155,7 +2163,10 @@ class PbDataSource {
 
       final filtered = ProductFilter.filterRelaxed(results);
 
-      final ranked = rankProductsForQuery(filtered, q, limit: limit);
+      final ranked = await _filterLivePocketBaseProducts(
+        rankProductsForQuery(filtered, q, limit: limit),
+        context: 'search "$q"',
+      );
 
       _evictSearchResultCache();
       _searchResultCache[cacheKey] = (results: ranked, time: DateTime.now());
@@ -2528,6 +2539,43 @@ class PbDataSource {
     return compute(_parseTypesenseHitsToProducts, hitMaps);
   }
 
+  Future<List<ProductModel>> _filterLivePocketBaseProducts(
+    List<ProductModel> products, {
+    String context = 'Typesense',
+  }) async {
+    if (products.isEmpty) return products;
+    try {
+      final ids = <String>[];
+      final seen = <String>{};
+      for (final product in products) {
+        if (product.id.isNotEmpty && seen.add(product.id)) {
+          ids.add(product.id);
+        }
+      }
+      if (ids.isEmpty) return products;
+
+      final live = await getProductsByIds(
+        ids,
+      ).timeout(const Duration(seconds: 12));
+      final liveById = {for (final product in live) product.id: product};
+      final filtered = <ProductModel>[];
+      for (final product in products) {
+        final fresh = liveById[product.id];
+        if (fresh != null) filtered.add(fresh);
+      }
+      final removed = products.length - filtered.length;
+      if (removed > 0) {
+        debugPrint(
+          '=== QOR AI: $context filtered $removed stale Typesense products ===',
+        );
+      }
+      return filtered;
+    } catch (e) {
+      debugPrint('=== QOR AI: $context live PB validation skipped: $e ===');
+      return products;
+    }
+  }
+
   /// Fetch products for a single category from Typesense.
   /// Much faster than PocketBase pagination (10-50ms vs 1-2s).
   Future<List<ProductModel>> getProductsByCategoryTs({
@@ -2550,7 +2598,10 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = await _parseTypesenseProductsOffMainThread(hits);
+      final products = await _filterLivePocketBaseProducts(
+        await _parseTypesenseProductsOffMainThread(hits),
+        context: 'TS cat=$category',
+      );
       if (_verboseTypesenseLogs) {
         debugPrint(
           '=== QOR AI: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
@@ -2596,13 +2647,28 @@ class PbDataSource {
       );
       sw.stop();
 
-      final results = <String, List<ProductModel>>{};
+      final parsedByCategory = <String, List<ProductModel>>{};
+      final allParsed = <ProductModel>[];
       final resultsList = (response.data['results'] as List?) ?? [];
       for (var i = 0; i < resultsList.length && i < categories.length; i++) {
         final catResult = resultsList[i] as Map<String, dynamic>;
         final hits = (catResult['hits'] as List?) ?? [];
         final products = await _parseTypesenseProductsOffMainThread(hits);
-        results[categories[i]] = products;
+        parsedByCategory[categories[i]] = products;
+        allParsed.addAll(products);
+      }
+
+      final live = await _filterLivePocketBaseProducts(
+        allParsed,
+        context: 'TS multi_search',
+      );
+      final liveById = {for (final product in live) product.id: product};
+      final results = <String, List<ProductModel>>{};
+      for (final entry in parsedByCategory.entries) {
+        results[entry.key] = entry.value
+            .map((product) => liveById[product.id])
+            .whereType<ProductModel>()
+            .toList(growable: false);
       }
 
       final total = results.values.fold<int>(0, (s, l) => s + l.length);
@@ -2659,10 +2725,14 @@ class PbDataSource {
         page++;
       }
       sw.stop();
-      debugPrint(
-        '=== QOR AI: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===',
+      final liveAll = await _filterLivePocketBaseProducts(
+        all,
+        context: 'TS allInCat cat=$category',
       );
-      return all;
+      debugPrint(
+        '=== QOR AI: TS allInCat cat=$category → ${liveAll.length} in ${sw.elapsedMilliseconds}ms ===',
+      );
+      return liveAll;
     } catch (e) {
       debugPrint('=== QOR AI: TS allInCat cat=$category FAILED: $e ===');
       return [];
@@ -2887,7 +2957,10 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = await _parseTypesenseProductsOffMainThread(hits);
+      final products = await _filterLivePocketBaseProducts(
+        await _parseTypesenseProductsOffMainThread(hits),
+        context: 'TS getProductsPage cat=$category page=$page',
+      );
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
@@ -2949,13 +3022,17 @@ class PbDataSource {
           .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
           .whereType<ProductModel>()
           .toList();
+      final liveProducts = await _filterLivePocketBaseProducts(
+        products,
+        context: 'TS getTopRated page=$page',
+      );
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-        '=== QOR AI: TS getTopRated page=$page → ${products.length}/$found in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getTopRated page=$page → ${liveProducts.length}/$found in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
-        products: products,
+        products: liveProducts,
         nextPage: page + 1,
         hasMore: hasMore,
         totalFound: found,
@@ -2992,8 +3069,9 @@ class PbDataSource {
   /// and trimmed whitespace.
   static List<String> _categoryVariants(String category) {
     final trimmed = category.trim();
+    final canonical = _canonicalCategory(trimmed);
     // Produce hyphenated and underscored lower-case slugs.
-    final lower = trimmed.toLowerCase();
+    final lower = canonical.toLowerCase();
     final hyphenated = lower.replaceAll('_', '-').replaceAll(' ', '-');
     final underscored = lower.replaceAll('-', '_').replaceAll(' ', '_');
     final spaced = lower.replaceAll('-', ' ').replaceAll('_', ' ');
@@ -3001,11 +3079,76 @@ class PbDataSource {
     // Collect unique variants preserving the original as first candidate.
     final seen = <String>{};
     final result = <String>[];
-    for (final v in [trimmed, hyphenated, underscored, spaced]) {
+    for (final v in [
+      trimmed,
+      canonical,
+      hyphenated,
+      underscored,
+      spaced,
+      ...(_legacyCategoryAliases[trimmed.toLowerCase()] ?? const <String>[]),
+    ]) {
       if (seen.add(v)) result.add(v);
     }
     return result;
   }
+
+  static String _canonicalCategory(String category) {
+    final key = category.toLowerCase().trim();
+    return _categoryCanonicalAliases[key] ?? key;
+  }
+
+  static const Map<String, String> _categoryCanonicalAliases = {
+    'gpu': 'graphics_cards',
+    'gpus': 'graphics_cards',
+    'graphics-cards': 'graphics_cards',
+    'graphics cards': 'graphics_cards',
+    'case': 'pc_cases',
+    'cases': 'pc_cases',
+    'pc-cases': 'pc_cases',
+    'cooler': 'cpu_coolers',
+    'coolers': 'cpu_coolers',
+    'cpu-coolers': 'cpu_coolers',
+    'power-supplies': 'psu',
+    'power_supplies': 'psu',
+    'power supplies': 'psu',
+    'consoles': 'gaming_consoles',
+    'game-consoles': 'gaming_consoles',
+    'game consoles': 'gaming_consoles',
+    'routers': 'wifi_routers',
+    'router': 'wifi_routers',
+    'wifi-routers': 'wifi_routers',
+    'wi-fi routers': 'wifi_routers',
+    'modem-routers': 'modem_routers',
+    'network-switches': 'network_switches',
+    'pcie-network-cards': 'pcie_nic',
+    'pcie-nic': 'pcie_nic',
+    'robot-vacuums': 'robot_vacuums',
+    'robot vacuums': 'robot_vacuums',
+    'vacuum-cleaners': 'vacuums',
+    'vacuum cleaners': 'vacuums',
+    'action-cameras': 'action_cameras',
+    'action cameras': 'action_cameras',
+    'security-cameras': 'security_cameras',
+    'security cameras': 'security_cameras',
+    'power_banks': 'powerbanks',
+    'power-banks': 'powerbanks',
+    'power banks': 'powerbanks',
+    'ssds': 'ssd',
+  };
+
+  static const Map<String, List<String>> _legacyCategoryAliases = {
+    'graphics_cards': ['gpus', 'graphics-cards'],
+    'pc_cases': ['cases', 'pc-cases'],
+    'cpu_coolers': ['coolers', 'cpu-coolers'],
+    'gaming_consoles': ['consoles', 'game-consoles'],
+    'wifi_routers': ['routers', 'wifi-routers'],
+    'routers': ['wifi_routers', 'modem_routers'],
+    'robot_vacuums': ['robot-vacuums'],
+    'action_cameras': ['action-cameras'],
+    'security_cameras': ['security-cameras'],
+    'powerbanks': ['power_banks', 'power-banks'],
+    'ssd': ['ssds'],
+  };
 
   // ────────────────────────────────────────────────────────────────────────
   // ─── HELPERS ───

@@ -1,10 +1,10 @@
 /**
- * Qor AI — Amazon offer connector (Product Advertising API 5.0)
+ * Qor AI — Amazon offer connector (Creators API / legacy PA-API placeholder)
  *
- * Skeleton: structure + product→offer mapping are ready; the PA-API request
- * needs AWS SigV4 signing. Easiest path is the official SDK:
- *     npm i paapi5-nodejs-sdk
- * then fill _searchItems() below. Until credentials + signing are in place
+ * Skeleton: structure + product→offer mapping are ready. Amazon's legacy
+ * Product Advertising API stopped accepting new customers and points new
+ * integrations to Creators API, so keep this connector disabled until the
+ * account has API access and the final API shape is wired. Until then
  * searchOffers() returns [] so the pipeline keeps working.
  *
  * Credentials (migration/.env — get them at affiliate-program.amazon.*):

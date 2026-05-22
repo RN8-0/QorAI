@@ -1,5 +1,6 @@
 // Typesense API helper
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
@@ -15,10 +16,11 @@ function req(method, urlPath, body, contentType = 'application/json') {
   return new Promise((resolve, reject) => {
     const u = new URL(BASE + urlPath);
     const data = body ? (typeof body === 'string' ? body : JSON.stringify(body)) : null;
-    const r = http.request({
+    const transport = u.protocol === 'https:' ? https : http;
+    const r = transport.request({
       method,
       hostname: u.hostname,
-      port: u.port || 80,
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
       path: u.pathname + u.search,
       headers: {
         'X-TYPESENSE-API-KEY': KEY,

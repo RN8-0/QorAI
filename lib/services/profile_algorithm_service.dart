@@ -472,7 +472,9 @@ class ProfileAlgorithmService {
   }
 
   /// Calculate total compatibility score (all layers included)
-  /// Blueprint Section 8.1 formula
+  /// Result is in the 20–100 range — never goes below 20 (so even a
+  /// "wrong" product gets a meaningful baseline score, and the spread
+  /// of typical scores feels rich rather than collapsing to 0).
   double calculateTotalFitScore({
     required UserEntity user,
     required ProductEntity product,
@@ -509,39 +511,37 @@ class ProfileAlgorithmService {
         pricePerformanceScore ?? _calculatePricePerformanceScore(user, product);
 
     // Weighted total (weights: 0.50 + 0.20 + 0.15 + 0.15 = 1.0)
-    // Personal fit dominates to make scores user-specific
     double total =
         (personalFit * 0.50) +
         (expert * 0.20) +
         (community * 0.15) +
         (pricePerf * 0.15);
 
-    // Recency bonus/penalty: moderate impact to avoid score clustering
+    // Recency bonus/penalty.
     final releaseYear = _getReleaseYear(product);
     if (releaseYear != null) {
       final currentYear = DateTime.now().year;
       final yearDiff = currentYear - releaseYear;
       if (yearDiff <= 0) {
-        total += 8; // This year / upcoming → +8
+        total += 8;
       } else if (yearDiff == 1) {
-        total += 4; // Last year → +4
+        total += 4;
       } else if (yearDiff == 2) {
-        total += 0; // 2 years ago → neutral
+        total += 0;
       } else if (yearDiff == 3) {
-        total -= 5; // 3 years ago → -5
+        total -= 5;
       } else if (yearDiff == 4) {
-        total -= 12; // 4 years ago → -12
+        total -= 10;
       } else {
-        total -= 18; // 5+ years ago → -18
+        total -= 14;
       }
     }
 
-    // Interest category boost: smaller to avoid uniform inflation
+    // Interest category boost.
     if (user.interestCategories.contains(product.category.toLowerCase()) ||
         user.interestCategories.contains(product.category)) {
       total += 4;
     }
-    // Primary category gets extra
     if (user.primaryCategory != null &&
         product.category.toLowerCase() == user.primaryCategory!.toLowerCase()) {
       total += 3;
@@ -549,7 +549,60 @@ class ProfileAlgorithmService {
 
     total += _calculateUserIntentBoost(user, product);
 
-    return total.clamp(0, 100);
+    // Behavior-driven personalization bonus (search/view/compare history).
+    total += _calculateHistoryBoost(product, behavior);
+
+    // ── Normalize into the 20-100 band (no zero scores) ─────────────────────
+    // Map raw [0..100] → [20..100] so even mismatches feel like a real result.
+    final clamped = total.clamp(0.0, 100.0);
+    return 20 + (clamped * 0.80);
+  }
+
+  /// History boost: rewards products related to what the user actually
+  /// searches, views, and compares (capped at +6).
+  double _calculateHistoryBoost(
+    ProductEntity product,
+    BehaviorSignals behavior,
+  ) {
+    if (behavior.recentSearches.isEmpty &&
+        behavior.productViews.isEmpty &&
+        behavior.categoryViews.isEmpty) {
+      return 0;
+    }
+    double boost = 0;
+
+    // Recent searches matching the product name/brand/category.
+    if (behavior.recentSearches.isNotEmpty) {
+      final blob =
+          '${product.name} ${product.brand ?? ''} ${product.category} ${product.subcategory} ${product.tags.join(' ')}'
+              .toLowerCase();
+      for (final query in behavior.recentSearches.take(8)) {
+        final terms = query.toLowerCase().split(RegExp(r'\s+'));
+        for (final term in terms) {
+          if (term.length >= 3 && blob.contains(term)) {
+            boost += 0.8;
+            break;
+          }
+        }
+      }
+    }
+
+    // Direct view history.
+    final viewCount = behavior.productViews[product.id] ?? 0;
+    if (viewCount > 0) {
+      boost += (viewCount * 0.6).clamp(0, 2.5);
+    }
+
+    // Category interest from views.
+    final catViews = behavior.categoryViews[product.category.toLowerCase()] ??
+        behavior.categoryViews[product.category] ??
+        0;
+    if (catViews > 0) {
+      final total = behavior.categoryViews.values.fold<int>(1, (a, b) => a + b);
+      boost += ((catViews / total) * 4).clamp(0, 2.5);
+    }
+
+    return boost.clamp(0, 6);
   }
 
   /// Extract release year from product specs for recency scoring

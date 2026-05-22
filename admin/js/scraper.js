@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260522-epey-complete-partition-dict-safe';
+const SCRAPER_BUILD = '20260522-epey-full-catalog-score-dict-fix';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -732,6 +732,20 @@ function configKeyFromProduct(product, variantGroup) {
 function prepareProductPayload(product) {
   const sourceProduct = canonicalizeEpeySpecsToEnglish(product);
   const sanitized = sanitizeProductSpecs(sourceProduct.specs || {}, sourceProduct.specSections || {});
+  const canonicalizer = typeof window !== 'undefined' ? window.QorAiSpecCanonical : null;
+  const canonical = canonicalizer && typeof canonicalizer.canonicalizeProduct === 'function'
+    ? canonicalizer.canonicalizeProduct({
+        ...sourceProduct,
+        specs: sanitized.specs,
+        specSections: sanitized.sections,
+        keySpecs: sourceProduct.keySpecs || {},
+      })
+    : {
+        specs: sanitized.specs,
+        specSections: sanitized.sections,
+        keySpecs: sourceProduct.keySpecs || {},
+        specsEn: sanitized.specs,
+      };
   const cleanName = cleanCountryCodes(sourceProduct.name || '');
   let category = window.QorAiCategories?.canonicalId
     ? window.QorAiCategories.canonicalId(sourceProduct.category || '')
@@ -782,15 +796,16 @@ function prepareProductPayload(product) {
     imageUrlThumb: primary && !isEpeySource && typeof imgThumb === 'function' ? imgThumb(primary) : primary || undefined,
     imageUrlHQ: primary && !isEpeySource && typeof imgHQ === 'function' ? imgHQ(primary) : primary || undefined,
     images,
-    specs: sanitized.specs,
-    specSections: sanitized.sections,
-    keySpecs: sourceProduct.keySpecs && typeof sourceProduct.keySpecs === 'object'
-      ? Object.fromEntries(Object.entries(sourceProduct.keySpecs)
+    specs: canonical.specs || sanitized.specs,
+    specSections: canonical.specSections || sanitized.sections,
+    specsEn: canonical.specsEn || canonical.specs || sanitized.specs,
+    keySpecs: canonical.keySpecs && typeof canonical.keySpecs === 'object'
+      ? Object.fromEntries(Object.entries(canonical.keySpecs)
           .map(([k, v]) => [cleanCountryCodes(k), cleanCountryCodes(v)])
           .filter(([k, v]) => k && v && !isBlockedSpec(k, v)))
       : {},
     techScore: Number.isFinite(Number(sourceProduct.techScore)) ? Number(sourceProduct.techScore) : undefined,
-    specsCount: Object.keys(sanitized.specs).length,
+    specsCount: Object.keys(canonical.specs || sanitized.specs).length,
     variantGroup,
     configKey: String(sourceProduct.configKey || configKeyFromProduct(sourceProduct, variantGroup) || '').trim().slice(0, 255),
     scrapedAt: sourceProduct.scrapedAt || new Date().toISOString(),
@@ -810,6 +825,8 @@ function prepareProductPayload(product) {
   if (sourceProduct.nameTranslated && typeof sourceProduct.nameTranslated === 'object') {
     payload.nameTranslated = sourceProduct.nameTranslated;
   }
+  payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), en: payload.specs };
+  payload.multiLangSections = { ...(payload.multiLangSections || {}), en: payload.specSections };
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
   if (!payload.name) throw new Error('Product name is empty');
@@ -2081,9 +2098,9 @@ Rules:
   }
 
   const passes = [
-    { size: 150, concurrency: 2 },
-    { size: 75, concurrency: 1 },
-    { size: 35, concurrency: 1 },
+    { size: 40, concurrency: 3 },
+    { size: 25, concurrency: 2 },
+    { size: 12, concurrency: 1 },
   ];
   for (let pass = 0; pass < passes.length; pass++) {
     const current = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
@@ -2325,9 +2342,10 @@ window.QorAiBulkTranslate = {
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting; must match the first
-  // DeepSeek depot pass size above.
-  CHUNK_SIZE: 150,
-  CONCURRENCY: 2,
+  // DeepSeek depot pass size above. Keep chunks modest: one request returns
+  // 11 languages, so 150 atoms routinely overflows/truncates the JSON.
+  CHUNK_SIZE: 40,
+  CONCURRENCY: 3,
 };
 
 // ═══════════════════════════════════════
@@ -3134,36 +3152,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       const clean = prepareProductPayload(product);
-
-      // Cross-source merge: if this model already exists as an ICECAT record,
-      // overwrite that record in place with the Epey data instead of creating
-      // a duplicate. PocketBase PATCH is partial — the Icecat record's
-      // affiliate/offer fields (gtin, mpn, icecatId, lowestPrice*,
-      // affiliateLinksByCountry, offerCount, techScore) are NOT in the Epey
-      // payload, so they survive untouched. configKey is dropped too so the
-      // original dedup key is kept. Result: one record, Epey content, Icecat
-      // affiliate data — exactly the requested behaviour.
-      const mergeKey = clean.variantGroup || product.variantGroup;
-      const existing = mergeKey ? existingByVG.get(mergeKey) : null;
-      if (existing && /icecat/i.test(existing.source)) {
-        const mergePayload = { ...clean };
-        // Keep Icecat's identity/affiliate keys — they are the base. Dropping
-        // them from the PATCH means PocketBase leaves the record's existing
-        // gtin / mpn / configKey untouched.
-        delete mergePayload.configKey;
-        delete mergePayload.gtin;
-        delete mergePayload.mpn;
-        await pbUpdateDoc('products', existing.id, mergePayload);
-        existingByVG.delete(mergeKey); // a later variant → new record
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: mergePayload } }));
-        results.updated++;
-        errorStreak = 0;
-        recent.push('ok');
-        slog(`  ↻ Güncellendi (Epey verisi + Icecat affiliate korundu): ${product.name}`, 'success');
-        if ((results.added + results.updated) % 50 === 0) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
-        return;
-      }
-
+      // Icecat-merge path removed (2026-05-23 EU pivot). All products now
+      // come from Epey/Geizhals scrapers which use compatible spec schemas.
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
@@ -4198,9 +4188,26 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       const label = typeof labelFor === 'function' ? labelFor(part, pi) : (part?.name || value);
       const before = allItems.length;
       if (label) slog(`  • Partition ${pi + 1}/${list.length}: ${label}${part?.count ? ` (~${part.count})` : ''}`, 'info');
-      await paginateStream(ajax, [value], (pageNo, added, total) => {
-        if (typeof onPage === 'function') onPage(part, pageNo, added, total);
-      });
+      if (part && part.url) {
+        try {
+          const brandData = await fetchLinks(part.url);
+          const firstAdded = pushItems(itemsFromData(brandData));
+          if (typeof onPage === 'function') onPage(part, 1, firstAdded, allItems.length);
+          const brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
+          if (brandAjax && allItems.length < maxProducts && !scraperAbort) {
+            await paginateStream(brandAjax, [], (pageNo, added, total) => {
+              if (pageNo === 1 && firstAdded) return;
+              if (typeof onPage === 'function') onPage(part, pageNo, added, total);
+            });
+          }
+        } catch (e) {
+          slog(`    ↳ ${label}: marka sayfası alınamadı (${e.message})`, 'warn');
+        }
+      } else {
+        await paginateStream(ajax, [value], (pageNo, added, total) => {
+          if (typeof onPage === 'function') onPage(part, pageNo, added, total);
+        });
+      }
       const added = allItems.length - before;
       totalAdded += added;
       if (label) slog(`    ↳ ${label}: +${added} yeni URL`, added ? 'success' : 'warn');
@@ -4249,7 +4256,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       );
       if (expectedCategoryTotal > maxProducts) {
         const previousLimit = maxProducts;
-        maxProducts = Math.min(30000, expectedCategoryTotal + 100);
+        maxProducts = Math.min(100000, expectedCategoryTotal + 100);
         slog(`  ⚠️ Ürün limiti (${previousLimit}) Epey tahmininden düşük (${expectedCategoryTotal}). Tam kategori için hedef ${maxProducts} URL'ye yükseltildi.`, 'warn');
       }
       const logPage = (pageNo, added, total) =>
@@ -4412,26 +4419,23 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 
 // Loads what is ALREADY in the catalog for a category so the bulk scrape can
 // reconcile against it. Returns:
-//   urls         — every sourceUrl on record (URL-level skip for Epey re-runs)
+//   urls         — every sourceUrl on record (URL-level skip for re-runs)
 //   slugs        — saved slug/id keys (survives sourceUrl drift)
-//   byVariantGroup — Map(variantGroup → { id, source, name }). variantGroup is
-//                  the cross-source identity key (modelFamilyKey). When a
-//                  family has both an Icecat and an Epey record the ICECAT one
-//                  is kept as the merge target — its record id (and the
-//                  affiliate offers linked to it) is what we keep alive.
+//   byVariantGroup — Map(variantGroup → { id, source, name }). variantGroup
+//                  is the cross-source identity key (modelFamilyKey) used to
+//                  reconcile records that already exist for the same model.
 async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
-  const isEpeySavedRecord = (record = {}) =>
-    /epey/i.test(String(record.source || '')) ||
-    /(^|\.)epey\.com\//i.test(String(record.sourceUrl || ''));
+  const isScrapedRecord = (record = {}) => {
+    const src = String(record.source || '').toLowerCase();
+    return /(epey|geizhals)/.test(src) ||
+      /(^|\.)(epey\.com|geizhals\.eu)\//.test(String(record.sourceUrl || ''));
+  };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
-    const categoryFilter = safeCategory ? `category="${safeCategory}"` : '';
-    const epeyFilter = `(source="epey.com" || source="epey")`;
-    const filter = categoryFilter || epeyFilter;
-    // Use explicit paged getList calls instead of SDK getFullList. Large
-    // categories like mice/desktops were timing out or returning generic
-    // PocketBase errors during this preload step.
+    const categoryFilter = safeCategory ? `category = "${safeCategory}"` : '';
+    const sourceFilter = `(source = "epey.com" || source = "epey" || source = "geizhals.eu" || source = "geizhals")`;
+    const filter = categoryFilter || sourceFilter;
     const docs = await _pbGetAllPaged('products', {
       filter,
       sort: 'id',
@@ -4442,8 +4446,8 @@ async function _loadExistingSourceUrls(categoryId) {
     const byVariantGroup = new Map();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      const isEpey = isEpeySavedRecord(data);
-      if (isEpey && data?.sourceUrl) {
+      const isScraped = isScrapedRecord(data);
+      if (isScraped && data?.sourceUrl) {
         const rawUrl = String(data.sourceUrl).trim();
         urls.add(rawUrl);
         const normalized = normalizeScrapeUrlKey(rawUrl);
@@ -4451,17 +4455,13 @@ async function _loadExistingSourceUrls(categoryId) {
         const urlSlug = slugFromUrl(rawUrl);
         if (urlSlug) slugs.add(urlSlug);
       }
-      if (isEpey && d.id) slugs.add(String(d.id));
+      if (isScraped && d.id) slugs.add(String(d.id));
       const savedSlug = String(data?.slug || '').trim();
-      if (isEpey && savedSlug) slugs.add(savedSlug);
+      if (isScraped && savedSlug) slugs.add(savedSlug);
       const vg = String(data?.variantGroup || '').trim();
       if (vg && d.id) {
         const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };
-        const prev = byVariantGroup.get(vg);
-        const isIcecat = /icecat/i.test(rec.source);
-        const prevIcecat = prev && /icecat/i.test(prev.source);
-        // Prefer an Icecat record as the merge target.
-        if (!prev || (isIcecat && !prevIcecat)) byVariantGroup.set(vg, rec);
+        if (!byVariantGroup.has(vg)) byVariantGroup.set(vg, rec);
       }
     }
     slog(`  preload OK: ${docs.length} kayıt, ${urls.size} URL key, ${slugs.size} slug key`, 'success');

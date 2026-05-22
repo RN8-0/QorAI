@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:flutter/material.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
@@ -1368,6 +1368,7 @@ class _ComparisonPreviewList extends StatelessWidget {
     return Column(
       children: comparisons.take(3).map((comparison) {
         final isTr = Localizations.localeOf(context).languageCode == 'tr';
+        final safeTitle = (comparison.title ?? '').trim();
         final subtitle = comparison.itemIds.length >= 2
             ? '${comparison.itemIds.length} ${isTr ? "ürün" : "items"} • ${_formatComparisonTimestamp(comparison.createdAt)}${comparison.occurrenceCount > 1 ? ' • ${comparison.occurrenceCount}x' : ''}'
             : (isTr ? 'Taslak karşılaştırma' : 'Draft comparison');
@@ -1400,9 +1401,7 @@ class _ComparisonPreviewList extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        (comparison.title ?? 'Comparison').trim().isEmpty
-                            ? 'Comparison'
-                            : comparison.title!,
+                        safeTitle.isEmpty ? 'Comparison' : safeTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

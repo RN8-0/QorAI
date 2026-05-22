@@ -1,10 +1,69 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:qor_ai/core/pb_client.dart' as pb_client;
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 
 String _normalizeSpecText(String text) {
   return text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+final RegExp _turkishLeakPattern = RegExp(
+  r'[ığşçöüİĞŞÇÖÜ]|\b(adet|evet|hayir|hayır|var|yok|ekran|kamera|ses|sarj|şarj|kablosuz|hizli|hızlı|destek|destegi|desteği|cozunurluk|çözünürlük|cekirdek|çekirdek|frekans|gövde|govde|oran|sayisi|sayısı)\b',
+  caseSensitive: false,
+);
+
+String _scrubTurkishLeaks(String text, {required bool isValue}) {
+  var out = _normalizeSpecText(text)
+      .replaceAll(
+        RegExp(r'\bÖne Çıkanlar\b', caseSensitive: false),
+        'Highlights',
+      )
+      .replaceAll(RegExp(r'\bGenel\b', caseSensitive: false), 'General')
+      .replaceAll(
+        RegExp(r'\bÖzellikler\b', caseSensitive: false),
+        'Specifications',
+      )
+      .replaceAll(
+        RegExp(r'Çözünürlüğü|Çözünürlük', caseSensitive: false),
+        'Resolution',
+      )
+      .replaceAll(
+        RegExp(r'Frekansı|Frekans', caseSensitive: false),
+        'Frequency',
+      )
+      .replaceAll(RegExp(r'Çekirdeği|Çekirdek', caseSensitive: false), 'Core')
+      .replaceAll(RegExp(r'Desteği|Destek', caseSensitive: false), 'Support')
+      .replaceAll(RegExp(r'Sayısı|Sayı', caseSensitive: false), 'Count')
+      .replaceAll(RegExp(r'Hızlı|Hizli', caseSensitive: false), 'Fast')
+      .replaceAll(RegExp(r'Şarj|Sarj', caseSensitive: false), 'Charging')
+      .replaceAll(RegExp(r'Kablosuz', caseSensitive: false), 'Wireless')
+      .replaceAll(RegExp(r'Kamera', caseSensitive: false), 'Camera')
+      .replaceAll(RegExp(r'Ses', caseSensitive: false), 'Audio')
+      .replaceAll(RegExp(r'Çıkışı|Çıkış', caseSensitive: false), 'Output')
+      .replaceAll(
+        RegExp(r'Suya Dayanıklılık|Suya Dayanıklı', caseSensitive: false),
+        'Water Resistance',
+      )
+      .replaceAll(RegExp(r'Gövde|Govde', caseSensitive: false), 'Body')
+      .replaceAll(RegExp(r'Oranı|Oran', caseSensitive: false), 'Ratio')
+      .replaceAll(RegExp(r'Hat', caseSensitive: false), 'SIM')
+      .replaceAll(RegExp(r'Ekran', caseSensitive: false), 'Display')
+      .replaceAll(RegExp(r'\bVar\b', caseSensitive: false), 'Yes')
+      .replaceAll(RegExp(r'\bEvet\b', caseSensitive: false), 'Yes')
+      .replaceAll(RegExp(r'\bYok\b', caseSensitive: false), 'No')
+      .replaceAll(RegExp(r'\bHayır\b|\bHayir\b', caseSensitive: false), 'No')
+      .replaceAll(RegExp(r'Siyah', caseSensitive: false), 'Black')
+      .replaceAll(RegExp(r'Beyaz', caseSensitive: false), 'White')
+      .replaceAll(RegExp(r'Kırmızı|Kirmizi', caseSensitive: false), 'Red')
+      .replaceAll(RegExp(r'Mavi', caseSensitive: false), 'Blue')
+      .replaceAll(RegExp(r'Yeşil|Yesil', caseSensitive: false), 'Green')
+      .replaceAll(RegExp(r'Gri', caseSensitive: false), 'Gray')
+      .replaceAll(RegExp(r'Altın|Altin', caseSensitive: false), 'Gold')
+      .replaceAll(RegExp(r'Gümüş|Gumus', caseSensitive: false), 'Silver');
+  out = _normalizeSpecText(out);
+  if (!_turkishLeakPattern.hasMatch(out)) return out;
+  return isValue ? '' : 'Specification';
 }
 
 Map<String, Map<String, String>> _buildSpecTranslationMaps(String rawJson) {
@@ -13,10 +72,7 @@ Map<String, Map<String, String>> _buildSpecTranslationMaps(String rawJson) {
   for (final entry in decoded.entries) {
     reverse[_normalizeSpecText(entry.value).toLowerCase()] = entry.key;
   }
-  return {
-    'enTr': decoded,
-    'trEn': reverse,
-  };
+  return {'enTr': decoded, 'trEn': reverse};
 }
 
 /// Loads the EN→TR spec dictionary from assets and provides bidirectional translation.
@@ -27,6 +83,7 @@ class SpecTranslationService {
 
   Map<String, String>? _enTr;
   Map<String, String>? _trEn; // Reverse lookup: TR→EN
+  final Map<String, Map<String, String>> _trLocale = {};
   bool _loading = false;
   final Map<String, String> _canonicalCache = {};
   final Map<String, String> _labelLocaleCache = {};
@@ -36,8 +93,7 @@ class SpecTranslationService {
     r'(\r?\n+|•\s*|·\s*|;\s*|\s+\|\s+)',
   );
 
-  String normalize(String text) =>
-      _normalizeSpecText(text);
+  String normalize(String text) => _normalizeSpecText(text);
 
   Future<void> init() async {
     if (_enTr != null || _loading) return;
@@ -50,12 +106,67 @@ class SpecTranslationService {
     } catch (_) {
       _enTr = {};
       _trEn = {};
+    } finally {
+      await _loadLiveTurkishDictionary();
+      _loading = false;
     }
-    _loading = false;
+  }
+
+  Future<void> _loadLiveTurkishDictionary() async {
+    try {
+      const manifestKey = 'tr_translation_dict_manifest';
+      const shardPrefix = 'tr_translation_dict__part_';
+      final manifest = await pb_client.pb
+          .collection('public_config')
+          .getFirstListItem('key = "$manifestKey"', fields: 'value');
+      final manifestValue = manifest.data['value'];
+      if (manifestValue is! Map) return;
+      final batchId = manifestValue['batchId']?.toString();
+      final totalShards = (manifestValue['totalShards'] as num?)?.toInt() ?? 0;
+      if (batchId == null || batchId.isEmpty || totalShards <= 0) return;
+
+      final loaded = <String, Map<String, String>>{};
+      for (var i = 0; i < totalShards; i++) {
+        final key = '$shardPrefix${i.toString().padLeft(4, '0')}';
+        final shard = await pb_client.pb
+            .collection('public_config')
+            .getFirstListItem('key = "$key"', fields: 'value');
+        final value = shard.data['value'];
+        if (value is! Map || value['batchId']?.toString() != batchId) continue;
+        final terms = value['terms'];
+        if (terms is! Map) continue;
+        for (final entry in terms.entries) {
+          final source = normalize(entry.key.toString()).toLowerCase();
+          final rawTranslations = entry.value;
+          if (source.isEmpty || rawTranslations is! Map) continue;
+          final translations = <String, String>{};
+          for (final langEntry in rawTranslations.entries) {
+            final lang = langEntry.key.toString().toLowerCase().trim();
+            final text = langEntry.value?.toString().trim() ?? '';
+            if (lang.isNotEmpty && text.isNotEmpty) {
+              translations[lang] = text;
+            }
+          }
+          if (translations.isNotEmpty) loaded[source] = translations;
+        }
+      }
+      if (loaded.isNotEmpty) {
+        _trLocale
+          ..clear()
+          ..addAll(loaded);
+        debugPrint(
+          '=== QOR AI: Live TR spec dictionary loaded (${_trLocale.length} terms) ===',
+        );
+      }
+    } catch (e) {
+      debugPrint('=== QOR AI: Live TR spec dictionary unavailable: $e ===');
+    }
   }
 
   /// Translate a spec value/name from English → Turkish.
   /// Returns original if no translation found.
+  /// Specs no longer use this for display fallback; canonical English is the
+  /// safe source of truth so Turkish source text never leaks to users.
   String translate(String text) {
     if (_enTr == null || _enTr!.isEmpty) return text;
     final key = normalize(text).toLowerCase();
@@ -259,31 +370,93 @@ class SpecTranslationService {
     return result;
   }
 
+  String translateTurkishForLocale(String text, String locale) {
+    final normalizedLocale = locale.toLowerCase().trim();
+    if (normalizedLocale.isEmpty || normalizedLocale == 'tr') return text;
+    return _translateTurkishSegmentForLocale(text, normalizedLocale) ?? text;
+  }
+
+  String? _translateTurkishSegmentForLocale(String text, String locale) {
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return normalized;
+
+    final boolText = _translateBooleanForLocale(normalized, locale);
+    if (boolText != null) return boolText;
+
+    final direct = _trLocale[normalized.toLowerCase()]?[locale];
+    if (direct != null && direct.trim().isNotEmpty) return direct.trim();
+
+    if (!normalized.contains('\n')) return null;
+    var changed = false;
+    final lines = text
+        .split('\n')
+        .map((line) {
+          final trimmed = line.trim();
+          final translated = _translateTurkishSegmentForLocale(trimmed, locale);
+          if (translated == null || translated == trimmed) return line;
+          changed = true;
+          return line.replaceFirst(trimmed, translated);
+        })
+        .toList(growable: false);
+    return changed ? lines.join('\n') : null;
+  }
+
+  String? _translateBooleanForLocale(String text, String locale) {
+    final key = normalize(text).toLowerCase();
+    final yes = key == 'var' || key == 'evet' || key == 'yes' || key == 'true';
+    final no =
+        key == 'yok' ||
+        key == 'hayır' ||
+        key == 'hayir' ||
+        key == 'no' ||
+        key == 'false';
+    if (!yes && !no) return null;
+    const labels = <String, List<String>>{
+      'en': ['Yes', 'No'],
+      'de': ['Ja', 'Nein'],
+      'es': ['Sí', 'No'],
+      'fr': ['Oui', 'Non'],
+      'it': ['Sì', 'No'],
+      'ja': ['はい', 'いいえ'],
+      'nl': ['Ja', 'Nee'],
+      'pl': ['Tak', 'Nie'],
+      'pt': ['Sim', 'Não'],
+      'sv': ['Ja', 'Nej'],
+      'ar': ['نعم', 'لا'],
+    };
+    final pair = labels[locale] ?? labels['en']!;
+    return yes ? pair[0] : pair[1];
+  }
+
   String _translateSingleSegmentForLocale(
     String text,
     String locale, {
     required bool isValue,
   }) {
+    final normalizedLocale = locale.toLowerCase().trim();
+    if (normalizedLocale != 'tr') {
+      final live = _translateTurkishSegmentForLocale(text, normalizedLocale);
+      if (live != null && live.trim().isNotEmpty) return live;
+    }
+
     final canonical = canonicalizeToEnglish(text);
     if (canonical.isEmpty) return canonical;
 
-    if (locale == 'en') return canonical;
-    if (locale == 'tr') {
-      final exact = normalize(translate(canonical));
-      if (exact.toLowerCase() != canonical.toLowerCase()) return exact;
-      final wordLevel = normalize(translateWords(canonical));
-      if (wordLevel.toLowerCase() != canonical.toLowerCase()) return wordLevel;
-      return canonical;
+    if (normalizedLocale == 'en' || normalizedLocale == 'tr') {
+      return _scrubTurkishLeaks(canonical, isValue: isValue);
     }
 
     final translated = normalize(
       isValue
-          ? spec_dict.translateSpecValue(canonical, locale)
-          : spec_dict.translateSpec(canonical, locale),
+          ? spec_dict.translateSpecValue(canonical, normalizedLocale)
+          : spec_dict.translateSpec(canonical, normalizedLocale),
     );
-    return translated.toLowerCase() != canonical.toLowerCase()
-        ? translated
-        : canonical;
+    return _scrubTurkishLeaks(
+      translated.toLowerCase() != canonical.toLowerCase()
+          ? translated
+          : canonical,
+      isValue: isValue,
+    );
   }
 
   String _transformSegments(
@@ -310,5 +483,6 @@ class SpecTranslationService {
     return buffer.toString();
   }
 
-  bool get isLoaded => _enTr != null && _enTr!.isNotEmpty;
+  bool get isLoaded =>
+      (_enTr != null && _enTr!.isNotEmpty) || _trLocale.isNotEmpty;
 }

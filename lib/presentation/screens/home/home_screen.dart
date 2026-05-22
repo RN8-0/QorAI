@@ -1,4 +1,4 @@
-﻿/// Qor AI - Dynamic Home Screen (iOS-style redesign)
+/// Qor AI - Dynamic Home Screen (iOS-style redesign)
 /// Rich, diverse layout with hero banners, category spotlights,
 /// parallax cards and spring animations.
 library;
@@ -13,7 +13,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_name_localizer.dart';
+import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -34,11 +36,9 @@ const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // Viewport ~3 kart + cacheExtent → ~5 kart fiilen build edilir; kullanıcı
 // kaydırdığında ek kartlar `_HomeScreenState.didUpdateWidget` veya
 // section provider'ı ile gelir.
-// 25 horizontal cards per shelf (was 8). Safe because ListView.builder with a
-// fixed itemExtent only inflates ~viewport + cacheExtent worth of children at
-// any time — a higher limit just lets the user keep scrolling further right
-// without affecting initial paint cost or memory of off-screen items.
-const int _kHorizontalInitialItemLimit = 25;
+// Keep the first shelf payload light; users still get enough horizontal scroll
+// while image decode and item bookkeeping stay small on mid-range devices.
+const int _kHorizontalInitialItemLimit = 12;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 // ignore: unused_element
@@ -72,6 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with TickerProviderStateMixin {
   late final ScrollController _scrollCtrl;
   Timer? _scrollDebounce;
+  Timer? _stageFallbackTimer;
   final Stopwatch _initSw = Stopwatch();
   bool _firstDataLogged = false;
 
@@ -121,6 +122,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     debugPrint('=== QOR AI: HomeScreen initState ===');
     _scrollCtrl = ScrollController(initialScrollOffset: _savedScrollOffset);
     _scrollCtrl.addListener(_handleScroll);
+    _stageFallbackTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (!mounted || _renderStage >= 2) return;
+      _onFeedReady();
+    });
     // Stage 0 tüm feed-bağımsız UI'ı (AppBar skeleton + SearchBar +
     // Categories) içeriyor. Stage 2+ feed READY ile _onFeedReady'den
     // tetiklenir; otomatik Stage 1'e atlama yok (gereksiz frame).
@@ -169,6 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _handleScroll() {
     if (!_scrollCtrl.hasClients) return;
     _scrollDebounce?.cancel();
+    _stageFallbackTimer?.cancel();
     _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
       _savedScrollOffset = _scrollCtrl.offset;
       // Load more category sections as the user scrolls near the bottom.
@@ -212,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // stage motoruna haber ver. Stage 2+ ancak feed hazır olunca açılır
     // → shimmer→data geçişinin Consumer rebuild dalgası önlenir.
     ref.listen<AsyncValue<HomeFeed>>(homeFeedProvider, (prev, next) {
-      if (next.hasValue && next.value!.all.isNotEmpty) {
+      if (next.hasValue || next.hasError) {
         _onFeedReady();
       }
     });
@@ -220,7 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // tetiklenmez çünkü değişim yoktur. Anlık state'i de kontrol et.
     if (!_feedReadyForReveal) {
       final current = ref.read(homeFeedProvider);
-      if (current.hasValue && (current.value?.all.isNotEmpty ?? false)) {
+      if (current.hasValue || current.hasError) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _onFeedReady();
         });
@@ -294,7 +300,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               SliverToBoxAdapter(child: _buildPersonalizedSection()),
-              SliverToBoxAdapter(child: _buildSubscriptionsCta()),
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.trendingToday ?? 'Trending Today',
@@ -565,13 +570,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ],
                     ),
                   ),
-                  // Avatar placeholder — gerçek avatar Stage 1'de yerleşir.
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
-                      gradient: AppTheme.primaryGradient,
+                  // Avatar placeholder — opens profile even before feed loads.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRoutes.profile);
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(13),
+                        gradient: AppTheme.primaryGradient,
+                      ),
                     ),
                   ),
                 ],
@@ -1195,6 +1207,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'name': l?.catTablets ?? 'Tablets',
             'icon': Icons.tablet_mac_rounded,
           },
+          {
+            'id': 'smartwatches',
+            'name': l?.catSmartwatches ?? 'Smartwatches',
+            'icon': Icons.watch_rounded,
+          },
         ],
       },
       {
@@ -1225,7 +1242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'icon': Icons.developer_board_rounded,
           },
           {
-            'id': 'gpus',
+            'id': 'graphics_cards',
             'name': l?.catGpus ?? 'Graphics Cards',
             'icon': Icons.videogame_asset_rounded,
           },
@@ -1250,13 +1267,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'icon': Icons.bolt_rounded,
           },
           {
-            'id': 'cases',
+            'id': 'pc_cases',
             'name': l?.catCases ?? 'Cases',
             'icon': Icons.computer_rounded,
           },
           {
-            'id': 'coolers',
+            'id': 'cpu_coolers',
             'name': l?.catCoolers ?? 'Coolers',
+            'icon': Icons.mode_fan_off_rounded,
+          },
+          {
+            'id': 'case_fans',
+            'name': 'Case Fans',
             'icon': Icons.mode_fan_off_rounded,
           },
           {
@@ -1265,19 +1287,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'icon': Icons.monitor_rounded,
           },
           {
-            'id': 'keyboards',
-            'name': l?.catKeyboards ?? 'Keyboards',
-            'icon': Icons.keyboard_rounded,
-          },
-          {
             'id': 'mice',
             'name': l?.catMice ?? 'Mice',
             'icon': Icons.mouse_rounded,
-          },
-          {
-            'id': 'webcams',
-            'name': l?.catWebcams ?? 'Webcams',
-            'icon': Icons.camera_front_rounded,
           },
         ],
       },
@@ -1287,16 +1299,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'color': AppTheme.catDisplay,
         'items': [
           {'id': 'tvs', 'name': l?.catTvs ?? 'TVs', 'icon': Icons.tv_rounded},
-          {
-            'id': 'projectors',
-            'name': l?.catProjectors ?? 'Projectors',
-            'icon': Icons.videocam_rounded,
-          },
-          {
-            'id': 'media-players',
-            'name': l?.catMediaPlayers ?? 'Media Players',
-            'icon': Icons.play_circle_outline_rounded,
-          },
         ],
       },
       {
@@ -1319,29 +1321,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'name': l?.catSoundbars ?? 'Soundbars',
             'icon': Icons.speaker_group_rounded,
           },
-          {
-            'id': 'microphones',
-            'name': l?.catMicrophones ?? 'Microphones',
-            'icon': Icons.mic_rounded,
-          },
         ],
       },
       {
         'group': l?.catGroupWearables ?? 'Wearables',
         'icon': Icons.watch_rounded,
         'color': AppTheme.catWearables,
-        'items': [
-          {
-            'id': 'smartwatches',
-            'name': l?.catSmartwatches ?? 'Smartwatches',
-            'icon': Icons.watch_rounded,
-          },
-          {
-            'id': 'smart-rings',
-            'name': l?.catSmartRings ?? 'Smart Rings',
-            'icon': Icons.fingerprint_rounded,
-          },
-        ],
+        'items': [],
       },
       {
         'group': l?.catGroupCameras ?? 'Cameras',
@@ -1349,44 +1335,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'color': AppTheme.catCameras,
         'items': [
           {
-            'id': 'cameras',
-            'name': l?.catCameras ?? 'Cameras',
-            'icon': Icons.camera_alt_rounded,
-          },
-          {
-            'id': 'action-cameras',
+            'id': 'action_cameras',
             'name': l?.catActionCameras ?? 'Action Cameras',
             'icon': Icons.videocam_outlined,
           },
           {
-            'id': 'security-cameras',
+            'id': 'security_cameras',
             'name': l?.catSecurityCameras ?? 'Security Cameras',
             'icon': Icons.security_rounded,
-          },
-          {
-            'id': 'ip-cameras',
-            'name': l?.catIpCameras ?? 'IP Cameras',
-            'icon': Icons.videocam_rounded,
-          },
-          {
-            'id': 'dashcams',
-            'name': l?.catDashcams ?? 'Dashcams',
-            'icon': Icons.directions_car_rounded,
-          },
-          {
-            'id': 'gimbals',
-            'name': l?.catGimbals ?? 'Gimbals',
-            'icon': Icons.camera_rounded,
-          },
-          {
-            'id': 'tripods',
-            'name': l?.catTripods ?? 'Tripods',
-            'icon': Icons.camera_alt_outlined,
-          },
-          {
-            'id': 'lenses',
-            'name': l?.catLenses ?? 'Lenses',
-            'icon': Icons.camera_roll_rounded,
           },
         ],
       },
@@ -1396,7 +1352,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'color': AppTheme.catGaming,
         'items': [
           {
-            'id': 'consoles',
+            'id': 'gaming_consoles',
             'name': l?.catGamingConsoles ?? 'Gaming Consoles',
             'icon': Icons.gamepad_rounded,
           },
@@ -1405,11 +1361,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'name': l?.catGamepads ?? 'Gamepads',
             'icon': Icons.sports_esports_rounded,
           },
-          {
-            'id': 'vr-headsets',
-            'name': l?.catVrHeadsets ?? 'VR Headsets',
-            'icon': Icons.vrpano_rounded,
-          },
+          {'id': 'games', 'name': 'Games', 'icon': Icons.vrpano_rounded},
         ],
       },
       {
@@ -1430,9 +1382,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'color': AppTheme.catNetworking,
         'items': [
           {
-            'id': 'routers',
-            'name': l?.catRoutersModems ?? 'Routers & Modems',
+            'id': 'wifi_routers',
+            'name': l?.catRoutersModems ?? 'WiFi Routers',
             'icon': Icons.router_rounded,
+          },
+          {
+            'id': 'modem_routers',
+            'name': 'Modem Routers',
+            'icon': Icons.router_rounded,
+          },
+          {
+            'id': 'network_switches',
+            'name': 'Network Switches',
+            'icon': Icons.hub_rounded,
+          },
+          {
+            'id': 'pcie_nic',
+            'name': 'PCIe Network Cards',
+            'icon': Icons.settings_ethernet_rounded,
           },
         ],
       },
@@ -1442,7 +1409,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'color': AppTheme.catSmartHome,
         'items': [
           {
-            'id': 'robot-vacuums',
+            'id': 'vacuums',
+            'name': 'Vacuum Cleaners',
+            'icon': Icons.cleaning_services_rounded,
+          },
+          {
+            'id': 'robot_vacuums',
             'name': l?.catRobotVacuums ?? 'Robot Vacuums',
             'icon': Icons.cleaning_services_rounded,
           },
@@ -1458,11 +1430,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'name': l?.catPowerBanks ?? 'Power Banks',
             'icon': Icons.battery_charging_full_rounded,
           },
-          {
-            'id': 'e-readers',
-            'name': l?.catEReaders ?? 'E-Readers',
-            'icon': Icons.book_rounded,
-          },
+          {'id': 'ups', 'name': 'UPS', 'icon': Icons.power_rounded},
         ],
       },
       {
@@ -1508,7 +1476,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildCategoriesSection() {
-    final categories = _getCachedFlatCategories();
+    final liveIds = _liveCategoryIds();
+    final allCategories = _getCachedFlatCategories();
+    final categories = liveIds == null
+        ? allCategories
+        : allCategories
+              .where((cat) => liveIds.contains(cat['id'] as String))
+              .toList(growable: false);
+    if (categories.isEmpty) return const SizedBox.shrink();
     final half = (categories.length / 2).ceil();
     final row1 = categories.sublist(0, half);
     final row2 = categories.sublist(half);
@@ -1542,6 +1517,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
       ],
     );
+  }
+
+  Set<String>? _liveCategoryIds() {
+    final result = ref.watch(categoriesProvider).valueOrNull;
+    if (result is Success<List<CategoryModel>>) {
+      final ids = result.data
+          .where((c) => c.isActive && c.productCount > 0)
+          .map((c) => c.id.toLowerCase().trim())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      return ids.isEmpty ? null : ids;
+    }
+    return null;
   }
 
   Widget _buildFlatCategoryChip(Map<String, Object> cat, int index) {
@@ -2489,6 +2477,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'title': l?.catGpus ?? 'Graphics Cards',
         'icon': Icons.videogame_asset_rounded,
       },
+      'graphics_cards': {
+        'title': l?.catGpus ?? 'Graphics Cards',
+        'icon': Icons.videogame_asset_rounded,
+      },
       'desktops': {
         'title': l?.catDesktops ?? 'Desktops',
         'icon': Icons.desktop_windows_rounded,
@@ -2514,6 +2506,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'title': l?.catConsoles ?? 'Consoles',
         'icon': Icons.gamepad_rounded,
       },
+      'gaming_consoles': {
+        'title': l?.catGamingConsoles ?? 'Gaming Consoles',
+        'icon': Icons.gamepad_rounded,
+      },
+      'games': {'title': 'Games', 'icon': Icons.sports_esports_rounded},
       'speakers': {
         'title': l?.catSpeakers ?? 'Speakers',
         'icon': Icons.speaker_rounded,
@@ -2522,6 +2519,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'title': l?.catRouters ?? 'Networking',
         'icon': Icons.router_rounded,
       },
+      'wifi_routers': {
+        'title': l?.catRouters ?? 'WiFi Routers',
+        'icon': Icons.router_rounded,
+      },
+      'modem_routers': {'title': 'Modem Routers', 'icon': Icons.router_rounded},
+      'network_switches': {
+        'title': 'Network Switches',
+        'icon': Icons.hub_rounded,
+      },
+      'pcie_nic': {
+        'title': 'PCIe Network Cards',
+        'icon': Icons.settings_ethernet_rounded,
+      },
       'drones': {
         'title': l?.catDrones ?? 'Drones',
         'icon': Icons.flight_rounded,
@@ -2529,6 +2539,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       'robot-vacuums': {
         'title': l?.catRobotVacuums ?? 'Robot Vacuums',
         'icon': Icons.smart_toy_rounded,
+      },
+      'robot_vacuums': {
+        'title': l?.catRobotVacuums ?? 'Robot Vacuums',
+        'icon': Icons.smart_toy_rounded,
+      },
+      'vacuums': {
+        'title': 'Vacuum Cleaners',
+        'icon': Icons.cleaning_services_rounded,
       },
       'keyboards': {
         'title': l?.catKeyboards ?? 'Keyboards',
@@ -2559,6 +2577,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'title': l?.catCases ?? 'Cases',
         'icon': Icons.inventory_2_rounded,
       },
+      'pc_cases': {
+        'title': l?.catCases ?? 'Cases',
+        'icon': Icons.inventory_2_rounded,
+      },
       'soundbars': {'title': 'Soundbars', 'icon': Icons.surround_sound_rounded},
       'microphones': {'title': 'Microphones', 'icon': Icons.mic_rounded},
       'smart-rings': {
@@ -2572,6 +2594,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       'ssd': {'title': 'SSD & Storage', 'icon': Icons.sd_storage_rounded},
       'psu': {'title': 'Power Supplies', 'icon': Icons.power_rounded},
       'coolers': {'title': 'Coolers', 'icon': Icons.ac_unit_rounded},
+      'cpu_coolers': {'title': 'Coolers', 'icon': Icons.ac_unit_rounded},
+      'case_fans': {'title': 'Case Fans', 'icon': Icons.mode_fan_off_rounded},
       'printers': {'title': 'Printers', 'icon': Icons.print_rounded},
       'projectors': {'title': 'Projectors', 'icon': Icons.videocam_rounded},
       'gimbals': {'title': 'Gimbals', 'icon': Icons.control_camera_rounded},
@@ -2581,138 +2605,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       },
       'lenses': {'title': 'Lenses', 'icon': Icons.camera_rounded},
       'earphones': {'title': 'Earphones', 'icon': Icons.earbuds_rounded},
+      'action_cameras': {
+        'title': l?.catActionCameras ?? 'Action Cameras',
+        'icon': Icons.videocam_outlined,
+      },
+      'security_cameras': {
+        'title': l?.catSecurityCameras ?? 'Security Cameras',
+        'icon': Icons.security_rounded,
+      },
+      'powerbanks': {
+        'title': l?.catPowerBanks ?? 'Power Banks',
+        'icon': Icons.battery_charging_full_rounded,
+      },
+      'ups': {'title': 'UPS', 'icon': Icons.power_rounded},
     };
     // Her entry'e color ekle; _categoryMeta lookup'ında hazır olur.
     return meta.map(
       (key, value) =>
           MapEntry(key, {...value, 'color': AppTheme.categoryColor(key)}),
-    );
-  }
-
-  // === SUBSCRIPTION INTELLIGENCE BANNER =======================================
-  //
-  // Replaces the old Subscriptions bottom-nav tab (we collapsed the nav from
-  // 5 → 3 tabs). The CTA card sits between the "For You" and "Trending Today"
-  // shelves so the feature remains discoverable on every Home visit; tapping
-  // it pushes the standalone /subscriptions route.
-
-  Widget _buildSubscriptionsCta() {
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final title = isTr
-        ? 'Abonelik Analizi'
-        : 'Subscription Intelligence';
-    final subtitle = isTr
-        ? 'Netflix, Spotify, ChatGPT… aboneliklerini AI ile optimize et.'
-        : 'Optimise your Netflix, Spotify, ChatGPT subscriptions with AI.';
-    final cta = isTr ? 'Aç' : 'Open';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.push(AppRoutes.subscriptions),
-          borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF0EA5E9), // sky-500
-                  Color(0xFF6366F1), // indigo-500
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.22),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.subscriptions_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            fontSize: 12,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          cta,
-                          style: const TextStyle(
-                            color: Color(0xFF1E3A8A),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 14,
-                          color: Color(0xFF1E3A8A),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -3061,18 +2971,22 @@ class _WideProductCard extends StatelessWidget {
                 Stack(
                   children: [
                     Container(
-                      height: 105,
+                      height: 132,
                       width: double.infinity,
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: _kCardImageContainerDecoration,
-                      child: ProductImageBox(
-                        imageUrl: product.imageURL.isNotEmpty
-                            ? product.imageURL
-                            : null,
-                        width: 139,
-                        height: 89,
-                        borderRadius: _kRadius10,
-                        padding: EdgeInsets.zero,
+                      // Square image slot with inner breathing room — phones
+                      // (portrait) and landscape product shots both center
+                      // cleanly without crowding the card edges.
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: ProductImageBox(
+                          imageUrl: product.imageURL.isNotEmpty
+                              ? product.imageURL
+                              : null,
+                          borderRadius: _kRadius10,
+                          padding: const EdgeInsets.all(10),
+                        ),
                       ),
                     ),
                     if (showNewBadge)
@@ -3257,18 +3171,22 @@ class _TrendingWideCard extends StatelessWidget {
                 Stack(
                   children: [
                     Container(
-                      height: 105,
+                      height: 132,
                       width: double.infinity,
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: _kCardImageContainerDecoration,
-                      child: ProductImageBox(
-                        imageUrl: product.imageURL.isNotEmpty
-                            ? product.imageURL
-                            : null,
-                        width: 139,
-                        height: 89,
-                        borderRadius: _kRadius10,
-                        padding: EdgeInsets.zero,
+                      // Square image slot with inner breathing room — phones
+                      // (portrait) and landscape product shots both center
+                      // cleanly without crowding the card edges.
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: ProductImageBox(
+                          imageUrl: product.imageURL.isNotEmpty
+                              ? product.imageURL
+                              : null,
+                          borderRadius: _kRadius10,
+                          padding: const EdgeInsets.all(10),
+                        ),
                       ),
                     ),
                     Positioned(

@@ -321,7 +321,7 @@ class _VariantChip extends StatelessWidget {
       onTap: isSelected
           ? null
           : () {
-              context.push('/product/${product.id}');
+              context.replace('/product/${product.id}');
             },
       child: Container(
         height: 32,

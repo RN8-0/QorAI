@@ -2,6 +2,9 @@ part of '../compare_screen.dart';
 
 enum _AiPanelType { deepAnalysis, alternatives, advisor, prediction }
 
+enum _CompareValueRank { neutral, better, weaker }
+
+// ignore: unused_element
 String _previewTabLabel(BuildContext context) {
   switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
     case 'tr':
@@ -47,7 +50,6 @@ class _SpecComparisonView extends ConsumerStatefulWidget {
 }
 
 class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
-  late Map<String, bool> _expandedGroups;
   late Map<String, Map<String, List<String>>> _groupedSpecs;
 
   // Deep Analysis state (merged with AI Analysis structured)
@@ -135,31 +137,25 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     _cachedKeySpecs = _collectCompareKeySpecs();
     // Build full spec table in a background isolate to avoid first-frame jank
     _groupedSpecs = {};
-    _expandedGroups = {};
     _computeGroupedSpecsAsync();
     // Restore AI analysis from session if available
     _restoreFromSession();
   }
 
   void _computeGroupedSpecsAsync() {
-    final lang = Localizations.localeOf(context).languageCode;
     final input = widget.products
         .map(
           (p) => <String, dynamic>{
             'category': p.category,
-            'specSections': p.specSectionsForLanguage(lang),
-            'specs': p.specsForLanguage(lang),
+            'specSections': p.specSections,
+            'specs': p.specs,
           },
         )
         .toList();
     compute(_buildGroupedSpecsIsolate, input).then((grouped) {
       if (!mounted) return;
-      final keys = grouped.keys.toList();
       setState(() {
         _groupedSpecs = grouped;
-        _expandedGroups = {
-          for (int i = 0; i < keys.length; i++) keys[i]: false,
-        };
       });
     });
   }
@@ -823,6 +819,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     return chunks.where((c) => c.trim().isNotEmpty).toList();
   }
 
+  // ignore: unused_element
   void _showSpecValueDetailSheet(BuildContext context, String rawValue) {
     _showSpecValueBottomSheet(
       specName: _isTr ? 'Özellik değeri' : 'Specification value',
@@ -1460,6 +1457,7 @@ Rules:
         .join(' ');
   }
 
+  // ignore: unused_element
   String _localizedGroupName(BuildContext context, String key) {
     final l = context.l10n;
     if (l == null) return _formatKey(key);
@@ -1581,6 +1579,7 @@ Rules:
     return _formatKey(canonicalKey);
   }
 
+  // ignore: unused_element
   String _localizedSpecName(BuildContext context, String key) {
     final l = context.l10n;
     if (l == null) return _formatKey(key);
@@ -1773,204 +1772,278 @@ Rules:
     required String fullValue,
   }) {
     HapticFeedback.lightImpact();
-    showModalBottomSheet(
+    showGeneralDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black.withValues(alpha: 0.56),
+      useRootNavigator: true,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, animation, secondaryAnimation) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         final bgColor = isDark
             ? const Color(0xFF121826)
             : const Color(0xFFFDFEFF);
         final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-        final formattedValue = _formatSpecValueForSheet(fullValue);
+        final valueLines = _formatSpecValueLinesForSheet(fullValue);
+        final formattedValue = valueLines.join('\n');
+        void closeSheet() => Navigator.of(ctx, rootNavigator: true).pop();
         return SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Material(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    decoration: BoxDecoration(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: closeSheet,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {},
+                    child: Material(
                       color: bgColor,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: AppTheme.brandBlue.withValues(
-                          alpha: isDark ? 0.22 : 0.10,
-                        ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.32 : 0.10,
-                          ),
-                          blurRadius: 22,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Container(
-                              width: 34,
-                              height: 4,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: textColor.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(99),
-                              ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppTheme.brandBlue.withValues(
+                              alpha: isDark ? 0.22 : 0.10,
                             ),
                           ),
-                          Row(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.32 : 0.10,
+                              ),
+                              blurRadius: 22,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue.withValues(
-                                    alpha: isDark ? 0.18 : 0.08,
+                              Center(
+                                child: Container(
+                                  width: 34,
+                                  height: 4,
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: textColor.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(99),
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.tune_rounded,
-                                  size: 18,
-                                  color: AppTheme.brandBlue,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _isTr
-                                          ? 'Ozellik degeri'
-                                          : 'Specification value',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: textColor.withValues(
-                                          alpha: 0.55,
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.brandBlue.withValues(
+                                        alpha: isDark ? 0.18 : 0.08,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.tune_rounded,
+                                      size: 18,
+                                      color: AppTheme.brandBlue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _isTr
+                                              ? 'Ozellik degeri'
+                                              : 'Specification value',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: textColor.withValues(
+                                              alpha: 0.55,
+                                            ),
+                                            letterSpacing: 0.2,
+                                          ),
                                         ),
-                                        letterSpacing: 0.2,
-                                      ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          specName,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13.2,
+                                            fontWeight: FontWeight.w800,
+                                            color: textColor,
+                                            height: 1.18,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      specName,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: textColor,
-                                        height: 1.25,
-                                      ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.close_rounded,
+                                      color: textColor.withValues(alpha: 0.48),
+                                      size: 19,
                                     ),
-                                  ],
+                                    onPressed: closeSheet,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 28,
+                                      minHeight: 28,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Container(
+                                width: double.infinity,
+                                constraints: BoxConstraints(
+                                  maxHeight:
+                                      MediaQuery.sizeOf(ctx).height * 0.48,
+                                ),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  10,
+                                  12,
+                                  10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : const Color(0xFFF5F9FD),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: AppTheme.brandBlue.withValues(
+                                      alpha: isDark ? 0.16 : 0.08,
+                                    ),
+                                  ),
+                                ),
+                                child: SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (final line in valueLines)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 2,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 6,
+                                                ),
+                                                child: Container(
+                                                  width: 3.5,
+                                                  height: 3.5,
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.brandCyan,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          99,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: SelectableText(
+                                                  line,
+                                                  style:
+                                                      GoogleFonts.plusJakartaSans(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: textColor,
+                                                        height: 1.28,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.close_rounded,
-                                  color: textColor.withValues(alpha: 0.48),
-                                  size: 19,
-                                ),
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 28,
-                                  minHeight: 28,
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: formattedValue),
+                                    );
+                                    closeSheet();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _isTr ? 'Kopyalandi' : 'Copied',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: const Color(
+                                          0xFF0F172A,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.copy_rounded,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    _isTr ? 'Kopyala' : 'Copy',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppTheme.brandBlue,
+                                    backgroundColor: AppTheme.brandBlue
+                                        .withValues(
+                                          alpha: isDark ? 0.18 : 0.08,
+                                        ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.04)
-                                  : const Color(0xFFF5F9FD),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: AppTheme.brandBlue.withValues(
-                                  alpha: isDark ? 0.16 : 0.08,
-                                ),
-                              ),
-                            ),
-                            child: SelectableText(
-                              formattedValue,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: formattedValue),
-                                );
-                                Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      _isTr ? 'Kopyalandi' : 'Copied',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    duration: const Duration(seconds: 1),
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: const Color(0xFF0F172A),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.copy_rounded, size: 16),
-                              label: Text(
-                                _isTr ? 'Kopyala' : 'Copy',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.brandBlue,
-                                backgroundColor: AppTheme.brandBlue.withValues(
-                                  alpha: isDark ? 0.18 : 0.08,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -1986,9 +2059,10 @@ Rules:
   /// The value received here is already pre-formatted by [_buildSpecSheetValue]
   /// (each feature on its own line separated by \n).  We just normalize bullet
   /// chars and strip leading dashes so the display is clean.
-  String _formatSpecValueForSheet(String value) {
-    if (value.isEmpty) return value;
+  List<String> _formatSpecValueLinesForSheet(String value) {
+    if (value.isEmpty) return const [];
     final withNatural = value
+        .replaceAll('\r', '\n')
         .replaceAll('•', '\n')
         .replaceAll('·', '\n')
         .replaceAll('|', '\n');
@@ -1996,7 +2070,7 @@ Rules:
         .split('\n')
         .map((s) => s.replaceFirst(RegExp(r'^[-•·\s]+'), '').trim())
         .where((s) => s.isNotEmpty)
-        .join('\n');
+        .toList();
   }
 
   /// Splits [value] at commas/semicolons, but:
@@ -4901,17 +4975,209 @@ Rules:
   }
 
   /// Determine winner index for a compare spec row.
+  // ignore: unused_element
   int _findCompareWinner(String label, List<String> values) {
-    if (values.length < 2) return -1;
-    final nonMissing = values.where((v) => v != '—').toList();
-    if (nonMissing.length < 2) return -1;
-    if (nonMissing.toSet().length == 1) return -1; // all same → no winner
+    final winners = _findCompareWinnerIndexes(label, values);
+    return winners.isEmpty ? -1 : winners.first;
+  }
+
+  Set<int> _findCompareWinnerIndexes(String label, List<String> values) {
+    if (values.length < 2) return {};
+    final nonMissing = values.where((v) => !_isMissingCompareValue(v)).toList();
+    if (nonMissing.length < 2) return {};
+    final normalizedSet = nonMissing.map((v) => v.trim().toLowerCase()).toSet();
+    if (normalizedSet.length == 1) return {}; // all same -> no winner
 
     // Delegate to the existing specDirection service
-    return _findBetterIndex(label, values);
+    final serviceAsync = ref.read(specDirectionServiceProvider);
+    final service = serviceAsync.valueOrNull;
+    if (service != null) {
+      final serviceWinners = service.findBetterIndexes(label, values);
+      if (serviceWinners.isNotEmpty) return serviceWinners;
+    }
+    return _findCompareWinnerFallbackIndexes(label, values);
+  }
+
+  int _findCompareWinnerFallback(String label, List<String> values) {
+    final winners = _findCompareWinnerFallbackIndexes(label, values);
+    return winners.isEmpty ? -1 : winners.first;
+  }
+
+  Set<int> _findCompareWinnerFallbackIndexes(
+    String label,
+    List<String> values,
+  ) {
+    if (values.length < 2) return {};
+    final indexed = values
+        .asMap()
+        .entries
+        .where((entry) {
+          return !_isMissingCompareValue(entry.value);
+        })
+        .toList(growable: false);
+    if (indexed.length < 2) return {};
+
+    final bools = indexed.map((entry) {
+      if (_isYesCompareValue(entry.value)) return true;
+      if (_isNoCompareValue(entry.value)) return false;
+      return null;
+    }).toList();
+    if (bools.every((v) => v != null) && bools.toSet().length > 1) {
+      return {
+        for (var i = 0; i < bools.length; i++)
+          if (bools[i] == true) indexed[i].key,
+      };
+    }
+
+    final nums = indexed
+        .map((entry) => _extractCompareNumber(entry.value))
+        .toList();
+    if (!nums.every((n) => n != null)) return {};
+    final doubles = nums.cast<double>();
+    final maxVal = doubles.reduce(max);
+    final minVal = doubles.reduce(min);
+    if (maxVal == minVal) return {};
+
+    final direction = _compareDirectionForLabel(label);
+    if (direction == 'lower') {
+      return {
+        for (var i = 0; i < doubles.length; i++)
+          if (doubles[i] == minVal) indexed[i].key,
+      };
+    }
+    if (direction == 'higher') {
+      return {
+        for (var i = 0; i < doubles.length; i++)
+          if (doubles[i] == maxVal) indexed[i].key,
+      };
+    }
+    return {};
+  }
+
+  String _normalizeCompareKey(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ç', 'c')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ö', 'o')
+        .replaceAll('ş', 's')
+        .replaceAll('ü', 'u')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _compareDirectionForLabel(String label) {
+    final key = _normalizeCompareKey(label);
+    const lowerSignals = [
+      'tepki',
+      'response',
+      'gecikme',
+      'latency',
+      'agirlik',
+      'weight',
+      'kalinlik',
+      'thickness',
+      'tdp',
+      'isi yayma',
+      'guc tuketimi',
+      'power consumption',
+      'sicaklik',
+      'temperature',
+      'fiyat',
+      'price',
+      'nanometre',
+      'nm',
+      'sar',
+    ];
+    if (lowerSignals.any(key.contains)) return 'lower';
+
+    const higherSignals = [
+      'cekirdek',
+      'core',
+      'is parcacigi',
+      'thread',
+      'frekans',
+      'frequency',
+      'hiz',
+      'speed',
+      'hz',
+      'kapasite',
+      'capacity',
+      'bellek',
+      'memory',
+      'ram',
+      'depolama',
+      'storage',
+      'onbellek',
+      'cache',
+      'boyut',
+      'size',
+      'inc',
+      'cm',
+      'kapsam',
+      'coverage',
+      'renk',
+      'color',
+      'parlaklik',
+      'brightness',
+      'cozunurluk',
+      'resolution',
+      'puan',
+      'score',
+      'version',
+      'versiyon',
+      'standard',
+      'standardi',
+      'bluetooth',
+      'wifi',
+      'wi fi',
+      'usb',
+      'nesil',
+      'generation',
+      'benchmark',
+      'fps',
+      'kamera',
+      'camera',
+      'watt',
+      'sarj',
+      'charge',
+      'ozellik',
+      'feature',
+    ];
+    if (higherSignals.any(key.contains)) return 'higher';
+    return 'neutral';
+  }
+
+  double? _extractCompareNumber(String value) {
+    final text = value
+        .toLowerCase()
+        .replaceAll(',', '.')
+        .replaceAll('×', 'x')
+        .trim();
+    final resolution = RegExp(r'(\d{3,5})\s*x\s*(\d{3,5})').firstMatch(text);
+    if (resolution != null) {
+      final w = double.tryParse(resolution.group(1)!);
+      final h = double.tryParse(resolution.group(2)!);
+      if (w != null && h != null) return w * h;
+    }
+    final rangeMatches = RegExp(r'\d+(?:\.\d+)?').allMatches(text).toList();
+    if (rangeMatches.isEmpty) return null;
+    final nums = rangeMatches
+        .map((m) => double.tryParse(m.group(0)!))
+        .whereType<double>()
+        .toList();
+    if (nums.isEmpty) return null;
+    var picked = nums.last;
+    if (text.contains('tb')) picked *= 1024;
+    if (text.contains('mb')) picked /= 1024;
+    return picked;
   }
 
   /// Color + weight for a cell based on comparison result.
+  // ignore: unused_element
   ({Color color, FontWeight weight}) _cellStyle({
     required String value,
     required int index,
@@ -4962,157 +5228,309 @@ Rules:
         _cachedKeySpecs; // pre-computed in initState, not called every build
     if (specs.isEmpty) return const SizedBox.shrink();
 
-    final theme = Theme.of(context);
-    final productCount = widget.products.length;
-
-    return Container(
+    return _buildCompareSpecBrick(
+      title: 'Öne Çıkanlar',
+      rows: {for (final spec in specs) spec.label: spec.values},
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Column(
-        children: [
-          // Centered header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.auto_awesome_rounded,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Key Specs',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+    );
+  }
 
-          // Spec rows
-          for (int i = 0; i < specs.length; i++) ...[
-            if (i > 0) const SizedBox(height: 5),
-            _buildSpecComparisonRow(specs[i], theme, productCount),
-          ],
+  IconData _iconForCompareSection(String section) {
+    final k = section.toLowerCase();
+    if (k.contains('öne çıkan') ||
+        k.contains('one cikan') ||
+        k.contains('highlight')) {
+      return Icons.stars_rounded;
+    }
+    if (k.contains('ekran') || k.contains('display')) {
+      return Icons.smartphone_rounded;
+    }
+    if (k.contains('batarya') || k.contains('battery') || k.contains('pil')) {
+      return Icons.battery_charging_full_rounded;
+    }
+    if (k.contains('kamera') || k.contains('camera')) {
+      return Icons.photo_camera_rounded;
+    }
+    if (k.contains('donan') || k.contains('hardware')) {
+      return Icons.developer_board_rounded;
+    }
+    if (k.contains('perform')) return Icons.speed_rounded;
+    if (k.contains('bellek') || k.contains('memory')) {
+      return Icons.memory_rounded;
+    }
+    if (k.contains('depolama') || k.contains('storage')) {
+      return Icons.storage_rounded;
+    }
+    if (k.contains('tasarım') ||
+        k.contains('tasarim') ||
+        k.contains('design')) {
+      return Icons.straighten_rounded;
+    }
+    if (k.contains('ağ') ||
+        k.contains('ag ') ||
+        k.contains('network') ||
+        k.contains('bağlantı') ||
+        k.contains('baglanti') ||
+        k.contains('connect')) {
+      return Icons.settings_input_antenna_rounded;
+    }
+    if (k.contains('işletim') ||
+        k.contains('isletim') ||
+        k.contains('software') ||
+        k.contains('os')) {
+      return Icons.terminal_rounded;
+    }
+    if (k.contains('ses') || k.contains('audio') || k.contains('ortam')) {
+      return Icons.speaker_rounded;
+    }
+    if (k.contains('özellik') ||
+        k.contains('ozellik') ||
+        k.contains('feature')) {
+      return Icons.tune_rounded;
+    }
+    if (k.contains('işlemci') ||
+        k.contains('islemci') ||
+        k.contains('chip') ||
+        k.contains('processor')) {
+      return Icons.memory_rounded;
+    }
+    if (k.contains('grafik') || k.contains('graphics') || k.contains('gpu')) {
+      return Icons.videogame_asset_rounded;
+    }
+    if (k.contains('güç') || k.contains('guc') || k.contains('power')) {
+      return Icons.bolt_rounded;
+    }
+    return Icons.subject_rounded;
+  }
+
+  bool _isMissingCompareValue(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ||
+        trimmed == '—' ||
+        trimmed == '-' ||
+        trimmed == '?' ||
+        trimmed == 'null' ||
+        trimmed == '{}' ||
+        trimmed == '[]';
+  }
+
+  bool _isYesCompareValue(String text) {
+    final trimmed = text.trim();
+    if (trimmed.startsWith('✓')) return true;
+    return RegExp(
+      r'^(yes|var|evet|true|available|ja|oui|sí|si|sim|tak)$',
+      caseSensitive: false,
+    ).hasMatch(trimmed);
+  }
+
+  bool _isNoCompareValue(String text) {
+    final trimmed = text.trim();
+    if (trimmed.startsWith('✗') || trimmed.startsWith('×')) return true;
+    return RegExp(
+      r'^(no|yok|hayır|hayir|not available|nein|non|não|nao|nie|false)$',
+      caseSensitive: false,
+    ).hasMatch(trimmed);
+  }
+
+  List<String> _compareValueParts(String value) {
+    List<String> splitTopLevel(String source) {
+      final out = <String>[];
+      var depth = 0;
+      final buffer = StringBuffer();
+      for (var i = 0; i < source.length; i++) {
+        final ch = source[i];
+        if (ch == '(' || ch == '[' || ch == '{') {
+          depth++;
+        } else if (ch == ')' || ch == ']' || ch == '}') {
+          depth = max(0, depth - 1);
+        }
+        if (depth == 0 && (ch == ',' || ch == ';')) {
+          final prev = i > 0 ? source[i - 1] : '';
+          final next = i + 1 < source.length ? source[i + 1] : '';
+          if (RegExp(r'\d').hasMatch(prev) && RegExp(r'\d').hasMatch(next)) {
+            buffer.write(ch);
+            continue;
+          }
+          out.add(buffer.toString());
+          buffer.clear();
+        } else {
+          buffer.write(ch);
+        }
+      }
+      if (buffer.isNotEmpty) out.add(buffer.toString());
+      return out;
+    }
+
+    final rawLines = <String>[];
+    final normalized = value
+        .replaceAll('\r', '\n')
+        .replaceAll('•', '\n')
+        .replaceAll('|', '\n');
+    for (final line in normalized.split('\n')) {
+      for (final part in splitTopLevel(line)) {
+        final trimmed = part
+            .trim()
+            .replaceFirst(RegExp(r'^[-•\s]+'), '')
+            .trim();
+        if (trimmed.isNotEmpty) rawLines.add(trimmed);
+      }
+    }
+
+    final lines = <String>[];
+    for (var i = 0; i < rawLines.length; i++) {
+      final line = rawLines[i];
+      if (RegExp(r'^\d+x$', caseSensitive: false).hasMatch(line) &&
+          i + 1 < rawLines.length) {
+        lines.add('$line ${rawLines[++i]}');
+      } else {
+        lines.add(line);
+      }
+    }
+    return lines.isEmpty ? [value.trim()] : lines;
+  }
+
+  Widget _buildCompareSpecBrick({
+    required String title,
+    required Map<String, List<String>> rows,
+    required EdgeInsetsGeometry margin,
+  }) {
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [context.surfaceColor, context.surfaceVariantColor],
+        ),
+        border: Border.all(color: context.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(
+                  _iconForCompareSection(title),
+                  size: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    title.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 11,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (final indexed in rows.entries.toList().asMap().entries)
+            _buildAdminCompareSpecRow(
+              label: indexed.value.key,
+              values: indexed.value.value,
+              isOdd: indexed.key.isOdd,
+            ),
         ],
       ),
     );
   }
 
-  /// Build a single spec comparison row — unified layout for all product counts.
-  /// Spec label centered on top, values below in a row.
-  Widget _buildSpecComparisonRow(
-    _CompareSpecRow spec,
-    ThemeData theme,
-    int productCount,
-  ) {
-    final winnerIdx = _findCompareWinner(spec.label, spec.values);
-    final isCompact = productCount > 2;
+  Widget _buildAdminCompareSpecRow({
+    required String label,
+    required List<String> values,
+    required bool isOdd,
+  }) {
+    final productCount = widget.products.length;
+    final paddedValues = [
+      for (var i = 0; i < productCount; i++)
+        i < values.length ? values[i] : '—',
+    ];
+    final winnerIndexes = _findCompareWinnerIndexes(label, paddedValues);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+        color: isOdd
+            ? Colors.black.withValues(alpha: 0.10)
+            : Colors.white.withValues(alpha: 0.015),
+        border: Border(bottom: BorderSide(color: context.dividerColor)),
       ),
+      padding: const EdgeInsets.fromLTRB(16, 7, 16, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Spec label centered
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                key_specs.iconForSpecKey(spec.label),
-                size: 12,
-                color: theme.colorScheme.primary.withValues(alpha: 0.7),
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  _localizedSpecName(context, spec.label),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: context.textTertiaryColor,
-                    letterSpacing: 0.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+              color: context.textSecondary,
+            ),
           ),
-          const SizedBox(height: 4),
-          // Product value cells
+          const SizedBox(height: 5),
           Row(
-            children: List.generate(productCount, (i) {
-              final val = i < spec.values.length ? spec.values[i] : '—';
-              final isMissing = val == '—';
-              final style = _cellStyle(
-                value: val,
-                index: i,
-                winnerIndex: winnerIdx,
-                theme: theme,
-              );
-              final localizedName = _localizedSpecName(context, spec.label);
-              final localizedValue = _localizedSpecValue(context, val);
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: isMissing
-                      ? null
-                      : () => _showSpecValueBottomSheet(
-                          specName: localizedName,
-                          // Split raw val BEFORE translation to preserve \n
-                          fullValue: _buildSpecSheetValue(context, val),
-                        ),
-                  child: Container(
-                    margin: EdgeInsets.symmetric(
-                      horizontal: isCompact ? 1.5 : 2,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
-                          ? AppTheme.scoreExcellent.withValues(alpha: 0.10)
-                          : (winnerIdx >= 0 && i != winnerIdx && !isMissing)
-                          ? AppTheme.error.withValues(alpha: 0.05)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: (winnerIdx >= 0 && i == winnerIdx && !isMissing)
-                          ? Border.all(
-                              color: AppTheme.scoreExcellent.withValues(
-                                alpha: 0.3,
-                              ),
-                            )
-                          : null,
-                    ),
-                    child: Text(
-                      localizedValue,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: isCompact ? 9 : 10,
-                        fontWeight: style.weight,
-                        color: style.color,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < productCount; i++) ...[
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _isMissingCompareValue(paddedValues[i])
+                        ? null
+                        : () => _showSpecValueBottomSheet(
+                            specName: '$label · ${widget.products[i].name}',
+                            fullValue: paddedValues[i],
+                          ),
+                    child: _CompareSpecValue(
+                      value: paddedValues[i],
+                      parts: _compareValueParts(paddedValues[i]),
+                      isMissing: _isMissingCompareValue(paddedValues[i]),
+                      isYes: _isYesCompareValue(paddedValues[i]),
+                      isNo: _isNoCompareValue(paddedValues[i]),
+                      rank: winnerIndexes.isEmpty
+                          ? _CompareValueRank.neutral
+                          : (winnerIndexes.contains(i)
+                                ? _CompareValueRank.better
+                                : _CompareValueRank.weaker),
                     ),
                   ),
                 ),
-              );
-            }),
+                if (i != productCount - 1) const SizedBox(width: 4),
+              ],
+            ],
           ),
         ],
       ),
@@ -5341,7 +5759,7 @@ Rules:
     ref.watch(specDirectionServiceProvider);
 
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Column(
         children: [
           // Sticky product header (always visible)
@@ -5356,11 +5774,11 @@ Rules:
                 return AnimatedBuilder(
                   animation: controller.animation!,
                   builder: (context, _) {
-                    final isPremiumSelected =
-                        (controller.animation?.value.round() ??
-                            controller.index) ==
-                        3;
-                    final activeTabColor = isPremiumSelected
+                    final selectedIndex =
+                        controller.animation?.value.round() ??
+                            controller.index;
+                    final isAiSelected = selectedIndex == 2;
+                    final activeTabColor = isAiSelected
                         ? AppTheme.premiumGold
                         : Theme.of(context).colorScheme.primary;
                     return TabBar(
@@ -5384,10 +5802,9 @@ Rules:
                         fontWeight: FontWeight.w500,
                       ),
                       tabs: [
+                        Tab(text: _comparePricesTabLabel(context)),
                         Tab(text: context.l10n?.specsTab ?? 'Specs'),
-                        Tab(text: _previewTabLabel(context)),
-                        Tab(text: context.l10n?.similarTab ?? 'Similar'),
-                        Tab(text: context.l10n?.proTab ?? 'Premium'),
+                        Tab(text: _compareAiAnalysesTabLabel(context)),
                       ],
                     );
                   },
@@ -5400,9 +5817,8 @@ Rules:
           Expanded(
             child: TabBarView(
               children: [
-                _KeepAliveTab(child: _buildSpecsTab()),
-                _KeepAliveTab(child: _buildReviewsTab()),
                 _KeepAliveTab(child: _buildSimilarTab()),
+                _KeepAliveTab(child: _buildSpecsTab()),
                 _KeepAliveTab(child: _buildProTab()),
               ],
             ),
@@ -5410,6 +5826,64 @@ Rules:
         ],
       ),
     );
+  }
+
+  String _comparePricesTabLabel(BuildContext context) {
+    switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
+      case 'tr':
+        return 'Fiyatlar';
+      case 'de':
+        return 'Preise';
+      case 'fr':
+        return 'Prix';
+      case 'es':
+        return 'Precios';
+      case 'it':
+        return 'Prezzi';
+      case 'pt':
+        return 'Preços';
+      case 'ar':
+        return 'الأسعار';
+      case 'ja':
+        return '価格';
+      case 'nl':
+        return 'Prijzen';
+      case 'pl':
+        return 'Ceny';
+      case 'sv':
+        return 'Priser';
+      default:
+        return 'Prices';
+    }
+  }
+
+  String _compareAiAnalysesTabLabel(BuildContext context) {
+    switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
+      case 'tr':
+        return 'AI Analizleri';
+      case 'de':
+        return 'KI-Analysen';
+      case 'fr':
+        return 'Analyses IA';
+      case 'es':
+        return 'Análisis IA';
+      case 'it':
+        return 'Analisi IA';
+      case 'pt':
+        return 'Análises IA';
+      case 'ar':
+        return 'تحليلات الذكاء الاصطناعي';
+      case 'ja':
+        return 'AI 分析';
+      case 'nl':
+        return 'AI-analyses';
+      case 'pl':
+        return 'Analizy AI';
+      case 'sv':
+        return 'AI-analyser';
+      default:
+        return 'AI Analyses';
+    }
   }
 
   /// Product header: images + names (non-pinned, scrolls away)
@@ -5460,7 +5934,7 @@ Rules:
       widgets.add(
         Expanded(
           child: GestureDetector(
-            onTap: () => context.push('/product/${product.id}'),
+            onTap: () => _openCompareImageFullscreen(context, product),
             onLongPress:
                 widget.onRemoveProduct != null && widget.products.length > 2
                 ? () => _showRemoveProductDialog(product)
@@ -5468,50 +5942,36 @@ Rules:
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  fallbackUrls: product.images,
-                  width: 80,
-                  height: 80,
-                  borderRadius: BorderRadius.circular(16),
-                  padding: const EdgeInsets.all(6),
-                ),
-                const SizedBox(height: 6),
-                if (product.techScore > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                // Image + tech score (top-right) + match score (top-left)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ProductImageBox(
+                      imageUrl: product.imageUrl,
+                      fallbackUrls: product.images,
+                      width: 90,
+                      height: 90,
+                      borderRadius: BorderRadius.circular(16),
+                      padding: const EdgeInsets.all(6),
                     ),
-                    decoration: BoxDecoration(
-                      color: scoreColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: scoreColor.withValues(alpha: 0.3),
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.memory_outlined,
-                          size: 10,
+                    if (product.techScore > 0)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: _CompareScoreBadge(
+                          score: product.techScore.toInt(),
                           color: scoreColor,
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          product.techScore.toInt().toString(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: scoreColor,
-                          ),
-                        ),
-                      ],
+                      ),
+                    // Local match score badge (algorithm-only, no AI).
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: _CompareMatchBadge(product: product),
                     ),
-                  ),
-                const SizedBox(height: 4),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(
@@ -5536,289 +5996,48 @@ Rules:
   }
 
   Widget _buildSpecsTab() {
-    int specGroupIndex = 0;
+    final groupEntries = _groupedSpecs.entries
+        .where((entry) {
+          final k = entry.key.toLowerCase();
+          return !k.contains('öne çıkan') &&
+              !k.contains('one cikan') &&
+              !k.contains('highlight') &&
+              !k.contains('key spec');
+        })
+        .toList(growable: false);
     return CustomScrollView(
       slivers: [
         // Key Specs Summary at top
         SliverToBoxAdapter(child: _buildKeySpecsSummary()),
         // Grouped spec comparison
-        ..._groupedSpecs.entries.map((groupEntry) {
-          final groupName = groupEntry.key;
-          final specs = groupEntry.value;
-          final isExpanded = _expandedGroups[groupName] ?? false;
-          final currentGroupIndex = specGroupIndex++;
-
-          return SliverToBoxAdapter(
-            child: Container(
-              margin: EdgeInsets.fromLTRB(
-                16,
-                currentGroupIndex == 0 ? 16 : 10,
-                16,
-                4,
-              ),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isExpanded
-                      ? AppTheme.brandBlue.withValues(alpha: 0.18)
-                      : context.dividerColor,
+        if (groupEntries.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.brandBlue.withValues(
-                      alpha: isExpanded ? 0.06 : 0.02,
-                    ),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                  const BoxShadow(
-                    color: Color(0x06000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Group header
-                  InkWell(
-                    onTap: () => setState(
-                      () => _expandedGroups[groupName] = !isExpanded,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: isExpanded
-                            ? LinearGradient(
-                                colors: [
-                                  AppTheme.brandBlue.withValues(alpha: 0.1),
-                                  AppTheme.brandDeepBlue.withValues(
-                                    alpha: 0.06,
-                                  ),
-                                ],
-                              )
-                            : null,
-                        borderRadius: isExpanded
-                            ? const BorderRadius.vertical(
-                                top: Radius.circular(20),
-                              )
-                            : BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              gradient: _accentGradient,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _localizedGroupName(context, groupName),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    color: context.textPrimary,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  context.l10n?.nSpecs('${specs.length}') ??
-                                      '${specs.length} specs',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: context.textTertiaryColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                          AnimatedRotation(
-                            turns: isExpanded ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: isExpanded
-                                    ? AppTheme.brandBlue.withValues(alpha: 0.16)
-                                    : context.dividerColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.expand_more,
-                                size: 18,
-                                color: isExpanded
-                                    ? AppTheme.brandBlue
-                                    : context.textTertiaryColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Spec rows
-                  if (isExpanded)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
-                      child: Column(
-                        children: specs.entries.toList().asMap().entries.map((
-                          indexedEntry,
-                        ) {
-                          final specIndex = indexedEntry.key;
-                          final specEntry = indexedEntry.value;
-                          final specKey = specEntry.key;
-                          final values = specEntry.value;
-                          final allSame = values.toSet().length == 1;
-                          final betterIndex = allSame
-                              ? -1
-                              : _findBetterIndex(specKey, values);
-                          final isAlternate = specIndex.isOdd;
-
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                            decoration: BoxDecoration(
-                              color: isAlternate
-                                  ? context.surfaceColor
-                                  : context.surfaceVariantColor,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: context.dividerColor),
-                            ),
-                            child: Column(
-                              children: [
-                                // Spec name
-                                Text(
-                                  _localizedSpecName(
-                                    context,
-                                    specKey,
-                                  ).toUpperCase(),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 10,
-                                    letterSpacing: 0.5,
-                                    color: context.textTertiaryColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 6),
-                                // Values row
-                                Row(
-                                  children: values.asMap().entries.map((
-                                    valEntry,
-                                  ) {
-                                    final idx = valEntry.key;
-                                    final val = valEntry.value;
-                                    final isMissing = val == '—';
-                                    final isBetter = betterIndex == idx;
-                                    final isWorse =
-                                        betterIndex >= 0 &&
-                                        betterIndex != idx &&
-                                        !isMissing;
-
-                                    return Expanded(
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () =>
-                                              _showSpecValueDetailSheet(
-                                                context,
-                                                val,
-                                              ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          child: Container(
-                                            margin: const EdgeInsets.symmetric(
-                                              horizontal: 3,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isBetter
-                                                  ? AppTheme.scoreExcellent
-                                                        .withValues(alpha: 0.12)
-                                                  : isWorse
-                                                  ? AppTheme.error.withValues(
-                                                      alpha: 0.06,
-                                                    )
-                                                  : Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: isBetter
-                                                  ? Border.all(
-                                                      color: AppTheme
-                                                          .scoreExcellent
-                                                          .withValues(
-                                                            alpha: 0.3,
-                                                          ),
-                                                    )
-                                                  : null,
-                                            ),
-                                            child: Text(
-                                              _localizedSpecValue(context, val),
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 10,
-                                                    fontWeight: isBetter
-                                                        ? FontWeight.w700
-                                                        : (isMissing
-                                                              ? FontWeight.w400
-                                                              : FontWeight
-                                                                    .w500),
-                                                    color: isBetter
-                                                        ? AppTheme
-                                                              .scoreExcellent
-                                                        : isWorse
-                                                        ? AppTheme.error
-                                                              .withValues(
-                                                                alpha: 0.7,
-                                                              )
-                                                        : isMissing
-                                                        ? context
-                                                              .textTertiaryColor
-                                                        : context.textSecondary,
-                                                  ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                ],
               ),
             ),
-          );
-        }),
+          )
+        else
+          SliverList.builder(
+            itemCount: groupEntries.length,
+            itemBuilder: (context, index) {
+              final groupEntry = groupEntries[index];
+              return _buildCompareSpecBrick(
+                title: groupEntry.key,
+                rows: groupEntry.value,
+                margin: EdgeInsets.fromLTRB(16, index == 0 ? 16 : 10, 16, 4),
+              );
+            },
+          ),
 
         // Bottom spacer
         SliverToBoxAdapter(
@@ -5832,6 +6051,27 @@ Rules:
     );
   }
 
+  void _openCompareImageFullscreen(BuildContext context, ProductEntity product) {
+    final images = product.images.isNotEmpty
+        ? product.images
+        : (product.imageUrl != null && product.imageUrl!.isNotEmpty
+            ? [product.imageUrl!]
+            : <String>[]);
+    if (images.isEmpty) return;
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (ctx, anim, _) => _CompareFullScreenImageViewer(
+          images: images,
+        ),
+        transitionsBuilder: (ctx, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildReviewsTab() {
     // Build "product1 vs product2" search query for comparison videos
     final vsQuery = widget.products.map((p) => p.name).join(' vs ');
@@ -5869,10 +6109,24 @@ Rules:
 
   Widget _buildSimilarTab() {
     final excludeIds = widget.products.map((p) => p.id).toSet();
-    // Use similarProductsProvider with first product as reference
     final similarAsync = ref.watch(
       similarProductsProvider(widget.products.first),
     );
+    final country = ref.watch(selectedCountryProvider);
+
+    // Collect store links across all compared products (deduped by store name).
+    final aggregateStores = <String, String>{};
+    for (final p in widget.products) {
+      final stores = p.getAffiliateLinksForCountry(country);
+      final effective = stores.isNotEmpty ? stores : p.affiliateLinks;
+      for (final e in effective.entries) {
+        aggregateStores.putIfAbsent(e.key, () => e.value);
+      }
+    }
+    final storeEntries = aggregateStores.entries.toList();
+    final firstChunk = storeEntries.take(4).toList();
+    final secondChunk = storeEntries.skip(4).take(4).toList();
+    final restChunk = storeEntries.skip(8).toList();
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -5882,33 +6136,42 @@ Rules:
         MediaQuery.of(context).padding.bottom + 16,
       ),
       children: [
+        if (firstChunk.isNotEmpty) ...[
+          _CompareStoreLinksCard(entries: firstChunk),
+          const SizedBox(height: 16),
+        ],
+        if (secondChunk.isNotEmpty) ...[
+          _CompareStoreLinksCard(entries: secondChunk),
+          const SizedBox(height: 16),
+        ],
+        // Horizontal-scroll similar products.
         similarAsync.when(
           loading: () => _buildSimilarShimmer(),
           error: (_, _) => _buildSimilarEmpty(),
           data: (products) {
-            final filtered = _takeEvenCompareSimilarProducts(
-              products.where((p) => !excludeIds.contains(p.id)),
-            );
+            final filtered = products
+                .where((p) => !excludeIds.contains(p.id))
+                .take(12)
+                .toList();
             if (filtered.isEmpty) return _buildSimilarEmpty();
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 14),
+                  padding: const EdgeInsets.only(left: 4, bottom: 12),
                   child: Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
                           gradient: _accentGradient,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(
-                          Icons.grid_view_rounded,
+                          Icons.widgets_rounded,
                           color: Colors.white,
-                          size: 18,
+                          size: 16,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -5923,23 +6186,26 @@ Rules:
                     ],
                   ),
                 ),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.82,
+                SizedBox(
+                  height: 210,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (context, i) => SizedBox(
+                      width: 150,
+                      child: SharedSimilarGridCard(product: filtered[i]),
+                    ),
                   ),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, i) =>
-                      SharedSimilarGridCard(product: filtered[i]),
                 ),
               ],
             );
           },
         ),
+        if (restChunk.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _CompareStoreLinksCard(entries: restChunk),
+        ],
       ],
     );
   }
@@ -5993,6 +6259,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   List<ProductEntity> _takeEvenCompareSimilarProducts(
     Iterable<ProductEntity> products,
   ) {
@@ -6202,60 +6469,17 @@ Rules:
       const Color(0xFF10B981),
     ];
 
-    // Deferred fetch: profile might have loaded AFTER the user tapped
-    if (_matchScoreExpanded &&
-        !_matchScoreFetched &&
-        quizCompleted &&
-        !isUserProfileLoading) {
+    // No AI: scores are computed locally from quiz + behavior + product specs.
+    // Auto-mark as fetched so the section is fully visible once expanded.
+    if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _matchScoreFetched) return;
-        final sub = ref.read(subscriptionServiceProvider);
-        if (!sub.canUseCompareAi) {
-          _showLimitExhaustedDialog(context, featureName: 'Compare AI');
-          // Collapse and mark as fetched to prevent infinite re-trigger
-          setState(() {
-            _matchScoreExpanded = false;
-            _matchScoreFetched = true;
-          });
-          return;
-        }
-        sub.recordCompareAi();
         setState(() => _matchScoreFetched = true);
-        final lc = Localizations.localeOf(context).languageCode;
-        for (final product in widget.products) {
-          ref
-              .read(
-                geminiMatchScoreProvider(
-                  LocalizedProductKey(productId: product.id, languageCode: lc),
-                ).notifier,
-              )
-              .fetchMatchScore(product: product, forCompareBatch: true);
-        }
       });
     }
 
-    // Compute step text: first non-empty step from any loading product
-    String matchStepText = '';
-    bool anyProductLoading = false;
-    if (_matchScoreFetched) {
-      final lc = Localizations.localeOf(context).languageCode;
-      for (final product in widget.products) {
-        final step = ref.watch(aiMatchStepProvider(product.id));
-        if (step.isNotEmpty) matchStepText = step;
-        final matchAsync = ref.watch(
-          geminiMatchScoreProvider(
-            LocalizedProductKey(productId: product.id, languageCode: lc),
-          ),
-        );
-        if (matchAsync is AsyncLoading) anyProductLoading = true;
-      }
-    }
-
-    // Combined loading state: spinner goes in header row (like other AI sections).
-    // Guard EVERYTHING with _matchScoreExpanded so no spinner appears before user taps.
-    final isMatchLoading =
-        _matchScoreExpanded &&
-        (isUserProfileLoading || (_matchScoreFetched && anyProductLoading));
+    const String matchStepText = '';
+    final isMatchLoading = _matchScoreExpanded && isUserProfileLoading;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -6279,37 +6503,10 @@ Rules:
             behavior: HitTestBehavior.opaque,
             onTap: () {
               if (!requireAuth(context)) return;
-              if (!_matchScoreExpanded &&
-                  !_matchScoreFetched &&
-                  quizCompleted) {
-                // Check AI feature limit before fetching
-                final sub = ref.read(subscriptionServiceProvider);
-                if (!sub.canUseCompareAi) {
-                  _showLimitExhaustedDialog(context, featureName: 'Compare AI');
-                  return;
-                }
-                sub.recordCompareAi();
-              }
+              // No AI gating: local algorithm computes scores at zero cost.
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
               if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
-                _matchScoreFetched = true;
-                final languageCode = Localizations.localeOf(
-                  context,
-                ).languageCode;
-                for (final product in widget.products) {
-                  final notifier = ref.read(
-                    geminiMatchScoreProvider(
-                      LocalizedProductKey(
-                        productId: product.id,
-                        languageCode: languageCode,
-                      ),
-                    ).notifier,
-                  );
-                  notifier.fetchMatchScore(
-                    product: product,
-                    forCompareBatch: true,
-                  );
-                }
+                _matchScoreFetched = true; // local algorithm, no AI fetch
               }
             },
             child: Row(
@@ -6464,27 +6661,14 @@ Rules:
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: List.generate(productCount, (i) {
                           final product = widget.products[i];
-                          final matchAsync = ref.watch(
-                            geminiMatchScoreProvider(
-                              LocalizedProductKey(
-                                productId: product.id,
-                                languageCode: Localizations.localeOf(
-                                  context,
-                                ).languageCode,
-                              ),
-                            ),
+                          // Local algorithm-based match score (no AI).
+                          final matchScore = ref.watch(
+                            localMatchScoreProvider(product),
                           );
-                          final matchResult = matchAsync.valueOrNull;
-                          final matchScore = matchResult?.matchScore;
-                          final reason = matchResult?.reason ?? '';
-                          final topFactors = matchResult?.topMatchFactors ?? [];
-                          final missingFactors =
-                              matchResult?.missingFactors ?? [];
-                          final isLoading = matchAsync is AsyncLoading;
+                          const reason = '';
+                          const topFactors = <String>[];
+                          const missingFactors = <String>[];
                           final color = barColors[i % barColors.length];
-                          final stepText = isLoading
-                              ? ref.watch(aiMatchStepProvider(product.id))
-                              : '';
 
                           final matchColor = matchScore == null
                               ? AppTheme.brandDeepBlue
@@ -6526,64 +6710,25 @@ Rules:
                                     Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Score circle or loading
-                                        if (isLoading) ...[
-                                          SizedBox(
-                                            width: 44,
-                                            height: 44,
-                                            child: Center(
-                                              child: SizedBox(
-                                                width: 22,
-                                                height: 22,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                      color: matchColor,
-                                                    ),
-                                              ),
-                                            ),
+                                        // Local-algorithm score circle (no AI, no loading state)
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween(
+                                            begin: 0,
+                                            end: (matchScore ?? 0) / 100,
                                           ),
-                                          if (stepText.isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 4,
-                                              ),
-                                              child: Text(
-                                                stepText,
-                                                style:
-                                                    GoogleFonts.plusJakartaSans(
-                                                      fontSize: 8,
-                                                      color: matchColor
-                                                          .withValues(
-                                                            alpha: 0.8,
-                                                          ),
-                                                      fontStyle:
-                                                          FontStyle.italic,
-                                                    ),
-                                                textAlign: TextAlign.center,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                        ] else
-                                          TweenAnimationBuilder<double>(
-                                            tween: Tween(
-                                              begin: 0,
-                                              end: (matchScore ?? 0) / 100,
-                                            ),
-                                            duration: const Duration(
-                                              milliseconds: 1200,
-                                            ),
-                                            curve: Curves.easeOutCubic,
-                                            builder: (context, value, _) =>
-                                                _buildMatchScoreRing(
-                                                  progress: value,
-                                                  color: matchColor,
-                                                  size: 46,
-                                                  strokeWidth: 4,
-                                                  fontSize: 11,
-                                                ),
+                                          duration: const Duration(
+                                            milliseconds: 1200,
                                           ),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (context, value, _) =>
+                                              _buildMatchScoreRing(
+                                                progress: value,
+                                                color: matchColor,
+                                                size: 46,
+                                                strokeWidth: 4,
+                                                fontSize: 11,
+                                              ),
+                                        ),
                                         const SizedBox(height: 8),
                                         // Product name
                                         Text(
@@ -7273,6 +7418,120 @@ Rules:
   }
 }
 
+class _CompareSpecValue extends StatelessWidget {
+  final String value;
+  final List<String> parts;
+  final bool isMissing;
+  final bool isYes;
+  final bool isNo;
+  final _CompareValueRank rank;
+
+  const _CompareSpecValue({
+    required this.value,
+    required this.parts,
+    required this.isMissing,
+    required this.isYes,
+    required this.isNo,
+    this.rank = _CompareValueRank.neutral,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isBetter = rank == _CompareValueRank.better;
+    final isWeaker = rank == _CompareValueRank.weaker;
+
+    Widget decorate(Widget child) {
+      if (!isBetter && !isWeaker) return child;
+      final color = isBetter ? AppTheme.scoreExcellent : AppTheme.error;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isBetter ? 0.12 : 0.055),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color.withValues(alpha: isBetter ? 0.38 : 0.12),
+          ),
+        ),
+        child: child,
+      );
+    }
+
+    if (isMissing) {
+      return Text(
+        '—',
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          height: 1.4,
+          fontWeight: FontWeight.w600,
+          color: context.textTertiaryColor,
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+
+    final trimmed = value.trim();
+    if (isYes || isNo || parts.length <= 1) {
+      final rendered = isYes ? '✓ $trimmed' : (isNo ? '✗ $trimmed' : trimmed);
+      return decorate(
+        Text(
+          rendered,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            height: 1.4,
+            fontWeight: isBetter ? FontWeight.w800 : FontWeight.w600,
+            color: isBetter
+                ? AppTheme.scoreExcellent
+                : (isYes
+                      ? AppTheme.scoreExcellent
+                      : (isNo ? AppTheme.error : context.textPrimary)),
+          ),
+          textAlign: TextAlign.center,
+          softWrap: true,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
+    final primary = Theme.of(context).colorScheme.primary;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final countLabel = isTr
+        ? '${parts.length} özellik'
+        : '${parts.length} specs';
+    return decorate(
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: primary.withValues(alpha: 0.18)),
+              ),
+              child: Text(
+                countLabel,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  height: 1.25,
+                  fontWeight: isBetter ? FontWeight.w800 : FontWeight.w700,
+                  color: isBetter ? AppTheme.scoreExcellent : primary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Isolate-safe helpers ────────────────────────────────────────────────────
 
 /// Top-level function for compute() — builds grouped specs from serialised
@@ -7283,8 +7542,16 @@ String _compareNormalizeText(String input) {
       .toLowerCase()
       .replaceAll('ı', 'i')
       .replaceAll('İ', 'i')
+      .replaceAll('ç', 'c')
+      .replaceAll('Ç', 'c')
+      .replaceAll('ğ', 'g')
+      .replaceAll('Ğ', 'g')
       .replaceAll('ö', 'o')
+      .replaceAll('Ö', 'o')
+      .replaceAll('ş', 's')
+      .replaceAll('Ş', 's')
       .replaceAll('ü', 'u')
+      .replaceAll('Ü', 'u')
       .replaceAll('ä', 'a')
       .replaceAll('ß', 'ss')
       .replaceAll('é', 'e')
@@ -7303,13 +7570,297 @@ String _compareCategory(String raw) {
   return cat;
 }
 
+int _compareGroupPriority(String raw) {
+  final k = _compareNormalizeText(raw);
+  if (k.contains('one cikan') ||
+      k.contains('highlight') ||
+      k.contains('key spec')) {
+    return 0;
+  }
+  if (k.contains('ekran') || k.contains('display') || k.contains('screen')) {
+    return 1;
+  }
+  if (k.contains('batarya') ||
+      k.contains('battery') ||
+      k == 'pil' ||
+      k.contains('charging') ||
+      k.contains('sarj')) {
+    return 2;
+  }
+  if (k.contains('kamera') || k.contains('camera') || k.contains('photo')) {
+    return 3;
+  }
+  if (k.contains('temel bilgi') ||
+      k.contains('genel bilgi') ||
+      k.contains('basic information') ||
+      k.contains('general information') ||
+      k == 'general') {
+    return 4;
+  }
+  if (k.contains('tasarim') ||
+      k.contains('design') ||
+      k.contains('dimension')) {
+    return 5;
+  }
+  if (k.contains('donan') ||
+      k.contains('hardware') ||
+      k.contains('processor') ||
+      k.contains('islemci') ||
+      k.contains('yonga') ||
+      k.contains('performance')) {
+    return 6;
+  }
+  if (k.contains('bellek') || k.contains('memory') || k.contains('ram')) {
+    return 7;
+  }
+  if (k.contains('depolama') || k.contains('storage')) return 8;
+  if (k.contains('ag') ||
+      k.contains('network') ||
+      k.contains('baglanti') ||
+      k.contains('connect') ||
+      k.contains('wireless') ||
+      k.contains('wifi') ||
+      k.contains('bluetooth')) {
+    return 9;
+  }
+  if (k.contains('isletim') ||
+      k.contains('software') ||
+      k.contains('operating') ||
+      k.contains(' os')) {
+    return 10;
+  }
+  if (k.contains('ses') || k.contains('audio') || k.contains('multimedia')) {
+    return 11;
+  }
+  if (k.contains('ozellik') ||
+      k.contains('feature') ||
+      k.contains('sensor') ||
+      k.contains('security')) {
+    return 12;
+  }
+  return 900;
+}
+
+const Map<String, String> _compareExactSpecAliases = {
+  'battery capacity': 'Battery capacity',
+  'battery capacity typical': 'Battery capacity',
+  'battery capacity mah': 'Battery capacity',
+  'batarya kapasitesi': 'Battery capacity',
+  'pil kapasitesi': 'Battery capacity',
+  'battery endurance in cycles': 'Battery cycle life',
+  'battery cycle count': 'Battery cycle life',
+  'charging port': 'Charging port',
+  'usb connection type': 'Charging port',
+  'usb connector type': 'Charging port',
+  'usb type': 'Charging port',
+  'usb baglanti tipi': 'Charging port',
+  'fast charging': 'Fast charging',
+  'fast charge': 'Fast charging',
+  'hizli sarj': 'Fast charging',
+  'fast charging features': 'Fast charging features',
+  'fast charging power max': 'Fast charging power',
+  'fast charging power': 'Fast charging power',
+  'charging power': 'Fast charging power',
+  'wireless charging': 'Wireless charging',
+  'kablosuz sarj': 'Wireless charging',
+  'removable battery': 'Removable battery',
+  'video playback': 'Video playback',
+  'screen size': 'Screen size',
+  'display size': 'Screen size',
+  'display diagonal': 'Screen size',
+  'ekran boyutu': 'Screen size',
+  'resolution': 'Resolution',
+  'display resolution': 'Resolution',
+  'screen resolution': 'Resolution',
+  'ekran cozunurlugu': 'Resolution',
+  'panel type': 'Panel type',
+  'display type': 'Panel type',
+  'screen technology': 'Panel type',
+  'display technology': 'Panel type',
+  'refresh rate': 'Refresh rate',
+  'screen refresh rate': 'Refresh rate',
+  'processor': 'Processor',
+  'processor model': 'Processor',
+  'cpu': 'Processor',
+  'cpu model': 'Processor',
+  'islemci modeli': 'Processor',
+  'processor family': 'Processor family',
+  'processor cores': 'CPU cores',
+  'cpu cores': 'CPU cores',
+  'core count': 'CPU cores',
+  'chipset': 'Chipset',
+  'soc': 'Chipset',
+  'yonga seti': 'Chipset',
+  'gpu': 'GPU',
+  'graphics processor': 'GPU',
+  'graphics card': 'GPU',
+  'gpu model': 'GPU',
+  'ram': 'RAM',
+  'memory ram': 'RAM',
+  'internal memory': 'RAM',
+  'bellek ram': 'RAM',
+  'ram type': 'RAM type',
+  'memory type': 'RAM type',
+  'internal memory type': 'RAM type',
+  'storage': 'Storage',
+  'internal storage': 'Storage',
+  'total storage capacity': 'Storage',
+  'ssd': 'Storage',
+  'sabit disk ssd boyutu': 'Storage',
+  'dahili hafiza': 'Storage',
+  'storage media': 'Storage type',
+  'main camera': 'Main camera',
+  'main camera resolution': 'Main camera',
+  'rear camera': 'Main camera',
+  'camera resolution': 'Main camera',
+  'front camera': 'Front camera',
+  'front camera resolution': 'Front camera',
+  'wi fi': 'Wi-Fi',
+  'wi fi standards': 'Wi-Fi',
+  'wifi': 'Wi-Fi',
+  'wireless': 'Wi-Fi',
+  'bluetooth': 'Bluetooth',
+  'bluetooth version': 'Bluetooth',
+  'nfc': 'NFC',
+  '5g': '5G',
+  '5g support': '5G',
+  '4g': '4G',
+  'lte': '4G',
+  'operating system': 'Operating system',
+  'os': 'Operating system',
+  'weight': 'Weight',
+  'agirlik': 'Weight',
+  'dimensions': 'Dimensions',
+  'thickness': 'Thickness',
+  'water resistance': 'Water resistance',
+  'waterproof': 'Water resistance',
+  'color': 'Color',
+  'sensors': 'Sensors',
+};
+
+String _compareCanonicalSpecKey(String key, [String value = '']) {
+  final k = _compareNormalizeText(key);
+  if (k.isEmpty) return 'Specification';
+  if (k.contains('required charging power') || k.contains('charging power')) {
+    return 'Fast charging power';
+  }
+  if (k.contains('usb type c charging port') &&
+      RegExp(r'^(yes|no|var|yok|true|false)$', caseSensitive: false).hasMatch(value.trim())) {
+    return 'USB-C charging';
+  }
+  final exact = _compareExactSpecAliases[k];
+  if (exact != null) return exact;
+  if (k == 'charging' || k == 'charge') {
+    final v = _compareNormalizeText(value);
+    if (RegExp(r'\b(usb|type c|typec|lightning|micro usb)\b').hasMatch(v)) {
+      return 'Charging port';
+    }
+    return 'Charging';
+  }
+  for (final entry in _compareExactSpecAliases.entries) {
+    final alias = entry.key;
+    if (alias.length > 3 && (k == alias || k.contains(alias) || alias.contains(k))) {
+      return entry.value;
+    }
+  }
+  return key.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+String _compareCanonicalSection(String section, [String key = '']) {
+  final hay = '${_compareNormalizeText(section)} ${_compareNormalizeText(key)}';
+  bool has(List<String> needles) => needles.any(hay.contains);
+  if (has(['display', 'screen', 'ekran'])) return 'Display';
+  if (has(['battery', 'batarya', 'pil', 'charging', 'sarj'])) return 'Battery';
+  if (has(['camera', 'kamera', 'photo', 'video'])) return 'Camera';
+  if (has(['processor', 'cpu', 'islemci', 'chipset', 'yonga', 'gpu', 'graphics', 'grafik'])) {
+    return 'Performance';
+  }
+  if (has(['memory', 'ram', 'bellek', 'storage', 'depolama', 'ssd', 'hdd'])) {
+    return 'Memory and storage';
+  }
+  if (has(['wi fi', 'wifi', 'wlan', 'bluetooth', 'network', 'baglanti', 'usb', 'nfc', 'sim', '5g', '4g'])) {
+    return 'Connectivity';
+  }
+  if (has(['design', 'tasarim', 'body', 'dimension', 'weight', 'agirlik', 'thickness', 'kalinlik'])) {
+    return 'Design';
+  }
+  if (has(['audio', 'sound', 'speaker', 'ses', 'hoparlor'])) return 'Audio';
+  if (has(['software', 'operating system', 'isletim', 'os', 'windows', 'android', 'ios'])) {
+    return 'Software';
+  }
+  if (has(['sensor', 'fingerprint', 'gps', 'gyro'])) return 'Sensors';
+  return section.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim().isEmpty
+      ? 'General'
+      : section.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+String _mergeCompareValue(String existing, String incoming) {
+  final a = existing.trim();
+  final b = incoming.trim();
+  if (a.isEmpty) return b;
+  if (b.isEmpty || _compareNormalizeText(a) == _compareNormalizeText(b)) return a;
+  if (_compareNormalizeText(a).contains(_compareNormalizeText(b))) return a;
+  if (_compareNormalizeText(b).contains(_compareNormalizeText(a))) return b;
+  final lines = a.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+  for (final line in b.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty)) {
+    if (!lines.any((x) => _compareNormalizeText(x) == _compareNormalizeText(line))) {
+      lines.add(line);
+    }
+  }
+  return lines.join('\n');
+}
+
+Map<String, dynamic> _canonicalCompareDisplaySpecs(Map<String, dynamic> p) {
+  final out = <String, Map<String, String>>{};
+  void add(String section, String key, dynamic value) {
+    final v = value?.toString().trim() ?? '';
+    if (v.isEmpty || v == 'null' || v == '?') return;
+    final canonicalKey = _compareCanonicalSpecKey(key, v);
+    final canonicalSection = _compareCanonicalSection(section, canonicalKey);
+    final group = out.putIfAbsent(canonicalSection, () => <String, String>{});
+    group[canonicalKey] = _mergeCompareValue(group[canonicalKey] ?? '', v);
+  }
+
+  final sections = (p['specSections'] as Map?)?.cast<String, dynamic>() ?? {};
+  for (final sectionEntry in sections.entries) {
+    final body = sectionEntry.value;
+    if (body is Map) {
+      for (final spec in body.entries) {
+        if (spec.value is Map) {
+          for (final sub in (spec.value as Map).entries) {
+            add(sectionEntry.key, sub.key.toString(), sub.value);
+          }
+        } else {
+          add(sectionEntry.key, spec.key.toString(), spec.value);
+        }
+      }
+    }
+  }
+  final specs = (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
+  specs.forEach((key, value) {
+    final v = value?.toString().trim() ?? '';
+    if (v.isEmpty || v == 'null' || v == '?') return;
+    final canonicalKey = _compareCanonicalSpecKey(key, v);
+    var merged = false;
+    for (final group in out.values) {
+      if (group.containsKey(canonicalKey)) {
+        group[canonicalKey] = _mergeCompareValue(group[canonicalKey] ?? '', v);
+        merged = true;
+        break;
+      }
+    }
+    if (!merged) add('General', key, value);
+  });
+  return out;
+}
+
 Map<String, String> _compareFlatSpecPool(Map<String, dynamic> p) {
   final pool = <String, String>{};
   void add(String key, dynamic value) {
-    final k = key.trim();
     final v = value?.toString().trim() ?? '';
+    final k = _compareCanonicalSpecKey(key.trim(), v);
     if (k.isEmpty || v.isEmpty || v == 'null' || v == '?') return;
-    pool.putIfAbsent(k, () => v);
+    pool[k] = _mergeCompareValue(pool[k] ?? '', v);
   }
 
   final specs = (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -7507,16 +8058,14 @@ Map<String, Map<String, List<String>>> _buildComparableSpecs(
 Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
   List<Map<String, dynamic>> productsData,
 ) {
-  final result = <String, Map<String, List<String>>>{
-    ..._buildComparableSpecs(productsData),
-  };
+  final result = <String, Map<String, List<String>>>{};
+  final comparableSpecs = _buildComparableSpecs(productsData);
   final productCount = productsData.length;
 
   Map<String, dynamic> displaySpecs(Map<String, dynamic> p) {
-    final ss = (p['specSections'] as Map?)?.cast<String, dynamic>() ?? {};
-    return ss.isNotEmpty
-        ? ss
-        : (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
+    final canonical = _canonicalCompareDisplaySpecs(p);
+    if (canonical.isNotEmpty) return canonical;
+    return (p['specs'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
   // Collect all group names from all products
@@ -7529,36 +8078,13 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
     }
   }
 
-  // Sort groups by priority (matching epey.com spec ordering)
-  const specGroupPriority = [
-    'basic information',
-    'design',
-    'display',
-    'basic hardware',
-    'processor',
-    'hardware',
-    'memory',
-    'storage',
-    'camera',
-    'battery',
-    'network connections',
-    'wireless connections',
-    'operating system',
-    'multimedia',
-    'features',
-    'sensors',
-    'other connections',
-    'other',
-  ];
   final sortedGroupNames = allGroupNames.toList()
     ..sort((a, b) {
-      final aLower = a.toLowerCase();
-      final bLower = b.toLowerCase();
-      int aIdx = specGroupPriority.indexWhere((p) => aLower.contains(p));
-      int bIdx = specGroupPriority.indexWhere((p) => bLower.contains(p));
-      if (aIdx == -1) aIdx = 900;
-      if (bIdx == -1) bIdx = 900;
-      return aIdx.compareTo(bIdx);
+      final priority = _compareGroupPriority(
+        a,
+      ).compareTo(_compareGroupPriority(b));
+      if (priority != 0) return priority;
+      return a.compareTo(b);
     });
 
   for (final groupName in sortedGroupNames) {
@@ -7645,6 +8171,9 @@ Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
   }
   if (flatSpecs.isNotEmpty) {
     result['Other'] = flatSpecs;
+  }
+  for (final entry in comparableSpecs.entries) {
+    result.putIfAbsent(entry.key, () => entry.value);
   }
 
   return result;

@@ -8,8 +8,10 @@ import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format'
 import ProductCard from '../components/ProductCard.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
+import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
+import { canonicalizeSpecMaps, canonicalSpecSection } from '../lib/specCanonical';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -50,9 +52,10 @@ function aiPrompt(p, lang) {
   );
 }
 
-function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle) {
+function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   const bricks = [];
   const seen = new Set();
+  const canonical = canonicalizeSpecMaps(product);
   const addRows = (title, icon, entries) => {
     const rows = [];
     (entries || []).forEach(([k, v]) => {
@@ -66,26 +69,26 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle) {
     if (rows.length) bricks.push({ title, icon, rows });
   };
 
-  const keySpecs = product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : null;
+  const keySpecs = canonical.keySpecs && typeof canonical.keySpecs === 'object' ? canonical.keySpecs : null;
   if (keySpecs && Object.keys(keySpecs).length > 0) {
     addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
   }
 
-  const sections = product.specSections && typeof product.specSections === 'object' ? product.specSections : null;
+  const sections = canonical.specSections && typeof canonical.specSections === 'object' ? canonical.specSections : null;
   if (sections) {
     for (const [section, specs] of Object.entries(sections)) {
       if (specs && typeof specs === 'object') {
-        addRows(section, sectionIcon(section), Object.entries(specs));
+        addRows(trSpec(section, lang), sectionIcon(section), Object.entries(specs));
       }
     }
   }
 
-  const flat = product.specs && typeof product.specs === 'object' ? product.specs : null;
+  const flat = canonical.specs && typeof canonical.specs === 'object' ? canonical.specs : null;
   if (flat) {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),
     );
-    if (missing.length) addRows(allSpecsTitle, '📋', missing);
+    if (missing.length) addRows(canonicalSpecSection(allSpecsTitle), '📋', missing);
   }
   return bricks;
 }
@@ -150,6 +153,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('specs');
   const [activeImg, setActiveImg] = useState(0);
+  const [dictReady, setDictReady] = useState(false);
 
   const [aiText, setAiText] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
@@ -173,6 +177,16 @@ export default function ProductDetail() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [id]);
+
+  useEffect(() => {
+    let live = true;
+    if (lang === 'tr') {
+      setDictReady(true);
+      return () => { live = false; };
+    }
+    ensureSpecDictionary().then(() => { if (live) setDictReady(true); });
+    return () => { live = false; };
+  }, [lang]);
 
   // Generate the AI analysis the first time the tab is opened.
   useEffect(() => {
@@ -217,7 +231,8 @@ export default function ProductDetail() {
   const subscores = p.techSubscores && typeof p.techSubscores === 'object' ? p.techSubscores : null;
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
-  const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'));
+  const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
+  const displayName = trSpec(p.name, lang);
 
   return (
     <div className="pd">
@@ -225,14 +240,14 @@ export default function ProductDetail() {
         <div className="pd-crumb">
           <Link to="/">{t('nav.home')}</Link> <span>/</span>
           <span>{meta.label}</span> <span>/</span>
-          <b>{p.name}</b>
+          <b>{displayName}</b>
         </div>
 
         {/* HERO */}
         <div className="pd-top">
           <div className="pd-gallery">
             <div className="pd-main-img">
-              <img src={images[activeImg] || PLACEHOLDER_IMG} alt={p.name}
+              <img src={images[activeImg] || PLACEHOLDER_IMG} alt={displayName}
                 onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
             </div>
             {images.length > 1 && (
@@ -250,7 +265,7 @@ export default function ProductDetail() {
           <div className="pd-info">
             <span className="pd-cat">{meta.icon} {meta.label}</span>
             {p.brand && <div className="pd-brand">{p.brand}</div>}
-            <h1 className="pd-name">{p.name}</h1>
+            <h1 className="pd-name">{displayName}</h1>
 
             <div className="pd-score-box">
               <div className={'pd-score-ring ' + scoreClass(p.techScore)}>
@@ -291,7 +306,7 @@ export default function ProductDetail() {
               )}
               <button className="btn btn-ghost"
                 onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
-                  detail: t('pd.askAiQuestion', { name: p.name }),
+                detail: t('pd.askAiQuestion', { name: displayName }),
                 }))}>
                 {t('pd.askAi')}
               </button>
@@ -331,7 +346,7 @@ export default function ProductDetail() {
               )}
               {bricks.length > 0 ? (
                 <div className="pd-bricks">
-                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} />)}
+                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} dictReady={dictReady} />)}
                 </div>
               ) : (
                 !p.description && <div className="pd-note">{t('pd.noSpecs')}</div>
@@ -376,21 +391,22 @@ export default function ProductDetail() {
   );
 }
 
-function SpecBrick({ brick }) {
+function SpecBrick({ brick, lang }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
   if (!rows.length) return null;
   return (
     <div className="pd-brick">
-      <div className="pd-brick-head"><span>{brick.icon}</span> {brick.title}</div>
+      <div className="pd-brick-head"><span>{brick.icon}</span> {trSpec(brick.title, lang)}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
-          const s = String(v).trim();
+          const s = trSpec(String(v).trim(), lang);
+          const label = trSpec(k, lang);
           const yes = YES_RE.test(s);
           const no = NO_RE.test(s);
           const lines = s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
           return (
             <div className="pd-srow" key={k}>
-              <div className="pd-sk">{k}</div>
+              <div className="pd-sk">{label}</div>
               <div className={'pd-sv' + (yes ? ' yes' : no ? ' no' : '')}>
                 {yes ? `✓ ${s}` : no ? `✗ ${s}`
                   : lines.length > 1

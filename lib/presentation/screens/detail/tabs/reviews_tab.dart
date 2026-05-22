@@ -1,5 +1,6 @@
-﻿part of '../product_detail_screen.dart';
+part of '../product_detail_screen.dart';
 
+// ignore: unused_element
 class _ReviewsTab extends ConsumerStatefulWidget {
   final ProductEntity product;
   final bool isDark;
@@ -40,14 +41,6 @@ class _ReviewsTabState extends ConsumerState<_ReviewsTab> {
         MediaQuery.of(context).padding.bottom + 40,
       ),
       children: [
-        // ── Google Shopping Prices ──
-        _GoogleShoppingCard(
-          product: widget.product,
-          isDark: widget.isDark,
-          cardBg: cardBg,
-        ),
-        const SizedBox(height: 12),
-
         // ── YouTube Reviews ──
         if (_showYouTubeSection)
           _YouTubeReviewsCard(
@@ -2671,126 +2664,3 @@ class _ReplyItemState extends ConsumerState<_ReplyItem> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// GOOGLE SHOPPING CARD
-// ═══════════════════════════════════════════════════════════
-
-class _GoogleShoppingCard extends StatelessWidget {
-  final ProductEntity product;
-  final bool isDark;
-  final Color cardBg;
-  const _GoogleShoppingCard({
-    required this.product,
-    required this.isDark,
-    required this.cardBg,
-  });
-
-  String _buildShoppingUrl() {
-    final q = Uri.encodeQueryComponent(product.name);
-    return 'https://www.google.com/search?tbm=shop&q=$q';
-  }
-
-  Future<void> _openShopping(BuildContext context) async {
-    final url = Uri.parse(_buildShoppingUrl());
-    try {
-      final launched = await launchUrl(
-        url,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tarayıcı açılamadı.')));
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tarayıcı açılamadı.')));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isEn = Localizations.localeOf(context).languageCode != 'tr';
-    final accent = AppTheme.brandCyan;
-    final accentSoft = AppTheme.primaryBlue;
-    return GestureDetector(
-      onTap: () => _openShopping(context),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [context.surfaceVariantColor, context.surfaceColor],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: accent.withValues(alpha: 0.20)),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [accent, accentSoft],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.shopping_cart_outlined,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isEn
-                        ? 'Google Shopping Prices'
-                        : 'Google Shopping Fiyatları',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isEn
-                        ? 'Compare prices from multiple stores'
-                        : 'Farklı mağazaların fiyatlarını karşılaştır',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: context.textSecondary.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.open_in_new_rounded,
-              size: 16,
-              color: accent.withValues(alpha: 0.9),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

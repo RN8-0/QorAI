@@ -92,15 +92,20 @@ class _ProductImageBoxState extends State<ProductImageBox> {
       // width verilmişse onu, yoksa height fallback — height-only'de caller'ın
       // explicit width geçmesi önerilir (_WideProductCard gibi).
       final targetW = widget.width ?? widget.height ?? 140.0;
+      final targetH = widget.height ?? widget.width ?? 140.0;
       final cacheW = (targetW * dpr).round().clamp(120, 900);
+      final cacheH = (targetH * dpr).round().clamp(120, 900);
       imageWidget = CachedNetworkImage(
         key: ValueKey(url),
         imageUrl: url,
         fit: widget.fit,
         memCacheWidth: cacheW,
+        memCacheHeight: cacheH,
         maxWidthDiskCache: cacheW,
-        fadeInDuration: const Duration(milliseconds: 120),
+        maxHeightDiskCache: cacheH,
+        fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
+        filterQuality: FilterQuality.low,
         placeholder: (_, _) => const ColoredBox(color: Color(0xFFF1F5F9)),
         errorWidget: (context, url, error) {
           _onError(url);

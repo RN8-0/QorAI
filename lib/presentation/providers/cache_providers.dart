@@ -2009,6 +2009,29 @@ _FallbackIsolateResult _computeFallbackInIsolate(_FallbackIsolateParams p) {
 
 // ────────────────────────────────────────────────────────────────────────────
 
+// ─── Local match score provider (algorithm-only, no AI) ─────────────────────
+// Computes a personalized match score from the user profile + behavior signals
+// (favorites, viewed products, searches, quiz answers, compare history).
+// Works identically for free and premium users — no AI/token cost.
+final localMatchScoreProvider = Provider.family<int?, ProductEntity>((
+  ref,
+  product,
+) {
+  final user = ref.watch(userProfileProvider).valueOrNull;
+  // Logged-out → no personalized score.
+  if (user == null) return null;
+  final behavior =
+      ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
+  final algo = ProfileAlgorithmService();
+  // Algorithm always returns 20-100. Works for users without a completed quiz
+  // too — the score will be less personalized but still meaningful.
+  final score = algo
+      .calculateTotalFitScore(user: user, product: product, behavior: behavior)
+      .round()
+      .clamp(20, 100);
+  return score;
+});
+
 final geminiMatchScoreProvider =
     StateNotifierProvider.family<
       _GeminiMatchScoreNotifier,

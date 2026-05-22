@@ -1,5 +1,5 @@
 /// Qor AI - Main Shell (Modern Navigation)
-/// Mobile: 3-tab floating pill nav + hamburger drawer
+/// Mobile: 4-tab floating pill nav + hamburger drawer
 /// Desktop/Tablet: Side rail navigation
 library;
 
@@ -12,6 +12,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:google_fonts/google_fonts.dart";
 import "package:qor_ai/core/app_keys.dart";
+import "package:qor_ai/core/constants.dart";
 import "package:qor_ai/core/pb_client.dart";
 import "package:qor_ai/presentation/providers/providers.dart";
 import "package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart";
@@ -38,11 +39,14 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   StreamSubscription<String>? _fcmTokenRefreshSub;
+  Future<void> Function()? _productsUnsubscribe;
+  Timer? _productCacheInvalidationDebounce;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _subscribeProductCatalogChanges();
       Future.delayed(const Duration(milliseconds: 1200), () {
         if (!mounted) return;
         _primeBackgroundState();
@@ -52,6 +56,31 @@ class _MainShellState extends ConsumerState<MainShell> {
         _registerFcmToken();
       });
     });
+  }
+
+  void _subscribeProductCatalogChanges() {
+    unawaited(() async {
+      try {
+        _productsUnsubscribe = await pb
+            .collection(AppConstants.productsCollection)
+            .subscribe('*', (event) {
+              if (!mounted) return;
+              _productCacheInvalidationDebounce?.cancel();
+              _productCacheInvalidationDebounce = Timer(
+                const Duration(milliseconds: 700),
+                () {
+                  if (!mounted) return;
+                  unawaited(
+                    invalidateProductCatalogCaches(ref, clearPersistent: true),
+                  );
+                },
+              );
+            });
+        debugPrint('[Shell] products realtime subscribed');
+      } catch (e) {
+        debugPrint('[Shell] products realtime unavailable: $e');
+      }
+    }());
   }
 
   void _primeBackgroundState() {
@@ -121,20 +150,23 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void dispose() {
     unawaited(_fcmTokenRefreshSub?.cancel());
+    _productCacheInvalidationDebounce?.cancel();
+    final unsubscribe = _productsUnsubscribe;
+    if (unsubscribe != null) {
+      unawaited(unsubscribe());
+    }
     super.dispose();
   }
 
   int _indexFromLocation(String location) {
     // Branch indices match StatefulShellRoute definition:
-    // 0=compare 1=home(+browse+aiChat) 2=linkPaste
-    // Subscriptions is reachable from the Home screen CTA card; it is not
-    // a shell branch anymore so no index maps to it.
-    return widget.navigationShell.currentIndex.clamp(0, 2);
+    // 0=home(+browse+aiChat) 1=compare 2=linkPaste 3=subscriptions
+    return widget.navigationShell.currentIndex.clamp(0, 3);
   }
 
   void _onNavTap(int index) {
     if (!kIsWeb) HapticFeedback.lightImpact();
-    if (index == 0 && !pb.authStore.isValid) {
+    if (index != 0 && !pb.authStore.isValid) {
       context.go(AppRoutes.login);
       return;
     }
@@ -335,24 +367,28 @@ class _NavItem {
 
 List<_NavItem> _buildNavItems(BuildContext context) {
   final l10n = AppLocalizations.of(context);
-  // Use short labels in the nav bar to prevent overflow on small screens.
-  // Layout: Compare — Home (center, gradient pill) — Link AI.
+  final isTr = Localizations.localeOf(context).languageCode == 'tr';
   return [
+    _NavItem(Icons.home_outlined, Icons.home_rounded, l10n?.home ?? 'Home'),
     _NavItem(
       Icons.compare_arrows_outlined,
       Icons.compare_arrows_rounded,
       l10n?.compare ?? 'Compare',
     ),
     _NavItem(
-      Icons.home_outlined,
-      Icons.home_rounded,
-      l10n?.home ?? 'Home',
-    ), // center — featured
-    _NavItem(Icons.link_rounded, Icons.link_rounded, 'Link AI'),
+      Icons.link_rounded,
+      Icons.link_rounded,
+      isTr ? 'Link Analizi' : 'Link Analysis',
+    ),
+    _NavItem(
+      Icons.subscriptions_outlined,
+      Icons.subscriptions_rounded,
+      isTr ? 'Abonelik Karşılaştır' : 'Subscription Analysis',
+    ),
   ];
 }
 
-// ─── FLOATING NAV BAR (3 items, ultra-slim) ───
+// ─── FLOATING NAV BAR (4 items, ultra-slim) ───
 
 class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -430,64 +466,6 @@ class _FloatingNavBar extends StatelessWidget {
         children: List.generate(items.length, (index) {
           final item = items[index];
           final isSelected = index == currentIndex;
-          final isCenter = index == 1; // Home — featured center button
-
-          if (isCenter) {
-            return Expanded(
-              child: Semantics(
-                button: true,
-                selected: isSelected,
-                label: item.label,
-                child: GestureDetector(
-                  onTap: () {
-                    if (!kIsWeb) HapticFeedback.selectionClick();
-                    onTap(index);
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(11),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.brandCyan.withValues(
-                                alpha: isSelected ? 0.5 : 0.18,
-                              ),
-                              blurRadius: isSelected ? 14 : 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          isSelected ? item.activeIcon : item.icon,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9.5,
-                          height: 1.0,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? AppTheme.brandCyan
-                              : AppTheme.slate500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
 
           // Regular items — animated pill background on active
           return Expanded(
@@ -507,7 +485,7 @@ class _FloatingNavBar extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     padding: EdgeInsets.symmetric(
                       horizontal: isSelected ? 9 : 6,
-                      vertical: 3,
+                      vertical: 7,
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
@@ -559,12 +537,12 @@ class _FloatingNavBar extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: isSelected ? 9.5 : 9,
-                            height: 1.0,
+                            fontSize: isSelected ? 8.4 : 8.0,
+                            height: 1.05,
                             fontWeight: isSelected
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -574,9 +552,10 @@ class _FloatingNavBar extends StatelessWidget {
                           ),
                           child: Text(
                             item.label,
-                            maxLines: 1,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
-                            softWrap: false,
+                            softWrap: true,
                           ),
                         ),
                       ],

@@ -76,9 +76,9 @@ async function _findRecord(collection, identifier, data = {}) {
     const configKey = String(data.configKey || '').trim();
     if (gtin) filters.push(`gtin="${_escapeFilterValue(gtin)}"`);
     if (mpn && brand) filters.push(`mpn="${_escapeFilterValue(mpn)}" && brand="${_escapeFilterValue(brand)}"`);
-    if (category && configKey) filters.push(`category="${_escapeFilterValue(category)}" && configKey="${_escapeFilterValue(configKey)}"`);
+    if (category && configKey) filters.push(`category = "${_escapeFilterValue(category)}" && configKey = "${_escapeFilterValue(configKey)}"`);
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
-    if (name && category) filters.push(`name="${_escapeFilterValue(name)}" && category="${_escapeFilterValue(category)}"`);
+    if (name && category) filters.push(`name = "${_escapeFilterValue(name)}" && category = "${_escapeFilterValue(category)}"`);
   }
 
   if (!filters.length) return null;
@@ -148,7 +148,7 @@ async function pbSetDoc(collection, id, data) {
       if (collection === 'products' && createData.variantGroup && createData.variantPrimary === undefined) {
         try {
           const fam = await getPb().collection('products').getList(1, 1, {
-            filter: `variantGroup="${_escapeFilterValue(createData.variantGroup)}" && category="${_escapeFilterValue(createData.category || '')}" && variantPrimary=true`,
+            filter: `variantGroup = "${_escapeFilterValue(createData.variantGroup)}" && category = "${_escapeFilterValue(createData.category || '')}" && variantPrimary = true`,
             $autoCancel: false, fields: 'id',
           });
           createData.variantPrimary = !(fam.items && fam.items.length);

@@ -7,6 +7,7 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shared/compact_product_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -52,6 +53,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return _isTurkish ? tr : en;
   }
 
+  // ignore: unused_element
   String _matchBadge(SearchRank rank) {
     if (rank.exactName) {
       return _fallbackText(en: 'Exact match', tr: 'Tam eşleşme');
@@ -1030,199 +1032,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         }
 
         final p = _results[i];
-        final price = p.getPriceForCountry(country);
-        final priceStr = price != null ? '\$${price.toStringAsFixed(0)}' : null;
-        return GestureDetector(
+        return CompactProductRow(
+          product: p,
+          country: country,
           onTap: () => _openProduct(p),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  context.surfaceVariantColor,
-                  context.surfaceVariantColor.withValues(alpha: 0.92),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.brandCyan.withValues(alpha: 0.14),
-                width: 0.8,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.05),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Always-white image cell — keeps product photos consistent
-                // with detail/similar/category cards regardless of theme.
-                Container(
-                  width: 82,
-                  height: 82,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: context.dividerColor.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: ProductImageBox(
-                      imageUrl: p.imageURL,
-                      fallbackUrls: p.images,
-                      width: 82,
-                      height: 82,
-                      borderRadius: BorderRadius.zero,
-                      padding: const EdgeInsets.all(8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Builder(
-                        builder: (context) {
-                          final rank = rankProductForQuery(p, _ctrl.text);
-                          return Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: AppTheme.primaryGradient,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  _matchBadge(rank),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              if ((p.brand ?? '').isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: context.backgroundColor,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: context.dividerColor.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    p.brand!,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        p.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        p.category,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: context.textTertiaryColor,
-                        ),
-                      ),
-                      if (priceStr != null || p.techScore > 0) ...[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (priceStr != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.neonCyan.withValues(
-                                    alpha: 0.10,
-                                  ),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  priceStr,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.neonCyan,
-                                  ),
-                                ),
-                              ),
-                            if (p.techScore > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _scoreColor(
-                                    p.techScore,
-                                  ).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  'Tech ${p.techScore.round()}',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: _scoreColor(p.techScore),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         );
       },
     );

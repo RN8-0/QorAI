@@ -24,6 +24,7 @@ import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/comparison_entity.dart';
+import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
@@ -37,6 +38,7 @@ import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
@@ -410,6 +412,111 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     _resetComparison();
   }
 
+  void _showCompareYouTubeSheet(List<ProductEntity> products) {
+    if (products.isEmpty) return;
+    final vsQuery = products.map((p) => p.name).join(' vs ');
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.smart_display_rounded,
+                      size: 22,
+                      color: Color(0xFFFF0000),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isTr ? 'Karşılaştırma Videoları' : 'Comparison Videos',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: context.textPrimary,
+                      ),
+                      onPressed: () => Navigator.of(sheetCtx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: context.dividerColor),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    MediaQuery.of(context).padding.bottom + 16,
+                  ),
+                  children: [
+                    SharedYouTubeReviewsCard(
+                      product: products.first,
+                      isDark: Theme.of(context).brightness == Brightness.dark,
+                      cardBg: context.surfaceVariantColor,
+                      searchQuery: vsQuery,
+                      titleOverride:
+                          context.l10n?.comparisonVideos ??
+                              'Comparison Videos',
+                      collapsible: false,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCompareReviewsSheet(List<ProductEntity> products) {
+    if (products.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetCtx) => _CompareReviewsSheet(products: products),
+    );
+  }
+
   void _removeProductFromComparison(String productId) {
     final session = ref.read(compareSessionProvider);
     final newIds = List<String>.from(session.selectedProductIds)
@@ -446,10 +553,21 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final session = ref.watch(compareSessionProvider);
     final products = session.comparedProducts;
 
+    // Detect "pool has 2+ products but they're still loading" — render a
+    // spinner instead of the empty selection UI so the user goes directly
+    // from "Compare now" tap to the comparison results without a flash of
+    // the 0/4 selection screen.
+    final globalIds = ref.watch(comparisonStateProvider).selectedProductIds;
+    final sessionIds = session.selectedProductIds;
+    final pendingPool =
+        products == null &&
+        (sessionIds.length >= 2 || globalIds.length >= 2);
+
     // Hide/show nav bar based on comparison state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final shouldHide = products != null && products.length >= 2;
+      final shouldHide =
+          (products != null && products.length >= 2) || pendingPool;
       if (_hideNavBarNotifier.state != shouldHide) {
         _hideNavBarNotifier.state = shouldHide;
       }
@@ -488,6 +606,27 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
           ),
         ),
         centerTitle: true,
+        actions: products != null && products.isNotEmpty
+            ? [
+                IconButton(
+                  tooltip: 'Reviews',
+                  icon: Icon(
+                    Icons.mode_comment_outlined,
+                    color: context.textPrimary,
+                  ),
+                  onPressed: () => _showCompareReviewsSheet(products),
+                ),
+                IconButton(
+                  tooltip: 'YouTube',
+                  icon: Icon(
+                    Icons.smart_display_outlined,
+                    color: context.textPrimary,
+                  ),
+                  onPressed: () => _showCompareYouTubeSheet(products),
+                ),
+                const SizedBox(width: 8),
+              ]
+            : null,
       ),
       body: Column(
         children: [
@@ -499,7 +638,9 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                     onReset: _resetComparison,
                     onRemoveProduct: _removeProductFromComparison,
                   )
-                : _buildSelectionView(),
+                : (pendingPool
+                    ? const _ComparePendingLoader()
+                    : _buildSelectionView()),
           ),
         ],
       ),
@@ -1038,4 +1179,35 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   // Legacy slot methods removed — replaced by _buildPremiumSlotWidgets
+}
+
+// ─── Loading state shown after Compare button tap, while products fetch ─────
+class _ComparePendingLoader extends StatelessWidget {
+  const _ComparePendingLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 36,
+            height: 36,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isTr ? 'Karşılaştırma hazırlanıyor…' : 'Preparing comparison…',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: context.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -4,6 +4,7 @@
 // SIMILAR PRODUCTS TAB
 // ═══════════════════════════════════════════════════════════
 
+// ignore: unused_element
 class _SimilarProductsTab extends ConsumerWidget {
   final ProductEntity product;
   final bool isDark;

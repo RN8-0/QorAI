@@ -19,10 +19,10 @@ class _SpecsCard extends StatefulWidget {
 }
 
 class _SpecsCardState extends State<_SpecsCard> {
-  late Map<String, bool> _expanded;
   late Map<String, dynamic> _sortedSpecs;
 
-  // Icons per spec group — matches Firestore group names from admin panel
+  // Icons per spec group — kept for older spec layouts.
+  // ignore: unused_element
   IconData _getGroupIcon(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
     if (k.contains('general') || k.contains('information')) {
@@ -108,6 +108,7 @@ class _SpecsCardState extends State<_SpecsCard> {
     return Icons.tune;
   }
 
+  // ignore: unused_element
   Color _getGroupColor(String groupKey) {
     final k = groupKey.toLowerCase().replaceAll('_', ' ');
     if (k.contains('general') || k.contains('information')) {
@@ -176,7 +177,6 @@ class _SpecsCardState extends State<_SpecsCard> {
   void initState() {
     super.initState();
     _sortedSpecs = _sortSpecs(widget.specs);
-    _expanded = {for (final key in _sortedSpecs.keys) key: false};
   }
 
   @override
@@ -184,9 +184,6 @@ class _SpecsCardState extends State<_SpecsCard> {
     super.didUpdateWidget(oldWidget);
     if (identical(oldWidget.specs, widget.specs)) return;
     _sortedSpecs = _sortSpecs(widget.specs);
-    _expanded = {
-      for (final key in _sortedSpecs.keys) key: _expanded[key] ?? false,
-    };
   }
 
   Map<String, dynamic> _sortSpecs(Map<String, dynamic> specs) {
@@ -208,6 +205,15 @@ class _SpecsCardState extends State<_SpecsCard> {
           .join('\n');
     }
     return val?.toString() ?? '';
+  }
+
+  static bool _isBlankSpecValue(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ||
+        trimmed == '?' ||
+        trimmed == 'null' ||
+        trimmed == '{}' ||
+        trimmed == '[]';
   }
 
   static String _formatKey(String key) {
@@ -247,6 +253,7 @@ class _SpecsCardState extends State<_SpecsCard> {
         .join(' ');
   }
 
+  // ignore: unused_element
   String _localizedGroupName(BuildContext context, String key) {
     final l = context.l10n;
     if (l == null) return _formatKey(key);
@@ -392,6 +399,7 @@ class _SpecsCardState extends State<_SpecsCard> {
 
   /// Translate a spec name to the user's language.
   /// Uses exact-match first, then word-level dictionary fallback.
+  // ignore: unused_element
   String _localizedSpecName(BuildContext context, String key) {
     final l = context.l10n;
     if (l == null) return _formatKey(key);
@@ -538,77 +546,99 @@ class _SpecsCardState extends State<_SpecsCard> {
   int _sectionPriority(String key) {
     final k = key.toLowerCase().replaceAll('_', ' ');
 
+    if (k.contains('öne çıkan') || k.contains('one cikan')) return 0;
+
+    if (k.contains('display') ||
+        k.contains('ekran') ||
+        k.contains('screen') ||
+        k.contains('monitor') ||
+        k.contains('panel')) {
+      return 1;
+    }
+
+    if (k.contains('battery') ||
+        k.contains('batarya') ||
+        k.contains('pil') ||
+        k.contains('power') ||
+        k.contains('güç') ||
+        k.contains('guc') ||
+        k.contains('charging') ||
+        k.contains('şarj') ||
+        k.contains('sarj') ||
+        k.contains('endurance')) {
+      return 2;
+    }
+
+    if (k.contains('camera') ||
+        k.contains('kamera') ||
+        k.contains('photo') ||
+        k.contains('imaging') ||
+        k.contains('optic')) {
+      return 3;
+    }
+
     // 1. BASIC INFO — Answers "What is this?", establishes context
     if (k.contains('basic info') ||
         k.contains('general info') ||
         k.contains('information') ||
+        k.contains('temel bilgi') ||
+        k.contains('genel bilgi') ||
         k.contains('release') ||
         k.contains('general') ||
         k.contains('overview')) {
-      return 1;
+      return 4;
     }
 
     // 2. DESIGN — First visual impression; what the user feels when seeing the product
     if (k.contains('design') ||
+        k.contains('tasarım') ||
+        k.contains('tasarim') ||
         k.contains('physical') ||
         k.contains('dimension') ||
+        k.contains('boyut') ||
+        k.contains('ağırlık') ||
+        k.contains('agirlik') ||
         k.contains('build') ||
         k.contains('chassis') ||
         k.contains('weight') ||
         k.contains('material') ||
         k.contains('color')) {
-      return 2;
-    }
-
-    // 3. DISPLAY — The surface the user interacts with the most
-    if (k.contains('display') ||
-        k.contains('screen') ||
-        k.contains('monitor') ||
-        k.contains('panel')) {
-      return 3;
+      return 5;
     }
 
     // 4. PERFORMANCE / PROCESSOR — "How fast is it?" — Most frequently asked
     if (k.contains('basic hard') ||
+        k.contains('temel donan') ||
         k.contains('processor') ||
+        k.contains('işlemci') ||
+        k.contains('islemci') ||
         k.contains('cpu') ||
         k.contains('chipset') ||
+        k.contains('yonga') ||
         k.contains('performance') ||
         k.contains('computing')) {
-      return 4;
+      return 6;
     }
 
     // 5. MEMORY / RAM — Extension of performance
-    if (k.contains('memory') || k.contains('ram')) return 5;
+    if (k.contains('memory') || k.contains('bellek') || k.contains('ram')) {
+      return 7;
+    }
 
     // 6. STORAGE — Capacity
     if (k.contains('storage') ||
+        k.contains('depolama') ||
         k.contains('disk') ||
         k.contains('ssd') ||
         k.contains('hdd') ||
         k.contains('optical') ||
         k.contains('flash')) {
-      return 6;
-    }
-
-    // 7. CAMERA — Strongest purchase motivator in 2024
-    if (k.contains('camera') ||
-        k.contains('photo') ||
-        k.contains('imaging') ||
-        k.contains('optic')) {
-      return 7;
-    }
-
-    // 8. BATTERY — A constant concern in daily use
-    if (k.contains('battery') ||
-        k.contains('power') ||
-        k.contains('charging') ||
-        k.contains('endurance')) {
       return 8;
     }
 
     // 9. GPU / GRAPHICS — Gaming and visual performance
     if (k.contains('graphic') ||
+        k.contains('grafik') ||
         k.contains('gpu') ||
         k.contains('video card') ||
         k.contains('vga')) {
@@ -617,6 +647,10 @@ class _SpecsCardState extends State<_SpecsCard> {
 
     // 10. NETWORK / CELLULAR — Connectivity (4G/5G matters)
     if (k.contains('network') ||
+        k.contains('ağ') ||
+        k.contains('ag ') ||
+        k.contains('bağlantı') ||
+        k.contains('baglanti') ||
         k.contains('cellular') ||
         k.contains('sim') ||
         k.contains('lte') ||
@@ -627,6 +661,7 @@ class _SpecsCardState extends State<_SpecsCard> {
 
     // 11. WIRELESS — WiFi, BT, NFC
     if (k.contains('wireless') ||
+        k.contains('kablosuz') ||
         k.contains('wifi') ||
         k.contains('bluetooth') ||
         k.contains('nfc') ||
@@ -637,7 +672,11 @@ class _SpecsCardState extends State<_SpecsCard> {
 
     // 12. OS / SOFTWARE — Ecosystem and platform
     if (k.contains('operating') ||
+        k.contains('işletim') ||
+        k.contains('isletim') ||
         k.contains('software') ||
+        k.contains('yazılım') ||
+        k.contains('yazilim') ||
         k.contains(' os') ||
         k.contains('system')) {
       return 12;
@@ -645,8 +684,11 @@ class _SpecsCardState extends State<_SpecsCard> {
 
     // 13. AUDIO / MULTIMEDIA — Media consumption
     if (k.contains('audio') ||
+        k.contains('ses') ||
         k.contains('sound') ||
         k.contains('speaker') ||
+        k.contains('çoklu ortam') ||
+        k.contains('coklu ortam') ||
         k.contains('multimedia') ||
         k.contains('music')) {
       return 13;
@@ -654,8 +696,14 @@ class _SpecsCardState extends State<_SpecsCard> {
 
     // 14. FEATURES / SECURITY / SENSORS — Additional features
     if (k.contains('feature') ||
+        k.contains('özellik') ||
+        k.contains('ozellik') ||
         k.contains('function') ||
         k.contains('security') ||
+        k.contains('güvenlik') ||
+        k.contains('guvenlik') ||
+        k.contains('sensor') ||
+        k.contains('sensör') ||
         k.contains('sensor') ||
         k.contains('biometric') ||
         k.contains('fingerprint')) {
@@ -668,6 +716,8 @@ class _SpecsCardState extends State<_SpecsCard> {
         k.contains('usb') ||
         k.contains('interface') ||
         k.contains('expansion') ||
+        k.contains('diğer bağlantı') ||
+        k.contains('diger baglanti') ||
         k.contains('other connection') ||
         k.contains('connector')) {
       return 15;
@@ -708,190 +758,205 @@ class _SpecsCardState extends State<_SpecsCard> {
   Widget build(BuildContext context) {
     final specs = _sortedSpecs;
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: specs.entries
+          .map((entry) {
+            final groupKey = entry.key;
+            final value = entry.value;
+
+            if (value is Map && value.isNotEmpty) {
+              var rowIdx = 0;
+              final rows = value.entries
+                  .expand<_SpecPair>((sub) {
+                    final subVal = sub.value;
+                    if (subVal is Map && subVal.isNotEmpty) {
+                      return subVal.entries.map((inner) {
+                        return _SpecPair(
+                          label: inner.key.toString(),
+                          value: _specValToString(inner.value),
+                          isOdd: rowIdx++ % 2 == 1,
+                        );
+                      });
+                    }
+                    return [
+                      _SpecPair(
+                        label: sub.key.toString(),
+                        value: _specValToString(subVal),
+                        isOdd: rowIdx++ % 2 == 1,
+                      ),
+                    ];
+                  })
+                  .where((row) => !_isBlankSpecValue(row.value))
+                  .toList(growable: false);
+
+              if (rows.isEmpty) return const SizedBox.shrink();
+              return _SpecBrick(title: groupKey, rows: rows);
+            }
+
+            final flatValue = _specValToString(value);
+            if (_isBlankSpecValue(flatValue)) return const SizedBox.shrink();
+            return _SpecBrick(
+              title: context.l10n?.specs ?? 'Specifications',
+              rows: [
+                _SpecPair(label: groupKey, value: flatValue, isOdd: false),
+              ],
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+}
+
+class _SpecPair {
+  final String label;
+  final String value;
+  final bool isOdd;
+
+  const _SpecPair({
+    required this.label,
+    required this.value,
+    required this.isOdd,
+  });
+}
+
+class _SpecBrick extends StatelessWidget {
+  final String title;
+  final List<_SpecPair> rows;
+
+  const _SpecBrick({required this.title, required this.rows});
+
+  IconData _iconForSection(String section) {
+    final k = section.toLowerCase();
+    if (k.contains('öne çıkan') ||
+        k.contains('one cikan') ||
+        k.contains('highlight')) {
+      return Icons.stars_rounded;
+    }
+    if (k.contains('ekran') || k.contains('display')) {
+      return Icons.smartphone_rounded;
+    }
+    if (k.contains('batarya') || k.contains('battery') || k.contains('pil')) {
+      return Icons.battery_charging_full_rounded;
+    }
+    if (k.contains('kamera') || k.contains('camera')) {
+      return Icons.photo_camera_rounded;
+    }
+    if (k.contains('donan') || k.contains('hardware')) {
+      return Icons.developer_board_rounded;
+    }
+    if (k.contains('perform')) return Icons.speed_rounded;
+    if (k.contains('bellek') || k.contains('memory')) {
+      return Icons.memory_rounded;
+    }
+    if (k.contains('depolama') || k.contains('storage')) {
+      return Icons.storage_rounded;
+    }
+    if (k.contains('tasarım') ||
+        k.contains('tasarim') ||
+        k.contains('design')) {
+      return Icons.straighten_rounded;
+    }
+    if (k.contains('ağ') ||
+        k.contains('ag ') ||
+        k.contains('network') ||
+        k.contains('bağlantı') ||
+        k.contains('baglanti') ||
+        k.contains('connect')) {
+      return Icons.settings_input_antenna_rounded;
+    }
+    if (k.contains('işletim') ||
+        k.contains('isletim') ||
+        k.contains('software') ||
+        k.contains('os')) {
+      return Icons.terminal_rounded;
+    }
+    if (k.contains('ses') || k.contains('audio') || k.contains('ortam')) {
+      return Icons.speaker_rounded;
+    }
+    if (k.contains('özellik') ||
+        k.contains('ozellik') ||
+        k.contains('feature')) {
+      return Icons.tune_rounded;
+    }
+    if (k.contains('işlemci') ||
+        k.contains('islemci') ||
+        k.contains('chip') ||
+        k.contains('processor')) {
+      return Icons.memory_rounded;
+    }
+    if (k.contains('grafik') || k.contains('graphics') || k.contains('gpu')) {
+      return Icons.videogame_asset_rounded;
+    }
+    if (k.contains('güç') || k.contains('guc') || k.contains('power')) {
+      return Icons.bolt_rounded;
+    }
+    return Icons.subject_rounded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final service = SpecTranslationService.instance;
+    final displayTitle = service.translateLabelForLocale(title, locale);
     return Container(
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [context.surfaceColor, context.surfaceVariantColor],
+        ),
         border: Border.all(color: context.dividerColor),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.white.withValues(alpha: 0.04), blurRadius: 8),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
-      clipBehavior: Clip.hardEdge,
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: context.dividerColor)),
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+              ),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _CardHeader(
-                  icon: Icons.settings_input_component,
-                  label: context.l10n?.specs ?? 'Specifications',
-                  color: AppTheme.primaryBlue,
-                ),
-                const Spacer(),
-                Text(
-                  '${specs.length} ${context.l10n?.groups ?? 'groups'}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.slate500,
+                Icon(_iconForSection(title), size: 14, color: Colors.white),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    displayTitle.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 11,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          ...specs.entries.map((entry) {
-            final groupKey = entry.key;
-            final value = entry.value;
-            final isExpanded = _expanded[groupKey] ?? false;
-
-            // ── If value is a nested map → expandable group ──
-            if (value is Map && value.isNotEmpty) {
-              final icon = _getGroupIcon(groupKey);
-              final color = _getGroupColor(groupKey);
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Group header — original style (icon + colored title)
-                  Material(
-                    color: context.surfaceVariantColor,
-                    child: InkWell(
-                      onTap: () =>
-                          setState(() => _expanded[groupKey] = !isExpanded),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(icon, size: 16, color: color),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _localizedGroupName(context, groupKey),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Text(
-                              '${value.length} ${context.l10n?.specsCount ?? 'specs'}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.slate400,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            AnimatedRotation(
-                              turns: isExpanded ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: const Icon(
-                                Icons.expand_more,
-                                size: 18,
-                                color: AppTheme.slate400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (isExpanded)
-                    Builder(
-                      builder: (context) {
-                        int rowIdx = 0;
-                        return Column(
-                          children: value.entries.expand<Widget>((sub) {
-                            final subLabel = _localizedSpecName(
-                              context,
-                              sub.key.toString(),
-                            );
-                            final subVal = sub.value;
-                            // Handle nested maps within a group
-                            if (subVal is Map && subVal.isNotEmpty) {
-                              return subVal.entries.map((inner) {
-                                final innerVal = _specValToString(inner.value);
-                                if (innerVal.isEmpty ||
-                                    innerVal == '?' ||
-                                    innerVal == 'null' ||
-                                    innerVal == '{}' ||
-                                    innerVal == '[]') {
-                                  return const SizedBox.shrink();
-                                }
-                                final odd = rowIdx++ % 2 == 1;
-                                return _SpecRow(
-                                  label: _localizedSpecName(
-                                    context,
-                                    inner.key.toString(),
-                                  ),
-                                  value: innerVal,
-                                  isDark: widget.isDark,
-                                  accent: color,
-                                  isOdd: odd,
-                                );
-                              });
-                            }
-                            final subValue = _specValToString(subVal);
-                            if (subValue.isEmpty ||
-                                subValue == '?' ||
-                                subValue == 'null' ||
-                                subValue == '{}' ||
-                                subValue == '[]') {
-                              return [const SizedBox.shrink()];
-                            }
-                            final odd = rowIdx++ % 2 == 1;
-                            return [
-                              _SpecRow(
-                                label: subLabel,
-                                value: subValue,
-                                isDark: widget.isDark,
-                                accent: color,
-                                isOdd: odd,
-                              ),
-                            ];
-                          }).toList(),
-                        );
-                      },
-                    ),
-                ],
-              );
-            }
-
-            // ── Flat key-value (fallback) ──
-            final flatValue = _specValToString(value);
-            if (flatValue.isEmpty ||
-                flatValue == '?' ||
-                flatValue == 'null' ||
-                flatValue == '{}' ||
-                flatValue == '[]') {
-              return const SizedBox.shrink();
-            }
-            return _SpecRow(
-              label: _localizedSpecName(context, groupKey),
-              value: flatValue,
-              isDark: widget.isDark,
-              accent: AppTheme.primaryBlue,
-              isOdd: false,
-            );
-          }),
-          const SizedBox(height: 4),
+          ...rows.map(
+            (row) =>
+                _SpecRow(label: row.label, value: row.value, isOdd: row.isOdd),
+          ),
         ],
       ),
     );
@@ -900,18 +965,15 @@ class _SpecsCardState extends State<_SpecsCard> {
 
 class _SpecRow extends StatelessWidget {
   final String label, value;
-  final bool isDark;
-  final Color accent;
   final bool isOdd;
   const _SpecRow({
     required this.label,
     required this.value,
-    required this.isDark,
-    required this.accent,
     this.isOdd = false,
   });
 
   /// Capitalize first letter of each word but preserve acronyms (USB, HDMI...).
+  // ignore: unused_element
   static String _applyValueTitleCase(String s) {
     if (s.isEmpty) return s;
     return s
@@ -926,11 +988,7 @@ class _SpecRow extends StatelessWidget {
   }
 
   static String _capitalizeLeadingLetter(String s) {
-    if (s.isEmpty) return s;
-    final match = RegExp(r'[A-Za-zÇĞİÖŞÜçğıöşü]').firstMatch(s);
-    if (match == null) return s;
-    final index = match.start;
-    return '${s.substring(0, index)}${s[index].toUpperCase()}${s.substring(index + 1)}';
+    return s;
   }
 
   static bool _isConnectorWord(String word) {
@@ -952,6 +1010,7 @@ class _SpecRow extends StatelessWidget {
     return connectors.contains(word.toLowerCase());
   }
 
+  // ignore: unused_element
   static List<String> _chunkLongValue(String value) {
     final words = value
         .split(RegExp(r'\s+'))
@@ -992,6 +1051,7 @@ class _SpecRow extends StatelessWidget {
     return chunks.where((chunk) => chunk.trim().isNotEmpty).toList();
   }
 
+  // ignore: unused_element
   static bool _looksLikePackedFeatureList(String value) {
     final words = value
         .split(RegExp(r'\s+'))
@@ -1009,222 +1069,89 @@ class _SpecRow extends StatelessWidget {
   }
 
   static List<String> _extractValueParts(String value) {
-    // Step 1: replace bullet chars and pipe with newlines
-    final withNewlines = value
-        .replaceAll('•', '\n')
+    List<String> splitTopLevel(String source) {
+      final out = <String>[];
+      var depth = 0;
+      final buffer = StringBuffer();
+      for (var i = 0; i < source.length; i++) {
+        final ch = source[i];
+        if (ch == '(' || ch == '[' || ch == '{') {
+          depth++;
+        } else if (ch == ')' || ch == ']' || ch == '}') {
+          depth = dart_math.max(0, depth - 1);
+        }
+        if (depth == 0 && (ch == ',' || ch == ';')) {
+          final prev = i > 0 ? source[i - 1] : '';
+          final next = i + 1 < source.length ? source[i + 1] : '';
+          if (RegExp(r'\d').hasMatch(prev) && RegExp(r'\d').hasMatch(next)) {
+            buffer.write(ch);
+            continue;
+          }
+          out.add(buffer.toString());
+          buffer.clear();
+        } else {
+          buffer.write(ch);
+        }
+      }
+      if (buffer.isNotEmpty) out.add(buffer.toString());
+      return out;
+    }
+
+    final rawLines = <String>[];
+    final normalized = value
+        .replaceAll('\r', '\n')
         .replaceAll('•', '\n')
         .replaceAll('|', '\n');
-
-    // Step 2: if the value already contains natural line breaks (admin panel
-    // format), split on them directly — do NOT apply camelCase regex which
-    // incorrectly breaks feature names like "FreeSync", "AirPlay", "HbbTV".
-    if (withNewlines.contains('\n')) {
-      final rawParts = withNewlines
-          .split('\n')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .map((p) => p.replaceFirst(RegExp(r'^[-•\s]+'), '').trim())
-          .where((p) => p.isNotEmpty)
-          .toList();
-      if (rawParts.length >= 2) return rawParts;
+    for (final line in normalized.split('\n')) {
+      for (final part in splitTopLevel(line)) {
+        final trimmed = part
+            .trim()
+            .replaceFirst(RegExp(r'^[-•\s]+'), '')
+            .trim();
+        if (trimmed.isNotEmpty) rawLines.add(trimmed);
+      }
     }
 
-    // Step 3: single-line value — apply heuristic splitting
-    final normalized = withNewlines
-        .replaceAllMapped(
-          RegExp(r'(?<=[+)])\s+(?=[A-ZÇĞİÖŞÜ0-9])'),
-          (_) => '\n',
-        )
-        // Only collapse horizontal whitespace (spaces/tabs), NOT newlines
-        .replaceAll(RegExp(r'[^\S\n]{2,}'), ' ')
-        .trim();
-
-    List<String>? parts;
-    if (normalized.contains('\n')) {
-      parts = normalized
-          .split('\n')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else if (normalized.contains(',') && normalized.length > 8) {
-      parts = normalized
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else if (normalized.contains(';') && normalized.length > 8) {
-      parts = normalized
-          .split(';')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else if (normalized.contains(' / ') && normalized.length > 8) {
-      parts = normalized
-          .split(' / ')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else if (normalized.length > 42 &&
-        _looksLikePackedFeatureList(normalized)) {
-      parts = _chunkLongValue(normalized);
+    final lines = <String>[];
+    for (var i = 0; i < rawLines.length; i++) {
+      final line = rawLines[i];
+      if (RegExp(r'^\d+x$', caseSensitive: false).hasMatch(line) &&
+          i + 1 < rawLines.length) {
+        lines.add('$line ${rawLines[++i]}');
+      } else {
+        lines.add(line);
+      }
     }
-
-    return (parts ?? [normalized])
-        .map((part) => part.replaceFirst(RegExp(r'^[•\-\s]+'), '').trim())
-        .where((part) => part.isNotEmpty)
-        .toList();
+    return lines.isEmpty ? [value.trim()] : lines;
   }
 
   String _localizedValue(BuildContext context, String val) {
-    final l = context.l10n;
-    if (l == null) return val;
     final locale = Localizations.localeOf(context).languageCode;
-    final svc = SpecTranslationService.instance;
-    final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
-    final canonicalLower = canonicalValue.trim().toLowerCase();
-    // Handle "No." variant (with period)
-    if (canonicalLower == 'no.' || canonicalLower == 'no') {
-      return l.specValNo;
-    }
-    // Common boolean/status values
-    const enToKey = {
-      'yes': 'yes',
-      'available': 'available',
-      'not available': 'notAvailable',
-      'unknown': 'unknown',
-      'none': 'none',
-      'supported': 'supported',
-      'not supported': 'notSupported',
-      'included': 'included',
-      'not included': 'notIncluded',
-      'wireless': 'wireless',
-      'wired': 'wired',
-      'both': 'both',
-      'plastic': 'plastic',
-      'metal': 'metal',
-      'glass': 'glass',
-      'aluminum': 'aluminum',
-      'aluminium': 'aluminum',
-      'ceramic': 'ceramic',
-      'leather': 'leather',
-      'silicon': 'silicon',
-      'silicone': 'silicon',
-      'front': 'front',
-      'rear': 'rear',
-      'side': 'side',
-      'under display': 'underDisplay',
-      // Additional values
-      'rechargeable': 'rechargeable',
-      'non-rechargeable': 'nonRechargeable',
-      'lithium': 'lithium',
-      'lithium-ion': 'lithiumIon',
-      'lithium ion': 'lithiumIon',
-      'lithium polymer': 'lithiumPolymer',
-      'li-ion': 'lithiumIon',
-      'li-po': 'lithiumPolymer',
-      'true': 'yes',
-      'false': 'no',
-      'n/a': 'notAvailable',
-      'na': 'notAvailable',
-      'enabled': 'enabled',
-      'disabled': 'disabled',
-      'auto': 'auto',
-      'manual': 'manual',
-      'optical': 'optical',
-      'digital': 'digital',
-      'hybrid': 'hybrid',
-      'stereo': 'stereo',
-      'mono': 'mono',
-      'built-in': 'builtIn',
-      'removable': 'removable',
-      'non-removable': 'nonRemovable',
-      'waterproof': 'waterproof',
-      'water resistant': 'waterResistant',
-      'dustproof': 'dustproof',
-      'shockproof': 'shockproof',
-      'touchscreen': 'touchscreen',
-      'foldable': 'foldable',
-      'rotating': 'rotating',
-      'fixed': 'fixed',
-      'adjustable': 'adjustable',
-      'automatic': 'automatic',
-    };
-    final trMap = {
-      'yes': l.specValYes,
-      'no': l.specValNo,
-      'available': l.specValAvailable,
-      'notAvailable': l.specValNotAvailable,
-      'unknown': l.specValUnknown,
-      'none': l.specValNone,
-      'supported': l.specValSupported,
-      'notSupported': l.specValNotSupported,
-      'included': l.specValIncluded,
-      'notIncluded': l.specValNotIncluded,
-      'wireless': l.specValWireless,
-      'wired': l.specValWired,
-      'both': l.specValBoth,
-      'plastic': l.specValPlastic,
-      'metal': l.specValMetal,
-      'glass': l.specValGlass,
-      'aluminum': l.specValAluminum,
-      'ceramic': l.specValCeramic,
-      'leather': l.specValLeather,
-      'silicon': l.specValSilicon,
-      'front': l.specValFront,
-      'rear': l.specValRear,
-      'side': l.specValSide,
-      'underDisplay': l.specValUnderDisplay,
-      // Additional values
-      'rechargeable': l.specValRechargeable,
-      'nonRechargeable': l.specValNonRechargeable,
-      'lithium': l.specValLithium,
-      'lithiumIon': l.specValLithiumIon,
-      'lithiumPolymer': l.specValLithiumPolymer,
-      'enabled': l.specValEnabled,
-      'disabled': l.specValDisabled,
-      'auto': l.specValAuto,
-      'manual': l.specValManual,
-      'optical': l.specValOptical,
-      'digital': l.specValDigital,
-      'hybrid': l.specValHybrid,
-      'stereo': l.specValStereo,
-      'mono': l.specValMono,
-      'builtIn': l.specValBuiltIn,
-      'removable': l.specValRemovable,
-      'nonRemovable': l.specValNonRemovable,
-      'waterproof': l.specValWaterproof,
-      'waterResistant': l.specValWaterResistant,
-      'dustproof': l.specValDustproof,
-      'shockproof': l.specValShockproof,
-      'touchscreen': l.specValTouchscreen,
-      'foldable': l.specValFoldable,
-      'rotating': l.specValRotating,
-      'fixed': l.specValFixed,
-      'adjustable': l.specValAdjustable,
-      'automatic': l.specValAutomatic,
-    };
-    final key = enToKey[canonicalLower];
-    if (key != null && trMap[key] != null) return trMap[key]!;
-    if (locale == 'en') {
-      return _applyValueTitleCase(canonicalValue);
-    }
-    if (svc.isLoaded) {
-      final translated = svc.translateValueForLocale(val, locale);
-      if (translated.toLowerCase() != canonicalLower) {
-        return _applyValueTitleCase(translated);
-      }
-    }
-    final translated = spec_dict.translateSpecValue(canonicalValue, locale);
-    if (translated != canonicalValue) {
-      return _applyValueTitleCase(translated);
-    }
-    return _applyValueTitleCase(val);
+    return SpecTranslationService.instance.translateValueForLocale(val, locale);
+  }
+
+  static bool _isYesValue(String text) {
+    return RegExp(
+      r'^(yes|var|evet|true|ja|oui|sí|si|sim|tak)$',
+      caseSensitive: false,
+    ).hasMatch(text.trim());
+  }
+
+  static bool _isNoValue(String text) {
+    return RegExp(
+      r'^(no|yok|hayır|hayir|nein|non|não|nao|nie|false)$',
+      caseSensitive: false,
+    ).hasMatch(text.trim());
   }
 
   @override
   Widget build(BuildContext context) {
     final trimmed = value.trim();
-    final displayLabel = _capitalizeLeadingLetter(label.trim());
+    final locale = Localizations.localeOf(context).languageCode;
+    final service = SpecTranslationService.instance;
+    final displayLabel = _capitalizeLeadingLetter(
+      service.translateLabelForLocale(label.trim(), locale).trim(),
+    );
     if (trimmed.isEmpty ||
         trimmed == '?' ||
         trimmed == 'null' ||
@@ -1239,71 +1166,122 @@ class _SpecRow extends StatelessWidget {
     final rawParts = _extractValueParts(trimmed);
 
     Widget valueWidget;
-    if (rawParts.length >= 2) {
-      // Multiple items → each on its own line, localized individually.
-      valueWidget = Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: rawParts.map((part) {
-          final localized = _localizedValue(context, part);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: _buildValueText(context, localized),
-          );
-        }).toList(),
+    if (_isYesValue(trimmed) || _isNoValue(trimmed)) {
+      valueWidget = _buildValueText(context, _localizedValue(context, trimmed));
+    } else if (rawParts.length >= 2) {
+      valueWidget = _SpecValueList(
+        parts: rawParts
+            .map((part) => _localizedValue(context, part))
+            .toList(growable: false),
       );
     } else {
-      // Single value — localize and display, shrink font if text is long.
       final localized = _localizedValue(context, trimmed);
       valueWidget = _buildValueText(context, localized);
     }
 
-    return Column(
-      children: [
-        Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          color: isOdd ? context.surfaceColor : context.surfaceVariantColor,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelWidth = dart_math.max(118.0, constraints.maxWidth * 0.34);
+        return Container(
+          decoration: BoxDecoration(
+            color: isOdd
+                ? Colors.black.withValues(alpha: 0.10)
+                : Colors.white.withValues(alpha: 0.015),
+            border: Border(bottom: BorderSide(color: context.dividerColor)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 4,
+              SizedBox(
+                width: labelWidth.clamp(112.0, 148.0),
                 child: Text(
                   displayLabel,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1,
+                    color: context.textSecondary,
                   ),
                 ),
               ),
-              Expanded(flex: 5, child: valueWidget),
+              const SizedBox(width: 8),
+              Expanded(child: valueWidget),
             ],
           ),
-        ),
-        Divider(color: context.dividerColor, height: 1),
-      ],
+        );
+      },
     );
   }
 
-  /// Displays a single value string. Font shrinks automatically for long text.
   Widget _buildValueText(BuildContext context, String text) {
     final displayText = _capitalizeLeadingLetter(text.trim());
-    final fontSize = displayText.length > 45
-        ? 11.5
-        : (displayText.length > 30 ? 12.0 : 13.0);
+    final isYes = _isYesValue(displayText);
+    final isNo = _isNoValue(displayText);
+    final rendered = isYes
+        ? '✓ $displayText'
+        : (isNo ? '✗ $displayText' : displayText);
     return Text(
-      displayText,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w500,
-        color: Theme.of(context).colorScheme.onSurface,
+      rendered,
+      style: GoogleFonts.inter(
+        fontSize: 11.5,
+        height: 1.4,
+        fontWeight: FontWeight.w600,
+        color: isYes
+            ? AppTheme.scoreExcellent
+            : (isNo ? AppTheme.error : context.textPrimary),
       ),
-      textAlign: TextAlign.end,
+      textAlign: TextAlign.left,
       softWrap: true,
       overflow: TextOverflow.visible,
+    );
+  }
+}
+
+class _SpecValueList extends StatelessWidget {
+  final List<String> parts;
+
+  const _SpecValueList({required this.parts});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: parts
+          .map((part) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 1, bottom: 1),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 3,
+                    height: 3,
+                    margin: const EdgeInsets.only(left: 4, top: 8, right: 7),
+                    decoration: BoxDecoration(
+                      color: primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      part,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                      softWrap: true,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -1924,37 +1902,30 @@ class _KeySpecsHighlight extends StatelessWidget {
 // SPECS TAB CONTENT
 // ═══════════════════════════════════════════════════════════
 
-class _SpecsTabContent extends StatefulWidget {
+class _SpecsTabContent extends StatelessWidget {
   final ProductEntity product;
   final bool isDark;
   const _SpecsTabContent({required this.product, required this.isDark});
 
   @override
-  State<_SpecsTabContent> createState() => _SpecsTabContentState();
-}
-
-class _SpecsTabContentState extends State<_SpecsTabContent> {
-  bool _showFullSpecs = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted) return;
-        setState(() => _showFullSpecs = true);
-      });
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final product = widget.product;
-    final lang = Localizations.localeOf(context).languageCode;
-    final displaySpecs = product.specsForLanguage(lang);
-    final displaySections = product.specSectionsForLanguage(lang);
+    final displaySpecs = product.specs;
+    final displaySections = product.specSections;
+    final hasHighlightsSection = displaySections.keys.any((key) {
+      final normalized = key.toLowerCase();
+      return normalized.contains('öne çıkan') ||
+          normalized.contains('one cikan') ||
+          normalized.contains('highlight');
+    });
+    final specsSource = displaySections.isNotEmpty
+        ? <String, dynamic>{
+            if (product.keySpecs.isNotEmpty && !hasHighlightsSection)
+              'Öne Çıkanlar': product.keySpecs,
+            ...displaySections,
+          }
+        : (displaySpecs.isNotEmpty ? displaySpecs : product.keySpecs);
     final cardBg = context.surfaceVariantColor;
-    if (displaySpecs.isEmpty && displaySections.isEmpty) {
+    if (specsSource.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -1979,41 +1950,10 @@ class _SpecsTabContentState extends State<_SpecsTabContent> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
-        _KeySpecsGrid(product: product),
-        if (_showFullSpecs)
-          RepaintBoundary(
-            child: _SpecsCard(
-              specs: displaySections.isNotEmpty
-                  ? displaySections
-                  : displaySpecs,
-              cardBg: cardBg,
-              isDark: widget.isDark,
-            ),
-          )
-        else
-          Container(
-            height: 260,
-            margin: const EdgeInsets.only(top: 8),
-            decoration: BoxDecoration(
-              color: context.surfaceVariantColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.dividerColor),
-            ),
-          ),
+        RepaintBoundary(
+          child: _SpecsCard(specs: specsSource, cardBg: cardBg, isDark: isDark),
+        ),
       ],
     );
   }
-}
-
-// ═══════════════════════════════════════════════════════════
-// KEY SPECS GRID
-// ═══════════════════════════════════════════════════════════
-
-/// Delegates to SharedKeySpecsGrid from shared widgets.
-class _KeySpecsGrid extends StatelessWidget {
-  final ProductEntity product;
-  const _KeySpecsGrid({required this.product});
-
-  @override
-  Widget build(BuildContext context) => SharedKeySpecsGrid(product: product);
 }

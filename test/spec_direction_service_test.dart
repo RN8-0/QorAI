@@ -24,5 +24,29 @@ void main() {
 
       expect(winner, 0);
     });
+
+    test('prefers active noise cancellation over passive isolation', () {
+      final service = SpecDirectionService();
+
+      final winner = service.findBetterIndex('Gürültü Engelleme (Dinleme)', [
+        'Pasif Gürültü Önleme',
+        'Aktif Gürültü Önleme (ANC)',
+      ]);
+
+      expect(winner, 1);
+    });
+
+    test('returns every tied best value in multi-product comparisons', () {
+      final service = SpecDirectionService();
+
+      final winners = service.findBetterIndexes('Bluetooth Standardı', [
+        '5.0',
+        '5.3',
+        '5.3',
+        '5.2',
+      ]);
+
+      expect(winners, {1, 2});
+    });
   });
 }

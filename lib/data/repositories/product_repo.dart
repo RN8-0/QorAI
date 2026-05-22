@@ -20,28 +20,17 @@ class ProductRepository {
   }) : _pbDS = pbDS,
        _hiveDS = hiveDS;
 
-  /// Get single product — cache-first, network-fallback (Section 7.4, 15.2)
+  /// Get single product — PocketBase is the source of truth.
   Future<Result<ProductEntity>> getProduct(String id) async {
-    // 1. Hive cache kontrol (safe — uninitialized Hive = swallow)
-    try {
-      final cached = _hiveDS.getSetting<Map<String, dynamic>>('product_$id');
-      if (cached != null) {
-        final cachedAt = cached['_cachedAt'] as int? ?? 0;
-        final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
-        if (age < AppConstants.productCacheDuration.inMilliseconds) {
-          return Success(ProductModel.fromMap(cached));
-        }
-      }
-    } catch (_) {} // Cache unavailable — go straight to network
-
-    // 2. Network fetch (Firestore)
     try {
       final product = await _pbDS.getProduct(id);
       if (product == null) {
+        try {
+          await _hiveDS.deleteSetting('product_$id');
+        } catch (_) {}
         return const Failure(ServerException(message: 'Product not found'));
       }
 
-      // 3. Cache write (safe — never let this break the success path)
       try {
         final dataToCache = _serializeForCache(product.toFirestore());
         dataToCache['_cachedAt'] = DateTime.now().millisecondsSinceEpoch;
@@ -50,6 +39,17 @@ class ProductRepository {
 
       return Success(product);
     } catch (e) {
+      // Network failed: only then fall back to a still-fresh local copy.
+      try {
+        final cached = _hiveDS.getSetting<Map<String, dynamic>>('product_$id');
+        if (cached != null) {
+          final cachedAt = cached['_cachedAt'] as int? ?? 0;
+          final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
+          if (age < AppConstants.productCacheDuration.inMilliseconds) {
+            return Success(ProductModel.fromMap(cached));
+          }
+        }
+      } catch (_) {}
       return Failure(ServerException(message: e.toString()));
     }
   }

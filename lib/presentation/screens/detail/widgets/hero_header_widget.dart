@@ -1,4 +1,4 @@
-﻿part of '../product_detail_screen.dart';
+part of '../product_detail_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // HERO HEADER
@@ -16,6 +16,7 @@ LocalizedProductKey _detailLocalizedProductKey(
   return LocalizedProductKey(productId: product.id, languageCode: languageCode);
 }
 
+// ignore: unused_element
 Future<void> _requestDetailAiMatch(
   BuildContext context,
   WidgetRef ref,
@@ -61,51 +62,43 @@ class _HeroHeader extends ConsumerStatefulWidget {
 
 class _HeroHeaderState extends ConsumerState<_HeroHeader> {
   int _selectedIndex = 0;
-  bool _thumbStripReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 260), () {
-        if (!mounted) return;
-        setState(() => _thumbStripReady = true);
-      });
-    });
-  }
+  late final PageController _pageController = PageController();
 
   @override
   void didUpdateWidget(covariant _HeroHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.product.id != widget.product.id) {
       _selectedIndex = 0;
-      _thumbStripReady = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 260), () {
-          if (!mounted) return;
-          setState(() => _thumbStripReady = true);
-        });
-      });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final allImages = widget.product.allImages;
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
-    final thumbCacheWidth = (56 * dpr).round().clamp(84, 180);
-    final heroCacheWidth = (220 * dpr).round().clamp(280, 720);
-    const heroBottomActionSpace = 0.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    // Use full screen physical width so hero image is crisp on high-DPI devices.
+    final heroCacheWidth = (screenWidth * dpr).round().clamp(720, 1600);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Hero card background stays light so transparent product PNGs render
+    // correctly. The fullscreen viewer adopts the theme background instead.
     final imageBg = isDark ? Colors.white : Colors.white;
 
-    final hasOverflowImages = allImages.length > 4;
-    const heroBaseHeight = 260.0;
+    const heroBaseHeight = 300.0;
 
     return SliverToBoxAdapter(
       child: Container(
-        height: heroBaseHeight + heroBottomActionSpace,
+        height: heroBaseHeight,
         decoration: BoxDecoration(
           color: imageBg,
           gradient: isDark
@@ -118,259 +111,340 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
         ),
         child: Stack(
           children: [
-            // ── Row: thumbnail strip (left) + main image (right) ──
+            // ── Swipeable main image ──
             Positioned.fill(
-              child: Row(
-                children: [
-                  // LEFT — vertical thumbnail strip
-                  if (allImages.length > 1)
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        12,
-                        12,
-                        8,
-                        12 + heroBottomActionSpace,
-                      ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        child: !_thumbStripReady
-                            ? SizedBox(
-                                key: const ValueKey('hero-thumb-skeleton'),
-                                width: 56,
-                                child: Column(
-                                  children: List.generate(
-                                    dart_math.min(allImages.length, 4),
-                                    (index) => Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : ShaderMask(
-                                key: const ValueKey('hero-thumb-strip'),
-                                shaderCallback: (bounds) {
-                                  if (!hasOverflowImages) {
-                                    return const LinearGradient(
-                                      colors: [Colors.black, Colors.black],
-                                    ).createShader(bounds);
-                                  }
-                                  return const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black,
-                                      Colors.black,
-                                      Colors.transparent,
-                                    ],
-                                    stops: [0.0, 0.78, 1.0],
-                                  ).createShader(bounds);
+              child: GestureDetector(
+                onTap: allImages.isNotEmpty
+                    ? () {
+                        Navigator.of(context).push(
+                          PageRouteBuilder(
+                            opaque: false,
+                            barrierColor: Colors.transparent,
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) {
+                                  return _FullScreenImageViewer(
+                                    images: allImages,
+                                    initialIndex: _selectedIndex,
+                                    animation: animation,
+                                  );
                                 },
-                                blendMode: BlendMode.dstIn,
-                                child: SingleChildScrollView(
-                                  child: Column(
-                                    children: List.generate(
-                                      allImages.length.clamp(0, 8),
-                                      (i) {
-                                        final isSelected = _selectedIndex == i;
-                                        return GestureDetector(
-                                          onTap: () => setState(
-                                            () => _selectedIndex = i,
-                                          ),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            margin: const EdgeInsets.only(
-                                              bottom: 8,
-                                            ),
-                                            width: 56,
-                                            height: 56,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: isSelected
-                                                    ? AppTheme.primaryBlue
-                                                    : context.textTertiaryColor,
-                                                width: isSelected ? 2 : 1,
-                                              ),
-                                              color: isSelected
-                                                  ? AppTheme.primaryBlue
-                                                        .withValues(alpha: 0.06)
-                                                  : imageBg,
-                                              boxShadow: isSelected
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: AppTheme
-                                                            .primaryBlue
-                                                            .withValues(
-                                                              alpha: 0.14,
-                                                            ),
-                                                        blurRadius: 4,
-                                                      ),
-                                                    ]
-                                                  : null,
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(9),
-                                              child: CachedNetworkImage(
-                                                imageUrl: allImages[i],
-                                                fit: BoxFit.contain,
-                                                memCacheWidth: thumbCacheWidth,
-                                                maxWidthDiskCache:
-                                                    thumbCacheWidth,
-                                                fadeInDuration: const Duration(
-                                                  milliseconds: 80,
-                                                ),
-                                                placeholder: (_, _) =>
-                                                    const ColoredBox(
-                                                      color: Color(0xFFF1F5F9),
-                                                    ),
-                                                errorWidget: (_, _, _) =>
-                                                    const Icon(
-                                                      Icons
-                                                          .image_not_supported_outlined,
-                                                      color: AppTheme.slate600,
-                                                      size: 20,
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
+                            transitionsBuilder:
+                                (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  );
+                                },
+                          ),
+                        );
+                      }
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: allImages.isEmpty
+                      ? Center(
+                          child: _CategoryEmoji(
+                            cat: widget.product.categoryId,
+                          ),
+                        )
+                      : PageView.builder(
+                          controller: _pageController,
+                          itemCount: allImages.length,
+                          onPageChanged: (i) =>
+                              setState(() => _selectedIndex = i),
+                          itemBuilder: (context, i) {
+                            return Hero(
+                              tag: 'product_image_${widget.product.id}_$i',
+                              child: CachedNetworkImage(
+                                imageUrl: allImages[i],
+                                fit: BoxFit.contain,
+                                memCacheWidth: heroCacheWidth,
+                                maxWidthDiskCache: heroCacheWidth,
+                                fadeInDuration: const Duration(
+                                  milliseconds: 120,
                                 ),
-                              ),
-                      ),
-                    ),
-
-                  // RIGHT — main selected image
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: allImages.isNotEmpty
-                          ? () {
-                              Navigator.of(context).push(
-                                PageRouteBuilder(
-                                  opaque: false,
-                                  barrierColor: Colors.black87,
-                                  pageBuilder:
-                                      (context, animation, secondaryAnimation) {
-                                        return _FullScreenImageViewer(
-                                          images: allImages,
-                                          initialIndex: _selectedIndex,
-                                          animation: animation,
-                                        );
-                                      },
-                                  transitionsBuilder:
-                                      (
-                                        context,
-                                        animation,
-                                        secondaryAnimation,
-                                        child,
-                                      ) {
-                                        return FadeTransition(
-                                          opacity: animation,
-                                          child: child,
-                                        );
-                                      },
-                                ),
-                              );
-                            }
-                          : null,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          4,
-                          16,
-                          16,
-                          16 + heroBottomActionSpace,
-                        ),
-                        child: allImages.isEmpty
-                            ? Center(
-                                child: _CategoryEmoji(
+                                placeholder: (_, _) =>
+                                    const ColoredBox(color: Colors.white),
+                                errorWidget: (_, _, _) => _CategoryEmoji(
                                   cat: widget.product.categoryId,
                                 ),
-                              )
-                            : Hero(
-                                tag:
-                                    'product_image_${widget.product.id}_$_selectedIndex',
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 220),
-                                  transitionBuilder: (child, anim) =>
-                                      FadeTransition(
-                                        opacity: anim,
-                                        child: child,
-                                      ),
-                                  child: CachedNetworkImage(
-                                    key: ValueKey(_selectedIndex),
-                                    imageUrl: allImages[_selectedIndex],
-                                    fit: BoxFit.contain,
-                                    memCacheWidth: heroCacheWidth,
-                                    maxWidthDiskCache: heroCacheWidth,
-                                    fadeInDuration: const Duration(
-                                      milliseconds: 120,
-                                    ),
-                                    placeholder: (_, _) =>
-                                        const ColoredBox(color: Colors.white),
-                                    errorWidget: (_, _, _) => _CategoryEmoji(
-                                      cat: widget.product.categoryId,
-                                    ),
-                                  ),
-                                ),
                               ),
-                      ),
-                    ),
-                  ),
-                ],
+                            );
+                          },
+                        ),
+                ),
               ),
             ),
+            // ── Score badges (Tech + Match, stacked, top-right) ──
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 92,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white.withValues(alpha: 0),
-                        Colors.white.withValues(alpha: 0.72),
-                        Colors.white,
+              top: 12,
+              right: 14,
+              child: _HeroScoreStack(product: widget.product),
+            ),
+            // ── Page indicator dots ──
+            if (allImages.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(allImages.length, (i) {
+                    final isActive = _selectedIndex == i;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: isActive ? 20 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppTheme.primaryBlue
+                            : context.textTertiaryColor.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Compact score stack rendered inside the hero (top-right) ───
+class _HeroScoreStack extends ConsumerWidget {
+  final ProductEntity product;
+  const _HeroScoreStack({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final techScore = product.techScore.toInt();
+    // Local algorithm-based score — no AI, works for free + premium identically.
+    final fitScore = ref.watch(localMatchScoreProvider(product));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (techScore > 0) ...[
+          _HeroScoreCircle(
+            score: techScore,
+            color: AppTheme.primaryBlue,
+            kind: _ScoreKind.tech,
+          ),
+          const SizedBox(height: 8),
+        ],
+        _HeroScoreCircle(
+          score: fitScore ?? 0,
+          color: fitScore == null
+              ? AppTheme.slate500
+              : fitScore >= 80
+                  ? AppTheme.scoreExcellent
+                  : fitScore >= 60
+                      ? AppTheme.warning
+                      : AppTheme.error,
+          kind: _ScoreKind.match,
+          dimmed: fitScore == null,
+        ),
+      ],
+    );
+  }
+}
+
+enum _ScoreKind { tech, match }
+
+class _HeroScoreCircle extends StatefulWidget {
+  final int score;
+  final Color color;
+  final _ScoreKind kind;
+  final bool dimmed;
+  const _HeroScoreCircle({
+    required this.score,
+    required this.color,
+    required this.kind,
+    this.dimmed = false,
+  });
+
+  @override
+  State<_HeroScoreCircle> createState() => _HeroScoreCircleState();
+}
+
+class _HeroScoreCircleState extends State<_HeroScoreCircle> {
+  final _key = GlobalKey();
+  OverlayEntry? _tooltipEntry;
+
+  @override
+  void dispose() {
+    _removeTooltip();
+    super.dispose();
+  }
+
+  void _removeTooltip() {
+    _tooltipEntry?.remove();
+    _tooltipEntry = null;
+  }
+
+  void _showTooltip() {
+    _removeTooltip();
+    final box = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final lang = Localizations.localeOf(context).languageCode.toLowerCase();
+    final isTr = lang == 'tr';
+    final title = widget.kind == _ScoreKind.tech
+        ? (isTr ? 'Teknik Skor' : 'Tech Score')
+        : (isTr ? 'Senin Eşleşmen' : 'Your Match');
+    final explanation = widget.kind == _ScoreKind.tech
+        ? (isTr
+            ? 'Aynı kategorideki ürünlere göre normalize edilmiş teknik özelliklerin (yonga, ekran, pil, kamera vb.) toplam puanı.'
+            : 'A combined score of the product\'s technical specs (chipset, display, battery, camera, etc.) normalized against products in the same category.')
+        : (isTr
+            ? 'Quiz cevaplarına ve davranışlarına göre AI tarafından hesaplanan, bu ürünün senin için ne kadar uygun olduğunu gösteren puan.'
+            : 'A personalized AI-calculated score showing how well this product fits you, based on your quiz answers and behavior signals.');
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    const bubbleWidth = 260.0;
+    final rawLeft = offset.dx + size.width - bubbleWidth;
+    final left = rawLeft.clamp(8.0, screenWidth - bubbleWidth - 8.0);
+    final top = offset.dy + size.height + 6;
+
+    _tooltipEntry = OverlayEntry(
+      builder: (ctx) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _removeTooltip,
+            ),
+          ),
+          Positioned(
+            left: left,
+            top: top,
+            width: bubbleWidth,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1A1F2E)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          widget.kind == _ScoreKind.tech
+                              ? Icons.memory_outlined
+                              : Icons.person_outline,
+                          size: 14,
+                          color: widget.color,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: widget.color,
+                            ),
+                          ),
+                        ),
                       ],
-                      stops: const [0, 0.68, 1],
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      explanation,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        height: 1.4,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70
+                            : const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Positioned(
-              left: allImages.length > 1 ? 88 : 28,
-              right: 28,
-              bottom: 18,
-              height: 34,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 28,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_tooltipEntry!);
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) _removeTooltip();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color;
+    final dimmed = widget.dimmed;
+    return GestureDetector(
+      key: _key,
+      onTap: _showTooltip,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: color.withValues(alpha: dimmed ? 0.22 : 0.45),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                value: widget.score > 0 ? widget.score / 100 : 0,
+                strokeWidth: 2.5,
+                backgroundColor: color.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                strokeCap: StrokeCap.round,
+              ),
+            ),
+            Text(
+              widget.score > 0 ? '${widget.score}' : '–',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+                height: 1,
               ),
             ),
           ],
@@ -380,6 +454,7 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
   }
 }
 
+// ignore: unused_element
 class _HeroAiMatchTrigger extends StatelessWidget {
   final num amount;
   final VoidCallback onTap;

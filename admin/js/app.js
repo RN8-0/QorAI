@@ -1224,11 +1224,11 @@ function queueProductsRefresh(){
 }
 
 // ─── Live product list polling ──────────────────────────────────────────────
-// The Icecat ingestor writes straight to PocketBase from a separate Node
-// process, so the admin never receives a qorai:product-saved event for those
-// rows. A light 20s poll (one count request, id field only) keeps the
-// Products view in sync: the count badge always updates, and page 1 auto-
-// refreshes when the user is on the newest-first view.
+// Scrapers (Epey + Geizhals) write directly to PocketBase from background
+// workers, so the admin doesn't always receive a qorai:product-saved event.
+// A light 20s poll (one count request, id field only) keeps the Products
+// view in sync: the count badge updates and page 1 auto-refreshes when the
+// user is on the newest-first view.
 let _productsLivePollTimer=null;
 function startProductsLivePoll(){
   stopProductsLivePoll();
@@ -1482,7 +1482,7 @@ function buildQuery(){
   if(brand)filters.push(`brand="${brand.replace(/"/g,'\\"')}"`);
   if(cat){
     const catFilter=_adminCategoryFilterVariants(cat)
-      .map(c=>`category="${c.replace(/"/g,'\\"')}"`)
+      .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
       .join(' || ');
     if(catFilter)filters.push(`(${catFilter})`);
   }
@@ -2163,8 +2163,8 @@ async function _fetchDictionaryProducts(categoryId){
   const allEpey = categoryId === '__all_epey__';
   const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
   const filter = allEpey
-    ? '(source~"epey" || sourceUrl~"epey.com")'
-    : `category="${safeCategory}"`;
+    ? '(source ~ "epey" || sourceUrl ~ "epey.com")'
+    : `category = "${safeCategory}"`;
   const fields = 'id,name,category,source,sourceUrl,specs,specSections,keySpecs';
   const perPage = allEpey ? 250 : 300;
   const products = [];
@@ -2248,11 +2248,11 @@ async function startCategoryTranslation(){
     const fetched = await _fetchDictionaryProducts(categoryId);
     products = fetched.products;
     if (!products.length) {
-      _xlateLog(`No Epey products with specs in this category (raw docs: ${fetched.rawSeen || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
-      toast('Bu kategoride çevrilecek Epey ürünü yok', 'w');
+      _xlateLog(`No products with specs found in this category (raw docs: ${fetched.rawSeen || 0}).`, 'warn');
+      toast('Bu kategoride çevrilecek ürün yok', 'w');
       return;
     }
-    _xlateLog(`Found ${products.length} Epey products. Icecat records will not be patched by dictionary translation.`);
+    _xlateLog(`Found ${products.length} products with specs.`);
 
     _xlateProgress(0, 0, 'Collecting atoms…');
     const targets = window.QorAiBulkTranslate.targetLangs();
@@ -2686,7 +2686,7 @@ async function _adminFetchProductVariants(p){
   const vg=String(p.variantGroup||'').trim();
   if(!vg)return [p];
   try{
-    const filter=`variantGroup="${vg.replace(/"/g,'\\"')}" && category="${String(p.category||'').replace(/"/g,'\\"')}"`;
+    const filter=`variantGroup = "${vg.replace(/"/g,'\\"')}" && category = "${String(p.category||'').replace(/"/g,'\\"')}"`;
     const items=await getPb().collection('products').getFullList({
       filter,
       sort:'name',
@@ -4000,7 +4000,7 @@ async function previewFeedStats() {
     const counts = {};
     let total = 0;
     for (const cat of ALL_CATEGORIES) {
-      const cnt = await pbCountWhere('products', `category="${cat}"`);
+      const cnt = await pbCountWhere('products', `category = "${cat}"`);
       counts[cat] = cnt;
       total += cnt;
     }

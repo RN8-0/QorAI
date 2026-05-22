@@ -127,32 +127,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Main application shell (3 persistent tabs + browse/aiChat sub-branches).
-      // Subscriptions used to be a 5th tab; it now opens as a normal pushed
-      // route triggered from a Home-screen CTA (see /subscriptions GoRoute
-      // declared at the top level below).
+      // Main application shell (4 persistent tabs):
+      // Home, Compare, Link Analysis, Subscription Analysis.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             shell.MainShell(navigationShell: navigationShell),
         branches: [
-          // Branch 0: Compare
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.compare,
-                pageBuilder: (context, state) {
-                  final modeParam = state.uri.queryParameters['mode'];
-                  final mode = modeParam != null
-                      ? (int.tryParse(modeParam) ?? -1)
-                      : -1;
-                  return NoTransitionPage(
-                    child: CompareScreen(initialMode: mode),
-                  );
-                },
-              ),
-            ],
-          ),
-          // Branch 1: Home (+ Browse as sub-route so bottom bar stays)
+          // Branch 0: Home (+ Browse as sub-route so bottom bar stays)
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -226,13 +207,40 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 2: Link AI
+          // Branch 1: Compare
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.compare,
+                pageBuilder: (context, state) {
+                  final modeParam = state.uri.queryParameters['mode'];
+                  final mode = modeParam != null
+                      ? (int.tryParse(modeParam) ?? -1)
+                      : -1;
+                  return NoTransitionPage(
+                    child: CompareScreen(initialMode: mode),
+                  );
+                },
+              ),
+            ],
+          ),
+          // Branch 2: Link Analysis
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.linkPaste,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: LinkPasteScreen()),
+              ),
+            ],
+          ),
+          // Branch 3: Subscription Analysis
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.subscriptions,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SubscriptionsScreen()),
               ),
             ],
           ),
@@ -263,17 +271,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             transitionDuration: AppConstants.pageTransitionDuration,
           );
         },
-      ),
-      // Subscriptions — was a shell branch in the 5-tab layout; now opens
-      // as a pushed route from the Home screen's Subs CTA card.
-      GoRoute(
-        path: AppRoutes.subscriptions,
-        parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          child: const SubscriptionsScreen(),
-          transitionsBuilder: _slideTransition,
-          transitionDuration: AppConstants.pageTransitionDuration,
-        ),
       ),
       GoRoute(
         path: AppRoutes.settings,

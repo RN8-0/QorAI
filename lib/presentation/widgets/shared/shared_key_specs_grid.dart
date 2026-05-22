@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
-import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/l10n/app_localizations.dart';
+import 'package:qor_ai/services/spec_translation_service.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
 /// Shows category-aware key specifications in a 3-column grid (6 or 9 cells).
@@ -411,7 +411,11 @@ class SharedKeySpecsGrid extends StatelessWidget {
   }
 
   static Widget buildValue(BuildContext context, String value) {
-    final v = value.toLowerCase().trim();
+    final locale = Localizations.localeOf(context).languageCode.toLowerCase();
+    final displayValue = SpecTranslationService.instance
+        .translateValueForLocale(value, locale)
+        .trim();
+    final v = displayValue.toLowerCase();
     final theme = Theme.of(context);
     if (v == 'true' || v == 'yes' || v == 'var' || v == 'evet' || v == '✓') {
       return Icon(
@@ -427,9 +431,9 @@ class SharedKeySpecsGrid extends StatelessWidget {
         size: 20,
       );
     }
-    final fontSize = value.length > 16 ? 11.0 : 13.0;
+    final fontSize = displayValue.length > 16 ? 11.0 : 13.0;
     return Text(
-      value,
+      displayValue,
       style: GoogleFonts.plusJakartaSans(
         fontSize: fontSize,
         fontWeight: FontWeight.w700,
@@ -558,8 +562,9 @@ class SharedKeySpecsGrid extends StatelessWidget {
 
   static String _localizedSpecKey(BuildContext context, String rawKey) {
     final locale = Localizations.localeOf(context).languageCode.toLowerCase();
-    if (locale == 'en') return rawKey;
-    final translated = spec_dict.translateSpec(rawKey, locale).trim();
+    final translated = SpecTranslationService.instance
+        .translateLabelForLocale(rawKey, locale)
+        .trim();
     if (translated.isNotEmpty &&
         translated.toLowerCase() != rawKey.toLowerCase()) {
       return translated;

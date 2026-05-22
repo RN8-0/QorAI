@@ -1,12 +1,13 @@
 ﻿part of '../product_detail_screen.dart';
 
-// ── Compare Tooltip Button (replaces SnackBar with positioned bubble) ──
+// ── Compare pool button + adjacent "Compare now" button (icon-only) ─────────
 class _CompareTooltipButton extends ConsumerStatefulWidget {
   final ProductEntity product;
   const _CompareTooltipButton({required this.product});
 
   @override
-  ConsumerState<_CompareTooltipButton> createState() => _CompareTooltipButtonState();
+  ConsumerState<_CompareTooltipButton> createState() =>
+      _CompareTooltipButtonState();
 }
 
 class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
@@ -20,7 +21,7 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 220),
     );
   }
 
@@ -36,59 +37,75 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
     _tooltipEntry = null;
   }
 
-  void _showTooltip(String text) {
+  void _showActionTooltip({required bool added, required int count}) {
     _removeTooltip();
-
-    final renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    final offset = renderBox.localToGlobal(Offset.zero);
-    final size = renderBox.size;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
+    final box = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final label = added
+        ? (isTr ? 'Eklendi $count/4' : 'Added $count/4')
+        : (isTr ? 'Çıkarıldı $count/4' : 'Removed $count/4');
+    final color = Theme.of(context).colorScheme.primary;
     _fadeController.forward(from: 0);
 
     _tooltipEntry = OverlayEntry(
       builder: (ctx) => Positioned(
-        top: offset.dy + size.height + 4,
-        left: offset.dx + (size.width / 2) - 30,
-        child: FadeTransition(
-          opacity: _fadeController,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Triangle pointing up
-              CustomPaint(
-                size: const Size(12, 6),
-                painter: _TrianglePainter(color: primaryColor),
-              ),
-              // Bubble
-              Container(
-                constraints: const BoxConstraints(maxWidth: 80, maxHeight: 32),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        top: offset.dy + size.height + 6,
+        left: offset.dx + (size.width / 2) - 50,
+        child: IgnorePointer(
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                constraints: const BoxConstraints(minWidth: 100),
                 decoration: BoxDecoration(
-                  color: primaryColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: color,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  text,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      added
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.remove_circle_outline_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
-
     Overlay.of(context).insert(_tooltipEntry!);
-
     Future.delayed(const Duration(milliseconds: 1500), () {
-      if (_tooltipEntry != null && mounted) {
+      if (mounted) {
         _fadeController.reverse().then((_) {
           if (mounted) _removeTooltip();
         });
@@ -99,130 +116,238 @@ class _CompareTooltipButtonState extends ConsumerState<_CompareTooltipButton>
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final isInCompare = ref
-        .watch(comparisonStateProvider)
-        .selectedProductIds
-        .contains(product.id);
+    final compareState = ref.watch(comparisonStateProvider);
+    final isInCompare = compareState.selectedProductIds.contains(product.id);
+    final poolCount = compareState.selectedProductIds.length;
+    final primary = Theme.of(context).colorScheme.primary;
 
-    return GestureDetector(
-      key: _buttonKey,
-      onTap: () {
-        // Require login
-        final authState = ref.read(authStateProvider);
-        final isLoggedIn = authState.valueOrNull != null;
-        if (!isLoggedIn) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Row(children: [
-              const Icon(Icons.lock_outline, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(context.l10n?.signInToCompare ?? 'Sign in to compare products',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-            ]),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            action: SnackBarAction(
-              label: context.l10n?.signIn ?? 'Sign In',
-              textColor: Colors.white,
-              onPressed: () => context.push(AppRoutes.login),
-            ),
-          ));
-          return;
-        }
-
-        final isAlreadyIn = ref
-            .read(comparisonStateProvider)
-            .selectedProductIds
-            .contains(product.id);
-
-        ref
-            .read(comparisonStateProvider.notifier)
-            .toggleProduct(product.id, productCategory: product.category);
-        HapticFeedback.lightImpact();
-
-        if (!isAlreadyIn) {
-          final newIds = ref.read(comparisonStateProvider).selectedProductIds;
-          if (newIds.length >= 2) {
-            // Tüm yığını tek hedefe al: çift /compare push + yinelenen page key hatalarını önle
-            context.go(AppRoutes.compare);
-          } else {
-            _showTooltip('${newIds.length}/4');
-          }
-        }
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 128),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: isInCompare
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                : context.surfaceVariantColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isInCompare
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                  : context.dividerColor,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isInCompare ? Icons.check_circle : Icons.compare_arrows_rounded,
-                color: isInCompare
-                    ? Theme.of(context).colorScheme.primary
-                    : context.textPrimary,
-                size: 16,
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  isInCompare
-                      ? (context.l10n?.added ?? 'Added')
-                      : (context.l10n?.compareAction ?? 'Compare'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isInCompare
-                        ? Theme.of(context).colorScheme.primary
-                        : context.textPrimary,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── + Add/Remove this product to the pool ────────────────────────
+        GestureDetector(
+          key: _buttonKey,
+          onTap: () {
+            final authState = ref.read(authStateProvider);
+            final isLoggedIn = authState.valueOrNull != null;
+            if (!isLoggedIn) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Row(children: [
+                  const Icon(Icons.lock_outline, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.l10n?.signInToCompare ??
+                        'Sign in to compare products',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
+                ]),
+                backgroundColor: primary,
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                action: SnackBarAction(
+                  label: context.l10n?.signIn ?? 'Sign In',
+                  textColor: Colors.white,
+                  onPressed: () => context.push(AppRoutes.login),
+                ),
+              ));
+              return;
+            }
+
+            final wasIn = isInCompare;
+            ref
+                .read(comparisonStateProvider.notifier)
+                .toggleProduct(product.id, productCategory: product.category);
+            HapticFeedback.lightImpact();
+            final newCount = ref
+                .read(comparisonStateProvider)
+                .selectedProductIds
+                .length;
+            _showActionTooltip(added: !wasIn, count: newCount);
+          },
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isInCompare
+                  ? primary.withValues(alpha: 0.15)
+                  : context.backgroundColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isInCompare
+                    ? primary.withValues(alpha: 0.5)
+                    : context.dividerColor,
               ),
-            ],
+              boxShadow: AppTheme.cardShadow,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              isInCompare ? Icons.check_rounded : Icons.add_rounded,
+              size: 20,
+              color: isInCompare ? primary : context.textPrimary,
+            ),
           ),
+        ),
+        // ── Pool badge button (count) → opens pool management sheet ──────
+        if (poolCount >= 1) ...[
+          const SizedBox(width: 6),
+          _ComparePoolBadgeButton(count: poolCount),
+        ],
+        // ── Direct "Compare now" gradient button (only when ≥ 2) ─────────
+        if (poolCount >= 2) ...[
+          const SizedBox(width: 6),
+          _CompareNowButton(count: poolCount),
+        ],
+      ],
+    );
+  }
+}
+
+/// Round count badge — tapping opens the pool sheet so the user can review
+/// what's queued, remove items, or trigger the comparison.
+class _ComparePoolBadgeButton extends StatelessWidget {
+  final int count;
+  const _ComparePoolBadgeButton({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        showComparePoolSheet(context);
+      },
+      child: Container(
+        height: 38,
+        constraints: const BoxConstraints(minWidth: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(color: primary.withValues(alpha: 0.4)),
+          boxShadow: AppTheme.cardShadow,
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.layers_rounded, size: 16, color: primary),
+            const SizedBox(width: 4),
+            Text(
+              '$count',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: primary,
+                height: 1,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Triangle painter for tooltip arrow
-class _TrianglePainter extends CustomPainter {
-  final Color color;
-  _TrianglePainter({required this.color});
+class _CompareNowButton extends StatelessWidget {
+  final int count;
+  const _CompareNowButton({required this.count});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path()
-      ..moveTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.go(AppRoutes.compare);
+      },
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppTheme.primaryBlue, AppTheme.accentTeal],
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            const Icon(
+              Icons.compare_arrows_rounded,
+              size: 20,
+              color: Colors.white,
+            ),
+            Positioned(
+              right: -4,
+              top: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 1,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.primaryBlue, width: 1),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryBlue,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+// ── Round icon button used in top action bar ─────────────────────────────────
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  const _RoundIconButton({required this.icon, required this.onPressed});
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: context.backgroundColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: context.dividerColor),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, color: context.textPrimary, size: 18),
+        onPressed: onPressed,
+      ),
+    );
+  }
 }
 
 // ignore: unused_element
@@ -310,6 +435,9 @@ class _FavoriteButton extends ConsumerStatefulWidget {
 class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   bool _isToggling = false;
+  /// Local override for optimistic UI. Resets to null once the real
+  /// PB-backed userProfile reflects the new state.
+  bool? _optimisticIsFav;
 
   @override
   void initState() {
@@ -330,8 +458,14 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
   Widget build(BuildContext context) {
     // Watch the profile so icon state tracks PB realtime updates.
     final userAsync = ref.watch(userProfileProvider);
-    final isFav =
+    final realIsFav =
         userAsync.valueOrNull?.favorites.contains(widget.productId) ?? false;
+    // Optimistic state wins until the real value catches up.
+    if (_optimisticIsFav != null && _optimisticIsFav == realIsFav) {
+      _optimisticIsFav = null;
+    }
+    final isFav = _optimisticIsFav ?? realIsFav;
+
     return IconButton(
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
@@ -346,11 +480,20 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
       onPressed: _isToggling
           ? null
           : () async {
-              setState(() => _isToggling = true);
+              final wasFav = _optimisticIsFav ?? isFavorite(ref, widget.productId);
+              // Flip UI immediately for instant feedback.
+              HapticFeedback.lightImpact();
+              setState(() {
+                _optimisticIsFav = !wasFav;
+                _isToggling = true;
+              });
               try {
-                final wasFav = isFavorite(ref, widget.productId);
                 final result = await toggleFavorite(ref, widget.productId);
                 if (!context.mounted) return;
+                // Reconcile optimistic state with the real result.
+                if (mounted) {
+                  setState(() => _optimisticIsFav = result);
+                }
                 final messenger = ScaffoldMessenger.of(context);
                 if (!wasFav && !result) {
                   // Adding was rejected → collection limit reached.
@@ -365,33 +508,13 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
                       ),
                     ),
                   );
-                } else {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      duration: const Duration(milliseconds: 1200),
-                      backgroundColor: result
-                          ? Colors.redAccent.withValues(alpha: 0.9)
-                          : Colors.grey.shade700,
-                      content: Row(
-                        children: [
-                          Icon(
-                            result
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            result ? 'Added to favorites' : 'Removed from favorites',
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
                 }
               } catch (e) {
                 if (!context.mounted) return;
+                // Roll back optimistic state on failure.
+                if (mounted) {
+                  setState(() => _optimisticIsFav = wasFav);
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: Colors.redAccent,

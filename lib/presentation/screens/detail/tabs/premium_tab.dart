@@ -3,15 +3,20 @@ part of '../product_detail_screen.dart';
 class _AIAnalysisTab extends StatelessWidget {
   final ProductEntity product;
   final bool isDark;
+  // ignore: unused_element_parameter
   const _AIAnalysisTab({required this.product, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 40),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        MediaQuery.of(context).padding.bottom + 40,
+      ),
       children: [
-        _AIReviewAnalysisCard(product: product, isDark: isDark, cardBg: context.surfaceVariantColor),
-        const SizedBox(height: 16),
+        // AI review summary removed — algorithm-only scoring; no token cost.
         _PremiumFeaturesSection(product: product),
       ],
     );

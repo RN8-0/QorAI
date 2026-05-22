@@ -20,6 +20,7 @@ import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
@@ -28,7 +29,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/routing/router.dart';
-import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
@@ -42,11 +42,13 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
 part 'tabs/premium_tab.dart';
+part 'tabs/prices_tab.dart';
 part 'tabs/reviews_tab.dart';
 part 'tabs/similar_tab.dart';
 part 'tabs/specs_tab.dart';
 part 'widgets/action_widgets.dart';
 part 'widgets/common_widgets.dart';
+part 'widgets/compare_pool_sheet.dart';
 part 'widgets/compare_tab_widget.dart';
 part 'widgets/compatibility_widget.dart';
 part 'widgets/hero_header_widget.dart';
@@ -55,6 +57,7 @@ part 'widgets/overview_widget.dart';
 part 'widgets/price_widget.dart';
 part 'widgets/product_info_widget.dart';
 part 'widgets/pros_cons_widget.dart';
+part 'widgets/review_youtube_sheets.dart';
 part 'widgets/score_widgets.dart';
 part 'widgets/translation_button_widget.dart';
 part 'widgets/variants_widget.dart';
@@ -244,7 +247,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final country = widget.country;
 
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         backgroundColor: context.backgroundColor,
         body: NestedScrollView(
@@ -285,35 +288,38 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Compare button — icon + localized label
+                      // Compare pool button + "Şimdi karşılaştır" appears next to it at 2+
                       _CompareTooltipButton(product: product),
                       const SizedBox(width: 8),
+                      // Comments (Reviews) round button → opens YouTube-style sheet
+                      _RoundIconButton(
+                        icon: Icons.mode_comment_outlined,
+                        onPressed: () => showReviewsBottomSheet(
+                          context,
+                          product: product,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // YouTube round button → opens YouTube-style sheet
+                      _RoundIconButton(
+                        icon: Icons.smart_display_outlined,
+                        onPressed: () => showYouTubeBottomSheet(
+                          context,
+                          product: product,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       // Share button
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: context.backgroundColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: context.dividerColor),
-                          boxShadow: AppTheme.cardShadow,
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.share_outlined,
-                            color: context.textPrimary,
-                            size: 18,
-                          ),
-                          onPressed: () {
-                            final productUrl =
-                                'https://qorai.net/product/${product.id}';
-                            Share.share(
-                              '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Qor AI!'}\n$productUrl',
-                              subject: product.name,
-                            );
-                          },
-                        ),
+                      _RoundIconButton(
+                        icon: Icons.share_outlined,
+                        onPressed: () {
+                          final productUrl =
+                              'https://qorai.net/product/${product.id}';
+                          Share.share(
+                            '${product.name} — ${product.description.isNotEmpty ? product.description : 'Check it out on Qor AI!'}\n$productUrl',
+                            subject: product.name,
+                          );
+                        },
                       ),
                       const SizedBox(width: 8),
                       Container(
@@ -335,19 +341,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 ),
               ],
             ),
-            // Product image hero
+            // Product image hero (now contains tech + match score badges)
             _HeroHeader(product: product),
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: _TitlePriceSection(product: product, country: country),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                  child: _ScoreDuo(product: product),
-                ),
               ),
             ),
             // Overview content — always visible above tabs
@@ -359,7 +357,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                         country: country,
                         isDark: isDark,
                       )
-                    : const SizedBox(height: 80),
+                    : const SizedBox(height: 40),
               ),
             ),
             SliverPersistentHeader(
@@ -373,16 +371,14 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     controller: DefaultTabController.of(context),
                     children: [
                       RepaintBoundary(
-                        child: _SpecsTabContent(
+                        child: _PricesTabContent(
                           product: product,
+                          country: country,
                           isDark: isDark,
                         ),
                       ),
                       RepaintBoundary(
-                        child: _ReviewsTab(product: product, isDark: isDark),
-                      ),
-                      RepaintBoundary(
-                        child: _SimilarProductsTab(
+                        child: _SpecsTabContent(
                           product: product,
                           isDark: isDark,
                         ),

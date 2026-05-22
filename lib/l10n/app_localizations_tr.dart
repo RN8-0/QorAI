@@ -3413,7 +3413,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'Devam ederek Kullanım Koşullarını ve Gizlilik Politikasını kabul etmiş olursunuz';
 
   @override
-  String get subscriptionIntelligence => 'Abonelik Zekası';
+  String get subscriptionIntelligence => 'Abonelik Karşılaştırma';
 
   @override
   String get subscriptionAnalysisSubtitle =>

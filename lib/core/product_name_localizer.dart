@@ -5,6 +5,8 @@
 ///          "XPG Defender Computer Case"      (en)
 library;
 
+import 'package:qor_ai/services/spec_translation_service.dart';
+
 // ---------------------------------------------------------------------------
 // Turkish → English tech term map (word/phrase level, lowercased keys).
 // Add entries here as more Turkish product-name suffixes are discovered.
@@ -67,6 +69,12 @@ const _trToEn = <String, String>{
 /// name is returned unchanged.
 String localizeProductName(String name, String locale) {
   if (locale == 'tr' || name.isEmpty) return name;
+
+  final live = SpecTranslationService.instance.translateTurkishForLocale(
+    name,
+    locale,
+  );
+  if (live != name) return live;
 
   final lower = name.toLowerCase();
   var result = name;

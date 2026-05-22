@@ -173,11 +173,16 @@ class AppTheme {
       'desktops': catComputers,
       'cpus': catComponents,
       'gpus': catGaming,
+      'graphics_cards': catGaming,
+      'graphics-cards': catGaming,
       'ram': catComponents,
       'ssd': catComponents,
       'motherboards': catComponents,
       'psu': catComponents,
+      'pc_cases': catComponents,
       'cases': catComponents,
+      'cpu_coolers': catComponents,
+      'case_fans': catComponents,
       'coolers': catComponents,
       'monitors': catDisplay,
       'keyboards': catPeripherals,
@@ -194,19 +199,30 @@ class AppTheme {
       'smartwatches': catWearables,
       'smart-rings': catWearables,
       'cameras': catCameras,
+      'action_cameras': catCameras,
       'action-cameras': catCameras,
+      'security_cameras': catCameras,
       'security-cameras': catCameras,
       'ip-cameras': catCameras,
       'dashcams': catCameras,
       'gimbals': catCameras,
       'tripods': catCameras,
       'lenses': catCameras,
+      'gaming_consoles': catGaming,
       'consoles': catGaming,
+      'games': catGaming,
       'gamepads': catGaming,
       'vr-headsets': catGaming,
       'printers': catPeripherals,
+      'network_switches': catNetworking,
+      'wifi_routers': catNetworking,
+      'modem_routers': catNetworking,
+      'pcie_nic': catNetworking,
       'routers': catNetworking,
+      'vacuums': catSmartHome,
+      'robot_vacuums': catSmartHome,
       'robot-vacuums': catSmartHome,
+      'ups': catAccessories,
       'powerbanks': catAccessories,
       'e-readers': catAccessories,
       'drones': catDrones,
@@ -513,12 +529,11 @@ class AppTheme {
   // FLOATING NAV BAR
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const double navBarHeight = 52.0;
-  static const double navBarBottomMargin =
-      8.0; // floating gap above system nav
+  static const double navBarHeight = 60.0;
+  static const double navBarBottomMargin = 8.0; // floating gap above system nav
   static const double navBarHMargin = 18.0; // pill horizontal margin
   static const double navBarTotalClearance =
-      navBarHeight + 22.0; // 52+22=74, accounts for float
+      navBarHeight + 22.0; // 60+22=82, accounts for float
 
   // Branded 3-layer card shadow (blue tinted) — used in compare & premium surfaces
   static const List<BoxShadow> cardShadowBrand = [

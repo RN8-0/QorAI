@@ -43,6 +43,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   final _focusNode = FocusNode();
   final ValueNotifier<bool> _hasText = ValueNotifier(false);
   bool _syncingController = false;
+  String? _lastPageContextFingerprint;
   late AnimationController _pulseCtrl;
 
   // Voice chat
@@ -60,15 +61,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     )..repeat(reverse: true);
     _ctrl.addListener(_handleTextChanged);
     _initSpeech();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(chatSessionProvider.notifier)
-          .updatePageContext(
-            widget.pageContext,
-            forceWelcome: widget.isOverlay,
-          );
-    });
+    _schedulePageContextUpdate(forceWelcome: widget.isOverlay);
     // Auto-send initial query if provided
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,11 +73,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   @override
   void didUpdateWidget(covariant AIChatScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pageContext != widget.pageContext) {
+    _schedulePageContextUpdate();
+  }
+
+  void _schedulePageContextUpdate({bool forceWelcome = false}) {
+    final fingerprint = widget.pageContext?.toString();
+    if (!forceWelcome && _lastPageContextFingerprint == fingerprint) return;
+    _lastPageContextFingerprint = fingerprint;
+    Future<void>(() {
+      if (!mounted) return;
       ref
           .read(chatSessionProvider.notifier)
-          .updatePageContext(widget.pageContext);
-    }
+          .updatePageContext(widget.pageContext, forceWelcome: forceWelcome);
+    });
   }
 
   void _handleTextChanged() {

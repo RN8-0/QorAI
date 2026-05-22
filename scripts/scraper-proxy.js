@@ -757,6 +757,44 @@ function extractBrandFilter(html) {
     : null;
 }
 
+function extractFeaturedBrandPages(html, requirePrefix = '') {
+  const source = String(html || '');
+  const prefix = String(requirePrefix || '').replace(/^\/|\/$/g, '');
+  if (!prefix) return null;
+  const values = [];
+  const seen = new Set();
+  const re = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]{0,260}?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(source)) !== null) {
+    let href = m[1].trim();
+    if (!href) continue;
+    if (/^https?:/i.test(href)) {
+      try { href = new URL(href).pathname; } catch { continue; }
+    }
+    if (!href.startsWith('/')) href = '/' + href;
+    const path = href.replace(/^\/|\/$/g, '');
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length !== 2 || parts[0] !== prefix) continue;
+    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const count = parseInt((text.match(/\(([\d.]+)\)/)?.[1] || '0').replace(/\./g, ''), 10) || 0;
+    if (count <= 0) continue;
+    const fullUrl = `https://www.epey.com/${parts[0]}/${parts[1]}/`;
+    if (seen.has(fullUrl)) continue;
+    seen.add(fullUrl);
+    values.push({
+      value: fullUrl,
+      url: fullUrl,
+      slug: parts[1],
+      name: text.replace(/\s*\([\d.]+\)\s*$/, '').trim() || parts[1],
+      count,
+    });
+  }
+  values.sort((a, b) => b.count - a.count);
+  return values.length
+    ? { groupId: 'brand-pages', total: values.reduce((n, x) => n + x.count, 0), values }
+    : null;
+}
+
 // Highest page number referenced by the listing's pagination block.
 function extractMaxListingPage(html, catPath) {
   if (!catPath) return 1;
@@ -1441,9 +1479,13 @@ const server = http.createServer(async (req, res) => {
         const ajax = extractAjaxParams(html);
         const filter = extractBestFilter(html);
         const brandFilter = extractBrandFilter(html);
+        const featuredBrandFilter = extractFeaturedBrandPages(html, prefix);
+        const bestBrandFilter = featuredBrandFilter && (!brandFilter || featuredBrandFilter.total > brandFilter.total)
+          ? featuredBrandFilter
+          : brandFilter;
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
           `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
-          `${brandFilter ? ` · brand partitions ${brandFilter.values.length} (~${brandFilter.total} ürün)` : ''}` +
+          `${bestBrandFilter ? ` · brand partitions ${bestBrandFilter.values.length} (~${bestBrandFilter.total} ürün)` : ''}` +
           `${productPrefix !== prefix ? ` · product prefix ${productPrefix}` : ''}`);
         result = {
           links, pages: [],
@@ -1452,7 +1494,7 @@ const server = http.createServer(async (req, res) => {
                 base: targetUrl, prefix: productPrefix }
             : null,
           filter,
-          brandFilter,
+          brandFilter: bestBrandFilter,
         };
       }
 
