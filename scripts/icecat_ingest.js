@@ -804,6 +804,15 @@ function icecatQualityFailure(payload) {
   const count = Number(payload.specsCount || Object.keys(payload.specs || {}).length);
   if (!payload.imageUrl || !Array.isArray(payload.images) || !payload.images.length) return 'no_valid_product_image';
   if (isBlockedCatalogText(payload.name, payload.brand, payload.mpn)) return 'blocked_refurbished_or_non_catalog_product';
+  if (payload.category === 'cpus') {
+    const text = `${payload.name || ''} ${payload.mpn || ''}`.toLowerCase();
+    if (/\b(cooler|cooling|heatsink|heat sink|fan|water block|radiator|thermal paste|mount|bracket)\b/i.test(text)) {
+      return 'cpu_accessory_not_processor';
+    }
+    if (!/\b(ryzen|threadripper|epyc|core\s*(i[3579]|ultra)|xeon|celeron|pentium|processor|cpu)\b/i.test(text)) {
+      return 'not_a_processor_name';
+    }
+  }
   const minSpecs = minSpecsForCategory(payload.category);
   if (count < minSpecs) return `too_few_specs:${count}<${minSpecs}`;
   const releaseYear = inferReleaseYear(payload);

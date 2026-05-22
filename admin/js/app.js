@@ -2953,7 +2953,9 @@ async function deleteProductImage(id, url) {
 
 // Re-scrape a single product on demand (modal "🔄 Yeniden Scrape" button)
 async function rescrapeProduct(id) {
-  const p = allProducts.find(x => x.id === id);
+  let p = allProducts.find(x => x.id === id);
+  const doc = await pbGetDoc('products', id).catch(() => null);
+  if (doc?.exists) p = { id: doc.id, ...doc.data() };
   if (!p || !p.sourceUrl) { toast('No source URL', 'e'); return; }
   if (typeof checkProxy === 'function' && !(await checkProxy())) { toast('Start the proxy first (Scraper tab)', 'e'); return; }
   toast('🔄 Re-scraping…', 'i');

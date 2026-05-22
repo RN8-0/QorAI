@@ -741,6 +741,9 @@ function prepareProductPayload(product) {
     if (/\bklavye\b/.test(n)) category = 'keyboards';
     else if (/\bmouse\b|\bmice\b|\bfare\b/.test(n)) category = 'mice';
   }
+  if (/islemci-sogutucu/i.test(String(sourceProduct.sourceUrl || ''))) {
+    category = 'cpu_coolers';
+  }
 
   // Enforce image cap, dedup, and keep the native CDN format for Epey.
   const rawImages = Array.isArray(sourceProduct.images) ? sourceProduct.images.filter(Boolean) : [];
@@ -3097,7 +3100,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // payload, so they survive untouched. configKey is dropped too so the
       // original dedup key is kept. Result: one record, Epey content, Icecat
       // affiliate data — exactly the requested behaviour.
-      const existing = product.variantGroup ? existingByVG.get(product.variantGroup) : null;
+      const mergeKey = clean.variantGroup || product.variantGroup;
+      const existing = mergeKey ? existingByVG.get(mergeKey) : null;
       if (existing && /icecat/i.test(existing.source)) {
         const mergePayload = { ...clean };
         // Keep Icecat's identity/affiliate keys — they are the base. Dropping
@@ -3107,7 +3111,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         delete mergePayload.gtin;
         delete mergePayload.mpn;
         await pbUpdateDoc('products', existing.id, mergePayload);
-        existingByVG.delete(product.variantGroup); // a later variant → new record
+        existingByVG.delete(mergeKey); // a later variant → new record
         window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: mergePayload } }));
         results.updated++;
         errorStreak = 0;
