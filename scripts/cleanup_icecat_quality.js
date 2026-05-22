@@ -34,14 +34,32 @@ async function fetchIcecatProducts() {
   const out = [];
   let page = 1;
   for (;;) {
-    const r = await req('GET',
-      `/api/collections/products/records?perPage=500&page=${page}&sort=id&filter=${encodeURIComponent('source="icecat"')}&fields=${encodeURIComponent(FIELDS)}`);
+    const r = await withRetries(`fetch page ${page}`, () => req('GET',
+      `/api/collections/products/records?perPage=500&page=${page}&sort=id&filter=${encodeURIComponent('source="icecat"')}&fields=${encodeURIComponent(FIELDS)}`));
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status} ${JSON.stringify(r.body).slice(0, 250)}`);
     out.push(...(r.body.items || []));
+    if (page % 10 === 0) console.log(`loaded page ${page}/${r.body.totalPages || '?'} · ${out.length}`);
     if (page >= (r.body.totalPages || 1)) break;
     page++;
   }
   return out;
+}
+
+async function withRetries(label, fn, attempts = 5) {
+  let last;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const result = await fn();
+      if (result.status < 500) return result;
+      last = new Error(`${result.status} ${JSON.stringify(result.body).slice(0, 200)}`);
+    } catch (error) {
+      last = error;
+    }
+    const delay = Math.min(30000, 1000 * 2 ** (i - 1));
+    console.warn(`retry ${i}/${attempts} ${label}: ${last.message || last}`);
+    if (i < attempts) await new Promise(resolve => setTimeout(resolve, delay));
+  }
+  throw last;
 }
 
 async function runPool(items, worker) {
