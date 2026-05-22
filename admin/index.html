@@ -445,8 +445,16 @@
         <!-- Bulk Scrape -->
         <div class="scraper-panel active" id="bulkScrapePanel">
           <div class="card">
-            <div class="card-title">Epey.com Product Import</div>
+            <div class="card-title">Bulk Product Import</div>
             <div class="form-grid">
+              <div class="form-field" style="grid-column:span 2">
+                <label>Kaynak</label>
+                <select class="input" id="scrapeSource" onchange="updateScrapeSourceUI()">
+                  <option value="epey">🇹🇷 Epey.com (TR)</option>
+                  <option value="geizhals">🇩🇪 Geizhals.eu (DE/EU)</option>
+                </select>
+                <small class="text-muted" id="scrapeSourceHint" style="font-size:11px">Epey: Türkçe ürün isimleri ve specs. Geizhals: Almanca specs (Avrupa fiyat karşılaştırma).</small>
+              </div>
               <div class="form-field" style="grid-column:span 2">
                 <label>Kategori</label>
                 <div class="scrape-category-actions">
@@ -524,9 +532,12 @@
         <div class="scraper-panel" id="singleUrlPanel">
           <div class="card">
             <div class="card-title">Add Product by URL or Search</div>
+            <p class="text-muted" style="margin-bottom:10px;font-size:12px">
+              Epey ya da Geizhals URL'sini yapıştır — kaynak URL'den otomatik algılanır. Veya ürün adı ile arama yap.
+            </p>
             <div class="form-field">
-              <label>Epey.com URL or Product Name</label>
-              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/... or iPhone 16, Samsung Galaxy S25...">
+              <label>Product URL (epey.com / geizhals.eu) or Search Term</label>
+              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/... | https://geizhals.eu/... | iPhone 16">
             </div>
             <div class="form-field">
               <label>Category (auto-detected from URL)</label>
@@ -959,6 +970,7 @@
         'js/spec_canonical.js',
         'js/categories.js',
         'js/scraper.js',
+        'js/scraper-geizhals.js',
         'js/notifications.js',
         'js/support.js',
         'js/app.js'

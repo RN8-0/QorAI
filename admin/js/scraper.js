@@ -14,10 +14,9 @@ const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260522-epey-full-catalog-score-dict-fix';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
-const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
-// Languages to translate Turkish specs into (skip tr since source is Turkish)
-// EU pivot (2026-05-23): 6 target languages instead of 11.
-// TR is the source language (Epey specs are Turkish), so it's not a target.
+// EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
+const SUPPORTED_LANGS = ['tr','en','de','es','fr','pt','ru'];
+// Languages to translate Turkish specs into (skip TR — that's the source).
 const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // Epey product pages usually expose only 2-3 inline images. The full product
 // photo set lives on the "-resimleri.html" gallery page, so keep this enabled
@@ -4801,3 +4800,72 @@ function _offersStartPolling() {
 window.offersStartSync = offersStartSync;
 window.offersStop = offersStop;
 window.offersRefreshStatus = offersRefreshStatus;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SOURCE-AWARE SCRAPER ROUTER (Epey | Geizhals)
+//
+//  The HTML wires startBulkScrape() / scrapeByUrl() onto its buttons.
+//  We intercept those globals AFTER scraper.js has finished loading so the
+//  buttons route to either the Epey path (this file) or the Geizhals path
+//  (admin/js/scraper-geizhals.js → window.QorAiGeizhals).
+//
+//  Both sources share:
+//   - the same 49 PB category ids (categories.js whitelist)
+//   - the same inline translation pipeline (window.QorAiBulkTranslate)
+//   - the same dictionary (public_config.tr_translation_dict)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Stash the Epey entry points BEFORE we reassign the globals.
+const _epeyStartBulkScrape = startBulkScrape;
+const _epeyScrapeByUrl = scrapeByUrl;
+
+function _resolveScrapeSource() {
+  return document.getElementById('scrapeSource')?.value || 'epey';
+}
+
+function _detectSourceFromUrl(rawUrl) {
+  const u = String(rawUrl || '').toLowerCase();
+  if (!u) return null;
+  if (/(^|\.)geizhals\.(eu|at|de|com)\//.test(u)) return 'geizhals';
+  if (/(^|\.)epey\.com\//.test(u)) return 'epey';
+  return null;
+}
+
+window.startBulkScrape = async function () {
+  const src = _resolveScrapeSource();
+  if (src === 'geizhals') {
+    if (!window.QorAiGeizhals?.startBulkScrape) {
+      if (typeof toast === 'function') toast('Geizhals scraper not loaded', 'e');
+      return;
+    }
+    return window.QorAiGeizhals.startBulkScrape();
+  }
+  return _epeyStartBulkScrape();
+};
+
+window.scrapeByUrl = async function () {
+  const inputVal = document.getElementById('scrapeUrl')?.value?.trim() || '';
+  // URL takes precedence: a geizhals.eu link always routes to the Geizhals
+  // scraper, regardless of the bulk-scrape dropdown selection. Plain search
+  // terms (no http://) fall back to the Bulk Scrape dropdown.
+  const fromUrl = inputVal.startsWith('http') ? _detectSourceFromUrl(inputVal) : null;
+  const src = fromUrl || _resolveScrapeSource();
+  if (src === 'geizhals') {
+    if (!window.QorAiGeizhals?.scrapeByUrl) {
+      if (typeof toast === 'function') toast('Geizhals scraper not loaded', 'e');
+      return;
+    }
+    return window.QorAiGeizhals.scrapeByUrl();
+  }
+  return _epeyScrapeByUrl();
+};
+
+// UI hint helper invoked by the source <select onchange>.
+window.updateScrapeSourceUI = function () {
+  const src = _resolveScrapeSource();
+  const hint = document.getElementById('scrapeSourceHint');
+  if (!hint) return;
+  hint.textContent = src === 'geizhals'
+    ? 'Geizhals.eu: Almanca specs, Avrupa fiyatları. Aynı 49 kategoriye yazılır.'
+    : 'Epey.com: Türkçe specs ve isimler. Aynı 49 kategoriye yazılır.';
+};

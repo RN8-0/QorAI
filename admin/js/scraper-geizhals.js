@@ -1,27 +1,28 @@
 // ═══════════════════════════════════════════════════════════════════
 //  QOR AI SCRAPER MODULE — geizhals.eu Scraper
 //  Scrapes products from geizhals.eu via local Puppeteer proxy.
-//  Translates German → 12 languages using DeepSeek v3 + dictionary cache.
+//  Translates German → 6 target languages using DeepSeek v3 + dictionary.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
+//
+//  This file is wrapped in an IIFE so its globals (slog, toast, parseHTML
+//  etc.) do NOT leak and collide with the Epey scraper in admin/js/scraper.js.
+//  Only `window.QorAiGeizhals` is exposed.
 // ═══════════════════════════════════════════════════════════════════
+;(function () {
+'use strict';
 
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260513v12-cf-fingerprint-reset';
-// EU-wide listing: matches kategoriler.txt format, maximises inventory and
-// reduces per-country Cloudflare gatekeeping that was causing 502 loops.
-// `sort=t` forces a stable alphabetical-by-title ordering. Without it Geizhals
-// defaults to popularity-by-view-count which is reordered on every request,
-// causing the same product to appear on 2-3 consecutive pages and dropping
-// our effective per-page yield from 30 down to 10-12 unique URLs.
+const SCRAPER_BUILD = '20260523v1-eu-pivot';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
-const SUPPORTED_LANGS = ['en','de','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
-// Languages to translate German specs into (skip de since source is German)
-const TARGET_LANGS = ['en','tr','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
+const SUPPORTED_LANGS = ['en','de','tr','es','fr','pt','ru'];
+// Languages to translate German specs into (skip 'de' since source is German).
+const TARGET_LANGS = ['en','tr','es','fr','pt','ru'];
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -341,29 +342,8 @@ async function resetProxySessionShared(reason) {
 //  4. SCRAPER TABS & CATEGORY UI
 // ═══════════════════════════════════════
 
-function switchScraperTab(btn) {
-  document.querySelectorAll('.scraper-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.scraper-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  const panel = document.getElementById(btn.dataset.tab + 'Panel');
-  if (panel) panel.classList.add('active');
-}
-
-function updateScrapeModeUI() {
-  const mode = document.getElementById('scrapeMode')?.value || 'brand';
-  const searchField = document.getElementById('scrapeSearchField');
-  const catField = document.getElementById('scrapeCategoryField');
-  const hint = document.getElementById('scrapeModeHint');
-  if (searchField) searchField.style.display = mode === 'brand' ? '' : 'none';
-  if (catField) catField.style.display = mode === 'category' ? '' : 'none';
-  if (hint) {
-    hint.textContent = mode === 'brand'
-      ? 'Searches Geizhals by brand, imports product specs/images/EAN/MPN, and auto-detects the product category. Prices and merchant/store data are not imported.'
-      : 'Uses the selected Geizhals category listing. This is slower and mainly kept for targeted category backfills.';
-  }
-}
-window.updateScrapeModeUI = updateScrapeModeUI;
-document.addEventListener('DOMContentLoaded', updateScrapeModeUI);
+// switchScraperTab / updateScrapeModeUI removed — owned by admin/js/scraper.js
+// (the Epey scraper). Tab switching and mode UI are shared across sources.
 
 // _loadCategoryCounts() and populateScraperCategories() are defined in categories.js
 
@@ -1203,7 +1183,7 @@ function _applyTitleCase(text) {
 }
 
 // Expose for tests / dictionary tab "Reformat" button
-window._qorAiTitleCase = _applyTitleCase;
+// _qorAiTitleCase export removed — IIFE-internal only.
 
 // Store translation in cache (normalized via title-case)
 function _deDictStore(germanText, targetLang, translation) {
@@ -1223,7 +1203,8 @@ function _deDictStore(germanText, targetLang, translation) {
 // reach into private internals. `forceSave` bypasses the dirty flag so the
 // admin can persist edits even if no _deDictStore call was made (e.g. the
 // admin only edited an existing entry).
-window.QorAiDict = {
+// IIFE-internal — NOT exposed to window (Epey scraper owns window.QorAiDict).
+const _GeizhalsDict = {
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
   set:     (germanText, lang, translation) => _deDictStore(germanText, lang, translation),
@@ -1603,8 +1584,38 @@ function _buildProductTranslations(p, targetLangs) {
   return { multiLangSpecs, multiLangSections, nameTranslated };
 }
 
-// Public API consumed by app.js category translator panel
-window.QorAiBulkTranslate = {
+// Inline per-product translation hook — German source variant. Identical
+// shape to scraper.js _translateProductInline; both write into the same
+// public_config.tr_translation_dict shards.
+async function _translateProductInline(product) {
+  if (!product) return product;
+  try {
+    await _loadDeDict();
+    const sink = new Set();
+    _collectAtomsFromProduct(product, sink);
+    const unique = [...sink].filter(_shouldTranslateAtom);
+    const missing = unique.filter(
+      t => TARGET_LANGS.some(l => !_deDictLookup(t, l))
+    );
+    if (missing.length) {
+      try {
+        await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
+      } catch (e) {
+        slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
+      }
+    }
+    const payload = _buildProductTranslations(product, TARGET_LANGS);
+    if (payload && typeof payload === 'object') Object.assign(product, payload);
+    _deDictDirty = true;
+    _saveDeDict().catch(() => {});
+  } catch (e) {
+    slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
+  }
+  return product;
+}
+
+// IIFE-internal — NOT exposed (Epey scraper owns window.QorAiBulkTranslate).
+const _GeizhalsBulkTranslate = {
   // Pre-load dictionary
   loadDict: () => _loadDeDict(),
   // Collect unique atoms across a batch of products
@@ -2167,8 +2178,7 @@ function getScraperCheckpoint() {
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
-window.getScraperCheckpoint = getScraperCheckpoint;
-window.clearScraperCheckpoint = _clearCheckpoint;
+// Checkpoint helpers exposed via the namespace at the bottom of this file.
 
 // Resume from a previously interrupted bulk scrape
 async function resumeBulkScrape() {
@@ -2190,7 +2200,7 @@ async function resumeBulkScrape() {
   _clearCheckpoint();
   finishScraping();
 }
-window.resumeBulkScrape = resumeBulkScrape;
+// resumeBulkScrape exposed via the namespace at the bottom of this file.
 
 // Show/hide Resume button + hint based on stored checkpoint
 function updateResumeUI() {
@@ -2211,7 +2221,7 @@ function updateResumeUI() {
     hint.style.display = 'none';
   }
 }
-window.updateResumeUI = updateResumeUI;
+// updateResumeUI exposed via the namespace at the bottom of this file.
 
 // ── Skip-existing: pull every product URL already stored in PB for this
 // category and drop them from the scrape list. This makes resume "free":
@@ -2408,6 +2418,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       nextHtmlPromise = prefetchNext(i + 1);
 
       const clean = prepareProductPayload(product);
+      // Inline translation (EU pivot): same dictionary cache as the Epey
+      // scraper. Atoms first hit the local dict; only new German terms hit
+      // DeepSeek. Failures never block the save.
+      await _translateProductInline(clean);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
@@ -2840,3 +2854,35 @@ function downloadScraperLog() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  PUBLIC API — everything else stays IIFE-internal so the Epey
+//  scraper's globals (slog, parseHTML, prepareProductPayload, etc.)
+//  are not shadowed.
+// ═══════════════════════════════════════════════════════════════════
+window.QorAiGeizhals = {
+  // Entry points
+  startBulkScrape:        startBulkScrape,
+  scrapeByUrl:            scrapeByUrl,
+  resumeBulkScrape:       resumeBulkScrape,
+  stopScraping:           stopScraping,
+
+  // Checkpoint UI
+  getScraperCheckpoint:   getScraperCheckpoint,
+  clearScraperCheckpoint: _clearCheckpoint,
+  updateResumeUI:         updateResumeUI,
+
+  // Translation (mirrors window.QorAiBulkTranslate shape so app.js helpers
+  // can use either source's pipeline uniformly).
+  bulkTranslate:          _GeizhalsBulkTranslate,
+  dict:                   _GeizhalsDict,
+
+  // Diagnostics
+  build:                  SCRAPER_BUILD,
+  proxyUrl:               PROXY_URL,
+};
+
+})();
+// ═══════════════════════════════════════════════════════════════════
+//  END IIFE — scraper-geizhals.js · 2026-05-23 EU pivot
+// ═══════════════════════════════════════════════════════════════════
