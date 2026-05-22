@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  QOR AI SCRAPER MODULE — epey.com Scraper
 //  Scrapes products from epey.com via local Puppeteer proxy.
-//  Translates Turkish → 12 languages using DeepSeek v3 + dictionary cache.
+//  Stores Epey Turkish specs as English canonical specs via the local dictionary.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260521-local-deepseek-dict-shards';
+const SCRAPER_BUILD = '20260521-epey-canonical-en';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -730,15 +730,21 @@ function configKeyFromProduct(product, variantGroup) {
 }
 
 function prepareProductPayload(product) {
-  const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
-  const cleanName = cleanCountryCodes(product.name || '');
-  const category = window.QorAiCategories?.canonicalId
-    ? window.QorAiCategories.canonicalId(product.category || '')
-    : String(product.category || '').trim();
+  const sourceProduct = canonicalizeEpeySpecsToEnglish(product);
+  const sanitized = sanitizeProductSpecs(sourceProduct.specs || {}, sourceProduct.specSections || {});
+  const cleanName = cleanCountryCodes(sourceProduct.name || '');
+  let category = window.QorAiCategories?.canonicalId
+    ? window.QorAiCategories.canonicalId(sourceProduct.category || '')
+    : String(sourceProduct.category || '').trim();
+  if (/klavye-mouse/i.test(String(sourceProduct.sourceUrl || ''))) {
+    const n = String(cleanName || sourceProduct.name || '').toLocaleLowerCase('tr');
+    if (/\bklavye\b/.test(n)) category = 'keyboards';
+    else if (/\bmouse\b|\bmice\b|\bfare\b/.test(n)) category = 'mice';
+  }
 
   // Enforce image cap, dedup, and keep the native CDN format for Epey.
-  const rawImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  const isEpeySource = /epey/i.test(String(product.source || product.sourceUrl || ''));
+  const rawImages = Array.isArray(sourceProduct.images) ? sourceProduct.images.filter(Boolean) : [];
+  const isEpeySource = /epey/i.test(String(sourceProduct.source || sourceProduct.sourceUrl || ''));
   const seenImg = new Set();
   const images = [];
   for (const url of rawImages) {
@@ -754,52 +760,52 @@ function prepareProductPayload(product) {
     }
     if (images.length >= 8) break;
   }
-  const primary = images[0] || product.imageUrl || '';
+  const primary = images[0] || sourceProduct.imageUrl || '';
 
   const variantGroup = String(
-    modelFamilyKey({ name: cleanName, brand: product.brand, category }) ||
-    product.variantGroup ||
-    productDedupKey({ ...product, name: cleanName }) ||
+    modelFamilyKey({ name: cleanName, brand: sourceProduct.brand, category }) ||
+    sourceProduct.variantGroup ||
+    productDedupKey({ ...sourceProduct, name: cleanName }) ||
     ''
   ).trim().slice(0, 200);
   const payload = {
-    slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
+    slug: String(sourceProduct.slug || sourceProduct.id || productDedupKey(sourceProduct) || '').trim().slice(0, 200),
     name: cleanName.slice(0, 500),
-    brand: String(product.brand || '').trim().slice(0, 200),
+    brand: String(sourceProduct.brand || '').trim().slice(0, 200),
     category: String(category || '').trim().slice(0, 100),
-    source: String(product.source || 'epey.com').trim().slice(0, 100),
-    sourceUrl: product.sourceUrl || undefined,
+    source: String(sourceProduct.source || 'epey.com').trim().slice(0, 100),
+    sourceUrl: sourceProduct.sourceUrl || undefined,
     imageUrl: primary || undefined,
     imageUrlThumb: primary && !isEpeySource && typeof imgThumb === 'function' ? imgThumb(primary) : primary || undefined,
     imageUrlHQ: primary && !isEpeySource && typeof imgHQ === 'function' ? imgHQ(primary) : primary || undefined,
     images,
     specs: sanitized.specs,
     specSections: sanitized.sections,
-    keySpecs: product.keySpecs && typeof product.keySpecs === 'object'
-      ? Object.fromEntries(Object.entries(product.keySpecs)
+    keySpecs: sourceProduct.keySpecs && typeof sourceProduct.keySpecs === 'object'
+      ? Object.fromEntries(Object.entries(sourceProduct.keySpecs)
           .map(([k, v]) => [cleanCountryCodes(k), cleanCountryCodes(v)])
           .filter(([k, v]) => k && v && !isBlockedSpec(k, v)))
       : {},
-    techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
+    techScore: Number.isFinite(Number(sourceProduct.techScore)) ? Number(sourceProduct.techScore) : undefined,
     specsCount: Object.keys(sanitized.specs).length,
     variantGroup,
-    configKey: String(product.configKey || configKeyFromProduct(product, variantGroup) || '').trim().slice(0, 255),
-    scrapedAt: product.scrapedAt || new Date().toISOString(),
+    configKey: String(sourceProduct.configKey || configKeyFromProduct(sourceProduct, variantGroup) || '').trim().slice(0, 255),
+    scrapedAt: sourceProduct.scrapedAt || new Date().toISOString(),
   };
 
-  if (product.gtin) payload.gtin = String(product.gtin).trim().slice(0, 200);
-  if (product.mpn) payload.mpn = String(product.mpn).trim().slice(0, 200);
-  if (product.price_raw) payload.price_raw = String(product.price_raw).trim().slice(0, 200);
+  if (sourceProduct.gtin) payload.gtin = String(sourceProduct.gtin).trim().slice(0, 200);
+  if (sourceProduct.mpn) payload.mpn = String(sourceProduct.mpn).trim().slice(0, 200);
+  if (sourceProduct.price_raw) payload.price_raw = String(sourceProduct.price_raw).trim().slice(0, 200);
 
-  // Multilingual payload (only if translation pipeline ran inline)
-  if (product.multiLangSpecs && typeof product.multiLangSpecs === 'object') {
-    payload.multiLangSpecs = product.multiLangSpecs;
+  // Canonical English payload. Other languages are resolved at render time.
+  if (sourceProduct.multiLangSpecs && typeof sourceProduct.multiLangSpecs === 'object') {
+    payload.multiLangSpecs = sourceProduct.multiLangSpecs;
   }
-  if (product.multiLangSections && typeof product.multiLangSections === 'object') {
-    payload.multiLangSections = product.multiLangSections;
+  if (sourceProduct.multiLangSections && typeof sourceProduct.multiLangSections === 'object') {
+    payload.multiLangSections = sourceProduct.multiLangSections;
   }
-  if (product.nameTranslated && typeof product.nameTranslated === 'object') {
-    payload.nameTranslated = product.nameTranslated;
+  if (sourceProduct.nameTranslated && typeof sourceProduct.nameTranslated === 'object') {
+    payload.nameTranslated = sourceProduct.nameTranslated;
   }
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
@@ -1277,14 +1283,74 @@ function getDict() {
   return (typeof window !== 'undefined' && (window.QorAiStaticDict || window.QorAiDict)) ? (window.QorAiStaticDict || window.QorAiDict) : null;
 }
 
+const TR_LEFTOVER_FIXES = [
+  [/Öne Çıkanlar/gi, 'Highlights'],
+  [/Genel/gi, 'General'],
+  [/Özellikler/gi, 'Specifications'],
+  [/Çözünürlüğü|Çözünürlük/gi, 'Resolution'],
+  [/Frekansı|Frekans/gi, 'Frequency'],
+  [/Çekirdeği|Çekirdek/gi, 'Core'],
+  [/Desteği|Destek/gi, 'Support'],
+  [/Sayısı|Sayı/gi, 'Count'],
+  [/Hızlı/gi, 'Fast'],
+  [/Şarj/gi, 'Charging'],
+  [/Kablosuz/gi, 'Wireless'],
+  [/Kamera/gi, 'Camera'],
+  [/Ses/gi, 'Audio'],
+  [/Çıkışı|Çıkış/gi, 'Output'],
+  [/Suya Dayanıklılık|Suya Dayanıklı/gi, 'Water Resistance'],
+  [/Gövde/gi, 'Body'],
+  [/Oranı|Oran/gi, 'Ratio'],
+  [/Hat/gi, 'SIM'],
+  [/Ekran/gi, 'Display'],
+  [/Var/gi, 'Yes'],
+  [/Yok/gi, 'No'],
+  [/Siyah/gi, 'Black'],
+  [/Beyaz/gi, 'White'],
+  [/Kırmızı/gi, 'Red'],
+  [/Mavi/gi, 'Blue'],
+  [/Yeşil/gi, 'Green'],
+  [/Gri/gi, 'Gray'],
+  [/Altın/gi, 'Gold'],
+  [/Gümüş/gi, 'Silver'],
+];
+
+function _hasTurkishChars(text) {
+  const dict = getDict();
+  if (dict?.hasTurkishChars) return dict.hasTurkishChars(String(text || ''));
+  return /[ığşçöüİĞŞÇÖÜ]/.test(String(text || ''));
+}
+
+function _fixTurkishLeftovers(text) {
+  let out = String(text || '').replace(/:$/, '').trim();
+  for (const [re, replacement] of TR_LEFTOVER_FIXES) {
+    out = out.replace(re, replacement);
+  }
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
+
+function _safeCanonicalSpecText(text, fallback = '') {
+  const fixed = _fixTurkishLeftovers(text);
+  return _hasTurkishChars(fixed) ? fallback : fixed;
+}
+
+function _uniqueSpecKey(target, key) {
+  let out = key || 'Specification';
+  if (!Object.prototype.hasOwnProperty.call(target, out)) return out;
+  let n = 2;
+  while (Object.prototype.hasOwnProperty.call(target, `${out} ${n}`)) n++;
+  return `${out} ${n}`;
+}
+
 function translateSpecsObject(rawSpecs) {
   const dict = getDict();
   if (!dict) return rawSpecs;
   const translated = {};
   for (const [k, v] of Object.entries(rawSpecs)) {
-    const tk = dict.translateKey(k);
-    const tv = dict.translateValue(v, k);
-    translated[tk] = tv;
+    const tk = _safeCanonicalSpecText(dict.translateKey(String(k || '').replace(/:$/, '')), 'Specification');
+    const tv = _safeCanonicalSpecText(dict.translateValue(String(v || '')), '');
+    if (!tk || !tv) continue;
+    translated[_uniqueSpecKey(translated, tk)] = tv;
   }
   return translated;
 }
@@ -1294,12 +1360,13 @@ function translateSections(rawSections) {
   if (!dict) return rawSections;
   const translated = {};
   for (const [section, specObj] of Object.entries(rawSections)) {
-    const ts = dict.translateKey(section);
+    const ts = _safeCanonicalSpecText(dict.translateKey(String(section || '').replace(/:$/, '')), 'General') || 'General';
     translated[ts] = {};
     for (const [k, v] of Object.entries(specObj)) {
-      const tk = dict.translateKey(k);
-      const tv = dict.translateValue(v, k);
-      translated[ts][tk] = tv;
+      const tk = _safeCanonicalSpecText(dict.translateKey(String(k || '').replace(/:$/, '')), 'Specification');
+      const tv = _safeCanonicalSpecText(dict.translateValue(String(v || '')), '');
+      if (!tk || !tv) continue;
+      translated[ts][_uniqueSpecKey(translated[ts], tk)] = tv;
     }
   }
   return translated;
@@ -1310,9 +1377,10 @@ function translateKeySpecs(rawKeySpecs) {
   if (!dict) return rawKeySpecs;
   const translated = {};
   for (const [k, v] of Object.entries(rawKeySpecs)) {
-    const tk = dict.translateKey(k);
-    const tv = dict.translateValue(v, k);
-    translated[tk] = tv;
+    const tk = _safeCanonicalSpecText(dict.translateKey(String(k || '').replace(/:$/, '')), 'Specification');
+    const tv = _safeCanonicalSpecText(dict.translateValue(String(v || '')), '');
+    if (!tk || !tv) continue;
+    translated[_uniqueSpecKey(translated, tk)] = tv;
   }
   return translated;
 }
@@ -1321,6 +1389,32 @@ function filterSpecs(specs, sections) {
   const dict = getDict();
   if (!dict || !dict.filterTurkishLanguageSpecs) return { specs, sections };
   return dict.filterTurkishLanguageSpecs(specs, sections);
+}
+
+function canonicalizeEpeySpecsToEnglish(product) {
+  const isEpeySource = /epey/i.test(String(product?.source || product?.sourceUrl || ''));
+  const dict = getDict();
+  if (!isEpeySource || !dict) return product;
+
+  const translatedSpecs = translateSpecsObject(product.specs || {});
+  const translatedSections = translateSections(product.specSections || {});
+  const translatedKeySpecs = translateKeySpecs(product.keySpecs || {});
+  const translatedName = dict.translateProductName
+    ? dict.translateProductName(product.name || '')
+    : product.name;
+
+  return {
+    ...product,
+    name: translatedName || product.name,
+    specs: translatedSpecs,
+    specSections: translatedSections,
+    keySpecs: translatedKeySpecs,
+    // Keep a tiny English payload for readers that prefer localized fields,
+    // but do not generate/store slow per-language translations at scrape time.
+    multiLangSpecs: { en: translatedSpecs },
+    multiLangSections: { en: translatedSections },
+    nameTranslated: translatedName ? { en: translatedName } : {},
+  };
 }
 
 // ═══════════════════════════════════════

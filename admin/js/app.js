@@ -1809,14 +1809,11 @@ function _tsAdminSortBy(q=''){
   const hasQuery=!!String(q||'').trim();
   switch(sort){
     case 'score-high': return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
-    case 'oldest': return 'techScore:asc';
-    case 'name-az': return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
+    case 'oldest': return hasQuery ? '_text_match:desc,scrapedAtTs:asc' : 'scrapedAtTs:asc';
+    case 'name-az': return hasQuery ? '_text_match:desc,nameSort:asc' : 'nameSort:asc';
     case 'newest':
     default:
-      // Typesense's current schema has no sortable scrapedAt/name field. Use
-      // the indexed technical rank so admin filters/page changes return fast
-      // instead of waiting on a heavy PocketBase count+sort scan.
-      return hasQuery ? '_text_match:desc,techScore:desc' : 'techScore:desc';
+      return hasQuery ? '_text_match:desc,scrapedAtTs:desc' : 'scrapedAtTs:desc';
   }
 }
 
@@ -2157,6 +2154,57 @@ async function stopCategoryTranslation(){
 
 const QORAI_TRANSLATION_BUILD = 'canonical-english-runtime-locale-20260521';
 
+async function _fetchDictionaryProducts(categoryId){
+  const allEpey = categoryId === '__all_epey__';
+  const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
+  const filter = allEpey
+    ? '(source~"epey" || sourceUrl~"epey.com")'
+    : `category="${safeCategory}"`;
+  const fields = 'id,name,category,source,sourceUrl,specs,specSections,keySpecs';
+  const perPage = allEpey ? 250 : 300;
+  const products = [];
+  let rawSeen = 0;
+  let page = 1;
+  let totalPages = 1;
+  let lastLog = Date.now();
+  const heartbeat = setInterval(() => {
+    _xlateLog(`… still fetching products · page ${page}/${totalPages || '?'} · raw ${rawSeen} · eligible ${products.length}`, 'warn');
+    _xlateProgress(0, 0, 'Fetching products…', {
+      detail: `PocketBase page ${page}/${totalPages || '?'} · eligible Epey products ${products.length}`,
+    });
+  }, 10000);
+  try {
+    for (; page <= totalPages && !_catXlateAbort; page++) {
+      const res = await pbGetList('products', page, perPage, {
+        filter,
+        fields,
+        sort: 'id',
+      });
+      totalPages = res.totalPages || totalPages || 1;
+      rawSeen += (res.items || []).length;
+      for (const p of res.items || []) {
+        const isEpey = window.QorAiBulkTranslate?.isEpeyProduct
+          ? window.QorAiBulkTranslate.isEpeyProduct(p)
+          : /epey/i.test(String(p?.source || p?.sourceUrl || ''));
+        if (!isEpey || !p?.specs || !Object.keys(p.specs).length) continue;
+        products.push(p);
+      }
+      if (Date.now() - lastLog > 2500 || page === 1 || page === totalPages) {
+        lastLog = Date.now();
+        _xlateLog(`✓ fetch page ${page}/${totalPages}: raw ${rawSeen}, eligible ${products.length}`);
+        _xlateProgress(0, 0, 'Fetching products…', {
+          detail: `PocketBase page ${page}/${totalPages} · eligible Epey products ${products.length}`,
+        });
+      }
+      if (res.empty) break;
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  } finally {
+    clearInterval(heartbeat);
+  }
+  return { products, rawSeen };
+}
+
 async function startCategoryTranslation(){
   if (_catXlateRunning) { toast('Çeviri zaten çalışıyor', 'w'); return; }
   if (!window.QorAiBulkTranslate) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
@@ -2191,29 +2239,10 @@ async function startCategoryTranslation(){
     _xlateLog(`✓ Dictionary loaded: ${loadedTerms} terms`);
 
     _xlateProgress(0, 0, 'Fetching products…');
-    // pbGetAll returns Firestore-style wrappers ({ id, data: () => raw }).
-    // Fetch only fields needed by the translator: Epey source, product name,
-    // and spec payloads.
-    const allEpey = categoryId === '__all_epey__';
-    const safeCategory = String(categoryId).replace(/"/g, '\\"');
-    // Query by category only, then filter Epey client-side. Older records may
-    // have sourceUrl=epey.com but a stale/migrated source value, and the old
-    // strict source filter made the translator skip exactly those products.
-    const filter = allEpey ? '' : `category="${safeCategory}"`;
-    const rawDocs = await pbGetAll('products', {
-      filter,
-      fields: 'id,name,category,source,sourceUrl,specs,specSections,keySpecs',
-      batch: 500,
-    });
-    products = (rawDocs || [])
-      .map(d => {
-        const body = (typeof d.data === 'function') ? d.data() : d;
-        return { id: d.id || body.id, ...body };
-      })
-      .filter(p => window.QorAiBulkTranslate?.isEpeyProduct ? window.QorAiBulkTranslate.isEpeyProduct(p) : /epey/i.test(String(p?.source || p?.sourceUrl || '')))
-      .filter(p => p && p.specs && Object.keys(p.specs).length);
+    const fetched = await _fetchDictionaryProducts(categoryId);
+    products = fetched.products;
     if (!products.length) {
-      _xlateLog(`No Epey products with specs in this category (raw docs: ${rawDocs?.length || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
+      _xlateLog(`No Epey products with specs in this category (raw docs: ${fetched.rawSeen || 0}). Icecat products are skipped because they already carry multilingual payloads.`, 'warn');
       toast('Bu kategoride çevrilecek Epey ürünü yok', 'w');
       return;
     }

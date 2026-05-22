@@ -14,6 +14,7 @@ const schema = {
     { name: 'id', type: 'string' }, // PB record id
     { name: 'slug', type: 'string' },
     { name: 'name', type: 'string', infix: true },
+    { name: 'nameSort', type: 'string', sort: true, optional: true },
     { name: 'brand', type: 'string', facet: true, optional: true },
     { name: 'category', type: 'string', facet: true },
     { name: 'subcategory', type: 'string', facet: true, optional: true },
@@ -21,6 +22,8 @@ const schema = {
     { name: 'imageUrl', type: 'string', optional: true, index: false },
     { name: 'techScore', type: 'float' },
     { name: 'trendScore', type: 'float', optional: true },
+    { name: 'scrapedAtTs', type: 'int64', optional: true },
+    { name: 'updatedAtTs', type: 'int64', optional: true },
     { name: 'price_segment', type: 'string', facet: true, optional: true },
     // Lowest known price expressed in USD. Populated from the country/currency
     // keyed `prices` map via scripts/fx_rates.js. Used for server-side range
@@ -59,14 +62,18 @@ function flattenKeySpecs(ks) {
   return String(ks);
 }
 
+function tsDate(value) {
+  const t = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(t) ? t : 0;
+}
+
 function toTsDoc(pb) {
   const browseFilters = extractBrowseFilters(pb);
-  // Build _raw: full PB record for client-side hydration
-  const raw = JSON.stringify(pb);
   return {
     id: pb.id,
     slug: pb.slug || '',
     name: pb.name || '',
+    nameSort: String(pb.name || '').toLowerCase(),
     brand: pb.brand || '',
     category: pb.category || '',
     subcategory: pb.subcategory || '',
@@ -74,6 +81,8 @@ function toTsDoc(pb) {
     imageUrl: pb.imageUrl || pb.imageURL || '',
     techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
     trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
+    scrapedAtTs: tsDate(pb.scrapedAt || pb.created || pb.updated),
+    updatedAtTs: tsDate(pb.updated || pb.scrapedAt || pb.created),
     price_segment: pb.price_segment || '',
     lowestPriceUSD: lowestPriceUsd(pb.prices),
     specsCount: pb.specsCount || 0,
@@ -83,7 +92,6 @@ function toTsDoc(pb) {
     screenSizeValue: browseFilters.screenSizeValue,
     batteryCapacityValue: browseFilters.batteryCapacityValue,
     weightValueKg: browseFilters.weightValueKg,
-    _raw: raw,
   };
 }
 

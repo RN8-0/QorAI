@@ -1,5 +1,6 @@
 // Partial sync: copy techScore from PocketBase -> Typesense for all products.
-// Uses Typesense bulk import in `emplace` mode (id-based upsert).
+// Uses Typesense bulk import in `update` mode so existing search documents are
+// patched without replacing name/category/image fields.
 const fs = require('fs');
 const path = require('path');
 const { req: pbReq } = require('./pb');
@@ -35,7 +36,7 @@ async function fetchPbBatch(page) {
 
 async function tsBulkUpsert(docs) {
   const jsonl = docs.map(d => JSON.stringify(d)).join('\n');
-  const url = `${TS_BASE}/collections/${COL}/documents/import?action=emplace`;
+  const url = `${TS_BASE}/collections/${COL}/documents/import?action=update`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {

@@ -119,11 +119,15 @@ function _extractSocketTokens(pb) {
 }
 
 function tsBuildDoc(pb) {
-  const raw = JSON.stringify(pb);
+  const tsDate = (value) => {
+    const t = value ? new Date(value).getTime() : 0;
+    return Number.isFinite(t) ? t : 0;
+  };
   return {
     id: pb.id,
     slug: pb.slug || '',
     name: pb.name || '',
+    nameSort: String(pb.name || '').toLowerCase(),
     brand: pb.brand || '',
     category: pb.category || '',
     subcategory: pb.subcategory || '',
@@ -131,13 +135,14 @@ function tsBuildDoc(pb) {
     imageUrl: pb.imageUrl || pb.imageURL || '',
     techScore: typeof pb.techScore === 'number' ? pb.techScore : 0,
     trendScore: typeof pb.trendScore === 'number' ? pb.trendScore : 0,
+    scrapedAtTs: tsDate(pb.scrapedAt || pb.created || pb.updated),
+    updatedAtTs: tsDate(pb.updated || pb.scrapedAt || pb.created),
     price_segment: pb.price_segment || '',
     lowestPriceUSD: _lowestPriceUsd(pb.prices),
     specsCount: pb.specsCount || 0,
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
     filterTokens: _extractSocketTokens(pb),
-    _raw: raw,
   };
 }
 

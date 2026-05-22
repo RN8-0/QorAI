@@ -1497,7 +1497,7 @@
     const stretchTarget = flagshipScores.length ? 100 : categoryCap;
     const stretchFactor = topReference > 0 && topReference < stretchTarget ? Math.min(1.25, stretchTarget / topReference) : 1.0;
 
-    return computed.map(c => {
+    const results = computed.map(c => {
       let stretched = c.cappedBase;
       const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
       const canStretch = c.tier === 'flagship' || (!c.anchorKey && confidence >= 0.55);
@@ -1537,6 +1537,18 @@
         sumW: c.sumW,
       };
     });
+    if (cat !== 'smartphones') {
+      const maxScore = Math.max(...results.map(r => Number(r.score) || 0));
+      if (maxScore > 0 && maxScore < SCORE_MAX) {
+        const finalStretch = SCORE_MAX / maxScore;
+        for (const r of results) {
+          r.preCategoryStretchScore = r.score;
+          r.categoryFinalStretch = +finalStretch.toFixed(3);
+          r.score = Math.max(1, Math.min(SCORE_MAX, Math.round(r.score * finalStretch)));
+        }
+      }
+    }
+    return results;
   }
 
   // Convenience: score a single product against pre-computed category
