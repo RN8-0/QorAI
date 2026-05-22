@@ -1991,7 +1991,7 @@ function renderDictionaryTable(){
   const cache = window.QorAiDict.cache();
   const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
   const scoreKey = (k) => DICT_VIEW_LANGS.reduce((n, l) => n + (cache[k]?.[l] ? 1 : 0), 0);
-  const allKeys = Object.keys(cache).sort((a, b) => {
+  const allKeys = Object.keys(cache).filter(k => !/\d/.test(k)).sort((a, b) => {
     const scoreDelta = scoreKey(b) - scoreKey(a);
     if (scoreDelta) return scoreDelta;
     const bMulti = DICT_VIEW_LANGS.some(l => l !== 'en' && cache[b]?.[l]);
@@ -2040,6 +2040,10 @@ function _scheduleDictionaryLiveRender(detail = '', delay = 350){
 function addDictionaryRow(){
   const term = (prompt('Yeni Türkçe terim:') || '').trim();
   if (!term) return;
+  if (/\d/.test(term)) {
+    toast('Sözlüğe rakam içeren terim eklenmez; sadece kelime/ifade ekle.', 'w');
+    return;
+  }
   const cache = window.QorAiDict.cache();
   const k = term.toLowerCase();
   if (!cache[k]) cache[k] = {};
@@ -2066,6 +2070,7 @@ async function saveDictionary(){
     const l = inp.getAttribute('data-dict-lang');
     const v = inp.value.trim();
     if (!k || !l) return;
+    if (/\d/.test(k)) return;
     if (v) window.QorAiDict.set(k, l, v);
     else {
       // Empty value → drop that lang entry so the renderer falls back to Turkish
@@ -2129,7 +2134,7 @@ function _refreshDictionaryStatsOnly(){
     if (!stats || !window.QorAiDict?.cache) return;
     const cache = window.QorAiDict.cache();
     const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
-    const allKeys = Object.keys(cache);
+    const allKeys = Object.keys(cache).filter(k => !/\d/.test(k));
     const visible = q
       ? allKeys.filter(k => k.includes(q) || DICT_VIEW_LANGS.some(l => String(cache[k]?.[l] || '').toLowerCase().includes(q))).length
       : allKeys.length;
@@ -2232,6 +2237,7 @@ async function startCategoryTranslation(){
     _xlateLog(`Build: ${QORAI_TRANSLATION_BUILD}`);
     _xlateProgress(0, 0, 'Loading dictionary…');
     _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
+    window.QorAiDict?.resetFailures?.();
     await window.QorAiBulkTranslate.loadDict();
     const loadedTerms = Object.keys(window.QorAiDict?.cache?.() || {}).length;
     _refreshDictionaryStatsOnly();

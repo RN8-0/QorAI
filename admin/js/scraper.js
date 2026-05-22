@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260521-epey-canonical-en';
+const SCRAPER_BUILD = '20260522-epey-complete-partition-dict-safe';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
@@ -1434,7 +1434,9 @@ if (typeof window !== 'undefined' && _staticQorAiDict && !window.QorAiStaticDict
 
 // In-memory TR→target dictionary cache (lazy-loaded from PB)
 const _deDictCache = {}; // { 'some turkish text': { en: '...', de: '...', ... } }
+const _deDictFailedThisRun = new Set();
 let _deDictLoaded = false;
+let _deDictLoadPromise = null;
 let _deDictDirty = false;
 let _deDictSavePromise = null;
 const DE_DICT_PB_KEY = 'tr_translation_dict';
@@ -1457,8 +1459,9 @@ function _mergeDictObject(source) {
   const terms = source.terms && typeof source.terms === 'object' ? source.terms : source;
   let merged = 0;
   for (const [rawKey, rawEntry] of Object.entries(terms)) {
-    const key = String(rawKey || '').toLowerCase().trim();
+    const key = _normalizeDictSourceKey(rawKey);
     if (!key || !_isDictEntry(rawEntry)) continue;
+    if (!_isWordOnlyDictSource(key)) continue;
     if (!_deDictCache[key]) _deDictCache[key] = {};
     for (const [lang, value] of Object.entries(rawEntry)) {
       if (typeof value === 'string' && value.trim()) _deDictCache[key][lang] = value.trim();
@@ -1468,8 +1471,21 @@ function _mergeDictObject(source) {
   return merged;
 }
 
+function _normalizeDictSourceKey(text) {
+  return String(text || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function _isWordOnlyDictSource(text) {
+  const s = _normalizeDictSourceKey(text);
+  if (!s || s.length < 2) return false;
+  if (/\d/.test(s)) return false;
+  return /[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]/.test(s);
+}
+
 function _buildDictShards(snapshot) {
-  const entries = Object.entries(snapshot).sort(([a], [b]) => a.localeCompare(b));
+  const entries = Object.entries(snapshot)
+    .filter(([key]) => _isWordOnlyDictSource(key))
+    .sort(([a], [b]) => a.localeCompare(b));
   const shards = [];
   let shard = {};
   let shardBytes = 2;
@@ -1492,12 +1508,19 @@ function BufferLikeJsonSize(value) {
   return new Blob([JSON.stringify(value)]).size;
 }
 
-async function _loadDeDictShards() {
+async function _mergeActiveDeDictFromPocketBase() {
+  const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
+  let merged = 0;
+  if (doc.exists) {
+    const stored = _dictDocValue(doc);
+    if (!stored?.sharded) merged += _mergeDictObject(stored);
+  }
+
   const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
-  if (!manifestDoc.exists) return 0;
+  if (!manifestDoc.exists) return merged;
   const manifest = _dictDocValue(manifestDoc);
   const batchId = manifest?.batchId || '';
-  if (!manifest?.sharded || !batchId) return 0;
+  if (!manifest?.sharded || !batchId) return merged;
 
   const docs = await pbGetAll('public_config', {
     filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
@@ -1505,7 +1528,6 @@ async function _loadDeDictShards() {
     batch: 200,
   }).catch(() => []);
 
-  let merged = 0;
   for (const doc of docs.sort((a, b) => String(a.data().key || '').localeCompare(String(b.data().key || '')))) {
     const value = _dictDocValue(doc);
     if (value?.batchId !== batchId) continue;
@@ -1519,9 +1541,10 @@ function _seedStaticEnglishDict() {
   const trEn = staticDict?.TR_EN;
   if (!trEn || typeof trEn !== 'object') return;
   for (const [rawKey, rawValue] of Object.entries(trEn)) {
-    const key = String(rawKey || '').toLowerCase().trim();
+    const key = _normalizeDictSourceKey(rawKey);
     const value = String(rawValue || '').trim();
     if (!key || !value) continue;
+    if (!_isWordOnlyDictSource(key)) continue;
     if (!_deDictCache[key]) _deDictCache[key] = {};
     if (!_deDictCache[key].en) _deDictCache[key].en = _applyTitleCase(value);
   }
@@ -1529,18 +1552,23 @@ function _seedStaticEnglishDict() {
 
 async function _loadDeDict() {
   if (_deDictLoaded) return;
-  try {
-    const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
-    if (doc.exists) {
-      const stored = _dictDocValue(doc);
-      if (!stored?.sharded) _mergeDictObject(stored);
+  if (_deDictLoadPromise) return _deDictLoadPromise;
+  _deDictLoadPromise = (async () => {
+    try {
+      await _mergeActiveDeDictFromPocketBase();
+    } catch (e) {
+      console.warn('[de-dict] load failed:', e.message);
+      throw e;
+    } finally {
+      _seedStaticEnglishDict();
     }
-    await _loadDeDictShards();
-  } catch (e) {
-    console.warn('[de-dict] load failed:', e.message);
+    _deDictLoaded = true;
+  })();
+  try {
+    await _deDictLoadPromise;
+  } finally {
+    _deDictLoadPromise = null;
   }
-  _seedStaticEnglishDict();
-  _deDictLoaded = true;
 }
 
 async function _saveDeDict() {
@@ -1556,8 +1584,13 @@ async function _saveDeDict() {
       // Snapshot the cache so overlapping chunk completions cannot mutate the
       // payload while PocketBase is serializing it. If new terms arrive during
       // the request, _deDictDirty flips back to true and the loop writes again.
-      const snapshot = JSON.parse(JSON.stringify(_deDictCache));
       try {
+        // Never save a half-loaded browser cache over the canonical PB shards.
+        // The Dictionary tab may render a static fallback while PB is slow; a
+        // Stop/Save from that state used to overwrite the full remote dict.
+        await _loadDeDict();
+        await _mergeActiveDeDictFromPocketBase();
+        const snapshot = JSON.parse(JSON.stringify(_deDictCache));
         const shards = _buildDictShards(snapshot);
         const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const updatedAt = new Date().toISOString();
@@ -1615,7 +1648,7 @@ async function _saveDeDict() {
 
 // Lookup Turkish text in cache for a specific target language
 function _deDictLookup(turkishText, targetLang) {
-  const key = turkishText.toLowerCase().trim();
+  const key = _normalizeDictSourceKey(turkishText);
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) return entry[targetLang];
   return null;
@@ -1668,6 +1701,10 @@ function _shouldPreserve(token) {
 function _shouldTranslateAtom(text) {
   const s = String(text || '').trim();
   if (!s || s.length < 2) return false;
+  // Dictionary entries are atomic words/phrases only. Values with numbers
+  // like "hızlı şarj (18w)", "128 GB" or "2025" are rendered from the source
+  // value; they must not bloat/poison the learned dictionary.
+  if (/\d/.test(s)) return false;
   if (!/[a-zA-ZÀ-ÿ]/.test(s)) return false;
   if (/^\d{8,14}$/.test(s)) return false; // GTIN/EAN/UPC
   if (/^[\d\s.,:+/()°%'"-]+$/.test(s)) return false;
@@ -1796,12 +1833,14 @@ window._qorAiTitleCase = _applyTitleCase;
 
 // Store translation in cache (normalized via title-case)
 function _deDictStore(turkishText, targetLang, translation) {
-  const key = turkishText.toLowerCase().trim();
+  const key = _normalizeDictSourceKey(turkishText);
+  if (!_isWordOnlyDictSource(key)) return;
   const normalized = _applyTitleCase(String(translation || '').trim());
   if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};
   if (_deDictCache[key][targetLang] !== normalized) {
     _deDictCache[key][targetLang] = normalized;
+    _deDictFailedThisRun.delete(key);
     _deDictDirty = true;
   }
 }
@@ -1824,6 +1863,7 @@ window.QorAiDict = {
   },
   save:    () => { _deDictDirty = true; return _saveDeDict(); },
   langs:   () => SUPPORTED_LANGS,
+  resetFailures: () => _deDictFailedThisRun.clear(),
 };
 
 // Batch translate Turkish texts → ALL target languages in ONE DeepSeek call.
@@ -1910,6 +1950,7 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   // Build the set of (text, lang) pairs that are NOT in cache yet
   const missingByText = new Map(); // text → Set<lang>
   for (const t of germanTexts.filter(_shouldTranslateAtom)) {
+    if (_deDictFailedThisRun.has(_normalizeDictSourceKey(t))) continue;
     const missing = targetLangs.filter(l => !_deDictLookup(t, l));
     if (missing.length) missingByText.set(t, missing);
   }
@@ -2049,6 +2090,8 @@ Rules:
     if (!current.length) break;
     await runPass(pass + 1, current, passes[pass].size, passes[pass].concurrency);
   }
+  const remaining = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  for (const t of remaining) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
 
   await _saveDeDict();
 }
@@ -2266,7 +2309,7 @@ window.QorAiBulkTranslate = {
   },
   // Return only the atoms that are missing for at least one target lang
   missingAtoms(atoms, targetLangs = TARGET_LANGS) {
-    return atoms.filter(t => _shouldTranslateAtom(t) && targetLangs.some(l => !_deDictLookup(t, l)));
+    return atoms.filter(t => _shouldTranslateAtom(t) && !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) && targetLangs.some(l => !_deDictLookup(t, l)));
   },
   // Hit DeepSeek for the supplied (already filtered) atoms. Chunked & batched.
   // `onProgress` receives { phase, chunkIndex, totalChunks, ... } per chunk so
@@ -4056,6 +4099,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   if (!term && !categoryId) return [];
   const allItems = [];
   const seen = new Set();
+  let expectedCategoryTotal = 0;
 
   const itemsFromData = (data) => Array.isArray(data?.items)
     ? data.items
@@ -4104,6 +4148,8 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     const pageSize = Number(ajax.limit) || 31;
     const startCount = allItems.length;
     let emptyStreak = 0;
+    let transientStreak = 0;
+    const maxEmptyStreak = filterValues && filterValues.length ? 5 : 4;
     for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
       let got = null;
       for (let attempt = 1; attempt <= 3 && !scraperAbort; attempt++) {
@@ -4120,9 +4166,19 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         }
       }
       if (!got) break;
+      if (Number(got?.status || 0) === 0) {
+        transientStreak++;
+        if (typeof onPage === 'function') onPage(pageNo, 0, allItems.length);
+        if (transientStreak >= 12) {
+          slog(`  ⚠️ ${transientStreak} geçici boş AJAX sayfası üst üste geldi; bu stream bırakıldı.`, 'warn');
+          break;
+        }
+        continue;
+      }
+      transientStreak = 0;
       const added = pushItems(itemsFromData(got));
       if (typeof onPage === 'function') onPage(pageNo, added, allItems.length);
-      if (added === 0) { if (++emptyStreak >= 2) break; } else emptyStreak = 0;
+      if (added === 0) { if (++emptyStreak >= maxEmptyStreak) break; } else emptyStreak = 0;
       const returnedCount = Number(got?.count) || 0;
       if (returnedCount > 0 && returnedCount < pageSize) break;
       // Large "all catalog" runs can visit hundreds of listing pages; yield so
@@ -4130,6 +4186,27 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       if (pageNo % 3 === 0) await sleep(0);
     }
     return allItems.length - startCount;
+  };
+
+  const paginatePartitions = async (ajax, partitions, labelFor, onPage) => {
+    const list = Array.isArray(partitions) ? partitions : [];
+    let totalAdded = 0;
+    for (let pi = 0; pi < list.length && allItems.length < maxProducts && !scraperAbort; pi++) {
+      const part = list[pi];
+      const value = typeof part === 'string' ? part : part?.value;
+      if (!value) continue;
+      const label = typeof labelFor === 'function' ? labelFor(part, pi) : (part?.name || value);
+      const before = allItems.length;
+      if (label) slog(`  • Partition ${pi + 1}/${list.length}: ${label}${part?.count ? ` (~${part.count})` : ''}`, 'info');
+      await paginateStream(ajax, [value], (pageNo, added, total) => {
+        if (typeof onPage === 'function') onPage(part, pageNo, added, total);
+      });
+      const added = allItems.length - before;
+      totalAdded += added;
+      if (label) slog(`    ↳ ${label}: +${added} yeni URL`, added ? 'success' : 'warn');
+      if (pi % 6 === 5) await sleep(0);
+    }
+    return totalAdded;
   };
 
   // ── CATEGORY mode: every product in the Epey category listing ──
@@ -4165,6 +4242,16 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         ? data.filter : null;
       const brandFilter = data?.brandFilter && Array.isArray(data.brandFilter.values) && data.brandFilter.values.length
         ? data.brandFilter : null;
+      expectedCategoryTotal = Math.max(
+        Number(filter?.total) || 0,
+        Number(brandFilter?.total) || 0,
+        Number(data?.count) || 0
+      );
+      if (expectedCategoryTotal > maxProducts) {
+        const previousLimit = maxProducts;
+        maxProducts = Math.min(30000, expectedCategoryTotal + 100);
+        slog(`  ⚠️ Ürün limiti (${previousLimit}) Epey tahmininden düşük (${expectedCategoryTotal}). Tam kategori için hedef ${maxProducts} URL'ye yükseltildi.`, 'warn');
+      }
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
       const firstPageAdded = pushItems(itemsFromData(data));
@@ -4189,8 +4276,15 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         // Only after the normal stream fails to fill the requested limit do we
         // try the partition filter for very deep catalogs.
         if (filter && allItems.length < maxProducts && !scraperAbort) {
-          slog(`  ⏩ Ek derin sayfalama — filtre grubu ${filter.groupId}, ~${filter.total} ürün`, 'info');
-          const addedByFilter = await paginateStream(ajax, filter.values, logPage);
+          slog(`  ⏩ Ek derin sayfalama — filtre grubu ${filter.groupId}, ${filter.values.length} seçenek, ~${filter.total} ürün`, 'info');
+          const addedByFilter = await paginatePartitions(
+            ajax,
+            filter.values,
+            (value) => `${filter.groupId}:${String(value).split(':').pop()}`,
+            (_part, pageNo, added, total) => {
+              if (pageNo === 1 || added || pageNo % 10 === 0) logPage(pageNo, added, total);
+            }
+          );
           if (addedByFilter === 0) {
             slog(`  ⚠️ Filtreli AJAX yeni ürün getirmedi`, 'warn');
           }
@@ -4198,24 +4292,25 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
 
         if (brandFilter && allItems.length < maxProducts && !scraperAbort) {
           slog(`  ⏩ Marka partition taraması — ${brandFilter.values.length} marka, ~${brandFilter.total} ürün`, 'info');
-          for (let bi = 0; bi < brandFilter.values.length && allItems.length < maxProducts && !scraperAbort; bi++) {
-            const brand = brandFilter.values[bi];
-            const beforeBrand = allItems.length;
-            slog(`  • Marka ${bi + 1}/${brandFilter.values.length}: ${brand.name || brand.value} (~${brand.count})`, 'info');
-            await paginateStream(ajax, [brand.value], (pageNo, added, total) => {
+          await paginatePartitions(
+            ajax,
+            brandFilter.values,
+            (brand) => brand.name || brand.value,
+            (brand, pageNo, added, total) => {
               if (pageNo === 1 || added || pageNo % 10 === 0) {
                 slog(`    ✓ ${brand.name || brand.value} sayfa ${pageNo}: +${added} → toplam ${total}`, added ? 'success' : 'warn');
               }
-            });
-            const brandAdded = allItems.length - beforeBrand;
-            slog(`    ↳ ${brand.name || brand.value}: +${brandAdded} yeni URL`, brandAdded ? 'success' : 'warn');
-          }
+            }
+          );
         }
       } else if (!ajax) {
         slog(`  ✓ Kategori sayfası: +${firstPageAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstPageAdded ? 'success' : 'warn');
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
 
+      if (expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95) && !scraperAbort) {
+        slog(`  ⚠️ Eksik URL şüphesi: Epey tahmini ${expectedCategoryTotal}, toplanan ${allItems.length}. Bu kategori için proxy/partition tekrar denenmeli.`, 'warn');
+      }
       slog(`📦 Toplam ${allItems.length} ürün URL'si toplandı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
       return allItems.slice(0, maxProducts);
     }
