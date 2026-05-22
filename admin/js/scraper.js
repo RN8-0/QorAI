@@ -16,7 +16,9 @@ const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
 // Languages to translate Turkish specs into (skip tr since source is Turkish)
-const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// EU pivot (2026-05-23): 6 target languages instead of 11.
+// TR is the source language (Epey specs are Turkish), so it's not a target.
+const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // Epey product pages usually expose only 2-3 inline images. The full product
 // photo set lives on the "-resimleri.html" gallery page, so keep this enabled
 // to satisfy the catalog requirement of up to 8 product-owned images.
@@ -2313,6 +2315,48 @@ function _buildProductTranslations(p, targetLangs) {
   return { multiLangSpecs, multiLangSections, nameTranslated };
 }
 
+// Inline per-product translation hook used by the scraper save path.
+// Idempotent: re-running on an already-translated product is cheap because
+// every atom hits the dictionary cache.
+//
+// Flow per product:
+//   1. Make sure the dictionary is loaded once per session.
+//   2. Collect translatable atoms (spec keys, values, name, sub-lines).
+//   3. Ask DeepSeek for whatever atoms are still missing — chunked.
+//      Translation failures DO NOT block the save: a partial
+//      multiLangSpecs is acceptable; missing langs fall back to TR.
+//   4. Build the multiLangSpecs / multiLangSections / nameTranslated maps
+//      from the (now warmer) dictionary and merge them into the product.
+async function _translateProductInline(product) {
+  if (!product) return product;
+  try {
+    if (!_isEpeyTranslateProduct(product)) return product;
+    await _loadDeDict();
+    const sink = new Set();
+    _collectAtomsFromProduct(product, sink);
+    const unique = [...sink].filter(_shouldTranslateAtom);
+    const missing = unique.filter(
+      t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
+        TARGET_LANGS.some(l => !_deDictLookup(t, l))
+    );
+    if (missing.length) {
+      try {
+        await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
+      } catch (e) {
+        slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
+      }
+    }
+    const payload = _buildProductTranslations(product, TARGET_LANGS);
+    if (payload && typeof payload === 'object') Object.assign(product, payload);
+    // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
+    _deDictDirty = true;
+    _saveDeDict().catch(() => {});
+  } catch (e) {
+    slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
+  }
+  return product;
+}
+
 // Public API consumed by app.js category translator panel
 window.QorAiBulkTranslate = {
   isEpeyProduct: _isEpeyTranslateProduct,
@@ -3152,8 +3196,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       const clean = prepareProductPayload(product);
-      // Icecat-merge path removed (2026-05-23 EU pivot). All products now
-      // come from Epey/Geizhals scrapers which use compatible spec schemas.
+      // Inline translation hook (EU pivot): every scraped product is
+      // translated to the 6 target languages BEFORE PB write. The
+      // dictionary-first lookup means most atoms hit the local cache
+      // (zero API cost) — only new spec terms hit DeepSeek.
+      await _translateProductInline(clean);
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;

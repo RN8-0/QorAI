@@ -52,7 +52,10 @@ const RESUME        = !!ARGS.resume;
 const DRY_RUN       = !!ARGS['dry-run'];
 const VERBOSE       = !!ARGS.verbose;
 
-const TARGET_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
+// EU pivot (2026-05-23): 6 target languages instead of 11. Matches
+// the admin/scraper TARGET_LANGS so both inline and backfill paths
+// produce the same multiLangSpecs shape.
+const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-chat';
 const DEEPSEEK_KEY = resolveDeepSeekKey();
