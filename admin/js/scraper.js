@@ -4382,6 +4382,16 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       const ajax = data?.ajax && data.ajax.kategoriId ? data.ajax : null;
       const filter = data?.filter && Array.isArray(data.filter.values) && data.filter.values.length
         ? data.filter : null;
+      // Fallback partition filters. When the primary `filter` under-counts
+      // (e.g. smartphones: primary partition only covers ~70% of the catalog
+      // because Epey's default listing hides discontinued items) we iterate
+      // through the next-best filter groups (RAM, screen size, year, …) to
+      // pull additional slices. Each filter group selects a different cut
+      // of the catalog so their union maximises coverage. De-dup is handled
+      // by `pushItems`/`seenUrls`.
+      const filtersTopK = Array.isArray(data?.filtersTopK)
+        ? data.filtersTopK.filter(f => f && Array.isArray(f.values) && f.values.length)
+        : (filter ? [filter] : []);
       const brandFilter = data?.brandFilter && Array.isArray(data.brandFilter.values) && data.brandFilter.values.length
         ? data.brandFilter : null;
       expectedCategoryTotal = Math.max(
@@ -4415,20 +4425,30 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi`, 'warn');
         }
 
-        // Only after the normal stream fails to fill the requested limit do we
-        // try the partition filter for very deep catalogs.
-        if (filter && allItems.length < maxProducts && !scraperAbort) {
-          slog(`  ⏩ Ek derin sayfalama — filtre grubu ${filter.groupId}, ${filter.values.length} seçenek, ~${filter.total} ürün`, 'info');
+        // Only after the normal stream fails to fill the requested limit do
+        // we try partition filters. We iterate through TOP-K candidate
+        // filter groups so the union covers everything the default category
+        // listing hides. A filter group that returns +0 URLs is skipped on
+        // subsequent retries within the same category (no point looping it).
+        const filterGroupsToTry = filtersTopK.length ? filtersTopK : (filter ? [filter] : []);
+        for (let fi = 0; fi < filterGroupsToTry.length; fi++) {
+          if (allItems.length >= maxProducts || scraperAbort) break;
+          const f = filterGroupsToTry[fi];
+          const beforeCount = allItems.length;
+          slog(`  ⏩ Filtre grubu ${fi + 1}/${filterGroupsToTry.length} — ${f.groupId}, ${f.values.length} seçenek, ~${f.total} ürün`, 'info');
           const addedByFilter = await paginatePartitions(
             ajax,
-            filter.values,
-            (value) => `${filter.groupId}:${String(value).split(':').pop()}`,
+            f.values,
+            (value) => `${f.groupId}:${String(value).split(':').pop()}`,
             (_part, pageNo, added, total) => {
               if (pageNo === 1 || added || pageNo % 10 === 0) logPage(pageNo, added, total);
             }
           );
-          if (addedByFilter === 0) {
-            slog(`  ⚠️ Filtreli AJAX yeni ürün getirmedi`, 'warn');
+          const gained = allItems.length - beforeCount;
+          if (addedByFilter === 0 && gained === 0) {
+            slog(`  ⚠️ Filtre grubu ${f.groupId} yeni ürün getirmedi (zaten kapsanmış)`, 'warn');
+          } else {
+            slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
           }
         }
 

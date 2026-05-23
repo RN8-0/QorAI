@@ -714,8 +714,9 @@ function extractBestFilter(html) {
     addOption(m[1], m[2], name, count?.[1]);
   }
 
-  // A clean partition needs the catch-all "Belirtilmemiş" option. Among those,
-  // take the group covering the most products; tie-break on fewer options.
+  // A clean partition needs the catch-all "Belirtilmemiş" option. Among
+  // those, take the group covering the most products; tie-break on fewer
+  // options.
   let best = null;
   for (const [gid, g] of groups) {
     if (!g.hasUnspecified) continue;
@@ -730,6 +731,74 @@ function extractBestFilter(html) {
     total: best.total,
     values: best.values.map(vid => `${best.groupId}:${vid}`),
   };
+}
+
+// Return the TOP-K candidate partition filters (best first) so the scraper
+// can chain multiple coverage passes when the primary filter doesn't cover
+// every product. Epey's default category listing hides discontinued items,
+// but a non-default filter selection lifts that constraint — picking many
+// different filter groups (RAM, screen size, year, etc.) maximises union
+// coverage when iterated in sequence.
+//
+// Returns array of { groupId, total, values: ['gid:vid', ...] } sorted by
+// total descending. Catch-all ("Belirtilmemiş") groups are preferred but not
+// required; if no group has the catch-all we fall back to the largest
+// available groups.
+function extractTopFilters(html, limit = 4) {
+  const source = String(html || '');
+  const groups = new Map();
+  const addOption = (gid, vid, name, rawCount) => {
+    if (!gid || !vid) return;
+    const cleanName = String(name || '').replace(/\s+/g, ' ').trim();
+    const count = parseInt(String(rawCount || '0').replace(/\./g, ''), 10) || 0;
+    let g = groups.get(gid);
+    if (!g) { g = { values: new Map(), total: 0, hasUnspecified: false }; groups.set(gid, g); }
+    if (!g.values.has(vid)) { g.values.set(vid, count); g.total += count; }
+    if (/^belirtilmemiş/i.test(cleanName)) g.hasUnspecified = true;
+  };
+  const strict = /onclick=["'][^"']*filtre\(['"]?(\d+):(\d+)['"]?\)[^"']*["'][\s\S]{0,500}?<label\b[^>]*>([\s\S]{0,220}?)<\/label>/gi;
+  let m;
+  while ((m = strict.exec(source)) !== null) {
+    const text = m[3].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const count = text.match(/\(([\d.]+)\)/);
+    addOption(m[1], m[2], text.replace(/\s*\([\d.]+\)\s*$/, ''), count?.[1]);
+  }
+  const loose = /filtre\(['"]?(\d+):(\d+)['"]?\)/gi;
+  while ((m = loose.exec(source)) !== null) {
+    const chunk = source.slice(m.index, m.index + 700);
+    const text = chunk.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const count = text.match(/\(([\d.]+)\)/);
+    const name = text.split(/\([\d.]+\)/)[0].replace(/.*filtre\(['"]?\d+:\d+['"]?\).*/i, '').trim();
+    addOption(m[1], m[2], name, count?.[1]);
+  }
+  const ranked = [];
+  for (const [gid, g] of groups) {
+    if (g.values.size < 2) continue; // single-value groups can't partition
+    ranked.push({
+      groupId: gid,
+      total: g.total,
+      size: g.values.size,
+      hasUnspecified: g.hasUnspecified,
+      values: [...g.values.keys()].map(vid => `${gid}:${vid}`),
+    });
+  }
+  // Prefer (a) groups with "Belirtilmemiş" catch-all, (b) higher total
+  // coverage, (c) fewer options so each partition pull is bigger.
+  ranked.sort((a, b) => {
+    if (a.hasUnspecified !== b.hasUnspecified) return a.hasUnspecified ? -1 : 1;
+    if (b.total !== a.total) return b.total - a.total;
+    return a.size - b.size;
+  });
+  return ranked.slice(0, Math.max(1, limit)).map(g => ({
+    groupId: g.groupId,
+    total: g.total,
+    values: g.values,
+    hasUnspecified: g.hasUnspecified,
+  }));
 }
 
 function extractBrandFilter(html) {
@@ -1477,7 +1546,14 @@ const server = http.createServer(async (req, res) => {
         const links = extractListingLinksWithPrefixFallback(html, maxLinks, prefix);
         const productPrefix = productPrefixFromLinks(links, prefix);
         const ajax = extractAjaxParams(html);
+        // Primary filter (largest "Belirtilmemiş" catch-all partition).
         const filter = extractBestFilter(html);
+        // Top-K candidate filters: when the primary partition under-counts,
+        // the scraper falls through to the next-best filter group (RAM
+        // range, screen size, year, etc.) for additional coverage. Each
+        // filter group selects a different slice of the catalog so their
+        // union covers more than any single group on its own.
+        const filtersTopK = extractTopFilters(html, 4);
         const brandFilter = extractBrandFilter(html);
         const featuredBrandFilter = extractFeaturedBrandPages(html, prefix);
         const bestBrandFilter = featuredBrandFilter && (!brandFilter || featuredBrandFilter.total > brandFilter.total)
@@ -1485,6 +1561,7 @@ const server = http.createServer(async (req, res) => {
           : brandFilter;
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
           `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
+          `${filtersTopK.length > 1 ? ` · +${filtersTopK.length - 1} fallback filter groups` : ''}` +
           `${bestBrandFilter ? ` · brand partitions ${bestBrandFilter.values.length} (~${bestBrandFilter.total} ürün)` : ''}` +
           `${productPrefix !== prefix ? ` · product prefix ${productPrefix}` : ''}`);
         result = {
@@ -1494,6 +1571,7 @@ const server = http.createServer(async (req, res) => {
                 base: targetUrl, prefix: productPrefix }
             : null,
           filter,
+          filtersTopK,
           brandFilter: bestBrandFilter,
         };
       }
