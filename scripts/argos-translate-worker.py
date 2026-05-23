@@ -405,9 +405,71 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
                 "pt": "Nome da NPU (unidade de processamento neural)",
                 "ru": "Название NPU (нейронного процессорного блока)",
             },
+            "pil specifications": {
+                "en": "Battery specifications",
+                "de": "Akku-Spezifikationen",
+                "es": "Especificaciones de la batería",
+                "fr": "Spécifications de la batterie",
+                "pt": "Especificações da bateria",
+                "ru": "Характеристики батареи",
+            },
+            "pil özellikleri": {
+                "en": "Battery specifications",
+                "de": "Akku-Spezifikationen",
+                "es": "Especificaciones de la batería",
+                "fr": "Spécifications de la batterie",
+                "pt": "Especificações da bateria",
+                "ru": "Характеристики батареи",
+            },
+            "li-po (lityum-polymer)": {
+                "en": "Li-Po (lithium polymer)",
+                "de": "Li-Po (Lithium-Polymer)",
+                "es": "Li-Po (polímero de litio)",
+                "fr": "Li-Po (lithium-polymère)",
+                "pt": "Li-Po (polímero de lítio)",
+                "ru": "Li-Po (литий-полимер)",
+            },
+            "eyesafe (göz health certification)": {
+                "en": "Eyesafe (eye health certification)",
+                "de": "Eyesafe (Augengesundheitszertifizierung)",
+                "es": "Eyesafe (certificación de salud ocular)",
+                "fr": "Eyesafe (certification de santé oculaire)",
+                "pt": "Eyesafe (certificação de saúde ocular)",
+                "ru": "Eyesafe (сертификация защиты зрения)",
+            },
+            "eyesafe (göz sağlığı sertifikası)": {
+                "en": "Eyesafe (eye health certification)",
+                "de": "Eyesafe (Augengesundheitszertifizierung)",
+                "es": "Eyesafe (certificación de salud ocular)",
+                "fr": "Eyesafe (certification de santé oculaire)",
+                "pt": "Eyesafe (certificação de saúde ocular)",
+                "ru": "Eyesafe (сертификация защиты зрения)",
+            },
+            "hızlı": {
+                "en": "Fast charging", "de": "Schnellladen",
+                "es": "Carga rápida", "fr": "Charge rapide",
+                "pt": "Carregamento rápido", "ru": "Быстрая зарядка",
+            },
+            "non-flammable mat display": {
+                "en": "Anti-glare matte display",
+                "de": "Entspiegeltes mattes Display",
+                "es": "Pantalla mate antirreflejo",
+                "fr": "Écran mat antireflet",
+                "pt": "Tela fosca antirreflexo",
+                "ru": "Матовый антибликовый дисплей",
+            },
         }
         if key in tr_exact:
             return tr_exact[key].get(tgt_lang)
+
+        m = re.fullmatch(r"(\d{4})\s+([1-4])\.?\s*çeyrek", s, flags=re.I)
+        if m:
+            year, quarter = m.group(1), m.group(2)
+            return {
+                "en": f"{year} Q{quarter}", "de": f"{year} Q{quarter}",
+                "es": f"{year} T{quarter}", "fr": f"{year} T{quarter}",
+                "pt": f"{year} T{quarter}", "ru": f"{year} {quarter} кв.",
+            }.get(tgt_lang)
 
         m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*adet", s, flags=re.I)
         if m:
@@ -503,6 +565,43 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
 
     if src_lang == "de":
         import re
+
+        de_exact = {
+            "kein netzteil im lieferumfang": {
+                "tr": "Kutuda güç adaptörü yok",
+                "en": "No power supply included",
+                "es": "Fuente de alimentación no incluida",
+                "fr": "Alimentation non incluse",
+                "pt": "Fonte de alimentação não incluída",
+                "ru": "Блок питания не входит в комплект",
+            },
+            "kein power supply im lieferumfang": {
+                "tr": "Kutuda güç adaptörü yok",
+                "en": "No power supply included",
+                "es": "Fuente de alimentación no incluida",
+                "fr": "Alimentation non incluse",
+                "pt": "Fonte de alimentação não incluída",
+                "ru": "Блок питания не входит в комплект",
+            },
+            "tastatur mit de layout (beleuchtet, rubber-dome)": {
+                "tr": "Almanca düzenli klavye (aydınlatmalı, rubber-dome)",
+                "en": "Keyboard with German layout (backlit, rubber-dome)",
+                "es": "Teclado con distribución alemana (retroiluminado, rubber-dome)",
+                "fr": "Clavier avec disposition allemande (rétroéclairé, rubber-dome)",
+                "pt": "Teclado com layout alemão (retroiluminado, rubber-dome)",
+                "ru": "Клавиатура с немецкой раскладкой (с подсветкой, rubber-dome)",
+            },
+        }
+        if key in de_exact:
+            return de_exact[key].get(tgt_lang)
+
+        if re.search(r"\bBxHxT\b", s, flags=re.I):
+            label = {
+                "tr": "G x Y x D", "en": "W x H x D",
+                "es": "An x Al x Pr", "fr": "L x H x P",
+                "pt": "L x A x P", "ru": "Ш x В x Г",
+            }.get(tgt_lang, "W x H x D")
+            return re.sub(r"\bBxHxT\b", label, s, flags=re.I)
 
         m = re.fullmatch(r"(\d+(?:[.,]\d+)?)x\s+laden", s, flags=re.I)
         if m:

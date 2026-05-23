@@ -1320,8 +1320,30 @@ function _knownGermanRuleTranslation(germanText, targetLang) {
       tr: 'SO-DIMM modülü', en: 'SO-DIMM module', es: 'Módulo SO-DIMM',
       fr: 'Module SO-DIMM', pt: 'Módulo SO-DIMM', ru: 'Модуль SO-DIMM',
     },
+    'kein netzteil im lieferumfang': {
+      tr: 'Kutuda güç adaptörü yok', en: 'No power supply included',
+      es: 'Fuente de alimentación no incluida', fr: 'Alimentation non incluse',
+      pt: 'Fonte de alimentação não incluída', ru: 'Блок питания не входит в комплект',
+    },
+    'kein power supply im lieferumfang': {
+      tr: 'Kutuda güç adaptörü yok', en: 'No power supply included',
+      es: 'Fuente de alimentación no incluida', fr: 'Alimentation non incluse',
+      pt: 'Fonte de alimentação não incluída', ru: 'Блок питания не входит в комплект',
+    },
+    'tastatur mit de layout (beleuchtet, rubber-dome)': {
+      tr: 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)',
+      en: 'Keyboard with German layout (backlit, rubber-dome)',
+      es: 'Teclado con distribución alemana (retroiluminado, rubber-dome)',
+      fr: 'Clavier avec disposition allemande (rétroéclairé, rubber-dome)',
+      pt: 'Teclado com layout alemão (retroiluminado, rubber-dome)',
+      ru: 'Клавиатура с немецкой раскладкой (с подсветкой, rubber-dome)',
+    },
   };
   if (map[key]?.[targetLang]) return map[key][targetLang];
+  if (/\bBxHxT\b/i.test(germanText)) {
+    const label = ({ tr: 'G x Y x D', en: 'W x H x D', es: 'An x Al x Pr', fr: 'L x H x P', pt: 'L x A x P', ru: 'Ш x В x Г' })[targetLang] || 'W x H x D';
+    return String(germanText).replace(/\bBxHxT\b/gi, label);
+  }
   const mLoad = key.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
   if (mLoad) {
     const n = mLoad[1];
@@ -1396,6 +1418,7 @@ function _translationHasGermanResidue(targetLang, translation, sourceText = '') 
     'beschleunigungssensor', 'gesichtsscanner', 'aussparung', 'flach',
     'ab werk', 'nur notruf', 'textnachrichten', 'satellitenkommunikation',
     'hohlstecker', 'hohlbuchse', 'de-layout', 'so-dimm-module',
+    'kein', 'lieferumfang', 'tastatur', 'beleuchtet', 'bxhxt',
   ];
   const hasTerm = (term) => new RegExp(`(^|[^a-z0-9])${_escapeRegExp(term)}([^a-z0-9]|$)`, 'i').test(folded);
   if (residue.some(hasTerm)) return true;
@@ -1437,6 +1460,12 @@ function _normalizeGermanSourceTranslation(germanText, targetLang, translation) 
       .replace(/\bHohlstecker\b/gi, 'hollow plug')
       .replace(/\bHohlbuchse\b/gi, 'hollow socket')
       .replace(/\bNetzwerkanschluss\b/gi, 'network connection')
+      .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'No power supply included')
+      .replace(/\bim\s+Lieferumfang\b/gi, 'included')
+      .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Keyboard with German layout (backlit, rubber-dome)')
+      .replace(/\bTastatur\b/gi, 'keyboard')
+      .replace(/\bbeleuchtet\b/gi, 'backlit')
+      .replace(/\bBxHxT\b/g, 'W x H x D')
       .replace(/\bde-layout\b/gi, 'German keyboard layout')
       .replace(/\bso-dimm-module\b/gi, 'SO-DIMM module')
       .replace(/\bso-dımm-module\b/gi, 'SO-DIMM module')
@@ -1469,6 +1498,12 @@ function _normalizeGermanSourceTranslation(germanText, targetLang, translation) 
       .replace(/\bHohlstecker\b/gi, 'silindirik fiş')
       .replace(/\bHohlbuchse\b/gi, 'silindirik soket')
       .replace(/\bNetzwerkanschluss\b/gi, 'ağ bağlantısı')
+      .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'kutuda güç adaptörü yok')
+      .replace(/\bim\s+Lieferumfang\b/gi, 'kutuda')
+      .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)')
+      .replace(/\bTastatur\b/gi, 'klavye')
+      .replace(/\bbeleuchtet\b/gi, 'aydınlatmalı')
+      .replace(/\bBxHxT\b/g, 'G x Y x D')
       .replace(/\bde-layout\b/gi, 'Almanca klavye düzeni')
       .replace(/\bso-dimm-module\b/gi, 'SO-DIMM modülü')
       .replace(/\bfest verbaut\b/gi, 'sabit takılı')

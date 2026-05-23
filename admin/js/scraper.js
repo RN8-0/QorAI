@@ -1802,6 +1802,51 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
       fr: 'Nombre USB 3.x', pt: 'Quantidade USB 3.x', ru: 'Количество USB 3.x',
     })[lang] || 'USB 3.x count';
   }
+  if (/^pil\s+(ozellikleri|specifications)$/.test(s)) {
+    return ({
+      en: 'Battery specifications', de: 'Akku-Spezifikationen',
+      es: 'Especificaciones de la batería', fr: 'Spécifications de la batterie',
+      pt: 'Especificações da bateria', ru: 'Характеристики батареи',
+    })[lang] || 'Battery specifications';
+  }
+  if (/^li-?po\s*\(\s*lityum-polymer\s*\)$/.test(s)) {
+    return ({
+      en: 'Li-Po (lithium polymer)', de: 'Li-Po (Lithium-Polymer)',
+      es: 'Li-Po (polímero de litio)', fr: 'Li-Po (lithium-polymère)',
+      pt: 'Li-Po (polímero de lítio)', ru: 'Li-Po (литий-полимер)',
+    })[lang] || 'Li-Po (lithium polymer)';
+  }
+  const q = s.match(/^(\d{4})\s+([1-4])\.?\s*ceyrek$/);
+  if (q) {
+    return ({
+      en: `${q[1]} Q${q[2]}`, de: `${q[1]} Q${q[2]}`,
+      es: `${q[1]} T${q[2]}`, fr: `${q[1]} T${q[2]}`,
+      pt: `${q[1]} T${q[2]}`, ru: `${q[1]} ${q[2]} кв.`,
+    })[lang] || `${q[1]} Q${q[2]}`;
+  }
+  if (/\bgoz\b/.test(s) && /(health|saglik|certification|sertifika)/.test(s)) {
+    return ({
+      en: raw.replace(/g[öo]z/ig, 'eye').replace(/sağlığı|sagligi/ig, 'health').replace(/sertifikası|sertifikasi/ig, 'certification'),
+      de: raw.replace(/Eyesafe\s*/i, 'Eyesafe ').replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'Augengesundheitszertifizierung'),
+      es: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certificación de salud ocular'),
+      fr: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certification de santé oculaire'),
+      pt: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certificação de saúde ocular'),
+      ru: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'сертификация защиты зрения'),
+    })[lang] || raw.replace(/g[öo]z/ig, 'eye');
+  }
+  if (/^hizli$/.test(s)) {
+    return ({
+      en: 'Fast charging', de: 'Schnellladen', es: 'Carga rápida',
+      fr: 'Charge rapide', pt: 'Carregamento rápido', ru: 'Быстрая зарядка',
+    })[lang] || 'Fast charging';
+  }
+  if (/^(parlamayan\s+)?mat\s+(ekran|display)$/.test(s) || /^non-flammable\s+mat\s+display$/i.test(raw)) {
+    return ({
+      en: 'Anti-glare matte display', de: 'Entspiegeltes mattes Display',
+      es: 'Pantalla mate antirreflejo', fr: 'Écran mat antireflet',
+      pt: 'Tela fosca antirreflexo', ru: 'Матовый антибликовый дисплей',
+    })[lang] || 'Anti-glare matte display';
+  }
   if (/^\d+(?:[.,]\d+)?\s*adet$/.test(s)) return n;
   if (/^\d+\s*x\s*\d+\s*piksel$/.test(s)) {
     return ({
@@ -1927,7 +1972,8 @@ function _translationHasTurkishResidue(targetLang, translation, sourceText = '')
   if (!folded) return false;
   const residue = [
     'batarya', 'sarj', 'dakika', 'saat', 'dongu', 'adet', 'adedi',
-    'piksel', 'uretim', 'uretimi', 'teknoloji', 'teknolojisi',
+    'piksel', 'pil', 'lityum', 'ceyrek', 'goz', 'hizli',
+    'uretim', 'uretimi', 'teknoloji', 'teknolojisi',
     'ozellik', 'ozellikleri', 'kamera ozellikleri', 'on kamera',
     'arka kamera', 'ikinci arka', 'ucuncu arka', 'kart okuyucu',
     'klavye', 'minirsel', 'sinirsel', 'yalnizca', 'milyon',
@@ -1964,6 +2010,16 @@ function _normalizeTurkishSourceTranslation(sourceText, targetLang, translation)
   if (targetLang === 'en') {
     out = out
       .replace(/\bBatarya\b/gi, 'Battery')
+      .replace(/\bPil\s+Specifications\b/gi, 'Battery specifications')
+      .replace(/\bPil\b/gi, 'Battery')
+      .replace(/\bLi-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)')
+      .replace(/\blityum\b/gi, 'lithium')
+      .replace(/\b(\d{4})\s+([1-4])\.?\s*Çeyrek\b/gi, '$1 Q$2')
+      .replace(/\bg[öo]z\s+health\s+certification\b/gi, 'eye health certification')
+      .replace(/\bg[öo]z\b/gi, 'eye')
+      .replace(/\bNon-flammable\s+mat\s+display\b/gi, 'Anti-glare matte display')
+      .replace(/^Faster$/i, 'Fast charging')
+      .replace(/^Supply ability:\s*low frequency$/i, 'Efficiency core base frequency')
       .replace(/\bNavigasyon\b/gi, 'Navigation')
       .replace(/\bKart\s+Okuyucu\b/gi, 'Card reader')
       .replace(/\bKlavye\b/gi, 'Keyboard')

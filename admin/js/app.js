@@ -2893,18 +2893,35 @@ function _renderProductModal(p,variants=[]){
         'Kart Okuyucu Specifications': 'Card reader specifications',
         'Klavye Specifications': 'Keyboard specifications',
         'USB 3.x Adedi': 'USB 3.x count',
+        'Pil Specifications': 'Battery specifications',
+        'Li-po (lityum-polymer)': 'Li-Po (lithium polymer)',
+        'Eyesafe (göz health certification)': 'Eyesafe (eye health certification)',
+        'Non-flammable mat display': 'Anti-glare matte display',
+        'Supply ability: low frequency': 'Efficiency core base frequency',
+        'Faster': 'Fast charging',
         '2 Adet': '2',
         '24 Adet': '24',
         '4 Zellen': '4 cells',
         'N/a': 'N/A',
         'Netzteil': 'Power supply',
         'Stecker': 'Plug',
+        'kein power supply im Lieferumfang': 'No power supply included',
+        'kein Netzteil im Lieferumfang': 'No power supply included',
+        'Tastatur mit DE layout (beleuchtet, Rubber-Dome)': 'Keyboard with German layout (backlit, rubber-dome)',
         'Baubform': 'Form factor',
         'Bauform': 'Form factor',
       };
       if (exact[out]) out = exact[out];
       out = out
         .replace(/\bBatarya\b/gi, 'Battery')
+        .replace(/\bPil\s+Specifications\b/gi, 'Battery specifications')
+        .replace(/\bPil\b/gi, 'Battery')
+        .replace(/\bLi-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)')
+        .replace(/\blityum\b/gi, 'lithium')
+        .replace(/\b(\d{4})\s+([1-4])\.?\s*Çeyrek\b/gi, '$1 Q$2')
+        .replace(/\bg[öo]z\s+health\s+certification\b/gi, 'eye health certification')
+        .replace(/\bg[öo]z\b/gi, 'eye')
+        .replace(/\bNon-flammable\s+mat\s+display\b/gi, 'Anti-glare matte display')
         .replace(/\bNavigasyon\b/gi, 'Navigation')
         .replace(/\bKart\s+Okuyucu\b/gi, 'Card reader')
         .replace(/\bKlavye\b/gi, 'Keyboard')
@@ -2948,6 +2965,12 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bHohlstecker\b/gi, 'hollow plug')
         .replace(/\bHohlbuchse\b/gi, 'hollow socket')
         .replace(/\bNetzwerkanschluss\b/gi, 'network connection')
+        .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'No power supply included')
+        .replace(/\bim\s+Lieferumfang\b/gi, 'included')
+        .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Keyboard with German layout (backlit, rubber-dome)')
+        .replace(/\bTastatur\b/gi, 'keyboard')
+        .replace(/\bbeleuchtet\b/gi, 'backlit')
+        .replace(/\bBxHxT\b/g, 'W x H x D')
         .replace(/\bde-layout\b/gi, 'DE layout')
         .replace(/\bso-dimm-module\b/gi, 'SO-DIMM module')
         .replace(/\bso-dımm-module\b/gi, 'SO-DIMM module')
@@ -2996,6 +3019,9 @@ function _renderProductModal(p,variants=[]){
         'Netzteil': 'Güç adaptörü',
         'Stecker': 'Fiş',
         'Klinke': 'Jak',
+        'kein power supply im Lieferumfang': 'Kutuda güç adaptörü yok',
+        'kein Netzteil im Lieferumfang': 'Kutuda güç adaptörü yok',
+        'Tastatur mit DE layout (beleuchtet, Rubber-Dome)': 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)',
         'de-layout': 'Almanca klavye düzeni',
         'so-dimm-module': 'SO-DIMM modülü',
         'Netzwerkanschluss': 'Ağ bağlantısı',
@@ -3026,6 +3052,12 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bHohlstecker\b/gi, 'silindirik fiş')
         .replace(/\bHohlbuchse\b/gi, 'silindirik soket')
         .replace(/\bNetzwerkanschluss\b/gi, 'ağ bağlantısı')
+        .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'kutuda güç adaptörü yok')
+        .replace(/\bim\s+Lieferumfang\b/gi, 'kutuda')
+        .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)')
+        .replace(/\bTastatur\b/gi, 'klavye')
+        .replace(/\bbeleuchtet\b/gi, 'aydınlatmalı')
+        .replace(/\bBxHxT\b/g, 'G x Y x D')
         .replace(/\bde-layout\b/gi, 'Almanca klavye düzeni')
         .replace(/\bso-dimm-module\b/gi, 'SO-DIMM modülü')
         .replace(/\bBauform\b/gi, 'form faktörü')
@@ -3123,6 +3155,8 @@ function _renderProductModal(p,variants=[]){
     if (/\byalnizca\s+esim\b/.test(s)) return cleanupModalText(raw.replace(/yaln[ıi]zca\s+esim/ig, p('onlyEsim')));
     if (/\bspecificationsi\b/i.test(raw)) return cleanupModalText(raw.replace(/\bspecificationsi\b/ig, p('specifications')));
     if (/\bteknolojisi\b/i.test(raw)) return cleanupModalText(raw.replace(/\bteknolojisi\b/ig, p('technology')));
+    const q = s.match(/^(\d{4})\s+([1-4])\.?\s*ceyrek$/);
+    if (q) return cleanupModalText(({ en:`${q[1]} Q${q[2]}`, de:`${q[1]} Q${q[2]}`, es:`${q[1]} T${q[2]}`, fr:`${q[1]} T${q[2]}`, pt:`${q[1]} T${q[2]}`, ru:`${q[1]} ${q[2]} кв.` })[lang] || `${q[1]} Q${q[2]}`);
     if (!n) return null;
     const maps = {
       update: { en:`${n}-Year Update Guarantee`, de:`${n} Jahre Update-Garantie`, es:`Garantia De Actualizaciones De ${n} Anos`, fr:`Garantie De Mises A Jour De ${n} Ans`, pt:`Garantia De Atualizacoes De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений` },
@@ -3165,7 +3199,8 @@ function _renderProductModal(p,variants=[]){
     const localized = {};
     for (const [sec, obj] of Object.entries(sections)) {
       if (!obj || typeof obj !== 'object') continue;
-      const localSec = (secMap && secMap[sec] && typeof secMap[sec] === 'string') ? secMap[sec] : sec;
+      const localSecRaw = (secMap && secMap[sec] && typeof secMap[sec] === 'string') ? secMap[sec] : lookupLocalizedText(sec);
+      const localSec = cleanupModalText(localSecRaw);
       localized[localSec] = {};
       for (const [k, v] of Object.entries(obj)) {
         const directSectionVal = secMap && secMap[sec] && typeof secMap[sec] === 'object' ? secMap[sec][k] : null;
