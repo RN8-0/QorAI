@@ -985,7 +985,20 @@ function parseSpecs(doc) {
 // ═══════════════════════════════════════
 
 function getDict() {
-  return (typeof window !== 'undefined' && window.QorAiDict) ? window.QorAiDict : null;
+  const dict = (typeof window !== 'undefined' && window.QorAiDict) ? window.QorAiDict : null;
+  if (!dict) return null;
+  // Legacy compat: dictionary.js used to expose translateKey/translateValue;
+  // the new QorAiDict (scraper.js) doesn't. Wrap with identity stubs so the
+  // pre-canonical TR/DE clean-up still works. Real spec normalisation runs
+  // afterwards via QorAiSpecCanonical.canonicalizeProduct().
+  if (typeof dict.translateKey !== 'function' || typeof dict.translateValue !== 'function') {
+    const wrap = {};
+    for (const k of Object.keys(dict)) wrap[k] = dict[k];
+    wrap.translateKey   = (k) => String(k || '').trim() || 'Specification';
+    wrap.translateValue = (v) => String(v == null ? '' : v).trim();
+    return wrap;
+  }
+  return dict;
 }
 
 function translateSpecsObject(rawSpecs) {

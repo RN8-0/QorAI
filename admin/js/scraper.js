@@ -1337,7 +1337,23 @@ function parseSpecs(doc) {
 // ═══════════════════════════════════════
 
 function getDict() {
-  return (typeof window !== 'undefined' && (window.QorAiStaticDict || window.QorAiDict)) ? (window.QorAiStaticDict || window.QorAiDict) : null;
+  const dict = (typeof window !== 'undefined')
+    ? (window.QorAiStaticDict || window.QorAiDict) : null;
+  if (!dict) return null;
+  // EU pivot (2026-05-23): the static dictionary.js module that used to
+  // expose translateKey/translateValue was removed. Several legacy spec
+  // pre-cleaners (translateSpecsObject/translateSections/translateKeySpecs)
+  // still rely on those methods. Wrap with identity stubs so they no-op
+  // safely — actual TR→EN canonicalization now happens later, via
+  // QorAiSpecCanonical.canonicalizeProduct() inside prepareProductPayload().
+  if (typeof dict.translateKey !== 'function' || typeof dict.translateValue !== 'function') {
+    const wrap = {};
+    for (const k of Object.keys(dict)) wrap[k] = dict[k];
+    wrap.translateKey   = (k) => String(k || '').trim() || 'Specification';
+    wrap.translateValue = (v) => String(v == null ? '' : v).trim();
+    return wrap;
+  }
+  return dict;
 }
 
 const TR_LEFTOVER_FIXES = [
