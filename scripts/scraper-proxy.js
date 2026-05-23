@@ -959,6 +959,50 @@ async function fetchWithPuppeteer(url, opts = {}) {
       // gallery thumbnails. No artificial pauses — this is the hot path.
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
       await _humanDelay(120, 220);
+
+      // ── EPEY PRODUCT DETAIL: expand every collapsed spec section ──────
+      // Epey hides ~half of the spec table behind "Tüm Özellikler" expanders
+      // (display:none until clicked). The scraper used to read 42/125 specs
+      // because parseSpecs() only sees visible DOM. We reveal everything
+      // before reading page.content() so the parser receives the full table.
+      const isEpeyProductDetail =
+        /(^|\.)epey\.com\//i.test(lowerUrl) && /\.html(?:[?#]|$)/i.test(lowerUrl);
+      if (isEpeyProductDetail) {
+        try {
+          await page.evaluate(() => {
+            // 1. Click every plausible "show more" / "tüm özellikler" toggle.
+            const toggleRe = /tüm[\s_-]*özellik|daha fazla|detayl(?:ı|i)|gizli|expand|all\s*spec|tümünü/i;
+            document.querySelectorAll('a, button, span, div, [onclick]')
+              .forEach(el => {
+                const t = (el.textContent || '').trim();
+                if (t.length < 80 && toggleRe.test(t)) {
+                  try { el.click(); } catch {}
+                }
+              });
+            // 2. Force-show anything still hidden by inline style or class
+            //    (Epey toggles via 'gizli' / 'd-none' / inline display:none).
+            const showAll = (root) => {
+              root.querySelectorAll(
+                '[style*="display: none"], [style*="display:none"], .gizli, .hidden, .d-none, .collapse'
+              ).forEach(el => {
+                try {
+                  el.style.display = '';
+                  el.style.visibility = '';
+                  el.classList.remove('gizli', 'hidden', 'd-none');
+                  el.classList.add('show', 'in');
+                } catch {}
+              });
+            };
+            showAll(document);
+            // Some sections are wrapped in <details> — open them all.
+            document.querySelectorAll('details').forEach(d => { d.open = true; });
+          });
+          // Give the DOM a beat to settle if any JS re-runs after the clicks.
+          await _humanDelay(180, 320);
+        } catch (expandErr) {
+          console.warn(`  ⚠️ Epey spec-expand pass failed: ${expandErr.message}`);
+        }
+      }
     }
 
     if (status === 404) return { html: null, status: 404, isChallenge: false };
