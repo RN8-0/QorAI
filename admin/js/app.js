@@ -1927,14 +1927,28 @@ function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=docum
 // PocketBase `public_config.tr_translation_dict`. Add new Turkish terms,
 // override DeepSeek output, or fix wrong translations — the next scrape
 // run automatically uses these values via _deDictLookup.
-const DICT_VIEW_LANGS = ['en','de','es','fr','it','ja','nl','pl','pt','sv','ar'];
+const DICT_VIEW_LANGS = ['en','de','es','fr','pt','ru'];
+let _dictSource = 'tr';
+
+function _currentDictApi(){
+  if (_dictSource === 'de') return window.QorAiGeizhals?.dict || null;
+  return window.QorAiDict || null;
+}
+
+function switchDictionarySource(src){
+  _dictSource = src === 'de' ? 'de' : 'tr';
+  openDictionaryPanel();
+}
 
 async function openDictionaryPanel(){
-  if (!window.QorAiDict) { toast('Scraper modülü yüklenmemiş', 'e'); return; }
+  const api = _currentDictApi();
+  if (!api) { toast('Sözlük modülü yüklenmemiş', 'e'); return; }
   try {
-    _seedDictionaryFromStaticFallback();
+    const srcSel = document.getElementById('dictSourceSelect');
+    if (srcSel) srcSel.value = _dictSource;
+    if (_dictSource === 'tr') _seedDictionaryFromStaticFallback();
     renderDictionaryTable();
-    const loadPromise = window.QorAiDict.load();
+    const loadPromise = api.load();
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
     try {
       await Promise.race([loadPromise, timeout]);
@@ -1942,7 +1956,7 @@ async function openDictionaryPanel(){
       console.warn('[dictionary] PB load slow/failed:', e.message || e);
       toast('Sözlük DB yavaş; statik sözlük gösteriliyor, yeni kayıtlar geldikçe eklenecek', 'w', 5000);
     }
-    _seedDictionaryFromStaticFallback();
+    if (_dictSource === 'tr') _seedDictionaryFromStaticFallback();
     renderDictionaryTable();
     // Ensure the category dropdown for the bulk translator is populated.
     if (typeof populateScraperCategories === 'function') {
@@ -1982,16 +1996,18 @@ function renderDictionaryTable(){
 
   // Build header once per render (cheap, keeps things idempotent)
   head.innerHTML =
-    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:200px;background:var(--bg2)">Turkish term</th>' +
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:200px;background:var(--bg2)">Source term</th>' +
     DICT_VIEW_LANGS.map(l =>
       `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);min-width:140px;background:var(--bg2);text-transform:uppercase;font-size:10px">${l}</th>`
     ).join('') +
     '<th style="padding:6px 8px;border-bottom:1px solid var(--border);background:var(--bg2);width:50px"></th>';
 
-  const cache = window.QorAiDict.cache();
+  const api = _currentDictApi();
+  if (!api?.cache) return;
+  const cache = api.cache();
   const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
   const scoreKey = (k) => DICT_VIEW_LANGS.reduce((n, l) => n + (cache[k]?.[l] ? 1 : 0), 0);
-  const allKeys = Object.keys(cache).filter(k => !/\d/.test(k)).sort((a, b) => {
+  const allKeys = Object.keys(cache).sort((a, b) => {
     const scoreDelta = scoreKey(b) - scoreKey(a);
     if (scoreDelta) return scoreDelta;
     const bMulti = DICT_VIEW_LANGS.some(l => l !== 'en' && cache[b]?.[l]);
@@ -2038,13 +2054,12 @@ function _scheduleDictionaryLiveRender(detail = '', delay = 350){
 }
 
 function addDictionaryRow(){
-  const term = (prompt('Yeni Türkçe terim:') || '').trim();
+  const label = _dictSource === 'de' ? 'Yeni Almanca/Geizhals terim:' : 'Yeni Türkçe/Epey terim:';
+  const term = (prompt(label) || '').trim();
   if (!term) return;
-  if (/\d/.test(term)) {
-    toast('Sözlüğe rakam içeren terim eklenmez; sadece kelime/ifade ekle.', 'w');
-    return;
-  }
-  const cache = window.QorAiDict.cache();
+  const api = _currentDictApi();
+  if (!api?.cache) return;
+  const cache = api.cache();
   const k = term.toLowerCase();
   if (!cache[k]) cache[k] = {};
   _dictDirty = true;
@@ -2056,7 +2071,7 @@ function addDictionaryRow(){
 
 function deleteDictRow(key){
   if (!confirm(`"${key}" terimi silinsin mi?`)) return;
-  window.QorAiDict.remove(key);
+  _currentDictApi()?.remove?.(key);
   _dictDirty = true;
   renderDictionaryTable();
 }
@@ -2070,18 +2085,19 @@ async function saveDictionary(){
     const l = inp.getAttribute('data-dict-lang');
     const v = inp.value.trim();
     if (!k || !l) return;
-    if (/\d/.test(k)) return;
-    if (v) window.QorAiDict.set(k, l, v);
+    const api = _currentDictApi();
+    if (!api) return;
+    if (v) api.set(k, l, v);
     else {
       // Empty value → drop that lang entry so the renderer falls back to Turkish
-      const cache = window.QorAiDict.cache();
+      const cache = api.cache();
       if (cache[k] && cache[k][l]) { delete cache[k][l]; _dictDirty = true; }
     }
   });
 
   if (!_dictDirty) { toast('Değişiklik yok', 'i'); return; }
   try {
-    await window.QorAiDict.save();
+    await _currentDictApi().save();
     _dictDirty = false;
     toast('✅ Sözlük kaydedildi', 's');
     logActivity('dictionary_save', `${inputs.length} cells persisted`);
@@ -2131,10 +2147,11 @@ function _xlateProgress(done, total, status, opts = {}){
 function _refreshDictionaryStatsOnly(){
   try {
     const stats = document.getElementById('dictStats');
-    if (!stats || !window.QorAiDict?.cache) return;
-    const cache = window.QorAiDict.cache();
+    const api = _currentDictApi();
+    if (!stats || !api?.cache) return;
+    const cache = api.cache();
     const q = (document.getElementById('dictSearch')?.value || '').toLowerCase().trim();
-    const allKeys = Object.keys(cache).filter(k => !/\d/.test(k));
+    const allKeys = Object.keys(cache);
     const visible = q
       ? allKeys.filter(k => k.includes(q) || DICT_VIEW_LANGS.some(l => String(cache[k]?.[l] || '').toLowerCase().includes(q))).length
       : allKeys.length;
@@ -2580,9 +2597,8 @@ const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','
 // <select> elements, which previously made every option look identical.
 const MODAL_LANGS = [
   ['tr','Türkçe (source)'], ['en','English'], ['de','Deutsch'],
-  ['es','Español'],         ['fr','Français'], ['it','Italiano'],
-  ['ja','日本語'],          ['nl','Nederlands'], ['pl','Polski'],
-  ['pt','Português'],       ['sv','Svenska'],   ['ar','العربية'],
+  ['es','Español'],         ['fr','Français'], ['pt','Português'],
+  ['ru','Русский'],
 ];
 let _modalLang = 'tr';
 
@@ -2720,6 +2736,7 @@ async function openProduct(id){
   if(!p)return;
   // Default to user's saved preference (else Turkish source)
   _modalLang = localStorage.getItem('qorai_modal_lang') || 'tr';
+  if (!MODAL_LANGS.some(([code]) => code === _modalLang)) _modalLang = 'tr';
   const body=document.getElementById('modalBody');
   if(body)body.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading variants...</div>';
   document.getElementById('modalOverlay').style.display='flex';
@@ -2775,6 +2792,19 @@ function _renderProductModal(p,variants=[]){
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
+  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || ''));
+  const dictApiForModal = sourceIsGeizhals ? window.QorAiGeizhals?.dict : window.QorAiDict;
+  const dictCacheForModal = (lang !== 'tr' && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
+  function lookupLocalizedText(text){
+    const raw = String(text ?? '').trim();
+    if (!raw || lang === 'tr') return text;
+    if (ml && typeof ml[raw] === 'string' && ml[raw]) return ml[raw];
+    const lower = raw.toLowerCase();
+    if (ml && typeof ml[lower] === 'string' && ml[lower]) return ml[lower];
+    const d = dictCacheForModal?.[lower]?.[lang];
+    if (typeof d === 'string' && d.trim()) return d.trim();
+    return text;
+  }
   // Build localized sections on the fly: keep the original Turkish section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
   // inside via the cached multiLangSpecs lookup.
@@ -2787,7 +2817,7 @@ function _renderProductModal(p,variants=[]){
     const directSections = normalizeSpecSectionsShape(rawLangSections);
     if (directSections) { sections = directSections; directLocalizedSections = true; }
   }
-  if (sections && ml && !directLocalizedSections) {
+  if (sections && lang !== 'tr' && !directLocalizedSections) {
     const secMap = rawLangSections
       ? (isSimpleSectionNameMap ? rawLangSections : normalizeSpecSectionsShape(rawLangSections))
       : null;
@@ -2798,8 +2828,8 @@ function _renderProductModal(p,variants=[]){
       localized[localSec] = {};
       for (const [k, v] of Object.entries(obj)) {
         const directSectionVal = secMap && secMap[sec] && typeof secMap[sec] === 'object' ? secMap[sec][k] : null;
-        const tk = ml[k] || k;
-        const tv = directSectionVal || ml[String(v)] || v;
+        const tk = lookupLocalizedText(k);
+        const tv = directSectionVal || lookupLocalizedText(v);
         localized[localSec][tk] = tv;
       }
     }
@@ -2813,7 +2843,7 @@ function _renderProductModal(p,variants=[]){
   let bricks='';
   // Localised affirmative/negative labels — boolean specs must render in the
   // language the modal is showing, not hard-coded English.
-  const _ynPair=({tr:['Evet','Hayır'],en:['Yes','No'],de:['Ja','Nein'],es:['Sí','No'],fr:['Oui','Non'],it:['Sì','No'],ja:['Var','Yok'],nl:['Ja','Nee'],pl:['Tak','Nie'],pt:['Sim','Não'],sv:['Ja','Nej'],ar:['نعم','لا']})[lang]||['Yes','No'];
+  const _ynPair=({tr:['Evet','Hayır'],en:['Yes','No'],de:['Ja','Nein'],es:['Sí','No'],fr:['Oui','Non'],pt:['Sim','Não'],ru:['Да','Нет']})[lang]||['Yes','No'];
   const _isYesV=v=>/^(yes|var|evet|true|ja|oui|sí|si|sim|tak)$/i.test(String(v).trim());
   const _isNoV=v=>/^(no|yok|hayır|hayir|nein|non|não|nao|nie|false)$/i.test(String(v).trim());
   function fmtSpecVal(s){
@@ -2851,8 +2881,8 @@ function _renderProductModal(p,variants=[]){
     // individual bullet (e.g. "fest verbaut" → "sabit takılı"). The scraper's
     // translateGermanSpecs now stores both block- and line-level entries, so
     // this lookup typically succeeds for unrelated locales as well.
-    const localized = (ml && lang !== 'tr')
-      ? lines.map(line => (typeof ml[line] === 'string' && ml[line]) ? ml[line] : line)
+    const localized = (lang !== 'tr')
+      ? lines.map(line => lookupLocalizedText(line))
       : lines;
     if(localized.length>1)return`<div class="pm-v-list">${localized.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
     return escHtml(localized[0]||s);
@@ -2861,7 +2891,7 @@ function _renderProductModal(p,variants=[]){
     const s=String(v),y=_isYesV(s),n=_isNoV(s);
     return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(ml&&lang!=='tr')?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[ml[k]||k,ml[String(v)]||v])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(lang!=='tr')?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[lookupLocalizedText(k),lookupLocalizedText(v)])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
@@ -2912,7 +2942,7 @@ function closeModal(){document.getElementById('modalOverlay').style.display='non
 // Switch the modal to a different language WITHOUT any API call:
 // the translations have been pre-baked into `multiLangSpecs` during scrape.
 function switchModalLang(id, lang){
-  _modalLang = lang;
+  _modalLang = MODAL_LANGS.some(([code]) => code === lang) ? lang : 'tr';
   try { localStorage.setItem('qorai_modal_lang', lang); } catch {}
   openProduct(id);
 }

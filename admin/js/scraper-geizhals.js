@@ -1055,6 +1055,7 @@ function filterSpecs(specs, sections) {
 const _deDictCache = {}; // { 'some german text': { en: '...', tr: '...', ... } }
 let _deDictLoaded = false;
 let _deDictDirty = false;
+const _deDictInflight = new Map(); // normalized source atom -> shared DeepSeek promise
 const DE_DICT_PB_KEY = 'de_translation_dict';
 
 async function _loadDeDict() {
@@ -1090,8 +1091,12 @@ async function _saveDeDict() {
 }
 
 // Lookup German text in cache for a specific target language
+function _normalizeDictSourceKey(text) {
+  return String(text || '').toLowerCase().trim();
+}
+
 function _deDictLookup(germanText, targetLang) {
-  const key = germanText.toLowerCase().trim();
+  const key = _normalizeDictSourceKey(germanText);
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) return entry[targetLang];
   return null;
@@ -1629,22 +1634,56 @@ async function _translateProductInline(product) {
     }
   };
   try {
+    const startedAt = Date.now();
+    xlog(`▶ ${productLabel} — DE sözlük yükleniyor`, 'info');
     await _loadDeDict();
     const sink = new Set();
     _collectAtomsFromProduct(product, sink);
     const unique = [...sink].filter(_shouldTranslateAtom);
-    const missing = unique.filter(
+    let missing = unique.filter(
       t => TARGET_LANGS.some(l => !_deDictLookup(t, l))
     );
+    const sharedWaits = [...new Set(
+      missing
+        .map(t => _deDictInflight.get(_normalizeDictSourceKey(t)))
+        .filter(Boolean)
+    )];
+    if (sharedWaits.length) {
+      xlog(`  · ${sharedWaits.length} mevcut DeepSeek işi bekleniyor (aynı atom tekrar istenmeyecek)`, 'info');
+      await Promise.allSettled(sharedWaits);
+      missing = unique.filter(t => TARGET_LANGS.some(l => !_deDictLookup(t, l)));
+    }
     const cached = unique.length - missing.length;
     if (missing.length === 0) {
       xlog(`✓ ${productLabel} — ${cached} atom cache (0 API)`, 'success');
     } else {
-      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek`, 'info');
+      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} yeni atom → DeepSeek`, 'info');
       const t0 = Date.now();
       try {
-        await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
-        xlog(`  ✓ ${missing.length} atom (${Date.now() - t0}ms)`, 'success');
+        const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
+          if (ev.phase === 'chunk-start') {
+            const sample = (ev.sample || []).map(s => s.length > 28 ? `${s.slice(0, 26)}…` : s).join(', ');
+            xlog(`  → DeepSeek pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
+          } else if (ev.phase === 'chunk-done') {
+            xlog(`  ✓ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize}`, 'success');
+          } else if (ev.phase === 'chunk-error') {
+            xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+          }
+        });
+        for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);
+        const heartbeat = setInterval(() => {
+          xlog(`  … DeepSeek çalışıyor · ${missing.length} atom · ${Math.round((Date.now() - t0) / 1000)}s`, 'info');
+        }, 5000);
+        try {
+          await translatePromise;
+        } finally {
+          clearInterval(heartbeat);
+          for (const t of missing) {
+            const key = _normalizeDictSourceKey(t);
+            if (_deDictInflight.get(key) === translatePromise) _deDictInflight.delete(key);
+          }
+        }
+        xlog(`  ✓ ${missing.length} atom işlendi (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
       } catch (e) {
         xlog(`  ⚠ DeepSeek failed: ${e.message}`, 'warn');
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
@@ -1653,7 +1692,8 @@ async function _translateProductInline(product) {
     const payload = _buildProductTranslations(product, TARGET_LANGS);
     if (payload && typeof payload === 'object') Object.assign(product, payload);
     _deDictDirty = true;
-    _saveDeDict().catch(() => {});
+    await _saveDeDict().catch(() => {});
+    xlog(`✓ ${productLabel} — çeviri payload hazır · toplam ${((Date.now() - startedAt) / 1000).toFixed(1)}s · dict ${Object.keys(_deDictCache).length}`, 'success');
   } catch (e) {
     xlog(`✗ ${productLabel} — error: ${e.message}`, 'error');
     slog(`  ⚠ inline translate error: ${e.message}`, 'warn');

@@ -174,6 +174,7 @@ function xlog(msg, type = 'info') {
     (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (cb) => setTimeout(cb, 16))(_flushXlog);
   }
 }
+if (typeof window !== 'undefined') window.xlog = xlog;
 
 function updateProgress(current, total, label) {
   const pg = document.getElementById('scraperProgress');
@@ -1517,6 +1518,7 @@ if (typeof window !== 'undefined' && _staticQorAiDict && !window.QorAiStaticDict
 // In-memory TR→target dictionary cache (lazy-loaded from PB)
 const _deDictCache = {}; // { 'some turkish text': { en: '...', de: '...', ... } }
 const _deDictFailedThisRun = new Set();
+const _deDictInflight = new Map(); // normalized source atom -> shared DeepSeek promise
 let _deDictLoaded = false;
 let _deDictLoadPromise = null;
 let _deDictDirty = false;
@@ -1783,10 +1785,6 @@ function _shouldPreserve(token) {
 function _shouldTranslateAtom(text) {
   const s = String(text || '').trim();
   if (!s || s.length < 2) return false;
-  // Dictionary entries are atomic words/phrases only. Values with numbers
-  // like "hızlı şarj (18w)", "128 GB" or "2025" are rendered from the source
-  // value; they must not bloat/poison the learned dictionary.
-  if (/\d/.test(s)) return false;
   if (!/[a-zA-ZÀ-ÿ]/.test(s)) return false;
   if (/^\d{8,14}$/.test(s)) return false; // GTIN/EAN/UPC
   if (/^[\d\s.,:+/()°%'"-]+$/.test(s)) return false;
@@ -2075,18 +2073,20 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
               messages: [
                 {
                   role: 'system',
-                  content: `You are a technical product specification translator. For each Turkish tech spec term, return a JSON object mapping the original Turkish text to translations in the following languages: ${langCodes}.
+                  content: `You are a technical product specification translator. For each Turkish, English, or mixed-language tech spec term, return a JSON object mapping the original text to translations in the following languages: ${langCodes}.
 Rules:
 - Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
 - Product names / brand names stay as-is.
+- If the requested target language is the same as the input language, return the clean original text for that language.
+- Translate Turkish warranty/support phrases such as "6 Yıl Güvenlik Güncellemesi Garantisi" into natural English/German/etc.; do not leave them in Turkish.
 - Preserve newlines (\\n) inside multi-line values.
 - Return ONLY a single JSON object of the form:
-  {"<turkish text>": {"en":"...", "de":"...", "es":"...", ...}, ...}
+  {"<source text>": {"en":"...", "de":"...", "es":"...", ...}, ...}
 - The inner object MUST contain exactly these language codes: ${langCodes}.`
                 },
                 {
                   role: 'user',
-                  content: `Translate these ${batch.length} Turkish product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
+                  content: `Translate these ${batch.length} product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
                 }
               ],
               max_tokens: 8000,
@@ -2396,24 +2396,68 @@ async function _translateProductInline(product) {
   const productLabel = String(product.name || product.slug || '?').slice(0, 60);
   try {
     if (!_isEpeyTranslateProduct(product)) return product;
+    const startedAt = Date.now();
+    xlog(`▶ ${productLabel} — sözlük yükleniyor`, 'info');
     await _loadDeDict();
     const sink = new Set();
     _collectAtomsFromProduct(product, sink);
     const unique = [...sink].filter(_shouldTranslateAtom);
-    const missing = unique.filter(
+    let missing = unique.filter(
       t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
         TARGET_LANGS.some(l => !_deDictLookup(t, l))
     );
+    const sharedWaits = [...new Set(
+      missing
+        .map(t => _deDictInflight.get(_normalizeDictSourceKey(t)))
+        .filter(Boolean)
+    )];
+    if (sharedWaits.length) {
+      xlog(`  · ${sharedWaits.length} mevcut DeepSeek işi bekleniyor (aynı atom tekrar istenmeyecek)`, 'info');
+      await Promise.allSettled(sharedWaits);
+      missing = unique.filter(
+        t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
+          TARGET_LANGS.some(l => !_deDictLookup(t, l))
+      );
+    }
     const cached = unique.length - missing.length;
     if (missing.length === 0) {
       xlog(`✓ ${productLabel} — ${cached} atom dict cache (0 API)`, 'success');
     } else {
-      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek (7 dil paketi)`, 'info');
+      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} yeni atom → DeepSeek (sözlükte olanlar için 0 API)`, 'info');
       const t0 = Date.now();
       try {
-        await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
+        const inFlight = new Map();
+        const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
+          const key = `${ev.pass || 1}:${ev.chunkIndex}`;
+          if (ev.phase === 'chunk-start') {
+            inFlight.set(key, Date.now());
+            const sample = (ev.sample || []).map(s => s.length > 28 ? `${s.slice(0, 26)}…` : s).join(', ');
+            xlog(`  → DeepSeek pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
+          } else if (ev.phase === 'chunk-done') {
+            inFlight.delete(key);
+            xlog(`  ✓ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize} · PB ${ev.pbSaved === false ? 'pending' : 'saved'}`, ev.pbSaved === false ? 'warn' : 'success');
+          } else if (ev.phase === 'chunk-error') {
+            inFlight.delete(key);
+            xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+          }
+        });
+        for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);
+        const heartbeat = setInterval(() => {
+          if (!inFlight.size) return;
+          const oldest = Math.min(...inFlight.values());
+          xlog(`  … DeepSeek çalışıyor · ${inFlight.size} chunk aktif · en eski ${Math.round((Date.now() - oldest) / 1000)}s`, 'info');
+        }, 5000);
+        try {
+          await translatePromise;
+        } finally {
+          clearInterval(heartbeat);
+          for (const t of missing) {
+            const key = _normalizeDictSourceKey(t);
+            if (_deDictInflight.get(key) === translatePromise) _deDictInflight.delete(key);
+          }
+        }
         const dt = Date.now() - t0;
-        xlog(`  ✓ ${missing.length} atom çevrildi (${dt}ms)`, 'success');
+        xlog(`  ✓ ${missing.length} atom işlendi (${(dt / 1000).toFixed(1)}s)`, 'success');
       } catch (e) {
         xlog(`  ⚠ DeepSeek failed (${missing.length} atom): ${e.message}`, 'warn');
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
@@ -2423,7 +2467,8 @@ async function _translateProductInline(product) {
     if (payload && typeof payload === 'object') Object.assign(product, payload);
     // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
     _deDictDirty = true;
-    _saveDeDict().catch(() => {});
+    await _saveDeDict().catch(() => {});
+    xlog(`✓ ${productLabel} — çeviri payload hazır · toplam ${((Date.now() - startedAt) / 1000).toFixed(1)}s · dict ${Object.keys(_deDictCache).length}`, 'success');
   } catch (e) {
     xlog(`✗ ${productLabel} — error: ${e.message}`, 'error');
     slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
@@ -5026,7 +5071,11 @@ window.showDictCounterPopup = function () {
   _refreshDictCounter();
   const el = document.getElementById('dictCounterPopup');
   if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const opening = el.style.display === 'none';
+  el.style.display = opening ? 'block' : 'none';
+  if (opening && typeof window.openDictionaryPanel === 'function') {
+    window.openDictionaryPanel();
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -429,7 +429,7 @@
 
         <!-- Dictionary counter popup -->
         <div id="dictCounterPopup"
-             style="display:none;position:fixed;top:80px;right:24px;width:340px;
+             style="display:none;position:fixed;top:80px;right:24px;width:min(920px,calc(100vw - 48px));
                     background:var(--surface-2,#1a1a1a);border:1px solid var(--border,#333);
                     border-radius:12px;padding:16px;z-index:9999;
                     box-shadow:0 12px 32px rgba(0,0,0,.5)">
@@ -454,6 +454,22 @@
           <div class="text-muted" style="font-size:11px;margin-top:10px">
             ⚡ Live counter — scrape sırasında dict yeni atomları kabul ettikçe sayı artar.
             Dict-first lookup, eklenmiş terim için 0 API çağrısı yapar.
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <select class="input" id="dictSourceSelect" onchange="switchDictionarySource(this.value)" style="height:32px;padding:4px 8px;max-width:120px">
+              <option value="tr">Epey TR</option>
+              <option value="de">Geizhals DE</option>
+            </select>
+            <input class="input" id="dictSearch" placeholder="Sözlükte ara..." oninput="renderDictionaryTable()" style="height:32px;padding:4px 8px;flex:1;min-width:150px">
+            <button class="btn btn-sm" onclick="addDictionaryRow()">Add</button>
+            <button class="btn btn-primary btn-sm" onclick="saveDictionary()">Save</button>
+            <span class="text-muted" id="dictStats" style="font-size:11px;margin-left:auto">—</span>
+          </div>
+          <div style="margin-top:10px;max-height:360px;overflow:auto;border:1px solid var(--border,#333);border-radius:8px">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead><tr id="dictHead"></tr></thead>
+              <tbody id="dictBody"></tbody>
+            </table>
           </div>
         </div>
 
