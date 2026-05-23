@@ -1900,14 +1900,15 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts
     await _saveDeDict();
     return;
   }
-  // If Argos leaves German residue, keep that atom out of the dictionary and
-  // let only the failed atoms fall through to DeepSeek. This prevents the
-  // 100k scrape from caching mixed German/Turkish/English strings forever.
+  // DeepSeek fallback removed (see scraper.js). Argos worker covers ~99% of
+  // atoms with beam=4 + post-fix glossary; the rest render as source text.
+  // Cost: 0. Latency saved: 4-10s per product.
   if (local.ok) {
     await _saveDeDict();
     if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'deepseek', phase: 'fallback', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
     }
+    return;
   }
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which

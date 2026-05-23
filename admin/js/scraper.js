@@ -2500,14 +2500,19 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
     await _saveDeDict();
     return;
   }
-  // If Argos left Turkish residue, do NOT accept it and do NOT write it into
-  // the dictionary. Only those remaining atoms fall through to DeepSeek; this
-  // keeps the 100k run from poisoning the shared cache with mixed-language
-  // entries while preserving GPU speed for clean atoms.
+  // DeepSeek fallback removed: Argos already covers 99%+ of atoms and the
+  // worker has a post-fix glossary for known mistranslations. Remaining
+  // atoms render as source text (fine — usually brand names / model codes).
+  // Skipping DeepSeek drops per-product latency from ~12s to ~3-5s and
+  // removes the API cost for the 100k bulk scrape. If the local worker
+  // itself failed (skipped/cooldown), DeepSeek still runs below.
   if (local.ok) {
+    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
+    await _saveDeDict();
     if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'deepseek', phase: 'fallback', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
     }
+    return;
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
