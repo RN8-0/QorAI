@@ -1589,6 +1589,13 @@ function _buildProductTranslations(p, targetLangs) {
 // public_config.tr_translation_dict shards.
 async function _translateProductInline(product) {
   if (!product) return product;
+  const productLabel = String(product.name || product.slug || '?').slice(0, 60);
+  // Geizhals shares the translation log panel with the Epey scraper.
+  const xlog = (msg, type) => {
+    if (typeof window !== 'undefined' && typeof window.xlog === 'function') {
+      window.xlog(`[DE] ${msg}`, type);
+    }
+  };
   try {
     await _loadDeDict();
     const sink = new Set();
@@ -1597,10 +1604,17 @@ async function _translateProductInline(product) {
     const missing = unique.filter(
       t => TARGET_LANGS.some(l => !_deDictLookup(t, l))
     );
-    if (missing.length) {
+    const cached = unique.length - missing.length;
+    if (missing.length === 0) {
+      xlog(`✓ ${productLabel} — ${cached} atom cache (0 API)`, 'success');
+    } else {
+      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek`, 'info');
+      const t0 = Date.now();
       try {
         await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
+        xlog(`  ✓ ${missing.length} atom (${Date.now() - t0}ms)`, 'success');
       } catch (e) {
+        xlog(`  ⚠ DeepSeek failed: ${e.message}`, 'warn');
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
       }
     }
@@ -1609,6 +1623,7 @@ async function _translateProductInline(product) {
     _deDictDirty = true;
     _saveDeDict().catch(() => {});
   } catch (e) {
+    xlog(`✗ ${productLabel} — error: ${e.message}`, 'error');
     slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
   }
   return product;

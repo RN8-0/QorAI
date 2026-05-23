@@ -135,8 +135,44 @@ function clearScraperLog() {
   _slogBuffer.length = 0;
   const el = document.getElementById('scraperLog');
   if (el) el.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
+  const xl = document.getElementById('xlateLog');
+  if (xl) xl.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
   const pg = document.getElementById('scraperProgress');
   if (pg) pg.textContent = '';
+}
+
+// Translation log — separate panel from scrape log so the user can watch the
+// dict-first/DeepSeek pipeline in parallel with the scrape stream.
+const _xlogBuffer = [];
+let _xlogFlushScheduled = false;
+function _flushXlog() {
+  _xlogFlushScheduled = false;
+  if (!_xlogBuffer.length) return;
+  const el = document.getElementById('xlateLog');
+  if (!el) { _xlogBuffer.length = 0; return; }
+  const placeholder = el.querySelector('.text-muted');
+  if (placeholder && el.children.length === 1) placeholder.remove();
+  const frag = document.createDocumentFragment();
+  for (const { msg, type, ts } of _xlogBuffer) {
+    const line = document.createElement('div');
+    line.className = `log-line log-${type}`;
+    line.innerHTML = `<span class="log-time">${ts}</span> ${msg}`;
+    frag.appendChild(line);
+  }
+  el.appendChild(frag);
+  _xlogBuffer.length = 0;
+  // Trim — keep last 600 lines.
+  while (el.children.length > 600) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+function xlog(msg, type = 'info') {
+  const el = typeof document !== 'undefined' ? document.getElementById('xlateLog') : null;
+  if (!el) { console.log(`[xlate:${type}]`, msg); return; }
+  _xlogBuffer.push({ msg: String(msg), type, ts: new Date().toLocaleTimeString() });
+  if (!_xlogFlushScheduled) {
+    _xlogFlushScheduled = true;
+    (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (cb) => setTimeout(cb, 16))(_flushXlog);
+  }
 }
 
 function updateProgress(current, total, label) {
@@ -2328,6 +2364,7 @@ function _buildProductTranslations(p, targetLangs) {
 //      from the (now warmer) dictionary and merge them into the product.
 async function _translateProductInline(product) {
   if (!product) return product;
+  const productLabel = String(product.name || product.slug || '?').slice(0, 60);
   try {
     if (!_isEpeyTranslateProduct(product)) return product;
     await _loadDeDict();
@@ -2338,10 +2375,18 @@ async function _translateProductInline(product) {
       t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
         TARGET_LANGS.some(l => !_deDictLookup(t, l))
     );
-    if (missing.length) {
+    const cached = unique.length - missing.length;
+    if (missing.length === 0) {
+      xlog(`✓ ${productLabel} — ${cached} atom dict cache (0 API)`, 'success');
+    } else {
+      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek (6 dil)`, 'info');
+      const t0 = Date.now();
       try {
         await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
+        const dt = Date.now() - t0;
+        xlog(`  ✓ ${missing.length} atom çevrildi (${dt}ms)`, 'success');
       } catch (e) {
+        xlog(`  ⚠ DeepSeek failed (${missing.length} atom): ${e.message}`, 'warn');
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
       }
     }
@@ -2351,6 +2396,7 @@ async function _translateProductInline(product) {
     _deDictDirty = true;
     _saveDeDict().catch(() => {});
   } catch (e) {
+    xlog(`✗ ${productLabel} — error: ${e.message}`, 'error');
     slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
   }
   return product;
