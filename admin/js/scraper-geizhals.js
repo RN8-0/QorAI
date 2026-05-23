@@ -1255,6 +1255,30 @@ function _knownGermanRuleTranslation(germanText, targetLang) {
       tr: 'IP68 sertifikalı', en: 'IP68 certified', es: 'Certificación IP68',
       fr: 'Certifié IP68', pt: 'Certificado IP68', ru: 'Сертификация IP68',
     },
+    'fest verbaut': {
+      tr: 'Sabit takılı', en: 'Built-in', es: 'Integrado',
+      fr: 'Intégré', pt: 'Integrado', ru: 'Встроенный',
+    },
+    'kabelloses laden': {
+      tr: 'Kablosuz şarj', en: 'Wireless charging', es: 'Carga inalámbrica',
+      fr: 'Charge sans fil', pt: 'Carregamento sem fio', ru: 'Беспроводная зарядка',
+    },
+    'barometer': {
+      tr: 'Barometre', en: 'Barometer', es: 'Barómetro',
+      fr: 'Baromètre', pt: 'Barômetro', ru: 'Барометр',
+    },
+    'glas (rückseite)': {
+      tr: 'Cam (arka yüzey)', en: 'Glass (back)', es: 'Vidrio (parte trasera)',
+      fr: 'Verre (dos)', pt: 'Vidro (traseira)', ru: 'Стекло (задняя панель)',
+    },
+    'metall (rahmen)': {
+      tr: 'Metal (çerçeve)', en: 'Metal (frame)', es: 'Metal (marco)',
+      fr: 'Métal (cadre)', pt: 'Metal (estrutura)', ru: 'Металл (рамка)',
+    },
+    'barren': {
+      tr: 'Bar formu', en: 'Bar form factor', es: 'Formato barra',
+      fr: 'Format barre', pt: 'Formato barra', ru: 'Моноблок',
+    },
   };
   if (map[key]?.[targetLang]) return map[key][targetLang];
   const mLoad = key.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);

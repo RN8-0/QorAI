@@ -239,6 +239,34 @@ _EXACT_GLOSSARY: Dict[Tuple[str, str], Dict[str, str]] = {
         "es": "Certificación IP68", "fr": "Certifié IP68",
         "pt": "Certificado IP68", "ru": "Сертификация IP68",
     },
+    ("de", "fest verbaut"): {
+        "tr": "Sabit takılı", "en": "Built-in", "es": "Integrado",
+        "fr": "Intégré", "pt": "Integrado", "ru": "Встроенный",
+    },
+    ("de", "kabelloses laden"): {
+        "tr": "Kablosuz şarj", "en": "Wireless charging",
+        "es": "Carga inalámbrica", "fr": "Charge sans fil",
+        "pt": "Carregamento sem fio", "ru": "Беспроводная зарядка",
+    },
+    ("de", "barometer"): {
+        "tr": "Barometre", "en": "Barometer", "es": "Barómetro",
+        "fr": "Baromètre", "pt": "Barômetro", "ru": "Барометр",
+    },
+    ("de", "glas (rückseite)"): {
+        "tr": "Cam (arka yüzey)", "en": "Glass (back)",
+        "es": "Vidrio (parte trasera)", "fr": "Verre (dos)",
+        "pt": "Vidro (traseira)", "ru": "Стекло (задняя панель)",
+    },
+    ("de", "metall (rahmen)"): {
+        "tr": "Metal (çerçeve)", "en": "Metal (frame)",
+        "es": "Metal (marco)", "fr": "Métal (cadre)",
+        "pt": "Metal (estrutura)", "ru": "Металл (рамка)",
+    },
+    ("de", "barren"): {
+        "tr": "Bar formu", "en": "Bar form factor",
+        "es": "Formato barra", "fr": "Format barre",
+        "pt": "Formato barra", "ru": "Моноблок",
+    },
 }
 
 # ─── State ───────────────────────────────────────────────────────────────

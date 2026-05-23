@@ -2833,7 +2833,16 @@ function _renderProductModal(p,variants=[]){
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the Turkish source.
   const lang = _modalLang || 'tr';
-  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || ''));
+  const germanProbe = [
+    p.source,
+    p.sourceUrl,
+    p.name,
+    ...Object.keys(p.specs || {}).slice(0, 80),
+    ...Object.values(p.specs || {}).slice(0, 80),
+    ...Object.keys(p.specSections || {}).slice(0, 40),
+  ].join('\n');
+  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || '')) ||
+    /\b(schwarz|betriebssystem|batterielaufzeit|energieeffizienzklasse|phasenvergleich|beschleunigungssensor|annäherungssensor|lichtsensor|aussparung|aktualisierungsrate|satellitenkommunikation|schnittstellen|kerne|ab werk|fest verbaut|kabelloses laden)\b/i.test(germanProbe);
   const sourceLang = sourceIsGeizhals ? 'de' : 'tr';
   // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
   // source keys, so we treat it as missing instead of pretending to localize.
@@ -2861,6 +2870,114 @@ function _renderProductModal(p,variants=[]){
     const a = String(raw || '').trim().toLowerCase();
     const b = String(translated || '').trim().toLowerCase();
     return !!a && a === b && !modalIsPreserveText(raw);
+  }
+  function cleanupModalText(text){
+    let out = String(text ?? '').trim();
+    if (!out) return out;
+
+    if (lang === 'en') {
+      const exact = {
+        'Home': 'Main',
+        'No.': 'No',
+        'Ios': 'iOS',
+        'Axe camera': 'Portrait mode',
+        'Physical denclanner key': 'Physical shutter button',
+        'Undoubted zoom': 'Lossless zoom',
+        'Audio command': 'Voice command',
+        'Red eye (red-eye) fix': 'Red-eye correction',
+        'Optical image fixing (OIS)': 'Optical image stabilization (OIS)',
+        'Süreçor': 'Processor',
+        'Listelendirene': 'Listed since',
+      };
+      if (exact[out]) out = exact[out];
+      out = out
+        .replace(/\bBatarya\b/gi, 'Battery')
+        .replace(/\bNavigasyon\b/gi, 'Navigation')
+        .replace(/\bÖn\s+Camera\b/gi, 'Front camera')
+        .replace(/\bArka\s+Camera\b/gi, 'Rear camera')
+        .replace(/\bİkinci\s+Arka\s+Camera\b/gi, 'Second rear camera')
+        .replace(/\bÜçüncü\s+Arka\s+Camera\b/gi, 'Third rear camera')
+        .replace(/\bCPU\s+Üretim\s+Technology\b/gi, 'CPU manufacturing technology')
+        .replace(/\bÜretim\s+Technology\b/gi, 'Manufacturing technology')
+        .replace(/\bSpecificationsi\b/gi, 'Specifications')
+        .replace(/\bTechnologyi\b/gi, 'Technology')
+        .replace(/\bTeknolojisi\b/gi, 'Technology')
+        .replace(/\bMilyon\b/gi, 'million')
+        .replace(/\b(\d+(?:[.,]\d+)?)\s*Dakika\b/gi, '$1 minutes')
+        .replace(/\b(\d+(?:[.,]\d+)?)\s*Saat\b/gi, '$1 hours')
+        .replace(/\b(\d+(?:[.,]\d+)?)\s*Döngü\b/gi, '$1 cycles')
+        .replace(/\b(\d+)\s*Elementli\s+Lens\b/gi, '$1-element lens')
+        .replace(/\bYalnızca\s+eSIM\b/gi, 'eSIM only')
+        .replace(/\bEvet\b/gi, 'Yes')
+        .replace(/\bHayır\b|\bHayir\b/gi, 'No')
+        .replace(/\bVolte\s*\(\s*⁇\s*over\s*LTE\s*\)\s*support\b/gi, 'VoLTE (voice over LTE) support')
+        .replace(/^\s*⁇\s*$/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      out = out.replace(/\bIphone\b/g, 'iPhone').replace(/\bIcloud\b/g, 'iCloud').replace(/\bFacetime\b/g, 'FaceTime');
+    }
+
+    if (lang === 'tr') {
+      const exactTr = {
+        'Battery battery': 'Pil',
+        'fest verbaut': 'Sabit takılı',
+        'kabelloses Laden': 'Kablosuz şarj',
+        'Phasenvergleich-AF': 'Faz algılamalı otomatik odaklama',
+        'Beschleunigungssensor': 'İvmeölçer',
+        'Gyroskop': 'Jiroskop',
+        'Annäherungssensor': 'Yakınlık sensörü',
+        'Lichtsensor': 'Işık sensörü',
+        'Kompass': 'Pusula',
+        'Barometer': 'Barometre',
+        'Gesichtsscanner (3D, Infrarot)': 'Yüz tarayıcı (3D, kızılötesi)',
+        'kapazitiver Touchscreen': 'Kapasitif dokunmatik ekran',
+        'Aussparung': 'Ekran kesiti',
+        'flach': 'Düz',
+        'IP68-zertifiziert': 'IP68 sertifikalı',
+        'Stereo-Lautsprecher (hybrid)': 'Stereo hoparlörler (hibrit)',
+        'Ceramic Shield': 'Ceramic Shield',
+        'Glas (Rückseite)': 'Cam (arka yüzey)',
+        'Metall (Rahmen)': 'Metal (çerçeve)',
+        'Bars Bar': 'Bar formu',
+        'Barren': 'Bar formu',
+        'Interfaces': 'Arayüzler',
+        'Navigation': 'Navigasyon',
+        '6 Kerne': '6 çekirdek',
+      };
+      if (exactTr[out]) out = exactTr[out];
+      out = out
+        .replace(/\bfest verbaut\b/gi, 'sabit takılı')
+        .replace(/\bkabelloses Laden\b/gi, 'kablosuz şarj')
+        .replace(/\bPhasenvergleich-AF\b/gi, 'faz algılamalı otomatik odaklama')
+        .replace(/\bBeschleunigungssensor\b/gi, 'ivmeölçer')
+        .replace(/\bGyroskop\b/gi, 'jiroskop')
+        .replace(/\bAnnäherungssensor\b/gi, 'yakınlık sensörü')
+        .replace(/\bLichtsensor\b/gi, 'ışık sensörü')
+        .replace(/\bKompass\b/gi, 'pusula')
+        .replace(/\bGesichtsscanner\b/gi, 'yüz tarayıcı')
+        .replace(/\bAussparung\b/gi, 'ekran kesiti')
+        .replace(/\bAktualisierungsrate\b/gi, 'yenileme hızı')
+        .replace(/\bSatellitenkommunikation\b/gi, 'uydu iletişimi')
+        .replace(/\bTextnachrichten\b/gi, 'mesajlar')
+        .replace(/\bnur Notruf\b/gi, 'sadece acil arama')
+        .replace(/\bSchnittstellen\b/gi, 'arayüzler')
+        .replace(/\bKerne\b/gi, 'çekirdek')
+        .replace(/\bab Werk\b/gi, 'fabrika çıkışı')
+        .replace(/\bGlas\s*\(Rückseite\)/gi, 'Cam (arka yüzey)')
+        .replace(/\bMetall\s*\(Rahmen\)/gi, 'Metal (çerçeve)')
+        .replace(/\bFreefall reliability sınıfı\b/gi, 'Düşme dayanımı sınıfı')
+        .replace(/\bOnarım sınıfını\b/gi, 'Onarılabilirlik sınıfı')
+        .replace(/\bEkran-to-body rate\b/gi, 'Ekran/gövde oranı')
+        .replace(/\bSüreçor\b/gi, 'İşlemci')
+        .replace(/\bListelendirene\b/gi, 'Listelenme tarihi')
+        .replace(/\b([0-9]+(?:[.,][0-9]+)?)x\s+Laden\b/gi, '$1 şarj döngüsü')
+        .replace(/\b([0-9]+(?:[.,][0-9]+)?)Hz\s+Aktualisierungsrate\b/gi, '$1Hz yenileme hızı')
+        .replace(/\b([0-9]+(?:[.,][0-9]+)?)\s+Nits\s+\(maximal\)/gi, '$1 nit (maksimum)')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+
+    return out;
   }
   function knownModalTranslation(text){
     const raw = String(text ?? '').trim();
@@ -2894,16 +3011,16 @@ function _renderProductModal(p,variants=[]){
         'stereo-lautsprecher (hybrid)': { tr:'Stereo hoparlörler (hibrit)', en:'Stereo speakers (hybrid)', es:'Altavoces estéreo (híbridos)', fr:'Haut-parleurs stéréo (hybrides)', pt:'Alto-falantes estéreo (híbridos)', ru:'Стереодинамики (гибридные)' },
         'ip68-zertifiziert': { tr:'IP68 sertifikalı', en:'IP68 certified', es:'Certificación IP68', fr:'Certifié IP68', pt:'Certificado IP68', ru:'Сертификация IP68' },
       };
-      if (germanExact[de]?.[lang]) return germanExact[de][lang];
+      if (germanExact[de]?.[lang]) return cleanupModalText(germanExact[de][lang]);
       const gp = (obj) => obj?.[lang] || obj?.en || null;
       const mLoad = de.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
-      if (mLoad) return gp({ tr:`${mLoad[1]} şarj döngüsü`, en:`${mLoad[1]} charging cycles`, es:`${mLoad[1]} ciclos de carga`, fr:`${mLoad[1]} cycles de charge`, pt:`${mLoad[1]} ciclos de carga`, ru:`${mLoad[1]} циклов зарядки` });
+      if (mLoad) return cleanupModalText(gp({ tr:`${mLoad[1]} şarj döngüsü`, en:`${mLoad[1]} charging cycles`, es:`${mLoad[1]} ciclos de carga`, fr:`${mLoad[1]} cycles de charge`, pt:`${mLoad[1]} ciclos de carga`, ru:`${mLoad[1]} циклов зарядки` }));
       const mHz = de.match(/^(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate$/);
-      if (mHz) return gp({ tr:`${mHz[1]}Hz yenileme hızı`, en:`${mHz[1]}Hz refresh rate`, es:`Frecuencia de actualización de ${mHz[1]}Hz`, fr:`Taux de rafraîchissement ${mHz[1]}Hz`, pt:`Taxa de atualização de ${mHz[1]}Hz`, ru:`Частота обновления ${mHz[1]} Гц` });
+      if (mHz) return cleanupModalText(gp({ tr:`${mHz[1]}Hz yenileme hızı`, en:`${mHz[1]}Hz refresh rate`, es:`Frecuencia de actualización de ${mHz[1]}Hz`, fr:`Taux de rafraîchissement ${mHz[1]}Hz`, pt:`Taxa de atualização de ${mHz[1]}Hz`, ru:`Частота обновления ${mHz[1]} Гц` }));
       const mNits = de.match(/^(\d+(?:[.,]\d+)?)\s+nits\s+\(maximal\)$/);
-      if (mNits) return gp({ tr:`${mNits[1]} nit (maksimum)`, en:`${mNits[1]} nits (maximum)`, es:`${mNits[1]} nits (máximo)`, fr:`${mNits[1]} nits (maximum)`, pt:`${mNits[1]} nits (máximo)`, ru:`${mNits[1]} нит (максимум)` });
+      if (mNits) return cleanupModalText(gp({ tr:`${mNits[1]} nit (maksimum)`, en:`${mNits[1]} nits (maximum)`, es:`${mNits[1]} nits (máximo)`, fr:`${mNits[1]} nits (maximum)`, pt:`${mNits[1]} nits (máximo)`, ru:`${mNits[1]} нит (максимум)` }));
       if (/^satellitenkommunikation/i.test(de)) {
-        return gp({ tr:'Uydu iletişimi (mesajlar, sadece acil arama)', en:'Satellite communication (text messages, emergency only)', es:'Comunicación satelital (mensajes de texto, solo emergencia)', fr:'Communication satellite (messages texte, urgence uniquement)', pt:'Comunicação por satélite (mensagens de texto, apenas emergência)', ru:'Спутниковая связь (текстовые сообщения, только экстренные вызовы)' });
+        return cleanupModalText(gp({ tr:'Uydu iletişimi (mesajlar, sadece acil arama)', en:'Satellite communication (text messages, emergency only)', es:'Comunicación satelital (mensajes de texto, solo emergencia)', fr:'Communication satellite (messages texte, urgence uniquement)', pt:'Comunicação por satélite (mensagens de texto, apenas emergência)', ru:'Спутниковая связь (текстовые сообщения, только экстренные вызовы)' }));
       }
     }
     const s = raw.toLowerCase()
@@ -2923,37 +3040,39 @@ function _renderProductModal(p,variants=[]){
       specifications: { en:'Specifications', de:'Spezifikationen', es:'Especificaciones', fr:'Spécifications', pt:'Especificações', ru:'Характеристики' },
     };
     const p = key => phrase[key]?.[lang] || phrase[key]?.en;
-    if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return `${n} ${p('minute')}`;
-    if (/^\d+(?:[.,]\d+)?\s*saat$/.test(s)) return `${n} ${p('hour')}`;
-    if (/^\d+(?:[.,]\d+)?\s*dongu$/.test(s)) return `${n} ${p('cycle')}`;
-    if (/^\d+(?:[.,]\d+)?\s*milyar$/.test(s)) return `${n} ${p('billion')}`;
-    if (/^\d+(?:[.,]\d+)?\s*gram$/.test(s)) return `${n} ${p('gram')}`;
-    if (/^\d+(?:[.,]\d+)?x\s*dijital\s+zoom$/.test(s)) return `${n}x ${p('digitalZoom')}`;
-    if (/^\d+\s*elementli\s+lens$/.test(s)) return `${n}-${p('elementLens')}`;
-    if (/^yalnizca\s+esim$/.test(s)) return p('onlyEsim');
-    if (/\byalnizca\s+esim\b/.test(s)) return raw.replace(/yaln[ıi]zca\s+esim/ig, p('onlyEsim'));
-    if (/\bspecificationsi\b/i.test(raw)) return raw.replace(/\bspecificationsi\b/ig, p('specifications'));
-    if (/\bteknolojisi\b/i.test(raw)) return raw.replace(/\bteknolojisi\b/ig, p('technology'));
+    if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return cleanupModalText(`${n} ${p('minute')}`);
+    if (/^\d+(?:[.,]\d+)?\s*saat$/.test(s)) return cleanupModalText(`${n} ${p('hour')}`);
+    if (/^\d+(?:[.,]\d+)?\s*dongu$/.test(s)) return cleanupModalText(`${n} ${p('cycle')}`);
+    if (/^\d+(?:[.,]\d+)?\s*milyar$/.test(s)) return cleanupModalText(`${n} ${p('billion')}`);
+    if (/^\d+(?:[.,]\d+)?\s*gram$/.test(s)) return cleanupModalText(`${n} ${p('gram')}`);
+    if (/^\d+(?:[.,]\d+)?x\s*dijital\s+zoom$/.test(s)) return cleanupModalText(`${n}x ${p('digitalZoom')}`);
+    if (/^\d+\s*elementli\s+lens$/.test(s)) return cleanupModalText(`${n}-${p('elementLens')}`);
+    if (/^yalnizca\s+esim$/.test(s)) return cleanupModalText(p('onlyEsim'));
+    if (/\byalnizca\s+esim\b/.test(s)) return cleanupModalText(raw.replace(/yaln[ıi]zca\s+esim/ig, p('onlyEsim')));
+    if (/\bspecificationsi\b/i.test(raw)) return cleanupModalText(raw.replace(/\bspecificationsi\b/ig, p('specifications')));
+    if (/\bteknolojisi\b/i.test(raw)) return cleanupModalText(raw.replace(/\bteknolojisi\b/ig, p('technology')));
     if (!n) return null;
     const maps = {
       update: { en:`${n}-Year Update Guarantee`, de:`${n} Jahre Update-Garantie`, es:`Garantia De Actualizaciones De ${n} Anos`, fr:`Garantie De Mises A Jour De ${n} Ans`, pt:`Garantia De Atualizacoes De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений` },
       security: { en:`${n}-Year Security Update Guarantee`, de:`${n} Jahre Sicherheitsupdate-Garantie`, es:`Garantia De Actualizaciones De Seguridad De ${n} Anos`, fr:`Garantie De Mises A Jour De Securite De ${n} Ans`, pt:`Garantia De Atualizacoes De Seguranca De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений Безопасности` },
     };
-    if (/^\d+\s*yil\s+guvenlik\s+guncellemesi\s+garantisi$/.test(s)) return maps.security[lang] || null;
-    if (/^\d+\s*yil\s+guncelleme\s+garantisi$/.test(s)) return maps.update[lang] || null;
-    return null;
+    if (/^\d+\s*yil\s+guvenlik\s+guncellemesi\s+garantisi$/.test(s)) return cleanupModalText(maps.security[lang] || '');
+    if (/^\d+\s*yil\s+guncelleme\s+garantisi$/.test(s)) return cleanupModalText(maps.update[lang] || '');
+    const cleaned = cleanupModalText(raw);
+    return cleaned && cleaned !== raw ? cleaned : null;
   }
   function lookupLocalizedText(text){
     const raw = String(text ?? '').trim();
-    if (!raw || lang === sourceLang) return text;
+    if (!raw) return text;
     const known = knownModalTranslation(raw);
     if (known) return known;
-    if (ml && typeof ml[raw] === 'string' && ml[raw] && !isUntranslatedPassThrough(raw, ml[raw])) return ml[raw];
+    if (lang === sourceLang) return cleanupModalText(text);
+    if (ml && typeof ml[raw] === 'string' && ml[raw] && !isUntranslatedPassThrough(raw, ml[raw])) return cleanupModalText(ml[raw]);
     const lower = raw.toLowerCase();
-    if (ml && typeof ml[lower] === 'string' && ml[lower] && !isUntranslatedPassThrough(raw, ml[lower])) return ml[lower];
+    if (ml && typeof ml[lower] === 'string' && ml[lower] && !isUntranslatedPassThrough(raw, ml[lower])) return cleanupModalText(ml[lower]);
     const d = dictCacheForModal?.[lower]?.[lang];
-    if (typeof d === 'string' && d.trim() && !isUntranslatedPassThrough(raw, d)) return d.trim();
-    return text;
+    if (typeof d === 'string' && d.trim() && !isUntranslatedPassThrough(raw, d)) return cleanupModalText(d.trim());
+    return cleanupModalText(text);
   }
   // Build localized sections on the fly: keep the original Turkish section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
