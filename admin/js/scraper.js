@@ -1549,11 +1549,31 @@ function _mergeDictObject(source) {
     if (!_isWordOnlyDictSource(key)) continue;
     if (!_deDictCache[key]) _deDictCache[key] = {};
     for (const [lang, value] of Object.entries(rawEntry)) {
-      if (typeof value === 'string' && value.trim()) _deDictCache[key][lang] = value.trim();
+      if (typeof value !== 'string' || !value.trim()) continue;
+      const trimmed = value.trim();
+      // Skip stale pass-through entries written by the old narrow filter.
+      // They make _deDictLookup return Turkish text for English/German/etc.
+      // We accept genuine language-neutral pass-throughs (model codes,
+      // brand names) detected via _shouldPreserve.
+      if (lang !== 'tr' && _looksLikePassThroughDuringLoad(key, trimmed)) continue;
+      _deDictCache[key][lang] = trimmed;
     }
-    merged++;
+    if (Object.keys(_deDictCache[key]).length === 0) delete _deDictCache[key];
+    else merged++;
   }
   return merged;
+}
+
+function _looksLikePassThroughDuringLoad(srcKey, storedValue) {
+  if (String(srcKey).toLowerCase() !== String(storedValue).toLowerCase()) return false;
+  // Pass-through is OK when the source is genuinely language-neutral: every
+  // alphabetic word is a preserve token (acronym, unit, brand, model code).
+  const wordTokens = (srcKey.match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]{2,}/g) || []);
+  if (!wordTokens.length) return false;
+  for (const w of wordTokens) {
+    if (!_shouldPreserve(w)) return true; // real word that wasn't translated → stale
+  }
+  return false;
 }
 
 function _normalizeDictSourceKey(text) {
@@ -1813,46 +1833,19 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   return null;
 }
 
-// Lookup Turkish text in cache for a specific target language
+// Lookup Turkish text in cache for a specific target language.
+// Stale pass-through entries are filtered out at load time, so a cache hit
+// here is always honoured (no second-guessing → no infinite retry loop).
 function _deDictLookup(turkishText, targetLang) {
   const key = _normalizeDictSourceKey(turkishText);
   const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) {
-    const stored = entry[targetLang];
-    // Stale pass-through detection. The old filter era wrote thousands of
-    // entries like "5 Elementli Lens" -> en:"5 Elementli Lens" because
-    // _localTranslationLooksUseful didn't reject pass-through yet. Treat
-    // those as MISSING so the engine retries with the new pipeline.
-    // Skip only when the atom is genuinely language-neutral (model codes,
-    // brand names, pure unit phrases — those keep stable across languages).
-    if (targetLang !== 'tr' && _looksLikeStalePassThrough(turkishText, stored)) {
-      return null;
-    }
-    return stored;
-  }
+  if (entry && entry[targetLang]) return entry[targetLang];
   const rule = _knownTurkishRuleTranslation(turkishText, targetLang);
   if (rule) {
     _deDictStore(turkishText, targetLang, rule);
     return _deDictCache[key]?.[targetLang] || rule;
   }
   return null;
-}
-
-function _looksLikeStalePassThrough(source, stored) {
-  const s = String(source || '').toLowerCase().trim();
-  const v = String(stored || '').toLowerCase().trim();
-  if (!s || !v || s !== v) return false;
-  // Atom is genuinely language-neutral if every alphabetic word in it is a
-  // preserve token (brand, acronym, unit). Those are fine to pass through.
-  const wordTokens = (s.match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]{2,}/g) || []);
-  if (!wordTokens.length) return false; // pure numbers/symbols — keep
-  for (const w of wordTokens) {
-    if (!_shouldPreserve(w)) {
-      // Found a real word in the source — pass-through is suspicious.
-      return true;
-    }
-  }
-  return false;
 }
 
 // ── Title-Case post-processing ─────────────────────────────────────────
@@ -2053,15 +2046,15 @@ const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de','es','fr','pt','ru']);
 let _localTranslateDisabledUntil = 0;
 
 function _localTranslationLooksUseful(sourceText, targetLang, translation) {
-  // The local engine is now Argos+CTranslate2+CUDA, which is reliable enough
-  // that we only reject obviously broken outputs. Previously the hint list
-  // was so narrow it was rejecting correct translations and pushing them to
-  // DeepSeek for no reason — exactly what made the pipeline slow.
+  // Accept Argos output, including pass-through: the atom may already be in
+  // the target language (e.g. "Resolution" stored under a TR source key is
+  // legitimately "Resolution" in EN). Rejecting pass-through made the
+  // pipeline fall back to DeepSeek for ~90% of atoms, blowing latency and
+  // cost. Only reject empty output and a few NLLB-era garbage patterns.
   const src = String(sourceText || '').trim();
   const tx = String(translation || '').trim();
   if (!tx) return false;
   if (tx.length > Math.max(120, src.length * 6)) return false; // bizarre expansion
-  if (tx.toLowerCase() === src.toLowerCase()) return false;    // pass-through (no actual translation)
   if (/\b(other, of a kind|manufacture of goods|among the|services)\b/i.test(tx)) return false;
   return true;
 }

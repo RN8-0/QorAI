@@ -1059,6 +1059,16 @@ let _deDictDirty = false;
 const _deDictInflight = new Map(); // normalized source atom -> shared DeepSeek promise
 const DE_DICT_PB_KEY = 'de_translation_dict';
 
+function _looksLikePassThroughDuringLoad(srcKey, storedValue) {
+  if (String(srcKey).toLowerCase() !== String(storedValue).toLowerCase()) return false;
+  const wordTokens = (srcKey.match(/[a-zA-ZÀ-ÿÄÖÜäöüß]{2,}/g) || []);
+  if (!wordTokens.length) return false;
+  for (const w of wordTokens) {
+    if (!_shouldPreserve(w)) return true;
+  }
+  return false;
+}
+
 async function _loadDeDict() {
   if (_deDictLoaded) return;
   try {
@@ -1067,7 +1077,20 @@ async function _loadDeDict() {
       const data = typeof doc.data === 'function' ? doc.data() : doc;
       const stored = data?.value || data || {};
       if (typeof stored === 'object' && !Array.isArray(stored)) {
-        Object.assign(_deDictCache, stored);
+        // Filter stale pass-through entries written by the old narrow
+        // _localTranslationLooksUseful. They make _deDictLookup return
+        // German text for English/Turkish/etc.
+        for (const [rawKey, rawEntry] of Object.entries(stored)) {
+          if (!rawEntry || typeof rawEntry !== 'object') continue;
+          const cleaned = {};
+          for (const [lang, value] of Object.entries(rawEntry)) {
+            if (typeof value !== 'string' || !value.trim()) continue;
+            const trimmed = value.trim();
+            if (lang !== 'de' && _looksLikePassThroughDuringLoad(rawKey, trimmed)) continue;
+            cleaned[lang] = trimmed;
+          }
+          if (Object.keys(cleaned).length) _deDictCache[String(rawKey).toLowerCase().trim()] = cleaned;
+        }
       }
     }
   } catch (e) {
@@ -1111,27 +1134,8 @@ function _meaningfulWordTokens(text) {
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) {
-    const stored = entry[targetLang];
-    // Stale pass-through detection (see scraper.js for rationale).
-    if (targetLang !== 'de' && _looksLikeStalePassThrough(germanText, stored)) {
-      return null;
-    }
-    return stored;
-  }
+  if (entry && entry[targetLang]) return entry[targetLang];
   return null;
-}
-
-function _looksLikeStalePassThrough(source, stored) {
-  const s = String(source || '').toLowerCase().trim();
-  const v = String(stored || '').toLowerCase().trim();
-  if (!s || !v || s !== v) return false;
-  const wordTokens = (s.match(/[a-zA-ZÀ-ÿÄÖÜäöüß]{2,}/g) || []);
-  if (!wordTokens.length) return false;
-  for (const w of wordTokens) {
-    if (!_shouldPreserve(w)) return true;
-  }
-  return false;
 }
 
 // ── Title-Case post-processing ─────────────────────────────────────────
@@ -1280,7 +1284,9 @@ function _localTranslationLooksUseful(sourceText, targetLang, translation) {
   const tx = String(translation || '').trim();
   if (!tx) return false;
   if (tx.length > Math.max(120, src.length * 6)) return false;
-  if (tx.toLowerCase() === src.toLowerCase()) return false;
+  // Pass-through is legitimate when the source is already in the target
+  // language (e.g. "Speicher" cached under DE source key is itself "Speicher"
+  // in DE). Rejecting it forced 90% of atoms to DeepSeek fallback.
   if (/\b(other, of a kind|manufacture of goods|among the|services)\b/i.test(tx)) return false;
   return true;
 }
