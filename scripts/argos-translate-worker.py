@@ -1135,6 +1135,23 @@ _POST_FIX = {
         (r"\bkata kadar\b", "up to"),
         (r"\bKata kadar\b", "up to"),
         (r"\bkata Kadar\b", "up to"),
+        # Turkish number words leak through ("Üç Thunderbolt 4")
+        (r"\bİki\b", "Two"),
+        (r"\bÜç\b", "Three"),
+        (r"\bDört\b", "Four"),
+        (r"\bBeş\b", "Five"),
+        (r"\bAltı\b", "Six"),
+        (r"\bYedi\b", "Seven"),
+        (r"\bSekiz\b", "Eight"),
+        (r"\bDokuz\b", "Nine"),
+        # Common Turkish spec key words seen in Epey
+        (r"\bİşlemci Nesli\b", "Processor Generation"),
+        (r"\bİşlemci\b", "Processor"),
+        (r"\bNesli\b", "Generation"),
+        (r"\bNesil\b", "Generation"),
+        (r"\b(\d+)\.\s*Nesil\b", r"\1th Gen"),
+        (r"\bAauppercase\b", "macOS"),  # macOS lower-mangled
+        (r"\baauppercase\b", "macOS"),
         (r"\bcorrect$", "Correction"),    # "(Red-eye)correct" tail
         (r"\bkorrigiert$", "Korrektur"),  # DE equivalent
     ],
@@ -1240,6 +1257,32 @@ _POST_FIX = {
         (r"\brechts\b", "right"),
         (r"\boben\b", "top"),
         (r"\bunten\b", "bottom"),
+        # More German residue observed in real scrapes
+        (r"\bvorne\b", "front"),
+        (r"\bhinten\b", "rear"),
+        (r"\bzertifiziert\b", "certified"),
+        (r"\bStaubschutz\b", "dust protection"),
+        (r"\bSchutz gegen fallendes Tropfwasser\b", "protection against falling drops of water"),
+        (r"\bSchutz gegen\b", "protection against"),
+        (r"\bTropfwasser\b", "dripping water"),
+        (r"\bHelligkeitssensor\b", "Brightness sensor"),
+        (r"\bLichtsensor\b", "Light sensor"),
+        (r"\bGyroskop\b", "Gyroscope"),
+        (r"\bKompass\b", "Compass"),
+        (r"\bBarometer\b", "Barometer"),
+        (r"\bberechnet\b", "calculated"),
+        (r"\bangegeben\b", "stated"),
+        (r"\bgemessen\b", "measured"),
+        (r"\bNetzanschluss\b", "Mains connection"),
+        (r"\bAusliefer(?:ung|t)\b", "Delivery"),
+        (r"\bsonstig(?:e|es|er|en)?\b", "other"),
+        (r"\bweitere\b", "additional"),
+        (r"\bca\.?\b", "approx."),
+        (r"\bbis zu\b", "up to"),
+        (r"\bbis\b", "up to"),
+        (r"\bunabhängig\b", "independent"),
+        (r"\bJahr\b", "Year"),
+        (r"\b(\d+)\s+Jahre?\b", r"\1 years"),
     ],
     "de->tr": [
         (r"\billuminated\b", "aydınlatmalı"),
@@ -1256,6 +1299,46 @@ _POST_FIX = {
         (r"\bUnder-Display\b", "Ekran Altı"),
         (r"\bUnder-Screen\b", "Ekran Altı"),
         (r"\bSteam Cooling\b", "Buhar Soğutma"),
+        # en->tr hop residue. Argos en→tr is the weakest of the bunch.
+        (r"\bBattery Batarya\b", "Batarya"),
+        (r"\bBattery\b", "Batarya"),
+        (r"\bConnectivity\b", "Bağlantı"),
+        (r"\bDisplay\b", "Ekran"),
+        (r"\bEkran görüntüsü\b", "Ekran"),
+        (r"\bGenel General\b", "Genel"),
+        (r"\bUltrasonik sensör\b", "Parlaklık sensörü"),
+        (r"\bBrightness sensor\b", "Parlaklık sensörü"),
+        (r"\bLight sensor\b", "Işık sensörü"),
+        (r"\bSpecifications\b", "Özellikleri"),
+        (r"\bGuarantee\b", "Garanti"),
+        (r"\bperformance Core\b", "Performans Çekirdeği"),
+        (r"\bPerformance Core\b", "Performans Çekirdeği"),
+        (r"\bEfficiency Core\b", "Verimlilik Çekirdeği"),
+        (r"\bNeural Engine\b", "Sinirsel Motor"),
+        (r"\bUp-Down\b", "Yukarı-Aşağı"),
+        (r"\bRight-Left\b", "Sağ-Sol"),
+        (r"\bFront camera\b", "Ön kamera"),
+        (r"\bRear camera\b", "Arka kamera"),
+        (r"\bMain camera\b", "Ana kamera"),
+        (r"\bScreen size\b", "Ekran boyutu"),
+        (r"\bScreen-to-Body\b", "Ekran-Gövde"),
+        (r"\bDimensions\b", "Boyutlar"),
+        (r"\bWeight\b", "Ağırlık"),
+        (r"\bColor\b", "Renk"),
+        (r"\bFingerprint reader\b", "Parmak izi okuyucu"),
+        (r"\bPower supply\b", "Güç kaynağı"),
+        (r"\bOperating system\b", "İşletim sistemi"),
+        (r"\bKeyboard\b", "Klavye"),
+        (r"\bTouchpad\b", "Dokunmatik yüzey"),
+        (r"\bStorage\b", "Depolama"),
+        (r"\bMemory\b", "Bellek"),
+        (r"\bRAM\b", "RAM"),  # no-op but documents
+        (r"\bProcessor\b", "İşlemci"),
+        (r"\bGraphics card\b", "Ekran kartı"),
+        (r"\bCooling\b", "Soğutma"),
+        (r"\bChipset\b", "Yonga seti"),
+        (r"\bRelease\b", "Çıkış"),
+        (r"\bPricing\b", "Fiyatlandırma"),
     ],
     "en->es": [
         (r"\bUnder-Display\b", "Bajo pantalla"),
@@ -1289,12 +1372,34 @@ import re as _re
 _POST_FIX_COMPILED = {k: [(_re.compile(p), r) for p, r in v] for k, v in _POST_FIX.items()}
 
 
+# Collapse same-word repeats Argos produces on short section headers.
+# Catches: "Audio Audio", "Tasarım Tasarımı" (suffix variant),
+# "Software Software Software", "Genel General General General", etc.
+_DEDUP_RE = _re.compile(r"\b(\w{3,})(?:\s+\1\w{0,3})+\b", _re.UNICODE | _re.IGNORECASE)
+
+
+def _collapse_repeats(text: str) -> str:
+    if not text or " " not in text:
+        return text
+    prev = None
+    cur = text
+    # Iterate so we collapse "Genel General General General" → "Genel" in
+    # two passes (the suffix-tolerant variant catches "Tasarım/Tasarımı").
+    for _ in range(3):
+        new = _DEDUP_RE.sub(lambda m: m.group(1), cur)
+        if new == cur:
+            break
+        cur = new
+    return cur
+
+
 def _apply_post_fix(text: str, from_code: str, to_code: str) -> str:
     rules = _POST_FIX_COMPILED.get(f"{from_code}->{to_code}")
-    if not rules or not text:
-        return text
-    for pat, rep in rules:
-        text = pat.sub(rep, text)
+    if rules and text:
+        for pat, rep in rules:
+            text = pat.sub(rep, text)
+    # Always run the repeat-collapse, even when there are no per-pair rules.
+    text = _collapse_repeats(text)
     return text
 
 
@@ -1313,11 +1418,18 @@ def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[s
         max_batch_size=BATCH_SIZE,
         beam_size=BEAM_SIZE,
         return_scores=False,
-        # Spec atoms with multi-word qualifiers (e.g. "1 x Uyku Modunda
-        # Charging Support" → 8 tokens) overflow 192 and get truncated
-        # mid-translation, which is what leaves chunks in the source
-        # language. 320 covers every observed atom comfortably.
         max_decoding_length=320,
+        # Block 3-gram repetitions: without this Argos sometimes loops on
+        # short section headers ("Design design design design design design"
+        # was a typical 6× repeat). 3-gram is small enough to stay accurate
+        # on legitimate runs like "Wi-Fi Wi-Fi 6E".
+        no_repeat_ngram_size=3,
+        # Penalise short hypotheses so the decoder doesn't bail out half-way.
+        length_penalty=1.0,
+        # Mild repetition penalty for the same reason; >1 discourages
+        # token reuse without forbidding it outright (which would hurt
+        # legitimate cases like "USB USB-C").
+        repetition_penalty=1.15,
     )
     out = []
     for r, encoded_src in zip(results, encoded):
