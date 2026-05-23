@@ -3243,11 +3243,37 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
       const clean = prepareProductPayload(product);
       // Inline translation hook (EU pivot): every scraped product is
-      // translated to the 6 target languages BEFORE PB write. The
-      // dictionary-first lookup means most atoms hit the local cache
-      // (zero API cost) — only new spec terms hit DeepSeek.
+      // translated to the 6 target languages BEFORE PB write.
       await _translateProductInline(clean);
+
+      // Cross-source dedup: same variantGroup already in PB?
+      //   • SAME source  → skip (slug-level dedup handled elsewhere already)
+      //   • OTHER source → MERGE specs into existing record (specs union
+      //     across TR + DE), keep the existing record's id/source/affiliate
+      //     fields, never create a duplicate.
+      const mergeKey = clean.variantGroup;
+      const existing = mergeKey ? existingByVG.get(mergeKey) : null;
+      if (existing && existing.source && existing.source !== clean.source) {
+        const merged = await _mergeIntoExistingRecord(existing.id, clean);
+        if (merged) {
+          window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+          results.updated++;
+          errorStreak = 0;
+          recent.push('ok');
+          slog(`  ↻ Cross-source merge: ${product.name} → existing ${existing.id} (${existing.source})`, 'info');
+          if ((results.added + results.updated) % 50 === 0) {
+            _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+          }
+          return;
+        }
+      }
+
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+      // Register the new record in the in-memory VG map so subsequent
+      // products from a different source merge into THIS one.
+      if (mergeKey && saved?.id) {
+        existingByVG.set(mergeKey, { id: saved.id, source: clean.source, name: clean.name });
+      }
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
       errorStreak = 0;
@@ -4517,6 +4543,125 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 //   byVariantGroup — Map(variantGroup → { id, source, name }). variantGroup
 //                  is the cross-source identity key (modelFamilyKey) used to
 //                  reconcile records that already exist for the same model.
+// Lookup PB for an existing record with the given variantGroup. Returns
+// { id, source, name } or null. Used by both scrapers for cross-source dedup
+// (without preloading a per-category VG map, which would be expensive on
+// brand-search runs that touch many categories).
+async function _findExistingByVariantGroup(variantGroup) {
+  const vg = String(variantGroup || '').trim();
+  if (!vg) return null;
+  try {
+    const r = await pb.collection('products').getList(1, 1, {
+      filter: `variantGroup = "${vg.replace(/"/g, '\\"')}"`,
+      fields: 'id,source,name',
+      $autoCancel: false,
+    });
+    const item = (r?.items || [])[0];
+    if (!item) return null;
+    return { id: item.id, source: item.source || '', name: item.name || '' };
+  } catch {
+    return null;
+  }
+}
+
+// Merge incoming `clean` payload into an existing PB product record.
+// Used by cross-source dedup so an Epey TR record gets enriched with
+// Geizhals DE specs (and vice versa) instead of creating a duplicate.
+//
+// Strategy:
+//   • Fetch existing record's specs / multiLangSpecs / images
+//   • Union both spec maps under canonical English keys (already
+//     normalised by prepareProductPayload's canonicalizer)
+//   • Union multiLangSpecs at the language-pair level
+//   • Keep the existing record's source, sourceUrl, gtin/mpn,
+//     affiliateLinks, techScore — incoming wins ONLY for keys it
+//     newly provides (never overwrites a populated value with empty)
+//   • Bump images: union, capped at 8
+//   • PATCH back to PB; return merged payload for the saved event
+async function _mergeIntoExistingRecord(existingId, incoming) {
+  if (!existingId || !incoming) return null;
+  try {
+    const got = await pb.collection('products').getOne(existingId, { $autoCancel: false });
+    const oldData = (typeof got?.data === 'function' ? got.data() : got) || {};
+
+    const specs = { ...(oldData.specs || {}) };
+    for (const [k, v] of Object.entries(incoming.specs || {})) {
+      if (v == null || v === '') continue;
+      if (!specs[k] || String(specs[k]).trim() === '') specs[k] = v;
+    }
+
+    const specSections = { ...(oldData.specSections || {}) };
+    for (const [section, body] of Object.entries(incoming.specSections || {})) {
+      if (!body || typeof body !== 'object') continue;
+      const merged = { ...(specSections[section] || {}) };
+      for (const [k, v] of Object.entries(body)) {
+        if (v == null || v === '') continue;
+        if (!merged[k] || String(merged[k]).trim() === '') merged[k] = v;
+      }
+      specSections[section] = merged;
+    }
+
+    const keySpecs = { ...(oldData.keySpecs || {}) };
+    for (const [k, v] of Object.entries(incoming.keySpecs || {})) {
+      if (v && (!keySpecs[k] || keySpecs[k] === '')) keySpecs[k] = v;
+    }
+
+    const multiLangSpecs = { ...(oldData.multiLangSpecs || {}) };
+    for (const [lang, map] of Object.entries(incoming.multiLangSpecs || {})) {
+      if (!map || typeof map !== 'object') continue;
+      multiLangSpecs[lang] = { ...(multiLangSpecs[lang] || {}), ...map };
+    }
+    const multiLangSections = { ...(oldData.multiLangSections || {}) };
+    for (const [lang, map] of Object.entries(incoming.multiLangSections || {})) {
+      if (!map || typeof map !== 'object') continue;
+      multiLangSections[lang] = { ...(multiLangSections[lang] || {}), ...map };
+    }
+    const nameTranslated = { ...(oldData.nameTranslated || {}) };
+    for (const [lang, name] of Object.entries(incoming.nameTranslated || {})) {
+      if (name && !nameTranslated[lang]) nameTranslated[lang] = name;
+    }
+
+    const existingImages = Array.isArray(oldData.images) ? [...oldData.images] : [];
+    const seenImg = new Set(existingImages);
+    for (const url of (incoming.images || [])) {
+      if (url && !seenImg.has(url)) { existingImages.push(url); seenImg.add(url); }
+      if (existingImages.length >= 8) break;
+    }
+
+    // Track every source that contributed to this record so the catalog can
+    // tell at a glance that a row was enriched cross-source.
+    const sourcesArr = Array.isArray(oldData.sources)
+      ? [...oldData.sources]
+      : (oldData.source ? [oldData.source] : []);
+    if (incoming.source && !sourcesArr.includes(incoming.source)) {
+      sourcesArr.push(incoming.source);
+    }
+
+    const merged = {
+      specs,
+      specSections,
+      keySpecs,
+      multiLangSpecs,
+      multiLangSections,
+      nameTranslated,
+      images: existingImages.slice(0, 8),
+      specsCount: Object.keys(specs).length,
+      // Affiliate / identity fields: only fill if missing on the existing record.
+      ...(oldData.gtin || !incoming.gtin ? {} : { gtin: incoming.gtin }),
+      ...(oldData.mpn  || !incoming.mpn  ? {} : { mpn:  incoming.mpn  }),
+      // Preserve original source as the primary; record additional sources
+      // for audit. The first scraper to write a model owns its "home" url.
+      sources: sourcesArr,
+    };
+
+    await pb.collection('products').update(existingId, merged, { $autoCancel: false });
+    return merged;
+  } catch (e) {
+    slog(`  ⚠ cross-source merge failed for ${existingId}: ${e.message}`, 'warn');
+    return null;
+  }
+}
+
 async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
   const isScrapedRecord = (record = {}) => {

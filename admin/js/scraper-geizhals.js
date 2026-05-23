@@ -445,6 +445,22 @@ function productDedupKey(product) {
 
 function prepareProductPayload(product) {
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
+  // Apply spec canonicalization (DE "Bildschirmhelligkeit" → "Brightness",
+  // "Auflösung" → "Resolution", etc.) so this record can merge cleanly with
+  // an Epey TR record that has "Ekran parlaklığı" → "Brightness".
+  const canonicalizer = typeof window !== 'undefined' ? window.QorAiSpecCanonical : null;
+  const canonical = canonicalizer && typeof canonicalizer.canonicalizeProduct === 'function'
+    ? canonicalizer.canonicalizeProduct({
+        ...product,
+        specs: sanitized.specs,
+        specSections: sanitized.sections,
+        keySpecs: product.keySpecs || {},
+      })
+    : {
+        specs: sanitized.specs,
+        specSections: sanitized.sections,
+        keySpecs: product.keySpecs || {},
+      };
   const category = window.QorAiCategories?.canonicalId
     ? window.QorAiCategories.canonicalId(product.category || '')
     : String(product.category || '').trim();
@@ -475,11 +491,13 @@ function prepareProductPayload(product) {
     imageUrlThumb: primary ? imgThumb(primary) : undefined, // -m.webp
     imageUrlHQ: primary ? imgHQ(primary) : undefined,       // -n.webp
     images,
-    specs: sanitized.specs,
-    specSections: sanitized.sections,
-    keySpecs: product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {},
+    specs: canonical.specs || sanitized.specs,
+    specSections: canonical.specSections || sanitized.sections,
+    keySpecs: canonical.keySpecs && typeof canonical.keySpecs === 'object'
+      ? canonical.keySpecs
+      : (product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {}),
     techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
-    specsCount: Object.keys(sanitized.specs).length,
+    specsCount: Object.keys(canonical.specs || sanitized.specs).length,
     variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
@@ -2434,10 +2452,35 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       nextHtmlPromise = prefetchNext(i + 1);
 
       const clean = prepareProductPayload(product);
-      // Inline translation (EU pivot): same dictionary cache as the Epey
-      // scraper. Atoms first hit the local dict; only new German terms hit
-      // DeepSeek. Failures never block the save.
+      // Inline translation — shares the dictionary with the Epey scraper.
       await _translateProductInline(clean);
+
+      // Cross-source dedup: if an Epey TR record already exists for this
+      // model (same variantGroup) we MERGE specs into it instead of
+      // creating a duplicate. Catalog stays one-row-per-model.
+      let mergedExisting = null;
+      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+        try {
+          const existing = await window._findExistingByVariantGroup(clean.variantGroup);
+          if (existing && existing.source && existing.source !== clean.source) {
+            mergedExisting = await window._mergeIntoExistingRecord(existing.id, clean);
+            if (mergedExisting) {
+              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: mergedExisting } }));
+              results.updated++;
+              errorStreak = 0;
+              recent.push('ok');
+              slog(`  ↻ Cross-source merge → existing ${existing.id} (${existing.source}): ${product.name}`, 'info');
+              if (results.added > 0 && results.added % 25 === 0) {
+                _saveCheckpoint(urlItems, i + 1, categoryId, results);
+              }
+              continue;
+            }
+          }
+        } catch (e) {
+          slog(`  ⚠ dedup probe failed: ${e.message}`, 'warn');
+        }
+      }
+
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
