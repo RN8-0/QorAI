@@ -803,22 +803,340 @@ def warm_up() -> None:
 
 
 # ─── Translation ─────────────────────────────────────────────────────────
+# Pre-translation glossary: applied to the SOURCE text BEFORE Argos sees
+# it. Replaces the handful of TR / DE spec words that the model regularly
+# leaves untranslated inside compound atoms (e.g. "f/1.8 Diyafram" →
+# "f/1.8 Aperture" → Argos passes that through unchanged → en->X hop
+# translates "Aperture" naturally).
+#
+# Each key is matched case-insensitively as a whole word. Hyphenated /
+# parenthesised forms are also matched. The table is keyed by SOURCE
+# language so the same English replacement is reused for every target.
+_PRE_FIX = {
+    "tr": {
+        # Camera / optics
+        "Diyafram": "Aperture",
+        "Düzeltme": "Correction",
+        "Düzeltmesi": "Correction",
+        "Kata Kadar": "up to",
+        "kata kadar": "up to",
+        "Hoparlör": "Speaker",
+        "Hoparlörü": "Speaker",
+        "Hoparlörler": "Speakers",
+        # Body / sensors
+        "Ön": "Front",
+        "Arka": "Rear",
+        "Ivme": "Acceleration",
+        "İvme": "Acceleration",
+        # Performance
+        "Performans": "Performance",
+        "Verimlilik": "Efficiency",
+        "Coreli": "Core",
+        "Çekirdek": "Core",
+        "Çekirdekli": "Core",
+        "İşlemci": "Processor",
+        # UI / dictation
+        "Standlı": "with stand",
+        "Standsız": "without stand",
+        "Standı": "stand",
+        "Stant": "Stand",
+        # Misc
+        "Aydınlatma": "Lighting",
+        "Aydınlatmalı": "Backlit",
+        "Soğutma": "Cooling",
+        "Buhar": "Steam",
+        "Şarj": "Charging",
+        "Hızlı": "Fast",
+        "Kayıt": "Recording",
+        "Kayıtlı": "Recorded",
+        "Açılı": "Angle",
+        "Açı": "Angle",
+        "Genişliği": "Width",
+        "Yüksekliği": "Height",
+        "Derinliği": "Depth",
+        "Yüzölçümü": "Area",
+        "İnç": "Inch",
+        "Piksel": "Pixel",
+        "Çözünürlük": "Resolution",
+        "Düşük": "Low",
+        "Yüksek": "High",
+        "Orta": "Medium",
+        "Ekran Altı": "Under-Display",
+        "Ekran Üstü": "Above-Display",
+        "Sertifikası": "Certificate",
+        "Sertifika": "Certificate",
+        "Güncellemesi": "Update",
+        "Güncelleme": "Update",
+        "Güvenlik": "Security",
+        "Garantisi": "Guarantee",
+        "Garanti": "Guarantee",
+        "Yıl": "Year",
+        "Yıllık": "Year",
+        "Dakika": "Minutes",
+        "Saat": "Hour",
+        "Saniye": "Second",
+        "Döngü": "Cycle",
+        "Sanal": "Virtual",
+        "Artırma": "Expansion",
+        "Ters": "Reverse",
+        "Kablosuz": "Wireless",
+        "Kablolu": "Wired",
+        "Yapay Zeka": "Artificial Intelligence",
+        "Sahne Tanıma": "Scene Recognition",
+        "Parmak İzi": "Fingerprint",
+        "Yüz Tanıma": "Face Recognition",
+        "Su Geçirmez": "Waterproof",
+        "Toz Geçirmez": "Dustproof",
+        "Su Dayanımı": "Water Resistance",
+        "Elementli": "Element",
+        "Dijital": "Digital",
+        "Analog": "Analog",
+        "Tipi": "Type",
+        "Tip": "Type",
+        "Sayısı": "Count",
+        "Sayı": "Count",
+        "Modu": "Mode",
+        "Mod": "Mode",
+        "Modunda": "in Mode",
+    },
+    "de": {
+        # Materials / coatings
+        "fettabweisend": "oil-repellent",
+        "fettabweisende": "oil-repellent",
+        "Fettabweisende": "Oil-repellent",
+        "Glas": "Glass",
+        "glasig": "glassy",
+        "spiegelnd": "mirror",
+        "Spiegelnd": "Mirror",
+        # Controls
+        "Steuerkreuz": "Directional Pad",
+        "Aktionstasten": "Action Buttons",
+        "Funktionstasten": "Function Buttons",
+        "Schultertasten": "Shoulder Buttons",
+        "Tasten": "Buttons",
+        "Analogsticks": "Analog Sticks",
+        "konkav": "concave",
+        "konvex": "convex",
+        "gerade": "straight",
+        "links": "left",
+        "rechts": "right",
+        "oben": "top",
+        "unten": "bottom",
+        "über": "above",
+        "unter": "below",
+        # Connectivity / specs
+        "Anschlüsse": "Connections",
+        "Anschluss": "Connection",
+        "kabelloses Laden": "wireless charging",
+        "Schnellladen": "fast charging",
+        "Schnellladung": "fast charging",
+        "Tastatur": "Keyboard",
+        "beleuchtet": "backlit",
+        "Beleuchtet": "Backlit",
+        # Display
+        "Bildschirmdiagonale": "Screen diagonal",
+        "Auflösung": "Resolution",
+        "Bildwiederholrate": "Refresh rate",
+        "Reaktionszeit": "Response time",
+        "Helligkeit": "Brightness",
+        "höhenverstellbar": "height-adjustable",
+        # Power / battery
+        "Akkulaufzeit": "Battery life",
+        "Akku": "Battery",
+        "Stromversorgung": "Power supply",
+        "Netzteil": "Power adapter",
+        # Sensors
+        "Beschleunigungssensor": "Accelerometer",
+        "Annäherungssensor": "Proximity sensor",
+        "Lichtsensor": "Light sensor",
+        "Fingerabdrucksensor": "Fingerprint sensor",
+        "Herzfrequenzmesser": "Heart rate monitor",
+        # Form / build
+        "Gehäuse": "Housing",
+        "Gehäuseform": "Form factor",
+        "Gehäusematerial": "Material",
+        "Material": "Material",
+        "Aluminium": "Aluminum",
+        # Misc
+        "Sicherheits-Updates": "Security Updates",
+        "Sicherheitsupdate": "Security Update",
+        "Garantie": "Guarantee",
+        "Jahre": "Years",
+        "Jahr": "Year",
+        "Stunden": "Hours",
+        "Stunde": "Hour",
+        "Minuten": "Minutes",
+        "fest verbaut": "built-in",
+        "nicht erweiterbar": "not expandable",
+        "erweiterbar": "expandable",
+        "Onboard": "Onboard",
+        "belegt": "occupied",
+        "Architektur": "Architecture",
+        "Codename": "Codename",
+        "Eingabe": "Input",
+        "Auslieferung": "Delivery",
+        "Zubehör": "Accessories",
+        "optional": "optional",
+        "Schwarz": "Black",
+        "Weiß": "White",
+        "Grau": "Gray",
+        "Silber": "Silver",
+        "Blau": "Blue",
+        "Grün": "Green",
+        "Rot": "Red",
+        "Gelb": "Yellow",
+        "Herstellername": "Manufacturer name",
+        "Abmessungen": "Dimensions",
+        "Gewicht": "Weight",
+    },
+}
+
+# Build a single compiled regex per source language: longest keys first so
+# "Yapay Zeka Sahne Tanıma" beats "Yapay Zeka" alone.
+import re as _re
+_PRE_FIX_COMPILED: Dict[str, List[Tuple[_re.Pattern, str]]] = {}
+for _lang, _table in _PRE_FIX.items():
+    _ordered = sorted(_table.items(), key=lambda kv: -len(kv[0]))
+    _PRE_FIX_COMPILED[_lang] = [
+        # Match whole-word with Unicode boundaries. Use lookahead/lookbehind
+        # so we work inside "f/1.8 Diyafram" and similar token clusters.
+        (_re.compile(r"(?<![A-Za-zÀ-ÿığşçöüİĞŞÇÖÜ])" + _re.escape(k) + r"(?![A-Za-zÀ-ÿığşçöüİĞŞÇÖÜ])"), v)
+        for k, v in _ordered
+    ]
+
+
+def _apply_pre_fix(text: str, src_lang: str) -> str:
+    rules = _PRE_FIX_COMPILED.get(src_lang)
+    if not rules or not text:
+        return text
+    for pat, rep in rules:
+        text = pat.sub(rep, text)
+    return text
+
+
 # Word-level overrides applied AFTER Argos returns. Argos models are tiny
 # and occasionally pick the wrong English sense for a TR/DE word
 # ("Kayıt" → "Registration" instead of "Recording", "mit" → ""). This
 # table fixes the handful of known mistranslations we see in spec atoms
 # without needing a second model pass.
 _POST_FIX = {
-    # TR source → various targets. Each rule fixes a known Argos mistranslation.
+    # TR source → various targets. Each rule fixes a known Argos mistranslation
+    # or a Turkish word that Argos passed through verbatim into the English hop.
+    # Order matters: longer phrases first, then single words.
     "tr->en": [
+        # --- Argos sense errors -----------------------------------------------
         (r"\bRegistration\b", "Recording"),
         (r"\bRegistrations\b", "Recordings"),
         (r"\bInscription\b", "Recording"),
-        # "Ekran Altı" parmak izi → Argos picks the number "six" for "altı"
         (r"\bDisplay Six\b", "Under-Display"),
         (r"\bScreen Six\b", "Under-Screen"),
         (r"\bshow six\b", "under-display"),
         (r"\bShow Six\b", "Under-Display"),
+        # f/N Diyafram → Argos sometimes maps "Diyafram" to "mm" / "m2". Force.
+        (r"\b(f/\d+(?:[.,]\d+)?)\s+(?:mm|m2|m²)\b", r"\1 Aperture"),
+        # --- Turkish words that survive the TR->EN hop verbatim ---------------
+        (r"\bKata Kadar\b", "up to"),
+        (r"\bkata kadar\b", "up to"),
+        (r"\bDiyafram(?:ı|sı)?\b", "Aperture"),
+        (r"\bdiyafram(?:ı|sı)?\b", "aperture"),
+        (r"\bDüzeltme(?:si)?\b", "Correction"),
+        (r"\bdüzeltme(?:si)?\b", "correction"),
+        (r"\bHoparlör(?:ler|leri|ü|leri)?\b", "Speaker"),
+        (r"\bhoparlör(?:ler|leri|ü|leri)?\b", "speaker"),
+        (r"\bİvme(?:ölçer)?\b", "Accelerometer"),
+        (r"\bivme(?:ölçer)?\b", "accelerometer"),
+        (r"\bIvme(?:ölçer)?\b", "Accelerometer"),
+        (r"\bPerformans\b", "Performance"),
+        (r"\bperformans\b", "performance"),
+        (r"\bVerimlilik\b", "Efficiency"),
+        (r"\bverimlilik\b", "efficiency"),
+        (r"\bÇekirdek(?:li|leri)?\b", "Core"),
+        (r"\bçekirdek(?:li|leri)?\b", "core"),
+        (r"\bCoreli\b", "Core"),
+        (r"\bcoreli\b", "core"),
+        (r"\b16 Core Motor\b", "16 Core Neural Engine"),  # special case
+        (r"\bCore Motor\b", "Core Neural Engine"),  # generic catch
+        (r"\bAydınlatma(?:lı)?\b", "Lighting"),
+        (r"\baydınlatma(?:lı)?\b", "lighting"),
+        (r"\bArka\b", "Rear"),
+        (r"\bÖn(?=\s)", "Front"),
+        (r"\bGüvenlik\b", "Security"),
+        (r"\bGüncellemesi\b", "Update"),
+        (r"\bGüncelleme\b", "Update"),
+        (r"\bGarantisi\b", "Guarantee"),
+        (r"\bGaranti\b", "Guarantee"),
+        (r"\bÇözünürlük\b", "Resolution"),
+        (r"\bAçılı\b", "Angle"),
+        (r"\bAçı\b", "Angle"),
+        (r"\bDüşük\b", "Low"),
+        (r"\bYüksek\b", "High"),
+        (r"\bOrta\b", "Medium"),
+        (r"\bElementli\b", "Element"),
+        (r"\bDijital\b", "Digital"),
+        (r"\bdijital\b", "digital"),
+        (r"\bSanal\b", "Virtual"),
+        (r"\bArtırma\b", "Expansion"),
+        (r"\bKablosuz\b", "Wireless"),
+        (r"\bKablolu\b", "Wired"),
+        (r"\bTers\b", "Reverse"),
+        (r"\bSoğutma\b", "Cooling"),
+        (r"\bBuhar\b", "Steam"),
+        (r"\bSertifikası\b", "Certificate"),
+        (r"\bSertifika\b", "Certificate"),
+        (r"\bDakika\b", "Minutes"),
+        (r"\bdakika\b", "minutes"),
+        (r"\bSaat\b", "Hour"),
+        (r"\bsaat\b", "hour"),
+        (r"\bDöngü\b", "Cycle"),
+        (r"\bdöngü\b", "cycle"),
+        (r"\bYıl\b", "Year"),
+        (r"\byıl\b", "year"),
+        (r"\bParmak İzi\b", "Fingerprint"),
+        (r"\bYüz Tanıma\b", "Face Recognition"),
+        (r"\bYapay Zeka\b", "Artificial Intelligence"),
+        (r"\bSahne Tanıma\b", "Scene Recognition"),
+        (r"\bSu Geçirmez\b", "Waterproof"),
+        (r"\bToz Geçirmez\b", "Dustproof"),
+        (r"\bSu Dayanımı\b", "Water Resistance"),
+        (r"\bGenişliği\b", "Width"),
+        (r"\bYüksekliği\b", "Height"),
+        (r"\bDerinliği\b", "Depth"),
+        (r"\bİnç\b", "Inch"),
+        (r"\bPiksel\b", "Pixel"),
+        (r"\bStantsız\b", "without stand"),
+        (r"\bStantlı\b", "with stand"),
+        (r"\bStant\b", "Stand"),
+        (r"\bStandlı\b", "with stand"),
+        (r"\bStandsız\b", "without stand"),
+        (r"\bSupportli\b", "Support"),
+        (r"\bsupportli\b", "support"),
+        (r"\bModunda\b", "Mode"),
+        (r"\bSayısı\b", "Count"),
+        (r"\bTipi\b", "Type"),
+        (r"\bRengi\b", "Color"),
+        # Argos drops Turkish "ı" -> "i" in some words on the TR->EN hop.
+        # Match both forms so post-fix catches the ASCII variant too.
+        (r"\bStandl[ıi]\b", "with stand"),
+        (r"\bstandl[ıi]\b", "with stand"),
+        (r"\bStandsız\b", "without stand"),
+        (r"\bD[ıi]j[ıi]tal\b", "Digital"),
+        (r"\bd[ıi]j[ıi]tal\b", "digital"),
+        (r"\bKayit\b", "Recording"),
+        (r"\bkayit\b", "recording"),
+        # If somehow ASCII variants leak through, normalise them.
+        (r"\bDiyafram\b", "Aperture"),
+        (r"\bdiyafram\b", "aperture"),
+        (r"\bHoparlor\b", "Speaker"),
+        (r"\bhoparlor\b", "speaker"),
+        (r"\bSogutma\b", "Cooling"),
+        (r"\bsogutma\b", "cooling"),
+        # And the multi-word Argos-pass-through cases.
+        (r"\bKata Kadar\b", "up to"),
+        (r"\bkata kadar\b", "up to"),
+        (r"\bKata kadar\b", "up to"),
+        (r"\bkata Kadar\b", "up to"),
+        (r"\bcorrect$", "Correction"),    # "(Red-eye)correct" tail
+        (r"\bkorrigiert$", "Korrektur"),  # DE equivalent
     ],
     "tr->de": [
         (r"\bRegistrierung\b", "Aufnahme"),
@@ -847,10 +1165,72 @@ _POST_FIX = {
         (r"\bSteam охлаждение\b", "Паровое охлаждение"),
         (r"\bDisplay Six\b", "Подэкранный"),
     ],
-    # DE source → fix English/Turkish residue
+    # DE source → fix English/Turkish residue + German words that survive the
+    # DE→EN hop verbatim.
     "de->en": [
         (r"\bwith DE layout\b", "with German layout"),
         (r"\bwith DE Layout\b", "with German layout"),
+        (r"\bfettabweisend(?:e|er|en|es)?\b", "oil-repellent"),
+        (r"\bFettabweisend(?:e|er|en|es)?\b", "Oil-repellent"),
+        (r"\bSteuerkreuz\b", "Directional Pad"),
+        (r"\bAktionstasten\b", "Action Buttons"),
+        (r"\bFunktionstasten\b", "Function Buttons"),
+        (r"\bSchultertasten\b", "Shoulder Buttons"),
+        (r"\bAnalogsticks\b", "Analog Sticks"),
+        (r"\bkonkav\b", "concave"),
+        (r"\bkonvex\b", "convex"),
+        (r"\bgerade\b", "straight"),
+        (r"\bAnschlüsse\b", "Connections"),
+        (r"\bAnschluss\b", "Connection"),
+        (r"\bTastatur\b", "Keyboard"),
+        (r"\bbeleuchtet\b", "backlit"),
+        (r"\bBeleuchtet\b", "Backlit"),
+        (r"\bbeschichtung\b", "coating"),
+        (r"\bBeschichtung\b", "Coating"),
+        (r"\bGlas\b(?!\s*[0-9])", "Glass"),
+        (r"\bGehäuse\b", "Housing"),
+        (r"\bGehäuseform\b", "Form factor"),
+        (r"\bBeschleunigungssensor\b", "Accelerometer"),
+        (r"\bAnnäherungssensor\b", "Proximity sensor"),
+        (r"\bLichtsensor\b", "Light sensor"),
+        (r"\bFingerabdrucksensor\b", "Fingerprint sensor"),
+        (r"\bAkkulaufzeit\b", "Battery life"),
+        (r"\bAkku\b", "Battery"),
+        (r"\bBildschirmdiagonale\b", "Screen diagonal"),
+        (r"\bAuflösung\b", "Resolution"),
+        (r"\bBildwiederholrate\b", "Refresh rate"),
+        (r"\bReaktionszeit\b", "Response time"),
+        (r"\bHelligkeit\b", "Brightness"),
+        (r"\bhöhenverstellbar\b", "height-adjustable"),
+        (r"\bSchnellladung\b", "Fast charging"),
+        (r"\bschnellladen\b", "fast charging"),
+        (r"\bkabelloses Laden\b", "wireless charging"),
+        (r"\bSicherheits-Updates\b", "Security Updates"),
+        (r"\bSicherheitsupdate\b", "Security Update"),
+        (r"\bGarantie\b", "Guarantee"),
+        (r"\bJahre\b", "Years"),
+        (r"\bStunden\b", "Hours"),
+        (r"\bMinuten\b", "Minutes"),
+        (r"\bfest verbaut\b", "built-in"),
+        (r"\bnicht erweiterbar\b", "not expandable"),
+        (r"\berweiterbar\b", "expandable"),
+        (r"\bbelegt\b", "occupied"),
+        (r"\bArchitektur\b", "Architecture"),
+        (r"\bEingabe\b", "Input"),
+        (r"\bZubehör\b", "Accessories"),
+        (r"\bSchwarz\b", "Black"),
+        (r"\bWeiß\b", "White"),
+        (r"\bGrau\b", "Gray"),
+        (r"\bSilber\b", "Silver"),
+        (r"\bAbmessungen\b", "Dimensions"),
+        (r"\bGewicht\b", "Weight"),
+        (r"\bHerstellername\b", "Manufacturer name"),
+        (r"\büber\b", "above"),
+        (r"\bunter\b", "below"),
+        (r"\blinks\b", "left"),
+        (r"\brechts\b", "right"),
+        (r"\boben\b", "top"),
+        (r"\bunten\b", "bottom"),
     ],
     "de->tr": [
         (r"\billuminated\b", "aydınlatmalı"),
@@ -914,6 +1294,10 @@ def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[s
     if pkg is None:
         return texts  # No model installed — return verbatim
     translator, sp = pkg
+    # Pre-fix DISABLED — injecting English words ("up to") into a Turkish
+    # source made the Argos decoder hallucinate them back into Turkish
+    # ("Kata Kadar") in some atoms. Cleanup is now done entirely on the
+    # OUTPUT side via _POST_FIX, applied per-hop.
     encoded = [sp.encode(t, out_type=str) for t in texts]
     results = translator.translate_batch(
         encoded,
