@@ -1909,6 +1909,7 @@ window.QorAiDict = {
   ...(_staticQorAiDict || {}),
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
+  size:    () => Object.keys(_deDictCache).length,
   isDirty: () => _deDictDirty,
   set:     (turkishText, lang, translation) => _deDictStore(turkishText, lang, translation),
   remove:  (turkishText) => {
@@ -4846,6 +4847,61 @@ function _offersStartPolling() {
 window.offersStartSync = offersStartSync;
 window.offersStop = offersStop;
 window.offersRefreshStatus = offersRefreshStatus;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LIVE DICTIONARY COUNTERS
+//  The TR (Epey) and DE (Geizhals) dictionaries grow as new atoms hit
+//  DeepSeek. The header badge polls both sources every second so the user
+//  can watch the cache warm up.
+// ═══════════════════════════════════════════════════════════════════════════
+function _getDictSizes() {
+  let tr = 0, de = 0;
+  try { tr = window.QorAiDict?.size?.() ?? Object.keys(window.QorAiDict?.cache?.() || {}).length; } catch {}
+  try {
+    const g = window.QorAiGeizhals?.dict;
+    de = g?.size?.() ?? Object.keys(g?.cache?.() || {}).length;
+  } catch {}
+  return { tr, de };
+}
+
+function _refreshDictCounter() {
+  const { tr, de } = _getDictSizes();
+  const text = `TR ${tr.toLocaleString()} · DE ${de.toLocaleString()}`;
+  const headerEl = document.getElementById('dictCounterText');
+  if (headerEl) headerEl.textContent = text;
+  const trEl = document.getElementById('dictCountTr');
+  if (trEl) trEl.textContent = tr.toLocaleString();
+  const deEl = document.getElementById('dictCountDe');
+  if (deEl) deEl.textContent = de.toLocaleString();
+}
+
+// Pre-load both dicts on first scraper view, then poll for live changes.
+let _dictCounterStarted = false;
+async function _startDictCounter() {
+  if (_dictCounterStarted) return;
+  _dictCounterStarted = true;
+  // Warm up TR dict (Epey scraper)
+  try { await _loadDeDict(); } catch {}
+  // Warm up DE dict (Geizhals scraper, if loaded)
+  try { await window.QorAiGeizhals?.dict?.load?.(); } catch {}
+  _refreshDictCounter();
+  setInterval(_refreshDictCounter, 1000);
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _startDictCounter);
+  } else {
+    _startDictCounter();
+  }
+}
+
+window.showDictCounterPopup = function () {
+  _refreshDictCounter();
+  const el = document.getElementById('dictCounterPopup');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  SOURCE-AWARE SCRAPER ROUTER (Epey | Geizhals)

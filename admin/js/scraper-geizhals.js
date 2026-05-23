@@ -1207,6 +1207,7 @@ function _deDictStore(germanText, targetLang, translation) {
 const _GeizhalsDict = {
   load:    () => _loadDeDict(),
   cache:   () => _deDictCache,
+  size:    () => Object.keys(_deDictCache).length,
   set:     (germanText, lang, translation) => _deDictStore(germanText, lang, translation),
   remove:  (germanText) => {
     const key = String(germanText || '').toLowerCase().trim();
