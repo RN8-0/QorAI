@@ -1559,11 +1559,34 @@ function _normalizeDictSourceKey(text) {
   return String(text || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
+const _TR_TRANSLATABLE_WORD_RE = /\b(yıl|yil|güncelleme|guncelleme|güvenlik|guvenlik|güvenliği|guvenligi|garanti|garantisi|artırma|artirma|sanal|ters|şarj|sarj|soğutma|sogutma|odaklama|kayıt|kayit|açı|aci|geniş|genis|yardımcı|yardimci|işlemci|islemci|parlaklık|parlaklik|çözünürlük|cozunurluk|ekstra|makro|portre)\b/i;
+const _TECH_VALUE_WORDS = new Set([
+  'inch','inç','inc','piksel','pixel','pixels','fps','hz','khz','mhz','ghz',
+  'mah','wh','w','v','a','gb','mb','kb','tb','nm','nit','nits','cd','mm','cm',
+  'mp','mpx','lte','gps','a-gps','bds','glonass','galileo','qzss','usb',
+]);
+
+function _wordTokens(text) {
+  return String(text || '').match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ-]+/g) || [];
+}
+
+function _meaningfulWordTokens(text) {
+  return _wordTokens(text)
+    .map(w => w.toLowerCase().replace(/^-+|-+$/g, ''))
+    .filter(w => w.length >= 2 && !_TECH_VALUE_WORDS.has(w));
+}
+
 function _isWordOnlyDictSource(text) {
   const s = _normalizeDictSourceKey(text);
   if (!s || s.length < 2) return false;
-  if (/\d/.test(s)) return false;
-  return /[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]/.test(s);
+  if (!/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]/.test(s)) return false;
+  if (!/\d/.test(s)) return true;
+
+  // Keep phrases like "6 yıl güvenlik güncellemesi garantisi" in the
+  // dictionary, but reject pure technical measurements such as "1200x2608".
+  const meaningful = _meaningfulWordTokens(s);
+  if (meaningful.length >= 2) return true;
+  return _TR_TRANSLATABLE_WORD_RE.test(s) && !/^\s*[\d\s.,:+/()°%'"-]*[a-z]+\s*$/i.test(s);
 }
 
 function _buildDictShards(snapshot) {
@@ -1730,11 +1753,78 @@ async function _saveDeDict() {
   }
 }
 
+function _knownTurkishRuleTranslation(sourceText, targetLang) {
+  const raw = String(sourceText || '').trim();
+  const s = _normalizeDictSourceKey(raw)
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+  const n = (s.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
+  if (!n) return null;
+  const suffix = raw.match(/\([^)]*\)\s*$/)?.[0] || '';
+  const maps = {
+    updateWarranty: {
+      en: `${n}-Year Update Guarantee`,
+      de: `${n} Jahre Update-Garantie`,
+      es: `Garantia De Actualizaciones De ${n} Anos`,
+      fr: `Garantie De Mises A Jour De ${n} Ans`,
+      pt: `Garantia De Atualizacoes De ${n} Anos`,
+      ru: `${n}-Летняя Гарантия Обновлений`,
+    },
+    securityWarranty: {
+      en: `${n}-Year Security Update Guarantee`,
+      de: `${n} Jahre Sicherheitsupdate-Garantie`,
+      es: `Garantia De Actualizaciones De Seguridad De ${n} Anos`,
+      fr: `Garantie De Mises A Jour De Securite De ${n} Ans`,
+      pt: `Garantia De Atualizacoes De Seguranca De ${n} Anos`,
+      ru: `${n}-Летняя Гарантия Обновлений Безопасности`,
+    },
+    virtualRam: {
+      en: `Virtual RAM Expansion${suffix ? ` ${suffix}` : ''}`,
+      de: `Virtuelle RAM-Erweiterung${suffix ? ` ${suffix}` : ''}`,
+      es: `Expansion De RAM Virtual${suffix ? ` ${suffix}` : ''}`,
+      fr: `Extension De RAM Virtuelle${suffix ? ` ${suffix}` : ''}`,
+      pt: `Expansao De RAM Virtual${suffix ? ` ${suffix}` : ''}`,
+      ru: `Расширение Виртуальной RAM${suffix ? ` ${suffix}` : ''}`,
+    },
+    cooling: {
+      en: raw.replace(/soğutma|sogutma/i, 'Cooling'),
+      de: raw.replace(/soğutma|sogutma/i, 'Kühlung'),
+      es: raw.replace(/soğutma|sogutma/i, 'Refrigeracion'),
+      fr: raw.replace(/soğutma|sogutma/i, 'Refroidissement'),
+      pt: raw.replace(/soğutma|sogutma/i, 'Resfriamento'),
+      ru: raw.replace(/soğutma|sogutma/i, 'Охлаждение'),
+    },
+    reverseCharging: {
+      en: `Reverse Charging${suffix ? ` ${suffix}` : ''}`,
+      de: `Reverse Charging${suffix ? ` ${suffix}` : ''}`,
+      es: `Carga Inversa${suffix ? ` ${suffix}` : ''}`,
+      fr: `Charge Inverse${suffix ? ` ${suffix}` : ''}`,
+      pt: `Carregamento Reverso${suffix ? ` ${suffix}` : ''}`,
+      ru: `Обратная Зарядка${suffix ? ` ${suffix}` : ''}`,
+    },
+  };
+  if (/^\d+\s*yil\s+guvenlik\s+guncellemesi\s+garantisi$/.test(s)) return maps.securityWarranty[targetLang] || null;
+  if (/^\d+\s*yil\s+guncelleme\s+garantisi$/.test(s)) return maps.updateWarranty[targetLang] || null;
+  if (/sanal\s+ram\s+artirma/.test(s)) return maps.virtualRam[targetLang] || null;
+  if (/ters\s+(charging|sarj)/.test(s)) return maps.reverseCharging[targetLang] || null;
+  if (/sogutma/.test(s) && /\d|iceloop|vapor|buhar/i.test(s)) return maps.cooling[targetLang] || null;
+  return null;
+}
+
 // Lookup Turkish text in cache for a specific target language
 function _deDictLookup(turkishText, targetLang) {
   const key = _normalizeDictSourceKey(turkishText);
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) return entry[targetLang];
+  const rule = _knownTurkishRuleTranslation(turkishText, targetLang);
+  if (rule) {
+    _deDictStore(turkishText, targetLang, rule);
+    return _deDictCache[key]?.[targetLang] || rule;
+  }
   return null;
 }
 
@@ -1792,6 +1882,17 @@ function _shouldTranslateAtom(text) {
   const tokens = s.split(/\s+/).filter(Boolean);
   if (tokens.length && tokens.every(t => _shouldPreserve(t.replace(/^[^\w]+|[^\w]+$/g, '')))) {
     return false;
+  }
+  if (/\d/.test(s)) {
+    const meaningful = _meaningfulWordTokens(s);
+    const hasTurkishMeaning = _TR_TRANSLATABLE_WORD_RE.test(s) || /[çğıöşüÇĞİÖŞÜ]/.test(s);
+    const digitCount = (s.match(/\d/g) || []).length;
+    const compactLen = s.replace(/\s+/g, '').length || 1;
+    if (!hasTurkishMeaning && digitCount / compactLen > 0.25) return false;
+    if (meaningful.length < 2 && !/\b(soğutma|sogutma|artırma|artirma|ters)\b/i.test(s)) return false;
+    if (/^\d+(?:[.,]\d+)?\s*(inç|inc|inch|fps|hz|khz|mhz|ghz|mah|w|v|a|gb|mb|tb|nm|nit|nits|mp|mm|cm|piksel|pixel)s?\b/i.test(s) && meaningful.length < 3) {
+      return false;
+    }
   }
   // Model-code-heavy values such as "0/1/10 (B550)" or "SM-S918BZKQXSP"
   // are better preserved verbatim and should not spend DeepSeek calls.
@@ -2021,7 +2122,7 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
-async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort) {
+async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shouldAbort, opts = {}) {
   const token = getPb()?.authStore?.token;
   if (!token) {
     console.warn('[tr-translate] No auth token');
@@ -2163,7 +2264,7 @@ Rules:
     await _saveDeDict();
   }
 
-  const passes = [
+  const passes = (Array.isArray(opts.passes) && opts.passes.length) ? opts.passes : [
     { size: 40, concurrency: 3 },
     { size: 25, concurrency: 2 },
     { size: 12, concurrency: 1 },
@@ -2201,13 +2302,14 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   function _enqueue(text) {
     const t = String(text || '').trim();
     if (!t) return;
-    allGermanTexts.add(t);
     if (t.includes('\n')) {
       for (const line of t.split('\n')) {
         const tl = line.trim();
         if (tl) allGermanTexts.add(tl);
       }
+      return;
     }
+    allGermanTexts.add(t);
   }
   for (const [k, v] of Object.entries(germanSpecs)) {
     _enqueue(k);
@@ -2302,13 +2404,14 @@ function _collectAtomsFromProduct(p, sink) {
   const add = (t) => {
     const s = String(t || '').trim();
     if (!s) return;
-    sink.add(s);
     if (s.includes('\n')) {
       for (const line of s.split('\n')) {
         const l = line.trim();
         if (l) sink.add(l);
       }
+      return;
     }
+    sink.add(s);
   };
   if (_shouldTranslateProductName(p.name)) add(p.name);
 
@@ -2440,7 +2543,7 @@ async function _translateProductInline(product) {
             inFlight.delete(key);
             xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
           }
-        });
+        }, null, { passes: [{ size: 24, concurrency: 2 }] });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);
         const heartbeat = setInterval(() => {
           if (!inFlight.size) return;

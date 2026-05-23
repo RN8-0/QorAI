@@ -1095,6 +1095,18 @@ function _normalizeDictSourceKey(text) {
   return String(text || '').toLowerCase().trim();
 }
 
+const _TECH_VALUE_WORDS = new Set([
+  'inch','zoll','pixel','pixels','fps','hz','khz','mhz','ghz','mah','wh','w',
+  'v','a','gb','mb','kb','tb','nm','nit','nits','cd','mm','cm','mp','usb',
+  'gps','a-gps','bds','glonass','galileo','qzss',
+]);
+
+function _meaningfulWordTokens(text) {
+  return (String(text || '').match(/[a-zA-ZÀ-ÿÄÖÜäöüß-]+/g) || [])
+    .map(w => w.toLowerCase().replace(/^-+|-+$/g, ''))
+    .filter(w => w.length >= 2 && !_TECH_VALUE_WORDS.has(w));
+}
+
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const entry = _deDictCache[key];
@@ -1153,6 +1165,15 @@ function _shouldTranslateAtom(text) {
   const tokens = s.split(/\s+/).filter(Boolean);
   if (tokens.length && tokens.every(t => _shouldPreserve(t.replace(/^[^\w]+|[^\w]+$/g, '')))) {
     return false;
+  }
+  if (/\d/.test(s)) {
+    const meaningful = _meaningfulWordTokens(s);
+    const digitCount = (s.match(/\d/g) || []).length;
+    const compactLen = s.replace(/\s+/g, '').length || 1;
+    if (digitCount / compactLen > 0.25 && meaningful.length < 2) return false;
+    if (/^\d+(?:[.,]\d+)?\s*(zoll|inch|fps|hz|khz|mhz|ghz|mah|w|v|a|gb|mb|tb|nm|nit|nits|mp|mm|cm|pixel)s?\b/i.test(s) && meaningful.length < 3) {
+      return false;
+    }
   }
   // Model-code-heavy values such as "0/1/10 (B550)" or "SM-S918BZKQXSP"
   // are better preserved verbatim and should not spend DeepSeek calls.
@@ -1327,7 +1348,7 @@ function _salvageTruncatedJson(raw) {
   return out;
 }
 
-async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
+async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts = {}) {
   const token = getPb()?.authStore?.token;
   if (!token) {
     console.warn('[de-translate] No auth token');
@@ -1346,7 +1367,7 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress) {
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
   // lets us safely use a slightly larger batch than the old 12.
-  const CHUNK = 18;
+  const CHUNK = opts.chunkSize || 18;
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
@@ -1416,6 +1437,7 @@ Rules:
       report('chunk-done', chunkIdx, {
         batchSize: batch.length,
         stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
         elapsedMs: Date.now() - chunkStart,
       });
     } catch (e) {
@@ -1434,7 +1456,7 @@ Rules:
   // req/min — at 4 in-flight requests with ~15-30s latency we stay well
   // below that ceiling. End-to-end runtime drops from N×latency to
   // (N/CONCURRENCY)×latency, so a 9-chunk run goes from ~225s → ~60s.
-  const CONCURRENCY = 4;
+  const CONCURRENCY = opts.concurrency || 4;
   let cursor = 0;
   const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
     while (cursor < jobs.length) {
@@ -1469,13 +1491,14 @@ async function translateGermanSpecs(germanSpecs, targetLangs = TARGET_LANGS) {
   function _enqueue(text) {
     const t = String(text || '').trim();
     if (!t) return;
-    allGermanTexts.add(t);
     if (t.includes('\n')) {
       for (const line of t.split('\n')) {
         const tl = line.trim();
         if (tl) allGermanTexts.add(tl);
       }
+      return;
     }
+    allGermanTexts.add(t);
   }
   for (const [k, v] of Object.entries(germanSpecs)) {
     _enqueue(k);
@@ -1562,13 +1585,14 @@ function _collectAtomsFromProduct(p, sink) {
   const add = (t) => {
     const s = String(t || '').trim();
     if (!s) return;
-    sink.add(s);
     if (s.includes('\n')) {
       for (const line of s.split('\n')) {
         const l = line.trim();
         if (l) sink.add(l);
       }
+      return;
     }
+    sink.add(s);
   };
   if (p.name) add(p.name);
   const specs = p.specs || {};
@@ -1669,7 +1693,7 @@ async function _translateProductInline(product) {
           } else if (ev.phase === 'chunk-error') {
             xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
           }
-        });
+        }, { chunkSize: 24, concurrency: 2 });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);
         const heartbeat = setInterval(() => {
           xlog(`  … DeepSeek çalışıyor · ${missing.length} atom · ${Math.round((Date.now() - t0) / 1000)}s`, 'info');

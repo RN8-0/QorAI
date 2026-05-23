@@ -2795,6 +2795,22 @@ function _renderProductModal(p,variants=[]){
   const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || ''));
   const dictApiForModal = sourceIsGeizhals ? window.QorAiGeizhals?.dict : window.QorAiDict;
   const dictCacheForModal = (lang !== 'tr' && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
+  function knownModalTranslation(text){
+    const raw = String(text ?? '').trim();
+    const n = (raw.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
+    if (!raw || !n) return null;
+    const s = raw.toLowerCase()
+      .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u')
+      .replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c')
+      .replace(/\s+/g,' ');
+    const maps = {
+      update: { en:`${n}-Year Update Guarantee`, de:`${n} Jahre Update-Garantie`, es:`Garantia De Actualizaciones De ${n} Anos`, fr:`Garantie De Mises A Jour De ${n} Ans`, pt:`Garantia De Atualizacoes De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений` },
+      security: { en:`${n}-Year Security Update Guarantee`, de:`${n} Jahre Sicherheitsupdate-Garantie`, es:`Garantia De Actualizaciones De Seguridad De ${n} Anos`, fr:`Garantie De Mises A Jour De Securite De ${n} Ans`, pt:`Garantia De Atualizacoes De Seguranca De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений Безопасности` },
+    };
+    if (/^\d+\s*yil\s+guvenlik\s+guncellemesi\s+garantisi$/.test(s)) return maps.security[lang] || null;
+    if (/^\d+\s*yil\s+guncelleme\s+garantisi$/.test(s)) return maps.update[lang] || null;
+    return null;
+  }
   function lookupLocalizedText(text){
     const raw = String(text ?? '').trim();
     if (!raw || lang === 'tr') return text;
@@ -2803,6 +2819,8 @@ function _renderProductModal(p,variants=[]){
     if (ml && typeof ml[lower] === 'string' && ml[lower]) return ml[lower];
     const d = dictCacheForModal?.[lower]?.[lang];
     if (typeof d === 'string' && d.trim()) return d.trim();
+    const known = knownModalTranslation(raw);
+    if (known) return known;
     return text;
   }
   // Build localized sections on the fly: keep the original Turkish section
