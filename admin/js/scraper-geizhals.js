@@ -1131,8 +1131,179 @@ function _meaningfulWordTokens(text) {
     .filter(w => w.length >= 2 && !_TECH_VALUE_WORDS.has(w));
 }
 
+function _knownGermanRuleTranslation(germanText, targetLang) {
+  const key = _normalizeDictSourceKey(germanText);
+  const map = {
+    'betriebssystem': {
+      tr: 'İşletim sistemi', en: 'Operating system', es: 'Sistema operativo',
+      fr: "Système d'exploitation", pt: 'Sistema operacional', ru: 'Операционная система',
+    },
+    'kamera vorne': {
+      tr: 'Ön kamera', en: 'Front camera', es: 'Cámara frontal',
+      fr: 'Caméra avant', pt: 'Câmera frontal', ru: 'Фронтальная камера',
+    },
+    'sensoren': {
+      tr: 'Sensörler', en: 'Sensors', es: 'Sensores',
+      fr: 'Capteurs', pt: 'Sensores', ru: 'Датчики',
+    },
+    'sim-karte': {
+      tr: 'SIM kartı', en: 'SIM card', es: 'Tarjeta SIM',
+      fr: 'Carte SIM', pt: 'Cartão SIM', ru: 'SIM-карта',
+    },
+    'abmessungen': {
+      tr: 'Boyutlar', en: 'Dimensions', es: 'Dimensiones',
+      fr: 'Dimensions', pt: 'Dimensões', ru: 'Размеры',
+    },
+    'farbe': {
+      tr: 'Renk', en: 'Color', es: 'Color',
+      fr: 'Couleur', pt: 'Cor', ru: 'Цвет',
+    },
+    'gewicht': {
+      tr: 'Ağırlık', en: 'Weight', es: 'Peso',
+      fr: 'Poids', pt: 'Peso', ru: 'Вес',
+    },
+    'batterielaufzeit': {
+      tr: 'Pil ömrü', en: 'Battery life', es: 'Duración de la batería',
+      fr: 'Autonomie de la batterie', pt: 'Duração da bateria', ru: 'Время работы батареи',
+    },
+    'energieeffizienzklasse': {
+      tr: 'Enerji verimliliği sınıfı', en: 'Energy efficiency class',
+      es: 'Clase de eficiencia energética', fr: "Classe d'efficacité énergétique",
+      pt: 'Classe de eficiência energética', ru: 'Класс энергоэффективности',
+    },
+    'akkukapazität': {
+      tr: 'Pil kapasitesi', en: 'Battery capacity', es: 'Capacidad de la batería',
+      fr: 'Capacité de la batterie', pt: 'Capacidade da bateria', ru: 'Емкость аккумулятора',
+    },
+    'speicher': {
+      tr: 'Depolama', en: 'Storage', es: 'Almacenamiento',
+      fr: 'Stockage', pt: 'Armazenamento', ru: 'Хранилище',
+    },
+    'gehäusematerial': {
+      tr: 'Gövde malzemesi', en: 'Body material', es: 'Material del cuerpo',
+      fr: 'Matériau du boîtier', pt: 'Material do corpo', ru: 'Материал корпуса',
+    },
+    'gehäuseform': {
+      tr: 'Gövde formu', en: 'Body shape', es: 'Forma del cuerpo',
+      fr: 'Forme du boîtier', pt: 'Formato do corpo', ru: 'Форма корпуса',
+    },
+    'frequenzbänder': {
+      tr: 'Frekans bantları', en: 'Frequency bands', es: 'Bandas de frecuencia',
+      fr: 'Bandes de fréquence', pt: 'Bandas de frequência', ru: 'Диапазоны частот',
+    },
+    'besonderheiten': {
+      tr: 'Özellikler', en: 'Features', es: 'Características',
+      fr: 'Fonctionnalités', pt: 'Recursos', ru: 'Особенности',
+    },
+    'zuverlässigkeitsklasse': {
+      tr: 'Güvenilirlik sınıfı', en: 'Reliability class', es: 'Clase de fiabilidad',
+      fr: 'Classe de fiabilité', pt: 'Classe de confiabilidade', ru: 'Класс надежности',
+    },
+    'stereo-lautsprecher (hybrid)': {
+      tr: 'Stereo hoparlörler (hibrit)', en: 'Stereo speakers (hybrid)',
+      es: 'Altavoces estéreo (híbridos)', fr: 'Haut-parleurs stéréo (hybrides)',
+      pt: 'Alto-falantes estéreo (híbridos)', ru: 'Стереодинамики (гибридные)',
+    },
+    'beschleunigungssensor': {
+      tr: 'İvmeölçer', en: 'Accelerometer', es: 'Acelerómetro',
+      fr: 'Accéléromètre', pt: 'Acelerômetro', ru: 'Акселерометр',
+    },
+    'gyroskop': {
+      tr: 'Jiroskop', en: 'Gyroscope', es: 'Giroscopio',
+      fr: 'Gyroscope', pt: 'Giroscópio', ru: 'Гироскоп',
+    },
+    'annäherungssensor': {
+      tr: 'Yakınlık sensörü', en: 'Proximity sensor', es: 'Sensor de proximidad',
+      fr: 'Capteur de proximité', pt: 'Sensor de proximidade', ru: 'Датчик приближения',
+    },
+    'lichtsensor': {
+      tr: 'Işık sensörü', en: 'Light sensor', es: 'Sensor de luz',
+      fr: 'Capteur de lumière', pt: 'Sensor de luz', ru: 'Датчик освещенности',
+    },
+    'kompass': {
+      tr: 'Pusula', en: 'Compass', es: 'Brújula',
+      fr: 'Boussole', pt: 'Bússola', ru: 'Компас',
+    },
+    'gesichtsscanner (3d, infrarot)': {
+      tr: 'Yüz tarayıcı (3D, kızılötesi)', en: 'Face scanner (3D, infrared)',
+      es: 'Escáner facial (3D, infrarrojo)', fr: 'Scanner facial (3D, infrarouge)',
+      pt: 'Scanner facial (3D, infravermelho)', ru: 'Сканер лица (3D, инфракрасный)',
+    },
+    'schwarz': {
+      tr: 'Siyah', en: 'Black', es: 'Negro',
+      fr: 'Noir', pt: 'Preto', ru: 'Черный',
+    },
+    'aussparung': {
+      tr: 'Ekran kesiti', en: 'Display cutout', es: 'Recorte de pantalla',
+      fr: "Découpe d'écran", pt: 'Recorte da tela', ru: 'Вырез экрана',
+    },
+    'flach': {
+      tr: 'Düz', en: 'Flat', es: 'Plano',
+      fr: 'Plat', pt: 'Plano', ru: 'Плоский',
+    },
+    'kapazitiver touchscreen': {
+      tr: 'Kapasitif dokunmatik ekran', en: 'Capacitive touchscreen',
+      es: 'Pantalla táctil capacitiva', fr: 'Écran tactile capacitif',
+      pt: 'Tela sensível ao toque capacitiva', ru: 'Емкостный сенсорный экран',
+    },
+    'phasenvergleich-af': {
+      tr: 'Faz algılamalı otomatik odaklama', en: 'Phase detection autofocus',
+      es: 'Autoenfoque por detección de fase', fr: 'Autofocus à détection de phase',
+      pt: 'Foco automático por detecção de fase', ru: 'Фазовый автофокус',
+    },
+    'ip68-zertifiziert': {
+      tr: 'IP68 sertifikalı', en: 'IP68 certified', es: 'Certificación IP68',
+      fr: 'Certifié IP68', pt: 'Certificado IP68', ru: 'Сертификация IP68',
+    },
+  };
+  if (map[key]?.[targetLang]) return map[key][targetLang];
+  const mLoad = key.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
+  if (mLoad) {
+    const n = mLoad[1];
+    return ({
+      tr: `${n} şarj döngüsü`, en: `${n} charging cycles`,
+      es: `${n} ciclos de carga`, fr: `${n} cycles de charge`,
+      pt: `${n} ciclos de carga`, ru: `${n} циклов зарядки`,
+    })[targetLang] || null;
+  }
+  const mHz = key.match(/^(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate$/);
+  if (mHz) {
+    const n = mHz[1];
+    return ({
+      tr: `${n}Hz yenileme hızı`, en: `${n}Hz refresh rate`,
+      es: `Frecuencia de actualización de ${n}Hz`, fr: `Taux de rafraîchissement ${n}Hz`,
+      pt: `Taxa de atualização de ${n}Hz`, ru: `Частота обновления ${n} Гц`,
+    })[targetLang] || null;
+  }
+  const mNits = key.match(/^(\d+(?:[.,]\d+)?)\s+nits\s+\(maximal\)$/);
+  if (mNits) {
+    const n = mNits[1];
+    return ({
+      tr: `${n} nit (maksimum)`, en: `${n} nits (maximum)`,
+      es: `${n} nits (máximo)`, fr: `${n} nits (maximum)`,
+      pt: `${n} nits (máximo)`, ru: `${n} нит (максимум)`,
+    })[targetLang] || null;
+  }
+  if (/^satellitenkommunikation/i.test(key)) {
+    return ({
+      tr: 'Uydu iletişimi (mesajlar, sadece acil arama)',
+      en: 'Satellite communication (text messages, emergency only)',
+      es: 'Comunicación satelital (mensajes de texto, solo emergencia)',
+      fr: 'Communication satellite (messages texte, urgence uniquement)',
+      pt: 'Comunicação por satélite (mensagens de texto, apenas emergência)',
+      ru: 'Спутниковая связь (текстовые сообщения, только экстренные вызовы)',
+    })[targetLang] || null;
+  }
+  return null;
+}
+
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
+  const rule = _knownGermanRuleTranslation(germanText, targetLang);
+  if (rule) {
+    _deDictStore(germanText, targetLang, rule);
+    return _deDictCache[key]?.[targetLang] || rule;
+  }
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) return entry[targetLang];
   return null;
@@ -1810,7 +1981,7 @@ async function _translateProductInline(product) {
       const t0 = Date.now();
       try {
         const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
-          const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+          const provider = ev.provider === 'local-nllb' ? 'GPU Argos' : 'DeepSeek';
           if (ev.phase === 'start' && ev.provider === 'local-nllb') {
             xlog(`  ⚡ GPU çeviri başlıyor (Argos+CT2) · ${ev.batchSize} atom · ${ev.totalChunks} chunk`, 'info');
           } else if (ev.phase === 'skipped' && ev.provider === 'local-nllb') {
@@ -1824,7 +1995,7 @@ async function _translateProductInline(product) {
           } else if (ev.phase === 'chunk-error') {
             xlog(`  ⚠ ${provider} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
           } else if (ev.phase === 'fallback') {
-            xlog(`  → Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
+            xlog(`  → GPU Argos sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
           }
         }, { chunkSize: 24, concurrency: 2 });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);

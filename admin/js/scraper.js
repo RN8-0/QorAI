@@ -1773,6 +1773,7 @@ async function _saveDeDict() {
 
 function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const raw = String(sourceText || '').trim();
+  const lang = targetLang || 'en';
   const s = _normalizeDictSourceKey(raw)
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
@@ -1781,8 +1782,32 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c');
   const n = (s.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
-  if (!n) return null;
   const suffix = raw.match(/\([^)]*\)\s*$/)?.[0] || '';
+  const phrase = {
+    minute: { en: 'minutes', de: 'Minuten', es: 'minutos', fr: 'minutes', pt: 'minutos', ru: 'минут' },
+    hour: { en: 'hours', de: 'Stunden', es: 'horas', fr: 'heures', pt: 'horas', ru: 'часов' },
+    cycle: { en: 'cycles', de: 'Zyklen', es: 'ciclos', fr: 'cycles', pt: 'ciclos', ru: 'циклов' },
+    billion: { en: 'billion', de: 'Milliarden', es: 'mil millones', fr: 'milliards', pt: 'bilhoes', ru: 'млрд' },
+    gram: { en: 'grams', de: 'Gramm', es: 'gramos', fr: 'grammes', pt: 'gramas', ru: 'грамм' },
+    onlyEsim: { en: 'eSIM only', de: 'nur eSIM', es: 'solo eSIM', fr: 'eSIM uniquement', pt: 'somente eSIM', ru: 'только eSIM' },
+    digitalZoom: { en: 'digital zoom', de: 'Digitalzoom', es: 'zoom digital', fr: 'zoom numerique', pt: 'zoom digital', ru: 'цифровой зум' },
+    elementLens: { en: 'element lens', de: 'Element-Objektiv', es: 'lente de elementos', fr: 'lentille a elements', pt: 'lente de elementos', ru: 'элементный объектив' },
+    technology: { en: 'Technology', de: 'Technologie', es: 'Tecnologia', fr: 'Technologie', pt: 'Tecnologia', ru: 'Технология' },
+    specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
+  };
+  const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
+  if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return `${n} ${p('minute')}`;
+  if (/^\d+(?:[.,]\d+)?\s*saat$/.test(s)) return `${n} ${p('hour')}`;
+  if (/^\d+(?:[.,]\d+)?\s*dongu$/.test(s)) return `${n} ${p('cycle')}`;
+  if (/^\d+(?:[.,]\d+)?\s*milyar$/.test(s)) return `${n} ${p('billion')}`;
+  if (/^\d+(?:[.,]\d+)?\s*gram$/.test(s)) return `${n} ${p('gram')}`;
+  if (/^\d+(?:[.,]\d+)?x\s*dijital\s+zoom$/.test(s)) return `${n}x ${p('digitalZoom')}`;
+  if (/^\d+\s*elementli\s+lens$/.test(s)) return `${n}-${p('elementLens')}`;
+  if (/^yalnizca\s+esim$/.test(s)) return p('onlyEsim');
+  if (/\byalnizca\s+esim\b/.test(s)) return raw.replace(/yaln[ıi]zca\s+esim/ig, p('onlyEsim'));
+  if (/\bspecificationsi\b/i.test(raw)) return raw.replace(/\bspecificationsi\b/ig, p('specifications'));
+  if (/\bteknolojisi\b/i.test(raw)) return raw.replace(/\bteknolojisi\b/ig, p('technology'));
+  if (!n) return null;
   const maps = {
     updateWarranty: {
       en: `${n}-Year Update Guarantee`,
@@ -1838,13 +1863,13 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
 // here is always honoured (no second-guessing → no infinite retry loop).
 function _deDictLookup(turkishText, targetLang) {
   const key = _normalizeDictSourceKey(turkishText);
-  const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) return entry[targetLang];
   const rule = _knownTurkishRuleTranslation(turkishText, targetLang);
   if (rule) {
     _deDictStore(turkishText, targetLang, rule);
     return _deDictCache[key]?.[targetLang] || rule;
   }
+  const entry = _deDictCache[key];
+  if (entry && entry[targetLang]) return entry[targetLang];
   return null;
 }
 
@@ -2662,7 +2687,7 @@ async function _translateProductInline(product) {
         const inFlight = new Map();
         const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
           const key = `${ev.pass || 1}:${ev.chunkIndex}`;
-          const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+          const provider = ev.provider === 'local-nllb' ? 'GPU Argos' : 'DeepSeek';
           if (ev.phase === 'start' && ev.provider === 'local-nllb') {
             xlog(`  ⚡ GPU çeviri başlıyor (Argos+CT2) · ${ev.batchSize} atom · ${ev.totalChunks} chunk`, 'info');
           } else if (ev.phase === 'skipped' && ev.provider === 'local-nllb') {
@@ -2679,7 +2704,7 @@ async function _translateProductInline(product) {
             inFlight.delete(key);
             xlog(`  ⚠ ${provider} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
           } else if (ev.phase === 'fallback') {
-            xlog(`  → Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
+            xlog(`  → GPU Argos sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
           }
         }, null, { passes: [{ size: 24, concurrency: 2 }] });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);

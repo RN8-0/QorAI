@@ -82,6 +82,165 @@ MODEL_LABEL = f"argos-translate/{DEVICE}/{COMPUTE_TYPE}"
 # sources pivot through EN at runtime.
 LANGS = {"tr", "en", "de", "es", "fr", "pt", "ru"}
 
+# Tiny deterministic glossary for short technical atoms where MT models are
+# weakest. This stays in-process and costs ~0 ms; it prevents broken outputs
+# like "5088 mAh (?? eSIM)" or "C02-carbone" from entering the shared dict.
+_EXACT_GLOSSARY: Dict[Tuple[str, str], Dict[str, str]] = {
+    ("tr", "yalnızca esim"): {
+        "en": "Only eSIM", "de": "Nur eSIM", "es": "Solo eSIM",
+        "fr": "eSIM uniquement", "pt": "Apenas eSIM", "ru": "Только eSIM",
+    },
+    ("tr", "silikon-karbon"): {
+        "en": "Silicon-carbon", "de": "Silizium-Kohlenstoff",
+        "es": "Silicio-carbono", "fr": "Silicium-carbone",
+        "pt": "Silício-carbono", "ru": "Кремний-углерод",
+    },
+    ("de", "akkukapazität"): {
+        "tr": "Pil kapasitesi", "en": "Battery capacity",
+        "es": "Capacidad de la batería", "fr": "Capacité de la batterie",
+        "pt": "Capacidade da bateria", "ru": "Емкость аккумулятора",
+    },
+    ("de", "betriebssystem"): {
+        "tr": "İşletim sistemi", "en": "Operating system",
+        "es": "Sistema operativo", "fr": "Système d'exploitation",
+        "pt": "Sistema operacional", "ru": "Операционная система",
+    },
+    ("de", "kamera vorne"): {
+        "tr": "Ön kamera", "en": "Front camera",
+        "es": "Cámara frontal", "fr": "Caméra avant",
+        "pt": "Câmera frontal", "ru": "Фронтальная камера",
+    },
+    ("de", "sensoren"): {
+        "tr": "Sensörler", "en": "Sensors", "es": "Sensores",
+        "fr": "Capteurs", "pt": "Sensores", "ru": "Датчики",
+    },
+    ("de", "sim-karte"): {
+        "tr": "SIM kartı", "en": "SIM card", "es": "Tarjeta SIM",
+        "fr": "Carte SIM", "pt": "Cartão SIM", "ru": "SIM-карта",
+    },
+    ("de", "abmessungen"): {
+        "tr": "Boyutlar", "en": "Dimensions", "es": "Dimensiones",
+        "fr": "Dimensions", "pt": "Dimensões", "ru": "Размеры",
+    },
+    ("de", "farbe"): {
+        "tr": "Renk", "en": "Color", "es": "Color",
+        "fr": "Couleur", "pt": "Cor", "ru": "Цвет",
+    },
+    ("de", "gewicht"): {
+        "tr": "Ağırlık", "en": "Weight", "es": "Peso",
+        "fr": "Poids", "pt": "Peso", "ru": "Вес",
+    },
+    ("de", "batterielaufzeit"): {
+        "tr": "Pil ömrü", "en": "Battery life",
+        "es": "Duración de la batería", "fr": "Autonomie de la batterie",
+        "pt": "Duração da bateria", "ru": "Время работы батареи",
+    },
+    ("de", "energieeffizienzklasse"): {
+        "tr": "Enerji verimliliği sınıfı", "en": "Energy efficiency class",
+        "es": "Clase de eficiencia energética",
+        "fr": "Classe d'efficacité énergétique",
+        "pt": "Classe de eficiência energética",
+        "ru": "Класс энергоэффективности",
+    },
+    ("de", "speicher"): {
+        "tr": "Depolama", "en": "Storage", "es": "Almacenamiento",
+        "fr": "Stockage", "pt": "Armazenamento", "ru": "Хранилище",
+    },
+    ("de", "gehäusematerial"): {
+        "tr": "Gövde malzemesi", "en": "Body material",
+        "es": "Material del cuerpo", "fr": "Matériau du boîtier",
+        "pt": "Material do corpo", "ru": "Материал корпуса",
+    },
+    ("de", "gehäuseform"): {
+        "tr": "Gövde formu", "en": "Body shape", "es": "Forma del cuerpo",
+        "fr": "Forme du boîtier", "pt": "Formato do corpo",
+        "ru": "Форма корпуса",
+    },
+    ("de", "frequenzbänder"): {
+        "tr": "Frekans bantları", "en": "Frequency bands",
+        "es": "Bandas de frecuencia", "fr": "Bandes de fréquence",
+        "pt": "Bandas de frequência", "ru": "Диапазоны частот",
+    },
+    ("de", "besonderheiten"): {
+        "tr": "Özellikler", "en": "Features", "es": "Características",
+        "fr": "Fonctionnalités", "pt": "Recursos", "ru": "Особенности",
+    },
+    ("de", "zuverlässigkeitsklasse"): {
+        "tr": "Güvenilirlik sınıfı", "en": "Reliability class",
+        "es": "Clase de fiabilidad", "fr": "Classe de fiabilité",
+        "pt": "Classe de confiabilidade", "ru": "Класс надежности",
+    },
+    ("de", "stereo-lautsprecher (hybrid)"): {
+        "tr": "Stereo hoparlörler (hibrit)", "en": "Stereo speakers (hybrid)",
+        "es": "Altavoces estéreo (híbridos)",
+        "fr": "Haut-parleurs stéréo (hybrides)",
+        "pt": "Alto-falantes estéreo (híbridos)",
+        "ru": "Стереодинамики (гибридные)",
+    },
+    ("de", "beschleunigungssensor"): {
+        "tr": "İvmeölçer", "en": "Accelerometer", "es": "Acelerómetro",
+        "fr": "Accéléromètre", "pt": "Acelerômetro", "ru": "Акселерометр",
+    },
+    ("de", "gyroskop"): {
+        "tr": "Jiroskop", "en": "Gyroscope", "es": "Giroscopio",
+        "fr": "Gyroscope", "pt": "Giroscópio", "ru": "Гироскоп",
+    },
+    ("de", "annäherungssensor"): {
+        "tr": "Yakınlık sensörü", "en": "Proximity sensor",
+        "es": "Sensor de proximidad", "fr": "Capteur de proximité",
+        "pt": "Sensor de proximidade", "ru": "Датчик приближения",
+    },
+    ("de", "lichtsensor"): {
+        "tr": "Işık sensörü", "en": "Light sensor", "es": "Sensor de luz",
+        "fr": "Capteur de lumière", "pt": "Sensor de luz",
+        "ru": "Датчик освещенности",
+    },
+    ("de", "kompass"): {
+        "tr": "Pusula", "en": "Compass", "es": "Brújula",
+        "fr": "Boussole", "pt": "Bússola", "ru": "Компас",
+    },
+    ("de", "gesichtsscanner (3d, infrarot)"): {
+        "tr": "Yüz tarayıcı (3D, kızılötesi)",
+        "en": "Face scanner (3D, infrared)",
+        "es": "Escáner facial (3D, infrarrojo)",
+        "fr": "Scanner facial (3D, infrarouge)",
+        "pt": "Scanner facial (3D, infravermelho)",
+        "ru": "Сканер лица (3D, инфракрасный)",
+    },
+    ("de", "schwarz"): {
+        "tr": "Siyah", "en": "Black", "es": "Negro",
+        "fr": "Noir", "pt": "Preto", "ru": "Черный",
+    },
+    ("de", "aussparung"): {
+        "tr": "Ekran kesiti", "en": "Display cutout",
+        "es": "Recorte de pantalla", "fr": "Découpe d'écran",
+        "pt": "Recorte da tela", "ru": "Вырез экрана",
+    },
+    ("de", "flach"): {
+        "tr": "Düz", "en": "Flat", "es": "Plano",
+        "fr": "Plat", "pt": "Plano", "ru": "Плоский",
+    },
+    ("de", "kapazitiver touchscreen"): {
+        "tr": "Kapasitif dokunmatik ekran", "en": "Capacitive touchscreen",
+        "es": "Pantalla táctil capacitiva", "fr": "Écran tactile capacitif",
+        "pt": "Tela sensível ao toque capacitiva",
+        "ru": "Емкостный сенсорный экран",
+    },
+    ("de", "phasenvergleich-af"): {
+        "tr": "Faz algılamalı otomatik odaklama",
+        "en": "Phase detection autofocus",
+        "es": "Autoenfoque por detección de fase",
+        "fr": "Autofocus à détection de phase",
+        "pt": "Foco automático por detecção de fase",
+        "ru": "Фазовый автофокус",
+    },
+    ("de", "ip68-zertifiziert"): {
+        "tr": "IP68 sertifikalı", "en": "IP68 certified",
+        "es": "Certificación IP68", "fr": "Certifié IP68",
+        "pt": "Certificado IP68", "ru": "Сертификация IP68",
+    },
+}
+
 # ─── State ───────────────────────────────────────────────────────────────
 _pkg_lock = threading.Lock()
 # (from_code, to_code) -> (ctranslate2.Translator, sentencepiece.SentencePieceProcessor)
@@ -127,11 +286,153 @@ def _clean(text: str) -> str:
     return " ".join(str(text or "").split()).strip()
 
 
+def _norm(text: str) -> str:
+    return _clean(text).lower()
+
+
+def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
+    if src_lang == tgt_lang:
+        return _clean(text)
+
+    s = _clean(text)
+    key = _norm(s)
+    exact = _EXACT_GLOSSARY.get((src_lang, key))
+    if exact and exact.get(tgt_lang):
+        return exact[tgt_lang]
+
+    # Turkish numeric spec atoms seen constantly in Epey payloads.
+    if src_lang == "tr":
+        import re
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(dakika|dk)", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "en": f"{n} minutes", "de": f"{n} Minuten",
+                "es": f"{n} minutos", "fr": f"{n} minutes",
+                "pt": f"{n} minutos", "ru": f"{n} минут",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*saat", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "en": f"{n} hours", "de": f"{n} Stunden",
+                "es": f"{n} horas", "fr": f"{n} heures",
+                "pt": f"{n} horas", "ru": f"{n} часов",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*döngü", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "en": f"{n} cycles", "de": f"{n} Zyklen",
+                "es": f"{n} ciclos", "fr": f"{n} cycles",
+                "pt": f"{n} ciclos", "ru": f"{n} циклов",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+)\s*elementli\s+lens", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "en": f"{n}-element lens",
+                "de": f"{n}-Element-Objektiv",
+                "es": f"Lente de {n} elementos",
+                "fr": f"Objectif à {n} éléments",
+                "pt": f"Lente de {n} elementos",
+                "ru": f"{n}-элементный объектив",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*milyar", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "en": f"{n} billion", "de": f"{n} Milliarden",
+                "es": f"{n} mil millones", "fr": f"{n} milliard",
+                "pt": f"{n} bilhão", "ru": f"{n} млрд",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(.+?)\s*\(\s*yalnızca\s+esim\s*\)", s, flags=re.I)
+        if m:
+            prefix = m.group(1).strip()
+            suffix = {
+                "en": "Only eSIM", "de": "Nur eSIM", "es": "Solo eSIM",
+                "fr": "eSIM uniquement", "pt": "Apenas eSIM",
+                "ru": "Только eSIM",
+            }.get(tgt_lang)
+            return f"{prefix} ({suffix})" if suffix else None
+
+        m = re.fullmatch(r"(.+?)\s+teknolojisi", s, flags=re.I)
+        if m:
+            prefix = m.group(1)
+            return {
+                "en": f"{prefix} technology", "de": f"{prefix} Technologie",
+                "es": f"Tecnología {prefix}", "fr": f"Technologie {prefix}",
+                "pt": f"Tecnologia {prefix}", "ru": f"Технология {prefix}",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(.+?)\s+dijital\s+zoom", s, flags=re.I)
+        if m:
+            prefix = m.group(1)
+            return {
+                "en": f"{prefix} digital zoom", "de": f"{prefix} Digitalzoom",
+                "es": f"Zoom digital {prefix}", "fr": f"Zoom numérique {prefix}",
+                "pt": f"Zoom digital {prefix}", "ru": f"{prefix} цифровой зум",
+            }.get(tgt_lang)
+
+    if src_lang == "de":
+        import re
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)x\s+laden", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "tr": f"{n} şarj döngüsü", "en": f"{n} charging cycles",
+                "es": f"{n} ciclos de carga", "fr": f"{n} cycles de charge",
+                "pt": f"{n} ciclos de carga", "ru": f"{n} циклов зарядки",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "tr": f"{n}Hz yenileme hızı", "en": f"{n}Hz refresh rate",
+                "es": f"Frecuencia de actualización de {n}Hz",
+                "fr": f"Taux de rafraîchissement {n}Hz",
+                "pt": f"Taxa de atualização de {n}Hz",
+                "ru": f"Частота обновления {n} Гц",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s+nits\s+\(maximal\)", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "tr": f"{n} nit (maksimum)", "en": f"{n} nits (maximum)",
+                "es": f"{n} nits (máximo)", "fr": f"{n} nits (maximum)",
+                "pt": f"{n} nits (máximo)", "ru": f"{n} нит (максимум)",
+            }.get(tgt_lang)
+
+        if re.match(r"^satellitenkommunikation", s, flags=re.I):
+            return {
+                "tr": "Uydu iletişimi (mesajlar, sadece acil arama)",
+                "en": "Satellite communication (text messages, emergency only)",
+                "es": "Comunicación satelital (mensajes de texto, solo emergencia)",
+                "fr": "Communication satellite (messages texte, urgence uniquement)",
+                "pt": "Comunicação por satélite (mensagens de texto, apenas emergência)",
+                "ru": "Спутниковая связь (текстовые сообщения, только экстренные вызовы)",
+            }.get(tgt_lang)
+
+    return None
+
+
 def _cache_key(src_lang: str, text: str) -> str:
     return f"{src_lang}\t{_clean(text)}"
 
 
 def _cache_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
+    override = _glossary_lookup(src_lang, text, tgt_lang)
+    if override:
+        return override
     with _cache_lock:
         entry = _cache.get(_cache_key(src_lang, text))
         if entry and entry.get(tgt_lang):
@@ -455,6 +756,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self._json(404, {"error": "not_found"})
 
     def do_POST(self):
+        if self.path == "/clear-cache":
+            global _cache, _cache_dirty
+            with _cache_lock:
+                count = len(_cache)
+                _cache = {}
+                _cache_dirty = True
+            _save_cache(force=True)
+            print(f"[worker] cache cleared via /clear-cache · {count} keys removed", flush=True)
+            self._json(200, {"ok": True, "cleared": count})
+            return
         if self.path != "/translate":
             self._json(404, {"error": "not_found"})
             return

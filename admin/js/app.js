@@ -2106,6 +2106,59 @@ async function saveDictionary(){
   }
 }
 
+// Wipe the active dictionary completely (PocketBase shards + local worker
+// cache). Used when stale entries from a previous filter generation are
+// poisoning the new pipeline. The next scrape will rebuild from scratch.
+async function wipeDictionary(){
+  const src = _currentDictSource === 'de' ? 'Geizhals DE' : 'Epey TR';
+  const key = _currentDictSource === 'de' ? 'de_translation_dict' : 'tr_translation_dict';
+  if (!confirm(`${src} sözlüğünü TAMAMEN sil?\n\nPocketBase shard'ları + yerel worker cache silinir. Sonraki scrape sıfırdan öğrenir.`)) return;
+  const btn = event?.target;
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '🗑 Siliniyor...'; }
+  try {
+    // 1) Wipe PocketBase shards via superuser-less API: we don't have admin
+    //    creds in the browser, so we delete the public_config records that
+    //    the current user can edit. `public_config` is admin-only in
+    //    practice; arainunger@ has the writer role.
+    const pb = (typeof getPb === 'function') ? getPb() : null;
+    if (!pb) throw new Error('PocketBase client yok');
+    // Find every shard + manifest + top doc whose key starts with the prefix.
+    const filter = `key="${key}" || key="${key}_manifest" || key~"${key}__part_"`;
+    let page = 1, total = 0;
+    while (true) {
+      const list = await pb.collection('public_config').getList(page, 200, { filter, fields: 'id,key', $autoCancel: false });
+      for (const rec of list.items) {
+        await pb.collection('public_config').delete(rec.id, { $autoCancel: false });
+        total++;
+      }
+      if (list.page >= list.totalPages || !list.items.length) break;
+    }
+    // 2) Re-create empty top doc so future loads don't 404.
+    await pb.collection('public_config').create({
+      key,
+      value: { sharded: false, terms: {}, totalTerms: 0, updatedAt: new Date().toISOString() },
+      updatedAt: new Date().toISOString(),
+    }, { $autoCancel: false }).catch(() => {});
+    // 3) Wipe the in-memory cache the admin UI is holding.
+    const api = _currentDictApi();
+    if (api) {
+      const cache = api.cache();
+      for (const k of Object.keys(cache)) delete cache[k];
+    }
+    // 4) Wipe the GPU worker's persistent cache file too (best-effort).
+    fetch('http://127.0.0.1:8797/clear-cache', { method: 'POST' }).catch(() => {});
+    renderDictionaryTable();
+    if (typeof refreshDictCounter === 'function') refreshDictCounter();
+    toast(`🗑 ${src} sözlüğü silindi (${total} record). Yerel cache da temizlendi.`, 's');
+    logActivity('dictionary_wipe', `${src} dict cleared · ${total} records`);
+  } catch (e) {
+    toast('Silme hatası: ' + e.message, 'e');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
 // ─── BULK CATEGORY TRANSLATION (Dictionary tab) ──────────────────────────
 // Decoupled from the scrape loop. Pick a category → load every product →
 // process small product batches → translate only atoms missing from the
@@ -2321,7 +2374,7 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+            const provider = ev.provider === 'local-nllb' ? 'GPU Argos' : 'DeepSeek';
             if (ev.pass && ev.pass !== passNo) {
               passNo = ev.pass;
               passDoneChunks = 0;
@@ -2379,7 +2432,7 @@ async function startCategoryTranslation(){
                 detail: 'Failed chunks are retried in the next smaller pass when possible.',
               });
             } else if (ev.phase === 'fallback') {
-              _xlateLog(`→ Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
+              _xlateLog(`→ GPU Argos sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
             }
           }, () => _catXlateAbort);
         } finally {
@@ -2780,10 +2833,12 @@ function _renderProductModal(p,variants=[]){
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the Turkish source.
   const lang = _modalLang || 'tr';
+  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || ''));
+  const sourceLang = sourceIsGeizhals ? 'de' : 'tr';
   // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
   // source keys, so we treat it as missing instead of pretending to localize.
   let ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
-  if (ml && lang !== 'tr' && p.specs) {
+  if (ml && lang !== sourceLang && p.specs) {
     const sourceKeys = Object.keys(p.specs);
     if (sourceKeys.length && !sourceKeys.some(k => Object.prototype.hasOwnProperty.call(ml, k))) {
       console.warn('[modal] legacy multiLangSpecs format for', p.id, lang, '— ignoring');
@@ -2794,17 +2849,92 @@ function _renderProductModal(p,variants=[]){
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
-  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || ''));
   const dictApiForModal = sourceIsGeizhals ? window.QorAiGeizhals?.dict : window.QorAiDict;
-  const dictCacheForModal = (lang !== 'tr' && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
+  const dictCacheForModal = (lang !== sourceLang && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
+  function modalIsPreserveText(text){
+    const words = String(text || '').match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜÄÖÜäöüß-]{2,}/g) || [];
+    if (!words.length) return true;
+    return words.every(w => /^(usb|usb-c|hdr|oled|amoled|ltpo|sim|esim|nano-sim|wi-fi|wifi|gps|nfc|led|ip\d+|ipx\d+|ios|android|mp|mah|hz|ghz|gb|tb|ppi|fps|hdr10|hdr10\+|dolby|vision|mimo|lte|ufs|ram|cpu|gpu)$/i.test(w) || /\d/.test(w));
+  }
+  function isUntranslatedPassThrough(raw, translated){
+    if (lang === sourceLang) return false;
+    const a = String(raw || '').trim().toLowerCase();
+    const b = String(translated || '').trim().toLowerCase();
+    return !!a && a === b && !modalIsPreserveText(raw);
+  }
   function knownModalTranslation(text){
     const raw = String(text ?? '').trim();
     const n = (raw.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
-    if (!raw || !n) return null;
+    if (!raw) return null;
+    if (sourceIsGeizhals) {
+      const de = raw.toLowerCase().replace(/\s+/g,' ').trim();
+      const germanExact = {
+        'betriebssystem': { tr:'İşletim sistemi', en:'Operating system', es:'Sistema operativo', fr:"Système d'exploitation", pt:'Sistema operacional', ru:'Операционная система' },
+        'kamera vorne': { tr:'Ön kamera', en:'Front camera', es:'Cámara frontal', fr:'Caméra avant', pt:'Câmera frontal', ru:'Фронтальная камера' },
+        'sensoren': { tr:'Sensörler', en:'Sensors', es:'Sensores', fr:'Capteurs', pt:'Sensores', ru:'Датчики' },
+        'sim-karte': { tr:'SIM kartı', en:'SIM card', es:'Tarjeta SIM', fr:'Carte SIM', pt:'Cartão SIM', ru:'SIM-карта' },
+        'abmessungen': { tr:'Boyutlar', en:'Dimensions', es:'Dimensiones', fr:'Dimensions', pt:'Dimensões', ru:'Размеры' },
+        'farbe': { tr:'Renk', en:'Color', es:'Color', fr:'Couleur', pt:'Cor', ru:'Цвет' },
+        'gewicht': { tr:'Ağırlık', en:'Weight', es:'Peso', fr:'Poids', pt:'Peso', ru:'Вес' },
+        'besonderheiten': { tr:'Özellikler', en:'Features', es:'Características', fr:'Fonctionnalités', pt:'Recursos', ru:'Особенности' },
+        'batterielaufzeit': { tr:'Pil ömrü', en:'Battery life', es:'Duración de la batería', fr:'Autonomie de la batterie', pt:'Duração da bateria', ru:'Время работы батареи' },
+        'energieeffizienzklasse': { tr:'Enerji verimliliği sınıfı', en:'Energy efficiency class', es:'Clase de eficiencia energética', fr:"Classe d'efficacité énergétique", pt:'Classe de eficiência energética', ru:'Класс энергоэффективности' },
+        'bildschirmgröße': { tr:'Ekran boyutu', en:'Screen size', es:'Tamaño de pantalla', fr:"Taille de l'écran", pt:'Tamanho da tela', ru:'Размер экрана' },
+        'beschleunigungssensor': { tr:'İvmeölçer', en:'Accelerometer', es:'Acelerómetro', fr:'Accéléromètre', pt:'Acelerômetro', ru:'Акселерометр' },
+        'gyroskop': { tr:'Jiroskop', en:'Gyroscope', es:'Giroscopio', fr:'Gyroscope', pt:'Giroscópio', ru:'Гироскоп' },
+        'annäherungssensor': { tr:'Yakınlık sensörü', en:'Proximity sensor', es:'Sensor de proximidad', fr:'Capteur de proximité', pt:'Sensor de proximidade', ru:'Датчик приближения' },
+        'lichtsensor': { tr:'Işık sensörü', en:'Light sensor', es:'Sensor de luz', fr:'Capteur de lumière', pt:'Sensor de luz', ru:'Датчик освещенности' },
+        'kompass': { tr:'Pusula', en:'Compass', es:'Brújula', fr:'Boussole', pt:'Bússola', ru:'Компас' },
+        'gesichtsscanner (3d, infrarot)': { tr:'Yüz tarayıcı (3D, kızılötesi)', en:'Face scanner (3D, infrared)', es:'Escáner facial (3D, infrarrojo)', fr:'Scanner facial (3D, infrarouge)', pt:'Scanner facial (3D, infravermelho)', ru:'Сканер лица (3D, инфракрасный)' },
+        'schwarz': { tr:'Siyah', en:'Black', es:'Negro', fr:'Noir', pt:'Preto', ru:'Черный' },
+        'aussparung': { tr:'Ekran kesiti', en:'Display cutout', es:'Recorte de pantalla', fr:"Découpe d'écran", pt:'Recorte da tela', ru:'Вырез экрана' },
+        'flach': { tr:'Düz', en:'Flat', es:'Plano', fr:'Plat', pt:'Plano', ru:'Плоский' },
+        'kapazitiver touchscreen': { tr:'Kapasitif dokunmatik ekran', en:'Capacitive touchscreen', es:'Pantalla táctil capacitiva', fr:'Écran tactile capacitif', pt:'Tela sensível ao toque capacitiva', ru:'Емкостный сенсорный экран' },
+        'phasenvergleich-af': { tr:'Faz algılamalı otomatik odaklama', en:'Phase detection autofocus', es:'Autoenfoque por detección de fase', fr:'Autofocus à détection de phase', pt:'Foco automático por detecção de fase', ru:'Фазовый автофокус' },
+        'stereo-lautsprecher (hybrid)': { tr:'Stereo hoparlörler (hibrit)', en:'Stereo speakers (hybrid)', es:'Altavoces estéreo (híbridos)', fr:'Haut-parleurs stéréo (hybrides)', pt:'Alto-falantes estéreo (híbridos)', ru:'Стереодинамики (гибридные)' },
+        'ip68-zertifiziert': { tr:'IP68 sertifikalı', en:'IP68 certified', es:'Certificación IP68', fr:'Certifié IP68', pt:'Certificado IP68', ru:'Сертификация IP68' },
+      };
+      if (germanExact[de]?.[lang]) return germanExact[de][lang];
+      const gp = (obj) => obj?.[lang] || obj?.en || null;
+      const mLoad = de.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
+      if (mLoad) return gp({ tr:`${mLoad[1]} şarj döngüsü`, en:`${mLoad[1]} charging cycles`, es:`${mLoad[1]} ciclos de carga`, fr:`${mLoad[1]} cycles de charge`, pt:`${mLoad[1]} ciclos de carga`, ru:`${mLoad[1]} циклов зарядки` });
+      const mHz = de.match(/^(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate$/);
+      if (mHz) return gp({ tr:`${mHz[1]}Hz yenileme hızı`, en:`${mHz[1]}Hz refresh rate`, es:`Frecuencia de actualización de ${mHz[1]}Hz`, fr:`Taux de rafraîchissement ${mHz[1]}Hz`, pt:`Taxa de atualização de ${mHz[1]}Hz`, ru:`Частота обновления ${mHz[1]} Гц` });
+      const mNits = de.match(/^(\d+(?:[.,]\d+)?)\s+nits\s+\(maximal\)$/);
+      if (mNits) return gp({ tr:`${mNits[1]} nit (maksimum)`, en:`${mNits[1]} nits (maximum)`, es:`${mNits[1]} nits (máximo)`, fr:`${mNits[1]} nits (maximum)`, pt:`${mNits[1]} nits (máximo)`, ru:`${mNits[1]} нит (максимум)` });
+      if (/^satellitenkommunikation/i.test(de)) {
+        return gp({ tr:'Uydu iletişimi (mesajlar, sadece acil arama)', en:'Satellite communication (text messages, emergency only)', es:'Comunicación satelital (mensajes de texto, solo emergencia)', fr:'Communication satellite (messages texte, urgence uniquement)', pt:'Comunicação por satélite (mensagens de texto, apenas emergência)', ru:'Спутниковая связь (текстовые сообщения, только экстренные вызовы)' });
+      }
+    }
     const s = raw.toLowerCase()
       .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u')
       .replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c')
       .replace(/\s+/g,' ');
+    const phrase = {
+      minute: { en:'minutes', de:'Minuten', es:'minutos', fr:'minutes', pt:'minutos', ru:'минут' },
+      hour: { en:'hours', de:'Stunden', es:'horas', fr:'heures', pt:'horas', ru:'часов' },
+      cycle: { en:'cycles', de:'Zyklen', es:'ciclos', fr:'cycles', pt:'ciclos', ru:'циклов' },
+      billion: { en:'billion', de:'Milliarden', es:'mil millones', fr:'milliards', pt:'bilhões', ru:'млрд' },
+      gram: { en:'grams', de:'Gramm', es:'gramos', fr:'grammes', pt:'gramas', ru:'грамм' },
+      onlyEsim: { en:'eSIM only', de:'nur eSIM', es:'solo eSIM', fr:'eSIM uniquement', pt:'somente eSIM', ru:'только eSIM' },
+      digitalZoom: { en:'digital zoom', de:'Digitalzoom', es:'zoom digital', fr:'zoom numérique', pt:'zoom digital', ru:'цифровой зум' },
+      elementLens: { en:'element lens', de:'Element-Objektiv', es:'lente de elementos', fr:'lentille à éléments', pt:'lente de elementos', ru:'элементный объектив' },
+      technology: { en:'Technology', de:'Technologie', es:'Tecnología', fr:'Technologie', pt:'Tecnologia', ru:'Технология' },
+      specifications: { en:'Specifications', de:'Spezifikationen', es:'Especificaciones', fr:'Spécifications', pt:'Especificações', ru:'Характеристики' },
+    };
+    const p = key => phrase[key]?.[lang] || phrase[key]?.en;
+    if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return `${n} ${p('minute')}`;
+    if (/^\d+(?:[.,]\d+)?\s*saat$/.test(s)) return `${n} ${p('hour')}`;
+    if (/^\d+(?:[.,]\d+)?\s*dongu$/.test(s)) return `${n} ${p('cycle')}`;
+    if (/^\d+(?:[.,]\d+)?\s*milyar$/.test(s)) return `${n} ${p('billion')}`;
+    if (/^\d+(?:[.,]\d+)?\s*gram$/.test(s)) return `${n} ${p('gram')}`;
+    if (/^\d+(?:[.,]\d+)?x\s*dijital\s+zoom$/.test(s)) return `${n}x ${p('digitalZoom')}`;
+    if (/^\d+\s*elementli\s+lens$/.test(s)) return `${n}-${p('elementLens')}`;
+    if (/^yalnizca\s+esim$/.test(s)) return p('onlyEsim');
+    if (/\byalnizca\s+esim\b/.test(s)) return raw.replace(/yaln[ıi]zca\s+esim/ig, p('onlyEsim'));
+    if (/\bspecificationsi\b/i.test(raw)) return raw.replace(/\bspecificationsi\b/ig, p('specifications'));
+    if (/\bteknolojisi\b/i.test(raw)) return raw.replace(/\bteknolojisi\b/ig, p('technology'));
+    if (!n) return null;
     const maps = {
       update: { en:`${n}-Year Update Guarantee`, de:`${n} Jahre Update-Garantie`, es:`Garantia De Actualizaciones De ${n} Anos`, fr:`Garantie De Mises A Jour De ${n} Ans`, pt:`Garantia De Atualizacoes De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений` },
       security: { en:`${n}-Year Security Update Guarantee`, de:`${n} Jahre Sicherheitsupdate-Garantie`, es:`Garantia De Actualizaciones De Seguridad De ${n} Anos`, fr:`Garantie De Mises A Jour De Securite De ${n} Ans`, pt:`Garantia De Atualizacoes De Seguranca De ${n} Anos`, ru:`${n}-Летняя Гарантия Обновлений Безопасности` },
@@ -2815,14 +2945,14 @@ function _renderProductModal(p,variants=[]){
   }
   function lookupLocalizedText(text){
     const raw = String(text ?? '').trim();
-    if (!raw || lang === 'tr') return text;
-    if (ml && typeof ml[raw] === 'string' && ml[raw]) return ml[raw];
-    const lower = raw.toLowerCase();
-    if (ml && typeof ml[lower] === 'string' && ml[lower]) return ml[lower];
-    const d = dictCacheForModal?.[lower]?.[lang];
-    if (typeof d === 'string' && d.trim()) return d.trim();
+    if (!raw || lang === sourceLang) return text;
     const known = knownModalTranslation(raw);
     if (known) return known;
+    if (ml && typeof ml[raw] === 'string' && ml[raw] && !isUntranslatedPassThrough(raw, ml[raw])) return ml[raw];
+    const lower = raw.toLowerCase();
+    if (ml && typeof ml[lower] === 'string' && ml[lower] && !isUntranslatedPassThrough(raw, ml[lower])) return ml[lower];
+    const d = dictCacheForModal?.[lower]?.[lang];
+    if (typeof d === 'string' && d.trim() && !isUntranslatedPassThrough(raw, d)) return d.trim();
     return text;
   }
   // Build localized sections on the fly: keep the original Turkish section
@@ -2837,7 +2967,7 @@ function _renderProductModal(p,variants=[]){
     const directSections = normalizeSpecSectionsShape(rawLangSections);
     if (directSections) { sections = directSections; directLocalizedSections = true; }
   }
-  if (sections && lang !== 'tr' && !directLocalizedSections) {
+  if (sections && lang !== sourceLang && !directLocalizedSections) {
     const secMap = rawLangSections
       ? (isSimpleSectionNameMap ? rawLangSections : normalizeSpecSectionsShape(rawLangSections))
       : null;
@@ -2911,7 +3041,7 @@ function _renderProductModal(p,variants=[]){
     const s=String(v),y=_isYesV(s),n=_isNoV(s);
     return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(lang!=='tr')?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[lookupLocalizedText(k),lookupLocalizedText(v)])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(lang!==sourceLang)?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[lookupLocalizedText(k),lookupLocalizedText(v)])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
@@ -2922,7 +3052,7 @@ function _renderProductModal(p,variants=[]){
   // language. An empty `{}` payload still counts as "fallback" so the admin
   // can see at a glance which langs are missing translations.
   const has = (code) => {
-    if (code === 'tr') return true;
+    if (code === sourceLang) return true;
     const m = p.multiLangSpecs && p.multiLangSpecs[code];
     return !!m && Object.keys(m).length > 0;
   };
