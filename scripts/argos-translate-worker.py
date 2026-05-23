@@ -367,6 +367,64 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
     if src_lang == "tr":
         import re
 
+        tr_exact = {
+            "usb 3.x adedi": {
+                "en": "USB 3.x count", "de": "USB 3.x Anzahl",
+                "es": "Cantidad USB 3.x", "fr": "Nombre USB 3.x",
+                "pt": "Quantidade USB 3.x", "ru": "Количество USB 3.x",
+            },
+            "kart okuyucu specifications": {
+                "en": "Card reader specifications",
+                "de": "Kartenleser-Spezifikationen",
+                "es": "Especificaciones del lector de tarjetas",
+                "fr": "Spécifications du lecteur de carte",
+                "pt": "Especificações do leitor de cartão",
+                "ru": "Характеристики кардридера",
+            },
+            "klavye specifications": {
+                "en": "Keyboard specifications",
+                "de": "Tastatur-Spezifikationen",
+                "es": "Especificaciones del teclado",
+                "fr": "Spécifications du clavier",
+                "pt": "Especificações do teclado",
+                "ru": "Характеристики клавиатуры",
+            },
+            "minirsel processing (npu)": {
+                "en": "Neural processing (NPU)",
+                "de": "Neuronale Verarbeitung (NPU)",
+                "es": "Procesamiento neuronal (NPU)",
+                "fr": "Traitement neuronal (NPU)",
+                "pt": "Processamento neural (NPU)",
+                "ru": "Нейронная обработка (NPU)",
+            },
+            "npu (sinirsel trading unit) name": {
+                "en": "NPU (neural processing unit) name",
+                "de": "NPU-Name (neuronale Verarbeitungseinheit)",
+                "es": "Nombre de NPU (unidad de procesamiento neuronal)",
+                "fr": "Nom du NPU (unité de traitement neuronal)",
+                "pt": "Nome da NPU (unidade de processamento neural)",
+                "ru": "Название NPU (нейронного процессорного блока)",
+            },
+        }
+        if key in tr_exact:
+            return tr_exact[key].get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*adet", s, flags=re.I)
+        if m:
+            return m.group(1)
+
+        m = re.fullmatch(r"(\d+)\s*x\s*(\d+)\s*piksel", s, flags=re.I)
+        if m:
+            w, h = m.group(1), m.group(2)
+            return {
+                "en": f"{w} x {h} pixels",
+                "de": f"{w} x {h} Pixel",
+                "es": f"{w} x {h} píxeles",
+                "fr": f"{w} x {h} pixels",
+                "pt": f"{w} x {h} pixels",
+                "ru": f"{w} x {h} пикселей",
+            }.get(tgt_lang)
+
         m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(dakika|dk)", s, flags=re.I)
         if m:
             n = m.group(1)

@@ -1796,6 +1796,56 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
   };
   const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
+  if (/^usb\s*3\.x\s*adedi$/.test(s)) {
+    return ({
+      en: 'USB 3.x count', de: 'USB 3.x Anzahl', es: 'Cantidad USB 3.x',
+      fr: 'Nombre USB 3.x', pt: 'Quantidade USB 3.x', ru: 'Количество USB 3.x',
+    })[lang] || 'USB 3.x count';
+  }
+  if (/^\d+(?:[.,]\d+)?\s*adet$/.test(s)) return n;
+  if (/^\d+\s*x\s*\d+\s*piksel$/.test(s)) {
+    return ({
+      en: raw.replace(/piksel/ig, 'pixels'),
+      de: raw.replace(/piksel/ig, 'Pixel'),
+      es: raw.replace(/piksel/ig, 'píxeles'),
+      fr: raw.replace(/piksel/ig, 'pixels'),
+      pt: raw.replace(/piksel/ig, 'pixels'),
+      ru: raw.replace(/piksel/ig, 'пикселей'),
+    })[lang] || raw.replace(/piksel/ig, 'pixels');
+  }
+  if (/^kart\s+okuyucu\s+specifications$/.test(s)) {
+    return ({
+      en: 'Card reader specifications', de: 'Kartenleser-Spezifikationen',
+      es: 'Especificaciones del lector de tarjetas',
+      fr: 'Spécifications du lecteur de carte',
+      pt: 'Especificações do leitor de cartão',
+      ru: 'Характеристики кардридера',
+    })[lang] || 'Card reader specifications';
+  }
+  if (/^klavye\s+specifications$/.test(s)) {
+    return ({
+      en: 'Keyboard specifications', de: 'Tastatur-Spezifikationen',
+      es: 'Especificaciones del teclado', fr: 'Spécifications du clavier',
+      pt: 'Especificações do teclado', ru: 'Характеристики клавиатуры',
+    })[lang] || 'Keyboard specifications';
+  }
+  if (/^minirsel\s+processing\s*\(npu\)$/.test(s)) {
+    return ({
+      en: 'Neural processing (NPU)', de: 'Neuronale Verarbeitung (NPU)',
+      es: 'Procesamiento neuronal (NPU)', fr: 'Traitement neuronal (NPU)',
+      pt: 'Processamento neural (NPU)', ru: 'Нейронная обработка (NPU)',
+    })[lang] || 'Neural processing (NPU)';
+  }
+  if (/^npu\s*\(sinirsel\s+trading\s+unit\)\s+name$/.test(s)) {
+    return ({
+      en: 'NPU (neural processing unit) name',
+      de: 'NPU-Name (neuronale Verarbeitungseinheit)',
+      es: 'Nombre de NPU (unidad de procesamiento neuronal)',
+      fr: 'Nom du NPU (unité de traitement neuronal)',
+      pt: 'Nome da NPU (unidade de processamento neural)',
+      ru: 'Название NPU (нейронного процессорного блока)',
+    })[lang] || 'NPU (neural processing unit) name';
+  }
   if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return `${n} ${p('minute')}`;
   if (/^\d+(?:[.,]\d+)?\s*saat$/.test(s)) return `${n} ${p('hour')}`;
   if (/^\d+(?:[.,]\d+)?\s*dongu$/.test(s)) return `${n} ${p('cycle')}`;
@@ -1858,6 +1908,102 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   return null;
 }
 
+function _foldSourceResidueText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _translationHasTurkishResidue(targetLang, translation, sourceText = '') {
+  if (targetLang === 'tr') return false;
+  const folded = _foldSourceResidueText(translation);
+  if (!folded) return false;
+  const residue = [
+    'batarya', 'sarj', 'dakika', 'saat', 'dongu', 'adet', 'adedi',
+    'piksel', 'uretim', 'uretimi', 'teknoloji', 'teknolojisi',
+    'ozellik', 'ozellikleri', 'kamera ozellikleri', 'on kamera',
+    'arka kamera', 'ikinci arka', 'ucuncu arka', 'kart okuyucu',
+    'klavye', 'minirsel', 'sinirsel', 'yalnizca', 'milyon',
+    'guvenlik guncellemesi', 'sogutma', 'navigasyon',
+  ];
+  const hasTerm = (term) => new RegExp(`(^|[^a-z0-9])${_escapeRegExp(term)}([^a-z0-9]|$)`, 'i').test(folded);
+  if (residue.some(hasTerm)) return true;
+
+  // Root guard: if a source-side Turkish token survives unchanged into a
+  // non-TR translation, reject it before it can become a permanent cache hit.
+  // This catches future category terms without adding one-off render patches.
+  const sourceFolded = _foldSourceResidueText(sourceText);
+  const sourceTokens = sourceFolded.match(/[a-z0-9]+/g) || [];
+  const protectedTokens = new Set([
+    'usb','type','display','port','displayport','hdmi','wi','fi','wifi','bluetooth',
+    'ethernet','nfc','gps','hdr','hdr10','oled','amoled','ips','led','mini','sim',
+    'esim','nano','ram','rom','cpu','gpu','npu','ssd','hdd','pcie','pci','m2',
+    'windows','android','ios','apple','samsung','intel','amd','nvidia','rtx','gtx',
+    'dolby','vision','directx','directml','opencl','opengl','vulkan','dlss',
+  ]);
+  const sourceHasTurkishChars = /[çğıöşü]/i.test(sourceText);
+  for (const token of sourceTokens) {
+    if (token.length < 4 || protectedTokens.has(token) || /^\d+$/.test(token)) continue;
+    const turkishish = residue.includes(token) ||
+      (sourceHasTurkishChars && /(lar|ler|lari|leri|sinin|inin|unun|ligi|lıgı|li|lii|si|ci|cu|sel|sal)$/.test(token));
+    if (turkishish && hasTerm(token)) return true;
+  }
+  return false;
+}
+
+function _normalizeTurkishSourceTranslation(sourceText, targetLang, translation) {
+  let out = String(translation || '').trim();
+  if (!out) return '';
+  if (targetLang === 'en') {
+    out = out
+      .replace(/\bBatarya\b/gi, 'Battery')
+      .replace(/\bNavigasyon\b/gi, 'Navigation')
+      .replace(/\bKart\s+Okuyucu\b/gi, 'Card reader')
+      .replace(/\bKlavye\b/gi, 'Keyboard')
+      .replace(/\bAdedi\b/gi, 'count')
+      .replace(/\bAdet\b/gi, '')
+      .replace(/\bPiksel\b/gi, 'pixels')
+      .replace(/\bMinirsel\b/gi, 'Neural')
+      .replace(/\bsinirsel\s+trading\s+unit\b/gi, 'neural processing unit')
+      .replace(/\bsinirsel\b/gi, 'neural')
+      .replace(/\bİkinci\s+Arka\s+Camera\b/gi, 'Second rear camera')
+      .replace(/\bÜçüncü\s+Arka\s+Camera\b/gi, 'Third rear camera')
+      .replace(/\bÖn\s+Camera\b/gi, 'Front camera')
+      .replace(/\bArka\s+Camera\b/gi, 'Rear camera')
+      .replace(/\bÖn\b/gi, 'Front')
+      .replace(/\bArka\b/gi, 'Rear')
+      .replace(/\bİkinci\b/gi, 'Second')
+      .replace(/\bÜçüncü\b/gi, 'Third')
+      .replace(/\bCPU\s+Üretim\s+Technology\b/gi, 'CPU manufacturing technology')
+      .replace(/\bÜretim\s+Technology\b/gi, 'Manufacturing technology')
+      .replace(/\bSpecificationsi\b/gi, 'Specifications')
+      .replace(/\bTechnologyi\b/gi, 'Technology')
+      .replace(/\bTeknolojisi\b/gi, 'Technology')
+      .replace(/\bMilyon\b/gi, 'million')
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*Dakika\b/gi, '$1 minutes')
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*Saat\b/gi, '$1 hours')
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*Döngü\b/gi, '$1 cycles')
+      .replace(/\b(\d+)\s*Elementli\s+Lens\b/gi, '$1-element lens')
+      .replace(/\bYalnızca\s+eSIM\b/gi, 'eSIM only')
+      .replace(/\bEvet\b/gi, 'Yes')
+      .replace(/\bHayır\b|\bHayir\b/gi, 'No')
+      .replace(/\bVolte\s*\(\s*⁇\s*over\s*LTE\s*\)\s*support\b/gi, 'VoLTE (voice over LTE) support')
+      .replace(/\bG\.p\.d\./gi, 'DisplayPort')
+      .replace(/\bm\.a\./gi, 'max.')
+      .replace(/^\s*⁇\s*$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+  return out;
+}
+
 // Lookup Turkish text in cache for a specific target language.
 // Stale pass-through entries are filtered out at load time, so a cache hit
 // here is always honoured (no second-guessing → no infinite retry loop).
@@ -1869,7 +2015,19 @@ function _deDictLookup(turkishText, targetLang) {
     return _deDictCache[key]?.[targetLang] || rule;
   }
   const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) return entry[targetLang];
+  if (entry && entry[targetLang]) {
+    const normalized = _normalizeTurkishSourceTranslation(turkishText, targetLang, entry[targetLang]);
+    if (_translationHasTurkishResidue(targetLang, normalized, turkishText)) {
+      delete entry[targetLang];
+      _deDictDirty = true;
+      return null;
+    }
+    if (normalized !== entry[targetLang]) {
+      entry[targetLang] = normalized;
+      _deDictDirty = true;
+    }
+    return normalized;
+  }
   return null;
 }
 
@@ -2057,7 +2215,9 @@ window._qorAiTitleCase = _applyTitleCase;
 function _deDictStore(turkishText, targetLang, translation) {
   const key = _normalizeDictSourceKey(turkishText);
   if (!_isWordOnlyDictSource(key)) return;
-  const normalized = _applyTitleCase(String(translation || '').trim());
+  const cleaned = _normalizeTurkishSourceTranslation(turkishText, targetLang, translation);
+  if (_translationHasTurkishResidue(targetLang, cleaned, turkishText)) return;
+  const normalized = _applyTitleCase(cleaned);
   if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};
   if (_deDictCache[key][targetLang] !== normalized) {
@@ -2081,6 +2241,7 @@ function _localTranslationLooksUseful(sourceText, targetLang, translation) {
   if (!tx) return false;
   if (tx.length > Math.max(120, src.length * 6)) return false; // bizarre expansion
   if (/\b(other, of a kind|manufacture of goods|among the|services)\b/i.test(tx)) return false;
+  if (_translationHasTurkishResidue(targetLang, _normalizeTurkishSourceTranslation(sourceText, targetLang, tx), sourceText)) return false;
   return true;
 }
 
@@ -2283,17 +2444,14 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
     await _saveDeDict();
     return;
   }
-  // Argos covers ~99% of atoms. The few that slip through (brand pass-through,
-  // model codes) cost 8-10s each on DeepSeek for negligible quality gain — the
-  // renderer already falls back to the source text. Skip DeepSeek entirely so
-  // the user gets sub-second per-product latency in the bulk scrape.
+  // If Argos left Turkish residue, do NOT accept it and do NOT write it into
+  // the dictionary. Only those remaining atoms fall through to DeepSeek; this
+  // keeps the 100k run from poisoning the shared cache with mixed-language
+  // entries while preserving GPU speed for clean atoms.
   if (local.ok) {
-    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
-    await _saveDeDict();
     if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+      try { onProgress({ provider: 'deepseek', phase: 'fallback', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
     }
-    return;
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
