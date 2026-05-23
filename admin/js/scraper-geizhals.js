@@ -1755,6 +1755,7 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
       }
       let storedForChunk = 0;
       const translations = data.translations || {};
+      const residueSet = new Set(Array.isArray(data.residueAtoms) ? data.residueAtoms : []);
       for (const t of batch) {
         const entry = translations[t];
         if (!entry || typeof entry !== 'object') continue;
@@ -1766,11 +1767,16 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
         }
       }
       storedTotal += storedForChunk;
+      if (residueSet.size) {
+        _geizhalsResidueBuffer = _geizhalsResidueBuffer || new Set();
+        for (const t of residueSet) _geizhalsResidueBuffer.add(t);
+      }
       report('chunk-done', chunkIdx, {
         batchSize: batch.length,
         stored: storedForChunk,
         dictSize: Object.keys(_deDictCache).length,
         elapsedMs: Date.now() - started,
+        residue: residueSet.size,
       });
     } catch (e) {
       _localTranslateDisabledUntil = Date.now() + 5000;
@@ -1781,8 +1787,12 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
     }
   }
   if (storedTotal > 0) await _saveDeDict().catch(() => {});
-  return { ok: true, stored: storedTotal };
+  const residue = _geizhalsResidueBuffer ? [..._geizhalsResidueBuffer] : [];
+  _geizhalsResidueBuffer = null;
+  return { ok: true, stored: storedTotal, residueAtoms: residue };
 }
+
+let _geizhalsResidueBuffer = null;
 
 // ── Public dictionary API (used by the Dictionary admin tab) ────────────
 //
@@ -1904,11 +1914,20 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts
   // atoms with beam=4 + post-fix glossary; the rest render as source text.
   // Cost: 0. Latency saved: 4-10s per product.
   if (local.ok) {
+    // Hybrid fallback: only the worker's residueAtoms get re-routed to
+    // DeepSeek. Clean atoms (95%+) skip the API.
+    const residueAtoms = Array.isArray(local.residueAtoms) ? local.residueAtoms : [];
     await _saveDeDict();
-    if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+    if (!residueAtoms.length) {
+      if (typeof onProgress === 'function') {
+        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+      }
+      return;
     }
-    return;
+    uncached = residueAtoms;
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'deepseek', phase: 'fallback', chunkIndex: 0, totalChunks: Math.ceil(residueAtoms.length / 24), chunkSize: 24, batchSize: residueAtoms.length, sample: residueAtoms.slice(0, 3) }); } catch {}
+    }
   }
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which

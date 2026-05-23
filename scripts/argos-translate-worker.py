@@ -1403,6 +1403,35 @@ def _apply_post_fix(text: str, from_code: str, to_code: str) -> str:
     return text
 
 
+# Residue detectors per language pair. Returns True if the translation still
+# contains source-language words/characters that the model failed to convert.
+# Used by JS to decide which atoms to send to DeepSeek as fallback.
+_TR_RESIDUE_CHARS = _re.compile(r"[şŞğĞıİ]")
+_TR_RESIDUE_WORDS = _re.compile(r"\b(?:ve|veya|ile|için|bir|üç|dört|beş|altı|yedi|sekiz|dokuz|on|yüz|bin|saat|dakika|saniye|gün|ay|yıl|döngü|şarj|hızlı|kablosuz|kablolu|sanal|gerçek|açılı|açı|piksel|inç|çözünürlük|hoparlör|diyafram|düzeltme|özellikler|özellik|tip|tipi|sayısı|sayı|rengi|renk|boyutu|boyut|standlı|stant|coreli|çekirdek|performans|verimlilik|ivme|ivmeölçer|sürücü|aydınlatma|aydınlatmalı|nesli|nesil|işlemci|bağlantı|bağlantılar|depolama|bellek|garanti|sertifika|güvenlik|güncelleme|güncellemesi|garantisi|yapay|zeka|sahne|tanıma|parmak|izi|yüz|tanıma|su|geçirmez|toz|geçirmez|dayanımı|elementli|dijital|analog|modu|moduna|ön|arka|alt|üst|açma|kapama|standby|powerful|printing|noise|blocking|dining|kayıt|kayıtlı|kata|kadar)\b", _re.IGNORECASE)
+_DE_RESIDUE_WORDS = _re.compile(r"\b(?:mit|und|oder|für|von|bei|auf|der|die|das|den|dem|des|ein|eine|einer|einen|einem|nicht|kein|keine|ja|nein|schwarz|weiß|grau|silber|blau|grün|rot|gelb|braun|klein|groß|schnell|langsam|fest|verbaut|erweiterbar|kabellos|kabelloses|drahtlos|Akku|Akkulaufzeit|Speicher|Speicherkarte|Gehäuse|Gehäuseform|Anschluss|Anschlüsse|Tastatur|Tasten|Tropfwasser|Staubschutz|Schutz|gegen|fallendes|berechnet|gemessen|angegeben|fettabweisend|fettabweisende|spiegelnd|beleuchtet|matt|glanz|Auflösung|Bildwiederholrate|Reaktionszeit|Helligkeit|höhenverstellbar|Schnellladung|Eingabe|Aktionstasten|Funktionstasten|Schultertasten|Analogsticks|konkav|konvex|gerade|über|unter|links|rechts|oben|unten|vorne|hinten|zertifiziert|sonstig|sonstige|weitere|sonstiges|Jahr|Jahre|Stunde|Stunden|Minute|Minuten|Helligkeitssensor|Lichtsensor|Beschleunigungssensor|Annäherungssensor|Fingerabdrucksensor|Architektur|Codename|Auslieferung|Lieferumfang|Garantie|Sicherheitsupdate|Bildschirmdiagonale|Lautsprecher|Mrd|Mio|paresseux|moteur|transcodage|gène|séances)\b", _re.IGNORECASE)
+
+
+def _has_residue(text: str, src_lang: str, tgt_lang: str) -> bool:
+    """True if `text` looks like Argos left source-language fragments."""
+    if not text or src_lang == tgt_lang:
+        return False
+    # Repeats survived dedup? Treat as broken.
+    words = text.split()
+    if len(words) >= 4 and len(set(w.lower() for w in words)) <= len(words) // 2:
+        return True
+    if src_lang == "tr":
+        if tgt_lang != "tr" and _TR_RESIDUE_CHARS.search(text):
+            return True
+        if _TR_RESIDUE_WORDS.search(text):
+            return True
+    if src_lang == "de":
+        if _DE_RESIDUE_WORDS.search(text):
+            return True
+    # Pass-through detection: source = target verbatim AND the source contained
+    # at least one real word (not just a brand/model code).
+    return False
+
+
 def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[str]:
     pkg = _get_pkg(from_code, to_code)
     if pkg is None:
@@ -1531,30 +1560,30 @@ def translate_many(texts: List[str], from_code: str, target_langs: List[str]) ->
             if n_missing:
                 print(f"[worker] {from_code}->{lang} · {n_missing} atoms · {dt}ms", flush=True)
 
-    # Build the response from the cache so cached atoms also flow back.
-    # Belt-and-braces: apply post-fix once more on the way out. If a value
-    # got cached without the per-hop post-fix (e.g. legacy cache entries,
-    # parallel race during a hop), this scrub catches any residue from
-    # both the source-language and the EN-pivot tables. Safe to re-apply:
-    # all replacements are idempotent regex subs.
+    # Build the response from the cache + collect residue atoms (those the
+    # caller should send to DeepSeek as fallback). Belt-and-braces post-fix.
+    residue: List[str] = []
     for t in texts:
+        atom_has_residue = False
         for lang in target_langs:
             v = _cache_lookup(from_code, t, lang)
             if not v:
                 continue
-            # Apply both relevant tables: src->lang AND en->lang (covers
-            # pivot residue that survived the en->lang hop too).
             v = _apply_post_fix(v, from_code, lang)
             if from_code != "en" and lang != "en":
                 v = _apply_post_fix(v, "en", lang)
             out[t][lang] = v
-            # Re-write the post-fixed value back into the cache so future
-            # lookups don't need this scrub.
             _cache_store(from_code, t, lang, v)
+            if _has_residue(v, from_code, lang):
+                atom_has_residue = True
+        if atom_has_residue:
+            residue.append(t)
 
     _save_cache(force=False)
     STATE["busy"] = False
     STATE["lastUpdate"] = _now()
+    # Stash residue on the function so the HTTP handler can pick it up.
+    translate_many.last_residue = residue
     return out
 
 
@@ -1685,6 +1714,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             "to": target_langs,
             "elapsedMs": _ms(_now() - started),
             "translations": translations,
+            # Atoms where Argos+post-fix still left source-language residue.
+            # The admin pipeline sends ONLY these atoms to DeepSeek as fallback,
+            # so 95%+ of products skip the slow API hop entirely.
+            "residueAtoms": getattr(translate_many, "last_residue", []),
         })
 
 

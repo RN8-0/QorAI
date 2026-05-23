@@ -2348,6 +2348,10 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
       }
       let storedForChunk = 0;
       const translations = data.translations || {};
+      // Residue atoms reported by the worker (those where Argos+post-fix
+      // STILL left source-language fragments). Only these will fall through
+      // to DeepSeek; clean atoms skip the API hop entirely.
+      const residueSet = new Set(Array.isArray(data.residueAtoms) ? data.residueAtoms : []);
       for (const t of batch) {
         const entry = translations[t];
         if (!entry || typeof entry !== 'object') continue;
@@ -2359,11 +2363,18 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
         }
       }
       storedTotal += storedForChunk;
+      // Track residue atoms across chunks so the caller can decide what to
+      // route to DeepSeek.
+      if (residueSet.size) {
+        _localResidueBuffer = _localResidueBuffer || new Set();
+        for (const t of residueSet) _localResidueBuffer.add(t);
+      }
       report('chunk-done', chunkIdx, {
         batchSize: batch.length,
         stored: storedForChunk,
         dictSize: Object.keys(_deDictCache).length,
         elapsedMs: Date.now() - started,
+        residue: residueSet.size,
       });
     } catch (e) {
       // 5-second cool-down (was 60s) — worker is now stable enough that a
@@ -2377,8 +2388,14 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
     }
   }
   if (storedTotal > 0) await _saveDeDict().catch(() => {});
-  return { ok: true, stored: storedTotal };
+  const residue = _localResidueBuffer ? [..._localResidueBuffer] : [];
+  _localResidueBuffer = null;
+  return { ok: true, stored: storedTotal, residueAtoms: residue };
 }
+
+// Module-level buffer for residue atoms aggregated across chunks of a single
+// _localTranslateAllLangsBatch call. Cleared at the end of that call.
+let _localResidueBuffer = null;
 
 // ── Public dictionary API (used by the Dictionary admin tab) ────────────
 //
@@ -2500,19 +2517,33 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
     await _saveDeDict();
     return;
   }
-  // DeepSeek fallback removed: Argos already covers 99%+ of atoms and the
-  // worker has a post-fix glossary for known mistranslations. Remaining
-  // atoms render as source text (fine — usually brand names / model codes).
-  // Skipping DeepSeek drops per-product latency from ~12s to ~3-5s and
-  // removes the API cost for the 100k bulk scrape. If the local worker
-  // itself failed (skipped/cooldown), DeepSeek still runs below.
+  // Hybrid fallback: when Argos succeeds, only the atoms it left as residue
+  // (source-language fragments detected by the worker) fall through to
+  // DeepSeek. Clean atoms — typically 95%+ of every product — skip the
+  // API hop entirely. This keeps per-product latency low while AI still
+  // catches the handful Argos can't translate, so we don't need a manual
+  // post-fix rule for every new word.
   if (local.ok) {
-    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
-    await _saveDeDict();
-    if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+    const residueAtoms = Array.isArray(local.residueAtoms) ? local.residueAtoms : [];
+    const residueSet = new Set(residueAtoms.map(t => _normalizeDictSourceKey(t)));
+    // Clean atoms (no residue) get permanently marked so they don't trigger
+    // another DeepSeek round later in the same scrape.
+    for (const t of uncached) {
+      const k = _normalizeDictSourceKey(t);
+      if (!residueSet.has(k)) _deDictFailedThisRun.add(k);
     }
-    return;
+    await _saveDeDict();
+    if (!residueAtoms.length) {
+      if (typeof onProgress === 'function') {
+        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+      }
+      return;
+    }
+    // Re-route only the residue atoms to DeepSeek.
+    uncached = residueAtoms;
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'deepseek', phase: 'fallback', pass: 0, chunkIndex: 0, totalChunks: Math.ceil(residueAtoms.length / 24), chunkSize: 24, batchSize: residueAtoms.length, sample: residueAtoms.slice(0, 3) }); } catch {}
+    }
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
