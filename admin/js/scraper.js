@@ -2258,8 +2258,17 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
     await _saveDeDict();
     return;
   }
+  // Argos covers ~99% of atoms. The few that slip through (brand pass-through,
+  // model codes) cost 8-10s each on DeepSeek for negligible quality gain — the
+  // renderer already falls back to the source text. Skip DeepSeek entirely so
+  // the user gets sub-second per-product latency in the bulk scrape.
   if (local.ok) {
-    try { onProgress?.({ provider: 'deepseek', phase: 'fallback', pass: 1, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / 24), chunkSize: 24, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
+    await _saveDeDict();
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+    }
+    return;
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));

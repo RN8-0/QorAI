@@ -1483,8 +1483,11 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts
     await _saveDeDict();
     return;
   }
+  // Skip DeepSeek (see scraper.js). Argos covers nearly all atoms; remaining
+  // ones render as source text rather than burn 8-10s on a 2-atom DeepSeek hop.
   if (local.ok) {
-    try { onProgress?.({ provider: 'deepseek', phase: 'fallback', pass: 1, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / 24), chunkSize: 24, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+    await _saveDeDict();
+    return;
   }
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
