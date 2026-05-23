@@ -2293,7 +2293,7 @@ async function _loadExistingSourceUrls(categoryId) {
   }
 }
 
-async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
+async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrencyArg = 0) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
   const isBrandSearch = !String(categoryId || '').trim();
   let errorStreak = 0;
@@ -2338,56 +2338,22 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
 
-  // PRE-FETCH OVERLAP: while product i is being parsed, translated and
-  // persisted to PB, we fetch product i+1's HTML in the background so the
-  // next iteration does not pay the proxy round-trip cost again.
-  let nextHtmlPromise = null;
-  const prefetchNext = (idx) => {
-    if (idx >= urlItems.length || scraperAbort) return null;
-    return proxyFetch(urlItems[idx].url).catch(err => {
-      // Keep the rejection so the consumer can react; we don't want to lose it.
-      return { __error: err };
-    });
-  };
+  const concurrencyInput = parseInt(concurrencyArg, 10) || parseInt(document.getElementById('scrapeConcurrency')?.value, 10) || 4;
+  const concurrency = Math.max(1, Math.min(16, concurrencyInput));
+  let cursor = 0;
+  let completed = 0;
+  slog(`⚡ Paralel Geizhals detay + inline çeviri: ${concurrency} işçi · delay ${Math.min(delayMs || 0, 500)}ms/işçi`, 'info');
 
-  for (let i = 0; i < urlItems.length && !scraperAbort; i++) {
-    const item = urlItems[i];
-    _scrapeProductCount++;
-    const productNum = _scrapeProductCount;
+  const scrapeOne = async (item, index) => {
+    const productNum = index + 1;
     const slug = slugFromUrl(item.url);
-    updateProgress(productNum, urlItems.length, 'Products');
-
-    // Apply user delay BEFORE each fetch (except the very first).
-    // If we already have a prefetched HTML in flight we keep the delay
-    // shorter — the browser has been working in the background.
-    if (i > 0 && !nextHtmlPromise) {
-      const recentSlice = recent.slice(-20);
-      const okCount = recentSlice.filter(x => x === 'ok').length;
-      const successRate = recentSlice.length ? okCount / recentSlice.length : 1;
-      const adaptiveDelay = successRate < 0.6 ? delayMs * 2 : delayMs;
-      await sleep(adaptiveDelay);
-    } else if (i > 0) {
-      // Light delay even with prefetch to be polite to Cloudflare
-      await sleep(Math.min(delayMs, 500));
-    }
-
     try {
       slog(`[${productNum}/${urlItems.length}] ${slug}`);
-      // Take prefetched HTML if available, otherwise fetch now
-      let html;
-      if (nextHtmlPromise) {
-        const res = await nextHtmlPromise;
-        nextHtmlPromise = null;
-        if (res && res.__error) throw res.__error;
-        html = res;
-      } else {
-        html = await proxyFetch(item.url);
-      }
+      const html = await proxyFetch(item.url);
       if (!html) {
         slog(`  → 404/gone: ${slug}`, 'warn');
         results.skipped++;
-        nextHtmlPromise = prefetchNext(i + 1);
-        continue;
+        return;
       }
 
       if (isChallengePage(html)) {
@@ -2400,34 +2366,20 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         // Resume later with a fresh proxy restart.
         if (challengeStreak >= _CF_HARD_ABORT_STREAK) {
           slog(`🛑 ${_CF_HARD_ABORT_STREAK} ardışık Cloudflare bloğu. Proxy/IP havuzu yandı. Checkpoint kaydedildi — proxy'i yeniden başlatıp Resume kullan.`, 'error');
-          _saveCheckpoint(urlItems, i, categoryId, results);
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
           scraperAbort = true;
-          break;
+          return;
         }
-
-        // Recovery flow: rotate browser fingerprint, wait briefly for the
-        // edge to "forget" us, then re-attempt the SAME URL once. Only count
-        // the product as skipped if even the post-reset retry fails — this
-        // keeps us from leaking the entire CF-streak window into the
-        // skipped list (which previously caused 20+ products to be silently
-        // dropped while the scraper looked busy).
-        if (challengeStreak >= _CF_STREAK_BEFORE_RESET && cfRetryUrl !== item.url) {
-          await resetProxySessionShared(`${challengeStreak} ardışık CF`);
-          productsSinceReset = 0;
-          slog(`❄️ Recovery cooldown ${(_CF_RECOVERY_MS / 1000).toFixed(0)}s — aynı ürün tekrar denenecek…`, 'info');
-          await sleep(_CF_RECOVERY_MS);
-          // Drop any in-flight prefetch — its session is the old, burned one.
-          nextHtmlPromise = null;
-          cfRetryUrl = item.url;
-          i--; // re-iterate the same product index
-          _scrapeProductCount--; // un-count the failed attempt
-          continue;
+        if (challengeStreak >= _CF_STREAK_BEFORE_RESET) {
+          slog(`🛑 ${challengeStreak} ardışık challenge. Paralel çekim durduruldu; proxy'i yenileyip Resume kullan.`, 'error');
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+          scraperAbort = true;
+          return;
         }
 
         results.skipped++;
         cfRetryUrl = null;
-        nextHtmlPromise = prefetchNext(i + 1);
-        continue;
+        return;
       }
       challengeStreak = 0;
       cfRetryUrl = null;
@@ -2441,23 +2393,17 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         await resetProxySessionShared(`proactive after ${_PROACTIVE_RESET_EVERY} products`);
         slog(`❄️ Proactive cooldown ${(_PROACTIVE_COOLDOWN_MS / 1000).toFixed(0)}s…`, 'info');
         await sleep(_PROACTIVE_COOLDOWN_MS);
-        nextHtmlPromise = null;
       }
 
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
         slog(`  → Skipped (no data): ${slug}`, 'warn');
         results.skipped++;
-        nextHtmlPromise = prefetchNext(i + 1);
-        continue;
+        return;
       }
       if (!product.techScore && item.techScore) {
         product.techScore = item.techScore;
       }
-
-      // ── Kick off prefetch of the NEXT product's HTML in parallel with
-      // canonicalization + inline 7-language package generation + PB save. ──
-      nextHtmlPromise = prefetchNext(i + 1);
 
       const clean = prepareProductPayload(product);
       // Inline translation — shares the dictionary with the Epey scraper.
@@ -2478,10 +2424,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
               errorStreak = 0;
               recent.push('ok');
               slog(`  ↻ Cross-source merge → existing ${existing.id} (${existing.source}): ${product.name}`, 'info');
-              if (results.added > 0 && results.added % 25 === 0) {
-                _saveCheckpoint(urlItems, i + 1, categoryId, results);
+              if ((results.added + results.updated) % 25 === 0) {
+                _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
               }
-              continue;
+              return;
             }
           }
         } catch (e) {
@@ -2497,10 +2443,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
 
       // Adaptive checkpoint every 25 products
-      if (results.added > 0 && results.added % 25 === 0) {
-        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+      if ((results.added + results.updated) > 0 && (results.added + results.updated) % 25 === 0) {
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
       }
     } catch (e) {
+      if (scraperAbort || e.message === 'aborted') return;
       results.errors++;
       errorStreak++;
       recent.push('err');
@@ -2513,9 +2460,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       // HARD ABORT: too many consecutive errors → likely IP-banned / browser dead
       if (errorStreak >= _MAX_CONSEC_ERRORS) {
         slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık hata. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
-        _saveCheckpoint(urlItems, i + 1, categoryId, results);
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
         scraperAbort = true;
-        break;
+        return;
       }
 
       if (errorStreak >= 3) {
@@ -2524,7 +2471,29 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
         await sleep(backoff);
       }
     }
-  }
+  };
+
+  const worker = async () => {
+    while (!scraperAbort) {
+      const index = cursor++;
+      if (index >= urlItems.length) break;
+      if (index > 0) {
+        const recentSlice = recent.slice(-20);
+        const okCount = recentSlice.filter(x => x === 'ok').length;
+        const successRate = recentSlice.length ? okCount / recentSlice.length : 1;
+        const adaptiveDelay = successRate < 0.6 ? delayMs * 2 : delayMs;
+        await sleep(Math.min(adaptiveDelay || 0, 500));
+      }
+      await scrapeOne(urlItems[index], index);
+      completed++;
+      updateProgress(completed, urlItems.length, 'Products');
+      if (completed % 50 === 0) {
+        slog(`  … progress ${completed}/${urlItems.length} · added ${results.added}, updated ${results.updated}, skipped ${results.skipped}, errors ${results.errors}`, 'info');
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
   // Final checkpoint clear (success path)
   if (!scraperAbort) _clearCheckpoint();
@@ -2618,6 +2587,7 @@ async function startBulkScrape() {
 
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
+  const concurrency = parseInt(document.getElementById('scrapeConcurrency')?.value, 10) || 4;
 
   scraperRunning = true; scraperAbort = false;
   document.getElementById('btnBulkScrape').style.display = 'none';
@@ -2661,8 +2631,9 @@ async function startBulkScrape() {
     const toScrape = urlItems.slice(0, maxProducts);
     slog(`── Phase 2: Scraping ${toScrape.length} products ──`, 'info');
 
-    // Phase 2: Scrape products sequentially (NO parallel / NO Promise.all)
-    const results = await sequentialScrape(toScrape, mode === 'brand' ? '' : catValue, delay);
+    // Phase 2: Scrape product details with parallel workers; each saved product
+    // is translated inline before the PocketBase write.
+    const results = await sequentialScrape(toScrape, mode === 'brand' ? '' : catValue, delay, concurrency);
 
     slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
     if (results.added > 0 && typeof loadProducts === 'function') {
