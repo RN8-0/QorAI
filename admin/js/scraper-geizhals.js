@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  QOR AI SCRAPER MODULE — geizhals.eu Scraper
 //  Scrapes products from geizhals.eu via local Puppeteer proxy.
-//  Translates German → 6 target languages using DeepSeek v3 + dictionary.
+//  Writes the 7-language package (German source + 6 targets) via DeepSeek v3 + dictionary.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 //
@@ -2338,11 +2338,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
   _scrapeStartTime = Date.now();
   _scrapeProductCount = 0;
 
-  // PRE-FETCH OVERLAP: while product i is being parsed + persisted to PB,
-  // we fetch product i+1's HTML in the background so the next iteration
-  // does not pay the proxy round-trip cost again. Translation is no longer
-  // in this loop (see Dictionary → "Translate Category"), so this overlap
-  // mostly hides the PB write + parse cost (~200-400ms).
+  // PRE-FETCH OVERLAP: while product i is being parsed, translated and
+  // persisted to PB, we fetch product i+1's HTML in the background so the
+  // next iteration does not pay the proxy round-trip cost again.
   let nextHtmlPromise = null;
   const prefetchNext = (idx) => {
     if (idx >= urlItems.length || scraperAbort) return null;
@@ -2458,10 +2456,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000) {
       }
 
       // ── Kick off prefetch of the NEXT product's HTML in parallel with
-      // PocketBase save. Translation is intentionally DECOUPLED from the
-      // scrape loop — products are persisted with German specs only, and
-      // the admin runs the Dictionary → "Translate Category" action when
-      // ready. This keeps scrape at network-bound speed (~1-2s/product). ──
+      // canonicalization + inline 7-language package generation + PB save. ──
       nextHtmlPromise = prefetchNext(i + 1);
 
       const clean = prepareProductPayload(product);

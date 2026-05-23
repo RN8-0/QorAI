@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260523-TR-spec-keys-no-longer-collapsed-to-Specification';
+const SCRAPER_BUILD = '20260523-filter-first-epey-inline-7-lang';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 // EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
@@ -2408,7 +2408,7 @@ async function _translateProductInline(product) {
     if (missing.length === 0) {
       xlog(`✓ ${productLabel} — ${cached} atom dict cache (0 API)`, 'success');
     } else {
-      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek (6 dil)`, 'info');
+      xlog(`⟳ ${productLabel} — ${cached}/${unique.length} cached, ${missing.length} → DeepSeek (7 dil paketi)`, 'info');
       const t0 = Date.now();
       try {
         await _deepSeekAllLangsBatch(missing, TARGET_LANGS);
@@ -3270,8 +3270,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       const clean = prepareProductPayload(product);
-      // Inline translation hook (EU pivot): every scraped product is
-      // translated to the 6 target languages BEFORE PB write.
+      // Inline translation hook (EU pivot): every scraped product gets the
+      // full 7-language package (source + 6 target languages) before PB write.
       await _translateProductInline(clean);
 
       // Cross-source dedup: same variantGroup already in PB?
@@ -3517,155 +3517,11 @@ async function startBulkScrape() {
 }
 
 // ═══════════════════════════════════════
-//  19. SINGLE URL SCRAPE
+//  19. SINGLE URL SCRAPE — defined further down (line ~4961).
+//  An older definition lived here and silently shadowed the newer one,
+//  so the inline-translation hook added here was dead code. Keep the
+//  single source of truth in the second definition.
 // ═══════════════════════════════════════
-
-async function scrapeByUrl() {
-  const nameInput = document.getElementById('scrapeUrl');
-  const inputVal = nameInput ? nameInput.value.trim() : '';
-  if (!inputVal) { toast('Enter a product name or Legacy.eu URL', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
-
-  clearScraperLog();
-
-  // Check if input is a URL or a product name
-  let url, name;
-  if (inputVal.startsWith('http')) {
-    // Direct URL mode
-    url = inputVal;
-    slog(`Fetching URL: ${url}`);
-  } else {
-    // Product name search mode
-    name = inputVal;
-    slog(`Searching: ${name}`);
-  }
-
-  try {
-    const cat = document.getElementById('singleUrlCategory')?.value || 'smartphones';
-
-    if (url) {
-      // Direct URL scrape via proxy
-      const html = await proxyFetch(url);
-      if (!html) { slog('❌ Page not found or blocked', 'error'); return; }
-      if (isChallengePage(html)) { slog('❌ Cloudflare challenge, cannot scrape this URL', 'error'); return; }
-
-      const product = await scrapeProductDetail(html, url, cat);
-      if (!product) { slog('❌ Could not parse product data', 'error'); return; }
-
-      slog(`✅ ${product.name}`, 'success');
-      slog(`  Specs: ${product.specsCount}`, 'info');
-      slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
-      Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
-
-      try {
-        const clean = prepareProductPayload(product);
-        // Single-URL path now mirrors bulk-scrape: inline translation + cross-source
-        // dedup so manually-added products are indistinguishable from bulk-scraped ones.
-        await _translateProductInline(clean);
-        let saved = null;
-        if (clean.variantGroup) {
-          const existing = await _findExistingByVariantGroup(clean.variantGroup);
-          if (existing && existing.source && existing.source !== clean.source) {
-            const merged = await _mergeIntoExistingRecord(existing.id, clean);
-            if (merged) {
-              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
-              slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
-              return;
-            }
-          }
-        }
-        saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)} (${clean.specsCount || 0} specs, ${Object.keys(clean.multiLangSpecs || {}).length} dilde çeviri)`, 'success');
-      } catch(saveErr) {
-        const details = saveErr.response?.data || saveErr.data || {};
-        slog(`❌ Save failed: ${saveErr.message}`, 'error');
-        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
-        if (product) {
-          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
-          slog(`   Category: ${product.category}`, 'error');
-          slog(`   Specs count: ${product.specsCount}`, 'error');
-        }
-        Object.entries(details).forEach(([k,v]) => {
-          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
-        });
-        console.error('[scrapeByUrl] Full save error:', saveErr);
-        return;
-      }
-    } else {
-      // Product name search via Legacy search page
-      slog(`Searching Legacy.eu for: ${name}`);
-      const searchUrl = `${LEGACY_BASE}/?fs=${encodeURIComponent(name)}`;
-      const searchHtml = await proxyFetch(searchUrl);
-      if (!searchHtml || isChallengePage(searchHtml)) {
-        slog('❌ Search blocked or no results', 'error');
-        return;
-      }
-
-      const searchDoc = parseHTML(searchHtml);
-      const links = extractProductLinksFromDoc(searchDoc, searchHtml);
-      if (links.length === 0) {
-        slog('❌ No products found for this search', 'error');
-        return;
-      }
-
-      slog(`Found ${links.length} products, scraping first...`, 'info');
-      const firstUrl = links[0].url;
-      const productHtml = await proxyFetch(firstUrl);
-      if (!productHtml || isChallengePage(productHtml)) {
-        slog('❌ Product page blocked', 'error');
-        return;
-      }
-
-      const product = await scrapeProductDetail(productHtml, firstUrl, cat);
-      if (!product) { slog('❌ Could not parse product data', 'error'); return; }
-
-      slog(`✅ ${product.name}`, 'success');
-      slog(`  Specs: ${product.specsCount}`, 'info');
-      slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
-      Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
-
-      try {
-        const clean = prepareProductPayload(product);
-        // Single-URL path now mirrors bulk-scrape: inline translation + cross-source
-        // dedup so manually-added products are indistinguishable from bulk-scraped ones.
-        await _translateProductInline(clean);
-        let saved = null;
-        if (clean.variantGroup) {
-          const existing = await _findExistingByVariantGroup(clean.variantGroup);
-          if (existing && existing.source && existing.source !== clean.source) {
-            const merged = await _mergeIntoExistingRecord(existing.id, clean);
-            if (merged) {
-              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
-              slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
-              return;
-            }
-          }
-        }
-        saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)} (${clean.specsCount || 0} specs, ${Object.keys(clean.multiLangSpecs || {}).length} dilde çeviri)`, 'success');
-      } catch(saveErr) {
-        const details = saveErr.response?.data || saveErr.data || {};
-        slog(`❌ Save failed: ${saveErr.message}`, 'error');
-        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
-        if (product) {
-          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
-          slog(`   Category: ${product.category}`, 'error');
-          slog(`   Specs count: ${product.specsCount}`, 'error');
-        }
-        Object.entries(details).forEach(([k,v]) => {
-          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
-        });
-        console.error('[scrapeByUrl] Full save error:', saveErr);
-        return;
-      }
-    }
-  } catch(e) {
-    slog(`Error: ${e.message}`, 'error');
-    console.error('[scrapeByUrl] Outer catch:', e);
-  }
-}
 
 // ═══════════════════════════════════════
 //  20. UPDATE PRODUCTS
@@ -4448,25 +4304,13 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       }
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
-      const firstPageAdded = pushItems(itemsFromData(data));
+      const staticFirstPageItems = itemsFromData(data);
 
       if (ajax) {
         slog(`  ✓ Kategori metadata alındı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
-        if (firstPageAdded) {
-          slog(`  ✓ İlk sayfa yedek liste: +${firstPageAdded} ürün → toplam ${allItems.length}`, 'success');
-        }
       }
 
-      // Smartphone-style path for EVERY category: first use the normal Epey
-      // category stream. Some partition filters return intermittent empty
-      // pages (pcie_nic did this), so using them first can stop at page 1.
       if (ajax && allItems.length < maxProducts) {
-        slog(`  ⏩ Düz kategori sayfalaması başlıyor (${ajax.limit}/sayfa)`, 'info');
-        const addedPlain = await paginateStream(ajax, [], logPage);
-        if (addedPlain === 0 && allItems.length < maxProducts && !scraperAbort) {
-          slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi`, 'warn');
-        }
-
         // KEY INSIGHT (verified by user 2026-05-23): Epey's default category
         // listing hides discontinued products. But selecting ALL values of a
         // single filter group AT ONCE (e.g. RAM 0-24 GB = every RAM tier
@@ -4479,30 +4323,52 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         // already covers everything Epey can serve (user explicitly asked
         // for this).
         const filterGroupsToTry = filtersTopK.length ? filtersTopK : (filter ? [filter] : []);
-        for (let fi = 0; fi < filterGroupsToTry.length; fi++) {
-          if (allItems.length >= maxProducts || scraperAbort) break;
-          const f = filterGroupsToTry[fi];
-          const beforeCount = allItems.length;
-          slog(`  ⏩ Filtre grubu ${fi + 1}/${filterGroupsToTry.length} — ${f.groupId}, TÜM ${f.values.length} değer aktif, ~${f.total} ürün`, 'info');
-          // Send EVERY value of this group together as filtrele[] array.
-          // Epey returns the full filter-active catalog (default "satışta"
-          // is bypassed when any filter is active). One stream, one paging.
-          await paginateStream(ajax, f.values, (pageNo, added, total) => {
-            if (pageNo === 1 || added || pageNo % 5 === 0) logPage(pageNo, added, total);
-          });
-          const gained = allItems.length - beforeCount;
-          if (gained === 0) {
-            slog(`  ⚠️ Filtre grubu ${f.groupId} yeni ürün getirmedi (zaten kapsanmış)`, 'warn');
-          } else {
-            slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
+        if (filterGroupsToTry.length) {
+          slog(`  ⏩ Filtreli kategori sayfalaması başlıyor (${ajax.limit}/sayfa)`, 'info');
+          for (let fi = 0; fi < filterGroupsToTry.length; fi++) {
+            if (allItems.length >= maxProducts || scraperAbort) break;
+            const f = filterGroupsToTry[fi];
+            const beforeCount = allItems.length;
+            slog(`  ⏩ Filtre grubu ${fi + 1}/${filterGroupsToTry.length} — ${f.groupId}, TÜM ${f.values.length} değer aktif, ~${f.total} ürün`, 'info');
+            // Send EVERY value of this group together as filtrele[] array.
+            // Epey returns the full filter-active catalog (default "satışta"
+            // is bypassed when any filter is active). One stream, one paging.
+            await paginateStream(ajax, f.values, (pageNo, added, total) => {
+              if (pageNo === 1 || added || pageNo % 5 === 0) logPage(pageNo, added, total);
+            });
+            const gained = allItems.length - beforeCount;
+            if (gained === 0) {
+              slog(`  ⚠️ Filtre grubu ${f.groupId} yeni ürün getirmedi (zaten kapsanmış)`, 'warn');
+            } else {
+              slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
+            }
+            // Whole catalog likely covered now — don't waste API calls on more groups.
+            if (expectedCategoryTotal && allItems.length >= expectedCategoryTotal * 0.97) {
+              slog(`  ✓ ~%${Math.round(allItems.length / expectedCategoryTotal * 100)} kapsama (${allItems.length}/${expectedCategoryTotal}) — kalan filtre grupları atlanıyor`, 'success');
+              break;
+            }
           }
-          // Whole catalog likely covered now — don't waste API calls on more groups
-          if (expectedCategoryTotal && allItems.length >= expectedCategoryTotal * 0.97) {
-            slog(`  ✓ ~%${Math.round(allItems.length / expectedCategoryTotal * 100)} kapsama (${allItems.length}/${expectedCategoryTotal}) — kalan filtre grupları atlanıyor`, 'success');
-            break;
+        } else {
+          slog(`  ⚠️ Uygun filtre grubu bulunamadı; düz liste yedeğine geçilecek`, 'warn');
+        }
+
+        const needsPlainFallback = !filterGroupsToTry.length ||
+          (expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95)) ||
+          (!allItems.length && staticFirstPageItems.length);
+        if (needsPlainFallback && allItems.length < maxProducts && !scraperAbort) {
+          slog(`  ⏩ Düz kategori sayfalaması yedeği başlıyor (${ajax.limit}/sayfa)`, 'info');
+          const addedPlain = await paginateStream(ajax, [], logPage);
+          if (addedPlain === 0 && allItems.length < maxProducts && !scraperAbort) {
+            slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi`, 'warn');
           }
         }
+
+        const firstPageAdded = pushItems(staticFirstPageItems);
+        if (firstPageAdded) {
+          slog(`  ✓ İlk sayfa yedek liste: +${firstPageAdded} ürün → toplam ${allItems.length}`, 'success');
+        }
       } else if (!ajax) {
+        const firstPageAdded = pushItems(staticFirstPageItems);
         slog(`  ✓ Kategori sayfası: +${firstPageAdded} ürün (${((Date.now() - t0) / 1000).toFixed(1)}s)`, firstPageAdded ? 'success' : 'warn');
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
@@ -4987,9 +4853,25 @@ async function scrapeByUrl() {
     const product = await scrapeProductDetail(html, url, document.getElementById('singleUrlCategory')?.value || '');
     if (!product) { slog('Could not parse product data', 'error'); return; }
     const clean = prepareProductPayload(product);
+    // Single-URL path mirrors bulk-scrape: inline translation + cross-source
+    // dedup so manually-added products are indistinguishable from bulk-scraped ones.
+    await _translateProductInline(clean);
+    if (clean.variantGroup) {
+      const existing = await _findExistingByVariantGroup(clean.variantGroup);
+      if (existing && existing.source && existing.source !== clean.source) {
+        const merged = await _mergeIntoExistingRecord(existing.id, clean);
+        if (merged) {
+          window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+          slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
+          if (typeof loadProducts === 'function') await loadProducts();
+          return;
+        }
+      }
+    }
     const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
     window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-    slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images)`, 'success');
+    const langCount = Object.keys(clean.multiLangSpecs || {}).length;
+    slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images, ${langCount} dilde çeviri)`, 'success');
     if (typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Error: ${e.message}`, 'error');
