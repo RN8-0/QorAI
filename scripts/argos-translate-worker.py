@@ -74,8 +74,12 @@ DEVICE = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
 COMPUTE_TYPE = "int8_float16" if DEVICE == "cuda" else "int8"
 # CTranslate2 will internally split into sub-batches of this size. 64 fits
 # comfortably on a 4 GB GPU (GTX 1650) for the small Argos models.
+# Argos models are tiny (~80 MB each) so we can afford a wider beam without
+# blowing VRAM. beam=4 catches mixed-language compounds ("1 x Uyku Modunda
+# Charging Support", "keyboard mit DE layout") that beam=1 was leaving half
+# in the source language. Roughly 20% slower per atom — still <1s/product.
 BATCH_SIZE = int(os.environ.get("QORAI_TRANSLATE_BATCH", "48"))
-BEAM_SIZE = int(os.environ.get("QORAI_TRANSLATE_BEAM", "1"))
+BEAM_SIZE = int(os.environ.get("QORAI_TRANSLATE_BEAM", "4"))
 MODEL_LABEL = f"argos-translate/{DEVICE}/{COMPUTE_TYPE}"
 
 # Supported language codes (must match the admin pipeline). All TR/DE
@@ -799,6 +803,37 @@ def warm_up() -> None:
 
 
 # ─── Translation ─────────────────────────────────────────────────────────
+# Word-level overrides applied AFTER Argos returns. Argos models are tiny
+# and occasionally pick the wrong English sense for a TR/DE word
+# ("Kayıt" → "Registration" instead of "Recording", "mit" → ""). This
+# table fixes the handful of known mistranslations we see in spec atoms
+# without needing a second model pass.
+_POST_FIX = {
+    "tr->en": [
+        (r"\bRegistration\b", "Recording"),
+        (r"\bRegistrations\b", "Recordings"),
+        (r"\bInscription\b", "Recording"),
+    ],
+    "tr->de": [(r"\bRegistrierung\b", "Aufnahme")],
+    "tr->es": [(r"\bRegistro\b", "Grabación")],
+    "tr->fr": [(r"\bInscription\b", "Enregistrement")],
+    "tr->pt": [(r"\bRegistro\b", "Gravação")],
+    "tr->ru": [(r"\bРегистрация\b", "Запись")],
+    "de->en": [(r"\bwith DE layout\b", "with German layout")],  # rare cases where 'mit' survives
+}
+import re as _re
+_POST_FIX_COMPILED = {k: [(_re.compile(p), r) for p, r in v] for k, v in _POST_FIX.items()}
+
+
+def _apply_post_fix(text: str, from_code: str, to_code: str) -> str:
+    rules = _POST_FIX_COMPILED.get(f"{from_code}->{to_code}")
+    if not rules or not text:
+        return text
+    for pat, rep in rules:
+        text = pat.sub(rep, text)
+    return text
+
+
 def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[str]:
     pkg = _get_pkg(from_code, to_code)
     if pkg is None:
@@ -810,8 +845,11 @@ def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[s
         max_batch_size=BATCH_SIZE,
         beam_size=BEAM_SIZE,
         return_scores=False,
-        # Keep the search shallow but accurate enough for short spec atoms.
-        max_decoding_length=192,
+        # Spec atoms with multi-word qualifiers (e.g. "1 x Uyku Modunda
+        # Charging Support" → 8 tokens) overflow 192 and get truncated
+        # mid-translation, which is what leaves chunks in the source
+        # language. 320 covers every observed atom comfortably.
+        max_decoding_length=320,
     )
     out = []
     for r, encoded_src in zip(results, encoded):
@@ -824,6 +862,8 @@ def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[s
         # Belt-and-braces: scrub any ▁ that survived (older sp versions).
         if "▁" in text:
             text = text.replace("▁", " ").strip()
+        # Post-process: fix known per-language mistranslations.
+        text = _apply_post_fix(text, from_code, to_code)
         out.append(text)
     return out
 
