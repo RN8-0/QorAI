@@ -2842,7 +2842,7 @@ function _renderProductModal(p,variants=[]){
     ...Object.keys(p.specSections || {}).slice(0, 40),
   ].join('\n');
   const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || '')) ||
-    /\b(schwarz|betriebssystem|batterielaufzeit|energieeffizienzklasse|phasenvergleich|beschleunigungssensor|annäherungssensor|lichtsensor|aussparung|aktualisierungsrate|satellitenkommunikation|schnittstellen|kerne|ab werk|fest verbaut|kabelloses laden)\b/i.test(germanProbe);
+    /\b(schwarz|betriebssystem|batterielaufzeit|energieeffizienzklasse|phasenvergleich|beschleunigungssensor|annäherungssensor|lichtsensor|aussparung|aktualisierungsrate|satellitenkommunikation|schnittstellen|kerne|ab werk|fest verbaut|kabelloses laden|zellen|netzteil|stecker|klinke|netzwerkanschluss|bauform|de-layout)\b/i.test(germanProbe);
   const sourceLang = sourceIsGeizhals ? 'de' : 'tr';
   // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
   // source keys, so we treat it as missing instead of pretending to localize.
@@ -2888,11 +2888,32 @@ function _renderProductModal(p,variants=[]){
         'Optical image fixing (OIS)': 'Optical image stabilization (OIS)',
         'Süreçor': 'Processor',
         'Listelendirene': 'Listed since',
+        'Minirsel processing (npu)': 'Neural processing (NPU)',
+        'Npu (sinirsel trading unit) name': 'NPU (neural processing unit) name',
+        'Kart Okuyucu Specifications': 'Card reader specifications',
+        'Klavye Specifications': 'Keyboard specifications',
+        'USB 3.x Adedi': 'USB 3.x count',
+        '2 Adet': '2',
+        '24 Adet': '24',
+        '4 Zellen': '4 cells',
+        'N/a': 'N/A',
+        'Netzteil': 'Power supply',
+        'Stecker': 'Plug',
+        'Baubform': 'Form factor',
+        'Bauform': 'Form factor',
       };
       if (exact[out]) out = exact[out];
       out = out
         .replace(/\bBatarya\b/gi, 'Battery')
         .replace(/\bNavigasyon\b/gi, 'Navigation')
+        .replace(/\bKart\s+Okuyucu\b/gi, 'Card reader')
+        .replace(/\bKlavye\b/gi, 'Keyboard')
+        .replace(/\bAdedi\b/gi, 'count')
+        .replace(/\bAdet\b/gi, '')
+        .replace(/\bPiksel\b/gi, 'pixels')
+        .replace(/\bMinirsel\b/gi, 'Neural')
+        .replace(/\bsinirsel\s+trading\s+unit\b/gi, 'neural processing unit')
+        .replace(/\bsinirsel\b/gi, 'neural')
         .replace(/\bİkinci\s+Arka\s+Camera\b/gi, 'Second rear camera')
         .replace(/\bÜçüncü\s+Arka\s+Camera\b/gi, 'Third rear camera')
         .replace(/\bÖn\s+Camera\b/gi, 'Front camera')
@@ -2915,6 +2936,30 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bEvet\b/gi, 'Yes')
         .replace(/\bHayır\b|\bHayir\b/gi, 'No')
         .replace(/\bVolte\s*\(\s*⁇\s*over\s*LTE\s*\)\s*support\b/gi, 'VoLTE (voice over LTE) support')
+        .replace(/\bG\.p\.d\./gi, 'DisplayPort')
+        .replace(/\bm\.a\./gi, 'max.')
+        .replace(/\b4\s+Zellen\b/gi, '4 cells')
+        .replace(/\b(\d+)\s+Zellen\b/gi, '$1 cells')
+        .replace(/\bZellen\b/gi, 'cells')
+        .replace(/\bNetzteil\b/gi, 'power supply')
+        .replace(/\bStecker\b/gi, 'plug')
+        .replace(/\bKlinke\b/gi, 'jack')
+        .replace(/\bclink\b/gi, 'jack')
+        .replace(/\bHohlstecker\b/gi, 'hollow plug')
+        .replace(/\bHohlbuchse\b/gi, 'hollow socket')
+        .replace(/\bNetzwerkanschluss\b/gi, 'network connection')
+        .replace(/\bde-layout\b/gi, 'DE layout')
+        .replace(/\bso-dimm-module\b/gi, 'SO-DIMM module')
+        .replace(/\bso-dımm-module\b/gi, 'SO-DIMM module')
+        .replace(/\bBaubform\b|\bBauform\b/gi, 'form factor')
+        .replace(/\bPick\s*up\s*&\s*Return\b/gi, 'Pickup & return')
+        .replace(/\bPickup&Return\b/gi, 'Pickup & return')
+        .replace(/\bHonor\s+rt\b/gi, 'Vulkan RT')
+        .replace(/\bReliable platform module\s+TPM\s+2\.0\s+\(print\)/gi, 'Trusted Platform Module (TPM) 2.0')
+        .replace(/\bIntel adaptiveix technology\b/gi, 'Intel Adaptive Boost Technology')
+        .replace(/\bSSe4\.2\b/g, 'SSE4.2')
+        .replace(/\bInt8\b/g, 'INT8')
+        .replace(/\bNpu\b/g, 'NPU')
         .replace(/^\s*⁇\s*$/g, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
@@ -2947,6 +2992,15 @@ function _renderProductModal(p,variants=[]){
         'Interfaces': 'Arayüzler',
         'Navigation': 'Navigasyon',
         '6 Kerne': '6 çekirdek',
+        '4 Zellen': '4 hücre',
+        'Netzteil': 'Güç adaptörü',
+        'Stecker': 'Fiş',
+        'Klinke': 'Jak',
+        'de-layout': 'Almanca klavye düzeni',
+        'so-dimm-module': 'SO-DIMM modülü',
+        'Netzwerkanschluss': 'Ağ bağlantısı',
+        'Bauform': 'Form faktörü',
+        'Pickup&Return': 'Pickup & return',
       };
       if (exactTr[out]) out = exactTr[out];
       out = out
@@ -2965,6 +3019,20 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bTextnachrichten\b/gi, 'mesajlar')
         .replace(/\bnur Notruf\b/gi, 'sadece acil arama')
         .replace(/\bSchnittstellen\b/gi, 'arayüzler')
+        .replace(/\bNetzteil\b/gi, 'güç adaptörü')
+        .replace(/\bStecker\b/gi, 'fiş')
+        .replace(/\bKlinke\b/gi, 'jak')
+        .replace(/\bclink\b/gi, 'jak')
+        .replace(/\bHohlstecker\b/gi, 'silindirik fiş')
+        .replace(/\bHohlbuchse\b/gi, 'silindirik soket')
+        .replace(/\bNetzwerkanschluss\b/gi, 'ağ bağlantısı')
+        .replace(/\bde-layout\b/gi, 'Almanca klavye düzeni')
+        .replace(/\bso-dimm-module\b/gi, 'SO-DIMM modülü')
+        .replace(/\bBauform\b/gi, 'form faktörü')
+        .replace(/\bZellen\b/gi, 'hücre')
+        .replace(/\b(\d+)\s+hücre\s+hücresi\b/gi, '$1 hücre')
+        .replace(/\bPick\s*up\s*&\s*Return\b/gi, 'Pickup & return')
+        .replace(/\bPickup&Return\b/gi, 'Pickup & return')
         .replace(/\bKerne\b/gi, 'çekirdek')
         .replace(/\bab Werk\b/gi, 'fabrika çıkışı')
         .replace(/\bGlas\s*\(Rückseite\)/gi, 'Cam (arka yüzey)')

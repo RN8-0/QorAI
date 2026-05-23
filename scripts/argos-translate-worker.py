@@ -267,6 +267,41 @@ _EXACT_GLOSSARY: Dict[Tuple[str, str], Dict[str, str]] = {
         "es": "Formato barra", "fr": "Format barre",
         "pt": "Formato barra", "ru": "Моноблок",
     },
+    ("de", "netzteil"): {
+        "tr": "Güç adaptörü", "en": "Power supply",
+        "es": "Fuente de alimentación", "fr": "Alimentation",
+        "pt": "Fonte de alimentação", "ru": "Блок питания",
+    },
+    ("de", "stecker"): {
+        "tr": "Fiş", "en": "Plug", "es": "Conector",
+        "fr": "Connecteur", "pt": "Plugue", "ru": "Штекер",
+    },
+    ("de", "klinke"): {
+        "tr": "Jak", "en": "Jack", "es": "Conector jack",
+        "fr": "Prise jack", "pt": "Conector jack", "ru": "Аудиоразъем",
+    },
+    ("de", "netzwerkanschluss"): {
+        "tr": "Ağ bağlantısı", "en": "Network connection",
+        "es": "Conexión de red", "fr": "Connexion réseau",
+        "pt": "Conexão de rede", "ru": "Сетевое подключение",
+    },
+    ("de", "bauform"): {
+        "tr": "Form faktörü", "en": "Form factor",
+        "es": "Factor de forma", "fr": "Format",
+        "pt": "Formato", "ru": "Форм-фактор",
+    },
+    ("de", "de-layout"): {
+        "tr": "Almanca klavye düzeni", "en": "German keyboard layout",
+        "es": "Distribución de teclado alemana",
+        "fr": "Disposition de clavier allemande",
+        "pt": "Layout de teclado alemão",
+        "ru": "Немецкая раскладка клавиатуры",
+    },
+    ("de", "so-dimm-module"): {
+        "tr": "SO-DIMM modülü", "en": "SO-DIMM module",
+        "es": "Módulo SO-DIMM", "fr": "Module SO-DIMM",
+        "pt": "Módulo SO-DIMM", "ru": "Модуль SO-DIMM",
+    },
 }
 
 # ─── State ───────────────────────────────────────────────────────────────
@@ -418,6 +453,15 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
                 "tr": f"{n} şarj döngüsü", "en": f"{n} charging cycles",
                 "es": f"{n} ciclos de carga", "fr": f"{n} cycles de charge",
                 "pt": f"{n} ciclos de carga", "ru": f"{n} циклов зарядки",
+            }.get(tgt_lang)
+
+        m = re.fullmatch(r"(\d+)\s+zellen", s, flags=re.I)
+        if m:
+            n = m.group(1)
+            return {
+                "tr": f"{n} hücre", "en": f"{n} cells",
+                "es": f"{n} celdas", "fr": f"{n} cellules",
+                "pt": f"{n} células", "ru": f"{n} ячейки",
             }.get(tgt_lang)
 
         m = re.fullmatch(r"(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate", s, flags=re.I)

@@ -1279,6 +1279,43 @@ function _knownGermanRuleTranslation(germanText, targetLang) {
       tr: 'Bar formu', en: 'Bar form factor', es: 'Formato barra',
       fr: 'Format barre', pt: 'Formato barra', ru: 'Моноблок',
     },
+    'netzteile': {
+      tr: 'Güç adaptörleri', en: 'Power supplies', es: 'Fuentes de alimentación',
+      fr: 'Alimentations', pt: 'Fontes de alimentação', ru: 'Блоки питания',
+    },
+    'netzteil': {
+      tr: 'Güç adaptörü', en: 'Power supply', es: 'Fuente de alimentación',
+      fr: 'Alimentation', pt: 'Fonte de alimentação', ru: 'Блок питания',
+    },
+    'stecker': {
+      tr: 'Fiş', en: 'Plug', es: 'Conector',
+      fr: 'Connecteur', pt: 'Plugue', ru: 'Штекер',
+    },
+    'klinke': {
+      tr: 'Jak', en: 'Jack', es: 'Conector jack',
+      fr: 'Prise jack', pt: 'Conector jack', ru: 'Аудиоразъем',
+    },
+    'netwerkanschluss': {
+      tr: 'Ağ bağlantısı', en: 'Network connection', es: 'Conexión de red',
+      fr: 'Connexion réseau', pt: 'Conexão de rede', ru: 'Сетевое подключение',
+    },
+    'netzwerkanschluss': {
+      tr: 'Ağ bağlantısı', en: 'Network connection', es: 'Conexión de red',
+      fr: 'Connexion réseau', pt: 'Conexão de rede', ru: 'Сетевое подключение',
+    },
+    'bauform': {
+      tr: 'Form faktörü', en: 'Form factor', es: 'Factor de forma',
+      fr: 'Format', pt: 'Formato', ru: 'Форм-фактор',
+    },
+    'de-layout': {
+      tr: 'Almanca klavye düzeni', en: 'German keyboard layout',
+      es: 'Distribución de teclado alemana', fr: 'Disposition de clavier allemande',
+      pt: 'Layout de teclado alemão', ru: 'Немецкая раскладка клавиатуры',
+    },
+    'so-dimm-module': {
+      tr: 'SO-DIMM modülü', en: 'SO-DIMM module', es: 'Módulo SO-DIMM',
+      fr: 'Module SO-DIMM', pt: 'Módulo SO-DIMM', ru: 'Модуль SO-DIMM',
+    },
   };
   if (map[key]?.[targetLang]) return map[key][targetLang];
   const mLoad = key.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
@@ -1288,6 +1325,15 @@ function _knownGermanRuleTranslation(germanText, targetLang) {
       tr: `${n} şarj döngüsü`, en: `${n} charging cycles`,
       es: `${n} ciclos de carga`, fr: `${n} cycles de charge`,
       pt: `${n} ciclos de carga`, ru: `${n} циклов зарядки`,
+    })[targetLang] || null;
+  }
+  const mCells = key.match(/^(\d+)\s+zellen$/);
+  if (mCells) {
+    const n = mCells[1];
+    return ({
+      tr: `${n} hücre`, en: `${n} cells`,
+      es: `${n} celdas`, fr: `${n} cellules`,
+      pt: `${n} células`, ru: `${n} ячейки`,
     })[targetLang] || null;
   }
   const mHz = key.match(/^(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate$/);
