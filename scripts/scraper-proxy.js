@@ -882,11 +882,20 @@ async function fetchWithPuppeteer(url, opts = {}) {
   const page = await getPage();
   requestCount++;
   _browserCycle++;
+
+  // Per-site header overrides. Geizhals' Cloudflare wall blocks the default
+  // TR locale; pretending to be a German visitor (de-DE + geizhals.de
+  // referer) lifts the block in most cases.
+  const lowerUrl = String(url || '').toLowerCase();
+  const isGeizhals = /(^|\.)geizhals\.(eu|at|de|com)\//.test(lowerUrl);
+  const perSiteHeaders = isGeizhals ? {
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.7',
+    'Referer': referer || 'https://geizhals.de/',
+  } : (referer ? { Referer: referer } : null);
+
   try {
-    // Epey's gallery pages (…-resimleri.html) 404 without a Referer pointing
-    // at the product page — set it as an extra header for this navigation.
-    if (referer) {
-      try { await page.setExtraHTTPHeaders({ Referer: referer }); } catch {}
+    if (perSiteHeaders) {
+      try { await page.setExtraHTTPHeaders(perSiteHeaders); } catch {}
     }
     // FIX: Use 'domcontentloaded' instead of 'networkidle0'.
     // 'networkidle0' hangs on Cloudflare challenge pages because CF keeps
@@ -900,8 +909,8 @@ async function fetchWithPuppeteer(url, opts = {}) {
       // Navigation timeout is OK — the page might still be partially loaded
       console.warn(`  ⚠️ Navigation timeout (continuing): ${navErr.message}`);
     } finally {
-      // Clear the Referer so it does not leak into the next navigation.
-      if (referer) { try { await page.setExtraHTTPHeaders({}); } catch {} }
+      // Clear per-site headers so they don't leak into the next navigation.
+      if (perSiteHeaders) { try { await page.setExtraHTTPHeaders({}); } catch {} }
     }
     const status = response ? response.status() : 0;
 
