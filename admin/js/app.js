@@ -2321,7 +2321,7 @@ async function startCategoryTranslation(){
 
         try {
           await window.QorAiBulkTranslate.translateAtoms(missing, targets, (ev) => {
-            const provider = 'DeepSeek';
+            const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
             if (ev.pass && ev.pass !== passNo) {
               passNo = ev.pass;
               passDoneChunks = 0;
@@ -2378,6 +2378,8 @@ async function startCategoryTranslation(){
                 counter: depotCounter(),
                 detail: 'Failed chunks are retried in the next smaller pass when possible.',
               });
+            } else if (ev.phase === 'fallback') {
+              _xlateLog(`→ Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
             }
           }, () => _catXlateAbort);
         } finally {

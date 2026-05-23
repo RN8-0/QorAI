@@ -83,3 +83,15 @@ scripts/icecat_queue.jsonl
 scripts/icecat_queue_meta.json
 scripts/icecat_progress.json
 
+# Local translation worker (Argos + CT2 + CUDA)
+scripts/translate-venv/
+scripts/.local-translate-cache.json
+scripts/.local-translate-cache.tmp
+scripts/.test-tr-payload.json
+scripts/.test-tr-result.json
+scripts/.test-de-payload.json
+scripts/.test-de-result.json
+scripts/.par-r*.json
+local-translate-worker.err
+local-translate-worker.log
+

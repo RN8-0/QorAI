@@ -13,6 +13,7 @@ const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260523-filter-first-epey-inline-7-lang';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
+const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 // EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
 const SUPPORTED_LANGS = ['tr','en','de','es','fr','pt','ru'];
@@ -1579,14 +1580,11 @@ function _meaningfulWordTokens(text) {
 function _isWordOnlyDictSource(text) {
   const s = _normalizeDictSourceKey(text);
   if (!s || s.length < 2) return false;
-  if (!/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]/.test(s)) return false;
-  if (!/\d/.test(s)) return true;
-
-  // Keep phrases like "6 yıl güvenlik güncellemesi garantisi" in the
-  // dictionary, but reject pure technical measurements such as "1200x2608".
-  const meaningful = _meaningfulWordTokens(s);
-  if (meaningful.length >= 2) return true;
-  return _TR_TRANSLATABLE_WORD_RE.test(s) && !/^\s*[\d\s.,:+/()°%'"-]*[a-z]+\s*$/i.test(s);
+  // Need at least one 2+ char alphabetic word — rejects pure technical
+  // measurements like "1200x2608" or "F1.67" while accepting numeric+word
+  // atoms like "1000 Döngü", "53 saat", "41 Dakika".
+  if (!/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]{2,}/.test(s)) return false;
+  return true;
 }
 
 function _buildDictShards(snapshot) {
@@ -1819,13 +1817,42 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
 function _deDictLookup(turkishText, targetLang) {
   const key = _normalizeDictSourceKey(turkishText);
   const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) return entry[targetLang];
+  if (entry && entry[targetLang]) {
+    const stored = entry[targetLang];
+    // Stale pass-through detection. The old filter era wrote thousands of
+    // entries like "5 Elementli Lens" -> en:"5 Elementli Lens" because
+    // _localTranslationLooksUseful didn't reject pass-through yet. Treat
+    // those as MISSING so the engine retries with the new pipeline.
+    // Skip only when the atom is genuinely language-neutral (model codes,
+    // brand names, pure unit phrases — those keep stable across languages).
+    if (targetLang !== 'tr' && _looksLikeStalePassThrough(turkishText, stored)) {
+      return null;
+    }
+    return stored;
+  }
   const rule = _knownTurkishRuleTranslation(turkishText, targetLang);
   if (rule) {
     _deDictStore(turkishText, targetLang, rule);
     return _deDictCache[key]?.[targetLang] || rule;
   }
   return null;
+}
+
+function _looksLikeStalePassThrough(source, stored) {
+  const s = String(source || '').toLowerCase().trim();
+  const v = String(stored || '').toLowerCase().trim();
+  if (!s || !v || s !== v) return false;
+  // Atom is genuinely language-neutral if every alphabetic word in it is a
+  // preserve token (brand, acronym, unit). Those are fine to pass through.
+  const wordTokens = (s.match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]{2,}/g) || []);
+  if (!wordTokens.length) return false; // pure numbers/symbols — keep
+  for (const w of wordTokens) {
+    if (!_shouldPreserve(w)) {
+      // Found a real word in the source — pass-through is suspicious.
+      return true;
+    }
+  }
+  return false;
 }
 
 // ── Title-Case post-processing ─────────────────────────────────────────
@@ -1875,27 +1902,23 @@ function _shouldPreserve(token) {
 function _shouldTranslateAtom(text) {
   const s = String(text || '').trim();
   if (!s || s.length < 2) return false;
-  if (!/[a-zA-ZÀ-ÿ]/.test(s)) return false;
+  if (!/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜ]/.test(s)) return false;
   if (/^\d{8,14}$/.test(s)) return false; // GTIN/EAN/UPC
   if (/^[\d\s.,:+/()°%'"-]+$/.test(s)) return false;
   if (/^(ean|gtin|upc|mpn|sku|id)$/i.test(s)) return false;
+
+  // If EVERY token in the atom is a preserve-token (acronym, unit, model
+  // code, pure number), skip — there is nothing to translate. Otherwise the
+  // atom is fair game: even "1000 Döngü" has the non-preserve word "Döngü"
+  // and must reach the translator. "63 hours 4 minutes" has "hours" /
+  // "minutes" — same logic.
   const tokens = s.split(/\s+/).filter(Boolean);
   if (tokens.length && tokens.every(t => _shouldPreserve(t.replace(/^[^\w]+|[^\w]+$/g, '')))) {
     return false;
   }
-  if (/\d/.test(s)) {
-    const meaningful = _meaningfulWordTokens(s);
-    const hasTurkishMeaning = _TR_TRANSLATABLE_WORD_RE.test(s) || /[çğıöşüÇĞİÖŞÜ]/.test(s);
-    const digitCount = (s.match(/\d/g) || []).length;
-    const compactLen = s.replace(/\s+/g, '').length || 1;
-    if (!hasTurkishMeaning && digitCount / compactLen > 0.25) return false;
-    if (meaningful.length < 2 && !/\b(soğutma|sogutma|artırma|artirma|ters)\b/i.test(s)) return false;
-    if (/^\d+(?:[.,]\d+)?\s*(inç|inc|inch|fps|hz|khz|mhz|ghz|mah|w|v|a|gb|mb|tb|nm|nit|nits|mp|mm|cm|piksel|pixel)s?\b/i.test(s) && meaningful.length < 3) {
-      return false;
-    }
-  }
-  // Model-code-heavy values such as "0/1/10 (B550)" or "SM-S918BZKQXSP"
-  // are better preserved verbatim and should not spend DeepSeek calls.
+
+  // Pure model-code strings such as "SM-S918BZKQXSP" or "0/1/10 (B550)"
+  // are better preserved verbatim.
   const compact = s.replace(/[\s._/-]+/g, '');
   if (/[A-Z]/.test(s) && /\d/.test(s) && compact.length <= 32 && /^[A-Z0-9]+$/i.test(compact)) {
     return false;
@@ -2026,6 +2049,102 @@ function _deDictStore(turkishText, targetLang, translation) {
   }
 }
 
+const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de','es','fr','pt','ru']);
+let _localTranslateDisabledUntil = 0;
+
+function _localTranslationLooksUseful(sourceText, targetLang, translation) {
+  // The local engine is now Argos+CTranslate2+CUDA, which is reliable enough
+  // that we only reject obviously broken outputs. Previously the hint list
+  // was so narrow it was rejecting correct translations and pushing them to
+  // DeepSeek for no reason — exactly what made the pipeline slow.
+  const src = String(sourceText || '').trim();
+  const tx = String(translation || '').trim();
+  if (!tx) return false;
+  if (tx.length > Math.max(120, src.length * 6)) return false; // bizarre expansion
+  if (tx.toLowerCase() === src.toLowerCase()) return false;    // pass-through (no actual translation)
+  if (/\b(other, of a kind|manufacture of goods|among the|services)\b/i.test(tx)) return false;
+  return true;
+}
+
+async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress, opts = {}) {
+  const now = Date.now();
+  if (now < _localTranslateDisabledUntil) {
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'local-nllb', phase: 'skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: sourceTexts.length, reason: 'cooldown' }); } catch {}
+    }
+    return { ok: false, skipped: true };
+  }
+  const from = opts.from || 'tr';
+  const langs = targetLangs.filter(l => _LOCAL_TRANSLATE_LANGS.has(l) && l !== from);
+  if (!langs.length) return { ok: true, stored: 0 };
+
+  const uncached = [...new Set(sourceTexts.filter(_shouldTranslateAtom))]
+    .filter(t => langs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return { ok: true, stored: 0 };
+  if (typeof onProgress === 'function') {
+    try { onProgress({ provider: 'local-nllb', phase: 'start', pass: 0, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / Math.max(1, Math.min(250, opts.chunkSize || 120))), batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+  }
+
+  const CHUNK = Math.max(1, Math.min(250, opts.chunkSize || 120));
+  const totalChunks = Math.ceil(uncached.length / CHUNK);
+  let storedTotal = 0;
+  const report = (phase, idx, extra) => {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress({ provider: 'local-nllb', phase, pass: 0, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+  };
+
+  for (let i = 0; i < uncached.length; i += CHUNK) {
+    const chunkIdx = Math.floor(i / CHUNK);
+    const batch = uncached.slice(i, i + CHUNK);
+    const started = Date.now();
+    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), opts.timeoutMs || 180000);
+    try {
+      const response = await fetch(LOCAL_TRANSLATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, texts: batch, to: langs }),
+        signal: ac.signal,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        throw new Error(data.detail || data.error || 'local_translate_failed');
+      }
+      let storedForChunk = 0;
+      const translations = data.translations || {};
+      for (const t of batch) {
+        const entry = translations[t];
+        if (!entry || typeof entry !== 'object') continue;
+        for (const lang of langs) {
+          if (typeof entry[lang] === 'string' && _localTranslationLooksUseful(t, lang, entry[lang])) {
+            _deDictStore(t, lang, entry[lang]);
+            storedForChunk++;
+          }
+        }
+      }
+      storedTotal += storedForChunk;
+      report('chunk-done', chunkIdx, {
+        batchSize: batch.length,
+        stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
+        elapsedMs: Date.now() - started,
+      });
+    } catch (e) {
+      // 5-second cool-down (was 60s) — worker is now stable enough that a
+      // long blacklist just hides the GPU pipeline from the user when a
+      // transient hiccup happens.
+      _localTranslateDisabledUntil = Date.now() + 5000;
+      report('chunk-error', chunkIdx, { error: e.message || String(e), elapsedMs: Date.now() - started });
+      return { ok: false, error: e.message || String(e), stored: storedTotal };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (storedTotal > 0) await _saveDeDict().catch(() => {});
+  return { ok: true, stored: storedTotal };
+}
+
 // ── Public dictionary API (used by the Dictionary admin tab) ────────────
 //
 // Browser globals — keep them lean and explicit so the UI module doesn't
@@ -2140,6 +2259,15 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
 
   let uncached = [...missingByText.keys()];
   if (!uncached.length) return;
+  const local = await _localTranslateAllLangsBatch(uncached, targetLangs, onProgress, { from: 'tr' });
+  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) {
+    await _saveDeDict();
+    return;
+  }
+  if (local.ok) {
+    try { onProgress?.({ provider: 'deepseek', phase: 'fallback', pass: 1, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / 24), chunkSize: 24, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+  }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   const isRateLimit = (msg) => /rate|limit|300 requests|try later/i.test(String(msg || ''));
@@ -2532,16 +2660,24 @@ async function _translateProductInline(product) {
         const inFlight = new Map();
         const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
           const key = `${ev.pass || 1}:${ev.chunkIndex}`;
-          if (ev.phase === 'chunk-start') {
+          const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+          if (ev.phase === 'start' && ev.provider === 'local-nllb') {
+            xlog(`  ⚡ GPU çeviri başlıyor (Argos+CT2) · ${ev.batchSize} atom · ${ev.totalChunks} chunk`, 'info');
+          } else if (ev.phase === 'skipped' && ev.provider === 'local-nllb') {
+            xlog(`  ⏭ GPU worker atlandı (cooldown=${ev.reason}) · ${ev.batchSize} atom → DeepSeek`, 'warn');
+          } else if (ev.phase === 'chunk-start') {
             inFlight.set(key, Date.now());
             const sample = (ev.sample || []).map(s => s.length > 28 ? `${s.slice(0, 26)}…` : s).join(', ');
-            xlog(`  → DeepSeek pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
+            xlog(`  → ${provider} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
           } else if (ev.phase === 'chunk-done') {
             inFlight.delete(key);
-            xlog(`  ✓ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize} · PB ${ev.pbSaved === false ? 'pending' : 'saved'}`, ev.pbSaved === false ? 'warn' : 'success');
+            const tag = ev.provider === 'local-nllb' ? 'GPU' : 'DeepSeek';
+            xlog(`  ✓ ${tag} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize}`, 'success');
           } else if (ev.phase === 'chunk-error') {
             inFlight.delete(key);
-            xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+            xlog(`  ⚠ ${provider} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+          } else if (ev.phase === 'fallback') {
+            xlog(`  → Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
           }
         }, null, { passes: [{ size: 24, concurrency: 2 }] });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);

@@ -12,6 +12,7 @@ const INFERENCE_BATCH = Math.max(1, Number(process.env.QORAI_TRANSLATE_BATCH || 
 const MAX_LEN = Math.max(64, Number(process.env.QORAI_TRANSLATE_MAX_LEN || 192));
 
 const LANGS = {
+  tr: 'tur_Latn',
   en: 'eng_Latn',
   de: 'deu_Latn',
   es: 'spa_Latn',
@@ -21,6 +22,7 @@ const LANGS = {
   nl: 'nld_Latn',
   pl: 'pol_Latn',
   pt: 'por_Latn',
+  ru: 'rus_Cyrl',
   sv: 'swe_Latn',
   ar: 'arb_Arab',
 };
@@ -29,6 +31,7 @@ let translatorPromise = null;
 let cache = {};
 let cacheDirty = false;
 let saveTimer = null;
+let translateQueue = Promise.resolve();
 
 // Live job state — exposed via GET /status so the admin UI can show real
 // per-language / per-batch progress while a /translate call is in flight.
@@ -125,6 +128,35 @@ function cleanText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function normalizeLang(lang, fallback = 'tr') {
+  const value = String(lang || fallback).toLowerCase().trim();
+  return LANGS[value] ? value : fallback;
+}
+
+function cacheKey(sourceLang, text) {
+  return `${normalizeLang(sourceLang)}\t${cleanText(text)}`;
+}
+
+function cacheLookup(sourceLang, text, targetLang) {
+  const key = cacheKey(sourceLang, text);
+  if (cache[key]?.[targetLang]) return cache[key][targetLang];
+  // Backward-compatible lookup for the old Turkish-only flat cache.
+  if (normalizeLang(sourceLang) === 'tr' && cache[text]?.[targetLang]) return cache[text][targetLang];
+  return '';
+}
+
+function cacheStore(sourceLang, text, targetLang, translated) {
+  const key = cacheKey(sourceLang, text);
+  cache[key] = cache[key] || {};
+  cache[key][targetLang] = translated;
+}
+
+async function enqueueTranslate(run) {
+  const queued = translateQueue.then(run, run);
+  translateQueue = queued.catch(() => {});
+  return queued;
+}
+
 function resetState(totalTexts, targets) {
   STATE.busy = true;
   STATE.startedAt = Date.now();
@@ -148,9 +180,11 @@ function endState() {
   STATE.lastUpdate = Date.now();
 }
 
-async function translateBatch(texts, targets) {
+async function translateBatch(texts, targets, sourceLang = 'tr') {
   const translator = await getTranslator();
   const out = {};
+  const src = normalizeLang(sourceLang);
+  const srcCode = LANGS[src];
   for (const text of texts) out[text] = {};
 
   resetState(texts.length, targets);
@@ -159,9 +193,15 @@ async function translateBatch(texts, targets) {
     const lang = targets[li];
     const tgt = LANGS[lang];
     if (!tgt) continue;
+    if (lang === src) {
+      for (const text of texts) out[text][lang] = text;
+      STATE.itemsDone += texts.length;
+      STATE.lastUpdate = Date.now();
+      continue;
+    }
     STATE.lang = lang;
     STATE.langIndex = li;
-    const missing = texts.filter((text) => !cache[text]?.[lang]);
+    const missing = texts.filter((text) => !cacheLookup(src, text, lang));
     STATE.batchDone = 0;
     STATE.batchTotal = Math.ceil(missing.length / INFERENCE_BATCH);
     if (missing.length) {
@@ -171,7 +211,7 @@ async function translateBatch(texts, targets) {
         const batch = missing.slice(i, i + INFERENCE_BATCH);
         const t0 = Date.now();
         const result = await translator(batch, {
-          src_lang: 'tur_Latn',
+          src_lang: srcCode,
           tgt_lang: tgt,
           max_length: MAX_LEN,
         });
@@ -180,8 +220,7 @@ async function translateBatch(texts, targets) {
         for (let j = 0; j < batch.length; j++) {
           const translated = cleanText(rows[j]?.translation_text || rows[j]?.generated_text || '');
           if (!translated) continue;
-          cache[batch[j]] = cache[batch[j]] || {};
-          cache[batch[j]][lang] = translated;
+          cacheStore(src, batch[j], lang, translated);
         }
         scheduleSave();
         batchSeen++;
@@ -198,7 +237,8 @@ async function translateBatch(texts, targets) {
       STATE.lastUpdate = Date.now();
     }
     for (const text of texts) {
-      if (cache[text]?.[lang]) out[text][lang] = cache[text][lang];
+      const translated = cacheLookup(src, text, lang);
+      if (translated) out[text][lang] = translated;
     }
   }
   return out;
@@ -243,15 +283,17 @@ const server = http.createServer(async (req, res) => {
     }
     const body = await readBody(req);
     const texts = [...new Set((Array.isArray(body.texts) ? body.texts : []).map(cleanText).filter(Boolean))].slice(0, 250);
+    const from = normalizeLang(body.from || body.source || body.src || 'tr');
     const targets = (Array.isArray(body.to) ? body.to : []).map((x) => String(x || '').toLowerCase()).filter((x) => LANGS[x]);
     if (!texts.length) return json(res, 400, { error: 'texts_required' });
     if (!targets.length) return json(res, 400, { error: 'targets_required' });
     const started = Date.now();
     try {
-      const translations = await translateBatch(texts, targets);
+      const translations = await enqueueTranslate(() => translateBatch(texts, targets, from));
       return json(res, 200, {
         provider: 'local-nllb',
         model: MODEL,
+        from,
         count: texts.length,
         to: targets,
         elapsedMs: Date.now() - started,

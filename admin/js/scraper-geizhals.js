@@ -18,6 +18,7 @@ const PROXY_START_COMMAND = 'npm run scraper:proxy';
 const SCRAPER_BUILD = '20260523v1-eu-pivot';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
+const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
 // EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
 const SUPPORTED_LANGS = ['en','de','tr','es','fr','pt','ru'];
@@ -1110,8 +1111,27 @@ function _meaningfulWordTokens(text) {
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const entry = _deDictCache[key];
-  if (entry && entry[targetLang]) return entry[targetLang];
+  if (entry && entry[targetLang]) {
+    const stored = entry[targetLang];
+    // Stale pass-through detection (see scraper.js for rationale).
+    if (targetLang !== 'de' && _looksLikeStalePassThrough(germanText, stored)) {
+      return null;
+    }
+    return stored;
+  }
   return null;
+}
+
+function _looksLikeStalePassThrough(source, stored) {
+  const s = String(source || '').toLowerCase().trim();
+  const v = String(stored || '').toLowerCase().trim();
+  if (!s || !v || s !== v) return false;
+  const wordTokens = (s.match(/[a-zA-ZÀ-ÿÄÖÜäöüß]{2,}/g) || []);
+  if (!wordTokens.length) return false;
+  for (const w of wordTokens) {
+    if (!_shouldPreserve(w)) return true;
+  }
+  return false;
 }
 
 // ── Title-Case post-processing ─────────────────────────────────────────
@@ -1158,25 +1178,20 @@ function _shouldPreserve(token) {
 function _shouldTranslateAtom(text) {
   const s = String(text || '').trim();
   if (!s || s.length < 2) return false;
-  if (!/[a-zA-ZÀ-ÿ]/.test(s)) return false;
+  if (!/[a-zA-ZÀ-ÿÄÖÜäöüß]/.test(s)) return false;
   if (/^\d{8,14}$/.test(s)) return false; // GTIN/EAN/UPC
   if (/^[\d\s.,:+/()°%'"-]+$/.test(s)) return false;
   if (/^(ean|gtin|upc|mpn|sku|id)$/i.test(s)) return false;
+
+  // If every token is a preserve-token (acronym, unit, model code, number),
+  // skip. Otherwise the atom is fair game even if it has digits — e.g.
+  // "1.000 Ladezyklen", "53 Stunden", "16 Mio. Farben".
   const tokens = s.split(/\s+/).filter(Boolean);
   if (tokens.length && tokens.every(t => _shouldPreserve(t.replace(/^[^\w]+|[^\w]+$/g, '')))) {
     return false;
   }
-  if (/\d/.test(s)) {
-    const meaningful = _meaningfulWordTokens(s);
-    const digitCount = (s.match(/\d/g) || []).length;
-    const compactLen = s.replace(/\s+/g, '').length || 1;
-    if (digitCount / compactLen > 0.25 && meaningful.length < 2) return false;
-    if (/^\d+(?:[.,]\d+)?\s*(zoll|inch|fps|hz|khz|mhz|ghz|mah|w|v|a|gb|mb|tb|nm|nit|nits|mp|mm|cm|pixel)s?\b/i.test(s) && meaningful.length < 3) {
-      return false;
-    }
-  }
-  // Model-code-heavy values such as "0/1/10 (B550)" or "SM-S918BZKQXSP"
-  // are better preserved verbatim and should not spend DeepSeek calls.
+
+  // Pure model-code strings such as "SM-S918BZKQXSP" or "0/1/10 (B550)".
   const compact = s.replace(/[\s._/-]+/g, '');
   if (/[A-Z]/.test(s) && /\d/.test(s) && compact.length <= 32 && /^[A-Z0-9]+$/i.test(compact)) {
     return false;
@@ -1252,6 +1267,98 @@ function _deDictStore(germanText, targetLang, translation) {
     _deDictCache[key][targetLang] = normalized;
     _deDictDirty = true;
   }
+}
+
+const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de','es','fr','pt','ru']);
+let _localTranslateDisabledUntil = 0;
+
+function _localTranslationLooksUseful(sourceText, targetLang, translation) {
+  // Backed by Argos+CTranslate2+CUDA — accept anything that isn't obviously
+  // broken. The previous hint list was so narrow it rejected correct German
+  // translations and pushed everything to DeepSeek.
+  const src = String(sourceText || '').trim();
+  const tx = String(translation || '').trim();
+  if (!tx) return false;
+  if (tx.length > Math.max(120, src.length * 6)) return false;
+  if (tx.toLowerCase() === src.toLowerCase()) return false;
+  if (/\b(other, of a kind|manufacture of goods|among the|services)\b/i.test(tx)) return false;
+  return true;
+}
+
+async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress, opts = {}) {
+  const now = Date.now();
+  if (now < _localTranslateDisabledUntil) {
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'local-nllb', phase: 'skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: sourceTexts.length, reason: 'cooldown' }); } catch {}
+    }
+    return { ok: false, skipped: true };
+  }
+  const from = opts.from || 'de';
+  const langs = targetLangs.filter(l => _LOCAL_TRANSLATE_LANGS.has(l) && l !== from);
+  if (!langs.length) return { ok: true, stored: 0 };
+
+  const uncached = [...new Set(sourceTexts.filter(_shouldTranslateAtom))]
+    .filter(t => langs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) return { ok: true, stored: 0 };
+  if (typeof onProgress === 'function') {
+    try { onProgress({ provider: 'local-nllb', phase: 'start', pass: 0, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / Math.max(1, Math.min(250, opts.chunkSize || 120))), batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+  }
+
+  const CHUNK = Math.max(1, Math.min(250, opts.chunkSize || 120));
+  const totalChunks = Math.ceil(uncached.length / CHUNK);
+  let storedTotal = 0;
+  const report = (phase, idx, extra) => {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress({ provider: 'local-nllb', phase, pass: 0, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
+  };
+
+  for (let i = 0; i < uncached.length; i += CHUNK) {
+    const chunkIdx = Math.floor(i / CHUNK);
+    const batch = uncached.slice(i, i + CHUNK);
+    const started = Date.now();
+    report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), opts.timeoutMs || 180000);
+    try {
+      const response = await fetch(LOCAL_TRANSLATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, texts: batch, to: langs }),
+        signal: ac.signal,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        throw new Error(data.detail || data.error || 'local_translate_failed');
+      }
+      let storedForChunk = 0;
+      const translations = data.translations || {};
+      for (const t of batch) {
+        const entry = translations[t];
+        if (!entry || typeof entry !== 'object') continue;
+        for (const lang of langs) {
+          if (typeof entry[lang] === 'string' && _localTranslationLooksUseful(t, lang, entry[lang])) {
+            _deDictStore(t, lang, entry[lang]);
+            storedForChunk++;
+          }
+        }
+      }
+      storedTotal += storedForChunk;
+      report('chunk-done', chunkIdx, {
+        batchSize: batch.length,
+        stored: storedForChunk,
+        dictSize: Object.keys(_deDictCache).length,
+        elapsedMs: Date.now() - started,
+      });
+    } catch (e) {
+      _localTranslateDisabledUntil = Date.now() + 5000;
+      report('chunk-error', chunkIdx, { error: e.message || String(e), elapsedMs: Date.now() - started });
+      return { ok: false, error: e.message || String(e), stored: storedTotal };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (storedTotal > 0) await _saveDeDict().catch(() => {});
+  return { ok: true, stored: storedTotal };
 }
 
 // ── Public dictionary API (used by the Dictionary admin tab) ────────────
@@ -1363,7 +1470,16 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts
   }
   if (missingByText.size === 0) return; // everything cached — no API hit
 
-  const uncached = [...missingByText.keys()];
+  let uncached = [...missingByText.keys()];
+  const local = await _localTranslateAllLangsBatch(uncached, targetLangs, onProgress, { from: 'de' });
+  uncached = uncached.filter(t => targetLangs.some(l => !_deDictLookup(t, l)));
+  if (!uncached.length) {
+    await _saveDeDict();
+    return;
+  }
+  if (local.ok) {
+    try { onProgress?.({ provider: 'deepseek', phase: 'fallback', pass: 1, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / 24), chunkSize: 24, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
+  }
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
   // lets us safely use a slightly larger batch than the old 12.
@@ -1685,13 +1801,21 @@ async function _translateProductInline(product) {
       const t0 = Date.now();
       try {
         const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
-          if (ev.phase === 'chunk-start') {
+          const provider = ev.provider === 'local-nllb' ? 'Local NLLB' : 'DeepSeek';
+          if (ev.phase === 'start' && ev.provider === 'local-nllb') {
+            xlog(`  ⚡ GPU çeviri başlıyor (Argos+CT2) · ${ev.batchSize} atom · ${ev.totalChunks} chunk`, 'info');
+          } else if (ev.phase === 'skipped' && ev.provider === 'local-nllb') {
+            xlog(`  ⏭ GPU worker atlandı (cooldown=${ev.reason}) · ${ev.batchSize} atom → DeepSeek`, 'warn');
+          } else if (ev.phase === 'chunk-start') {
             const sample = (ev.sample || []).map(s => s.length > 28 ? `${s.slice(0, 26)}…` : s).join(', ');
-            xlog(`  → DeepSeek pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
+            xlog(`  → ${provider} pass ${ev.pass || 1} chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
           } else if (ev.phase === 'chunk-done') {
-            xlog(`  ✓ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize}`, 'success');
+            const tag = ev.provider === 'local-nllb' ? 'GPU' : 'DeepSeek';
+            xlog(`  ✓ ${tag} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize}`, 'success');
           } else if (ev.phase === 'chunk-error') {
-            xlog(`  ⚠ chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+            xlog(`  ⚠ ${provider} chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+          } else if (ev.phase === 'fallback') {
+            xlog(`  → Local NLLB sonrası ${ev.batchSize} atom DeepSeek fallback'e kaldı`, 'info');
           }
         }, { chunkSize: 24, concurrency: 2 });
         for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);

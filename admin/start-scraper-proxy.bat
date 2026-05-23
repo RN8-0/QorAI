@@ -49,6 +49,17 @@ if errorlevel 1 (
 cd /d "%ROOT%"
 echo.
 echo Repository folder: %ROOT%
+
+set "TRANSLATE_PY=%ROOT%\scripts\translate-venv\Scripts\python.exe"
+set "TRANSLATE_WORKER=%ROOT%\scripts\argos-translate-worker.py"
+if exist "%TRANSLATE_PY%" if exist "%TRANSLATE_WORKER%" (
+  echo Starting Argos+CTranslate2 GPU translation worker on http://127.0.0.1:8797 ...
+  start "Qor AI Local Translate" /min cmd /k "cd /d ""%ROOT%"" && ""%TRANSLATE_PY%"" ""%TRANSLATE_WORKER%"" > local-translate-worker.log 2> local-translate-worker.err"
+) else (
+  echo Argos worker not found at %TRANSLATE_WORKER% — falling back to NLLB Node worker.
+  start "Qor AI Local Translate" /min cmd /k "cd /d ""%ROOT%"" && npm run translate:worker > local-translate-worker.log 2> local-translate-worker.err"
+)
+
 echo Starting proxy... Requests will use this device IP address.
 echo Use "Check Proxy" in the admin panel to verify the status.
 echo.
