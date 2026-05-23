@@ -2673,6 +2673,28 @@ async function scrapeByUrl() {
 
   try {
     const cat = document.getElementById('singleUrlCategory')?.value || 'smartphones';
+    const saveSingleProduct = async (product) => {
+      const clean = prepareProductPayload(product);
+      // Single URL must behave like bulk: translate before PB write.
+      await _translateProductInline(clean);
+      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+        const existing = await window._findExistingByVariantGroup(clean.variantGroup);
+        if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {
+          const merged = await window._mergeIntoExistingRecord(existing.id, clean);
+          if (merged) {
+            window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+            slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
+            if (typeof loadProducts === 'function') await loadProducts();
+            return;
+          }
+        }
+      }
+      const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+      window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
+      const langCount = Object.keys(clean.multiLangSpecs || {}).length;
+      slog(`💾 Saved: ${clean.name} (${clean.specsCount || 0} specs, ${langCount} dilde çeviri)`, 'success');
+      if (typeof loadProducts === 'function') await loadProducts();
+    };
 
     if (url) {
       // Direct URL scrape via proxy
@@ -2687,27 +2709,7 @@ async function scrapeByUrl() {
       slog(`  Specs: ${product.specsCount}`, 'info');
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
-
-      try {
-        const clean = prepareProductPayload(product);
-        const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
-      } catch(saveErr) {
-        const details = saveErr.response?.data || saveErr.data || {};
-        slog(`❌ Save failed: ${saveErr.message}`, 'error');
-        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
-        if (product) {
-          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
-          slog(`   Category: ${product.category}`, 'error');
-          slog(`   Specs count: ${product.specsCount}`, 'error');
-        }
-        Object.entries(details).forEach(([k,v]) => {
-          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
-        });
-        console.error('[scrapeByUrl] Full save error:', saveErr);
-        return;
-      }
+      await saveSingleProduct(product);
     } else {
       // Product name search via geizhals search page
       slog(`Searching geizhals.eu for: ${name}`);
@@ -2740,27 +2742,7 @@ async function scrapeByUrl() {
       slog(`  Specs: ${product.specsCount}`, 'info');
       slog(`  Image: ${product.imageUrl ? 'yes' : 'no'}`, 'info');
       Object.entries(product.specs).slice(0, 10).forEach(([k,v]) => slog(`  ${k}: ${String(v).substring(0,100)}`));
-
-      try {
-        const clean = prepareProductPayload(product);
-        const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-        slog(`💾 Saved: ${clean.slug?.substring(0,15) || clean.id?.substring(0,10)}`, 'success');
-      } catch(saveErr) {
-        const details = saveErr.response?.data || saveErr.data || {};
-        slog(`❌ Save failed: ${saveErr.message}`, 'error');
-        slog(`   Status: ${saveErr.status || 'N/A'}`, 'error');
-        if (product) {
-          slog(`   Slug: ${product.slug?.substring(0,30)}`, 'error');
-          slog(`   Category: ${product.category}`, 'error');
-          slog(`   Specs count: ${product.specsCount}`, 'error');
-        }
-        Object.entries(details).forEach(([k,v]) => {
-          slog(`   ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
-        });
-        console.error('[scrapeByUrl] Full save error:', saveErr);
-        return;
-      }
+      await saveSingleProduct(product);
     }
   } catch(e) {
     slog(`Error: ${e.message}`, 'error');

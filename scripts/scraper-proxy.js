@@ -1554,7 +1554,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.2-browser-fetch-parallel',
+      version: '4.3.3-geizhals-generic-fetch',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1865,9 +1865,12 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Invalid URL.' }));
     return;
   }
-  if (!parsed.hostname.endsWith('epey.com')) {
+  const allowedGenericHost =
+    parsed.hostname.endsWith('epey.com') ||
+    /(^|\.)geizhals\.(eu|at|de|com)$/i.test(parsed.hostname);
+  if (!allowedGenericHost) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Only epey.com domains are allowed.' }));
+    res.end(JSON.stringify({ error: 'Only epey.com and geizhals.* domains are allowed.' }));
     return;
   }
 
@@ -1929,7 +1932,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.2 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.3 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);

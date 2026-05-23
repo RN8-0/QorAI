@@ -4601,6 +4601,11 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
   }
 }
 
+if (typeof window !== 'undefined') {
+  window._findExistingByVariantGroup = _findExistingByVariantGroup;
+  window._mergeIntoExistingRecord = _mergeIntoExistingRecord;
+}
+
 async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
   const isScrapedRecord = (record = {}) => {
@@ -4838,8 +4843,29 @@ async function scrapeByUrl() {
   try {
     if (/^https?:\/\//i.test(inputVal)) {
       url = normalizeEpeyProductUrl(inputVal);
-      if (!url) { toast('Sadece epey.com ürün URL destekleniyor', 'e'); return; }
-      slog(`Direct Epey product URL: ${url}`, 'info');
+      if (!url) {
+        let isEpeyUrl = false;
+        try { isEpeyUrl = /(^|\.)epey\.com$/i.test(new URL(inputVal).hostname); } catch {}
+        if (!isEpeyUrl) { toast('Epey veya Geizhals URL destekleniyor', 'e'); return; }
+        slog(`Epey liste/filtre URL çözümleniyor: ${inputVal}`, 'info');
+        const res = await fetch(
+          `${PROXY_URL}/category-links?url=${encodeURIComponent(inputVal)}&max=5`,
+          { signal: AbortSignal.timeout(120000) }
+        );
+        const data = res.ok ? await res.json() : null;
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : (Array.isArray(data?.links) ? data.links.map(x => typeof x === 'string' ? { url: x } : x) : []);
+        url = normalizeEpeyProductUrl(items[0]?.url || '');
+        if (!url) {
+          slog('Bu Epey URL ürün sayfası değil ve içinden ürün linki bulunamadı.', 'error');
+          toast('Epey ürün linki bulunamadı', 'e');
+          return;
+        }
+        slog(`İlk Epey ürün linki: ${url}`, 'info');
+      } else {
+        slog(`Direct Epey product URL: ${url}`, 'info');
+      }
     } else {
       slog(`Searching Epey: ${inputVal}`);
       const links = await collectSearchProductUrls(inputVal, 1);
@@ -5026,11 +5052,16 @@ function _resolveScrapeSource() {
 }
 
 function _detectSourceFromUrl(rawUrl) {
-  const u = String(rawUrl || '').toLowerCase();
-  if (!u) return null;
-  // Match host even when preceded by "//" (any URL scheme).
-  if (/geizhals\.(eu|at|de|com)\//.test(u)) return 'geizhals';
-  if (/(?:^|\/\/|\.)epey\.com\//.test(u)) return 'epey';
+  const raw = String(rawUrl || '').trim();
+  if (!raw) return null;
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    if (/(^|\.)geizhals\.(eu|at|de|com)$/i.test(host)) return 'geizhals';
+    if (/(^|\.)epey\.com$/i.test(host)) return 'epey';
+  } catch {}
+  const u = raw.toLowerCase();
+  if (/geizhals\.(eu|at|de|com)(?:[/?#]|$)/.test(u)) return 'geizhals';
+  if (/(?:^|\/\/|\.)epey\.com(?:[/?#]|$)/.test(u)) return 'epey';
   return null;
 }
 
