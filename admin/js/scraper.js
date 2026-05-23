@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260523-filter-select-all-+-single-url-translation';
+const SCRAPER_BUILD = '20260523-TR-spec-keys-no-longer-collapsed-to-Specification';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 // EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
@@ -1403,8 +1403,20 @@ function _fixTurkishLeftovers(text) {
 }
 
 function _safeCanonicalSpecText(text, fallback = '') {
+  // EU pivot fix (2026-05-23): dictionary.js used to translate TR→EN here,
+  // so any leftover Turkish characters meant "no translation available" →
+  // fall through to the generic "Specification" label. That label is now
+  // catastrophic — every Turkish-keyed spec collapsed to
+  // "Specification, Specification 2, Specification 3, …" (user saw 42/125
+  // specs with mangled names).
+  //
+  // Now: dictionary.js is gone, QorAiSpecCanonical.canonicalizeProduct()
+  // runs LATER in prepareProductPayload and handles TR→EN canonicalisation
+  // via its KEY_RULES table. This helper just trims and passes through;
+  // empty inputs use the supplied fallback. Turkish characters survive
+  // and reach the canonicaliser intact.
   const fixed = _fixTurkishLeftovers(text);
-  return _hasTurkishChars(fixed) ? fallback : fixed;
+  return fixed && fixed.trim() ? fixed : fallback;
 }
 
 function _uniqueSpecKey(target, key) {
