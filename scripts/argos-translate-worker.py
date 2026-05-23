@@ -1142,28 +1142,37 @@ _POST_FIX = {
         (r"\bRegistrierung\b", "Aufnahme"),
         (r"\bDisplay Sechs\b", "Unter-Display"),
         (r"\bAnzeige Sechs\b", "Unter-Display"),
+        (r"\bKata Kadar\b", "bis zu"),
+        (r"\bStandl[ıi]\b", "mit Standfuß"),
     ],
     "tr->es": [
         (r"\bRegistro\b", "Grabación"),
         (r"\bPantalla Seis\b", "Bajo pantalla"),
         (r"\bDisplay Seis\b", "Bajo pantalla"),
+        (r"\bKata Kadar\b", "hasta"),
+        (r"\bStandl[ıi]\b", "con soporte"),
     ],
     "tr->fr": [
         (r"\bInscription\b", "Enregistrement"),
         (r"\bAffichage Six\b", "Sous-écran"),
         (r"\bAffichage 6\b", "Sous-écran"),
+        (r"\bKata Kadar\b", "jusqu'à"),
+        (r"\bStandl[ıi]\b", "avec support"),
     ],
     "tr->pt": [
         (r"\bRegistro\b", "Gravação"),
         (r"\bmostrar seis\b", "sob o ecrã"),
         (r"\bMostrar Seis\b", "Sob o ecrã"),
+        (r"\bKata Kadar\b", "até"),
+        (r"\bStandl[ıi]\b", "com suporte"),
     ],
     "tr->ru": [
         (r"\bРегистрация\b", "Запись"),
-        # "Buhar Soğutma" → "Steam" (gaming platform) → fix to actual steam
         (r"\bохлаждения Steam\b", "паровое охлаждение"),
         (r"\bSteam охлаждение\b", "Паровое охлаждение"),
         (r"\bDisplay Six\b", "Подэкранный"),
+        (r"\bKata Kadar\b", "до"),
+        (r"\bStandl[ıi]\b", "с подставкой"),
     ],
     # DE source → fix English/Turkish residue + German words that survive the
     # DE→EN hop verbatim.
@@ -1411,11 +1420,25 @@ def translate_many(texts: List[str], from_code: str, target_langs: List[str]) ->
                 print(f"[worker] {from_code}->{lang} · {n_missing} atoms · {dt}ms", flush=True)
 
     # Build the response from the cache so cached atoms also flow back.
+    # Belt-and-braces: apply post-fix once more on the way out. If a value
+    # got cached without the per-hop post-fix (e.g. legacy cache entries,
+    # parallel race during a hop), this scrub catches any residue from
+    # both the source-language and the EN-pivot tables. Safe to re-apply:
+    # all replacements are idempotent regex subs.
     for t in texts:
         for lang in target_langs:
             v = _cache_lookup(from_code, t, lang)
-            if v:
-                out[t][lang] = v
+            if not v:
+                continue
+            # Apply both relevant tables: src->lang AND en->lang (covers
+            # pivot residue that survived the en->lang hop too).
+            v = _apply_post_fix(v, from_code, lang)
+            if from_code != "en" and lang != "en":
+                v = _apply_post_fix(v, "en", lang)
+            out[t][lang] = v
+            # Re-write the post-fixed value back into the cache so future
+            # lookups don't need this scrub.
+            _cache_store(from_code, t, lang, v)
 
     _save_cache(force=False)
     STATE["busy"] = False
