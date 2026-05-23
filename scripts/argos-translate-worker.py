@@ -809,17 +809,92 @@ def warm_up() -> None:
 # table fixes the handful of known mistranslations we see in spec atoms
 # without needing a second model pass.
 _POST_FIX = {
+    # TR source → various targets. Each rule fixes a known Argos mistranslation.
     "tr->en": [
         (r"\bRegistration\b", "Recording"),
         (r"\bRegistrations\b", "Recordings"),
         (r"\bInscription\b", "Recording"),
+        # "Ekran Altı" parmak izi → Argos picks the number "six" for "altı"
+        (r"\bDisplay Six\b", "Under-Display"),
+        (r"\bScreen Six\b", "Under-Screen"),
+        (r"\bshow six\b", "under-display"),
+        (r"\bShow Six\b", "Under-Display"),
     ],
-    "tr->de": [(r"\bRegistrierung\b", "Aufnahme")],
-    "tr->es": [(r"\bRegistro\b", "Grabación")],
-    "tr->fr": [(r"\bInscription\b", "Enregistrement")],
-    "tr->pt": [(r"\bRegistro\b", "Gravação")],
-    "tr->ru": [(r"\bРегистрация\b", "Запись")],
-    "de->en": [(r"\bwith DE layout\b", "with German layout")],  # rare cases where 'mit' survives
+    "tr->de": [
+        (r"\bRegistrierung\b", "Aufnahme"),
+        (r"\bDisplay Sechs\b", "Unter-Display"),
+        (r"\bAnzeige Sechs\b", "Unter-Display"),
+    ],
+    "tr->es": [
+        (r"\bRegistro\b", "Grabación"),
+        (r"\bPantalla Seis\b", "Bajo pantalla"),
+        (r"\bDisplay Seis\b", "Bajo pantalla"),
+    ],
+    "tr->fr": [
+        (r"\bInscription\b", "Enregistrement"),
+        (r"\bAffichage Six\b", "Sous-écran"),
+        (r"\bAffichage 6\b", "Sous-écran"),
+    ],
+    "tr->pt": [
+        (r"\bRegistro\b", "Gravação"),
+        (r"\bmostrar seis\b", "sob o ecrã"),
+        (r"\bMostrar Seis\b", "Sob o ecrã"),
+    ],
+    "tr->ru": [
+        (r"\bРегистрация\b", "Запись"),
+        # "Buhar Soğutma" → "Steam" (gaming platform) → fix to actual steam
+        (r"\bохлаждения Steam\b", "паровое охлаждение"),
+        (r"\bSteam охлаждение\b", "Паровое охлаждение"),
+        (r"\bDisplay Six\b", "Подэкранный"),
+    ],
+    # DE source → fix English/Turkish residue
+    "de->en": [
+        (r"\bwith DE layout\b", "with German layout"),
+        (r"\bwith DE Layout\b", "with German layout"),
+    ],
+    "de->tr": [
+        (r"\billuminated\b", "aydınlatmalı"),
+        (r"\bIlluminated\b", "Aydınlatmalı"),
+        (r"\bDE Layout ile\b", "Almanca düzenli"),
+        (r"\bmit DE Layout\b", "Almanca düzenli"),
+    ],
+    # EN pivot hops — applied to translations coming OUT of English on the
+    # way to a target language. Catches residue that survives the hop
+    # because Argos's en->X model doesn't recognise the loanword.
+    "en->tr": [
+        (r"\billuminated\b", "aydınlatmalı"),
+        (r"\bIlluminated\b", "Aydınlatmalı"),
+        (r"\bUnder-Display\b", "Ekran Altı"),
+        (r"\bUnder-Screen\b", "Ekran Altı"),
+        (r"\bSteam Cooling\b", "Buhar Soğutma"),
+    ],
+    "en->es": [
+        (r"\bUnder-Display\b", "Bajo pantalla"),
+        (r"\billuminated\b", "iluminado"),
+        (r"\bSteam Cooling\b", "Refrigeración por vapor"),
+    ],
+    "en->fr": [
+        (r"\bUnder-Display\b", "Sous-écran"),
+        (r"\billuminated\b", "illuminé"),
+        (r"\bSteam Cooling\b", "Refroidissement par vapeur"),
+    ],
+    "en->pt": [
+        (r"\bUnder-Display\b", "Sob o ecrã"),
+        (r"\billuminated\b", "iluminado"),
+        (r"\bSteam Cooling\b", "Refrigeração a vapor"),
+    ],
+    "en->ru": [
+        (r"\bUnder-Display\b", "Подэкранный"),
+        (r"\billuminated\b", "подсветкой"),
+        (r"\bSteam Cooling\b", "Паровое охлаждение"),
+        (r"\bохлаждения Steam\b", "паровое охлаждение"),
+        (r"\bSteam охлаждение\b", "Паровое охлаждение"),
+    ],
+    "en->de": [
+        (r"\bUnder-Display\b", "Unter-Display"),
+        (r"\billuminated\b", "beleuchtet"),
+        (r"\bSteam Cooling\b", "Dampfkühlung"),
+    ],
 }
 import re as _re
 _POST_FIX_COMPILED = {k: [(_re.compile(p), r) for p, r in v] for k, v in _POST_FIX.items()}
