@@ -2763,6 +2763,55 @@ function _sanitizeEnglishPayload(payload) {
   return payload;
 }
 
+function _walkEnglishPayloadStrings(value, path, out) {
+  if (value == null) return out;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    out.push({ path, value: String(value) });
+    return out;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => _walkEnglishPayloadStrings(v, `${path}[${i}]`, out));
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) {
+      out.push({ path: `${path}.{key}`, value: String(k) });
+      _walkEnglishPayloadStrings(v, path ? `${path}.${k}` : k, out);
+    }
+  }
+  return out;
+}
+
+function _englishPayloadResidues(payload) {
+  const roots = {
+    specs: payload?.specs || {},
+    specSections: payload?.specSections || {},
+    specsEn: payload?.specsEn || {},
+    keySpecs: payload?.keySpecs || {},
+    multiLangSpecsEn: payload?.multiLangSpecs?.en || {},
+    multiLangSectionsEn: payload?.multiLangSections?.en || {},
+  };
+  const entries = _walkEnglishPayloadStrings(roots, '', []);
+  const residueRe = /[çğıİöşüÇĞŞÜ]|\b(?:Polimer|Sağlığı|Sertifikasyonu|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.turbo frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory)\b/i;
+  return entries.filter(({ value }) => {
+    const s = String(value || '').trim();
+    if (!s) return false;
+    if (/^Main$/i.test(s)) return true;
+    if (/^North$/i.test(s)) return true;
+    return residueRe.test(s);
+  });
+}
+
+function _assertCleanEnglishPayload(payload, label = 'product') {
+  _sanitizeEnglishPayload(payload);
+  const residues = _englishPayloadResidues(payload);
+  if (residues.length) {
+    const sample = residues.slice(0, 8).map(r => `${r.path}: ${r.value}`).join(' | ');
+    throw new Error(`English spec residue after final sanitizer (${label}): ${sample}`);
+  }
+  return payload;
+}
+
 // Lookup Turkish text in cache for a specific target language.
 // Stale pass-through entries are filtered out at load time, so a cache hit
 // here is always honoured (no second-guessing → no infinite retry loop).
@@ -3763,7 +3812,9 @@ window.QorAiBulkTranslate = {
   },
   sanitizeEnglishSpecMap: (map) => _sanitizeEnglishSpecMap(map),
   sanitizeEnglishSectionMap: (sections) => _sanitizeEnglishSectionMap(sections),
+  sanitizeEnglishTranslationMap: (map) => _sanitizeEnglishTranslationMap(map),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
+  assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
   // Persist the dictionary cache to PocketBase (force-save)
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
@@ -4584,7 +4635,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // Inline translation hook (EU pivot): every scraped product gets the
       // full 7-language package (source + 6 target languages) before PB write.
       await _translateProductInline(clean);
-      _sanitizeEnglishPayload(clean);
+      _assertCleanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
       // Cross-source dedup: same variantGroup already in PB?
       //   • SAME source  → skip (slug-level dedup handled elsewhere already)
@@ -5919,7 +5970,7 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
       // for audit. The first scraper to write a model owns its "home" url.
       sources: sourcesArr,
     };
-    _sanitizeEnglishPayload(merged);
+    _assertCleanEnglishPayload(merged, merged.name || existingId);
 
     await pb.collection('products').update(existingId, merged, { $autoCancel: false });
     return merged;
@@ -6210,7 +6261,7 @@ async function scrapeByUrl() {
     // Single-URL path mirrors bulk-scrape: inline translation + cross-source
     // dedup so manually-added products are indistinguishable from bulk-scraped ones.
     await _translateProductInline(clean);
-    _sanitizeEnglishPayload(clean);
+    _assertCleanEnglishPayload(clean, clean.name || clean.slug || url);
     if (clean.variantGroup) {
       const existing = await _findExistingByVariantGroup(clean.variantGroup);
       if (existing && existing.source && existing.source !== clean.source) {

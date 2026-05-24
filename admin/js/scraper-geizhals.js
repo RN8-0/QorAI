@@ -1970,6 +1970,53 @@ function _sanitizeGermanEnglishPayload(payload) {
   return payload;
 }
 
+function _walkGermanEnglishPayloadStrings(value, path, out) {
+  if (value == null) return out;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    out.push({ path, value: String(value) });
+    return out;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => _walkGermanEnglishPayloadStrings(v, `${path}[${i}]`, out));
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) {
+      out.push({ path: `${path}.{key}`, value: String(k) });
+      _walkGermanEnglishPayloadStrings(v, path ? `${path}.${k}` : k, out);
+    }
+  }
+  return out;
+}
+
+function _germanEnglishPayloadResidues(payload) {
+  const roots = {
+    specs: payload?.specs || {},
+    specSections: payload?.specSections || {},
+    specsEn: payload?.specsEn || {},
+    keySpecs: payload?.keySpecs || {},
+    multiLangSpecsEn: payload?.multiLangSpecs?.en || {},
+    multiLangSectionsEn: payload?.multiLangSections?.en || {},
+  };
+  const entries = _walkGermanEnglishPayloadStrings(roots, '', []);
+  const residueRe = /[äöüßÄÖÜẞ]|\b(?:klasse|genaue|anschlussversion|unbekannt|benoetigt|benötigt|energieeffizienzklasse|buchse|besonderheiten|anzeige|hoehenmesser|rundenzaehler|schlafueberwachung|akku|akkulaufzeit|helligkeit|aufloesung|gehaeuse|garantie|schnittstellen|anschluss|lautsprecher|tastatur|beleuchtet|netzteil|stecker|verbaut|fuer|oder|bei|nachrichten|interner|golffunktionen|musiksteuerung)\b/i;
+  return entries.filter(({ value }) => {
+    const s = String(value || '').trim();
+    if (!s) return false;
+    return residueRe.test(s);
+  });
+}
+
+function _assertCleanGermanEnglishPayload(payload, label = 'product') {
+  _sanitizeGermanEnglishPayload(payload);
+  const residues = _germanEnglishPayloadResidues(payload);
+  if (residues.length) {
+    const sample = residues.slice(0, 8).map(r => `${r.path}: ${r.value}`).join(' | ');
+    throw new Error(`German spec residue after final sanitizer (${label}): ${sample}`);
+  }
+  return payload;
+}
+
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const rule = _knownGermanRuleTranslation(germanText, targetLang);
@@ -3513,7 +3560,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       const clean = prepareProductPayload(product);
       // Inline translation — shares the dictionary with the Epey scraper.
       await _translateProductInline(clean);
-      _sanitizeGermanEnglishPayload(clean);
+      _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
       // Cross-source dedup: if an Epey TR record already exists for this
       // model (same variantGroup) we MERGE specs into it instead of
@@ -3783,7 +3830,7 @@ async function scrapeByUrl() {
       const clean = prepareProductPayload(product);
       // Single URL must behave like bulk: translate before PB write.
       await _translateProductInline(clean);
-      _sanitizeGermanEnglishPayload(clean);
+      _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || product.sourceUrl || '');
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         const existing = await window._findExistingByVariantGroup(clean.variantGroup);
         if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {

@@ -2475,6 +2475,20 @@ async function startCategoryTranslation(){
             multiLangSections: payload.multiLangSections,
             nameTranslated: payload.nameTranslated,
           };
+          if (typeof window.QorAiBulkTranslate?.sanitizeEnglishTranslationMap === 'function') {
+            if (patch.multiLangSpecs?.en) {
+              patch.multiLangSpecs = {
+                ...patch.multiLangSpecs,
+                en: window.QorAiBulkTranslate.sanitizeEnglishTranslationMap(patch.multiLangSpecs.en),
+              };
+            }
+            if (patch.multiLangSections?.en) {
+              patch.multiLangSections = {
+                ...patch.multiLangSections,
+                en: window.QorAiBulkTranslate.sanitizeEnglishTranslationMap(patch.multiLangSections.en),
+              };
+            }
+          }
           // Provide English primary spec view too (used by some downstream UI)
           if (payload.multiLangSpecs?.en && Object.keys(payload.multiLangSpecs.en).length) {
             const specsEn = {};
