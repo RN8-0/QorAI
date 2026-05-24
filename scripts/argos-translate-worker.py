@@ -78,7 +78,7 @@ COMPUTE_TYPE = "int8_float16" if DEVICE == "cuda" else "int8"
 # blowing VRAM. beam=4 catches mixed-language compounds ("1 x Uyku Modunda
 # Charging Support", "keyboard mit DE layout") that beam=1 was leaving half
 # in the source language. Roughly 20% slower per atom — still <1s/product.
-BATCH_SIZE = int(os.environ.get("QORAI_TRANSLATE_BATCH", "48"))
+BATCH_SIZE = int(os.environ.get("QORAI_TRANSLATE_BATCH", "64"))
 BEAM_SIZE = int(os.environ.get("QORAI_TRANSLATE_BEAM", "4"))
 MODEL_LABEL = f"argos-translate/{DEVICE}/{COMPUTE_TYPE}"
 
@@ -749,7 +749,7 @@ def _get_pkg(from_code: str, to_code: str):
                 device=DEVICE,
                 compute_type=COMPUTE_TYPE,
                 inter_threads=1,
-                intra_threads=4,
+                intra_threads=6,
             )
         except Exception as e:
             # If int8_float16 isn't supported on this card, fall back.
@@ -1550,8 +1550,10 @@ def translate_many(texts: List[str], from_code: str, target_langs: List[str]) ->
 
     STATE["batchTotal"] = len(target_langs)
     # GTX 1650 has 4 GB of VRAM. Six small Argos models comfortably co-resident
-    # with a 4-thread pool; the GPU scheduler interleaves the batches.
-    with ThreadPoolExecutor(max_workers=min(4, len(target_langs))) as pool:
+    # with a 6-thread pool — translates all target langs concurrently. CT2
+    # releases the GIL during translate_batch, so the GPU scheduler overlaps
+    # the per-language batches end-to-end.
+    with ThreadPoolExecutor(max_workers=min(6, len(target_langs))) as pool:
         for lang, n_missing, dt in pool.map(_translate_lang, target_langs):
             STATE["batchDone"] += 1
             STATE["lastBatchMs"] = dt

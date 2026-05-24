@@ -25,7 +25,7 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
 const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
-const EPEY_DETAIL_CONCURRENCY_MAX = 16;
+const EPEY_DETAIL_CONCURRENCY_MAX = 24;
 
 let scraperRunning = false;
 let scraperAbort = false;
