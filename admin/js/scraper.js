@@ -2835,6 +2835,13 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
     .replace(/\bFixed\s+Disk\s*\(\s*SSD\s*\)\s*Type\b/gi, 'SSD type')
     .replace(/\bFixed\s+Disk\s*\(\s*HDD\s*\)\b/gi, 'Hard disk (HDD)')
     .replace(/\bFixed\s+Disk\b/gi, 'Hard disk')
+    // Klavye Arka Aydınlatması -> Keyboard backlight (Argos: "Keyboard Rear Lighting")
+    .replace(/\bKeyboard\s+Rear\s+Lighting\b/gi, 'Keyboard backlight')
+    .replace(/\bRear\s+Lighting\b/gi, 'Backlight')
+    // "Main" as a standalone spec key (came from TR "Ana" section header).
+    // Cannot rename here because we don't know the context — leave as-is; the
+    // _sanitizeEnglishSpecMap-level rules handle brand-value coercion.
+    .replace(/\b(?:Display\s+|Screen\s+)?(?:Width\s+Height|Genişlik\s+Yükseklik|Yükseklik\s+Genişlik)\s+(?:Ratio|Oranı)?\b/gi, 'Aspect ratio')
     // Mevcut Bellek -> Memory layout / Memory configuration
     .replace(/\bAvailable\s+Memory\b/gi, 'Memory layout')
     // Toplam Bellek (Yuvası) -> Total memory slots
