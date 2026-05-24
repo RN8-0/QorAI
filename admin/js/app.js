@@ -2933,6 +2933,22 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bPil\s+Specifications\b/gi, 'Battery specifications')
         .replace(/\bPil\b/gi, 'Battery')
         .replace(/\bLi-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)')
+        .replace(/\bLi-?po\s*\(\s*lithium-Polimer\s*\)/gi, 'Li-Po (lithium polymer)')
+        .replace(/\blithium-Polimer\b/gi, 'lithium polymer')
+        .replace(/\bAzami\s+(\d)/gi, 'up to $1')
+        .replace(/\beye\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
+        .replace(/\bGöz\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
+        .replace(/\bEyesafe\s*\(\s*eye\s+health\s+certification\s*\)/gi, 'Eyesafe (eye health certification)')
+        .replace(/\bKeyboard back lighting\b/gi, 'Keyboard backlight')
+        .replace(/\bVirtual core\b/gi, 'Logical cores')
+        .replace(/\bTransistor distance\b/gi, 'Process node')
+        .replace(/\bProductivity check\.turbo frequency\b/gi, 'Efficiency core turbo frequency')
+        .replace(/\bProcessor increased frequency\b/gi, 'Processor boost frequency')
+        .replace(/\bBuilt-in graphic max frequency\b/gi, 'Integrated graphics max frequency')
+        .replace(/\bBuilt-in graphic basic frequency\b/gi, 'Integrated graphics base frequency')
+        .replace(/\bBuilt-in graphic\b/gi, 'Integrated graphics')
+        .replace(/\bHard disk\s*\(\s*SSD\s*\)\s*type\b/gi, 'SSD type')
+        .replace(/\bHeat spread capacity\s*\(\s*TDP\s*\)/gi, 'Thermal design power (TDP)')
         .replace(/\blityum\b/gi, 'lithium')
         .replace(/\b(\d{4})\s+([1-4])\.?\s*Çeyrek\b/gi, '$1 Q$2')
         .replace(/\bg[öo]z\s+health\s+certification\b/gi, 'eye health certification')
@@ -3003,6 +3019,9 @@ function _renderProductModal(p,variants=[]){
         .replace(/\s{2,}/g, ' ')
         .trim();
       out = out.replace(/\bIphone\b/g, 'iPhone').replace(/\bIcloud\b/g, 'iCloud').replace(/\bFacetime\b/g, 'FaceTime');
+      if (typeof window.QorAiBulkTranslate?.sanitizeEnglishText === 'function') {
+        out = window.QorAiBulkTranslate.sanitizeEnglishText(out, out);
+      }
     }
 
     if (lang === 'tr') {
@@ -3390,12 +3409,25 @@ async function rescrapeProduct(id) {
   try {
     const html = await proxyFetch(p.sourceUrl);
     if (!html) { toast('Page could not be loaded (404?)', 'e'); return; }
-    const fresh = await scrapeProductDetail(html, p.sourceUrl, p.category);
-    if (!fresh || !fresh.name || (fresh.specsCount || 0) === 0) {
+    const rawFresh = await scrapeProductDetail(html, p.sourceUrl, p.category);
+    if (!rawFresh || !rawFresh.name || (rawFresh.specsCount || 0) === 0) {
       toast('Invalid scrape result', 'e'); return;
     }
+    if (typeof prepareProductPayload !== 'function' || typeof _translateProductInline !== 'function') {
+      throw new Error('Clean scraper pipeline is not loaded. Hard refresh the admin page and try again.');
+    }
+    const fresh = prepareProductPayload(rawFresh);
+    await _translateProductInline(fresh);
+    if (typeof window.QorAiBulkTranslate?.assertCleanEnglishPayload === 'function') {
+      window.QorAiBulkTranslate.assertCleanEnglishPayload(fresh, fresh.name || fresh.slug || p.sourceUrl);
+    }
     const changes = {};
-    const fields = ['name','brand','imageUrl','specsCount','variantGroup','specs','specSections','keySpecs','images','_originalSpecs','_originalSections','_originalKeySpecs','_originalName'];
+    const fields = [
+      'name','brand','category','source','sourceUrl','imageUrl','images',
+      'specsCount','variantGroup','configKey','specs','specSections',
+      'specsEn','keySpecs','multiLangSpecs','multiLangSections','nameTranslated',
+      '_originalSpecs','_originalSections','_originalKeySpecs','_originalName',
+    ];
     for (const f of fields) {
       if (fresh[f] !== undefined && JSON.stringify(fresh[f]) !== JSON.stringify(p[f])) changes[f] = fresh[f];
     }

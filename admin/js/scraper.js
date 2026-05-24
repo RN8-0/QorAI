@@ -2302,6 +2302,7 @@ const _TR_WORD_DICT = {
   'sertifikasyon': 'certification', 'sertifikasyonu': 'certification',
   'sertifikasi': 'certification', 'goz': 'eye',
   'polimer': 'polymer',
+  'eyesafe': 'Eyesafe', 'tüv': 'TÜV', 'tuv': 'TÜV', 'rheinland': 'Rheinland',
   'uretici': 'manufacturer', 'verisi': 'data',
   'sonrasi': 'after', 'parlakligi': 'brightness',
   'aramasi': 'calling', 'aralik': 'range', 'araligi': 'range',
@@ -2375,18 +2376,26 @@ function _sourceAwareTurkishWordMap(sourceText) {
     'samsung','huawei','qualcomm','snapdragon','mediatek','razer','tp','link','sony','philips',
     'hdr10','oled','ltpo','dci','p3','mimo','mlo','airplay','bixby','knox','smartthings',
     'true','tone','prores','promotion','retina','xdr','displayport','thunderbolt',
+    'eyesafe','tuv','tüv','rheinland','x','rite',
   ]);
   const sourceHasTurkishChars = /[çğıİöşüÇĞŞÜÖ]/.test(sourceText || '');
   for (const token of tokens) {
     const lower = token.toLowerCase();
     const hasTrChars = /[çğıİöşüÇĞŞÜÖ]/.test(token);
-    if (!hasTrChars && protectedAscii.has(lower)) continue;
     const folded = _foldSourceResidueText(token);
+    if (protectedAscii.has(lower) || protectedAscii.has(folded)) continue;
     const exact = _lookupTurkishWord(lower, folded);
     const foldedHit = exact;
     if (exact) map.set(folded, exact);
     else if (foldedHit) map.set(folded, foldedHit);
-    else if ((hasTrChars || sourceHasTurkishChars) && folded.length >= 4 && !protectedAscii.has(folded)) {
+    else if (hasTrChars && folded.length >= 4 && !protectedAscii.has(folded)) {
+      map.set(folded, '');
+    } else if (
+      sourceHasTurkishChars &&
+      folded.length >= 4 &&
+      !protectedAscii.has(folded) &&
+      /(ligi|lugu|leri|lari|masi|mesi|sayi|sayisi|boyutu|bellegi|islemci|islemcisi|ozellik|ozellikleri|sertifika|sertifikasyon|saglik|sagligi|polimer|azami)$/i.test(folded)
+    ) {
       map.set(folded, '');
     }
   }
@@ -2675,9 +2684,6 @@ function _normalizeTurkishSourceTranslation(sourceText, targetLang, translation)
       [/Virtual core/gi, 'Logical cores'],
       [/Color display/gi, 'Color screen'],
       [/Dual mice/gi, 'Dual microphone'],   // Çift mikrofon mistranslation
-      // Brand value collisions where Argos translated brand-name slots
-      [/^Main$/i, 'NVIDIA'],   // GPU brand: Main → NVIDIA (Ana → Main → wrong)
-      [/^North$/i, 'NVIDIA'],  // GPU brand: North → NVIDIA (rare Argos error)
       [_tb('Aauppercase', 'g'), 'macOS'],
       [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Face\s+ıdentification(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Face identification'],
       [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])phone\s+ıdentification(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Face identification'],
@@ -2706,7 +2712,19 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
     .replace(/\bLi-Po\s*\(\s*lithium[-\s]*Polimer\s*\)/gi, 'Li-Po (lithium polymer)')
     .replace(/\bLi-Po\s*\(\s*lithium[-\s]*Polymer\s*\)/g, 'Li-Po (lithium polymer)')
     .replace(/\beye\s+Health\s+Certification\b/g, 'eye health certification')
+    .replace(/^\(\s*eye\s+health\s+certification\s*\)$/gi, 'Eyesafe (eye health certification)')
     .replace(/\bEyesafe\s*\(\s*eye\s+health\s+certification\s*\)/gi, 'Eyesafe (eye health certification)')
+    .replace(/\bAzami\s+(\d)/gi, 'up to $1')
+    .replace(/\bHeat spread capacity\s*\(\s*TDP\s*\)/gi, 'Thermal design power (TDP)')
+    .replace(/\bHard disk\s*\(\s*SSD\s*\)\s*type\b/gi, 'SSD type')
+    .replace(/\bKeyboard back lighting\b/gi, 'Keyboard backlight')
+    .replace(/\bVirtual core\b/gi, 'Logical cores')
+    .replace(/\bTransistor distance\b/gi, 'Process node')
+    .replace(/\bProductivity check\.turbo frequency\b/gi, 'Efficiency core turbo frequency')
+    .replace(/\bProcessor increased frequency\b/gi, 'Processor boost frequency')
+    .replace(/\bBuilt-in graphic max frequency\b/gi, 'Integrated graphics max frequency')
+    .replace(/\bBuilt-in graphic basic frequency\b/gi, 'Integrated graphics base frequency')
+    .replace(/\bBuilt-in graphic\b/gi, 'Integrated graphics')
     .replace(/\s{2,}/g, ' ')
     .trim();
   return out;
@@ -2715,9 +2733,20 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
 function _sanitizeEnglishSpecMap(map) {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
+  const context = Object.entries(map)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join('\n');
+  const inferredProcessorBrand = /\bAMD\s+Ryzen\b|\bRyzen\b/i.test(context)
+    ? 'AMD'
+    : (/\bIntel\s+Core\b|\bCore\s+Ultra\b|\bIntel\b/i.test(context) ? 'Intel' : '');
   for (const [k, v] of Object.entries(map)) {
     const nk = _sanitizeEnglishSpecText(k, k);
-    const nv = _sanitizeEnglishSpecText(v, v);
+    let nv = _sanitizeEnglishSpecText(v, v);
+    const rawValue = String(v ?? '').trim();
+    if (/^GPU brand$/i.test(nk) && /^North$/i.test(rawValue)) nv = 'NVIDIA';
+    if (/^Processor brand$/i.test(nk) && /^Main$/i.test(rawValue)) nv = inferredProcessorBrand || 'Intel';
+    if (/^Product purpose$/i.test(nk) && /^Game$/i.test(rawValue)) nv = 'Gaming';
+    if (/^Product family$/i.test(nk) && /^Monster hunter$/i.test(rawValue)) nv = 'Monster';
     if (!nk || !nv) continue;
     out[_uniqueSpecKey(out, nk)] = nv;
   }
@@ -2792,13 +2821,13 @@ function _englishPayloadResidues(payload) {
     multiLangSectionsEn: payload?.multiLangSections?.en || {},
   };
   const entries = _walkEnglishPayloadStrings(roots, '', []);
-  const residueRe = /[çğıİöşüÇĞŞÜ]|\b(?:Polimer|Sağlığı|Sertifikasyonu|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.turbo frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory)\b/i;
+  const residueRe = /[çğıİöşüÇĞŞÜ]|\b(?:Azami|Polimer|Sağlığı|Sertifikasyonu|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.turbo frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
     if (!s) return false;
-    if (/^Main$/i.test(s)) return true;
+    const probe = s.replace(/\bTÜV\b/g, 'TUV');
     if (/^North$/i.test(s)) return true;
-    return residueRe.test(s);
+    return residueRe.test(probe);
   });
 }
 
@@ -3813,6 +3842,7 @@ window.QorAiBulkTranslate = {
   sanitizeEnglishSpecMap: (map) => _sanitizeEnglishSpecMap(map),
   sanitizeEnglishSectionMap: (sections) => _sanitizeEnglishSectionMap(sections),
   sanitizeEnglishTranslationMap: (map) => _sanitizeEnglishTranslationMap(map),
+  sanitizeEnglishText: (text, sourceText) => _sanitizeEnglishSpecText(text, sourceText),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
   assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
   // Persist the dictionary cache to PocketBase (force-save)
