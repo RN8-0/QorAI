@@ -1958,6 +1958,7 @@ async function openDictionaryPanel(){
     }
     if (_dictSource === 'tr') _seedDictionaryFromStaticFallback();
     renderDictionaryTable();
+    _setDictDirty(false);
     // Ensure the category dropdown for the bulk translator is populated.
     if (typeof populateScraperCategories === 'function') {
       try { await populateScraperCategories(); } catch {}
@@ -2039,7 +2040,16 @@ function renderDictionaryTable(){
 }
 
 let _dictDirty = false;
-function markDictDirty(){ _dictDirty = true; }
+function _setDictDirty(dirty = true){
+  _dictDirty = !!dirty;
+  const btn = document.getElementById('dictSaveBtn');
+  if (btn) {
+    btn.disabled = false;
+    btn.classList.toggle('btn-primary', _dictDirty);
+    btn.title = _dictDirty ? 'Kaydedilmemiş sözlük değişikliği var' : 'Sözlüğü PocketBase’e tekrar kaydet';
+  }
+}
+function markDictDirty(){ _setDictDirty(true); }
 
 let _dictLiveRenderTimer = null;
 function _scheduleDictionaryLiveRender(detail = '', delay = 350){
@@ -2062,7 +2072,7 @@ function addDictionaryRow(){
   const cache = api.cache();
   const k = term.toLowerCase();
   if (!cache[k]) cache[k] = {};
-  _dictDirty = true;
+  _setDictDirty(true);
   // Populate the search box so the new row is visible immediately
   const s = document.getElementById('dictSearch');
   if (s) s.value = k;
@@ -2071,8 +2081,14 @@ function addDictionaryRow(){
 
 function deleteDictRow(key){
   if (!confirm(`"${key}" terimi silinsin mi?`)) return;
-  _currentDictApi()?.remove?.(key);
-  _dictDirty = true;
+  const api = _currentDictApi();
+  if (api?.remove) api.remove(key);
+  else if (api?.cache) {
+    const cache = api.cache();
+    const k = String(key || '').toLowerCase().trim();
+    if (cache[k]) delete cache[k];
+  }
+  _setDictDirty(true);
   renderDictionaryTable();
 }
 
@@ -2091,14 +2107,15 @@ async function saveDictionary(){
     else {
       // Empty value → drop that lang entry so the renderer falls back to Turkish
       const cache = api.cache();
-      if (cache[k] && cache[k][l]) { delete cache[k][l]; _dictDirty = true; }
+      if (cache[k] && cache[k][l]) { delete cache[k][l]; _setDictDirty(true); }
     }
   });
 
-  if (!_dictDirty) { toast('Değişiklik yok', 'i'); return; }
   try {
-    await _currentDictApi().save();
-    _dictDirty = false;
+    const api = _currentDictApi();
+    if (!api?.save) throw new Error('Aktif sözlük API save() sunmuyor');
+    await api.save();
+    _setDictDirty(false);
     toast('✅ Sözlük kaydedildi', 's');
     logActivity('dictionary_save', `${inputs.length} cells persisted`);
   } catch (e) {
@@ -2110,8 +2127,8 @@ async function saveDictionary(){
 // cache). Used when stale entries from a previous filter generation are
 // poisoning the new pipeline. The next scrape will rebuild from scratch.
 async function wipeDictionary(){
-  const src = _currentDictSource === 'de' ? 'Geizhals DE' : 'Epey TR';
-  const key = _currentDictSource === 'de' ? 'de_translation_dict' : 'tr_translation_dict';
+  const src = _dictSource === 'de' ? 'Geizhals DE' : 'Epey TR';
+  const key = _dictSource === 'de' ? 'de_translation_dict' : 'tr_translation_dict';
   if (!confirm(`${src} sözlüğünü TAMAMEN sil?\n\nPocketBase shard'ları + yerel worker cache silinir. Sonraki scrape sıfırdan öğrenir.`)) return;
   const btn = event?.target;
   const orig = btn?.textContent;
@@ -2149,6 +2166,7 @@ async function wipeDictionary(){
     // 4) Wipe the GPU worker's persistent cache file too (best-effort).
     fetch('http://127.0.0.1:8797/clear-cache', { method: 'POST' }).catch(() => {});
     renderDictionaryTable();
+    _setDictDirty(false);
     if (typeof refreshDictCounter === 'function') refreshDictCounter();
     toast(`🗑 ${src} sözlüğü silindi (${total} record). Yerel cache da temizlendi.`, 's');
     logActivity('dictionary_wipe', `${src} dict cleared · ${total} records`);

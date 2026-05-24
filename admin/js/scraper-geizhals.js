@@ -1571,6 +1571,9 @@ const _DE_WORD_DICT = {
   'winkelstecker': 'angled plug',
   'interner': 'internal', 'golffunktionen': 'golf functions',
   'musiksteuerung': 'music control', 'bei': 'for', 'nachrichten': 'messages',
+  'mit': 'with', 'ohne': 'without', 'glas': 'glass', 'kuehler': 'cooler',
+  'kühler': 'cooler', 'komprimiert': 'collapsed', 'ausgezogen': 'extended',
+  'tastenhub': 'key travel', 'standfuss': 'stand', 'standfuß': 'stand',
 };
 
 function _deToAscii(text) {
@@ -1737,6 +1740,24 @@ function _normalizeGermanSourceTranslation(germanText, targetLang, translation) 
       [/nur Notruf/gi, 'emergency only'],
       [/Glas\s*\(Rückseite\)/gi, 'Glass (back)'],
       [/Metall\s*\(Rahmen\)/gi, 'Metal (frame)'],
+      // ASCII German words are the dangerous class: they bypass the umlaut
+      // detector but still leak into English specs from Geizhals values.
+      [/shared\s+mit\s+(LAN|WAN)/gi, 'shared with $1'],
+      [_gb('mit\\s+LFC-Support', 'gi'), 'with LFC support'],
+      [_gb('mit\\s+HDR', 'gi'), 'with HDR'],
+      [_gb('mit\\s+DisplayPort', 'gi'), 'with DisplayPort'],
+      [_gb('mit\\s+German\\s+keyboard\\s+layout', 'gi'), 'with German keyboard layout'],
+      [_gb('mit\\s+komprimiert', 'gi'), 'with stand collapsed'],
+      [_gb('mit\\s+ausgezogen', 'gi'), 'with stand extended'],
+      [_gb('ohne\\s+Kühler', 'gi'), 'without cooler'],
+      [_gb('ohne\\s+Standfuß', 'gi'), 'without stand'],
+      [_gb('ohne', 'gi'), 'without'],
+      [_gb('mit', 'gi'), 'with'],
+      [_gb('Glas', 'gi'), 'glass'],
+      [_gb('Kühler', 'gi'), 'cooler'],
+      [_gb('Tastenhub', 'gi'), 'key travel'],
+      [_gb('komprimiert', 'gi'), 'collapsed'],
+      [_gb('ausgezogen', 'gi'), 'extended'],
 
       // ── 2026-05-24 batch: smartwatch + general residue ──
       // Truncated atoms common in Geizhals
@@ -1999,7 +2020,7 @@ function _germanEnglishPayloadResidues(payload) {
     multiLangSectionsEn: payload?.multiLangSections?.en || {},
   };
   const entries = _walkGermanEnglishPayloadStrings(roots, '', []);
-  const residueRe = /[äöüßÄÖÜẞ]|\b(?:klasse|genaue|anschlussversion|unbekannt|benoetigt|benötigt|energieeffizienzklasse|buchse|besonderheiten|anzeige|hoehenmesser|rundenzaehler|schlafueberwachung|akku|akkulaufzeit|helligkeit|aufloesung|gehaeuse|garantie|schnittstellen|anschluss|lautsprecher|tastatur|beleuchtet|netzteil|stecker|verbaut|fuer|oder|bei|nachrichten|interner|golffunktionen|musiksteuerung)\b/i;
+  const residueRe = /[äöüßÄÖÜẞ]|\b(?:klasse|genaue|anschlussversion|unbekannt|benoetigt|benötigt|energieeffizienzklasse|buchse|besonderheiten|anzeige|hoehenmesser|rundenzaehler|schlafueberwachung|akku|akkulaufzeit|helligkeit|aufloesung|gehaeuse|garantie|schnittstellen|anschluss|lautsprecher|tastatur|beleuchtet|netzteil|stecker|verbaut|fuer|oder|bei|mit|ohne|glas|kuehler|kühler|komprimiert|ausgezogen|tastenhub|standfuss|standfuß|nachrichten|interner|golffunktionen|musiksteuerung)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
     if (!s) return false;

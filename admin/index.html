@@ -462,7 +462,7 @@
             </select>
             <input class="input" id="dictSearch" placeholder="Sözlükte ara..." oninput="renderDictionaryTable()" style="height:32px;padding:4px 8px;flex:1;min-width:150px">
             <button class="btn btn-sm" onclick="addDictionaryRow()">Add</button>
-            <button class="btn btn-primary btn-sm" onclick="saveDictionary()">Save</button>
+            <button class="btn btn-primary btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Save</button>
             <button class="btn btn-sm" style="background:#7f1d1d;color:#fff;border-color:#991b1b" onclick="wipeDictionary()" title="Aktif sözlüğü tamamen siler (PocketBase + local cache). Sonraki scrape sıfırdan öğrenir.">🗑 Sözlüğü Temizle</button>
             <span class="text-muted" id="dictStats" style="font-size:11px;margin-left:auto">—</span>
           </div>
