@@ -1697,12 +1697,41 @@ async function _loadDeDict() {
   }
 }
 
+// Throttle dict saves: each save uploads the entire sharded dict to
+// PocketBase (~9k entries, multi-MB). Previously we did this on every
+// product scrape => 5-15s per product. Now we coalesce dirty saves and
+// only actually upload if the last upload was >30s ago. The bulk-scrape
+// path calls _flushDeDictBeforeExit() at the end to guarantee final save.
+let _deDictLastSavedAt = 0;
+const _DE_DICT_SAVE_MIN_INTERVAL_MS = 30000;
+let _deDictPendingSave = null;
+async function _flushDeDictBeforeExit() {
+  if (_deDictPendingSave) clearTimeout(_deDictPendingSave);
+  _deDictPendingSave = null;
+  _deDictLastSavedAt = 0; // force
+  return _saveDeDictNow();
+}
 async function _saveDeDict() {
+  if (!_deDictDirty) return;
+  const elapsed = Date.now() - _deDictLastSavedAt;
+  if (elapsed < _DE_DICT_SAVE_MIN_INTERVAL_MS && _deDictLastSavedAt) {
+    // Schedule a debounced flush
+    if (_deDictPendingSave) clearTimeout(_deDictPendingSave);
+    _deDictPendingSave = setTimeout(() => {
+      _deDictPendingSave = null;
+      _saveDeDictNow().catch(() => {});
+    }, _DE_DICT_SAVE_MIN_INTERVAL_MS - elapsed);
+    return;
+  }
+  return _saveDeDictNow();
+}
+async function _saveDeDictNow() {
   if (!_deDictDirty) return;
   if (_deDictSavePromise) {
     await _deDictSavePromise;
     if (!_deDictDirty) return;
   }
+  _deDictLastSavedAt = Date.now();
   _deDictSavePromise = (async () => {
     let failure = null;
     while (_deDictDirty) {
@@ -2788,6 +2817,19 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
     .replace(/\bBuilt-in graphic max frequency\b/gi, 'Integrated graphics max frequency')
     .replace(/\bBuilt-in graphic basic frequency\b/gi, 'Integrated graphics base frequency')
     .replace(/\bBuilt-in graphic\b/gi, 'Integrated graphics')
+    // ── Catch user-reported bugs at the text-level too so multiLangSpecs.en
+    //    (which goes through _sanitizeEnglishSpecText, NOT _sanitizeEnglishSpecMap)
+    //    also gets these fixes. ─────────────────────────────────────────────
+    .replace(/\bEyesafe\s*\(\s*food\s+certification\s*\)/gi, 'Eyesafe (eye health certification)')
+    .replace(/\bfood\s+certification\b/gi, 'eye health certification')
+    .replace(/\b12\/24h-display\b/gi, '12/24h format')
+    .replace(/\b12\/24h-Anzeige\b/gi, '12/24h format')
+    .replace(/\b(MIL-STD-\d+[A-Z]?)-certified\b/g, '$1 certified')
+    .replace(/\b(MIL-STD-\d+[A-Z]?)-zertifiziert\b/g, '$1 certified')
+    .replace(/\bDisplay\s+width\s+height\b/gi, 'Aspect ratio')
+    .replace(/\bGPU\s+distance\b/gi, 'GPU process node')
+    .replace(/^\/(?=Mobile|Gaming|Business)/i, 'Business/')
+    .replace(/^Shareholders?$/i, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
   return out;
@@ -2802,14 +2844,41 @@ function _sanitizeEnglishSpecMap(map) {
   const inferredProcessorBrand = /\bAMD\s+Ryzen\b|\bRyzen\b/i.test(context)
     ? 'AMD'
     : (/\bIntel\s+Core\b|\bCore\s+Ultra\b|\bIntel\b/i.test(context) ? 'Intel' : '');
+  // Detect dominant GPU brand from context to clean stray "North"
+  const inferredGpuBrand = /\bGeForce\b|\bRTX\b|\bGTX\b|\bNVIDIA\b/i.test(context)
+    ? 'NVIDIA'
+    : (/\bRadeon\b|\bRX\b/i.test(context) ? 'AMD' : 'NVIDIA');
   for (const [k, v] of Object.entries(map)) {
-    const nk = _sanitizeEnglishSpecText(k, k);
+    let nk = _sanitizeEnglishSpecText(k, k);
     let nv = _sanitizeEnglishSpecText(v, v);
     const rawValue = String(v ?? '').trim();
-    if (/^GPU brand$/i.test(nk) && /^North$/i.test(rawValue)) nv = 'NVIDIA';
-    if (/^Processor brand$/i.test(nk) && /^Main$/i.test(rawValue)) nv = inferredProcessorBrand || 'Intel';
+    // Brand value coercion: NVIDIA mistranslations
+    if (/^(?:GPU\s+brand|Graphics\s+brand|Display\s+chip\s+brand)$/i.test(nk) && /^(?:North|Main)$/i.test(rawValue)) {
+      nv = inferredGpuBrand;
+    }
+    if (/^(?:Processor\s+brand|CPU\s+brand)$/i.test(nk) && /^(?:Main|North)$/i.test(rawValue)) {
+      nv = inferredProcessorBrand || 'Intel';
+    }
     if (/^Product purpose$/i.test(nk) && /^Game$/i.test(rawValue)) nv = 'Gaming';
     if (/^Product family$/i.test(nk) && /^Monster hunter$/i.test(rawValue)) nv = 'Monster';
+    // Drop the bogus "Shareholder" spec entirely — Argos hallucinates this
+    // from "Standart"-style military-grade rating atoms; the actual info is
+    // already in the adjacent "Endurance Standard" / "MIL-STD" row.
+    if (/^(?:Shareholder|Shareholders|Shareholding)$/i.test(nk)) continue;
+    // "/Mobile" or "Game/Mobile" leading slash artifact -> normalize
+    if (typeof nv === 'string' && /^\/\w/.test(nv)) nv = 'Business' + nv;
+    // 12/24h-display -> 12/24h format (DE source artifact survives the dash)
+    nv = String(nv).replace(/\b12\/24h-display\b/gi, '12/24h format');
+    // Aspect ratio normalization: "Display width height" -> "Aspect ratio"
+    if (/^(?:Display\s+width\s+height|Display\s+aspect\s+ratio\s+\(aspect\s+ratio\)|Aspect\s+ratio\s+\(aspect\s+ratio\))$/i.test(nk)) nk = 'Aspect ratio';
+    // "GPU distance" lost a word: it's the process node
+    if (/^GPU\s+distance$/i.test(nk)) nk = 'GPU process node';
+    if (/^Transistor\s+distance$/i.test(nk)) nk = 'Process node';
+    // Eyesafe absurdities: Argos sometimes maps "sağlığı" to "food"
+    if (typeof nv === 'string') {
+      nv = nv.replace(/\bEyesafe\s*\(\s*food\s+certification\s*\)/gi, 'Eyesafe (eye health certification)')
+             .replace(/\bfood\s+certification\b/gi, 'eye health certification');
+    }
     if (!nk || !nv) continue;
     out[_uniqueSpecKey(out, nk)] = nv;
   }
@@ -4853,6 +4922,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // this run is now sent to Argos for a real translation and added to the
   // dictionary so the SAME word never falls through again.
   try { await _flushUnknownTurkishWords(); } catch {}
+  // Force a final dict save: throughout the scrape we throttle saves to
+  // every ~30s. At the end we must flush whatever's pending.
+  try { await _flushDeDictBeforeExit(); } catch {}
 
   // Final checkpoint clear (success path)
   if (!scraperAbort) _clearCheckpoint();

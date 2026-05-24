@@ -1936,6 +1936,12 @@ function _sanitizeGermanEnglishSpecText(text, sourceText = '') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
   return _normalizeGermanSourceTranslation(sourceText || raw, 'en', raw)
+    // Strip German compound-word artifacts where dashed translation
+    // survived ("MIL-STD-810H-certified", "12/24h-display").
+    .replace(/\b12\/24h-display\b/gi, '12/24h format')
+    .replace(/\b12\/24h-Anzeige\b/gi, '12/24h format')
+    .replace(/\b(MIL-STD-\d+[A-Z]?)-certified\b/g, '$1 certified')
+    .replace(/\b(MIL-STD-\d+[A-Z]?)-zertifiziert\b/g, '$1 certified')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -1944,8 +1950,19 @@ function _sanitizeGermanEnglishSpecMap(map) {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
   for (const [k, v] of Object.entries(map)) {
-    const nk = _sanitizeGermanEnglishSpecText(k, k);
-    const nv = _sanitizeGermanEnglishSpecText(v, v);
+    let nk = _sanitizeGermanEnglishSpecText(k, k);
+    let nv = _sanitizeGermanEnglishSpecText(v, v);
+    // Strip dangling dashes from compound German artifacts.
+    nv = String(nv)
+      .replace(/\b12\/24h-display\b/gi, '12/24h format')
+      .replace(/\b12\/24h-Anzeige\b/gi, '12/24h format')
+      .replace(/(MIL-STD-\d+[A-Z]?)-certified/g, '$1 certified')
+      .replace(/(MIL-STD-\d+[A-Z]?)-zertifiziert/g, '$1 certified')
+      .trim();
+    // "Bracelets" (plural Armbänder) for smartwatch strap -> "Strap"
+    if (/^Bracelets?$/i.test(nk)) nk = 'Strap';
+    // Drop entries with empty values that show up as "X: :" in UI
+    if (typeof nv === 'string' && /^[:;\-—]+$/.test(nv.trim())) continue;
     if (!nk || !nv) continue;
     out[_uniqueEnglishSpecKey(out, nk)] = nv;
   }
@@ -1956,7 +1973,10 @@ function _sanitizeGermanEnglishSectionMap(sections) {
   if (!sections || typeof sections !== 'object') return sections || {};
   const out = {};
   for (const [section, body] of Object.entries(sections)) {
-    const ns = _sanitizeGermanEnglishSpecText(section, section) || 'General';
+    let ns = _sanitizeGermanEnglishSpecText(section, section) || 'General';
+    // Smartwatch section: "Bracelets" -> "General" (the section list usually
+    // already has a "Features"/"Allgemein" section with strap info).
+    if (/^Bracelets?$/i.test(ns)) ns = 'General';
     out[ns] = _sanitizeGermanEnglishSpecMap(body || {});
   }
   return out;
