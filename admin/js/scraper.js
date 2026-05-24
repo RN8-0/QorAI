@@ -2830,8 +2830,34 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
     .replace(/\bGPU\s+distance\b/gi, 'GPU process node')
     .replace(/^\/(?=Mobile|Gaming|Business)/i, 'Business/')
     .replace(/^Shareholders?$/i, '')
+    // ── NEW (2026-05-24 turn-3) ──
+    // Sabit Disk -> Hard disk / SSD (Argos: "Fixed Disk")
+    .replace(/\bFixed\s+Disk\s*\(\s*SSD\s*\)\s*Type\b/gi, 'SSD type')
+    .replace(/\bFixed\s+Disk\s*\(\s*HDD\s*\)\b/gi, 'Hard disk (HDD)')
+    .replace(/\bFixed\s+Disk\b/gi, 'Hard disk')
+    // Mevcut Bellek -> Memory layout / Memory configuration
+    .replace(/\bAvailable\s+Memory\b/gi, 'Memory layout')
+    // Toplam Bellek (Yuvası) -> Total memory slots
+    .replace(/\bTotal\s+Memory\b(?!\s+(?:slots?|capacity|size))/gi, 'Total memory slots')
+    // EKG (German/Turkish abbrev) -> ECG (English standard)
+    .replace(/\bEKG\b/g, 'ECG')
+    // Display Size: "16.0" (no unit) → keep as is — UI shows separately
+    // Empty parens artifact: "720p ()" -> "720p"
+    .replace(/(\b\d+p)\s*\(\s*\)/g, '$1')
+    // Low Blue (orphan) -> "Low blue light"
+    .replace(/\bLow\s+Blue\b(?!\s+light)/gi, 'Low blue light')
+    // Optical Reader (Turkish "Optik Okuyucu") -> Optical drive
+    .replace(/\bOptical\s+Reader\b/gi, 'Optical drive')
+    // Card Reader features rename
+    .replace(/\bCard\s+reader\s+features\b/gi, 'Card reader')
+    // Endurance for bumps -> Drop test / Endurance rating
+    .replace(/\bEndurance\s+for\s+bumps\b/gi, 'Drop test certified')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  // CAPITALIZATION: first character upper (English convention for spec labels).
+  if (out && /^[a-z]/.test(out) && !/^(?:[gma]?USB|[ie]?Phone|i[A-Z]|nano|micro|pro|max|m[Aa]h)/.test(out)) {
+    out = out[0].toUpperCase() + out.slice(1);
+  }
   return out;
 }
 

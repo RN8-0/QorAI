@@ -1935,15 +1935,24 @@ function _uniqueEnglishSpecKey(target, key) {
 function _sanitizeGermanEnglishSpecText(text, sourceText = '') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
-  return _normalizeGermanSourceTranslation(sourceText || raw, 'en', raw)
+  let out = _normalizeGermanSourceTranslation(sourceText || raw, 'en', raw)
     // Strip German compound-word artifacts where dashed translation
     // survived ("MIL-STD-810H-certified", "12/24h-display").
     .replace(/\b12\/24h-display\b/gi, '12/24h format')
     .replace(/\b12\/24h-Anzeige\b/gi, '12/24h format')
     .replace(/\b(MIL-STD-\d+[A-Z]?)-certified\b/g, '$1 certified')
     .replace(/\b(MIL-STD-\d+[A-Z]?)-zertifiziert\b/g, '$1 certified')
+    // EKG (DE/TR abbrev) -> ECG (English standard)
+    .replace(/\bEKG\b/g, 'ECG')
+    // Bracelets (Armbänder plural) for smartwatch -> Strap
+    .replace(/\bBracelets?\b/g, 'Strap')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  // CAPITALIZATION: first character upper.
+  if (out && /^[a-z]/.test(out) && !/^(?:[gma]?USB|[ie]?Phone|i[A-Z]|nano|micro|pro|max|m[Aa]h)/.test(out)) {
+    out = out[0].toUpperCase() + out.slice(1);
+  }
+  return out;
 }
 
 function _sanitizeGermanEnglishSpecMap(map) {
@@ -2007,7 +2016,11 @@ function _sanitizeGermanEnglishPayload(payload) {
     ? { ...payload.multiLangSections }
     : {};
   payload.multiLangSpecs.en = _sanitizeGermanEnglishSpecMap(payload.multiLangSpecs.en || payload.specs || {});
-  payload.multiLangSections.en = _sanitizeGermanEnglishSectionMap(payload.multiLangSections.en || payload.specSections || {});
+  // multiLangSections.en is a FLAT {sourceName: translation} string-map, not a
+  // nested {section: {key: value}} structure. Use the translation-map
+  // sanitizer so values get _sanitizeGermanEnglishSpecText (which carries the
+  // 'Bracelets -> Strap', EKG -> ECG, dash-strip rules).
+  payload.multiLangSections.en = _sanitizeGermanEnglishTranslationMap(payload.multiLangSections.en || {});
   return payload;
 }
 
