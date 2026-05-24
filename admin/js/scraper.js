@@ -2442,27 +2442,62 @@ function _sourceAwareTurkishWordMap(sourceText) {
 // self-healing loop: any new TR word the system encounters is auto-learned.
 const _unknownTrWords = new Set();
 
+// Common English short words that happen to collide with Turkish dict keys —
+// must never be auto-translated. Add aggressively; safer to skip a Turkish
+// match than to mangle real English text.
+const _ENGLISH_PROTECTED_ASCII = new Set([
+  'on','off','an','as','at','be','by','do','el','ev','go','he','if','in','is',
+  'it','me','my','no','of','or','so','to','up','us','we','am','old','new','low',
+  'high','top','bot','one','two','six','ten','red','car','bag','bar','can','set',
+  'led','box','arm','air','net','run','use','out','for','our','any','add','all',
+  'and','but','not','put','say','see','sit','sub','tap','the','try','vue','was',
+  'who','win','you','your','from','this','that','with','have','here','more','some',
+  'when','what','will','time','than','also','date','data','very','were','make',
+  'most','only','over','such','take','than','them','well','many','main','same',
+  'side','full','last','next','open','play','show','step','tone','type','user',
+  'view','wait','wake','wave','week','wide','wild','wind','work','year','your',
+  'zone','life','line','live','look','lose','love','lock','long','loop','lost',
+  'mode','need','note','past','pole','pop','part','past','play','plus','port',
+  'post','rain','rare','rate','read','real','rear','ride','ring','rock','rose',
+  'safe','save','seem','sell','send','sent','sent','sing','size','skin','slow',
+  'small','smell','soft','sold','solid','song','sort','sound','span','spec',
+  'speed','spin','spot','star','start','state','stay','step','stop','sure',
+  'swim','tab','take','talk','tape','task','tax','test','text','thin','this',
+  'tier','tile','tip','tire','too','total','tour','town','town','tray','tree',
+  'turn','type','unit','unix','upon','wall','want','war','ward','warm','way',
+  'wear','what','when','win','wing','wire','wise','wish','wood','wool','wood',
+  'word','work','yard','year','yes','yet','your',
+]);
+
 function _finalPassTurkishCleanup(text, sourceText = '') {
   if (!text) return text;
   const sourceMap = _sourceAwareTurkishWordMap(sourceText);
-  if (!/[çğıİöşüÇĞŞÜÖ]/.test(text) && !sourceMap.size) return text;
+  const sourceHasTurkish = /[çğıİöşüÇĞŞÜÖ]/.test(sourceText || '');
+  // ALWAYS run if any TR chars in output OR any TR chars in source — Argos
+  // emits ASCII-folded Turkish ("Sertifikasyonu") even when source had ş/ğ/ı.
+  if (!/[çğıİöşüÇĞŞÜÖ]/.test(text) && !sourceMap.size && !sourceHasTurkish) return text;
   return String(text).replace(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g, (word) => {
     const lower = word.toLowerCase();
     const folded = _foldSourceResidueText(word);
     const hasTrChars = /[çğıİöşüÇĞŞÜÖ]/.test(word);
-    if (!hasTrChars && folded === 'on' && lower === 'on') return word;
+    // Hands-off: known English short words (length < 5) that could collide
+    // with the Turkish dictionary. Only protect ASCII tokens — Turkish-char
+    // tokens are always Turkish.
+    if (!hasTrChars && _ENGLISH_PROTECTED_ASCII.has(lower)) return word;
     const sourceHit = sourceMap.has(folded) ? sourceMap.get(folded) : undefined;
-    const hit = hasTrChars
-      ? (_lookupTurkishWord(lower, folded) ?? sourceHit)
-      : sourceHit;
+    // Try dict for BOTH TR-char and ASCII words. ASCII Turkish words like
+    // "Sertifikasyonu", "Bellek", "Boyutu" are now caught even without
+    // sourceMap entry.
+    const dictHit = _lookupTurkishWord(lower, folded);
+    const hit = dictHit ?? sourceHit;
     if (hit !== undefined) {
       if (!hit) return '';
       return _applyCaseLike(word, hit);
     }
     if (!hasTrChars) return word;
-    // No dict entry: queue for background learning AND transliterate now so
-    // the immediate output has no Turkish letters. Next scrape, the queued
-    // translation will produce a real English word.
+    // No dict entry: queue for background learning AND drop the token so
+    // we never ship Turkish letters. Next scrape, the queued translation
+    // will produce a real English word.
     if (lower.length >= 3) _unknownTrWords.add(lower);
     return '';
   });
@@ -2791,7 +2826,7 @@ function _sanitizeEnglishSectionMap(sections) {
   return out;
 }
 
-function _sanitizeEnglishTranslationMap(map) {
+function _sanitizeEnglishTranslationMap(map, inferredProcessorBrand = '') {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
   for (const [source, tx] of Object.entries(map)) {
@@ -2801,12 +2836,25 @@ function _sanitizeEnglishTranslationMap(map) {
     const rawSource = String(source || '').trim();
     const rawTx = String(tx == null ? '' : tx).trim();
     if (_isProtectedTechnicalAtom(rawSource)) {
-      // Argos sometimes translates standalone brand/acronym atoms as plain
-      // words: NVIDIA -> North, Intel/AMD context -> Main. Translation maps
-      // must preserve those atoms verbatim so the final assert cannot trip.
       if (/^(North|Main)$/i.test(rawTx) || !clean || clean !== rawSource) clean = rawSource;
     }
     if (/^NVIDIA$/i.test(rawSource) && /^North$/i.test(clean)) clean = 'NVIDIA';
+
+    // GENERAL BRAND-VALUE FIX: when the source LOOKS like a brand spec key
+    // (contains "brand", "marka", "üretici", "manufacturer") AND the value
+    // is "North" or "Main", infer the correct brand from context. Argos
+    // consistently mistranslates NVIDIA -> "North" and Intel/AMD -> "Main".
+    if (/^North$/i.test(clean) && /(?:^|\s)(?:brand|marka(?:s[ıi])?|marca|marke|producer|manufacturer|üretici|uretici|gpu)(?:\s|$)/i.test(rawSource)) {
+      clean = 'NVIDIA';
+    }
+    if (/^Main$/i.test(clean) && /(?:^|\s)(?:brand|marka(?:s[ıi])?|işlemci|cpu|processor)(?:\s|$)/i.test(rawSource)) {
+      clean = inferredProcessorBrand || 'Intel';
+    }
+    // Standalone bare "North"/"Main" anywhere in translation map values is
+    // ALWAYS a sanitizer miss for a brand atom; coerce to NVIDIA/Intel.
+    if (/^North$/i.test(clean)) clean = 'NVIDIA';
+    if (/^Main$/i.test(clean)) clean = inferredProcessorBrand || 'Intel';
+
     if (clean) out[source] = clean;
   }
   return out;
@@ -2824,8 +2872,13 @@ function _sanitizeEnglishPayload(payload) {
   payload.multiLangSections = payload.multiLangSections && typeof payload.multiLangSections === 'object'
     ? { ...payload.multiLangSections }
     : {};
-  payload.multiLangSpecs.en = _sanitizeEnglishTranslationMap(payload.multiLangSpecs.en || payload.specs || {});
-  payload.multiLangSections.en = _sanitizeEnglishTranslationMap(payload.multiLangSections.en || payload.specSections || {});
+  // Infer the right processor brand from the full payload context so the
+  // translation map can rewrite stray "Main"/"North" values.
+  const ctxString = JSON.stringify(payload.specs || {}) + ' ' + JSON.stringify(payload.specsEn || {});
+  const inferredCpu = /\bAMD\s+Ryzen\b|\bRyzen\b/i.test(ctxString) ? 'AMD'
+    : (/\bIntel\b|\bCore\s+Ultra\b/i.test(ctxString) ? 'Intel' : '');
+  payload.multiLangSpecs.en = _sanitizeEnglishTranslationMap(payload.multiLangSpecs.en || payload.specs || {}, inferredCpu);
+  payload.multiLangSections.en = _sanitizeEnglishTranslationMap(payload.multiLangSections.en || payload.specSections || {}, inferredCpu);
   return payload;
 }
 
@@ -2862,7 +2915,7 @@ function _englishPayloadResidues(payload) {
   for (const [source, value] of Object.entries(payload?.multiLangSections?.en || {})) {
     _walkEnglishPayloadStrings(value, `multiLangSectionsEn.${source}`, entries);
   }
-  const residueRe = /[çğıİöşüÇĞŞÜ]|\b(?:Azami|Polimer|Sağlığı|Sertifikasyonu|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.turbo frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity)\b/i;
+  const residueRe = /[çğıİöşüÇĞŞÜÖ]|\b(?:Azami|Polimer|Polimerli|Sağlığı|Sağlık|Sertifikasyonu|Sertifikasyon|Sertifikasi|Sertifikası|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.[a-z]+ frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity|Ozellik(?:leri|leriri)?|Bellek\b|Boyut(?:u|lari|lar)?|Sayisi|Sayisi|Cozunurluk(?:u)?|Cozunurlugu|Genisligi|Yuksekligi|Derinligi|Agirligi|Hizi|Hizli|Sicakligi|Kalitesi|Frekansi|Frekans(?:i)?|Cekirdek|Cekirdegi|Cekirdekleri|Islemci(?:si)?|Sertifikali|Sertifikadan|Cikis(?:i)?|Cikar(?:ilabilir|tilabilir)|Aydinlatma(?:li)?|Goz\b|Sertifika|Performans(?:i)?|Verimlilik(?:i)?)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
     if (!s) return false;
