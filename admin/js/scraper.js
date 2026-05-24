@@ -2838,10 +2838,33 @@ function _sanitizeEnglishSpecText(text, sourceText = '') {
     // Klavye Arka Aydınlatması -> Keyboard backlight (Argos: "Keyboard Rear Lighting")
     .replace(/\bKeyboard\s+Rear\s+Lighting\b/gi, 'Keyboard backlight')
     .replace(/\bRear\s+Lighting\b/gi, 'Backlight')
-    // "Main" as a standalone spec key (came from TR "Ana" section header).
-    // Cannot rename here because we don't know the context — leave as-is; the
-    // _sanitizeEnglishSpecMap-level rules handle brand-value coercion.
     .replace(/\b(?:Display\s+|Screen\s+)?(?:Width\s+Height|Genişlik\s+Yükseklik|Yükseklik\s+Genişlik)\s+(?:Ratio|Oranı)?\b/gi, 'Aspect ratio')
+    // ── 2026-05-24 turn-4 (Samsung TV) ──────────────────────────────────
+    // 'Karasal' (terrestrial broadcast) — pure TR word leaked verbatim
+    .replace(/\bKarasal\s+Receiver\b/gi, 'Terrestrial receiver')
+    .replace(/\bHD\s+Karasal\s+Receiver\b/gi, 'HD terrestrial receiver')
+    .replace(/\bKarasal\b/g, 'Terrestrial')
+    // 'Rehberi' (guide) — EPG context
+    .replace(/\bProgram\s+Rehberi\s*\(\s*EPG\s*\)/gi, 'Program Guide (EPG)')
+    .replace(/\bRehberi\b/g, 'Guide')
+    .replace(/\bRehber\b/g, 'Guide')
+    // Yesiable Refresh Rate — Argos took 'Var' out of 'Variable' and made
+    // it 'Yes' then put 'iable' back. Catches both word and standalone.
+    .replace(/\bYesiable\s+Refresh\s+Rate\b/gi, 'Variable refresh rate')
+    .replace(/\bYesiable\b/g, 'Variable')
+    // 'Save (pvr)' — TR 'Kaydetme' wrongly mapped to file-save
+    .replace(/\bSave\s*\(\s*pvr\s*\)/gi, 'PVR Recording')
+    .replace(/\bSave\s*\(\s*PVR\s*\)/g, 'PVR Recording')
+    // Two Way Mirroring — keep as bi-directional
+    .replace(/\bDisplay\s+Mirroring\s*\(\s*Two\s+Way\s*\)/gi, '2-way screen mirroring')
+    .replace(/\bDisplay\s+Mirroring\b(?!\s*\()/gi, 'Screen mirroring')
+    // "Main" as a standalone value when it's clearly NOT a brand context
+    // (Audio output, Digital Audio Output, Sensors section, etc.).
+    // We can't safely auto-rename "Main" everywhere because some contexts
+    // legitimately use "Main". But the standalone TR "Ana" / "Dahili" leak
+    // for sensor-type / output-mode rows is a known pattern: replace bare
+    // "Main" → "Built-in" only when the value position is exactly "Main".
+    // (Done at the _sanitizeEnglishSpecMap level — see below.)
     // Mevcut Bellek -> Memory layout / Memory configuration
     .replace(/\bAvailable\s+Memory\b/gi, 'Memory layout')
     // Toplam Bellek (Yuvası) -> Total memory slots
@@ -2891,6 +2914,18 @@ function _sanitizeEnglishSpecMap(map) {
     }
     if (/^(?:Processor\s+brand|CPU\s+brand)$/i.test(nk) && /^(?:Main|North)$/i.test(rawValue)) {
       nv = inferredProcessorBrand || 'Intel';
+    }
+    // Generic 'Main' value coercion: when the SPEC KEY refers to a feature
+    // that has Var/Yok/Yes/No semantics (Smart, Sensors, Built-in receivers,
+    // Audio output type), Argos sometimes emits 'Main' for TR 'Dahili'/'Ana'.
+    // For those keys we coerce 'Main' value to 'Built-in' (or 'Yes' when the
+    // key is a binary feature flag like '3D').
+    if (/^Main$/i.test(rawValue)) {
+      if (/^(?:Digital\s+Audio\s+Output|Audio\s+Output|Output|Receiver|Tuner|Antenna|Input|Smart|Internal|Built-in)/i.test(nk)) {
+        nv = 'Built-in';
+      } else if (/^(?:3D|HDR|HbbTV|PVR|Smart\s*TV|HDMI|USB|Wi-?Fi|Bluetooth|NFC|GPS|Camera|Sensor|Network)$/i.test(nk)) {
+        nv = 'Yes';
+      }
     }
     if (/^Product purpose$/i.test(nk) && /^Game$/i.test(rawValue)) nv = 'Gaming';
     if (/^Product family$/i.test(nk) && /^Monster hunter$/i.test(rawValue)) nv = 'Monster';
