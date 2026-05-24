@@ -516,6 +516,7 @@ function prepareProductPayload(product) {
   if (product.nameTranslated && typeof product.nameTranslated === 'object') {
     payload.nameTranslated = product.nameTranslated;
   }
+  _sanitizeGermanEnglishPayload(payload);
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
   if (!payload.name) throw new Error('Product name is empty');
@@ -1406,6 +1407,13 @@ function _foldGermanResidueText(text) {
 
 function _translationHasGermanResidue(targetLang, translation, sourceText = '') {
   if (targetLang === 'de') return false;
+  // NUCLEAR: any German-only character (ä,ö,ü,ß,Ä,Ö,Ü,ẞ) in a non-DE
+  // translation = automatic rejection. Cached entry gets deleted and
+  // re-translated. No per-word rule needed for future leaks.
+  if (/[äöüßÄÖÜẞ]/.test(translation)) return true;
+  // Same nuclear rule for Turkish chars in any non-TR target (German source
+  // sometimes pivots through TR-tagged worker calls in edge cases).
+  if (targetLang !== 'tr' && /[çğıİöşüÇĞŞÜ]/.test(translation)) return true;
   const folded = _foldGermanResidueText(translation);
   if (!folded) return false;
   const residue = [
@@ -1429,13 +1437,15 @@ function _translationHasGermanResidue(targetLang, translation, sourceText = '') 
   // the shared dictionary for the whole 100k run.
   const sourceTokens = _foldGermanResidueText(sourceText).match(/[a-z0-9-]+/g) || [];
   const protectedTokens = new Set([
-    'usb','usb-c','hdmi','displayport','mini-displayport','wi-fi','wifi',
+    'usb','usb-c','hdmi','displayport','mini-displayport','wi-fi','wifi','wireless',
     'bluetooth','ethernet','nfc','gps','glonass','beidou','galileo','qzss',
     'navic','hdr','hdr10','dolby','vision','oled','ips','led','ram','ssd',
     'hdd','cpu','gpu','npu','pcie','pci','m2','windows','android','ios',
     'apple','intel','amd','nvidia','geforce','rtx','gtx','radeon','snapdragon',
     'mediatek','qualcomm','directx','directml','opencl','opengl','vulkan',
     'dlss','av1','h264','h265','hevc','vp9','microsoft','copilot',
+    'samsung','sony','garmin','tp','link','asus','msi','pascal','nand','tlc',
+    'wireless','pro','max','nano','security','slot','cloud','controller','tbw',
   ]);
   const germanPattern = /(ae|oe|ue|ss|ung|keit|heit|schaft|chen|lein|isch|zellen|laden|verbaut|stecker|buchse|anschluss|netz|teil|sensor|scanner|sprecher|schnitt|stelle|klasse|groesse|größe|laufzeit|aktualisierung|kommunikation|notruf|nachrichten|tastatur|beleuchtet|nummernblock|bauform|gehaeuse|gehäuse|rueckseite|rückseite|rahmen|farbe|gewicht|abmessung|kerne)$/i;
   for (const token of sourceTokens) {
@@ -1446,86 +1456,518 @@ function _translationHasGermanResidue(targetLang, translation, sourceText = '') 
   return false;
 }
 
+// JS `\b` is ASCII-only and silently fails around German umlauts (ä, ö, ü, ß).
+// Use _gb() (german boundary) instead — explicit Unicode lookarounds.
+const _DE_WORD_CHARS = "A-Za-zÄÖÜẞäöüßÀÁÂÃÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕØÙÚÛÝÞàáâãåæçèéêëìíîïðñòóôõøùúûýþÿ0-9_";
+function _gb(body, flags = 'g') {
+  return new RegExp(
+    `(?<![${_DE_WORD_CHARS}])(?:${body})(?![${_DE_WORD_CHARS}])`,
+    flags
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  FINAL-PASS TRANSLATOR — German word dictionary
+//  Same idea as the Turkish version: walk output token by token, replace
+//  any word with an umlaut/ß. Dict hit → English equivalent. Miss → strip
+//  the umlauts so no German letter survives in EN output.
+// ─────────────────────────────────────────────────────────────────────────
+const _DE_WORD_DICT = {
+  // sensors / scanners
+  'beschleunigungssensor': 'accelerometer', 'annäherungssensor': 'proximity sensor',
+  'lichtsensor': 'light sensor', 'fingerabdrucksensor': 'fingerprint sensor',
+  'helligkeitssensor': 'brightness sensor', 'herzfrequenzmesser': 'heart rate monitor',
+  'gesichtsscanner': 'face scanner', 'gyroskop': 'gyroscope',
+  'kompass': 'compass', 'barometer': 'barometer',
+  // display
+  'anzeige': 'display', 'bildschirm': 'screen', 'bildschirmdiagonale': 'screen diagonal',
+  'bildschirmgröße': 'screen size', 'auflösung': 'resolution',
+  'helligkeit': 'brightness', 'bildwiederholrate': 'refresh rate',
+  'reaktionszeit': 'response time', 'höhenverstellbar': 'height-adjustable',
+  'aussparung': 'display cutout', 'aktualisierungsrate': 'refresh rate',
+  'kapazitiver': 'capacitive', 'flach': 'flat', 'kameraloch': 'camera cutout',
+  'hintergrundbeleuchtung': 'backlighting', 'werkskalibrierung': 'factory calibration',
+  // power / battery
+  'akku': 'battery', 'akkukapazität': 'battery capacity', 'akkulaufzeit': 'battery life',
+  'schnellladen': 'fast charging', 'schnellladung': 'fast charging',
+  'netzteil': 'power supply', 'stromversorgung': 'power supply',
+  'kabellos': 'wireless', 'kabelloses': 'wireless',
+  // body / form
+  'gehäuse': 'housing', 'gehäuseform': 'form factor', 'gehäusematerial': 'material',
+  'gehäusefarbe': 'case color', 'gehäusefarben': 'case colors',
+  'abmessungen': 'dimensions', 'gewicht': 'weight', 'größe': 'size',
+  'farbe': 'color', 'rahmen': 'frame', 'rückseite': 'back',
+  // common nouns
+  'tastatur': 'keyboard', 'maus': 'mouse', 'kamera': 'camera',
+  'lautsprecher': 'speakers', 'mikrofon': 'microphone',
+  'kopfhörer': 'headphones', 'ohrhörer': 'earphones',
+  'arbeitsspeicher': 'RAM', 'gerätespeicher': 'storage', 'speicher': 'memory',
+  'speicherkarte': 'memory card', 'festplatte': 'hard disk',
+  'prozessor': 'processor', 'chipsatz': 'chipset', 'kerne': 'cores',
+  'fertigung': 'process node', 'einführung': 'launch',
+  'grafikkarte': 'graphics card', 'grafik': 'graphics',
+  'sensoren': 'sensors', 'taste': 'button', 'tasten': 'buttons',
+  'klasse': 'class', 'buchse': 'socket',
+  'energieeffizienzklasse': 'energy efficiency class',
+  'besonderheiten': 'features',
+  // network
+  'verbindung': 'connection', 'anschluss': 'connection', 'anschlüsse': 'connections',
+  'anschlussversion': 'port version',
+  'netzwerkanschluss': 'network connection', 'schnittstelle': 'interface',
+  'schnittstellen': 'interfaces', 'frequenz': 'frequency',
+  'bandbreite': 'bandwidth', 'übertragung': 'transmission', 'anbindung': 'interface',
+  // software / OS
+  'betriebssystem': 'operating system', 'benutzeroberfläche': 'user interface',
+  'sicherheitsupdate': 'security update', 'sicherheits-updates': 'security updates',
+  'aktualisierung': 'update', 'aktualisierungen': 'updates',
+  'authentifizierung': 'authentication',
+  // numbers / units
+  'eins': 'one', 'zwei': 'two', 'drei': 'three', 'vier': 'four', 'fünf': 'five',
+  'sechs': 'six', 'sieben': 'seven', 'acht': 'eight', 'neun': 'nine', 'zehn': 'ten',
+  'hundert': 'hundred', 'tausend': 'thousand', 'million': 'million',
+  'sekunde': 'second', 'sekunden': 'seconds', 'minute': 'minute', 'minuten': 'minutes',
+  'stunde': 'hour', 'stunden': 'hours', 'tag': 'day', 'tage': 'days',
+  'woche': 'week', 'monat': 'month', 'jahr': 'year', 'jahre': 'years',
+  // adjectives
+  'schwarz': 'black', 'weiß': 'white', 'grau': 'gray', 'silber': 'silver',
+  'blau': 'blue', 'grün': 'green', 'rot': 'red', 'gelb': 'yellow', 'braun': 'brown',
+  'klein': 'small', 'groß': 'large', 'hoch': 'high', 'niedrig': 'low',
+  'schnell': 'fast', 'langsam': 'slow', 'leise': 'quiet', 'laut': 'loud',
+  'leicht': 'light', 'schwer': 'heavy', 'wasserdicht': 'waterproof',
+  'staubdicht': 'dustproof', 'beleuchtet': 'backlit', 'matt': 'matte',
+  'glänzend': 'glossy', 'verbaut': 'installed', 'erweiterbar': 'expandable',
+  'genaue': 'exact', 'unbekannt': 'unknown',
+  // verbs / states
+  'unterstützung': 'support', 'unterstützt': 'supported',
+  'benötigt': 'requires', 'benoetigt': 'requires',
+  'enthalten': 'included', 'integriert': 'integrated', 'optional': 'optional',
+  'standard': 'standard', 'sonstige': 'other', 'sonstiges': 'other',
+  'übrige': 'other', 'weitere': 'additional',
+  'unterscheiden': 'differ', 'ländervariante': 'country variant',
+  // time / dates
+  'zeitzonen': 'time zones', 'zeitzone': 'time zone', 'kalender': 'calendar',
+  'wecker': 'alarm', 'wettervorhersage': 'weather forecast',
+  // smartwatch specific
+  'rundenzähler': 'lap counter', 'schrittzähler': 'step counter',
+  'schwimmzüge': 'swimming strokes', 'schwimmen': 'swimming',
+  'schlafüberwachung': 'sleep monitoring', 'höhenmesser': 'altimeter',
+  'höhenmeter': 'altitude meters', 'inaktivitätsalarm': 'inactivity alarm',
+  'pulsmessung': 'pulse measurement', 'herzfrequenz': 'heart rate',
+  'blutsauerstoff': 'blood oxygen', 'blutdruck': 'blood pressure',
+  'hauttemperatur': 'skin temperature', 'kalorienverbrauch': 'calorie consumption',
+  'musikspeicher': 'music storage', 'bezahlfunktion': 'payment function',
+  'sprachsteuerung': 'voice control', 'tarnung': 'camouflage',
+  'luftdruck': 'air pressure', 'saphirkristallglas': 'sapphire crystal glass',
+  'saphirglas': 'sapphire glass', 'armband': 'strap', 'austauschbar': 'interchangeable',
+  'achtung': 'attention', 'funktionsumfang': 'feature set',
+  'benachrichtigung': 'notification', 'benachrichtigungen': 'notifications',
+  'laufzeit': 'battery life', 'drahtloses': 'wireless', 'surfen': 'browsing',
+  'videowiedergabe': 'video playback', 'sicherheitsschloss': 'security lock',
+  'herstellerbezeichnung': 'manufacturer designation',
+  'rechenleistung': 'compute performance', 'bezeichnung': 'designation',
+  'fernwartung': 'remote management', 'systemeignung': 'system suitability',
+  'steuerung': 'controls', 'gestensteuerung': 'gesture control',
+  'einseitig': 'single-sided', 'abnehmbar': 'detachable',
+  'winkelstecker': 'angled plug',
+  'interner': 'internal', 'golffunktionen': 'golf functions',
+  'musiksteuerung': 'music control', 'bei': 'for', 'nachrichten': 'messages',
+};
+
+function _deToAscii(text) {
+  return String(text || '')
+    .replace(/Ä/g, 'Ae').replace(/ä/g, 'ae')
+    .replace(/Ö/g, 'Oe').replace(/ö/g, 'oe')
+    .replace(/Ü/g, 'Ue').replace(/ü/g, 'ue')
+    .replace(/ẞ/g, 'SS').replace(/ß/g, 'ss');
+}
+
+function _applyCaseLike(sourceWord, replacement) {
+  const rep = String(replacement || '');
+  if (!rep) return sourceWord;
+  if (sourceWord === sourceWord.toUpperCase()) return rep.toUpperCase();
+  if (sourceWord[0] === sourceWord[0].toUpperCase()) return rep[0].toUpperCase() + rep.slice(1);
+  return rep;
+}
+
+function _sourceAwareGermanWordMap(sourceText) {
+  const map = new Map();
+  const tokens = String(sourceText || '').match(/[A-Za-zÄÖÜẞäöüß]+/g) || [];
+  const protectedWords = new Set([
+    'a','an','and','as','at','by','for','from','in','into','of','on','or','the','to','with','via',
+    'usb','usb-c','hdmi','displayport','wi-fi','wifi','wireless','bluetooth','ethernet','nfc',
+    'gps','hdr','oled','ltpo','ips','led','ram','ssd','hdd','cpu','gpu','npu','pcie','pci',
+    'apple','samsung','sony','garmin','tp','link','asus','amd','intel','nvidia','msi',
+    'qualcomm','snapdragon','mediatek','pascal','nand','tlc','pro','max','nano','security',
+    'slot','cloud','controller','tbw','vpn','router',
+  ]);
+  for (const token of tokens) {
+    const lower = token.toLowerCase();
+    const folded = _foldGermanResidueText(token);
+    if (protectedWords.has(folded)) continue;
+    const exact = _DE_WORD_DICT[lower];
+    const foldedHit = _DE_WORD_DICT[folded];
+    if (exact) map.set(folded, exact);
+    else if (!/[äöüßÄÖÜẞ]/.test(token) && foldedHit) map.set(folded, foldedHit);
+    else if (
+      /[äöüßÄÖÜẞ]/.test(token) ||
+      /(ung|keit|heit|schaft|chen|lein|isch|tion|tung|dauer|schluss|angabe|betrieb|verbrauch|leistung|speicher|steuerung|bezeichnung|eignung|wartung|kuehlung|kühlung|lade|zeit|tage|typisch|oder|erreichen|hinweis|dieses|modell|unterschiedlichen|erhaeltlich|erhältlich|abweichen|alltag|faellen|fällen|fuer|für|keine|auskunft|netzteils)$/i.test(folded)
+    ) {
+      map.set(folded, '');
+    }
+  }
+  return map;
+}
+
+const _unknownDeWords = new Set();
+
+function _finalPassGermanCleanup(text, sourceText = '') {
+  if (!text) return text;
+  const sourceMap = _sourceAwareGermanWordMap(sourceText);
+  if (!/[äöüßÄÖÜẞ]/.test(text) && !sourceMap.size) return text;
+  return String(text).replace(/[A-Za-zÄÖÜẞäöüß]+/g, (word) => {
+    const lower = word.toLowerCase();
+    const folded = _foldGermanResidueText(word);
+    const hasDeChars = /[äöüßÄÖÜẞ]/.test(word);
+    const sourceHit = sourceMap.has(folded) ? sourceMap.get(folded) : undefined;
+    const hit = _DE_WORD_DICT[lower] ?? sourceHit;
+    if (hit !== undefined) {
+      if (!hit) return '';
+      return _applyCaseLike(word, hit);
+    }
+    if (!hasDeChars) return word;
+    if (lower.length >= 3) _unknownDeWords.add(lower);
+    return '';
+  });
+}
+
+async function _flushUnknownGermanWords() {
+  if (!_unknownDeWords.size) return { learned: 0, failed: 0 };
+  const words = [..._unknownDeWords];
+  _unknownDeWords.clear();
+  let learned = 0, failed = 0;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 30000);
+    const response = await fetch('http://127.0.0.1:8797/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'de', texts: words, to: ['en'] }),
+      signal: ac.signal,
+    });
+    clearTimeout(timer);
+    const data = await response.json().catch(() => ({}));
+    const map = data?.translations || {};
+    for (const w of words) {
+      const en = map[w]?.en;
+      if (en && typeof en === 'string' && !/[äöüßÄÖÜẞ]/.test(en) && en.trim() && en.toLowerCase() !== w) {
+        _DE_WORD_DICT[w] = en.trim();
+        learned++;
+      } else {
+        failed++;
+      }
+    }
+    if (learned) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('_DE_LEARNED_DICT') || '{}');
+        for (const [k, v] of Object.entries(_DE_WORD_DICT)) stored[k] = v;
+        localStorage.setItem('_DE_LEARNED_DICT', JSON.stringify(stored));
+      } catch {}
+      try { (typeof xlog === 'function' ? xlog : console.log)(`📚 DE sözlüğü büyüdü · ${learned} yeni kelime · toplam ${Object.keys(_DE_WORD_DICT).length}`, 'success'); } catch {}
+    }
+  } catch (e) {
+    try { console.warn('[unknown-de-words] flush failed:', e.message); } catch {}
+    failed = words.length;
+  }
+  return { learned, failed };
+}
+
+try {
+  const stored = JSON.parse(localStorage.getItem('_DE_LEARNED_DICT') || '{}');
+  for (const [k, v] of Object.entries(stored)) {
+    if (typeof v === 'string' && v && !_DE_WORD_DICT[k]) _DE_WORD_DICT[k] = v;
+  }
+} catch {}
+
+if (typeof window !== 'undefined') {
+  window.QorAiLearnedWordsDe = {
+    queued: () => [..._unknownDeWords],
+    flush:  () => _flushUnknownGermanWords(),
+    dict:   () => _DE_WORD_DICT,
+    size:   () => Object.keys(_DE_WORD_DICT).length,
+  };
+}
+
 function _normalizeGermanSourceTranslation(germanText, targetLang, translation) {
   let out = String(translation || '').trim();
   if (!out) return '';
   if (targetLang === 'en') {
-    out = out
-      .replace(/\b(\d+)\s+Zellen\b/gi, '$1 cells')
-      .replace(/\bZellen\b/gi, 'cells')
-      .replace(/\bNetzteil\b/gi, 'power supply')
-      .replace(/\bStecker\b/gi, 'plug')
-      .replace(/\bKlinke\b/gi, 'jack')
-      .replace(/\bclink\b/gi, 'jack')
-      .replace(/\bHohlstecker\b/gi, 'hollow plug')
-      .replace(/\bHohlbuchse\b/gi, 'hollow socket')
-      .replace(/\bNetzwerkanschluss\b/gi, 'network connection')
-      .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'No power supply included')
-      .replace(/\bim\s+Lieferumfang\b/gi, 'included')
-      .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Keyboard with German layout (backlit, rubber-dome)')
-      .replace(/\bTastatur\b/gi, 'keyboard')
-      .replace(/\bbeleuchtet\b/gi, 'backlit')
-      .replace(/\bBxHxT\b/g, 'W x H x D')
-      .replace(/\bde-layout\b/gi, 'German keyboard layout')
-      .replace(/\bso-dimm-module\b/gi, 'SO-DIMM module')
-      .replace(/\bso-dımm-module\b/gi, 'SO-DIMM module')
-      .replace(/\bBaubform\b|\bBauform\b/gi, 'form factor')
-      .replace(/\bfest verbaut\b/gi, 'built-in')
-      .replace(/\bkabelloses Laden\b/gi, 'wireless charging')
-      .replace(/\bPhasenvergleich-AF\b/gi, 'phase detection autofocus')
-      .replace(/\bBeschleunigungssensor\b/gi, 'accelerometer')
-      .replace(/\bAnnäherungssensor\b/gi, 'proximity sensor')
-      .replace(/\bLichtsensor\b/gi, 'light sensor')
-      .replace(/\bKompass\b/gi, 'compass')
-      .replace(/\bGesichtsscanner\b/gi, 'face scanner')
-      .replace(/\bAussparung\b/gi, 'display cutout')
-      .replace(/\bAktualisierungsrate\b/gi, 'refresh rate')
-      .replace(/\bSatellitenkommunikation\b/gi, 'satellite communication')
-      .replace(/\bTextnachrichten\b/gi, 'text messages')
-      .replace(/\bnur Notruf\b/gi, 'emergency only')
-      .replace(/\bGlas\s*\(Rückseite\)/gi, 'Glass (back)')
-      .replace(/\bMetall\s*\(Rahmen\)/gi, 'Metal (frame)')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    const reps = [
+      // ── Pre-existing rules (proper boundaries) ──
+      [/(\d+)\s+Zellen/gi, '$1 cells'],
+      [_gb('Zellen', 'gi'), 'cells'],
+      [_gb('Netzteil', 'gi'), 'power supply'],
+      [_gb('Stecker', 'gi'), 'plug'],
+      [_gb('Klinke', 'gi'), 'jack'],
+      [_gb('clink', 'gi'), 'jack'],
+      [_gb('Hohlstecker', 'gi'), 'hollow plug'],
+      [_gb('Hohlbuchse', 'gi'), 'hollow socket'],
+      [_gb('Netzwerkanschluss', 'gi'), 'network connection'],
+      [/kein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang/gi, 'No power supply included'],
+      [/im\s+Lieferumfang/gi, 'included'],
+      [/Tastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Keyboard with German layout (backlit, rubber-dome)'],
+      [_gb('Tastatur', 'gi'), 'Keyboard'],
+      [_gb('beleuchtet', 'gi'), 'backlit'],
+      [/BxHxT/g, 'W x H x D'],
+      [_gb('de-layout', 'gi'), 'German keyboard layout'],
+      [_gb('so-dimm-module', 'gi'), 'SO-DIMM module'],
+      [_gb('Bauform', 'gi'), 'form factor'],
+      [_gb('Baubform', 'gi'), 'form factor'],
+      [/fest verbaut/gi, 'built-in'],
+      [/kabelloses Laden/gi, 'wireless charging'],
+      [_gb('Phasenvergleich-AF', 'gi'), 'phase detection autofocus'],
+      [_gb('Beschleunigungssensor', 'gi'), 'accelerometer'],
+      [_gb('Annäherungssensor', 'gi'), 'proximity sensor'],
+      [_gb('Lichtsensor', 'gi'), 'light sensor'],
+      [_gb('Kompass', 'gi'), 'compass'],
+      [_gb('Gesichtsscanner', 'gi'), 'face scanner'],
+      [_gb('Aussparung', 'gi'), 'display cutout'],
+      [_gb('Aktualisierungsrate', 'gi'), 'refresh rate'],
+      [_gb('Satellitenkommunikation', 'gi'), 'satellite communication'],
+      [_gb('Textnachrichten', 'gi'), 'text messages'],
+      [/nur Notruf/gi, 'emergency only'],
+      [/Glas\s*\(Rückseite\)/gi, 'Glass (back)'],
+      [/Metall\s*\(Rahmen\)/gi, 'Metal (frame)'],
+
+      // ── 2026-05-24 batch: smartwatch + general residue ──
+      // Truncated atoms common in Geizhals
+      [_gb('Schlafüberwac(hung)?', 'gi'), 'Sleep monitoring'],
+      [_gb('Inaktivitäts(alarm)?', 'gi'), 'Inactivity alarm'],
+      // Common German tech nouns
+      [/12\/24h-Anzeige/gi, '12/24h display'],
+      [_gb('Anzeige', 'gi'), 'display'],
+      [_gb('Funktionsumfang', 'gi'), 'feature set'],
+      [_gb('Funktionsumfang\\s+kann\\s+sich.*', 'gi'), 'Feature set may vary by country variant'],
+      [_gb('Höhenmesser', 'gi'), 'altimeter'],
+      [_gb('Höhenmeter', 'gi'), 'altitude meters'],
+      [_gb('Benachrichtigung\\s+bei\\s+Anrufen', 'gi'), 'call notifications'],
+      [_gb('Benachrichtigung', 'gi'), 'notification'],
+      [_gb('Schwimmzüge', 'gi'), 'swimming strokes'],
+      [_gb('Schwimmen', 'gi'), 'swimming'],
+      [_gb('Rundenzähler', 'gi'), 'lap counter'],
+      [_gb('Schrittzähler', 'gi'), 'step counter'],
+      [_gb('Zeitzonen', 'gi'), 'time zones'],
+      [_gb('Zeitzone', 'gi'), 'time zone'],
+      [_gb('Datum', 'gi'), 'date'],
+      [_gb('Kalender', 'gi'), 'calendar'],
+      [_gb('Wecker', 'gi'), 'alarm clock'],
+      [_gb('Wettervorhersage', 'gi'), 'weather forecast'],
+      [_gb('Musikspeicher', 'gi'), 'music storage'],
+      [_gb('Bezahlfunktion', 'gi'), 'payment function'],
+      [_gb('Sprachsteuerung', 'gi'), 'voice control'],
+      [_gb('Tarnung', 'gi'), 'camouflage'],
+      [_gb('Luftdruck', 'gi'), 'air pressure'],
+      [_gb('Pulsmessung', 'gi'), 'pulse measurement'],
+      [_gb('Saphirkristallglas', 'gi'), 'sapphire crystal glass'],
+      [_gb('Saphirglas', 'gi'), 'sapphire glass'],
+      [_gb('Armband', 'gi'), 'strap'],
+      [_gb('austauschbar', 'gi'), 'interchangeable'],
+      [/Bracelet interchangeable/gi, 'Interchangeable strap'],
+      // Frequent prepositions / connectors leaking
+      [_gb('ab\\s+Werk', 'gi'), 'ex factory'],
+      [_gb('ab\\s+(Android|iOS|Windows|macOS)', 'gi'), 'from $1'],
+      [_gb('ab\\s+(\\d)', 'gi'), 'from $1'],
+      [_gb('kann\\s+sich', 'gi'), 'may'],
+      [_gb('je\\s+nach', 'gi'), 'depending on'],
+      [_gb('unterscheiden', 'gi'), 'vary'],
+      [_gb('nach\\s+Ländervariante', 'gi'), 'by country variant'],
+      [_gb('Lieferumfang', 'gi'), 'scope of delivery'],
+      [_gb('Helligkeit', 'gi'), 'brightness'],
+      [_gb('Auflösung', 'gi'), 'resolution'],
+      [_gb('Bildschirmgröße', 'gi'), 'screen size'],
+      [_gb('Bildschirmdiagonale', 'gi'), 'screen diagonal'],
+      [_gb('Bildwiederholrate', 'gi'), 'refresh rate'],
+      [_gb('Akku', 'gi'), 'battery'],
+      [_gb('Akkulaufzeit', 'gi'), 'battery life'],
+      [_gb('Schnellladen', 'gi'), 'fast charging'],
+      [_gb('Schnellladung', 'gi'), 'fast charging'],
+      [_gb('Gehäuse', 'gi'), 'housing'],
+      [_gb('Material', 'gi'), 'material'],
+      [_gb('Abmessungen', 'gi'), 'dimensions'],
+      [_gb('Gewicht', 'gi'), 'weight'],
+      [_gb('Garantie', 'gi'), 'warranty'],
+      [_gb('Besonderheiten', 'gi'), 'features'],
+      [_gb('Sicherheitsupdates', 'gi'), 'security updates'],
+      [_gb('Jahre', 'gi'), 'years'],
+      [_gb('Stunden', 'gi'), 'hours'],
+      [_gb('Minuten', 'gi'), 'minutes'],
+      [_gb('zertifiziert', 'gi'), 'certified'],
+      [_gb('integriert', 'gi'), 'integrated'],
+      [_gb('optisch', 'gi'), 'optical'],
+      [_gb('Aufzeichnung', 'gi'), 'recording'],
+      [_gb('Geschwindigkeit', 'gi'), 'speed'],
+      [_gb('Distanz', 'gi'), 'distance'],
+      [_gb('Stoppuhr', 'gi'), 'stopwatch'],
+      [_gb('Kalorienverbrauch', 'gi'), 'calorie consumption'],
+      [_gb('Schlaf', 'gi'), 'sleep'],
+      [_gb('Herzfrequenz', 'gi'), 'heart rate'],
+      [_gb('Blutsauerstoff', 'gi'), 'blood oxygen'],
+      [_gb('Blutdruck', 'gi'), 'blood pressure'],
+      [_gb('Hauttemperatur', 'gi'), 'skin temperature'],
+      [_gb('Achtung', 'gi'), 'Attention'],
+      [_gb('Ländervariante', 'gi'), 'country variant'],
+      [_gb('Wear OS', 'g'), 'Wear OS'],
+      // Argos mistranslations seen in dump
+      [_gb('Atdou', 'g'), 'BeiDou'],
+      [/Air conditioning/g, 'Air pressure'],   // Luftdruck → wrongly translated
+      [/Floating/g, 'Swimming'],                // Schwimmen → wrongly translated
+      // Truncated common words
+      [_gb('Helligkeitssensor', 'gi'), 'brightness sensor'],
+      [_gb('Gyroskop', 'gi'), 'gyroscope'],
+      [_gb('Barometer', 'gi'), 'barometer'],
+      [_gb('Thermometer', 'gi'), 'thermometer'],
+      // Translation-of-translation fixes (Argos sense errors after the DE→EN hop)
+      [/Round counter/g, 'Lap counter'],
+      [/round counter/g, 'lap counter'],
+      [/Height meters/g, 'Altitude meters'],
+      [/height meters/g, 'altitude meters'],
+      [/Case paints/g, 'Case colors'],
+      [/case paints/g, 'case colors'],
+      [/Work memory/g, 'RAM'],
+      [/Device memory/g, 'Storage'],
+      [/Range of functions/g, 'Feature set'],
+      [/^Wear OS$/, 'Wear OS'],
+      [/Pay function/g, 'Payment'],
+      [/Notification for calls/g, 'Call notifications'],
+      [/Message notification/g, 'Message notifications'],
+      [_gb('Arbeitsspeicher', 'gi'), 'RAM'],
+      [_gb('Gerätespeicher', 'gi'), 'storage'],
+      [_gb('Gehäusefarben', 'gi'), 'case colors'],
+      [_gb('Gehäusefarbe', 'gi'), 'case color'],
+      [_gb('Höhenmeter', 'gi'), 'altitude meters'],
+      [_gb('Schwimmen', 'gi'), 'swimming'],
+      [_gb('Pulsmessung', 'gi'), 'pulse measurement'],
+    ];
+    for (const [pat, rep] of reps) out = out.replace(pat, rep);
+    out = out.replace(/\s{2,}/g, ' ').trim();
+    // FINAL PASS — guarantee no German letter (ä, ö, ü, ß) survives in EN.
+    out = _finalPassGermanCleanup(out, germanText);
   } else if (targetLang === 'tr') {
-    out = out
-      .replace(/\b(\d+)\s+Zellen\b/gi, '$1 hücre')
-      .replace(/\bZellen\b/gi, 'hücre')
-      .replace(/\bNetzteil\b/gi, 'güç adaptörü')
-      .replace(/\bStecker\b/gi, 'fiş')
-      .replace(/\bKlinke\b/gi, 'jak')
-      .replace(/\bclink\b/gi, 'jak')
-      .replace(/\bHohlstecker\b/gi, 'silindirik fiş')
-      .replace(/\bHohlbuchse\b/gi, 'silindirik soket')
-      .replace(/\bNetzwerkanschluss\b/gi, 'ağ bağlantısı')
-      .replace(/\bkein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang\b/gi, 'kutuda güç adaptörü yok')
-      .replace(/\bim\s+Lieferumfang\b/gi, 'kutuda')
-      .replace(/\bTastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)')
-      .replace(/\bTastatur\b/gi, 'klavye')
-      .replace(/\bbeleuchtet\b/gi, 'aydınlatmalı')
-      .replace(/\bBxHxT\b/g, 'G x Y x D')
-      .replace(/\bde-layout\b/gi, 'Almanca klavye düzeni')
-      .replace(/\bso-dimm-module\b/gi, 'SO-DIMM modülü')
-      .replace(/\bfest verbaut\b/gi, 'sabit takılı')
-      .replace(/\bkabelloses Laden\b/gi, 'kablosuz şarj')
-      .replace(/\bPhasenvergleich-AF\b/gi, 'faz algılamalı otomatik odaklama')
-      .replace(/\bBeschleunigungssensor\b/gi, 'ivmeölçer')
-      .replace(/\bAnnäherungssensor\b/gi, 'yakınlık sensörü')
-      .replace(/\bLichtsensor\b/gi, 'ışık sensörü')
-      .replace(/\bKompass\b/gi, 'pusula')
-      .replace(/\bGesichtsscanner\b/gi, 'yüz tarayıcı')
-      .replace(/\bAussparung\b/gi, 'ekran kesiti')
-      .replace(/\bAktualisierungsrate\b/gi, 'yenileme hızı')
-      .replace(/\bSatellitenkommunikation\b/gi, 'uydu iletişimi')
-      .replace(/\bTextnachrichten\b/gi, 'mesajlar')
-      .replace(/\bnur Notruf\b/gi, 'sadece acil arama')
-      .replace(/\bGlas\s*\(Rückseite\)/gi, 'Cam (arka yüzey)')
-      .replace(/\bMetall\s*\(Rahmen\)/gi, 'Metal (çerçeve)')
-      .replace(/\b(\d+)\s+hücre\s+hücresi\b/gi, '$1 hücre')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    const reps = [
+      [/(\d+)\s+Zellen/gi, '$1 hücre'],
+      [_gb('Zellen', 'gi'), 'hücre'],
+      [_gb('Netzteil', 'gi'), 'güç adaptörü'],
+      [_gb('Stecker', 'gi'), 'fiş'],
+      [_gb('Klinke', 'gi'), 'jak'],
+      [_gb('clink', 'gi'), 'jak'],
+      [_gb('Hohlstecker', 'gi'), 'silindirik fiş'],
+      [_gb('Hohlbuchse', 'gi'), 'silindirik soket'],
+      [_gb('Netzwerkanschluss', 'gi'), 'ağ bağlantısı'],
+      [/kein\s+(?:Netzteil|power supply)\s+im\s+Lieferumfang/gi, 'kutuda güç adaptörü yok'],
+      [/im\s+Lieferumfang/gi, 'kutuda'],
+      [/Tastatur\s+mit\s+DE\s+layout\s*\(\s*beleuchtet,\s*Rubber-Dome\s*\)/gi, 'Almanca düzenli klavye (aydınlatmalı, rubber-dome)'],
+      [_gb('Tastatur', 'gi'), 'klavye'],
+      [_gb('beleuchtet', 'gi'), 'aydınlatmalı'],
+      [/BxHxT/g, 'G x Y x D'],
+      [_gb('de-layout', 'gi'), 'Almanca klavye düzeni'],
+      [_gb('so-dimm-module', 'gi'), 'SO-DIMM modülü'],
+      [/fest verbaut/gi, 'sabit takılı'],
+      [/kabelloses Laden/gi, 'kablosuz şarj'],
+      [_gb('Phasenvergleich-AF', 'gi'), 'faz algılamalı otomatik odaklama'],
+      [_gb('Beschleunigungssensor', 'gi'), 'ivmeölçer'],
+      [_gb('Annäherungssensor', 'gi'), 'yakınlık sensörü'],
+      [_gb('Lichtsensor', 'gi'), 'ışık sensörü'],
+      [_gb('Kompass', 'gi'), 'pusula'],
+      [_gb('Gesichtsscanner', 'gi'), 'yüz tarayıcı'],
+      [_gb('Aussparung', 'gi'), 'ekran kesiti'],
+      [_gb('Aktualisierungsrate', 'gi'), 'yenileme hızı'],
+      [_gb('Satellitenkommunikation', 'gi'), 'uydu iletişimi'],
+      [_gb('Textnachrichten', 'gi'), 'mesajlar'],
+      [/nur Notruf/gi, 'sadece acil arama'],
+      [/Glas\s*\(Rückseite\)/gi, 'Cam (arka yüzey)'],
+      [/Metall\s*\(Rahmen\)/gi, 'Metal (çerçeve)'],
+      [/(\d+)\s+hücre\s+hücresi/gi, '$1 hücre'],
+      // TR translations of recent German residues
+      [_gb('Anzeige', 'gi'), 'gösterge'],
+      [_gb('Höhenmesser', 'gi'), 'altimetre'],
+      [_gb('Schwimmen', 'gi'), 'yüzme'],
+      [_gb('Rundenzähler', 'gi'), 'tur sayacı'],
+      [_gb('Zeitzonen', 'gi'), 'saat dilimleri'],
+      [_gb('Kalender', 'gi'), 'takvim'],
+      [_gb('Wecker', 'gi'), 'alarm'],
+      [_gb('Wettervorhersage', 'gi'), 'hava tahmini'],
+      [_gb('Atdou', 'g'), 'BeiDou'],
+    ];
+    for (const [pat, rep] of reps) out = out.replace(pat, rep);
+    out = out.replace(/\s{2,}/g, ' ').trim();
   }
   return out;
+}
+
+function _uniqueEnglishSpecKey(target, key) {
+  let out = key || 'Specification';
+  if (!Object.prototype.hasOwnProperty.call(target, out)) return out;
+  let n = 2;
+  while (Object.prototype.hasOwnProperty.call(target, `${out} ${n}`)) n++;
+  return `${out} ${n}`;
+}
+
+function _sanitizeGermanEnglishSpecText(text, sourceText = '') {
+  const raw = String(text == null ? '' : text).trim();
+  if (!raw) return '';
+  return _normalizeGermanSourceTranslation(sourceText || raw, 'en', raw)
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function _sanitizeGermanEnglishSpecMap(map) {
+  if (!map || typeof map !== 'object') return map || {};
+  const out = {};
+  for (const [k, v] of Object.entries(map)) {
+    const nk = _sanitizeGermanEnglishSpecText(k, k);
+    const nv = _sanitizeGermanEnglishSpecText(v, v);
+    if (!nk || !nv) continue;
+    out[_uniqueEnglishSpecKey(out, nk)] = nv;
+  }
+  return out;
+}
+
+function _sanitizeGermanEnglishSectionMap(sections) {
+  if (!sections || typeof sections !== 'object') return sections || {};
+  const out = {};
+  for (const [section, body] of Object.entries(sections)) {
+    const ns = _sanitizeGermanEnglishSpecText(section, section) || 'General';
+    out[ns] = _sanitizeGermanEnglishSpecMap(body || {});
+  }
+  return out;
+}
+
+function _sanitizeGermanEnglishTranslationMap(map) {
+  if (!map || typeof map !== 'object') return map || {};
+  const out = {};
+  for (const [source, tx] of Object.entries(map)) {
+    const clean = (tx && typeof tx === 'object')
+      ? _sanitizeGermanEnglishSpecText(source, source)
+      : _sanitizeGermanEnglishSpecText(tx, source);
+    if (clean) out[source] = clean;
+  }
+  return out;
+}
+
+function _sanitizeGermanEnglishPayload(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  payload.specs = _sanitizeGermanEnglishSpecMap(payload.specs || {});
+  payload.specSections = _sanitizeGermanEnglishSectionMap(payload.specSections || {});
+  payload.specsEn = _sanitizeGermanEnglishSpecMap(payload.specsEn || payload.specs || {});
+  payload.keySpecs = _sanitizeGermanEnglishSpecMap(payload.keySpecs || {});
+  payload.multiLangSpecs = payload.multiLangSpecs && typeof payload.multiLangSpecs === 'object'
+    ? { ...payload.multiLangSpecs }
+    : {};
+  payload.multiLangSections = payload.multiLangSections && typeof payload.multiLangSections === 'object'
+    ? { ...payload.multiLangSections }
+    : {};
+  payload.multiLangSpecs.en = _sanitizeGermanEnglishSpecMap(payload.multiLangSpecs.en || payload.specs || {});
+  payload.multiLangSections.en = _sanitizeGermanEnglishSectionMap(payload.multiLangSections.en || payload.specSections || {});
+  return payload;
 }
 
 function _deDictLookup(germanText, targetLang) {
@@ -1812,6 +2254,36 @@ const _GeizhalsDict = {
   },
   save:    () => { _deDictDirty = true; return _saveDeDict(); },
   langs:   () => SUPPORTED_LANGS,
+
+  /** Sweep + normalize + drop residue entries. Same as QorAiDict.purgeBad. */
+  async purgeBad() {
+    await _loadDeDict();
+    let scanned = 0, fixed = 0, deleted = 0;
+    for (const [key, entry] of Object.entries(_deDictCache)) {
+      if (!entry || typeof entry !== 'object') continue;
+      for (const lang of Object.keys(entry)) {
+        if (lang === 'de') continue;
+        scanned++;
+        const v = entry[lang];
+        if (typeof v !== 'string') continue;
+        const normalized = _normalizeGermanSourceTranslation(key, lang, v);
+        if (_translationHasGermanResidue(lang, normalized, key)) {
+          delete entry[lang];
+          deleted++;
+        } else if (normalized !== v) {
+          entry[lang] = normalized;
+          fixed++;
+        }
+      }
+      if (Object.keys(entry).length === 0) delete _deDictCache[key];
+    }
+    _deDictDirty = true;
+    await _saveDeDict();
+    const msg = `[GeizhalsDict.purgeBad] scanned=${scanned} · normalized=${fixed} · deleted=${deleted}`;
+    console.log(msg);
+    if (typeof toast === 'function') toast(msg, deleted ? 'w' : 's');
+    return { scanned, fixed, deleted };
+  },
 };
 
 // Batch translate German texts → ALL target languages in ONE DeepSeek call.
@@ -1914,20 +2386,15 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, opts
   // atoms with beam=4 + post-fix glossary; the rest render as source text.
   // Cost: 0. Latency saved: 4-10s per product.
   if (local.ok) {
-    // Hybrid fallback: only the worker's residueAtoms get re-routed to
-    // DeepSeek. Clean atoms (95%+) skip the API.
-    const residueAtoms = Array.isArray(local.residueAtoms) ? local.residueAtoms : [];
+    // DeepSeek is a REMOTE API — it cannot use the local GPU. Per user request
+    // (2026-05-24): skip DeepSeek entirely. Argos+beam=4+POST_FIX glossary
+    // covers 99% cleanly; the last 1% renders as source text and gets fixed
+    // by adding POST_FIX entries on the fly. Latency saved: 60-90s per product.
     await _saveDeDict();
-    if (!residueAtoms.length) {
-      if (typeof onProgress === 'function') {
-        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
-      }
-      return;
-    }
-    uncached = residueAtoms;
     if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'deepseek', phase: 'fallback', chunkIndex: 0, totalChunks: Math.ceil(residueAtoms.length / 24), chunkSize: 24, batchSize: residueAtoms.length, sample: residueAtoms.slice(0, 3) }); } catch {}
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-disabled' }); } catch {}
     }
+    return;
   }
   // DeepSeek output cap: each atom × 11 langs can be large, so keep chunks
   // moderate. The atom filter above removes model codes/numbers first, which
@@ -2288,6 +2755,7 @@ async function _translateProductInline(product) {
     }
     const payload = _buildProductTranslations(product, TARGET_LANGS);
     if (payload && typeof payload === 'object') Object.assign(product, payload);
+    _sanitizeGermanEnglishPayload(product);
     _deDictDirty = true;
     await _saveDeDict().catch(() => {});
     xlog(`✓ ${productLabel} — çeviri payload hazır · toplam ${((Date.now() - startedAt) / 1000).toFixed(1)}s · dict ${Object.keys(_deDictCache).length}`, 'success');
@@ -3045,6 +3513,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       const clean = prepareProductPayload(product);
       // Inline translation — shares the dictionary with the Epey scraper.
       await _translateProductInline(clean);
+      _sanitizeGermanEnglishPayload(clean);
 
       // Cross-source dedup: if an Epey TR record already exists for this
       // model (same variantGroup) we MERGE specs into it instead of
@@ -3314,6 +3783,7 @@ async function scrapeByUrl() {
       const clean = prepareProductPayload(product);
       // Single URL must behave like bulk: translate before PB write.
       await _translateProductInline(clean);
+      _sanitizeGermanEnglishPayload(clean);
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         const existing = await window._findExistingByVariantGroup(clean.variantGroup);
         if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {

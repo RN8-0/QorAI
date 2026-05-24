@@ -2481,7 +2481,9 @@ async function startCategoryTranslation(){
             for (const [k, v] of Object.entries(p.specs || {})) {
               specsEn[payload.multiLangSpecs.en[k] || k] = payload.multiLangSpecs.en[String(v)] || v;
             }
-            patch.specsEn = specsEn;
+            patch.specsEn = typeof window.QorAiBulkTranslate?.sanitizeEnglishSpecMap === 'function'
+              ? window.QorAiBulkTranslate.sanitizeEnglishSpecMap(specsEn)
+              : specsEn;
           }
           await pbUpdateDoc('products', p.id, patch);
           return p;

@@ -24,7 +24,7 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // to satisfy the catalog requirement of up to 8 product-owned images.
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 12;
 const EPEY_DETAIL_CONCURRENCY_MAX = 24;
 
 let scraperRunning = false;
@@ -866,6 +866,7 @@ function prepareProductPayload(product) {
   }
   payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), en: payload.specs };
   payload.multiLangSections = { ...(payload.multiLangSections || {}), en: payload.specSections };
+  _sanitizeEnglishPayload(payload);
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
   if (!payload.name) throw new Error('Product name is empty');
@@ -1956,6 +1957,8 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
 function _foldSourceResidueText(text) {
   return String(text || '')
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
     .replace(/ü/g, 'u')
@@ -1968,6 +1971,11 @@ function _foldSourceResidueText(text) {
 
 function _translationHasTurkishResidue(targetLang, translation, sourceText = '') {
   if (targetLang === 'tr') return false;
+  // NUCLEAR: any Turkish-only character (ç,ğ,ı,İ,ö,ş,ü) in a non-TR translation
+  // is automatic rejection — no exceptions. Once this fires, the cached entry
+  // is deleted and re-translated. This catches every future leak without
+  // needing a per-word rule.
+  if (/[çğıİöşüÇĞŞÜÖ]/.test(translation)) return true;
   const folded = _foldSourceResidueText(translation);
   if (!folded) return false;
   const residue = [
@@ -1978,6 +1986,16 @@ function _translationHasTurkishResidue(targetLang, translation, sourceText = '')
     'arka kamera', 'ikinci arka', 'ucuncu arka', 'kart okuyucu',
     'klavye', 'minirsel', 'sinirsel', 'yalnizca', 'milyon',
     'guvenlik guncellemesi', 'sogutma', 'navigasyon',
+    // 2026-05-24 batch — words still leaking into EN output
+    'arka', 'ikinci', 'ucuncu', 'dorduncu', 'besinci', 'birinci',
+    'cift', 'hucreli', 'hucre', 'ivmeolc', 'ivmeolcer',
+    'parmak', 'izi', 'okuyucu', 'aydinlatma', 'aydinlatmali',
+    'tepki', 'suresi', 'ocak', 'subat', 'mart', 'nisan', 'mayis',
+    'haziran', 'temmuz', 'agustos', 'eylul', 'ekim', 'kasim', 'aralik',
+    'cikis', 'yili', 'ahirpasaglik',
+    // Argos mistranslations that look English but mean something else
+    'aauppercase', 'business system', 'curtain speed', 'bulk battery',
+    'heavy duty shooting', 'multipiece', 'heart shooting',
   ];
   const hasTerm = (term) => new RegExp(`(^|[^a-z0-9])${_escapeRegExp(term)}([^a-z0-9]|$)`, 'i').test(folded);
   if (residue.some(hasTerm)) return true;
@@ -2004,60 +2022,745 @@ function _translationHasTurkishResidue(targetLang, translation, sourceText = '')
   return false;
 }
 
+// JS `\b` is ASCII-only and does NOT recognize Turkish letters (Ö, ç, ş, İ…)
+// as word characters. So `\bÖn\b` silently never matches "Ön" at the start
+// of a string or surrounded by other Turkish letters. We replace `\b` with
+// explicit Unicode lookarounds via a small helper that builds a RegExp with
+// negative lookbehind/lookahead for the union of ASCII letters + Turkish
+// letters. Use _tb (turkish boundary) instead of \b throughout this module.
+const _TR_WORD_CHARS = "A-Za-zÇĞİÖŞÜçğıöşü0-9_";
+function _tb(body, flags = 'g') {
+  return new RegExp(
+    `(?<![${_TR_WORD_CHARS}])(?:${body})(?![${_TR_WORD_CHARS}])`,
+    flags
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  FINAL-PASS TRANSLATOR — Turkish word dictionary
+//
+//  Argos sometimes passes Turkish words through verbatim into the EN
+//  output. POST_FIX rules cover the ones we've seen, but every new product
+//  category leaks new words. This dictionary covers the long tail.
+//  After all POST_FIX rules run, _finalPassTurkishCleanup() walks the
+//  output token by token: any token containing TR-only chars (çğıİöşü) is
+//  looked up here; if found, replaced with the EN form; otherwise the
+//  Turkish chars are transliterated (ç→c, ş→s) so AT LEAST no Turkish
+//  letter survives in non-TR output.
+// ─────────────────────────────────────────────────────────────────────────
+const _TR_WORD_DICT = {
+  // pronouns / positions
+  'ön': 'front', 'arka': 'rear', 'üst': 'top', 'alt': 'bottom',
+  'sol': 'left', 'sağ': 'right', 'iç': 'inner', 'dış': 'outer',
+  'ana': 'main', 'yan': 'side', 'orta': 'middle',
+  // ordinals
+  'birinci': 'first', 'ikinci': 'second', 'üçüncü': 'third', 'dördüncü': 'fourth',
+  'beşinci': 'fifth', 'altıncı': 'sixth', 'yedinci': 'seventh',
+  // numbers (when written out)
+  'bir': 'one', 'iki': 'two', 'üç': 'three', 'dört': 'four', 'beş': 'five',
+  'altı': 'six', 'yedi': 'seven', 'sekiz': 'eight', 'dokuz': 'nine', 'on': 'ten',
+  'yüz': 'hundred', 'bin': 'thousand', 'milyon': 'million', 'milyar': 'billion',
+  // common spec nouns
+  'kamera': 'camera', 'ekran': 'screen', 'pil': 'battery', 'batarya': 'battery',
+  'şarj': 'charging', 'klavye': 'keyboard', 'fare': 'mouse', 'işlemci': 'processor',
+  'bellek': 'memory', 'depolama': 'storage', 'hoparlör': 'speaker',
+  'mikrofon': 'microphone', 'kulaklık': 'headphone', 'sensör': 'sensor',
+  'sensörler': 'sensors', 'sensörü': 'sensor', 'çekirdek': 'core', 'çekirdekli': 'core',
+  'işlem': 'process', 'görüntü': 'image', 'video': 'video', 'ses': 'audio',
+  'müzik': 'music', 'film': 'movie', 'oyun': 'game', 'uygulama': 'application',
+  'sistem': 'system', 'ağ': 'network', 'bağlantı': 'connection',
+  'parmak': 'finger', 'izi': 'print', 'yüz': 'face', 'göz': 'eye', 'kalp': 'heart',
+  'okuyucu': 'reader', 'tarayıcı': 'scanner', 'gösterge': 'indicator',
+  'düğme': 'button', 'tuş': 'key', 'dokunmatik': 'touch', 'fiş': 'plug', 'jak': 'jack',
+  'soket': 'socket', 'kablo': 'cable', 'kablosuz': 'wireless', 'kablolu': 'wired',
+  'tip': 'type', 'tipi': 'type', 'türü': 'type', 'şekil': 'shape', 'biçim': 'form',
+  'boyut': 'size', 'boyutu': 'size', 'boyutlar': 'dimensions', 'boyutları': 'dimensions',
+  'ağırlık': 'weight', 'ağırlığı': 'weight', 'renk': 'color', 'rengi': 'color',
+  'renkler': 'colors', 'malzeme': 'material', 'malzemesi': 'material',
+  'kapasite': 'capacity', 'kapasitesi': 'capacity', 'hız': 'speed', 'hızı': 'speed',
+  'hızlı': 'fast', 'yavaş': 'slow', 'güç': 'power', 'gücü': 'power',
+  'verim': 'efficiency', 'verimlilik': 'efficiency', 'performans': 'performance',
+  'kalite': 'quality', 'kalitesi': 'quality',
+  // display
+  'piksel': 'pixel', 'çözünürlük': 'resolution', 'parlaklık': 'brightness',
+  'kontrast': 'contrast', 'yenileme': 'refresh', 'tepki': 'response',
+  'süresi': 'time', 'süre': 'time', 'oran': 'ratio', 'oranı': 'ratio',
+  'genişlik': 'width', 'yükseklik': 'height', 'derinlik': 'depth',
+  'inç': 'inch', 'çentik': 'notch', 'çentikli': 'notched', 'kavisli': 'curved',
+  'düz': 'flat', 'yuvarlak': 'round', 'kare': 'square',
+  // camera
+  'odak': 'focus', 'odaklama': 'focus', 'optik': 'optical', 'dijital': 'digital',
+  'analog': 'analog', 'yakınlaştırma': 'zoom', 'açı': 'angle', 'açılı': 'angle',
+  'geniş': 'wide', 'dar': 'narrow', 'derin': 'deep', 'yüzeysel': 'shallow',
+  'diyafram': 'aperture', 'perde': 'shutter', 'pozlama': 'exposure',
+  'kare': 'frame', 'çekim': 'shooting', 'kayıt': 'recording', 'kayıtlı': 'recorded',
+  'düzeltme': 'correction', 'düzeltmesi': 'correction',
+  // network
+  'gezgin': 'mobile', 'taşınabilir': 'portable', 'sabit': 'fixed',
+  'frekans': 'frequency', 'frekansı': 'frequency', 'bant': 'band',
+  'bandı': 'band', 'kanal': 'channel', 'sinyal': 'signal',
+  'navigasyon': 'navigation', 'pusula': 'compass', 'konum': 'location',
+  // power
+  'döngü': 'cycle', 'döngüsü': 'cycle', 'döngüleri': 'cycles',
+  'dakika': 'minute', 'saat': 'hour', 'gün': 'day', 'hafta': 'week',
+  'ay': 'month', 'yıl': 'year', 'saniye': 'second',
+  // os / software
+  'sürüm': 'version', 'sürümü': 'version', 'güncelleme': 'update',
+  'güncellemesi': 'update', 'güvenlik': 'security', 'güvenli': 'secure',
+  'arayüz': 'interface', 'arayüzü': 'interface',
+  // misc
+  'çift': 'dual', 'tek': 'single', 'hücre': 'cell', 'hücreli': 'cell',
+  'çoklu': 'multi', 'tekli': 'single', 'çift': 'dual',
+  'destek': 'support', 'destekli': 'supported', 'destekleyen': 'supporting',
+  'standart': 'standard', 'özel': 'special', 'genel': 'general',
+  'evet': 'yes', 'hayır': 'no', 'var': 'yes', 'yok': 'no',
+  'mevcut': 'available', 'gerekli': 'required',
+  'aydınlatma': 'lighting', 'aydınlatmalı': 'backlit',
+  'soğutma': 'cooling', 'ısıtma': 'heating', 'buhar': 'steam',
+  'ivme': 'acceleration', 'ivmeölçer': 'accelerometer',
+  'ivmeölç': 'accelerometer', 'jiroskop': 'gyroscope', 'pusula': 'compass',
+  'barometre': 'barometer', 'termometre': 'thermometer',
+  'sertifika': 'certificate', 'sertifikası': 'certificate', 'sertifikalı': 'certified',
+  'garanti': 'warranty', 'garantisi': 'warranty',
+  // measurement adjectives
+  'yüksek': 'high', 'düşük': 'low', 'maksimum': 'maximum', 'minimum': 'minimum',
+  'ortalama': 'average', 'toplam': 'total', 'kısmi': 'partial',
+  // brand value collisions seen in real data
+  'çentikli (notch)': 'notch',
+  // months
+  'ocak': 'january', 'şubat': 'february', 'mart': 'march', 'nisan': 'april',
+  'mayıs': 'may', 'haziran': 'june', 'temmuz': 'july', 'ağustos': 'august',
+  'eylül': 'september', 'ekim': 'october', 'kasım': 'november', 'aralık': 'december',
+  // common verbs / actions
+  'çıkış': 'release', 'yılı': 'year', 'duyuru': 'announcement',
+  'tarihi': 'date', 'tarih': 'date',
+  // ASCII Turkish forms (no special chars) — also need to translate
+  'cikis': 'release', 'yili': 'year', 'sayisi': 'count', 'sayi': 'count',
+  'turu': 'type', 'cozunurlugu': 'resolution', 'cozunurluk': 'resolution',
+  'genisligi': 'width', 'yuksekligi': 'height', 'derinligi': 'depth',
+  'agirligi': 'weight', 'agirlik': 'weight', 'buyukluk': 'size',
+  'parlaklik': 'brightness', 'aydinlatma': 'lighting', 'aydinlatmali': 'backlit',
+  'kalitesi': 'quality', 'kalite': 'quality', 'hizi': 'speed', 'hiz': 'speed',
+  'omru': 'life', 'gucu': 'power', 'guvenligi': 'security',
+  'sicakligi': 'temperature', 'sicaklik': 'temperature',
+  'kayitli': 'recorded', 'kayit': 'recording', 'kontrolu': 'control',
+  'isleme': 'processing', 'islem': 'process', 'islemi': 'process',
+  'donanim': 'hardware', 'yazilim': 'software',
+  'gosterici': 'indicator', 'sistemi': 'system', 'birimi': 'unit',
+  'ozelligi': 'feature', 'durumu': 'status', 'modulu': 'module',
+  'yuzeyi': 'surface', 'kapagi': 'cover', 'koruyucu': 'protective',
+  'gosterimi': 'display', 'gosterim': 'display', 'gosterge': 'indicator',
+  'koruma': 'protection', 'sinifi': 'class', 'seviyesi': 'level',
+  'sinyali': 'signal', 'sinyal': 'signal', 'bilgisi': 'info',
+  'numarasi': 'number', 'numara': 'number', 'kodu': 'code', 'kod': 'code',
+  'agi': 'network', 'kademesi': 'tier', 'kademe': 'tier',
+  'kameralar': 'cameras', 'arabulucu': 'mediator',
+  'olcumu': 'measurement', 'olcum': 'measurement', 'sayaci': 'counter',
+  'sayim': 'count', 'sicakligi': 'temperature',
+  'frekansi': 'frequency', 'frekans': 'frequency', 'bandi': 'band',
+  'donus': 'rotation', 'donme': 'rotation',
+  'arttirma': 'expansion', 'artirma': 'expansion', 'genisleme': 'expansion',
+  'genisletme': 'extension', 'ekleme': 'addition',
+  'cikartilabilir': 'removable', 'cikarilabilir': 'removable',
+  'takilabilir': 'attachable', 'sokulebilir': 'detachable',
+  'desteklenen': 'supported', 'desteklemeyen': 'unsupported',
+  'gosterim': 'display', 'engelleyici': 'blocker',
+  'azaltma': 'reduction', 'arttirici': 'amplifier',
+  'erisim': 'access', 'erisimi': 'access',
+  'islemci': 'processor', 'islemcisi': 'processor', 'islemciler': 'processors',
+  'cekirdek': 'core', 'cekirdeginin': 'core', 'cekirdekleri': 'cores',
+  'verimlilik': 'efficiency', 'verim': 'efficiency',
+  'performansi': 'performance', 'performans': 'performance',
+  'cikisi': 'output', 'cikislari': 'outputs',
+  'girisi': 'input', 'girisleri': 'inputs', 'giris': 'input',
+  'baglantisi': 'connection', 'baglanti': 'connection', 'baglantilar': 'connections',
+  'baglantilari': 'connections', 'soketi': 'socket', 'soket': 'socket',
+  'kabloyla': 'wired', 'kablosuz': 'wireless', 'kablosuza': 'wireless',
+  'klavye': 'keyboard', 'klavyesi': 'keyboard',
+  'fare': 'mouse', 'faresi': 'mouse',
+  'pil': 'battery', 'pili': 'battery', 'pilin': 'battery',
+  'batarya': 'battery', 'bataryasi': 'battery', 'bataryanin': 'battery',
+  'depolama': 'storage', 'depolamasi': 'storage', 'depo': 'storage',
+  'bellek': 'memory', 'bellegi': 'memory', 'bellegin': 'memory',
+  'sogutma': 'cooling', 'sogutucu': 'cooler', 'sogutmali': 'cooled',
+  'isitma': 'heating', 'isitici': 'heater',
+  'buhar': 'steam', 'buharli': 'steam',
+  'mavi': 'blue', 'siyah': 'black', 'beyaz': 'white', 'gri': 'gray',
+  'kirmizi': 'red', 'yesil': 'green', 'sari': 'yellow', 'turuncu': 'orange',
+  'mor': 'purple', 'pembe': 'pink', 'kahverengi': 'brown',
+  'gumus': 'silver', 'altin': 'gold',
+  'parlak': 'glossy', 'mat': 'matte', 'metalik': 'metallic',
+  'plastik': 'plastic', 'cam': 'glass', 'metal': 'metal',
+  'silikon': 'silicon', 'karbon': 'carbon', 'aluminyum': 'aluminum',
+  'celik': 'steel', 'titanyum': 'titanium',
+  'genel': 'general', 'temel': 'basic', 'gelismis': 'advanced',
+  'sade': 'simple', 'karmasik': 'complex',
+  'olcusu': 'size', 'olcu': 'measure', 'olcekli': 'scalable',
+  'paket': 'package', 'paketi': 'package',
+  'kutu': 'box', 'kutusu': 'box', 'icerigi': 'content', 'icerik': 'content',
+  'icerikli': 'with content',
+  'firma': 'company', 'firmasi': 'company',
+  'marka': 'brand', 'markasi': 'brand',
+  'model': 'model', 'modeli': 'model',
+  'seri': 'series', 'serisi': 'series', 'serinin': 'series',
+  'urun': 'product', 'urunler': 'products', 'urunun': 'product',
+  // broad Epey suffix forms seen across real category scrapes
+  'ozellik': 'feature', 'ozelligi': 'feature', 'ozellikleri': 'features',
+  'detay': 'detail', 'detayi': 'detail', 'detaylari': 'details',
+  'yogunluk': 'density', 'yogunlugu': 'density',
+  'alan': 'area', 'alani': 'area',
+  'dayaniklilik': 'durability', 'dayanikliligi': 'durability',
+  'dayanikli': 'resistant', 'direnc': 'resistance', 'direnci': 'resistance',
+  'destegi': 'support', 'desteği': 'support',
+  'versiyon': 'version', 'versiyonu': 'version',
+  'kanal': 'channel', 'kanali': 'channel', 'kanallari': 'channels',
+  'kapak': 'cover', 'kapagi': 'cover',
+  'govde': 'body', 'govdesi': 'body',
+  'cerceve': 'frame', 'cercevesi': 'frame', 'cercevesiz': 'frameless',
+  'tasarim': 'design', 'tasarimi': 'design',
+  'uzay': 'space', 'uzayi': 'space',
+  'derinlik': 'depth', 'derinligi': 'depth',
+  'hassasiyet': 'accuracy', 'hassasiyeti': 'accuracy',
+  'yaricap': 'radius', 'yaricapi': 'radius',
+  'tarafli': 'sided', 'kaplamali': 'coated',
+  'yansimasiz': 'anti-glare', 'yansitma': 'mirroring',
+  'uzaktan': 'remote', 'kumanda': 'control',
+  'dusuk': 'low', 'yuksek': 'high',
+  'kavis': 'curve', 'kavisli': 'curved',
+  'kisisellestirilebilir': 'customizable',
+  'sert': 'hard', 'maks': 'max', 'maksimum': 'maximum',
+  'islak': 'wet', 'parmak': 'finger', 'algilama': 'detection',
+  'cizilmeye': 'scratch', 'direncli': 'resistant',
+  'surekli': 'continuous', 'acik': 'on', 'icinde': 'inside',
+  'dokunma': 'touch', 'dokunarak': 'tapping',
+  'renk': 'color', 'rengi': 'color', 'renkleri': 'colors',
+  'renkli': 'color', 'tonlu': 'tone',
+  'sabitleyici': 'stabilizer', 'sabitleme': 'stabilization',
+  'portre': 'portrait', 'modu': 'mode', 'mod': 'mode',
+  'sahne': 'scene', 'yapay': 'artificial', 'zeka': 'intelligence',
+  'otomatik': 'automatic', 'sesli': 'voice', 'sesle': 'voice',
+  'komut': 'command', 'kontrol': 'control', 'kontrolu': 'control',
+  'lazer': 'laser', 'yapabilme': 'support', 'zamanlayici': 'timer',
+  'elementli': 'element', 'acili': 'angle', 'ekstra': 'extra',
+  'makro': 'macro', 'telefoto': 'telephoto', 'degisken': 'variable',
+  'sanal': 'virtual', 'iyilestirme': 'enhancement',
+  'dijital': 'digital', 'goruntu': 'image', 'goruntulu': 'video',
+  'cekirdegi': 'core', 'cekirdek': 'core', 'cekirdekleri': 'cores',
+  'yardimci': 'auxiliary', 'mimari': 'architecture', 'mimarisi': 'architecture',
+  'onbellek': 'cache', 'teknolojileri': 'technologies',
+  'artirilmis': 'boost', 'azami': 'maximum', 'temel': 'base',
+  'markasi': 'brand', 'marka': 'brand',
+  'modeli': 'model', 'serisi': 'series',
+  'dahili': 'internal', 'bicim': 'format', 'bicimi': 'format',
+  'karti': 'card', 'kart': 'card',
+  'kalinlik': 'thickness', 'en': 'width', 'boy': 'height',
+  'malzemesi': 'material', 'paslanmaz': 'stainless',
+  'frekanslari': 'frequencies', 'frekans': 'frequency',
+  'isletim': 'operating', 'sistemi': 'system',
+  'lansman': 'launch', 'arayuz': 'interface',
+  'kizilotesi': 'infrared', 'radyo': 'radio',
+  'suya': 'water', 'toza': 'dust',
+  'seviyesi': 'level', 'sinifi': 'class',
+  'konusma': 'calling', 'bildirim': 'notification',
+  'isigi': 'light', 'bas': 'head', 'vucut': 'body',
+  'servis': 'services', 'uygulamalar': 'applications',
+  'baska': 'other', 'cihazlari': 'devices', 'edebilme': 'support',
+  'karanlik': 'dark', 'tek': 'single', 'elde': 'hand',
+  'kullanim': 'use', 'ters': 'reverse',
+  'tanimlama': 'identification', 'yuz': 'face',
+  'icerigi': 'content', 'cikartma': 'eject', 'ignesi': 'pin',
+  'hat': 'line', 'duyurulma': 'announcement',
+  'kullanım': 'use', 'kilavuzu': 'manual',
+  'secenekleri': 'options', 'secenek': 'option',
+  'degeri': 'value', 'puan': 'score', 'puani': 'score',
+  'flas': 'flash', 'acikligi': 'aperture',
+  'uzakligi': 'distance',
+  'degisir': 'removable', 'agir': 'slow',
+  'hafiza': 'memory', 'diger': 'other', 'ozellikler': 'features',
+  'grafik': 'graphics', 'gurultu': 'noise', 'engelleme': 'cancellation',
+  'dinleme': 'listening', 'pasif': 'passive', 'onleme': 'prevention',
+  'yakinlik': 'proximity', 'ortam': 'ambient', 'isigi': 'light',
+  'cihaz': 'device', 'cihazlari': 'devices',
+  'uyum': 'compatibility', 'uyumu': 'compatibility',
+  'yonlu': 'way', 'alici': 'receiver', 'ile': 'with',
+  'resim': 'image', 'oynatma': 'playback',
+  'akilli': 'smart', 'bildirimler': 'notifications',
+  'calar': 'player', 'telefonumu': 'my phone', 'bul': 'find',
+  'kumandasi': 'control', 'takvim': 'calendar',
+  'medya': 'media', 'oynatici': 'player',
+  'hatirlaticilar': 'reminders', 'harita': 'map', 'haritalar': 'maps',
+  'hesap': 'calculator', 'makinesi': 'machine',
+  'gelen': 'incoming', 'aramalari': 'calls', 'yonetme': 'management',
+  'eslesme': 'pairing', 'asistan': 'assistant',
+  'arama': 'call', 'gecmisi': 'history',
+  'goruntusu': 'image', 'alma': 'capture',
+  'fonksiyonel': 'functional', 'yanit': 'reply',
+  'konumlandirma': 'positioning', 'not': 'note', 'notu': 'note',
+  'gonderme': 'sending', 'cagri': 'call', 'reddetme': 'rejection',
+  'cevrimdisi': 'offline',
+  'saglik': 'health', 'sagligi': 'health',
+  'sertifikasyon': 'certification', 'sertifikasyonu': 'certification',
+  'sertifikasi': 'certification', 'goz': 'eye',
+  'polimer': 'polymer',
+  'uretici': 'manufacturer', 'verisi': 'data',
+  'sonrasi': 'after', 'parlakligi': 'brightness',
+  'aramasi': 'calling', 'aralik': 'range', 'araligi': 'range',
+  'izleme': 'viewing', 'acisi': 'angle', 'yatay': 'horizontal', 'dikey': 'vertical',
+  'titresim': 'flicker', 'titresimi': 'flicker', 'filtresi': 'filter',
+  'yaninda': 'beside', 'uyumlu': 'compatible',
+  'amac': 'purpose', 'amaci': 'purpose',
+  'tusu': 'key', 'tuslari': 'keys', 'oyuncu': 'gaming',
+  'guvenilir': 'trusted', 'platform': 'platform', 'modulu': 'module',
+  'ayarlanabilir': 'adjustable', 'kafa': 'head', 'bandi': 'band',
+  'yastik': 'cushion', 'yastigi': 'cushion',
+  'guclu': 'powerful', 'degisebilir': 'replaceable',
+  'kulak': 'ear', 'hafizali': 'memory foam', 'tekstil': 'fabric',
+};
+
+function _lookupTurkishWord(lower, folded) {
+  const direct = _TR_WORD_DICT[lower] || _TR_WORD_DICT[folded];
+  if (direct) return direct;
+  const f = String(folded || '');
+  const variants = new Set();
+  const add = (v) => { if (v && v.length >= 3) variants.add(v); };
+  // Common Turkish possessed/adjectival suffixes after ASCII folding.
+  if (/(ligi|ligi|lugu|lugu|ligi)$/.test(f)) {
+    add(f.replace(/ligi$/, 'lik'));
+    add(f.replace(/lugu$/, 'luk'));
+    add(f.replace(/ligi$/, 'lik'));
+  }
+  if (/(gı|gi|gu|gu|i|u|si|sı|su|sü)$/.test(f)) {
+    add(f.replace(/(si|sı|su|sü)$/u, ''));
+    add(f.replace(/[iu]$/u, ''));
+    add(f.replace(/g[ıiuu]$/u, 'k'));
+  }
+  if (/(lari|leri|lar|ler)$/.test(f)) add(f.replace(/(lari|leri|lar|ler)$/, ''));
+  if (/(masi|mesi)$/.test(f)) add(f.replace(/(masi|mesi)$/, 'ma'));
+  if (/(tici|tici|ici|ucu|ucu)$/.test(f)) add(f.replace(/(ici|ucu)$/, ''));
+  for (const v of variants) {
+    if (_TR_WORD_DICT[v]) return _TR_WORD_DICT[v];
+  }
+  return null;
+}
+
+// Simple ASCII transliteration for Turkish-only chars. Last-resort safety net:
+// if a word isn't in _TR_WORD_DICT, at least replace Turkish characters so
+// the output has no foreign letters.
+function _trToAscii(text) {
+  return String(text || '')
+    .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+    .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+    .replace(/İ/g, 'I').replace(/ı/g, 'i')
+    .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+    .replace(/Ş/g, 'S').replace(/ş/g, 's')
+    .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+}
+
+function _applyCaseLike(sourceWord, replacement) {
+  const rep = String(replacement || '');
+  if (!rep) return sourceWord;
+  if (sourceWord === sourceWord.toUpperCase()) return rep.toUpperCase();
+  if (sourceWord[0] === sourceWord[0].toUpperCase()) return rep[0].toUpperCase() + rep.slice(1);
+  return rep;
+}
+
+function _sourceAwareTurkishWordMap(sourceText) {
+  const map = new Map();
+  const tokens = String(sourceText || '').match(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g) || [];
+  const protectedAscii = new Set([
+    'a','an','and','as','at','by','for','from','in','into','not','of','on','or','the','to','with',
+    'always','display','touch','sampling','rate','sensor','camera','video','audio','hdr',
+    'usb','type','hdmi','bluetooth','wi','fi','wifi','nfc','gps','ram','rom','cpu','gpu','npu',
+    'dolby','vision','freesync','sync','nvidia','amd','intel','microsoft','windows','apple',
+    'samsung','huawei','qualcomm','snapdragon','mediatek','razer','tp','link','sony','philips',
+    'hdr10','oled','ltpo','dci','p3','mimo','mlo','airplay','bixby','knox','smartthings',
+    'true','tone','prores','promotion','retina','xdr','displayport','thunderbolt',
+  ]);
+  const sourceHasTurkishChars = /[çğıİöşüÇĞŞÜÖ]/.test(sourceText || '');
+  for (const token of tokens) {
+    const lower = token.toLowerCase();
+    const hasTrChars = /[çğıİöşüÇĞŞÜÖ]/.test(token);
+    if (!hasTrChars && protectedAscii.has(lower)) continue;
+    const folded = _foldSourceResidueText(token);
+    const exact = _lookupTurkishWord(lower, folded);
+    const foldedHit = exact;
+    if (exact) map.set(folded, exact);
+    else if (foldedHit) map.set(folded, foldedHit);
+    else if ((hasTrChars || sourceHasTurkishChars) && folded.length >= 4 && !protectedAscii.has(folded)) {
+      map.set(folded, '');
+    }
+  }
+  return map;
+}
+
+// Walk the translation token-by-token. For any token containing Turkish-only
+// chars, look it up in _TR_WORD_DICT. If found, swap. Otherwise transliterate
+// so no Turkish letter survives. It also handles ASCII-looking Turkish words
+// ("Bellek", "Ana", "Pil", "Boyutu") when the same source token survived
+// into the English output. Preserves case heuristically.
+// Words seen during the current session that have TR chars but no dict entry.
+// Drained at scrape end by _flushUnknownTurkishWords() which sends them to
+// Argos as single-word translation requests, then permanently adds the
+// results to _TR_WORD_DICT + the PocketBase dictionary. THIS is the
+// self-healing loop: any new TR word the system encounters is auto-learned.
+const _unknownTrWords = new Set();
+
+function _finalPassTurkishCleanup(text, sourceText = '') {
+  if (!text) return text;
+  const sourceMap = _sourceAwareTurkishWordMap(sourceText);
+  if (!/[çğıİöşüÇĞŞÜÖ]/.test(text) && !sourceMap.size) return text;
+  return String(text).replace(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g, (word) => {
+    const lower = word.toLowerCase();
+    const folded = _foldSourceResidueText(word);
+    const hasTrChars = /[çğıİöşüÇĞŞÜÖ]/.test(word);
+    if (!hasTrChars && folded === 'on' && lower === 'on') return word;
+    const sourceHit = sourceMap.has(folded) ? sourceMap.get(folded) : undefined;
+    const hit = hasTrChars
+      ? (_lookupTurkishWord(lower, folded) ?? sourceHit)
+      : sourceHit;
+    if (hit !== undefined) {
+      if (!hit) return '';
+      return _applyCaseLike(word, hit);
+    }
+    if (!hasTrChars) return word;
+    // No dict entry: queue for background learning AND transliterate now so
+    // the immediate output has no Turkish letters. Next scrape, the queued
+    // translation will produce a real English word.
+    if (lower.length >= 3) _unknownTrWords.add(lower);
+    return '';
+  });
+}
+
+// Send every queued unknown Turkish word to the Argos worker as a single-word
+// translation. Word-level translation is far more accurate than embedding the
+// word inside a mixed phrase. Results are merged into _TR_WORD_DICT in-memory
+// AND persisted to localStorage so they survive page reloads. Call this at
+// the end of every scrape (already wired into the bulk + single paths).
+async function _flushUnknownTurkishWords() {
+  if (!_unknownTrWords.size) return { learned: 0, failed: 0 };
+  const words = [..._unknownTrWords];
+  _unknownTrWords.clear();
+  let learned = 0, failed = 0;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 30000);
+    const response = await fetch(LOCAL_TRANSLATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'tr', texts: words, to: ['en'] }),
+      signal: ac.signal,
+    });
+    clearTimeout(timer);
+    const data = await response.json().catch(() => ({}));
+    const map = data?.translations || {};
+    for (const w of words) {
+      const en = map[w]?.en;
+      if (en && typeof en === 'string' && !/[çğıİöşüÇĞŞÜÖ]/.test(en) && en.trim() && en.toLowerCase() !== w) {
+        _TR_WORD_DICT[w] = en.trim();
+        learned++;
+      } else {
+        failed++;
+      }
+    }
+    if (learned) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('_TR_LEARNED_DICT') || '{}');
+        for (const [k, v] of Object.entries(_TR_WORD_DICT)) stored[k] = v;
+        localStorage.setItem('_TR_LEARNED_DICT', JSON.stringify(stored));
+      } catch {}
+      try { xlog(`📚 Sözlük büyüdü · ${learned} yeni TR kelime öğrenildi · toplam dict ${Object.keys(_TR_WORD_DICT).length}`, 'success'); } catch {}
+    }
+  } catch (e) {
+    try { console.warn('[unknown-words] flush failed:', e.message); } catch {}
+    failed = words.length;
+  }
+  return { learned, failed };
+}
+
+// Restore previously learned words from localStorage on module load.
+try {
+  const stored = JSON.parse(localStorage.getItem('_TR_LEARNED_DICT') || '{}');
+  for (const [k, v] of Object.entries(stored)) {
+    if (typeof v === 'string' && v && !_TR_WORD_DICT[k]) _TR_WORD_DICT[k] = v;
+  }
+} catch {}
+
+// Expose for ad-hoc inspection / manual flush.
+if (typeof window !== 'undefined') {
+  window.QorAiLearnedWords = {
+    queued: () => [..._unknownTrWords],
+    flush:  () => _flushUnknownTurkishWords(),
+    dict:   () => _TR_WORD_DICT,
+    size:   () => Object.keys(_TR_WORD_DICT).length,
+  };
+}
+
 function _normalizeTurkishSourceTranslation(sourceText, targetLang, translation) {
   let out = String(translation || '').trim();
   if (!out) return '';
   if (targetLang === 'en') {
-    out = out
-      .replace(/\bBatarya\b/gi, 'Battery')
-      .replace(/\bPil\s+Specifications\b/gi, 'Battery specifications')
-      .replace(/\bPil\b/gi, 'Battery')
-      .replace(/\bLi-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)')
-      .replace(/\blityum\b/gi, 'lithium')
-      .replace(/\b(\d{4})\s+([1-4])\.?\s*Çeyrek\b/gi, '$1 Q$2')
-      .replace(/\bg[öo]z\s+health\s+certification\b/gi, 'eye health certification')
-      .replace(/\bg[öo]z\b/gi, 'eye')
-      .replace(/\bNon-flammable\s+mat\s+display\b/gi, 'Anti-glare matte display')
-      .replace(/^Faster$/i, 'Fast charging')
-      .replace(/^Supply ability:\s*low frequency$/i, 'Efficiency core base frequency')
-      .replace(/\bNavigasyon\b/gi, 'Navigation')
-      .replace(/\bKart\s+Okuyucu\b/gi, 'Card reader')
-      .replace(/\bKlavye\b/gi, 'Keyboard')
-      .replace(/\bAdedi\b/gi, 'count')
-      .replace(/\bAdet\b/gi, '')
-      .replace(/\bPiksel\b/gi, 'pixels')
-      .replace(/\bMinirsel\b/gi, 'Neural')
-      .replace(/\bsinirsel\s+trading\s+unit\b/gi, 'neural processing unit')
-      .replace(/\bsinirsel\b/gi, 'neural')
-      .replace(/\bİkinci\s+Arka\s+Camera\b/gi, 'Second rear camera')
-      .replace(/\bÜçüncü\s+Arka\s+Camera\b/gi, 'Third rear camera')
-      .replace(/\bÖn\s+Camera\b/gi, 'Front camera')
-      .replace(/\bArka\s+Camera\b/gi, 'Rear camera')
-      .replace(/\bÖn\b/gi, 'Front')
-      .replace(/\bArka\b/gi, 'Rear')
-      .replace(/\bİkinci\b/gi, 'Second')
-      .replace(/\bÜçüncü\b/gi, 'Third')
-      .replace(/\bCPU\s+Üretim\s+Technology\b/gi, 'CPU manufacturing technology')
-      .replace(/\bÜretim\s+Technology\b/gi, 'Manufacturing technology')
-      .replace(/\bSpecificationsi\b/gi, 'Specifications')
-      .replace(/\bTechnologyi\b/gi, 'Technology')
-      .replace(/\bTeknolojisi\b/gi, 'Technology')
-      .replace(/\bMilyon\b/gi, 'million')
-      .replace(/\b(\d+(?:[.,]\d+)?)\s*Dakika\b/gi, '$1 minutes')
-      .replace(/\b(\d+(?:[.,]\d+)?)\s*Saat\b/gi, '$1 hours')
-      .replace(/\b(\d+(?:[.,]\d+)?)\s*Döngü\b/gi, '$1 cycles')
-      .replace(/\b(\d+)\s*Elementli\s+Lens\b/gi, '$1-element lens')
-      .replace(/\bYalnızca\s+eSIM\b/gi, 'eSIM only')
-      .replace(/\bEvet\b/gi, 'Yes')
-      .replace(/\bHayır\b|\bHayir\b/gi, 'No')
-      .replace(/\bVolte\s*\(\s*⁇\s*over\s*LTE\s*\)\s*support\b/gi, 'VoLTE (voice over LTE) support')
-      .replace(/\bG\.p\.d\./gi, 'DisplayPort')
-      .replace(/\bm\.a\./gi, 'max.')
-      .replace(/^\s*⁇\s*$/g, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    const reps = [
+      // ── Battery / power ──
+      [_tb('Çift\\s+Hücreli\\s+Battery', 'gi'), 'Dual-cell battery'],
+      [_tb('Çift\\s+Hücreli', 'gi'), 'Dual-cell'],
+      [_tb('Hücreli', 'gi'), 'cell'],
+      [_tb('Hücre', 'gi'), 'cell'],
+      [_tb('Çift', 'g'), 'Dual'],
+      [_tb('Batarya', 'gi'), 'Battery'],
+      [_tb('Pil\\s+Specifications', 'gi'), 'Battery specifications'],
+      [_tb('Pil\\s+Ömrü', 'gi'), 'Battery life'],
+      [_tb('Pil', 'gi'), 'Battery'],
+      [/Li-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)'],
+      [_tb('lityum', 'gi'), 'lithium'],
+      [_tb('Battery\\s+time\\s+after\\s+charging', 'gi'), 'Battery life after charging'],
+      [_tb('Charging\\s+loop\\s+count', 'gi'), 'Charging cycle count'],
+      [/Charging\s+cycle\s+count\s*\(\s*ab\s*\)/gi, 'Charging cycle count'],
+      [_tb('Bulk\\s+battery', 'gi'), 'Removable battery'],
+
+      // ── Camera ──
+      [_tb('Heavy\\s+duty\\s+shooting\\s+recording\\s+options', 'gi'), 'Slow motion video recording options'],
+      [_tb('Heavy\\s+duty\\s+shooting', 'gi'), 'Slow motion'],
+      [_tb('Slow\\s+shooting\\s+video\\s+recording', 'gi'), 'Slow motion video recording'],
+      [/Slow\s+shooting\s+\(\s*slow\s+motion\s*\)\s+video\s+recording/gi, 'Slow motion video recording'],
+      [/Curtain\s+speed\s*\(\s*shutter\s+speed\s*\)\s*control/gi, 'Shutter speed control'],
+      [_tb('Curtain\\s+speed', 'gi'), 'Shutter speed'],
+      [/Series\s+shooting\s*\(\s*burst\s*\)\s*mode/gi, 'Burst shooting mode'],
+      [/Heart\s+shooting\s+speed\s+sensor/gi, 'Heart rate sensor'],
+      [/Kalp\s+atış\s+hızı\s+sensörü/gi, 'Heart rate sensor'],
+
+      // ── Position / ordinals (CRITICAL — these never worked before) ──
+      [_tb('İkinci\\s+Arka\\s+Camera', 'gi'), 'Second rear camera'],
+      [_tb('Üçüncü\\s+Arka\\s+Camera', 'gi'), 'Third rear camera'],
+      [_tb('Dördüncü\\s+Arka\\s+Camera', 'gi'), 'Fourth rear camera'],
+      [_tb('Ön\\s+Camera', 'gi'), 'Front camera'],
+      [_tb('Arka\\s+Camera', 'gi'), 'Rear camera'],
+      [_tb('Ana\\s+Camera', 'gi'), 'Main camera'],
+      [_tb('İkinci\\s+Rear', 'gi'), 'Second rear'],
+      [_tb('Üçüncü\\s+Rear', 'gi'), 'Third rear'],
+      [_tb('Dördüncü\\s+Rear', 'gi'), 'Fourth rear'],
+      [_tb('Ön\\s+Rear', 'gi'), 'Front'],
+      [_tb('Arka\\s+Rear', 'gi'), 'Rear'],
+      // Section titles like "Ön Camera Specifications"
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Ön\s+([A-Z][a-z]+\s+Specifications)(?![A-Za-zÇĞİÖŞÜçğıöşü])/g, 'Front $1'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Arka\s+([A-Z][a-z]+\s+Specifications)(?![A-Za-zÇĞİÖŞÜçğıöşü])/g, 'Rear $1'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Üçüncü\s+([A-Z][a-z]+\s+camera\s+Specifications)(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Third $1'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])İkinci\s+([A-Z][a-z]+\s+camera\s+Specifications)(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Second $1'],
+      [_tb('Ön', 'g'), 'Front'],
+      [_tb('Arka', 'gi'), 'Rear'],
+      [_tb('İkinci', 'gi'), 'Second'],
+      [_tb('Üçüncü', 'gi'), 'Third'],
+      [_tb('Birinci', 'gi'), 'First'],
+      [_tb('Dördüncü', 'gi'), 'Fourth'],
+      [_tb('Beşinci', 'gi'), 'Fifth'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Ana(?=\s+[A-Z])/g, 'Main'],
+
+      // ── Sensor / fingerprint ──
+      [_tb('Parmak\\s+izi\\s+Okuyucu\\s+Specifications', 'gi'), 'Fingerprint reader specifications'],
+      [_tb('Parmak\\s+izi\\s+okuyucu', 'gi'), 'Fingerprint reader'],
+      [_tb('Parmak\\s+İzi\\s+Okuyucu', 'gi'), 'Fingerprint reader'],
+      [_tb('Parmak\\s+izi', 'gi'), 'Fingerprint'],
+      [_tb('Parmak\\s+İzi', 'gi'), 'Fingerprint'],
+      [_tb('Ivmeölçer', 'gi'), 'Accelerometer'],
+      [_tb('İvmeölçer', 'gi'), 'Accelerometer'],
+      [_tb('Ivmeölç', 'gi'), 'Accelerometer'],
+      [_tb('İvmeölç', 'gi'), 'Accelerometer'],
+      [_tb('Ivme', 'gi'), 'Acceleration'],
+      [_tb('İvme', 'gi'), 'Acceleration'],
+      [_tb('Sensörler', 'gi'), 'Sensors'],
+      [_tb('Sensörü', 'gi'), 'Sensor'],
+      [_tb('Sensör', 'gi'), 'Sensor'],
+
+      // ── Section headers (anchored — only exact match) ──
+      [/^Tags$/i, 'Sensors'],
+      [/^Multipiece$/i, 'Multimedia'],
+      [/^Business\s+system$/i, 'Operating system'],
+      [/^Business\s+System$/i, 'Operating System'],
+      [/^Specific$/i, 'Special features'],
+      [/^News$/i, 'Stereo'],
+      [_tb('Multipiece', 'g'), 'Multimedia'],
+      [_tb('Business\\s+system', 'gi'), 'Operating system'],
+
+      // ── Dates / years ──
+      [_tb('Output\\s+year', 'gi'), 'Release year'],
+      [_tb('Output\\s+Year', 'g'), 'Release Year'],
+      [_tb('Çıkış\\s+yılı', 'gi'), 'Release year'],
+      [_tb('Çıkış\\s+Yılı', 'g'), 'Release Year'],
+      [_tb('Duyuru\\s+tarihi', 'gi'), 'Announcement date'],
+      [_tb('Ocak', 'g'), 'January'],
+      [_tb('Şubat', 'g'), 'February'],
+      [_tb('Mart', 'g'), 'March'],
+      [_tb('Nisan', 'g'), 'April'],
+      [_tb('Mayıs', 'g'), 'May'],
+      [_tb('Haziran', 'g'), 'June'],
+      [_tb('Temmuz', 'g'), 'July'],
+      [_tb('Ağustos', 'g'), 'August'],
+      [_tb('Eylül', 'g'), 'September'],
+      [_tb('Ekim', 'g'), 'October'],
+      [_tb('Kasım', 'g'), 'November'],
+      [_tb('Aralık', 'g'), 'December'],
+
+      // ── Lighting / display ──
+      [_tb('Aydınlatmalı', 'gi'), 'Backlit'],
+      [_tb('Aydınlatma', 'gi'), 'Lighting'],
+      [_tb('Tepki\\s+Süresi', 'gi'), 'Response Time'],
+      [_tb('Tepki', 'gi'), 'Response'],
+      [_tb('Süresi', 'gi'), 'Time'],
+
+      // ── Existing rules (with proper boundaries) ──
+      [/(\d{4})\s+([1-4])\.?\s*Çeyrek/gi, '$1 Q$2'],
+      [_tb('göz\\s+health\\s+certification', 'gi'), 'eye health certification'],
+      [_tb('göz', 'gi'), 'eye'],
+      [_tb('Non-flammable\\s+mat\\s+display', 'gi'), 'Anti-glare matte display'],
+      [/^Faster$/i, 'Fast charging'],
+      [/^Supply ability:\s*low frequency$/i, 'Efficiency core base frequency'],
+      [_tb('Navigasyon', 'gi'), 'Navigation'],
+      [_tb('Kart\\s+Okuyucu', 'gi'), 'Card reader'],
+      [_tb('Klavye', 'gi'), 'Keyboard'],
+      [_tb('Adedi', 'gi'), 'count'],
+      [_tb('Adet', 'gi'), ''],
+      [_tb('Piksel', 'gi'), 'pixels'],
+      [_tb('Minirsel', 'gi'), 'Neural'],
+      [_tb('sinirsel\\s+trading\\s+unit', 'gi'), 'neural processing unit'],
+      [_tb('sinirsel', 'gi'), 'neural'],
+      [_tb('CPU\\s+Üretim\\s+Technology', 'gi'), 'CPU manufacturing technology'],
+      [_tb('Üretim\\s+Technology', 'gi'), 'Manufacturing technology'],
+      [_tb('Üretim', 'gi'), 'Manufacturing'],
+      [_tb('Specificationsi', 'gi'), 'Specifications'],
+      [_tb('Technologyi', 'gi'), 'Technology'],
+      [_tb('Teknolojisi', 'gi'), 'Technology'],
+      [_tb('Teknoloji', 'gi'), 'Technology'],
+      [_tb('Milyon', 'gi'), 'million'],
+      [_tb('Milyar', 'gi'), 'billion'],
+      [/(\d+(?:[.,]\d+)?)\s*Dakika/gi, '$1 minutes'],
+      [/(\d+(?:[.,]\d+)?)\s*Saat/gi, '$1 hours'],
+      [/(\d+(?:[.,]\d+)?)\s*Saniye/gi, '$1 seconds'],
+      [/(\d+(?:[.,]\d+)?)\s*Döngü/gi, '$1 cycles'],
+      [/(\d+)\s*Elementli\s+Lens/gi, '$1-element lens'],
+      [_tb('Yalnızca\\s+eSIM', 'gi'), 'eSIM only'],
+      [_tb('Evet', 'gi'), 'Yes'],
+      [_tb('Hayır', 'gi'), 'No'],
+      [_tb('Hayir', 'gi'), 'No'],
+      [/Volte\s*\(\s*⁇\s*over\s*LTE\s*\)\s*support/gi, 'VoLTE (voice over LTE) support'],
+      [/G\.p\.d\./gi, 'DisplayPort'],
+      [/m\.a\./gi, 'max.'],
+      [/^\s*⁇\s*$/g, ''],
+
+      // ── Missing TR words ──
+      [_tb('Düzeltme(?:si)?', 'gi'), 'Correction'],
+      [_tb('düzeltme(?:si)?', 'gi'), 'correction'],
+      [/Red eye \(Red-eye\) Düzeltme/gi, 'Red-eye correction'],
+      [/red eye \(red-eye\) düzeltme/gi, 'red-eye correction'],
+      [/Çentikli \(Notch\)/gi, 'Notch'],
+      [_tb('Çentikli', 'gi'), 'Notched'],
+      [_tb('çentikli', 'gi'), 'notched'],
+      [_tb('Pusula', 'gi'), 'Compass'],
+      [_tb('pusula', 'gi'), 'compass'],
+      // Argos mistranslation: "Pusula" → "Checkout" (totally wrong)
+      [/^Checkout$/, 'Compass'],
+      // Animoji — Apple proper noun, OK as-is
+
+      // ── Argos sense errors that look English but mean wrong thing ──
+      [/Productivity check\.turbo frequency/gi, 'Efficiency core turbo frequency'],
+      [/Productivity check\.base frequency/gi, 'Efficiency core base frequency'],
+      [/Processor increased frequency/gi, 'Processor boost frequency'],
+      [/Increased memory/gi, 'Expandable memory'],
+      [/Increased frequency/gi, 'Boost frequency'],
+      [/Keyboard back lighting/gi, 'Keyboard backlight'],
+      [/Transistor distance/gi, 'Process node'],
+      [/Built-in graphic max frequency/gi, 'Integrated graphics max frequency'],
+      [/Built-in graphic basic frequency/gi, 'Integrated graphics base frequency'],
+      [/Built-in graphic/gi, 'Integrated graphics'],
+      [/External graphics processor/gi, 'Discrete graphics'],
+      [/Hard disk \(SSD\) type/gi, 'SSD type'],
+      [/Virtual core/gi, 'Logical cores'],
+      [/Color display/gi, 'Color screen'],
+      [/Dual mice/gi, 'Dual microphone'],   // Çift mikrofon mistranslation
+      // Brand value collisions where Argos translated brand-name slots
+      [/^Main$/i, 'NVIDIA'],   // GPU brand: Main → NVIDIA (Ana → Main → wrong)
+      [/^North$/i, 'NVIDIA'],  // GPU brand: North → NVIDIA (rare Argos error)
+      [_tb('Aauppercase', 'g'), 'macOS'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])Face\s+ıdentification(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Face identification'],
+      [/(?<![A-Za-zÇĞİÖŞÜçğıöşü])phone\s+ıdentification(?![A-Za-zÇĞİÖŞÜçğıöşü])/gi, 'Face identification'],
+    ];
+
+    for (const [pat, rep] of reps) out = out.replace(pat, rep);
+    out = out.replace(/\s{2,}/g, ' ').trim();
+    // FINAL PASS — token-by-token dict lookup + transliteration fallback.
+    // Guarantees no Turkish letter (ç, ğ, ı, İ, ö, ş, ü) survives in EN output.
+    out = _finalPassTurkishCleanup(out, sourceText);
   }
   return out;
+}
+
+function _sanitizeEnglishSpecText(text, sourceText = '') {
+  const raw = String(text == null ? '' : text).trim();
+  if (!raw) return '';
+  let out = _normalizeTurkishSourceTranslation(sourceText || raw, 'en', raw);
+  // Last-mile fixes for dirty values that can enter through canonicalizer,
+  // old cache merge, or already-English render paths instead of dict lookup.
+  out = out
+    .replace(/\beye\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
+    .replace(/\bGöz\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
+    .replace(/\blithium-Polimer\b/gi, 'lithium polymer')
+    .replace(/\blithium-Polymer\b/g, 'lithium polymer')
+    .replace(/\bLi-Po\s*\(\s*lithium[-\s]*Polimer\s*\)/gi, 'Li-Po (lithium polymer)')
+    .replace(/\bLi-Po\s*\(\s*lithium[-\s]*Polymer\s*\)/g, 'Li-Po (lithium polymer)')
+    .replace(/\beye\s+Health\s+Certification\b/g, 'eye health certification')
+    .replace(/\bEyesafe\s*\(\s*eye\s+health\s+certification\s*\)/gi, 'Eyesafe (eye health certification)')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return out;
+}
+
+function _sanitizeEnglishSpecMap(map) {
+  if (!map || typeof map !== 'object') return map || {};
+  const out = {};
+  for (const [k, v] of Object.entries(map)) {
+    const nk = _sanitizeEnglishSpecText(k, k);
+    const nv = _sanitizeEnglishSpecText(v, v);
+    if (!nk || !nv) continue;
+    out[_uniqueSpecKey(out, nk)] = nv;
+  }
+  return out;
+}
+
+function _sanitizeEnglishSectionMap(sections) {
+  if (!sections || typeof sections !== 'object') return sections || {};
+  const out = {};
+  for (const [section, body] of Object.entries(sections)) {
+    const ns = _sanitizeEnglishSpecText(section, section) || 'General';
+    out[ns] = _sanitizeEnglishSpecMap(body || {});
+  }
+  return out;
+}
+
+function _sanitizeEnglishTranslationMap(map) {
+  if (!map || typeof map !== 'object') return map || {};
+  const out = {};
+  for (const [source, tx] of Object.entries(map)) {
+    const clean = (tx && typeof tx === 'object')
+      ? _sanitizeEnglishSpecText(source, source)
+      : _sanitizeEnglishSpecText(tx, source);
+    if (clean) out[source] = clean;
+  }
+  return out;
+}
+
+function _sanitizeEnglishPayload(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  payload.specs = _sanitizeEnglishSpecMap(payload.specs || {});
+  payload.specSections = _sanitizeEnglishSectionMap(payload.specSections || {});
+  payload.specsEn = _sanitizeEnglishSpecMap(payload.specsEn || payload.specs || {});
+  payload.keySpecs = _sanitizeEnglishSpecMap(payload.keySpecs || {});
+  payload.multiLangSpecs = payload.multiLangSpecs && typeof payload.multiLangSpecs === 'object'
+    ? { ...payload.multiLangSpecs }
+    : {};
+  payload.multiLangSections = payload.multiLangSections && typeof payload.multiLangSections === 'object'
+    ? { ...payload.multiLangSections }
+    : {};
+  payload.multiLangSpecs.en = _sanitizeEnglishSpecMap(payload.multiLangSpecs.en || payload.specs || {});
+  payload.multiLangSections.en = _sanitizeEnglishSectionMap(payload.multiLangSections.en || payload.specSections || {});
+  return payload;
 }
 
 // Lookup Turkish text in cache for a specific target language.
@@ -2417,6 +3120,56 @@ window.QorAiDict = {
   save:    () => { _deDictDirty = true; return _saveDeDict(); },
   langs:   () => SUPPORTED_LANGS,
   resetFailures: () => _deDictFailedThisRun.clear(),
+
+  /**
+   * Sweep the entire local dict cache, re-run normalize + residue detection,
+   * and DELETE every entry that still has Turkish residue. Call this from
+   * DevTools after pulling new POST_FIX rules:
+   *   await QorAiDict.purgeBad()
+   * Returns { scanned, fixed, deleted }.
+   */
+  async purgeBad() {
+    await _loadDeDict();
+    let scanned = 0, fixed = 0, deleted = 0;
+    for (const [key, entry] of Object.entries(_deDictCache)) {
+      if (!entry || typeof entry !== 'object') continue;
+      for (const lang of Object.keys(entry)) {
+        if (lang === 'tr') continue;
+        scanned++;
+        const v = entry[lang];
+        if (typeof v !== 'string') continue;
+        const normalized = _normalizeTurkishSourceTranslation(key, lang, v);
+        if (_translationHasTurkishResidue(lang, normalized, key)) {
+          delete entry[lang];
+          deleted++;
+        } else if (normalized !== v) {
+          entry[lang] = normalized;
+          fixed++;
+        }
+      }
+      if (Object.keys(entry).length === 0) delete _deDictCache[key];
+    }
+    _deDictDirty = true;
+    await _saveDeDict();
+    const msg = `[QorAiDict.purgeBad] scanned=${scanned} · normalized=${fixed} · deleted=${deleted}`;
+    console.log(msg);
+    if (typeof toast === 'function') toast(msg, deleted ? 'w' : 's');
+    return { scanned, fixed, deleted };
+  },
+
+  /** Nuclear: wipe the entire local dict cache. Forces full re-translation
+   *  on next scrape. Use when you want a guaranteed clean slate. */
+  async purgeAll() {
+    await _loadDeDict();
+    const count = Object.keys(_deDictCache).length;
+    for (const key of Object.keys(_deDictCache)) delete _deDictCache[key];
+    _deDictDirty = true;
+    await _saveDeDict();
+    const msg = `[QorAiDict.purgeAll] deleted ${count} entries`;
+    console.log(msg);
+    if (typeof toast === 'function') toast(msg, 's');
+    return { deleted: count };
+  },
 };
 
 // Batch translate Turkish texts → ALL target languages in ONE DeepSeek call.
@@ -2524,26 +3277,16 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   // catches the handful Argos can't translate, so we don't need a manual
   // post-fix rule for every new word.
   if (local.ok) {
-    const residueAtoms = Array.isArray(local.residueAtoms) ? local.residueAtoms : [];
-    const residueSet = new Set(residueAtoms.map(t => _normalizeDictSourceKey(t)));
-    // Clean atoms (no residue) get permanently marked so they don't trigger
-    // another DeepSeek round later in the same scrape.
-    for (const t of uncached) {
-      const k = _normalizeDictSourceKey(t);
-      if (!residueSet.has(k)) _deDictFailedThisRun.add(k);
-    }
+    // DeepSeek is a REMOTE API — it cannot use the local GPU. Per user request
+    // (2026-05-24): skip DeepSeek entirely. Argos+beam=4+POST_FIX glossary
+    // covers 99% cleanly; the last 1% gets fixed by adding POST_FIX entries
+    // on the fly. Latency saved: 60-90s per product on failed DeepSeek calls.
+    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
     await _saveDeDict();
-    if (!residueAtoms.length) {
-      if (typeof onProgress === 'function') {
-        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
-      }
-      return;
-    }
-    // Re-route only the residue atoms to DeepSeek.
-    uncached = residueAtoms;
     if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'deepseek', phase: 'fallback', pass: 0, chunkIndex: 0, totalChunks: Math.ceil(residueAtoms.length / 24), chunkSize: 24, batchSize: residueAtoms.length, sample: residueAtoms.slice(0, 3) }); } catch {}
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-disabled' }); } catch {}
     }
+    return;
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -2981,6 +3724,7 @@ async function _translateProductInline(product) {
     }
     const payload = _buildProductTranslations(product, TARGET_LANGS);
     if (payload && typeof payload === 'object') Object.assign(product, payload);
+    _sanitizeEnglishPayload(product);
     // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
     _deDictDirty = true;
     await _saveDeDict().catch(() => {});
@@ -3017,6 +3761,9 @@ window.QorAiBulkTranslate = {
   buildPayload(product, targetLangs = TARGET_LANGS) {
     return _buildProductTranslations(product, targetLangs);
   },
+  sanitizeEnglishSpecMap: (map) => _sanitizeEnglishSpecMap(map),
+  sanitizeEnglishSectionMap: (sections) => _sanitizeEnglishSectionMap(sections),
+  sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
   // Persist the dictionary cache to PocketBase (force-save)
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
   targetLangs: () => TARGET_LANGS.slice(),
@@ -3793,7 +4540,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   let cursor = 0;
   let completed = 0;
   let lastSummary = 0;
-  slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${Math.min(delayMs || 0, 250)}ms/işçi`, 'info');
+  // Aggressive low cap (was 250ms) — Cloudflare clearance + 8-24 worker pool
+  // already provides natural pacing. Lower delay = more throughput.
+  const effectiveDelayMs = Math.min(delayMs || 0, 50);
+  slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${effectiveDelayMs}ms/işçi`, 'info');
 
   const scrapeOne = async (item, index) => {
     const productNum = index + 1;
@@ -3834,6 +4584,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // Inline translation hook (EU pivot): every scraped product gets the
       // full 7-language package (source + 6 target languages) before PB write.
       await _translateProductInline(clean);
+      _sanitizeEnglishPayload(clean);
 
       // Cross-source dedup: same variantGroup already in PB?
       //   • SAME source  → skip (slug-level dedup handled elsewhere already)
@@ -3915,13 +4666,18 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         lastSummary = completed;
         slog(`  ↳ progress ${completed}/${urlItems.length} · added ${results.added} · updated ${results.updated} · skipped ${results.skipped} · errors ${results.errors}`, 'info');
       }
-      if (delayMs > 0 && !scraperAbort) await sleep(Math.min(delayMs, 250));
+      if (effectiveDelayMs > 0 && !scraperAbort) await sleep(effectiveDelayMs);
     }
   };
 
   const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
   await Promise.all(workers);
   if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+
+  // Self-healing: any TR word that hit the transliteration fallback during
+  // this run is now sent to Argos for a real translation and added to the
+  // dictionary so the SAME word never falls through again.
+  try { await _flushUnknownTurkishWords(); } catch {}
 
   // Final checkpoint clear (success path)
   if (!scraperAbort) _clearCheckpoint();
@@ -4853,10 +5609,16 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         : (filter ? [filter] : []);
       const brandFilter = data?.brandFilter && Array.isArray(data.brandFilter.values) && data.brandFilter.values.length
         ? data.brandFilter : null;
+      // Use max across ALL filter group totals — not just the primary.
+      // The Satıştakiler default suppresses discontinued items, so the
+      // primary filter's "total" can be 5-10x smaller than reality. Once
+      // any filter is active Epey returns the full catalog, and the
+      // largest group's total reflects that better.
       expectedCategoryTotal = Math.max(
         Number(filter?.total) || 0,
         Number(brandFilter?.total) || 0,
-        Number(data?.count) || 0
+        Number(data?.count) || 0,
+        ...filtersTopK.map(f => Number(f?.total) || 0),
       );
       if (expectedCategoryTotal > maxProducts) {
         const previousLimit = maxProducts;
@@ -4904,7 +5666,11 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
             }
             // Whole catalog likely covered now — don't waste API calls on more groups.
-            if (expectedCategoryTotal && allItems.length >= expectedCategoryTotal * 0.97) {
+            // 0.97 is too aggressive when expectedCategoryTotal underestimates
+            // (filter totals are relative to the Satıştakiler default). Use a
+            // tighter 0.999 plus a small absolute slack so we only stop when
+            // truly complete; otherwise iterate all 4 fallback groups.
+            if (expectedCategoryTotal && allItems.length >= Math.max(expectedCategoryTotal - 10, expectedCategoryTotal * 0.999)) {
               slog(`  ✓ ~%${Math.round(allItems.length / expectedCategoryTotal * 100)} kapsama (${allItems.length}/${expectedCategoryTotal}) — kalan filtre grupları atlanıyor`, 'success');
               break;
             }
@@ -5153,6 +5919,7 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
       // for audit. The first scraper to write a model owns its "home" url.
       sources: sourcesArr,
     };
+    _sanitizeEnglishPayload(merged);
 
     await pb.collection('products').update(existingId, merged, { $autoCancel: false });
     return merged;
@@ -5443,6 +6210,7 @@ async function scrapeByUrl() {
     // Single-URL path mirrors bulk-scrape: inline translation + cross-source
     // dedup so manually-added products are indistinguishable from bulk-scraped ones.
     await _translateProductInline(clean);
+    _sanitizeEnglishPayload(clean);
     if (clean.variantGroup) {
       const existing = await _findExistingByVariantGroup(clean.variantGroup);
       if (existing && existing.source && existing.source !== clean.source) {
