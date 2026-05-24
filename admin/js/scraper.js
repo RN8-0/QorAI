@@ -1775,6 +1775,7 @@ async function _saveDeDict() {
 function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const raw = String(sourceText || '').trim();
   const lang = targetLang || 'en';
+  if (_isProtectedTechnicalAtom(raw)) return raw;
   const s = _normalizeDictSourceKey(raw)
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
@@ -1952,6 +1953,33 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   if (/ters\s+(charging|sarj)/.test(s)) return maps.reverseCharging[targetLang] || null;
   if (/sogutma/.test(s) && /\d|iceloop|vapor|buhar/i.test(s)) return maps.cooling[targetLang] || null;
   return null;
+}
+
+function _isProtectedTechnicalAtom(text) {
+  const raw = String(text || '').trim();
+  if (!raw || /[çğıİöşüÇĞŞÜ]/.test(raw)) return false;
+  const exact = raw.toLowerCase();
+  const protectedExact = new Set([
+    'nvidia', 'amd', 'intel', 'apple', 'samsung', 'qualcomm', 'mediatek',
+    'microsoft', 'windows', 'android', 'ios', 'wear os', 'directx', 'opengl',
+    'opencl', 'vulkan', 'dlss', 'nvidia reflex', 'nvidia gpu boost',
+    'pci express', 'resizable bar', 'gddr7', 'gddr6', 'ddr5', 'ddr4',
+    'wi-fi', 'wifi', 'bluetooth', 'hdmi', 'displayport', 'usb', 'usb-c',
+    'thunderbolt', 'nfc', 'gps', 'glonass', 'galileo', 'beidou', 'bds',
+    'oled', 'ips', 'wva', 'qhd', 'qhd+', 'uhd', 'uhd+', 'fhd', 'fhd+',
+    'rtx', 'gtx', 'geforce', 'geforce rtx', 'radeon', 'ryzen', 'core ultra',
+  ]);
+  if (protectedExact.has(exact)) return true;
+  if (/^(?:NVIDIA\s+)?GeForce\s+RTX\b/i.test(raw)) return true;
+  if (/^(?:AMD\s+)?Radeon\b/i.test(raw)) return true;
+  if (/^(?:AMD\s+)?Ryzen\b/i.test(raw)) return true;
+  if (/^(?:Intel\s+)?Core(?:\s+Ultra)?\b/i.test(raw)) return true;
+  if (/^(?:RTX|GTX)\s*\d/i.test(raw)) return true;
+  if (/^USB(?:-C)?(?:\s|\d|$)/i.test(raw)) return true;
+  if (/^HDMI(?:\s|\d|$)/i.test(raw)) return true;
+  if (/^DisplayPort(?:\s|\d|$)/i.test(raw)) return true;
+  if (/^Thunderbolt(?:\s|\d|$)/i.test(raw)) return true;
+  return false;
 }
 
 function _foldSourceResidueText(text) {
@@ -2767,9 +2795,18 @@ function _sanitizeEnglishTranslationMap(map) {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
   for (const [source, tx] of Object.entries(map)) {
-    const clean = (tx && typeof tx === 'object')
+    let clean = (tx && typeof tx === 'object')
       ? _sanitizeEnglishSpecText(source, source)
       : _sanitizeEnglishSpecText(tx, source);
+    const rawSource = String(source || '').trim();
+    const rawTx = String(tx == null ? '' : tx).trim();
+    if (_isProtectedTechnicalAtom(rawSource)) {
+      // Argos sometimes translates standalone brand/acronym atoms as plain
+      // words: NVIDIA -> North, Intel/AMD context -> Main. Translation maps
+      // must preserve those atoms verbatim so the final assert cannot trip.
+      if (/^(North|Main)$/i.test(rawTx) || !clean || clean !== rawSource) clean = rawSource;
+    }
+    if (/^NVIDIA$/i.test(rawSource) && /^North$/i.test(clean)) clean = 'NVIDIA';
     if (clean) out[source] = clean;
   }
   return out;
@@ -2787,8 +2824,8 @@ function _sanitizeEnglishPayload(payload) {
   payload.multiLangSections = payload.multiLangSections && typeof payload.multiLangSections === 'object'
     ? { ...payload.multiLangSections }
     : {};
-  payload.multiLangSpecs.en = _sanitizeEnglishSpecMap(payload.multiLangSpecs.en || payload.specs || {});
-  payload.multiLangSections.en = _sanitizeEnglishSectionMap(payload.multiLangSections.en || payload.specSections || {});
+  payload.multiLangSpecs.en = _sanitizeEnglishTranslationMap(payload.multiLangSpecs.en || payload.specs || {});
+  payload.multiLangSections.en = _sanitizeEnglishTranslationMap(payload.multiLangSections.en || payload.specSections || {});
   return payload;
 }
 
@@ -2817,10 +2854,14 @@ function _englishPayloadResidues(payload) {
     specSections: payload?.specSections || {},
     specsEn: payload?.specsEn || {},
     keySpecs: payload?.keySpecs || {},
-    multiLangSpecsEn: payload?.multiLangSpecs?.en || {},
-    multiLangSectionsEn: payload?.multiLangSections?.en || {},
   };
   const entries = _walkEnglishPayloadStrings(roots, '', []);
+  for (const [source, value] of Object.entries(payload?.multiLangSpecs?.en || {})) {
+    _walkEnglishPayloadStrings(value, `multiLangSpecsEn.${source}`, entries);
+  }
+  for (const [source, value] of Object.entries(payload?.multiLangSections?.en || {})) {
+    _walkEnglishPayloadStrings(value, `multiLangSectionsEn.${source}`, entries);
+  }
   const residueRe = /[çğıİöşüÇĞŞÜ]|\b(?:Azami|Polimer|Sağlığı|Sertifikasyonu|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.turbo frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
