@@ -2790,6 +2790,86 @@ function _normalizeTurkishSourceTranslation(sourceText, targetLang, translation)
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+//  ARGOS OUTPUT VALIDATION (Seçenek B — root-cause defense)
+//
+//  Argos randomly produces "English-shaped but semantically wrong" output
+//  for some inputs (e.g. NVIDIA→North, Pusula→Checkout, Variable→Yesiable,
+//  Çıkarılabilir→Bulk, Dayanıklılık→Shareholder, Sağlığı→food, Perde→Curtain).
+//  These never have Turkish characters, so the residue detector misses them.
+//
+//  Rather than enumerating fixes one by one forever, we maintain a BLOCKLIST
+//  of known-bad Argos outputs. If a translation produces one of these terms,
+//  it's rejected. The atom logs to `_rejectedArgosAtoms` (persisted to
+//  localStorage) so the user can review them in DevTools and decide how to
+//  translate them properly.
+// ─────────────────────────────────────────────────────────────────────────
+const _ARGOS_BAD_OUTPUTS = new Set([
+  // Standalone-value hallucinations
+  'shareholder', 'shareholders', 'checkout',
+  // Mistranslated brand atoms
+  // ('north' and 'main' alone are already coerced to NVIDIA/Intel — kept here
+  //  for completeness so the rejection logger sees them too)
+  // Suspicious compound English that Argos invented for TR/DE phrases
+  'yesiable', 'yesiable refresh rate', 'yesiable refresh rate (vrr)',
+  'bulk battery', 'bulk batteries',
+  'curtain speed', 'curtain speeds',
+  'heavy duty shooting', 'heavy duty shooting recording options',
+  'food certification', 'eyesafe (food certification)',
+  'fixed disk', 'fixed disk (hdd)', 'fixed disk (ssd) type',
+  'available memory',
+  'gpu distance', 'transistor distance',
+  'display width height', 'screen width height',
+  'keyboard rear lighting', 'rear lighting',
+  'optical reader',
+  'productivity check.turbo frequency', 'productivity check.base frequency',
+  'processor increased frequency', 'increased memory',
+  'built-in graphic',
+  'multipiece', 'business system',
+  'two way mirroring', 'display mirroring (two way)',
+  'save (pvr)',
+  'endurance for bumps',
+  'card reader features',
+  'low blue',
+  '720p ()',
+]);
+
+// Per-session list of (source, badOutput) pairs that we suppressed. Surfaces
+// via window.QorAiRejectedAtoms so the user can periodically inspect them.
+const _rejectedArgosAtoms = [];
+try {
+  const stored = JSON.parse(localStorage.getItem('_TR_REJECTED_ATOMS') || '[]');
+  if (Array.isArray(stored)) for (const e of stored) _rejectedArgosAtoms.push(e);
+} catch {}
+
+function _logRejectedAtom(source, badOutput, lang = 'en') {
+  const entry = { source: String(source || '').slice(0, 200), bad: String(badOutput || '').slice(0, 200), lang, at: Date.now() };
+  _rejectedArgosAtoms.push(entry);
+  if (_rejectedArgosAtoms.length > 500) _rejectedArgosAtoms.shift();
+  try { localStorage.setItem('_TR_REJECTED_ATOMS', JSON.stringify(_rejectedArgosAtoms.slice(-500))); } catch {}
+}
+
+function _isArgosOutputBad(text) {
+  if (!text) return false;
+  const lower = String(text).trim().toLowerCase();
+  if (!lower) return false;
+  if (_ARGOS_BAD_OUTPUTS.has(lower)) return true;
+  // Check if any blocklist phrase appears as substring (catches "Eyesafe (food certification)" inside a longer string)
+  for (const bad of _ARGOS_BAD_OUTPUTS) {
+    if (bad.length >= 8 && lower.includes(bad)) return true;
+  }
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  window.QorAiRejectedAtoms = {
+    list:  () => _rejectedArgosAtoms.slice(),
+    clear: () => { _rejectedArgosAtoms.length = 0; try { localStorage.removeItem('_TR_REJECTED_ATOMS'); } catch {} },
+    count: () => _rejectedArgosAtoms.length,
+    isBad: (text) => _isArgosOutputBad(text),
+  };
+}
+
 function _sanitizeEnglishSpecText(text, sourceText = '') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
@@ -3090,6 +3170,15 @@ function _deDictLookup(turkishText, targetLang) {
       _deDictDirty = true;
       return null;
     }
+    // Argos output validation (Seçenek B): if cached translation matches a
+    // known-bad Argos hallucination, evict it and log for review. Caller
+    // gets null and will render the source text as a safe fallback.
+    if (targetLang !== 'tr' && _isArgosOutputBad(normalized)) {
+      _logRejectedAtom(turkishText, normalized, targetLang);
+      delete entry[targetLang];
+      _deDictDirty = true;
+      return null;
+    }
     if (normalized !== entry[targetLang]) {
       entry[targetLang] = normalized;
       _deDictDirty = true;
@@ -3285,6 +3374,12 @@ function _deDictStore(turkishText, targetLang, translation) {
   if (!_isWordOnlyDictSource(key)) return;
   const cleaned = _normalizeTurkishSourceTranslation(turkishText, targetLang, translation);
   if (_translationHasTurkishResidue(targetLang, cleaned, turkishText)) return;
+  // Argos output validation: reject bad outputs at storage time so they
+  // NEVER enter the cache. The atom will fall back to source text in UI.
+  if (targetLang !== 'tr' && _isArgosOutputBad(cleaned)) {
+    _logRejectedAtom(turkishText, cleaned, targetLang);
+    return;
+  }
   const normalized = _applyTitleCase(cleaned);
   if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};

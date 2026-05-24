@@ -2071,6 +2071,48 @@ function _assertCleanGermanEnglishPayload(payload, label = 'product') {
   return payload;
 }
 
+// Argos output validation (German): same idea as the TR side. Catches
+// known-bad hallucinations Argos produces for DE technical terms.
+const _ARGOS_BAD_OUTPUTS_DE = new Set([
+  'shareholder', 'shareholders', 'checkout',
+  'bulk battery', 'bulk batteries',
+  'curtain speed', 'curtain speeds',
+  'food certification',
+  'fixed disk', 'fixed disk (hdd)', 'fixed disk (ssd) type',
+  'available memory',
+  'bracelets', 'bracelet',
+  '12/24h-display',
+]);
+const _rejectedArgosAtomsDe = [];
+try {
+  const stored = JSON.parse(localStorage.getItem('_DE_REJECTED_ATOMS') || '[]');
+  if (Array.isArray(stored)) for (const e of stored) _rejectedArgosAtomsDe.push(e);
+} catch {}
+function _logRejectedAtomDe(source, badOutput, lang = 'en') {
+  const entry = { source: String(source || '').slice(0, 200), bad: String(badOutput || '').slice(0, 200), lang, at: Date.now() };
+  _rejectedArgosAtomsDe.push(entry);
+  if (_rejectedArgosAtomsDe.length > 500) _rejectedArgosAtomsDe.shift();
+  try { localStorage.setItem('_DE_REJECTED_ATOMS', JSON.stringify(_rejectedArgosAtomsDe.slice(-500))); } catch {}
+}
+function _isArgosOutputBadDe(text) {
+  if (!text) return false;
+  const lower = String(text).trim().toLowerCase();
+  if (!lower) return false;
+  if (_ARGOS_BAD_OUTPUTS_DE.has(lower)) return true;
+  for (const bad of _ARGOS_BAD_OUTPUTS_DE) {
+    if (bad.length >= 8 && lower.includes(bad)) return true;
+  }
+  return false;
+}
+if (typeof window !== 'undefined') {
+  window.QorAiRejectedAtomsDe = {
+    list:  () => _rejectedArgosAtomsDe.slice(),
+    clear: () => { _rejectedArgosAtomsDe.length = 0; try { localStorage.removeItem('_DE_REJECTED_ATOMS'); } catch {} },
+    count: () => _rejectedArgosAtomsDe.length,
+    isBad: (text) => _isArgosOutputBadDe(text),
+  };
+}
+
 function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const rule = _knownGermanRuleTranslation(germanText, targetLang);
@@ -2082,6 +2124,12 @@ function _deDictLookup(germanText, targetLang) {
   if (entry && entry[targetLang]) {
     const normalized = _normalizeGermanSourceTranslation(germanText, targetLang, entry[targetLang]);
     if (_translationHasGermanResidue(targetLang, normalized, germanText)) {
+      delete entry[targetLang];
+      _deDictDirty = true;
+      return null;
+    }
+    if (targetLang !== 'de' && _isArgosOutputBadDe(normalized)) {
+      _logRejectedAtomDe(germanText, normalized, targetLang);
       delete entry[targetLang];
       _deDictDirty = true;
       return null;
@@ -2223,6 +2271,11 @@ function _deDictStore(germanText, targetLang, translation) {
   const key = germanText.toLowerCase().trim();
   const cleaned = _normalizeGermanSourceTranslation(germanText, targetLang, translation);
   if (_translationHasGermanResidue(targetLang, cleaned, germanText)) return;
+  // Argos output validation: reject known-bad hallucinations at store time.
+  if (targetLang !== 'de' && _isArgosOutputBadDe(cleaned)) {
+    _logRejectedAtomDe(germanText, cleaned, targetLang);
+    return;
+  }
   const normalized = _applyTitleCase(cleaned);
   if (!normalized) return;
   if (!_deDictCache[key]) _deDictCache[key] = {};
