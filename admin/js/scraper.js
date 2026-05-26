@@ -4860,7 +4860,7 @@ function _saveCheckpoint(urlItems, nextIndex, categoryId, results, retryUrls = [
       const key = normalizeScrapeUrlKey(u.url) || String(u.url || '').trim();
       if (!key || seen.has(key)) return;
       seen.add(key);
-      remaining.push({ url: u.url, techScore: u.techScore });
+      remaining.push({ url: u.url, techScore: u.techScore, categoryId: u.categoryId || categoryId || '' });
     };
     (Array.isArray(retryUrls) ? retryUrls : []).forEach(pushRemaining);
     urlItems.slice(nextIndex).forEach(pushRemaining);
@@ -4909,9 +4909,34 @@ async function resumeBulkScrape() {
   const btn = document.getElementById('btnBulkScrape'); if (btn) btn.style.display = 'none';
   const stp = document.getElementById('btnStopScrape'); if (stp) stp.style.display = '';
   clearScraperLog();
-  slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (category: ${cp.categoryId})`, 'info');
-  const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay, concurrency);
-  slog(`═══ Resume done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
+  const groups = new Map();
+  for (const item of cp.remainingUrls) {
+    const cat = item.categoryId || cp.categoryId || '';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push({ ...item, categoryId: cat });
+  }
+  slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (${groups.size} kategori grubu)`, 'info');
+  const totals = { added: 0, updated: 0, skipped: 0, errors: 0 };
+  const retryLater = [];
+  for (const [cat, items] of groups.entries()) {
+    if (scraperAbort) break;
+    slog(`━━━ Resume group: ${cat || 'uncategorized'} — ${items.length} URL ━━━`, 'info');
+    const res = await sequentialScrape(items, cat, delay, concurrency);
+    totals.added += res.added || 0;
+    totals.updated += res.updated || 0;
+    totals.skipped += res.skipped || 0;
+    totals.errors += res.errors || 0;
+    if (Array.isArray(res.retryLater)) {
+      retryLater.push(...res.retryLater.map(u => ({ ...u, categoryId: u.categoryId || cat })));
+    }
+  }
+  if (retryLater.length) {
+    _saveCheckpoint([], 0, '__multi_epey_retry__', totals, retryLater);
+    slog(`↻ Resume sonunda ${retryLater.length} URL tekrar denemeye kaldı.`, 'warn');
+  } else if (!scraperAbort) {
+    _clearCheckpoint();
+  }
+  slog(`═══ Resume done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata ═══`, 'success');
   finishScraping();
 }
 window.resumeBulkScrape = resumeBulkScrape;
@@ -4971,7 +4996,7 @@ async function _saveProductWithRetry(clean, label = '') {
 // the next run skips everything already saved and continues with new URLs.
 
 async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrencyArg = 0) {
-  const results = { added: 0, skipped: 0, errors: 0, updated: 0 };
+  const results = { added: 0, skipped: 0, errors: 0, updated: 0, retryLater: [] };
   const isBrandSearch = !String(categoryId || '').trim();
   let errorStreak = 0;
   let challengeStreak = 0;
@@ -5106,7 +5131,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     slog(`🔎 Verify pass skipped for ${freshItems.length} fresh URLs; paged preload already handled existing products.`, 'info');
   }
 
-  urlItems = freshItems;
+  urlItems = freshItems.map(item => item.categoryId ? item : { ...item, categoryId });
   const skippedCount = beforeCount - urlItems.length;
   if (skippedCount > 0) {
     // Log only a small head+tail sample of skipped slugs — the previous code
@@ -5143,6 +5168,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   }
   if (urlItems.length === 0) {
     slog('Nothing new to scrape — category is fully up to date.', 'success');
+    results.retryLater = [];
     return results;
   }
 
@@ -5157,7 +5183,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   const retryKeyFor = (item) => normalizeScrapeUrlKey(item?.url) || String(item?.url || '').trim();
   const markRetryLater = (item) => {
     const key = retryKeyFor(item);
-    if (key) retryLaterByKey.set(key, item);
+    if (key) retryLaterByKey.set(key, { ...item, categoryId: item?.categoryId || categoryId || '' });
   };
   const clearRetryLater = (item) => {
     const key = retryKeyFor(item);
@@ -5316,11 +5342,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // Final checkpoint clear (success path). If a few products failed while the
   // rest completed, keep just those URLs for Resume instead of dropping them.
   if (!scraperAbort && retryLaterByKey.size > 0) {
+    results.retryLater = retryLaterItems();
     _saveCheckpoint(urlItems, urlItems.length, categoryId, results, retryLaterItems());
     slog(`↻ ${retryLaterByKey.size} hatalı ürün Resume için checkpoint'e geri koyuldu.`, 'warn');
   } else if (!scraperAbort) {
+    results.retryLater = [];
     _clearCheckpoint();
   }
+  if (scraperAbort) results.retryLater = retryLaterItems();
   return results;
 }
 
@@ -6799,17 +6828,27 @@ async function startBulkScrape() {
       // ── PHASE 2: scrape each category's collected URLs ────────────
       slog(`\n┏━━ PHASE 2 / 2 — ÇEKME (${collected.length} kategori, ${totalUrls} URL) ━━┓`, 'info');
       let processed = 0;
+      const multiCategoryRetryLater = [];
       for (let ci = 0; ci < collected.length && !scraperAbort; ci++) {
         const { cat, items } = collected[ci];
         slog(`\n━━━ [Çekme ${ci + 1}/${collected.length}] ${cat.name || cat.id} (${cat.id}) — ${items.length} URL ━━━`, 'info');
-        const res = await sequentialScrape(items, cat.id, delay, concurrency);
+        const categoryItems = items.map(item => item.categoryId ? item : { ...item, categoryId: cat.id });
+        const res = await sequentialScrape(categoryItems, cat.id, delay, concurrency);
         totals.added += res.added || 0;
         totals.updated += res.updated || 0;
         totals.skipped += res.skipped || 0;
         totals.errors += res.errors || 0;
+        if (Array.isArray(res.retryLater) && res.retryLater.length) {
+          multiCategoryRetryLater.push(...res.retryLater.map(u => ({ ...u, categoryId: u.categoryId || cat.id })));
+        }
         processed += items.length;
         slog(`━━━ ${cat.id} done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata · ilerleme ${processed}/${totalUrls} URL ━━━`, 'success');
         if (ci < collected.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
+      }
+
+      if (multiCategoryRetryLater.length) {
+        _saveCheckpoint([], 0, '__multi_epey_retry__', totals, multiCategoryRetryLater);
+        slog(`↻ Toplam ${multiCategoryRetryLater.length} hatalı URL kategori bilgisiyle Resume için saklandı.`, 'warn');
       }
 
       slog(`\n═══ All categories done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata${scraperAbort ? ' | STOPPED' : ''} ═══`, scraperAbort ? 'warn' : 'success');
