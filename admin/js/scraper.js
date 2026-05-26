@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260523-filter-first-epey-inline-7-lang';
+const SCRAPER_BUILD = '20260526-epey-pb-retry-checkpoint';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -30,6 +30,8 @@ const SCRAPER_LOG_MAX_LINES = 900;
 // the rest, so 20 keeps the pipeline saturated without burning errors.
 const EPEY_DETAIL_CONCURRENCY_DEFAULT = 20;
 const EPEY_DETAIL_CONCURRENCY_MAX = 32;
+const EPEY_PB_WRITE_CONCURRENCY = 4;
+const EPEY_PB_SAVE_RETRIES = 4;
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -49,6 +51,30 @@ function getEpeyDetailConcurrency() {
   const n = Number.isFinite(raw) && raw > 0 ? raw : EPEY_DETAIL_CONCURRENCY_DEFAULT;
   return Math.max(1, Math.min(EPEY_DETAIL_CONCURRENCY_MAX, n));
 }
+
+function createAsyncLimiter(maxActive = 1) {
+  const max = Math.max(1, parseInt(maxActive, 10) || 1);
+  const queue = [];
+  let active = 0;
+  const pump = () => {
+    if (active >= max || !queue.length) return;
+    const job = queue.shift();
+    active++;
+    Promise.resolve()
+      .then(job.fn)
+      .then(job.resolve, job.reject)
+      .finally(() => {
+        active--;
+        pump();
+      });
+  };
+  return (fn) => new Promise((resolve, reject) => {
+    queue.push({ fn, resolve, reject });
+    pump();
+  });
+}
+
+const _epeyPbWriteLimit = createAsyncLimiter(EPEY_PB_WRITE_CONCURRENCY);
 
 // In-flight AbortControllers — flipped by stopScraping() so the Stop button
 // drops the current proxy fetches immediately instead of waiting up to 120s
@@ -144,6 +170,7 @@ function clearScraperLog() {
   if (xl) xl.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
   const pg = document.getElementById('scraperProgress');
   if (pg) pg.textContent = '';
+  if (typeof updateResumeUI === 'function') updateResumeUI();
 }
 
 // Translation log — separate panel from scrape log so the user can watch the
@@ -4715,8 +4742,19 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
 
 // ── Checkpoint helpers (Resume after interruption) ──
 const _CHECKPOINT_KEY = 'qorai_scraper_checkpoint_v1';
-function _saveCheckpoint(urlItems, nextIndex, categoryId, results) {
+function _saveCheckpoint(urlItems, nextIndex, categoryId, results, retryUrls = []) {
   try {
+    const remaining = [];
+    const seen = new Set();
+    const pushRemaining = (u) => {
+      if (!u || !u.url) return;
+      const key = normalizeScrapeUrlKey(u.url) || String(u.url || '').trim();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      remaining.push({ url: u.url, techScore: u.techScore });
+    };
+    (Array.isArray(retryUrls) ? retryUrls : []).forEach(pushRemaining);
+    urlItems.slice(nextIndex).forEach(pushRemaining);
     localStorage.setItem(_CHECKPOINT_KEY, JSON.stringify({
       ts: Date.now(),
       categoryId,
@@ -4725,7 +4763,7 @@ function _saveCheckpoint(urlItems, nextIndex, categoryId, results) {
       results,
       // Save URLs only — re-collecting links can pick fresh prices but loses
       // resume position; instead reuse what we already discovered.
-      remainingUrls: urlItems.slice(nextIndex).map(u => ({ url: u.url, techScore: u.techScore })),
+      remainingUrls: remaining,
     }));
   } catch (e) {
     console.warn('[checkpoint] save failed:', e.message);
@@ -4765,7 +4803,6 @@ async function resumeBulkScrape() {
   slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (category: ${cp.categoryId})`, 'info');
   const results = await sequentialScrape(cp.remainingUrls, cp.categoryId, delay, concurrency);
   slog(`═══ Resume done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
-  _clearCheckpoint();
   finishScraping();
 }
 window.resumeBulkScrape = resumeBulkScrape;
@@ -4790,6 +4827,34 @@ function updateResumeUI() {
   }
 }
 window.updateResumeUI = updateResumeUI;
+
+function _isTransientPocketBaseError(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const msg = String(error?.message || '').toLowerCase();
+  if ([408, 409, 425, 429, 500, 502, 503, 504].includes(status)) return true;
+  return /something went wrong|timeout|timed out|network|failed to fetch|fetch failed|rate|busy|locked|connection/i.test(msg);
+}
+
+async function _saveProductWithRetry(clean, label = '') {
+  const id = clean.sourceUrl || clean.slug || clean.id;
+  const title = String(label || clean.name || clean.slug || id || '').slice(0, 120);
+  return _epeyPbWriteLimit(async () => {
+    let lastError = null;
+    for (let attempt = 1; attempt <= EPEY_PB_SAVE_RETRIES; attempt++) {
+      try {
+        if (scraperAbort) throw new Error('aborted');
+        return await pbSetDoc('products', id, clean);
+      } catch (e) {
+        lastError = e;
+        if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= EPEY_PB_SAVE_RETRIES) break;
+        const delay = Math.min(1500 * Math.pow(2, attempt - 1), 12000) + Math.random() * 750;
+        slog(`  ↻ PB save retry ${attempt}/${EPEY_PB_SAVE_RETRIES}: ${title} — ${e.message || e}`, 'warn');
+        await sleep(delay);
+      }
+    }
+    throw lastError;
+  });
+}
 
 // Skip-existing: see the active _loadExistingSourceUrls() in the EPEY.COM
 // OVERRIDES section below — it preloads what is already in the catalog so the
@@ -4960,7 +5025,12 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     slog(`⏭  Skipped ${skippedCount} already-saved products → ${urlItems.length} new to scrape`, 'success');
     results.skipped += skippedCount;
   } else {
-    slog(`No existing products for this category — scraping all ${urlItems.length}`, 'info');
+    const knownExisting = Math.max(existingUrlKeys.size, existingSlugKeys.size, existingByVG?.size || 0);
+    if (knownExisting > 0) {
+      slog(`Existing catalog preload found ${knownExisting} keys, but none overlap this URL batch/resume slice — scraping all ${urlItems.length}`, 'info');
+    } else {
+      slog(`No existing products for this category — scraping all ${urlItems.length}`, 'info');
+    }
   }
   if (urlItems.length === 0) {
     slog('Nothing new to scrape — category is fully up to date.', 'success');
@@ -4974,6 +5044,17 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   let cursor = 0;
   let completed = 0;
   let lastSummary = 0;
+  const retryLaterByKey = new Map();
+  const retryKeyFor = (item) => normalizeScrapeUrlKey(item?.url) || String(item?.url || '').trim();
+  const markRetryLater = (item) => {
+    const key = retryKeyFor(item);
+    if (key) retryLaterByKey.set(key, item);
+  };
+  const clearRetryLater = (item) => {
+    const key = retryKeyFor(item);
+    if (key) retryLaterByKey.delete(key);
+  };
+  const retryLaterItems = () => Array.from(retryLaterByKey.values());
   // Aggressive low cap (was 250ms) — Cloudflare clearance + 8-24 worker pool
   // Epey has no Cloudflare — drop the inter-request sleep entirely. Workers
   // are naturally paced by the proxy queue + HTTP round-trip latency.
@@ -4990,6 +5071,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       if (!html) {
         slog(`  → 404/gone: ${slug}`, 'warn');
         results.skipped++;
+        clearRetryLater(item);
         return;
       }
 
@@ -5000,7 +5082,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         slog(`  → Challenge page: ${slug} (streak ${challengeStreak})`, 'warn');
         if (challengeStreak >= _CF_STREAK_BEFORE_RESET) {
           slog(`🛑 ${challengeStreak} ardışık challenge. Paralel çekim durduruldu; proxy'i yenileyip Resume kullan.`, 'error');
-          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+          markRetryLater(item);
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
           scraperAbort = true;
           _abortAllScrapeControllers();
         }
@@ -5012,6 +5095,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
         slog(`  → Skipped (no data): ${slug}`, 'warn');
         results.skipped++;
+        clearRetryLater(item);
         return;
       }
 
@@ -5037,13 +5121,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           recent.push('ok');
           slog(`  ↻ Cross-source merge: ${product.name} → existing ${existing.id} (${existing.source})`, 'info');
           if ((results.added + results.updated) % 50 === 0) {
-            _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+            _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
           }
+          clearRetryLater(item);
           return;
         }
       }
 
-      const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+      const saved = await _saveProductWithRetry(clean, product.name || clean.name || clean.slug);
       // Register the new record in the in-memory VG map so subsequent
       // products from a different source merge into THIS one.
       if (mergeKey && saved?.id) {
@@ -5054,18 +5139,20 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       errorStreak = 0;
       recent.push('ok');
       slog(`  → Eklendi: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'success');
+      clearRetryLater(item);
 
       // Adaptive checkpoint every 50 saved products. In parallel mode the
       // cursor may be ahead of completed workers; durable skip-existing makes
       // Resume safe even if a few in-flight URLs are retried later.
       if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
-        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
       }
     } catch (e) {
       if (scraperAbort || e.message === 'aborted') return;
       results.errors++;
       errorStreak++;
       recent.push('err');
+      markRetryLater(item);
       const details = e.response?.data || e.data || {};
       slog(`  → Error: ${slug} — ${e.message}`, 'error');
       Object.entries(details).forEach(([k,v]) => {
@@ -5075,7 +5162,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // HARD ABORT: too many consecutive errors → likely IP-banned / browser dead
       if (errorStreak >= _MAX_CONSEC_ERRORS) {
         slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık hata. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
-        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
         scraperAbort = true;
         _abortAllScrapeControllers();
         return;
@@ -5107,7 +5194,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
   await Promise.all(workers);
-  if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+  if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
 
   // Self-healing: any TR word that hit the transliteration fallback during
   // this run is now sent to Argos for a real translation and added to the
@@ -5117,8 +5204,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // every ~30s. At the end we must flush whatever's pending.
   try { await _flushDeDictBeforeExit(); } catch {}
 
-  // Final checkpoint clear (success path)
-  if (!scraperAbort) _clearCheckpoint();
+  // Final checkpoint clear (success path). If a few products failed while the
+  // rest completed, keep just those URLs for Resume instead of dropping them.
+  if (!scraperAbort && retryLaterByKey.size > 0) {
+    _saveCheckpoint(urlItems, urlItems.length, categoryId, results, retryLaterItems());
+    slog(`↻ ${retryLaterByKey.size} hatalı ürün Resume için checkpoint'e geri koyuldu.`, 'warn');
+  } else if (!scraperAbort) {
+    _clearCheckpoint();
+  }
   return results;
 }
 
@@ -6697,7 +6790,7 @@ async function scrapeByUrl() {
         }
       }
     }
-    const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+    const saved = await _saveProductWithRetry(clean, clean.name || clean.slug || url);
     window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
     const langCount = Object.keys(clean.multiLangSpecs || {}).length;
     slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images, ${langCount} dilde çeviri)`, 'success');
