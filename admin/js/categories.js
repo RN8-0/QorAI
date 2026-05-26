@@ -1018,20 +1018,27 @@ async function populateScraperCategories() {
   // blocker for opening the scraper tab or selecting a category.
   _applyScraperCategoryOptions(_buildScraperCategoryOptions({}, {}, false));
 
+  // Fast path (categories collection) repaints AS SOON AS it arrives.
+  // The slow path (per-source scan of every product) used to block this
+  // for minutes — user saw "(0)" labels until BOTH finished. Now the fast
+  // numbers land in <300 ms and the source-specific Epey count refines
+  // them later without blocking the UI.
   let counts = {};
   let epeyCounts = {};
   try {
-    [counts, epeyCounts] = await Promise.all([
-      _loadCategoryCounts(),
-      // The Translate-Category panel only translates scraped products
-      // (Epey + Geizhals), so its dropdown lists those categories.
-      _loadCategoryCounts('__epey__'),
-    ]);
+    counts = await _loadCategoryCounts();
+    _applyScraperCategoryOptions(_buildScraperCategoryOptions(counts, {}, true));
   } catch (e) {
-    console.warn('[categories] count refresh failed:', e.message || e);
+    console.warn('[categories] fast count load failed:', e.message || e);
   }
-
-  _applyScraperCategoryOptions(_buildScraperCategoryOptions(counts, epeyCounts, true));
+  // Slow path — refine with per-source counts (used by Translate-Category
+  // dropdown). Background; no await on the call site beyond this point.
+  _loadCategoryCounts('__epey__').then(ec => {
+    epeyCounts = ec || {};
+    _applyScraperCategoryOptions(_buildScraperCategoryOptions(counts, epeyCounts, true));
+  }).catch(e => {
+    console.warn('[categories] epey count refine failed:', e.message || e);
+  });
 }
 
 // ────────────────────────────────────────────────────────────────
