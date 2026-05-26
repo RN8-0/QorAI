@@ -295,7 +295,9 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
       { id: 'desktops',          name: 'Desktop PCs',           tr: 'Masaüstü PC',              LegacySlug: 'sysdiv',      epeyPath: 'masaustu-bilgisayar' },
       { id: 'tablets',           name: 'Tablets',               tr: 'Tablet',                   LegacySlug: 'nbtabl',      epeyPath: 'tablet' },
       { id: 'e_readers',         name: 'E-Readers',             tr: 'E-Kitap Okuyucu',          epeyPath: 'e-kitap-okuyucu' },
-      { id: 'vr_headsets',       name: 'VR Headsets',           tr: 'Sanal Gerçeklik Gözlüğü',  epeyPath: 'sanal-gerceklik-gozlugu' },
+      // Verified 2026-05-26: /sanal-gerceklik-gozlugu/ returns 404; the live
+      // Epey slug is /sanal-gerceklik/ (85 products across 24 brands).
+      { id: 'vr_headsets',       name: 'VR Headsets',           tr: 'Sanal Gerçeklik Gözlüğü',  epeyPath: 'sanal-gerceklik' },
     ],
   },
   {
@@ -304,10 +306,15 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
       { id: 'graphics_cards',    name: 'Graphics Cards',        tr: 'Ekran Kartı',              LegacySlug: 'gra16_512',   epeyPath: 'ekran-karti' },
       { id: 'cpus',              name: 'Processors',            tr: 'İşlemci',                  LegacySlug: 'cpu',         epeyPath: 'islemci' },
       { id: 'motherboards',      name: 'Motherboards',          tr: 'Anakart',                  LegacySlug: 'mainboards',  epeyPath: 'anakart' },
-      { id: 'ram',               name: 'RAM',                   tr: 'RAM',                      LegacySlug: 'ramddr3',     epeyPath: 'ram' },
-      { id: 'ssd',               name: 'SSDs',                  tr: 'SSD',                      LegacySlug: 'hdssd',       epeyPath: 'ssd' },
-      { id: 'psu',               name: 'Power Supplies (PSU)',  tr: 'PSU (Güç Kaynağı)',        LegacySlug: 'gehps',       epeyPath: 'power-supply' },
-      { id: 'pc_cases',          name: 'PC Cases',              tr: 'Kasa',                     LegacySlug: 'gehatx',      epeyPath: 'kasa' },
+      // Verified working epeyPath values 2026-05-26:
+      //   ram   → /bellek-ram/ (4 773 products) — /ram/ returns 404
+      //   ssd   → /sabit-disk/ (2 840) — /ssd/ returns 404
+      //   psu   → /power-supply-psu/ (1 110) — /power-supply/ returns 404
+      //   cases → /bilgisayar-kasasi/ (3 566) — /kasa/ returns 404
+      { id: 'ram',               name: 'RAM',                   tr: 'RAM',                      LegacySlug: 'ramddr3',     epeyPath: 'bellek-ram' },
+      { id: 'ssd',               name: 'SSDs',                  tr: 'SSD',                      LegacySlug: 'hdssd',       epeyPath: 'sabit-disk' },
+      { id: 'psu',               name: 'Power Supplies (PSU)',  tr: 'PSU (Güç Kaynağı)',        LegacySlug: 'gehps',       epeyPath: 'power-supply-psu' },
+      { id: 'pc_cases',          name: 'PC Cases',              tr: 'Kasa',                     LegacySlug: 'gehatx',      epeyPath: 'bilgisayar-kasasi' },
       { id: 'ups',               name: 'UPS',                   tr: 'UPS / Kesintisiz Güç',     LegacySlug: 'gehups',      epeyPath: 'ups' },
       { id: 'flash_drives',      name: 'USB Flash Drives',      tr: 'USB Bellek',               epeyPath: 'usb-bellek' },
     ],
@@ -323,8 +330,11 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
   {
     name: 'Peripherals',
     categories: [
-      { id: 'keyboards',         name: 'Keyboards',             tr: 'Klavye',                   LegacySlug: 'kb',          epeyPath: 'klavye' },
-      { id: 'mice',              name: 'Mice',                  tr: 'Mouse',                    LegacySlug: 'mouse',       epeyPath: 'mouse' },
+      // Epey groups keyboards + mice under a single /klavye-mouse/ landing.
+      // We scrape both categories from the same URL and rely on per-product
+      // name/spec heuristics downstream to split them (LegacySlug intact).
+      { id: 'keyboards',         name: 'Keyboards',             tr: 'Klavye',                   LegacySlug: 'kb',          epeyPath: 'klavye-mouse' },
+      { id: 'mice',              name: 'Mice',                  tr: 'Mouse',                    LegacySlug: 'mouse',       epeyPath: 'klavye-mouse' },
       { id: 'gamepads',          name: 'Gamepads',              tr: 'Oyun Kolu',                LegacySlug: 'eggamepad',   epeyPath: 'oyun-kolu' },
       { id: 'gaming_consoles',   name: 'Game Consoles',         tr: 'Oyun Konsolu',             LegacySlug: 'con',         epeyPath: 'oyun-konsolu' },
       { id: 'webcams',           name: 'Webcams',               tr: 'Webcam',                   epeyPath: 'webcam' },
@@ -338,10 +348,15 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
     categories: [
       { id: 'monitors',          name: 'Monitors',              tr: 'Monitör',                  LegacySlug: 'monlcd19wide', epeyPath: 'monitor' },
       { id: 'tvs',               name: 'TVs',                   tr: 'Televizyon',               LegacySlug: 'tvlcd',       epeyPath: 'televizyon' },
-      { id: 'projectors',        name: 'Projectors',            tr: 'Projeksiyon',              epeyPath: 'projeksiyon' },
-      { id: 'speakers',          name: 'Speakers',              tr: 'Hoparlör',                 LegacySlug: 'hifibox',     epeyPath: 'hoparlor' },
+      // Verified working epeyPath 2026-05-26:
+      //   projectors   → /projeksiyon-makinesi/ (1 539) — /projeksiyon/ 404
+      //   av_receivers → /goruntu-ve-ses-aktarici/ (124) — /goruntu-ses-aktarici/ 404
+      //   speakers     → /hoparlor/ menüde var ama 404; /ses-sistemi/ alternatifi
+      //                  audio_systems ile çakışır, post-hoc split gerekir
+      { id: 'projectors',        name: 'Projectors',            tr: 'Projeksiyon',              epeyPath: 'projeksiyon-makinesi' },
+      { id: 'speakers',          name: 'Speakers',              tr: 'Hoparlör',                 LegacySlug: 'hifibox',     epeyPath: 'ses-sistemi' },
       { id: 'audio_systems',     name: 'Audio Systems',         tr: 'Ses Sistemi',              epeyPath: 'ses-sistemi' },
-      { id: 'av_receivers',      name: 'AV Receivers',          tr: 'Görüntü ve Ses Aktarıcı',  LegacySlug: 'hifirec',     epeyPath: 'goruntu-ses-aktarici' },
+      { id: 'av_receivers',      name: 'AV Receivers',          tr: 'Görüntü ve Ses Aktarıcı',  LegacySlug: 'hifirec',     epeyPath: 'goruntu-ve-ses-aktarici' },
       { id: 'media_players',     name: 'Media Players',         tr: 'Medya Oynatıcı',           epeyPath: 'medya-oynatici' },
     ],
   },

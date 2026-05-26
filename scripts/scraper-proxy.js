@@ -1749,6 +1749,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Raw HTML fetch via puppeteer (debug / category discovery) ──
+  if (req.url.startsWith('/raw-fetch')) {
+    try {
+      const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+      const target = urlObj.searchParams.get('url');
+      if (!target) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing url' }));
+        return;
+      }
+      const { html, status } = await withBrowserLock(() => fetchHtml(target, {}));
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(html || '');
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // ── BATCH Listing AJAX (multiple /kat/listele/ pages in parallel) ──
   // Same as /listing-ajax but accepts &pages=1,2,3,4,5,6 and runs ALL of them
   // concurrently inside ONE page.evaluate so the browser fires N parallel
