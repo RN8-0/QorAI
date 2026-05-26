@@ -330,11 +330,14 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
   {
     name: 'Peripherals',
     categories: [
-      // Epey groups keyboards + mice under a single /klavye-mouse/ landing.
-      // We scrape both categories from the same URL and rely on per-product
-      // name/spec heuristics downstream to split them (LegacySlug intact).
-      { id: 'keyboards',         name: 'Keyboards',             tr: 'Klavye',                   LegacySlug: 'kb',          epeyPath: 'klavye-mouse' },
-      { id: 'mice',              name: 'Mice',                  tr: 'Mouse',                    LegacySlug: 'mouse',       epeyPath: 'klavye-mouse' },
+      // Epey exposes /klavye-mouse/ as a combined hub AND clean per-type
+      // subpaths via urun-tipi. We use the per-type subpaths so each
+      // category lands the right products (mirrors Geizhals' separate
+      // ?cat=kb / ?cat=mouse). Verified 2026-05-26:
+      //   /klavye-mouse/urun-tipi/klavye/ → 2 393 keyboards
+      //   /klavye-mouse/urun-tipi/mouse/  → 3 660 mice
+      { id: 'keyboards',         name: 'Keyboards',             tr: 'Klavye',                   LegacySlug: 'kb',          epeyPath: 'klavye-mouse/urun-tipi/klavye' },
+      { id: 'mice',              name: 'Mice',                  tr: 'Mouse',                    LegacySlug: 'mouse',       epeyPath: 'klavye-mouse/urun-tipi/mouse' },
       { id: 'gamepads',          name: 'Gamepads',              tr: 'Oyun Kolu',                LegacySlug: 'eggamepad',   epeyPath: 'oyun-kolu' },
       { id: 'gaming_consoles',   name: 'Game Consoles',         tr: 'Oyun Konsolu',             LegacySlug: 'con',         epeyPath: 'oyun-konsolu' },
       { id: 'webcams',           name: 'Webcams',               tr: 'Webcam',                   epeyPath: 'webcam' },
