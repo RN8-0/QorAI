@@ -5904,10 +5904,12 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // Batched Epey AJAX listing pages. `pages` is [1,2,3,4,5,6] — the proxy
-  // fires them all in parallel inside ONE page.evaluate. Throughput jumps
-  // from 1 page/s (serial) to 4-6 pages/s (browser's HTTP/1.1 concurrency).
-  const PAGINATE_BATCH = 6; // pages per batch (browser's per-host conn limit)
+  // Batched Epey AJAX listing pages. `pages` is [1,2,3,...,12] — the proxy
+  // fires them all in parallel inside ONE page.evaluate. The Puppeteer
+  // browser is HTTP/2 capable when Epey supports it, so we can push past
+  // the HTTP/1.1 six-connection limit. 12 measured ~140 ms/page from the
+  // proxy on a warm session (verified 2026-05-26 against laptop catalog).
+  const PAGINATE_BATCH = 12;
   const fetchAjaxPagesBatch = async (ajax, pageNumbers, filterValues = []) => {
     let qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
@@ -6109,35 +6111,17 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         //   (3) plain listing — the unfiltered AJAX stream as last resort.
         //
         // All three feed `pushItems`/`seenUrls`; de-dup is automatic.
-        const filterGroupsToTry = filtersTopK.length ? filtersTopK : (filter ? [filter] : []);
-        if (filterGroupsToTry.length) {
-          slog(`  ⏩ Filtreli kategori sayfalaması başlıyor (${ajax.limit}/sayfa · ${filterGroupsToTry.length} filtre grubu)`, 'info');
-          for (let fi = 0; fi < filterGroupsToTry.length; fi++) {
-            if (allItems.length >= maxProducts || scraperAbort) break;
-            const f = filterGroupsToTry[fi];
-            const beforeCount = allItems.length;
-            slog(`  ⏩ Filtre grubu ${fi + 1}/${filterGroupsToTry.length} — ${f.groupId}, TÜM ${f.values.length} değer aktif, ~${f.total} ürün`, 'info');
-            await paginateStream(ajax, f.values, (pageNo, added, total) => {
-              if (pageNo === 1 || added || pageNo % 5 === 0) logPage(pageNo, added, total);
-            });
-            const gained = allItems.length - beforeCount;
-            if (gained === 0) {
-              slog(`  ⚠️ Filtre grubu ${f.groupId} yeni ürün getirmedi (zaten kapsanmış)`, 'warn');
-            } else {
-              slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
-            }
-            // No early termination on expectedCategoryTotal — that figure is
-            // always read from the Satıştakiler-default HTML and undershoots
-            // the real total (laptops: filter HTML ≈ 8 753, real ≈ 48 810).
-            // Run every fallback filter group so the union spans the catalog.
-          }
-        } else {
-          slog(`  ⚠️ Uygun filtre grubu bulunamadı; düz liste yedeğine geçilecek`, 'warn');
-        }
+        // NOTE: /kat/listele/ filtrele[]= AJAX is silently ignored by Epey
+        // (deprecated). Tested 2026-05-26: sending all 37 filter values via
+        // fv= returns the same 1115 in-stock default products as no filter.
+        // Real coverage comes from brand-URL partition below. Filter group
+        // iteration kept as a no-op safety net but no longer waste-paginates.
 
-        // Brand partition — adds whichever brand-specific products the
-        // filter-group sweep missed. Cheap when union already complete (each
-        // brand returns 0 new), so safe to always run.
+        // Brand partition — URL navigation (NOT fv= AJAX). Each brand has
+        // its own dedicated listing URL like /laptop/lenovo/. The brand
+        // page exposes a SEPARATE ajax (kid + cerez + base) that paginates
+        // brand-filtered results correctly. Sending fv=marka:NN to /kat/listele/
+        // is silently ignored (Epey deprecated that interface).
         if (brandFilter && Array.isArray(brandFilter.values) && brandFilter.values.length &&
             allItems.length < maxProducts && !scraperAbort) {
           slog(`  ⏩ Marka partisyonu başlıyor (${brandFilter.values.length} marka · ~${brandFilter.total} toplam)`, 'info');
@@ -6145,16 +6129,23 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           for (let bi = 0; bi < brandFilter.values.length; bi++) {
             if (allItems.length >= maxProducts || scraperAbort) break;
             const b = brandFilter.values[bi];
-            const brandValue = typeof b === 'string' ? b : b?.value;
-            const brandName  = typeof b === 'string' ? b : (b?.name || brandValue);
+            const brandUrl   = typeof b === 'string' ? b : b?.value;
+            const brandName  = typeof b === 'string' ? b : (b?.name || brandUrl);
             const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
-            if (!brandValue) continue;
+            if (!brandUrl || !/^https?:/i.test(String(brandUrl))) continue;
             const beforeOne = allItems.length;
-            await paginateStream(ajax, [brandValue], () => {});
-            const gained = allItems.length - beforeOne;
-            if (gained > 0) {
-              slog(`    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}`, 'success');
+            // Fetch the brand page metadata — its own kategoriId/cerez set.
+            let brandData;
+            try { brandData = await fetchLinks(brandUrl); }
+            catch (e) { slog(`    ↳ ${brandName}: meta hatası (${e.message})`, 'warn'); continue; }
+            const brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
+            // Push the inline first-page links so we don't miss them.
+            pushItems(itemsFromData(brandData));
+            if (brandAjax) {
+              await paginateStream(brandAjax, [], () => {});
             }
+            const gained = allItems.length - beforeOne;
+            slog(`    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}`, gained ? 'success' : 'warn');
           }
           const brandGained = allItems.length - beforeBrand;
           slog(`  ✓ Marka partisyonu bitti: +${brandGained} yeni URL (kümülatif ${allItems.length})`, brandGained ? 'success' : 'warn');
