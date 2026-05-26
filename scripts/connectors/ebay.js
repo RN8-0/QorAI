@@ -31,8 +31,37 @@ const ENV = loadEnv();
 const CLIENT_ID = ENV.EBAY_CLIENT_ID || '';
 const CLIENT_SECRET = ENV.EBAY_CLIENT_SECRET || '';
 const CAMPID = ENV.EBAY_CAMPID || '';
-const MARKETPLACES = (ENV.EBAY_MARKETPLACES || 'EBAY_US,EBAY_DE').split(',').map(s => s.trim()).filter(Boolean);
-const MARKET_COUNTRY = { EBAY_US: 'US', EBAY_DE: 'DE', EBAY_GB: 'GB', EBAY_AU: 'AU', EBAY_TR: 'TR' };
+// Active target languages are tr / en / de / es / fr / pt / ru. eBay does not
+// run a native marketplace in TR / RU / PT (BR site shut down in 2018, TR &
+// RU were never an active EPN target). For those audiences we surface the
+// nearest high-inventory storefront via international shipping:
+//   tr  → DE + GB           pt  → ES + GB
+//   ru  → DE + GB           jp  → US (left out unless user opts in)
+// Default below pulls offers from the six European/US markets where eBay
+// stock is dense; user can override in .env to add CA / AU / IT / NL / etc.
+const MARKETPLACES = (ENV.EBAY_MARKETPLACES || 'EBAY_US,EBAY_GB,EBAY_DE,EBAY_FR,EBAY_ES,EBAY_IT')
+  .split(',').map(s => s.trim()).filter(Boolean);
+const MARKET_COUNTRY = {
+  EBAY_US: 'US', EBAY_CA: 'CA',
+  EBAY_GB: 'GB', EBAY_IE: 'IE', EBAY_AU: 'AU',
+  EBAY_DE: 'DE', EBAY_AT: 'AT', EBAY_CH: 'CH',
+  EBAY_FR: 'FR', EBAY_BE: 'BE', EBAY_NL: 'NL',
+  EBAY_ES: 'ES', EBAY_IT: 'IT',
+  EBAY_PL: 'PL', EBAY_TR: 'TR',
+};
+// Reverse map: target language → preferred fallback marketplaces (in order).
+// Consumed by future per-locale price rollup; defined here so the language
+// → market routing lives next to MARKET_COUNTRY instead of being scattered
+// across the renderer.
+const LANG_PREFERRED_MARKETS = {
+  tr: ['EBAY_DE', 'EBAY_GB'],
+  en: ['EBAY_US', 'EBAY_GB', 'EBAY_AU'],
+  de: ['EBAY_DE', 'EBAY_AT', 'EBAY_CH'],
+  es: ['EBAY_ES'],
+  fr: ['EBAY_FR', 'EBAY_BE'],
+  pt: ['EBAY_ES', 'EBAY_GB'],
+  ru: ['EBAY_DE', 'EBAY_GB'],
+};
 
 // Our category slug → eBay top-level category id. Restricting the search to
 // the real product category keeps phone CASES out of phone results, laptop
@@ -223,4 +252,7 @@ async function getRateLimit() {
 // a keyword retry when the GTIN lookup returns nothing.
 const CALLS_PER_PRODUCT = MARKETPLACES.length * 2;
 
-module.exports = { searchOffers, isConfigured, getRateLimit, CALLS_PER_PRODUCT, id: 'ebay' };
+module.exports = {
+  searchOffers, isConfigured, getRateLimit, CALLS_PER_PRODUCT, id: 'ebay',
+  MARKETPLACES, MARKET_COUNTRY, LANG_PREFERRED_MARKETS,
+};

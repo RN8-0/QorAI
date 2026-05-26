@@ -551,10 +551,78 @@
         <!-- Affiliate offer sync (eBay) -->
         <div class="scraper-panel" id="offersPanel">
           <div class="card">
-            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · eBay Browse API</span></div>
+            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · eBay Browse API · 6 pazar</span></div>
             <p class="text-muted" style="margin-bottom:12px;font-size:13px">
-              Ürünlere eBay'den fiyat + affiliate link çeker (US / DE / GB). Günlük API kotası otomatik hesaplanır — limit asla aşılmaz. Kategori kategori, artımlı çalıştır.
+              Ürünlere eBay'den fiyat + affiliate link çeker — <strong>US · GB · DE · FR · ES · IT</strong> (env'de <code>EBAY_MARKETPLACES</code> ile değiştir). TR/PT/RU kullanıcılarına yakın pazardan uluslararası kargo gösterilir. Günlük API kotası otomatik hesaplanır — limit asla aşılmaz. Kategori kategori, artımlı çalıştır.
             </p>
+            <details style="margin-bottom:12px;font-size:12px">
+              <summary class="text-muted" style="cursor:pointer;user-select:none">🌐 Diğer Affiliate Programları — Kayıt Linkleri (Amazon, Awin, AliExpress, Admitad, eBay EPN…)</summary>
+              <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+                <a href="https://partners.ebay.com/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#e53238;color:#fff;border:none">
+                  🇺🇸 <strong>eBay Partner Network</strong><br><span style="font-size:10px;opacity:.85">partners.ebay.com · CampID al, .env'e EBAY_CAMPID</span>
+                </a>
+                <a href="https://affiliate-program.amazon.com/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇺🇸 <strong>Amazon Associates US</strong><br><span style="font-size:10px;opacity:.85">affiliate-program.amazon.com</span>
+                </a>
+                <a href="https://partnernet.amazon.de/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇩🇪 <strong>Amazon PartnerNet DE</strong><br><span style="font-size:10px;opacity:.85">partnernet.amazon.de · Avusturya + İsviçre dahil</span>
+                </a>
+                <a href="https://partenaires.amazon.fr/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇫🇷 <strong>Amazon Partenaires FR</strong><br><span style="font-size:10px;opacity:.85">partenaires.amazon.fr · Belçika FR dahil</span>
+                </a>
+                <a href="https://afiliados.amazon.es/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇪🇸 <strong>Amazon Afiliados ES</strong><br><span style="font-size:10px;opacity:.85">afiliados.amazon.es</span>
+                </a>
+                <a href="https://programma-affiliazione.amazon.it/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇮🇹 <strong>Amazon Affiliazione IT</strong><br><span style="font-size:10px;opacity:.85">programma-affiliazione.amazon.it</span>
+                </a>
+                <a href="https://affiliate-program.amazon.co.uk/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇬🇧 <strong>Amazon Associates UK</strong><br><span style="font-size:10px;opacity:.85">affiliate-program.amazon.co.uk</span>
+                </a>
+                <a href="https://associados.amazon.com.br/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
+                  🇧🇷 <strong>Amazon Associados BR</strong><br><span style="font-size:10px;opacity:.85">associados.amazon.com.br · BR banka hesabı şart</span>
+                </a>
+                <a href="https://ui.awin.com/affiliate-signup" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff6a01;color:#fff;border:none">
+                  🌍 <strong>Awin</strong><br><span style="font-size:10px;opacity:.85">$5 deposit · 30K+ marka · UK, DE, FR, ES, IT, NL, PL, US, BR</span>
+                </a>
+                <a href="https://www.shareasale.com/info/joinaffiliate" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#0066cc;color:#fff;border:none">
+                  🌍 <strong>ShareASale</strong><br><span style="font-size:10px;opacity:.85">US-merkezli · no-pressure approval · yeni site OK</span>
+                </a>
+                <a href="https://store.admitad.com/en/promo/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#0066ff;color:#fff;border:none">
+                  🌍 <strong>Admitad</strong><br><span style="font-size:10px;opacity:.85">RU + BR + TR + DE · anında onay · Trendyol/N11/Ozon burada</span>
+                </a>
+                <a href="https://portals.aliexpress.com/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff4747;color:#fff;border:none">
+                  🌍 <strong>AliExpress Portals</strong><br><span style="font-size:10px;opacity:.85">tek hesap tüm diller · 30 gün cookie · 4-8% komisyon</span>
+                </a>
+                <a href="https://signup.cj.com/member/signup/publisher/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#1a8917;color:#fff;border:none">
+                  🌍 <strong>CJ Affiliate</strong><br><span style="font-size:10px;opacity:.85">premium markalar · 6 ayda satış olmazsa hesap kapanır</span>
+                </a>
+                <a href="https://app.impact.com/campaign-promo-signup/Default.brand" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#8d2cf6;color:#fff;border:none">
+                  🌍 <strong>Impact.com</strong><br><span style="font-size:10px;opacity:.85">enterprise markalar · onay sıkı · trafik biriktiğinde başvur</span>
+                </a>
+                <a href="https://partners.tradedoubler.com/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#0093d1;color:#fff;border:none">
+                  🇪🇺 <strong>Tradedoubler</strong><br><span style="font-size:10px;opacity:.85">Avrupa odaklı · Hepsiburada, MediaMarkt</span>
+                </a>
+                <a href="https://www.trendyol.com/influencer" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#f27a1a;color:#fff;border:none">
+                  🇹🇷 <strong>Trendyol Influencer</strong><br><span style="font-size:10px;opacity:.85">Instagram 10K şart · Admitad'dan bypass mümkün</span>
+                </a>
+                <a href="https://yardim.hepsiburada.com/s/article/influencer-programi" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff6000;color:#fff;border:none">
+                  🇹🇷 <strong>Hepsiburada LinkGelir</strong><br><span style="font-size:10px;opacity:.85">10K-30K takipçi şart · Admitad'da da listeli</span>
+                </a>
+                <a href="https://partner.market.yandex.ru/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#fc3f1d;color:#fff;border:none">
+                  🇷🇺 <strong>Yandex Market Partner</strong><br><span style="font-size:10px;opacity:.85">~%2-3 elektronik · RU + CIS · Cuelinks alternatifi</span>
+                </a>
+                <a href="https://parceiros.magazineluiza.com.br/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#0086ff;color:#fff;border:none">
+                  🇧🇷 <strong>Magazine Luiza Parceiros</strong><br><span style="font-size:10px;opacity:.85">Brezilya · AliExpress entegrasyonu</span>
+                </a>
+                <a href="https://www.mercadolivre.com.br/afiliados" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#fff159;color:#000;border:none">
+                  🇧🇷 <strong>Mercado Livre Afiliados</strong><br><span style="font-size:10px;opacity:.85">Brezilya'nın #1 marketplace'i · LatAm geneli</span>
+                </a>
+              </div>
+              <p class="text-muted" style="margin-top:10px;font-size:11px">
+                ⚡ <strong>Önce başvuracaklarınız (anında onay)</strong>: eBay EPN · AliExpress · Awin · Admitad. Sonra Amazon (her ülke ayrı hesap). En son CJ / Impact / Skimlinks (trafik biriktiğinde).
+              </p>
+            </details>
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
               <div class="form-field">
                 <label>Kategori</label>
