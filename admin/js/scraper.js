@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-technical-residue-fix';
+const SCRAPER_BUILD = '20260526-epey-flash-residue-fix';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -1915,7 +1915,6 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     .replace(/ç/g, 'c');
   const limitRule = _translateTurkishLimitPhrases(raw, lang);
   if (limitRule && limitRule !== raw) return limitRule;
-  if (_isProtectedTechnicalAtom(raw)) return raw;
   const n = (s.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
   const suffix = raw.match(/\([^)]*\)\s*$/)?.[0] || '';
   const phrase = {
@@ -1931,6 +1930,30 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
   };
   const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
+  if (/^(?:usb\s+)?flash\s+bellek$|^usb\s+bellek$/.test(s)) {
+    return ({
+      en: 'USB flash drive', de: 'USB-Stick', es: 'unidad flash USB',
+      fr: 'cle USB', pt: 'pen drive USB', ru: 'USB-накопитель',
+    })[lang] || 'USB flash drive';
+  }
+  if (/^(usb|usb-c|hdmi|displayport|thunderbolt|bluetooth|wi-?fi)\s+destegi$/.test(s)) {
+    const tech = raw.match(/^(usb-c|usb|hdmi|displayport|thunderbolt|bluetooth|wi-?fi)/i)?.[0] || 'USB';
+    return ({
+      en: `${tech} support`, de: `${tech}-Unterstutzung`, es: `compatibilidad ${tech}`,
+      fr: `prise en charge ${tech}`, pt: `suporte ${tech}`, ru: `поддержка ${tech}`,
+    })[lang] || `${tech} support`;
+  }
+  if (/^(usb|usb-c|hdmi|displayport|thunderbolt)\s+(girisi|girisleri|cikisi|cikislari|portu|soketi|baglantisi|tipi|turu)$/.test(s)) {
+    const tech = raw.match(/^(usb-c|usb|hdmi|displayport|thunderbolt)/i)?.[0] || 'USB';
+    const kind = /cikis/.test(s) ? 'output' : (/giris|port|soket|baglanti/.test(s) ? 'port' : 'type');
+    return ({
+      en: `${tech} ${kind}`, de: `${tech}-${kind === 'type' ? 'Typ' : 'Anschluss'}`,
+      es: `${kind === 'type' ? 'tipo' : 'puerto'} ${tech}`,
+      fr: `${kind === 'type' ? 'type' : 'port'} ${tech}`,
+      pt: `${kind === 'type' ? 'tipo' : 'porta'} ${tech}`,
+      ru: `${tech} ${kind === 'type' ? 'тип' : 'порт'}`,
+    })[lang] || `${tech} ${kind}`;
+  }
   if (/^usb(?:-c)?\s*ozellikleri$/.test(s)) {
     return ({
       en: 'USB features', de: 'USB-Funktionen', es: 'Funciones USB',
@@ -1957,6 +1980,7 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
       pt: 'Li-Po (polímero de lítio)', ru: 'Li-Po (литий-полимер)',
     })[lang] || 'Li-Po (lithium polymer)';
   }
+  if (_isProtectedTechnicalAtom(raw)) return raw;
   const q = s.match(/^(\d{4})\s+([1-4])\.?\s*ceyrek$/);
   if (q) {
     return ({
@@ -2098,7 +2122,7 @@ function _isProtectedTechnicalAtom(text) {
   const raw = String(text || '').trim();
   if (!raw || /[çğıİöşüÇĞİÖŞÜ]/.test(raw)) return false;
   const foldedRaw = _foldSourceResidueText(raw);
-  if (/\b(?:azami|asgari|maksimum|ozellik(?:leri)?|adedi|sayisi|tipi|turu|versiyonu|surumu|baglanti(?:si)?|destegi|giris(?:i|leri)?|cikis(?:i|lari)?|portu|soketi|uyumu)\b/.test(foldedRaw)) {
+  if (/\b(?:azami|asgari|maksimum|bellek|hafiza|adaptoru|adaptor|guc|sarj|pil|batarya|ozellik(?:leri)?|adedi|sayisi|tipi|turu|versiyonu|surumu|baglanti(?:si)?|destegi|giris(?:i|leri)?|cikis(?:i|lari)?|portu|soketi|uyumu)\b/.test(foldedRaw)) {
     return false;
   }
   const exact = raw.toLowerCase();
@@ -2988,7 +3012,8 @@ if (typeof window !== 'undefined') {
 function _sanitizeEnglishSpecText(text, sourceText = '') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
-  let out = _translateTurkishLimitPhrases(raw, 'en');
+  const directRule = _knownTurkishRuleTranslation(raw, 'en');
+  let out = directRule && directRule !== raw ? directRule : _translateTurkishLimitPhrases(raw, 'en');
   out = _normalizeTurkishSourceTranslation(sourceText || raw, 'en', out);
   out = _translateTurkishLimitPhrases(out, 'en');
   // Last-mile fixes for dirty values that can enter through canonicalizer,
