@@ -15,7 +15,7 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260523v1-eu-pivot';
+const SCRAPER_BUILD = '20260526-geizhals-source-fields';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
@@ -444,7 +444,43 @@ function productDedupKey(product) {
   return generateProductId(slugFromUrl(product?.sourceUrl || product?.slug || ''));
 }
 
+function _cloneSourceSpecObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  try { return JSON.parse(JSON.stringify(value)); } catch { return { ...value }; }
+}
+
+function _sourceSnapshotForProduct(product) {
+  return {
+    sourceLang: 'de',
+    sourceName: String(product?.name || '').trim(),
+    sourceSpecs: _cloneSourceSpecObject(product?.sourceSpecs || product?.specs),
+    sourceSpecSections: _cloneSourceSpecObject(product?.sourceSpecSections || product?.specSections),
+    sourceKeySpecs: _cloneSourceSpecObject(product?.sourceKeySpecs || product?.keySpecs),
+  };
+}
+
+function _applySourceSnapshot(payload, snapshot) {
+  if (!payload || !snapshot) return payload;
+  payload.sourceLang = snapshot.sourceLang;
+  payload.sourceSpecs = snapshot.sourceSpecs || {};
+  payload.sourceSpecSections = snapshot.sourceSpecSections || {};
+  payload.sourceKeySpecs = snapshot.sourceKeySpecs || {};
+  payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), de: payload.sourceSpecs };
+  payload.multiLangSections = { ...(payload.multiLangSections || {}), de: payload.sourceSpecSections };
+  payload.nameTranslated = { ...(payload.nameTranslated || {}), de: snapshot.sourceName || payload.name };
+  return payload;
+}
+
+function _translationSourceProduct(p) {
+  if (String(p?.sourceLang || '').toLowerCase() !== 'de') return p;
+  const specs = p.sourceSpecs && typeof p.sourceSpecs === 'object' ? p.sourceSpecs : p.specs;
+  const specSections = p.sourceSpecSections && typeof p.sourceSpecSections === 'object' ? p.sourceSpecSections : p.specSections;
+  const keySpecs = p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' ? p.sourceKeySpecs : p.keySpecs;
+  return { ...p, specs: specs || {}, specSections: specSections || {}, keySpecs: keySpecs || {} };
+}
+
 function prepareProductPayload(product) {
+  const sourceSnapshot = _sourceSnapshotForProduct(product);
   const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
   // Apply spec canonicalization (DE "Bildschirmhelligkeit" → "Brightness",
   // "Auflösung" → "Resolution", etc.) so this record can merge cleanly with
@@ -516,6 +552,7 @@ function prepareProductPayload(product) {
   if (product.nameTranslated && typeof product.nameTranslated === 'object') {
     payload.nameTranslated = product.nameTranslated;
   }
+  _applySourceSnapshot(payload, sourceSnapshot);
   _sanitizeGermanEnglishPayload(payload);
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
@@ -2848,7 +2885,8 @@ async function _translateProductInline(product) {
     xlog(`▶ ${productLabel} — DE sözlük yükleniyor`, 'info');
     await _loadDeDict();
     const sink = new Set();
-    _collectAtomsFromProduct(product, sink);
+    const translationSource = _translationSourceProduct(product);
+    _collectAtomsFromProduct(translationSource, sink);
     const unique = [...sink].filter(_shouldTranslateAtom);
     let missing = unique.filter(
       t => TARGET_LANGS.some(l => !_deDictLookup(t, l))
@@ -2907,8 +2945,19 @@ async function _translateProductInline(product) {
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
       }
     }
-    const payload = _buildProductTranslations(product, TARGET_LANGS);
-    if (payload && typeof payload === 'object') Object.assign(product, payload);
+    const payload = _buildProductTranslations(translationSource, TARGET_LANGS);
+    if (payload && typeof payload === 'object') {
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), ...(payload.multiLangSpecs || {}) };
+      product.multiLangSections = { ...(product.multiLangSections || {}), ...(payload.multiLangSections || {}) };
+      product.nameTranslated = { ...(product.nameTranslated || {}), ...(payload.nameTranslated || {}) };
+    }
+    if (String(product.sourceLang || '').toLowerCase() === 'de') {
+      const deSpecs = product.sourceSpecs && typeof product.sourceSpecs === 'object' ? product.sourceSpecs : translationSource.specs;
+      const deSections = product.sourceSpecSections && typeof product.sourceSpecSections === 'object' ? product.sourceSpecSections : translationSource.specSections;
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), de: deSpecs || {} };
+      product.multiLangSections = { ...(product.multiLangSections || {}), de: deSections || {} };
+      product.nameTranslated = { ...(product.nameTranslated || {}), de: product.nameTranslated?.de || product.name || productLabel };
+    }
     _sanitizeGermanEnglishPayload(product);
     _deDictDirty = true;
     await _saveDeDict().catch(() => {});
@@ -2927,7 +2976,7 @@ const _GeizhalsBulkTranslate = {
   // Collect unique atoms across a batch of products
   collectAtoms(products) {
     const sink = new Set();
-    for (const p of products || []) _collectAtomsFromProduct(p, sink);
+    for (const p of products || []) _collectAtomsFromProduct(_translationSourceProduct(p), sink);
     return [...sink].filter(_shouldTranslateAtom);
   },
   // Return only the atoms that are missing for at least one target lang
@@ -2942,7 +2991,7 @@ const _GeizhalsBulkTranslate = {
   },
   // Build the per-product translation payload from dict only (no API calls).
   buildPayload(product, targetLangs = TARGET_LANGS) {
-    return _buildProductTranslations(product, targetLangs);
+    return _buildProductTranslations(_translationSourceProduct(product), targetLangs);
   },
   // Persist the dictionary cache to PocketBase (force-save)
   saveDict() { _deDictDirty = true; return _saveDeDict(); },
