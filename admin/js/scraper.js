@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-pb-retry-checkpoint';
+const SCRAPER_BUILD = '20260526-epey-tr-source-fields';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -799,7 +799,45 @@ function configKeyFromProduct(product, variantGroup) {
   return `${variantGroup || productDedupKey(product)}${axes.length ? `|${axes.join('|')}` : ''}`.slice(0, 230);
 }
 
+function _cloneSourceSpecObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  try { return JSON.parse(JSON.stringify(value)); } catch { return { ...value }; }
+}
+
+function _sourceLangForProduct(product) {
+  const marker = String(product?.source || product?.sourceUrl || '');
+  if (/geizhals/i.test(marker)) return 'de';
+  if (/epey/i.test(marker)) return 'tr';
+  return '';
+}
+
+function _sourceSnapshotForProduct(product) {
+  const sourceLang = _sourceLangForProduct(product);
+  return {
+    sourceLang,
+    sourceName: String(product?.name || '').trim(),
+    sourceSpecs: _cloneSourceSpecObject(product?.sourceSpecs || product?.specs),
+    sourceSpecSections: _cloneSourceSpecObject(product?.sourceSpecSections || product?.specSections),
+    sourceKeySpecs: _cloneSourceSpecObject(product?.sourceKeySpecs || product?.keySpecs),
+  };
+}
+
+function _applySourceSnapshot(payload, snapshot) {
+  if (!payload || !snapshot?.sourceLang) return payload;
+  payload.sourceLang = snapshot.sourceLang;
+  payload.sourceSpecs = snapshot.sourceSpecs || {};
+  payload.sourceSpecSections = snapshot.sourceSpecSections || {};
+  payload.sourceKeySpecs = snapshot.sourceKeySpecs || {};
+  if (snapshot.sourceLang === 'tr') {
+    payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), tr: payload.sourceSpecs };
+    payload.multiLangSections = { ...(payload.multiLangSections || {}), tr: payload.sourceSpecSections };
+    payload.nameTranslated = { ...(payload.nameTranslated || {}), tr: snapshot.sourceName || payload.name };
+  }
+  return payload;
+}
+
 function prepareProductPayload(product) {
+  const sourceSnapshot = _sourceSnapshotForProduct(product);
   const sourceProduct = canonicalizeEpeySpecsToEnglish(product);
   const sanitized = sanitizeProductSpecs(sourceProduct.specs || {}, sourceProduct.specSections || {});
   const canonicalizer = typeof window !== 'undefined' ? window.QorAiSpecCanonical : null;
@@ -897,6 +935,7 @@ function prepareProductPayload(product) {
   }
   payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), en: payload.specs };
   payload.multiLangSections = { ...(payload.multiLangSections || {}), en: payload.specSections };
+  _applySourceSnapshot(payload, sourceSnapshot);
   _sanitizeEnglishPayload(payload);
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
@@ -4004,6 +4043,16 @@ function _isEpeyTranslateProduct(p) {
   return /epey/i.test(String(p?.source || p?.sourceUrl || ''));
 }
 
+function _translationSourceProduct(p) {
+  if (!_isEpeyTranslateProduct(p)) return p;
+  const sourceLang = String(p?.sourceLang || '').toLowerCase();
+  if (sourceLang !== 'tr') return p;
+  const specs = p.sourceSpecs && typeof p.sourceSpecs === 'object' ? p.sourceSpecs : p.specs;
+  const specSections = p.sourceSpecSections && typeof p.sourceSpecSections === 'object' ? p.sourceSpecSections : p.specSections;
+  const keySpecs = p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' ? p.sourceKeySpecs : p.keySpecs;
+  return { ...p, specs: specs || {}, specSections: specSections || {}, keySpecs: keySpecs || {} };
+}
+
 function _collectAtomsFromProduct(p, sink) {
   if (!_isEpeyTranslateProduct(p)) return;
   const add = (t) => {
@@ -4108,7 +4157,8 @@ async function _translateProductInline(product) {
     xlog(`▶ ${productLabel} — sözlük yükleniyor`, 'info');
     await _loadDeDict();
     const sink = new Set();
-    _collectAtomsFromProduct(product, sink);
+    const translationSource = _translationSourceProduct(product);
+    _collectAtomsFromProduct(translationSource, sink);
     const unique = [...sink].filter(_shouldTranslateAtom);
     let missing = unique.filter(
       t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
@@ -4179,8 +4229,19 @@ async function _translateProductInline(product) {
         slog(`  ⚠ inline translate failed (${missing.length} atoms): ${e.message}`, 'warn');
       }
     }
-    const payload = _buildProductTranslations(product, TARGET_LANGS);
-    if (payload && typeof payload === 'object') Object.assign(product, payload);
+    const payload = _buildProductTranslations(translationSource, TARGET_LANGS);
+    if (payload && typeof payload === 'object') {
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), ...(payload.multiLangSpecs || {}) };
+      product.multiLangSections = { ...(product.multiLangSections || {}), ...(payload.multiLangSections || {}) };
+      product.nameTranslated = { ...(product.nameTranslated || {}), ...(payload.nameTranslated || {}) };
+    }
+    if (String(product.sourceLang || '').toLowerCase() === 'tr') {
+      const trSpecs = product.sourceSpecs && typeof product.sourceSpecs === 'object' ? product.sourceSpecs : translationSource.specs;
+      const trSections = product.sourceSpecSections && typeof product.sourceSpecSections === 'object' ? product.sourceSpecSections : translationSource.specSections;
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), tr: trSpecs || {} };
+      product.multiLangSections = { ...(product.multiLangSections || {}), tr: trSections || {} };
+      product.nameTranslated = { ...(product.nameTranslated || {}), tr: product.nameTranslated?.tr || product.name || productLabel };
+    }
     _sanitizeEnglishPayload(product);
     // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
     _deDictDirty = true;
@@ -4201,7 +4262,7 @@ window.QorAiBulkTranslate = {
   // Collect unique atoms across a batch of products
   collectAtoms(products) {
     const sink = new Set();
-    for (const p of products || []) _collectAtomsFromProduct(p, sink);
+    for (const p of products || []) _collectAtomsFromProduct(_translationSourceProduct(p), sink);
     return [...sink].filter(_shouldTranslateAtom);
   },
   // Return only the atoms that are missing for at least one target lang
@@ -4216,7 +4277,7 @@ window.QorAiBulkTranslate = {
   },
   // Build the per-product translation payload from dict only (no API calls).
   buildPayload(product, targetLangs = TARGET_LANGS) {
-    return _buildProductTranslations(product, targetLangs);
+    return _buildProductTranslations(_translationSourceProduct(product), targetLangs);
   },
   sanitizeEnglishSpecMap: (map) => _sanitizeEnglishSpecMap(map),
   sanitizeEnglishSectionMap: (sections) => _sanitizeEnglishSectionMap(sections),

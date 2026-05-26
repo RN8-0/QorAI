@@ -2877,18 +2877,24 @@ function _renderProductModal(p,variants=[]){
   ].join('\n');
   const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || '')) ||
     /\b(schwarz|betriebssystem|batterielaufzeit|energieeffizienzklasse|phasenvergleich|beschleunigungssensor|annäherungssensor|lichtsensor|aussparung|aktualisierungsrate|satellitenkommunikation|schnittstellen|kerne|ab werk|fest verbaut|kabelloses laden|zellen|netzteil|stecker|klinke|netzwerkanschluss|bauform|de-layout)\b/i.test(germanProbe);
-  const sourceLang = sourceIsGeizhals ? 'de' : 'tr';
+  const storedSourceLang = String(p.sourceLang || '').toLowerCase().trim();
+  const sourceLang = /^(tr|de)$/.test(storedSourceLang) ? storedSourceLang : (sourceIsGeizhals ? 'de' : 'tr');
+  const sourceSpecs = (p.sourceSpecs && typeof p.sourceSpecs === 'object' && !Array.isArray(p.sourceSpecs)) ? p.sourceSpecs : (p.specs || {});
+  const sourceSectionsRaw = (p.sourceSpecSections && typeof p.sourceSpecSections === 'object' && !Array.isArray(p.sourceSpecSections)) ? p.sourceSpecSections : (p.specSections || {});
+  const sourceKeySpecs = (p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' && !Array.isArray(p.sourceKeySpecs)) ? p.sourceKeySpecs : (p.keySpecs || {});
   // Reject legacy {translatedKey: translatedVal} payload — it can't resolve
   // source keys, so we treat it as missing instead of pretending to localize.
   let ml = (p.multiLangSpecs && p.multiLangSpecs[lang]) ? p.multiLangSpecs[lang] : null;
-  if (ml && lang !== sourceLang && p.specs) {
-    const sourceKeys = Object.keys(p.specs);
+  if (ml && lang !== sourceLang && sourceSpecs) {
+    const sourceKeys = Object.keys(sourceSpecs);
     if (sourceKeys.length && !sourceKeys.some(k => Object.prototype.hasOwnProperty.call(ml, k))) {
       console.warn('[modal] legacy multiLangSpecs format for', p.id, lang, '— ignoring');
       ml = null;
     }
   }
-  const localizedName = (lang !== 'tr' && p.nameTranslated && p.nameTranslated[lang]) ? p.nameTranslated[lang] : p.name;
+  const localizedName = (lang !== sourceLang && p.nameTranslated && p.nameTranslated[lang])
+    ? p.nameTranslated[lang]
+    : ((lang === sourceLang && p.nameTranslated && p.nameTranslated[sourceLang]) ? p.nameTranslated[sourceLang] : p.name);
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
   const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
@@ -3065,7 +3071,17 @@ function _renderProductModal(p,variants=[]){
         'Metall (Rahmen)': 'Metal (çerçeve)',
         'Bars Bar': 'Bar formu',
         'Barren': 'Bar formu',
+        'Battery': 'Pil',
+        'Battery & Other': 'Pil & Diğer',
+        'BATTERY & OTHER': 'PİL & DİĞER',
+        'Battery Power': 'Pil Gücü',
+        'Battery Specifications': 'Pil Özellikleri',
+        'Battery cell Count': 'Pil Hücre Sayısı',
+        'Card reader': 'Kart Okuyucu',
+        'Card reader Specifications': 'Kart Okuyucu Özellikleri',
         'Interfaces': 'Arayüzler',
+        'Keyboard backlight': 'Klavye Arka Aydınlatması',
+        'Keyboard Specifications': 'Klavye Özellikleri',
         'Navigation': 'Navigasyon',
         '6 Kerne': '6 çekirdek',
         '4 Zellen': '4 hücre',
@@ -3098,6 +3114,17 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bTextnachrichten\b/gi, 'mesajlar')
         .replace(/\bnur Notruf\b/gi, 'sadece acil arama')
         .replace(/\bSchnittstellen\b/gi, 'arayüzler')
+        .replace(/\bBattery\s*&\s*Other\b/gi, 'Pil & Diğer')
+        .replace(/\bBattery\s+Power\b/gi, 'Pil Gücü')
+        .replace(/\bBattery\s+Specifications\b/gi, 'Pil Özellikleri')
+        .replace(/\bBattery\s+cell\s+Count\b/gi, 'Pil Hücre Sayısı')
+        .replace(/\bBattery\b/gi, 'Pil')
+        .replace(/\bCard\s+reader\s+Specifications\b/gi, 'Kart Okuyucu Özellikleri')
+        .replace(/\bCard\s+reader\b/gi, 'Kart Okuyucu')
+        .replace(/\bKeyboard\s+backlight\b/gi, 'Klavye Arka Aydınlatması')
+        .replace(/\bKeyboard\s+Specifications\b/gi, 'Klavye Özellikleri')
+        .replace(/\bKeyboard\b/gi, 'Klavye')
+        .replace(/\bMaximum\s+Time\b/gi, 'Azami Süre')
         .replace(/\bNetzteil\b/gi, 'güç adaptörü')
         .replace(/\bStecker\b/gi, 'fiş')
         .replace(/\bKlinke\b/gi, 'jak')
@@ -3236,9 +3263,9 @@ function _renderProductModal(p,variants=[]){
   // Build localized sections on the fly: keep the original Turkish section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
   // inside via the cached multiLangSpecs lookup.
-  let sections = normalizeSpecSectionsShape(p.specSections);
+  let sections = normalizeSpecSectionsShape(lang === sourceLang ? sourceSectionsRaw : p.specSections);
   let directLocalizedSections = false;
-  const rawLangSections = (lang !== 'tr' && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
+  const rawLangSections = (lang !== sourceLang && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
   const isSimpleSectionNameMap = rawLangSections && !Array.isArray(rawLangSections) && typeof rawLangSections === 'object' &&
     Object.values(rawLangSections).every(v => typeof v === 'string');
   if (rawLangSections && !isSimpleSectionNameMap) {
@@ -3310,7 +3337,7 @@ function _renderProductModal(p,variants=[]){
     // individual bullet (e.g. "fest verbaut" → "sabit takılı"). The scraper's
     // translateGermanSpecs now stores both block- and line-level entries, so
     // this lookup typically succeeds for unrelated locales as well.
-    const localized = (lang !== 'tr')
+    const localized = (lang !== sourceLang)
       ? lines.map(line => lookupLocalizedText(line))
       : lines;
     if(localized.length>1)return`<div class="pm-v-list">${localized.map(line=>`<div class="pm-v-line">${escHtml(line)}</div>`).join('')}</div>`;
@@ -3320,7 +3347,7 @@ function _renderProductModal(p,variants=[]){
     const s=String(v),y=_isYesV(s),n=_isNoV(s);
     return`<div class="pm-spec-row"><div class="pm-k">${escHtml(k)}</div><div class="pm-v${y?' yes':n?' no':''}">${fmtSpecVal(s)}</div></div>`;
   }
-  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=p.specs||{};const flat=(lang!==sourceLang)?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[lookupLocalizedText(k),lookupLocalizedText(v)])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
+  if(sections){bricks=Object.entries(sections).map(([sn,sd])=>{if(!sd||typeof sd!=='object')return'';const rows=Object.entries(sd).filter(([,v])=>v!=null&&String(v).trim());if(!rows.length)return'';return`<div class="pm-brick"><div class="pm-brick-head"><span>${SEC_ICONS[sn]||'📋'}</span>${escHtml(sn)}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}).join('')}else{const sourceFlat=(lang===sourceLang?sourceSpecs:(p.specs||{}));const flat=(lang!==sourceLang)?Object.fromEntries(Object.entries(sourceFlat).map(([k,v])=>[lookupLocalizedText(k),lookupLocalizedText(v)])):sourceFlat;const rows=Object.entries(flat).filter(([,v])=>v!=null&&String(v).trim());if(rows.length)bricks=`<div class="pm-brick"><div class="pm-brick-head"><span>📋</span>${escHtml(lang==='tr'?'Özellikler':'Specifications')}</div><div class="pm-spec-list">${rows.map(([k,v])=>specRow(k,v)).join('')}</div></div>`}
   const sc=p.techScore||0,scc=sc>=75?'#22c55e':sc>=50?'#f59e0b':'#ef4444';
   // Build category options for edit form
   const catOpts=(typeof QorAiCategories!=='undefined'&&QorAiCategories.getAll)?QorAiCategories.getAll().map(c=>`<option value="${escHtml(c.id)}"${c.id===p.category?' selected':''}>${escHtml(c.name)}</option>`).join(''):'';
@@ -3444,6 +3471,7 @@ async function rescrapeProduct(id) {
       'name','brand','category','source','sourceUrl','imageUrl','images',
       'specsCount','variantGroup','configKey','specs','specSections',
       'specsEn','keySpecs','multiLangSpecs','multiLangSections','nameTranslated',
+      'sourceLang','sourceSpecs','sourceSpecSections','sourceKeySpecs',
       '_originalSpecs','_originalSections','_originalKeySpecs','_originalName',
     ];
     for (const f of fields) {

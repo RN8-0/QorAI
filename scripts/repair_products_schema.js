@@ -20,6 +20,12 @@ const productFields = [
   { name: 'multiLangSections', type: 'json', maxSize: 1000000 },
   { name: 'nameTranslated',    type: 'json', maxSize: 100000  },
   { name: 'specsEn',           type: 'json', maxSize: 2000000 },
+  // Original source-language payload. For Epey this is Turkish; the
+  // canonical specs above stay English for scoring/search.
+  { name: 'sourceLang',         type: 'text', max: 10, min: 0 },
+  { name: 'sourceSpecs',        type: 'json', maxSize: 5000000 },
+  { name: 'sourceSpecSections', type: 'json', maxSize: 5000000 },
+  { name: 'sourceKeySpecs',     type: 'json', maxSize: 2000000 },
   { name: 'techScore', type: 'number' },
   { name: 'price_raw', type: 'text', max: 200, min: 0 },
   { name: 'price_segment', type: 'text', max: 100, min: 0 },

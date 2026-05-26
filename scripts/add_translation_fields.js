@@ -16,6 +16,10 @@ const NEW_FIELDS = [
   { name: 'multiLangSections', type: 'json', maxSize: 1000000 },
   { name: 'nameTranslated',    type: 'json', maxSize: 100000  },
   { name: 'specsEn',           type: 'json', maxSize: 2000000 },
+  { name: 'sourceLang',        type: 'text', max: 10 },
+  { name: 'sourceSpecs',       type: 'json', maxSize: 5000000 },
+  { name: 'sourceSpecSections', type: 'json', maxSize: 5000000 },
+  { name: 'sourceKeySpecs',    type: 'json', maxSize: 2000000 },
 ];
 
 async function main() {
