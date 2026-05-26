@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-category-limit-controls';
+const SCRAPER_BUILD = '20260526-epey-usb-residue-fix';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -1909,6 +1909,12 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
   };
   const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
+  if (/^usb(?:-c)?\s*ozellikleri$/.test(s)) {
+    return ({
+      en: 'USB features', de: 'USB-Funktionen', es: 'Funciones USB',
+      fr: 'Fonctionnalites USB', pt: 'Recursos USB', ru: 'Функции USB',
+    })[lang] || 'USB features';
+  }
   if (/^usb\s*3\.x\s*adedi$/.test(s)) {
     return ({
       en: 'USB 3.x count', de: 'USB 3.x Anzahl', es: 'Cantidad USB 3.x',
@@ -2068,7 +2074,11 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
 
 function _isProtectedTechnicalAtom(text) {
   const raw = String(text || '').trim();
-  if (!raw || /[çğıİöşüÇĞŞÜ]/.test(raw)) return false;
+  if (!raw || /[çğıİöşüÇĞİÖŞÜ]/.test(raw)) return false;
+  const foldedRaw = _foldSourceResidueText(raw);
+  if (/\b(?:ozellik(?:leri)?|adedi|sayisi|tipi|turu|versiyonu|surumu|baglanti(?:si)?|destegi|giris(?:i|leri)?|cikis(?:i|lari)?|portu|soketi|uyumu)\b/.test(foldedRaw)) {
+    return false;
+  }
   const exact = raw.toLowerCase();
   const protectedExact = new Set([
     'nvidia', 'amd', 'intel', 'apple', 'samsung', 'qualcomm', 'mediatek',
