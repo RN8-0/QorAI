@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-usb-residue-fix';
+const SCRAPER_BUILD = '20260526-epey-technical-residue-fix';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -1883,10 +1883,29 @@ async function _saveDeDictNow() {
   }
 }
 
+function _translateTurkishLimitPhrases(text, targetLang = 'en') {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const lang = targetLang || 'en';
+  const words = ({
+    en: { max: 'up to', maximum: 'maximum', min: 'at least' },
+    de: { max: 'bis zu', maximum: 'maximal', min: 'mindestens' },
+    es: { max: 'hasta', maximum: 'maximo', min: 'al menos' },
+    fr: { max: 'jusqu a', maximum: 'maximum', min: 'au moins' },
+    pt: { max: 'ate', maximum: 'maximo', min: 'pelo menos' },
+    ru: { max: 'до', maximum: 'максимум', min: 'не менее' },
+  })[lang] || ({ max: 'up to', maximum: 'maximum', min: 'at least' });
+  return raw
+    .replace(/\bAzami\s+([0-9][^),;\n]*)/gi, `${words.max} $1`)
+    .replace(/\bMaksimum\s+([0-9][^),;\n]*)/gi, `${words.maximum} $1`)
+    .replace(/\bAsgari\s+([0-9][^),;\n]*)/gi, `${words.min} $1`)
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const raw = String(sourceText || '').trim();
   const lang = targetLang || 'en';
-  if (_isProtectedTechnicalAtom(raw)) return raw;
   const s = _normalizeDictSourceKey(raw)
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
@@ -1894,6 +1913,9 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     .replace(/ş/g, 's')
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c');
+  const limitRule = _translateTurkishLimitPhrases(raw, lang);
+  if (limitRule && limitRule !== raw) return limitRule;
+  if (_isProtectedTechnicalAtom(raw)) return raw;
   const n = (s.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
   const suffix = raw.match(/\([^)]*\)\s*$/)?.[0] || '';
   const phrase = {
@@ -2076,7 +2098,7 @@ function _isProtectedTechnicalAtom(text) {
   const raw = String(text || '').trim();
   if (!raw || /[çğıİöşüÇĞİÖŞÜ]/.test(raw)) return false;
   const foldedRaw = _foldSourceResidueText(raw);
-  if (/\b(?:ozellik(?:leri)?|adedi|sayisi|tipi|turu|versiyonu|surumu|baglanti(?:si)?|destegi|giris(?:i|leri)?|cikis(?:i|lari)?|portu|soketi|uyumu)\b/.test(foldedRaw)) {
+  if (/\b(?:azami|asgari|maksimum|ozellik(?:leri)?|adedi|sayisi|tipi|turu|versiyonu|surumu|baglanti(?:si)?|destegi|giris(?:i|leri)?|cikis(?:i|lari)?|portu|soketi|uyumu)\b/.test(foldedRaw)) {
     return false;
   }
   const exact = raw.toLowerCase();
@@ -2129,6 +2151,7 @@ function _translationHasTurkishResidue(targetLang, translation, sourceText = '')
   if (!folded) return false;
   const residue = [
     'batarya', 'sarj', 'dakika', 'saat', 'dongu', 'adet', 'adedi',
+    'azami', 'asgari', 'maksimum',
     'piksel', 'pil', 'lityum', 'ceyrek', 'goz', 'hizli',
     'uretim', 'uretimi', 'teknoloji', 'teknolojisi',
     'ozellik', 'ozellikleri', 'kamera ozellikleri', 'on kamera',
@@ -2965,7 +2988,9 @@ if (typeof window !== 'undefined') {
 function _sanitizeEnglishSpecText(text, sourceText = '') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
-  let out = _normalizeTurkishSourceTranslation(sourceText || raw, 'en', raw);
+  let out = _translateTurkishLimitPhrases(raw, 'en');
+  out = _normalizeTurkishSourceTranslation(sourceText || raw, 'en', out);
+  out = _translateTurkishLimitPhrases(out, 'en');
   // Last-mile fixes for dirty values that can enter through canonicalizer,
   // old cache merge, or already-English render paths instead of dict lookup.
   out = out
@@ -3224,7 +3249,7 @@ function _englishPayloadResidues(payload) {
   for (const [source, value] of Object.entries(payload?.multiLangSections?.en || {})) {
     _walkEnglishPayloadStrings(value, `multiLangSectionsEn.${source}`, entries);
   }
-  const residueRe = /[çğıİöşüÇĞŞÜÖ]|\b(?:Azami|Polimer|Polimerli|Sağlığı|Sağlık|Sertifikasyonu|Sertifikasyon|Sertifikasi|Sertifikası|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.[a-z]+ frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity|Ozellik(?:leri|leriri)?|Bellek\b|Boyut(?:u|lari|lar)?|Sayisi|Sayisi|Cozunurluk(?:u)?|Cozunurlugu|Genisligi|Yuksekligi|Derinligi|Agirligi|Hizi|Hizli|Sicakligi|Kalitesi|Frekansi|Frekans(?:i)?|Cekirdek|Cekirdegi|Cekirdekleri|Islemci(?:si)?|Sertifikali|Sertifikadan|Cikis(?:i)?|Cikar(?:ilabilir|tilabilir)|Aydinlatma(?:li)?|Goz\b|Sertifika|Performans(?:i)?|Verimlilik(?:i)?)\b/i;
+  const residueRe = /[çğıİöşüÇĞŞÜÖ]|\b(?:Azami|Asgari|Maksimum|Polimer|Polimerli|Sağlığı|Sağlık|Sertifikasyonu|Sertifikasyon|Sertifikasi|Sertifikası|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.[a-z]+ frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity|Ozellik(?:leri|leriri)?|Bellek\b|Boyut(?:u|lari|lar)?|Sayisi|Sayisi|Cozunurluk(?:u)?|Cozunurlugu|Genisligi|Yuksekligi|Derinligi|Agirligi|Hizi|Hizli|Sicakligi|Kalitesi|Frekansi|Frekans(?:i)?|Cekirdek|Cekirdegi|Cekirdekleri|Islemci(?:si)?|Sertifikali|Sertifikadan|Cikis(?:i)?|Cikar(?:ilabilir|tilabilir)|Aydinlatma(?:li)?|Goz\b|Sertifika|Performans(?:i)?|Verimlilik(?:i)?)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
     if (!s) return false;
