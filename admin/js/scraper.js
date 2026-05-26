@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-tr-source-fields';
+const SCRAPER_BUILD = '20260526-epey-category-limit-controls';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -32,6 +32,7 @@ const EPEY_DETAIL_CONCURRENCY_DEFAULT = 20;
 const EPEY_DETAIL_CONCURRENCY_MAX = 32;
 const EPEY_PB_WRITE_CONCURRENCY = 4;
 const EPEY_PB_SAVE_RETRIES = 4;
+const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -50,6 +51,17 @@ function getEpeyDetailConcurrency() {
   const raw = parseInt(document.getElementById('scrapeConcurrency')?.value || '', 10);
   const n = Number.isFinite(raw) && raw > 0 ? raw : EPEY_DETAIL_CONCURRENCY_DEFAULT;
   return Math.max(1, Math.min(EPEY_DETAIL_CONCURRENCY_MAX, n));
+}
+
+function readScrapeInt(id, fallback = 0) {
+  const raw = parseInt(document.getElementById(id)?.value || '', 10);
+  return Number.isFinite(raw) ? raw : fallback;
+}
+
+function getScrapeLimitSettings() {
+  const productLimit = Math.max(1, readScrapeInt('scrapeMaxProducts', 100000));
+  const collectAllSelected = document.getElementById('scrapeAllSelectedProducts')?.checked === true;
+  return { productLimit, collectAllSelected };
 }
 
 function createAsyncLimiter(maxActive = 1) {
@@ -572,7 +584,7 @@ function updateScrapeModeUI() {
   if (searchField) searchField.style.display = '';
   if (catField) catField.style.display = 'none';
   if (hint) {
-    hint.textContent = 'Kategori seç → o kategorideki TÜM Epey ürünleri çekilir. "Tüm Epey kategorileri" seçilirse ürün limiti kategori başına uygulanır.';
+    hint.textContent = 'Seçenek kapalıysa ürün limiti her seçili kategoriye ayrı uygulanır. Seçenek açıksa işaretlenen kategorilerde ne varsa çekilir.';
   }
 }
 window.updateScrapeModeUI = updateScrapeModeUI;
@@ -6027,9 +6039,12 @@ function epeyBrandCategoryUrls(term) {
 //
 // SEARCH mode (no categoryId) = Epey site search (`/ara/?ara=<term>`), used by
 // the "Add by URL" lookup.
-async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryId = '') {
+async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryId = '', options = {}) {
   const term = String(searchTerm || '').trim();
   if (!term && !categoryId) return [];
+  const collectAll = Boolean(options.collectAll);
+  const userLimit = Math.max(1, parseInt(maxProducts, 10) || 200);
+  maxProducts = userLimit;
   const allItems = [];
   const seen = new Set();
   let expectedCategoryTotal = 0;
@@ -6229,15 +6244,12 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         Number(data?.count) || 0,
         ...filtersTopK.map(f => Number(f?.total) || 0),
       );
-      // Bump the user-supplied limit when the discovered catalog is larger.
-      // expectedCategoryTotal is read from the SATIŞTAKILER-filtered HTML,
-      // so it can undershoot the real total by 3-6x (laptops: HTML says
-      // ~8 753 in stock, but the real catalog is ~48 810). Add generous
-      // headroom so the multi-axis union can collect everything.
-      if (expectedCategoryTotal > maxProducts) {
-        const previousLimit = maxProducts;
-        maxProducts = Math.min(150000, Math.max(expectedCategoryTotal * 6, expectedCategoryTotal + 1000));
-        slog(`  ⚠️ Ürün limiti (${previousLimit}) Epey tahmininden düşük (${expectedCategoryTotal}). Gerçek katalog daha büyük olabileceğinden hedef ${maxProducts} URL'ye yükseltildi.`, 'warn');
+      // Never expand the passed cap. The caller decides whether this is a
+      // strict per-category limit, a global remaining cap, or full-catalog mode.
+      if (collectAll && expectedCategoryTotal > maxProducts) {
+        slog(`  ⚠️ Tam kategori modu üst sınırı ${maxProducts}; Epey tahmini ${expectedCategoryTotal}.`, 'warn');
+      } else if (!collectAll && expectedCategoryTotal > maxProducts) {
+        slog(`  ℹ️ Kategori limiti korunuyor: ${maxProducts}/${expectedCategoryTotal} tahmini ürün toplanacak.`, 'info');
       }
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
@@ -6329,7 +6341,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
 
-      if (expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95) && !scraperAbort) {
+      if (collectAll && expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95) && !scraperAbort) {
         slog(`  ⚠️ Eksik URL şüphesi: Epey tahmini ${expectedCategoryTotal}, toplanan ${allItems.length}. Bu kategori için proxy/partition tekrar denenmeli.`, 'warn');
       }
       slog(`📦 Toplam ${allItems.length} ürün URL'si toplandı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
@@ -6652,7 +6664,7 @@ async function startBulkScrape() {
     toast('Bu kategori Epey scrape için kapalı; Desktop PCs ile aynı kaynağa gidiyor.', 'w');
     return;
   }
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
+  const { productLimit, collectAllSelected } = getScrapeLimitSettings();
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
   const concurrency = getEpeyDetailConcurrency();
 
@@ -6669,12 +6681,13 @@ async function startBulkScrape() {
   const catsForRun = isAllCategories
     ? getAllEpeyScrapeCategories()
     : (checkedCats.length ? checkedCats : (selectedCat ? [selectedCat] : []));
+  const limitLabel = collectAllSelected ? 'seçili kategorilerde ne varsa' : `${productLimit}/kategori`;
   slog(
     isAllCategories
-      ? `Epey import: TÜM kategoriler · max ${maxProducts}/kategori`
+      ? `Epey import: TÜM kategoriler · ${limitLabel}`
       : catsForRun.length > 1
-        ? `Epey import: ${catsForRun.length} seçili kategori · max ${maxProducts}/kategori`
-        : `Epey import: category=${catsForRun[0]?.id || categoryId} · max ${maxProducts}`,
+        ? `Epey import: ${catsForRun.length} seçili kategori · ${limitLabel}`
+        : `Epey import: category=${catsForRun[0]?.id || categoryId} · ${limitLabel}`,
     'info'
   );
 
@@ -6711,9 +6724,10 @@ async function startBulkScrape() {
       for (let ci = 0; ci < cats.length && !scraperAbort; ci++) {
         const cat = cats[ci];
         slog(`\n[Toplama ${ci + 1}/${cats.length}] ${cat.name || cat.id} (${cat.id})`, 'info');
+        const categoryLimit = collectAllSelected ? EPEY_FULL_CATEGORY_URL_LIMIT : productLimit;
         let items = [];
         try {
-          items = await collectSearchProductUrls('', maxProducts, cat.id);
+          items = await collectSearchProductUrls('', categoryLimit, cat.id, { collectAll: collectAllSelected });
         } catch (e) {
           slog(`  ❌ ${cat.id} URL toplama hatası: ${e.message}`, 'error');
           totals.errors++;
@@ -6725,10 +6739,10 @@ async function startBulkScrape() {
           totals.missingCats.push(cat.id);
           continue;
         }
-        const trimmed = items.slice(0, maxProducts);
+        const trimmed = items.slice(0, categoryLimit);
         collected.push({ cat, items: trimmed });
         totalUrls += trimmed.length;
-        slog(`  ✓ ${cat.id}: ${trimmed.length} URL toplandı (kümülatif ${totalUrls})`, 'success');
+        slog(`  ✓ ${cat.id}: ${trimmed.length} URL toplandı (${collectAllSelected ? 'ne varsa' : `limit ${categoryLimit}`}, kümülatif ${totalUrls})`, 'success');
       }
       const collectSec = ((Date.now() - collectStart) / 1000).toFixed(1);
       slog(`\n┗━━ PHASE 1 tamam: ${collected.length}/${cats.length} kategori, toplam ${totalUrls} URL (${collectSec}s) ━━┛`, 'success');
@@ -6770,14 +6784,15 @@ async function startBulkScrape() {
     }
 
     const singleCat = catsForRun[0];
-    const urlItems = await collectSearchProductUrls('', maxProducts, singleCat?.id || categoryId);
+    const singleLimit = collectAllSelected ? EPEY_FULL_CATEGORY_URL_LIMIT : productLimit;
+    const urlItems = await collectSearchProductUrls('', singleLimit, singleCat?.id || categoryId, { collectAll: collectAllSelected });
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {
       slog('No product URLs found. Check the category or proxy.', 'error');
       finishScraping();
       return;
     }
-    const results = await sequentialScrape(urlItems.slice(0, maxProducts), singleCat?.id || categoryId, delay, concurrency);
+    const results = await sequentialScrape(urlItems.slice(0, singleLimit), singleCat?.id || categoryId, delay, concurrency);
     slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
@@ -7057,13 +7072,13 @@ window.scrapeByUrl = async function () {
 };
 
 // Source-aware speed defaults. Epey has no Cloudflare so we run flat-out:
-// 100k limit, 0 delay, 20 parallel workers (max 32). Geizhals fronted by
-// Cloudflare so we throttle: 30k limit, 800 ms delay, 6 parallel workers
-// (max 12). When the user picks a source we overwrite the three inputs
+// 100k per category, 0 delay, 20 parallel workers (max 32). Geizhals fronted
+// by Cloudflare so we throttle: 30k limit, 800 ms delay, 6 parallel workers
+// (max 12). When the user picks a source we overwrite the shared inputs
 // unless the user has manually customised them this session.
 const _SCRAPE_PRESETS = {
-  epey:     { max: 100000, delay: 0,    concurrency: 20, concurrencyMax: 32 },
-  geizhals: { max: 30000,  delay: 800,  concurrency: 6,  concurrencyMax: 12 },
+  epey:     { max: 100000, delay: 0,   concurrency: 20, concurrencyMax: 32 },
+  geizhals: { max: 30000,  delay: 800, concurrency: 6,  concurrencyMax: 12 },
 };
 let _scrapeUserOverride = { max: false, delay: false, concurrency: false };
 function _bindScrapeOverrideListeners() {
@@ -7094,7 +7109,7 @@ window.updateScrapeSourceUI = function () {
   if (hint) {
     hint.textContent = src === 'geizhals'
       ? `Geizhals.eu: Cloudflare korumalı — temkinli (${preset.concurrency} worker, ${preset.delay} ms delay). Almanca specs, AB fiyatları.`
-      : `Epey.com: Cloudflare yok — tam hız (${preset.concurrency} worker, ${preset.delay} ms delay). Türkçe specs ve isimler.`;
+      : `Epey.com: Cloudflare yok — tam hız (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
   }
 };
 // Apply initial preset on DOM ready so the UI matches the pre-selected source.

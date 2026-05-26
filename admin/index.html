@@ -532,9 +532,16 @@
                 <label>Paralel Detay</label>
                 <input class="input" type="number" id="scrapeConcurrency" value="20" min="1" max="32" step="1">
               </div>
+              <div class="form-field" style="grid-column:span 2">
+                <label>Seçili Kategoriler</label>
+                <label class="check-label scrape-limit-check">
+                  <input type="checkbox" id="scrapeAllSelectedProducts">
+                  İşaretlenen kategorilerde ne varsa çek
+                </label>
+              </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Tiklenen kategoriler tek seferde sırayla çekilir. Ürün limiti kategori başına uygulanır. Detay çekimi paralel çalışır.
+              Seçenek kapalıysa ürün limiti her seçili kategoriye ayrı uygulanır. Seçenek açıksa işaretlenen kategorilerde ne varsa çekilir.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>

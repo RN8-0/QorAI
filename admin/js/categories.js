@@ -740,6 +740,47 @@ async function syncAllProductCategories() {
 
 // ── PB product count cache ──
 window._catCountCache = null;
+let _catCountReconcilePromise = null;
+
+function _rememberCategoryCounts(cacheKey, counts, ts = Date.now()) {
+  window._catCountCache = {
+    ...(window._catCountCache || {}),
+    [cacheKey]: { ts, data: counts },
+  };
+  return counts;
+}
+
+async function _reconcileStoredCategoryCounts(pb, liveCounts) {
+  if (!pb || _catCountReconcilePromise) return _catCountReconcilePromise;
+  _catCountReconcilePromise = (async () => {
+    try {
+      const existing = await pb.collection('categories').getFullList({
+        $autoCancel: false,
+        fields: 'id,slug,productCount,isActive',
+      });
+      const updates = [];
+      for (const cat of existing || []) {
+        const slug = normalizeCategoryId(cat.slug);
+        if (!slug) continue;
+        const count = Number(liveCounts[slug]) || 0;
+        const isActive = count > 0;
+        if ((Number(cat.productCount) || 0) !== count || Boolean(cat.isActive) !== isActive) {
+          updates.push({ id: cat.id, patch: { productCount: count, isActive } });
+        }
+      }
+      for (let i = 0; i < updates.length; i += 25) {
+        await Promise.all(updates.slice(i, i + 25).map(u =>
+          pb.collection('categories').update(u.id, u.patch, { $autoCancel: false }).catch(e => {
+            console.warn('[cat-count] reconcile patch failed:', u.id, e.message || e);
+          })
+        ));
+      }
+    } catch (e) {
+      console.warn('[cat-count] reconcile failed:', e.message || e);
+    }
+  })().finally(() => { _catCountReconcilePromise = null; });
+  return _catCountReconcilePromise;
+}
 
 async function _loadCategoryCounts(sourceFilter = '') {
   const now = Date.now();
@@ -756,61 +797,45 @@ async function _loadCategoryCounts(sourceFilter = '') {
     const pb = getPb();
     if (!pb) return counts;
 
-    // Fast path: the canonical productCount written by repair_categories.js
-    // and the bulk scraper itself lives on the `categories` collection. One
-    // tiny request is enough to populate every option label — no 138-page
-    // product scan, no scraper-tab freeze.
-    if (!sourceFilter) {
-      try {
-        const res = await pb.collection('categories').getList(1, 500, {
-          $autoCancel: false,
-          fields: 'slug,productCount',
-        });
-        for (const c of (res.items || [])) {
-          const id = normalizeCategoryId(c.slug);
-          if (!id) continue;
-          counts[id] = Math.max(counts[id] || 0, Number(c.productCount) || 0);
-        }
-        if (Object.values(counts).some(n => Number(n) > 0)) {
-          window._catCountCache = {
-            ...(window._catCountCache || {}),
-            [cacheKey]: { ts: now, data: counts },
-          };
-          return counts;
-        }
-      } catch (e) {
-        console.warn('[cat-count] categories fast-path failed:', e.message || e);
-      }
-    }
-
-    // Slow path: brute-force scan. Only used when the source-filter is set
-    // (e.g. Epey-only counts for the Translate-Category dropdown) or the
-    // categories collection isn't usable yet.
+    // Source of truth is the live products collection. The categories
+    // productCount field is only a derived cache and can go stale after manual
+    // PB deletes, batch wipes, or disabled hooks.
     const epeyScan = sourceFilter === '__epey__';
     const opts = epeyScan
       ? { fields: 'id,category,source,sourceUrl' }
       : sourceFilter
         ? { filter: `source = "${String(sourceFilter).replace(/"/g, '\\"')}"`, fields: 'id,category' }
-        : { fields: 'id,category' };
-    const total = (await pb.collection('products').getList(1, 1, opts)).totalItems;
+        : { fields: 'id,category,source,sourceUrl' };
+    const epeyCounts = !sourceFilter ? {} : null;
+    const first = await pb.collection('products').getList(1, 500, { ...opts, $autoCancel: false });
+    const total = Number(first.totalItems || 0);
     const pages = Math.ceil(total / 500);
-    for (let page = 1; page <= pages; page++) {
-      const res = await pb.collection('products').getList(page, 500, opts);
-      res.items.forEach(p => {
+    const consume = (items) => {
+      items.forEach(p => {
         if (epeyScan && !/epey/i.test(String(p.source || p.sourceUrl || ''))) return;
         const c = normalizeCategoryId(p.category);
-        if (c) counts[c] = (counts[c] || 0) + 1;
+        if (!c) return;
+        counts[c] = (counts[c] || 0) + 1;
+        if (epeyCounts && /epey/i.test(String(p.source || p.sourceUrl || ''))) {
+          epeyCounts[c] = (epeyCounts[c] || 0) + 1;
+        }
       });
+    };
+    consume(first.items || []);
+    for (let page = 1; page <= pages; page++) {
+      if (page === 1) continue;
+      const res = await pb.collection('products').getList(page, 500, { ...opts, $autoCancel: false });
+      consume(res.items || []);
       if (res.items.length < 500) break;
+    }
+    if (!sourceFilter) {
+      _rememberCategoryCounts('__epey__', epeyCounts || {}, now);
+      _reconcileStoredCategoryCounts(pb, counts).catch(() => {});
     }
   } catch (e) {
     console.warn('[cat-count]', e.message);
   }
-  window._catCountCache = {
-    ...(window._catCountCache || {}),
-    [cacheKey]: { ts: now, data: counts },
-  };
-  return counts;
+  return _rememberCategoryCounts(cacheKey, counts, now);
 }
 
 function _scraperGroupForCat(cat) {
