@@ -64,9 +64,14 @@
   }
 
   // ─── Data ────────────────────────────────────────────────────
+  // Score engine reads from specs / specsEn / specSections / multiLangSpecs /
+  // keySpecs as a unified surface. Loading ONLY keySpecs (the old behavior)
+  // made every product look "sparsely specced", confidence dropped below 0.45
+  // and every score got clamped to 82 (the low-confidence evidence cap).
+  // Loading the full spec surface restores the real 1–100 distribution.
   const SCORE_LOAD_FIELDS = [
     'id', 'name', 'brand', 'category', 'source', 'sourceUrl',
-    'keySpecs',
+    'keySpecs', 'specs', 'specsEn', 'specSections', 'multiLangSpecs',
     'techScore', 'specsCount', 'scrapedAt', 'created',
   ].join(',');
 

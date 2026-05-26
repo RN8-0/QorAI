@@ -786,11 +786,19 @@ function extractTopFilters(html, limit = 4) {
       values: [...g.values.keys()].map(vid => `${gid}:${vid}`),
     });
   }
-  // Prefer (a) groups with "Belirtilmemiş" catch-all, (b) higher total
-  // coverage, (c) fewer options so each partition pull is bigger.
+  // Prefer (a) HIGHER total coverage (Epey activates "all catalog" mode the
+  // moment any filter is selected — works for RAM/screen/year groups even
+  // without a Belirtilmemiş catch-all), (b) groups WITH Belirtilmemiş as
+  // tie-breaker (slightly safer for discontinued items), (c) fewer options
+  // so each partition pull is bigger.
+  //
+  // IMPORTANT: total counts shown next to filter options reflect the
+  // CURRENT filter state (Satıştakiler default = on for laptops). They are
+  // a relative ranking signal, not the true catalog size — the real total
+  // is discovered while paginating.
   ranked.sort((a, b) => {
-    if (a.hasUnspecified !== b.hasUnspecified) return a.hasUnspecified ? -1 : 1;
     if (b.total !== a.total) return b.total - a.total;
+    if (a.hasUnspecified !== b.hasUnspecified) return a.hasUnspecified ? -1 : 1;
     return a.size - b.size;
   });
   return ranked.slice(0, Math.max(1, limit)).map(g => ({
@@ -1667,7 +1675,9 @@ const server = http.createServer(async (req, res) => {
   // 403s any plain Node request, and the fetch has to be same-origin so it
   // carries cf_clearance. The caller drives pagination one page at a time so
   // the admin log can show live per-page progress.
-  if (req.url.startsWith('/listing-ajax')) {
+  // NOTE: /listing-ajax-batch (defined below) shares this prefix — match
+  // only the exact path or a query so we don't shadow the batch endpoint.
+  if (req.url.startsWith('/listing-ajax?') || req.url === '/listing-ajax') {
     try {
       const urlObj = new URL(req.url, `http://localhost:${PORT}`);
       const kid = urlObj.searchParams.get('kid');
@@ -1735,6 +1745,73 @@ const server = http.createServer(async (req, res) => {
       // page (and ends the stream) rather than aborting the whole scrape.
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ count: 0, links: [], status: 0, error: err.message }));
+    }
+    return;
+  }
+
+  // ── BATCH Listing AJAX (multiple /kat/listele/ pages in parallel) ──
+  // Same as /listing-ajax but accepts &pages=1,2,3,4,5,6 and runs ALL of them
+  // concurrently inside ONE page.evaluate so the browser fires N parallel
+  // fetches against epey.com. Browser tops at ~6 concurrent HTTP/1.1 conns
+  // to one host — 6 is the sweet spot. Throughput jumps from ~1 page/s to
+  // ~4-6 pages/s. Browser lock still held once for the whole batch so the
+  // page state stays consistent.
+  if (req.url.startsWith('/listing-ajax-batch')) {
+    try {
+      const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+      const kid = urlObj.searchParams.get('kid');
+      const limit = urlObj.searchParams.get('limit') || String(EPEY_AJAX_PAGE_SIZE);
+      const pagesParam = urlObj.searchParams.get('pages') || '1';
+      const pages = pagesParam.split(',').map(s => parseInt(s, 10)).filter(n => Number.isFinite(n) && n > 0);
+      const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
+      const prefix = urlObj.searchParams.get('prefix') || '';
+      const cerez = urlObj.searchParams.get('cerez') || '';
+      const fvs = urlObj.searchParams.getAll('fv').filter(Boolean);
+      if (!kid || !pages.length) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing kid or pages' }));
+        return;
+      }
+      const htmls = await withBrowserLock(async () => {
+        const page = await getPage();
+        let onEpey = false;
+        try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
+        if (!onEpey) await fetchWithPuppeteer(base);
+        return await page.evaluate(async (kidV, limitV, pagesArr, cerezV, filterVals) => {
+          const doOne = async (pageNo) => {
+            try {
+              const body = new URLSearchParams();
+              body.append('kategori_id', String(kidV));
+              if (cerezV) body.append('cerez', String(cerezV));
+              body.append('limit', String(limitV));
+              body.append('sayfa', String(pageNo));
+              for (const v of (filterVals || [])) body.append('filtrele[]', v);
+              const r = await fetch('/kat/listele/', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                  'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: body.toString(),
+                credentials: 'include',
+              });
+              return r.ok ? await r.text() : '';
+            } catch { return ''; }
+          };
+          return Promise.all(pagesArr.map(doOne));
+        }, kid, limit, pages, cerez, fvs);
+      });
+      const results = pages.map((pageNo, i) => {
+        const html = htmls[i] || '';
+        const links = extractListingLinksWithPrefixFallback(html, 2000, prefix);
+        return { page: pageNo, count: links.length, links, status: html ? 200 : 0 };
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ pages: results }));
+    } catch (err) {
+      console.error(`  ❌ /listing-ajax-batch: ${err.message}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ pages: [], error: err.message }));
     }
     return;
   }

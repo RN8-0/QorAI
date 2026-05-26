@@ -3347,9 +3347,13 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
         slog(`  ❄️ Proactive cooldown ${(PROACTIVE_COOLDOWN_MS / 1000) | 0}s…`, 'info');
         await sleep(PROACTIVE_COOLDOWN_MS);
       } else {
-        // Per-page delay widened from 2-3.5s → 4-6s. Geizhals' Cloudflare
-        // edge gets noisier when requests come in faster than ~12/min.
-        await sleep(4000 + Math.random() * 2000);
+        // Adaptive per-page delay. consecCloudflareFails=0 (no recent CF
+        // pushback) → 2-3.5s baseline. After any retry burned in the prior
+        // page, ramp back up to 4-6s for the next few pages. This keeps a
+        // healthy session moving at ~20 pages/min instead of ~12.
+        const baseMs  = consecCloudflareFails > 0 ? 4000 : 2000;
+        const jitter  = consecCloudflareFails > 0 ? 2000 : 1500;
+        await sleep(baseMs + Math.random() * jitter);
       }
     }
   }

@@ -68,18 +68,40 @@ HERE = Path(__file__).resolve().parent
 PORT = int(os.environ.get("QORAI_TRANSLATE_PORT", "8797"))
 HOST = os.environ.get("QORAI_TRANSLATE_HOST", "127.0.0.1")
 CACHE_FILE = HERE / ".local-translate-cache.json"
-DEVICE = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
+# Strict GPU enforcement — user wants the GPU pushed and CPU left alone.
+# Set QORAI_TRANSLATE_FORCE_CPU=1 to allow CPU fallback (debug only).
+FORCE_CPU = os.environ.get("QORAI_TRANSLATE_FORCE_CPU", "0") == "1"
+_cuda_count = ctranslate2.get_cuda_device_count()
+if _cuda_count > 0 and not FORCE_CPU:
+    DEVICE = "cuda"
+elif FORCE_CPU:
+    DEVICE = "cpu"
+else:
+    # No GPU detected — fail loudly so the user knows. Per user request:
+    # CPU should NOT be used for translation. Set QORAI_TRANSLATE_FORCE_CPU=1
+    # to override (e.g. CI machines without a GPU).
+    raise SystemExit(
+        "[worker] No CUDA device detected. Translation requires a GPU. "
+        "Install CUDA + cudnn + cublas for ctranslate2, or set "
+        "QORAI_TRANSLATE_FORCE_CPU=1 to allow CPU fallback."
+    )
 # int8_float16 gives ~2x speed vs float16 on consumer GPUs (Turing+) at
 # negligible quality cost; fall back to int8 on CPU.
 COMPUTE_TYPE = "int8_float16" if DEVICE == "cuda" else "int8"
-# CTranslate2 will internally split into sub-batches of this size. 64 fits
-# comfortably on a 4 GB GPU (GTX 1650) for the small Argos models.
+# CTranslate2 will internally split into sub-batches of this size. 96 fits
+# on a 4 GB GPU (GTX 1650) for the small Argos models — bumped from 64 to
+# pack more atoms per kernel launch (single biggest GPU throughput win on
+# 80 MB Argos models). Drop to 64 via QORAI_TRANSLATE_BATCH=64 if you OOM.
 # Argos models are tiny (~80 MB each) so we can afford a wider beam without
 # blowing VRAM. beam=4 catches mixed-language compounds ("1 x Uyku Modunda
 # Charging Support", "keyboard mit DE layout") that beam=1 was leaving half
 # in the source language. Roughly 20% slower per atom — still <1s/product.
-BATCH_SIZE = int(os.environ.get("QORAI_TRANSLATE_BATCH", "64"))
+BATCH_SIZE = int(os.environ.get("QORAI_TRANSLATE_BATCH", "96"))
 BEAM_SIZE = int(os.environ.get("QORAI_TRANSLATE_BEAM", "4"))
+# Per-lang thread pool size. CT2 releases the GIL during translate_batch so
+# more threads = more overlapping GPU streams. 8 saturates a small GPU when
+# all 11 target langs share VRAM (each lang's CTranslate2 model is ~80 MB).
+TRANSLATE_THREADS = int(os.environ.get("QORAI_TRANSLATE_THREADS", "8"))
 MODEL_LABEL = f"argos-translate/{DEVICE}/{COMPUTE_TYPE}"
 
 # Supported language codes (must match the admin pipeline). All TR/DE
@@ -744,12 +766,17 @@ def _get_pkg(from_code: str, to_code: str):
             return None
         print(f"[worker] loading {from_code}->{to_code} · {DEVICE}/{COMPUTE_TYPE}", flush=True)
         try:
+            # On CUDA, intra_threads only controls host-side helpers (data
+            # copy, sampling, beam-search book-keeping). Keep it low (2) so
+            # the GPU does the real work and the CPU stays free for other
+            # tasks. inter_threads=1 (model-parallel) is already optimal —
+            # CT2 streams all batches through one model instance.
             translator = ctranslate2.Translator(
                 str(model_dir),
                 device=DEVICE,
                 compute_type=COMPUTE_TYPE,
                 inter_threads=1,
-                intra_threads=6,
+                intra_threads=2,
             )
         except Exception as e:
             # If int8_float16 isn't supported on this card, fall back.
@@ -1154,6 +1181,158 @@ _POST_FIX = {
         (r"\baauppercase\b", "macOS"),
         (r"\bcorrect$", "Correction"),    # "(Red-eye)correct" tail
         (r"\bkorrigiert$", "Korrektur"),  # DE equivalent
+
+        # ── 2026-05-24 batch: residue/mistranslations seen in EN output ──
+        # Position words leaking from TR
+        (r"\bÖn Camera\b", "Front Camera"),
+        (r"\bÖn kamera\b", "Front camera"),
+        (r"\bÖn ([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)\b", r"Front \1"),
+        (r"\bArka Camera\b", "Rear Camera"),
+        (r"\bArka kamera\b", "Rear camera"),
+        (r"\bArka ([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)\b", r"Rear \1"),
+        (r"\bAlt\b(?=\s+[A-Z])", "Bottom"),
+        (r"\bÜst\b(?=\s+[A-Z])", "Top"),
+        (r"\bAna ([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)\b", r"Main \1"),
+
+        # Ordinals leaking from TR
+        (r"\bÜçüncü\b", "Third"),
+        (r"\büçüncü\b", "third"),
+        (r"\bİkinci\b", "Second"),
+        (r"\bikinci\b", "second"),
+        (r"\bBirinci\b", "First"),
+        (r"\bbirinci\b", "first"),
+        (r"\bDördüncü\b", "Fourth"),
+        (r"\bBeşinci\b", "Fifth"),
+
+        # Common TR spec nouns leaking through
+        (r"\bAydınlatma(?:sı|ları)?\b", "Lighting"),
+        (r"\baydınlatma(?:sı|ları)?\b", "lighting"),
+        (r"\bTepki Süresi\b", "Response Time"),
+        (r"\btepki süresi\b", "response time"),
+        (r"\bTepki\b", "Response"),
+        (r"\bSüresi\b", "Time"),
+        (r"\bsüresi\b", "time"),
+        (r"\bÖmrü\b", "Life"),
+        (r"\bömrü\b", "life"),
+        (r"\bPil Ömrü\b", "Battery Life"),
+        (r"\bBatarya Ömrü\b", "Battery Life"),
+        (r"\bPil\b", "Battery"),
+        (r"\bpil\b", "battery"),
+        (r"\bBatarya\b", "Battery"),
+        (r"\bbatarya\b", "battery"),
+        (r"\bEkran\b", "Screen"),
+        (r"\bekran\b", "screen"),
+        (r"\bBellek\b", "Memory"),
+        (r"\bbellek\b", "memory"),
+        (r"\bDepolama\b", "Storage"),
+        (r"\bdepolama\b", "storage"),
+        (r"\bKlavye\b", "Keyboard"),
+        (r"\bRenk\b", "Color"),
+        (r"\bRenkler\b", "Colors"),
+        (r"\bAğırlık\b", "Weight"),
+        (r"\bBoyutlar\b", "Dimensions"),
+        (r"\bBoyutu\b", "Size"),
+        (r"\bÖzellikleri\b", "Specifications"),
+        (r"\bÖzellikler\b", "Features"),
+        (r"\bÖzellik\b", "Feature"),
+        (r"\bSeri\b", "Series"),
+        (r"\bAlt seri\b", "Sub-series"),
+        (r"\bAlt Seri\b", "Sub-series"),
+        (r"\bÇıkış\b", "Release"),
+        (r"\bÇıkış Yılı\b", "Release Year"),
+        (r"\bOutput year\b", "Release year"),
+        (r"\bOutput Year\b", "Release Year"),
+        (r"\bDuyuru\b", "Announcement"),
+        (r"\bDurum\b", "Status"),
+        (r"\bYükseklik\b", "Height"),
+        (r"\bAmacı\b", "Purpose"),
+        (r"\bKullanım amacı\b", "Use case"),
+        (r"\bİşletim sistemi\b", "Operating system"),
+        (r"\bİşletim Sistemi\b", "Operating System"),
+        (r"\bBusiness system\b", "Operating system"),
+        (r"\bbusiness system\b", "operating system"),
+        (r"\bKullanıcı arayüzü\b", "User interface"),
+        (r"\bArayüz\b", "Interface"),
+        (r"\bSürümü\b", "Version"),
+        (r"\bSürüm\b", "Version"),
+        (r"\bPlanlanan\b", "Planned"),
+        (r"\bGüncellenmiş\b", "Upgraded"),
+        (r"\bDokunmatik yüzey\b", "Touchpad"),
+        (r"\bDokunmatik\b", "Touch"),
+        (r"\bParmak izi\b", "Fingerprint"),
+        (r"\bParmak İzi Okuyucu\b", "Fingerprint Reader"),
+        (r"\bParmak izi okuyucu\b", "Fingerprint reader"),
+        (r"\bOkuyucu\b", "Reader"),
+        (r"\bGöz\b", "Eye"),
+        (r"\bSes\b(?=\s+[A-Z])", "Sound"),
+
+        # Sensor section: TR "Sensörler" → Argos sometimes "Tags" (mistake)
+        (r"^Tags$", "Sensors"),
+        (r"\bSensörler\b", "Sensors"),
+        (r"\bSensörü\b", "Sensor"),
+        (r"\bSensör\b", "Sensor"),
+        (r"\bJiroskop\b", "Gyroscope"),
+        (r"\bIşık sensörü\b", "Light sensor"),
+        (r"\bParlaklık sensörü\b", "Brightness sensor"),
+        (r"\bYakınlık sensörü\b", "Proximity sensor"),
+        (r"\bPusula\b", "Compass"),
+        (r"\bBarometre\b", "Barometer"),
+
+        # Common Argos hallucinations (semantic errors)
+        (r"\bCurtain speed\b", "Shutter speed"),
+        (r"\bcurtain speed\b", "shutter speed"),
+        (r"\bCurtain Speed\b", "Shutter Speed"),
+        (r"\bBulk battery\b", "Removable battery"),
+        (r"\bbulk battery\b", "removable battery"),
+        (r"\bBulk Battery\b", "Removable Battery"),
+        (r"\bHeavy duty shooting\b", "Slow motion"),
+        (r"\bheavy duty shooting\b", "slow motion"),
+        (r"\bHeavy Duty Shooting\b", "Slow Motion"),
+        (r"\bMultipiece\b", "Multimedia"),
+        (r"\bmultipiece\b", "multimedia"),
+        (r"\bSlow shooting\b", "Slow motion"),
+        (r"\bslow shooting\b", "slow motion"),
+        (r"\bMain processor\b", "Main processor"),
+        (r"\bauxiliary processor\b", "auxiliary processor"),
+        (r"\bAuxiliary processor\b", "Auxiliary processor"),
+        (r"\bCheckout\b(?=$|\s+sensor|\s+reader)", "Checkout"),  # ambiguous; leave
+        (r"\bFace ıdentification\b", "Face identification"),
+        (r"\bFace identification\b", "Face Recognition"),
+        (r"\bface ıdentification\b", "face identification"),
+        (r"\bphone ıdentification\b", "face identification"),
+
+        # Turkish months → English
+        (r"\bOcak\b", "January"),
+        (r"\bŞubat\b", "February"),
+        (r"\bMart\b", "March"),
+        (r"\bNisan\b", "April"),
+        (r"\bMayıs\b", "May"),
+        (r"\bHaziran\b", "June"),
+        (r"\bTemmuz\b", "July"),
+        (r"\bAğustos\b", "August"),
+        (r"\bEylül\b", "September"),
+        (r"\bEkim\b", "October"),
+        (r"\bKasım\b", "November"),
+        (r"\bAralık\b", "December"),
+
+        # Section header noise
+        (r"\bNews\b(?=\s|$)", "Stereo"),     # Argos mistranslates "Stereo" header
+        (r"\bSpecific\b", "Special"),
+        (r"\bMultipiece\b", "Multimedia"),
+        (r"\bGenel\b", "General"),
+        (r"\bgenel\b", "general"),
+
+        # Truncated atoms — common in cache
+        (r"\bIvmeölç\b", "Accelerometer"),
+        (r"\bivmeölç\b", "Accelerometer"),
+        (r"\bİvmeölç\b", "Accelerometer"),
+
+        # Translations: speaker plural form
+        (r"\b(\d+)\s+Speaker\b(?!s)", r"\1 Speakers"),
+        (r"\b(\d+)\s+speaker\b(?!s)", r"\1 speakers"),
+        (r"\bDouble speaker\b", "Stereo speakers"),
+        (r"\bDouble cell battery\b", "Dual-cell battery"),
+        (r"\bdouble cell battery\b", "dual-cell battery"),
     ],
     "tr->de": [
         (r"\bRegistrierung\b", "Aufnahme"),
@@ -1515,7 +1694,16 @@ def translate_many(texts: List[str], from_code: str, target_langs: List[str]) ->
                     _cache_store(from_code, texts[i], "en", tr)
             STATE["lastBatchMs"] = _ms(_now() - t0)
             print(f"[worker] pivot {from_code}->en · {len(missing_texts)} atoms · {STATE['lastBatchMs']}ms", flush=True)
-        en_texts = [_cache_lookup(from_code, t, "en") or t for t in texts]
+        # Cached EN values may be stale from older POST_FIX rules — re-apply
+        # the current rule set so downstream EN->X hops pivot from a clean
+        # source. New rules added today fix prior cache entries automatically.
+        en_texts = []
+        for t in texts:
+            cached_en = _cache_lookup(from_code, t, "en") or t
+            fixed_en = _apply_post_fix(cached_en, from_code, "en")
+            if fixed_en != cached_en:
+                _cache_store(from_code, t, "en", fixed_en)
+            en_texts.append(fixed_en)
 
     # Step 2: Translate into every target language IN PARALLEL. CTranslate2
     # releases the GIL during translate_batch, so multiple Python threads
@@ -1549,11 +1737,10 @@ def translate_many(texts: List[str], from_code: str, target_langs: List[str]) ->
         return (lang, len(missing_texts), _ms(_now() - t0))
 
     STATE["batchTotal"] = len(target_langs)
-    # GTX 1650 has 4 GB of VRAM. Six small Argos models comfortably co-resident
-    # with a 6-thread pool — translates all target langs concurrently. CT2
-    # releases the GIL during translate_batch, so the GPU scheduler overlaps
-    # the per-language batches end-to-end.
-    with ThreadPoolExecutor(max_workers=min(6, len(target_langs))) as pool:
+    # GTX 1650 (4 GB VRAM) handles 8 Argos models co-resident. Bumped from 6
+    # to push more concurrent GPU streams (CTranslate2 releases the GIL
+    # during translate_batch). If you OOM, set QORAI_TRANSLATE_THREADS=4.
+    with ThreadPoolExecutor(max_workers=min(TRANSLATE_THREADS, len(target_langs))) as pool:
         for lang, n_missing, dt in pool.map(_translate_lang, target_langs):
             STATE["batchDone"] += 1
             STATE["lastBatchMs"] = dt

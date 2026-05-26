@@ -832,8 +832,9 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
       bulkOpts += `<optgroup label="${escHtml(groupName)}">`;
       epeyCats.forEach(cat => {
         const cnt = Math.max(Number(epeyCounts[cat.id]) || 0, Number(counts[cat.id]) || 0);
-        const label = cnt > 0 ? ` (${cnt})` : '';
-        bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)}${label}</option>`;
+        // Always append a count, even (0), so the checklist UI can distinguish
+        // "never scraped" (label = 0) from "loading" (label missing).
+        bulkOpts += `<option value="${escHtml(cat.id)}">${escHtml(cat.name)} (${cnt})</option>`;
       });
       bulkOpts += '</optgroup>';
     }
@@ -953,7 +954,9 @@ function _syncScrapeCategoryChecklistFromSelect() {
       opts.forEach(opt => {
         const checked = previous.has(opt.value) ? ' checked' : '';
         const label = splitOptionLabel(opt.textContent || opt.value);
-        const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>';
+        const count = label.count != null && label.count !== ''
+          ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>`
+          : '<span class="scrape-category-count muted">henüz çekilmedi</span>';
         parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
       });
     } else if (node.tagName === 'OPTION' && node.value && node.value !== '__all_epey__') {

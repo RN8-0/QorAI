@@ -522,15 +522,15 @@
               </div>
               <div class="form-field">
                 <label>Ürün Limiti</label>
-                <input class="input" type="number" id="scrapeMaxProducts" value="6000" min="1">
+                <input class="input" type="number" id="scrapeMaxProducts" value="100000" min="1">
               </div>
               <div class="form-field">
                 <label>Delay (ms)</label>
-                <input class="input" type="number" id="scrapeDelay" value="600" min="0" step="100">
+                <input class="input" type="number" id="scrapeDelay" value="0" min="0" step="50">
               </div>
               <div class="form-field">
                 <label>Paralel Detay</label>
-                <input class="input" type="number" id="scrapeConcurrency" value="8" min="1" max="16" step="1">
+                <input class="input" type="number" id="scrapeConcurrency" value="20" min="1" max="32" step="1">
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
@@ -669,7 +669,7 @@
               <div class="text-muted" style="font-size:11px;font-weight:600;letter-spacing:.4px;margin-bottom:4px;padding:0 4px">
                 🌍 TRANSLATE — paralel çeviri (TR → 6 dil)
               </div>
-              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Çeviri logu burada akacak. Dict-first → eksik atomlar DeepSeek'e gider.</div></div>
+              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Çeviri logu burada akacak. Dict-first → eksik atomlar Argos GPU worker'a gider (port 8797 · batch 96 · 8 thread · beam 4 · 3 paralel chunk).</div></div>
             </div>
           </div>
         </div>

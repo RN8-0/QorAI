@@ -322,9 +322,9 @@
   // ─────────────────────────────────────────────────────────────
 
   const WEIGHTS = {
-    smartphones: { chipset: 30, release_year: 8, main_camera: 8, camera_system: 8, sensor_size_phone: 4, front_camera: 3, ram: 7, storage: 6, battery: 7, charging: 3, panel: 6, display_features: 5, refresh: 4, resolution: 3, screen_size: 2, network_5g: 3, wifi: 3 },
-    tablets:     { chipset: 24, release_year: 8, ram: 10, storage: 9, battery: 10, screen_size: 8, refresh: 5, resolution: 9, panel: 8, display_features: 5, main_camera: 3, network_5g: 3 },
-    laptops:     { gpu: 28, cpu: 25, release_year: 8, ram: 9, storage: 8, battery: 4, screen_size: 3, refresh: 4, resolution: 5, panel: 5, weight_lo: 3, wifi: 2 },
+    smartphones: { chipset: 25, release_year: 8, main_camera: 7, camera_system: 7, sensor_size_phone: 4, front_camera: 3, ram: 6, storage: 6, battery: 7, charging: 3, panel: 6, display_features: 5, refresh: 4, resolution: 3, screen_size: 2, network_5g: 2, wifi: 2 },
+    tablets:     { chipset: 24, release_year: 8, ram: 10, storage: 9, battery: 10, screen_size: 7, refresh: 5, resolution: 9, panel: 8, display_features: 4, main_camera: 3, network_5g: 3 },
+    laptops:     { gpu: 26, cpu: 24, release_year: 8, ram: 9, storage: 8, battery: 4, screen_size: 3, refresh: 4, resolution: 5, panel: 5, weight_lo: 2, wifi: 2 },
     desktops:    { gpu: 32, cpu: 28, release_year: 8, ram: 10, storage: 8, watt: 4, cooler_type: 4, lan: 3, case_form: 3 },
     monitors:    { release_year: 6, screen_size: 14, resolution: 20, refresh: 18, panel: 16, display_features: 8, response_ms_lo: 9, hdr: 5, color_gamut: 4 },
     tvs:         { release_year: 7, screen_size: 16, resolution: 16, panel: 22, display_features: 10, refresh: 12, hdr: 10, smart_os: 4, hdmi21: 3 },
@@ -362,6 +362,7 @@
     'robot-vacuums': { suction: 24, runtime: 18, lidar: 18, mop: 12, self_empty: 12, app: 8, obstacle: 8 },
     drones:      { range: 18, flight_time: 18, megapixels: 16, max_speed: 10, wind_resist: 10, obstacle: 12, axes: 10, weight_lo: 6 },
     projectors:  { lumens: 28, resolution: 22, contrast: 14, throw: 8, lamp_life: 10, hdr: 8, audio_watt: 6, smart: 4 },
+    chargers:    { watt: 35, charging: 25, battery: 15, type: 10, bands: 5, usb: 5, wireless: 5 },
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -510,7 +511,9 @@
     flash_drives: 'ssd',
     memory_cards: 'ssd',
     optical_drives: 'ssd',
-    powerbanks: 'speakers',
+    powerbanks: 'chargers',
+    chargers: 'chargers',
+    feature_phones: 'smartphones',
     ups: 'psu',
     case_fans: 'coolers',
     webcams: 'webcams',
@@ -544,8 +547,51 @@
   }
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
-  const SCORE_MIN = 20;
+  const SCORE_MIN = 10;
   const SCORE_MAX = 100;
+
+  // Year-based hard ceiling (epey/versus parity): a 2018 phone with 32 GB RAM
+  // can never reach 2026 flagship territory regardless of spec inflation.
+  // Applied AFTER tier caps + decay as a final absolute ceiling.
+  function _yearCeiling(year, cat) {
+    if (!year) return SCORE_MAX;
+    if (year >= 2026) return 100;
+    const c = String(cat || '').toLowerCase();
+    const fastMoving = /smartphones|tablets|laptops|desktops|gpus|cpus|consoles|vr-headsets|smartwatches|smart-rings|action-cameras|drones|webcams|gamepads/.test(c);
+    const display = /monitors|tvs|projectors|e-readers/.test(c);
+    if (fastMoving) {
+      if (year === 2025) return 100;
+      if (year === 2024) return 93;
+      if (year === 2023) return 84;
+      if (year === 2022) return 76;
+      if (year === 2021) return 68;
+      if (year === 2020) return 60;
+      if (year === 2019) return 52;
+      if (year === 2018) return 46;
+      if (year === 2017) return 40;
+      if (year === 2016) return 34;
+      return 28;
+    }
+    if (display) {
+      if (year === 2025) return 100;
+      if (year === 2024) return 97;
+      if (year === 2023) return 93;
+      if (year === 2022) return 88;
+      if (year === 2021) return 82;
+      if (year === 2020) return 75;
+      if (year === 2019) return 68;
+      return 60;
+    }
+    // generic (audio, peripherals, cameras, network gear, ...)
+    if (year === 2025) return 100;
+    if (year === 2024) return 96;
+    if (year === 2023) return 91;
+    if (year === 2022) return 85;
+    if (year === 2021) return 78;
+    if (year === 2020) return 71;
+    if (year === 2019) return 64;
+    return 56;
+  }
 
   // ─────────────────────────────────────────────────────────────
   //  BRAND MODIFIER (epey/versus parity)
@@ -646,49 +692,60 @@
 
   function _yearScore(year) {
     if (!year) return null;
-    if (year >= 2025) return 100;
-    if (year === 2024) return 94;
-    if (year === 2023) return 86;
-    if (year === 2022) return 78;
-    if (year === 2021) return 70;
-    if (year === 2020) return 60;
-    if (year === 2019) return 50;
-    if (year === 2018) return 42;
-    if (year === 2017) return 35;
-    if (year === 2016) return 28;
-    return 20;
+    if (year >= 2026) return 100;
+    if (year === 2025) return 96;
+    if (year === 2024) return 90;
+    if (year === 2023) return 82;
+    if (year === 2022) return 73;
+    if (year === 2021) return 63;
+    if (year === 2020) return 53;
+    if (year === 2019) return 43;
+    if (year === 2018) return 35;
+    if (year === 2017) return 28;
+    if (year === 2016) return 22;
+    if (year === 2015) return 17;
+    return 12;
   }
 
   // Year decay table: fast-moving categories age harder than displays.
+  // Calibrated for 2026: 2026=1.0, 2025 already takes a small hit, older
+  // years decay harder so a 2020 flagship can't out-rank a 2025 mid-range
+  // on raw spec count alone.
   function _yearDecay(year, cat) {
     if (!year) return 1.0;
-    if (year >= 2025) return 1.0;
+    if (year >= 2026) return 1.0;
     const c = String(cat || '').toLowerCase();
     const fastMoving = /smartphones|tablets|laptops|desktops|gpus|cpus|consoles|vr-headsets/.test(c);
     const display = /monitors|tvs|projectors/.test(c);
     if (fastMoving) {
-      if (year === 2024) return 0.96;
-      if (year === 2023) return 0.90;
-      if (year === 2022) return 0.84;
-      if (year === 2021) return 0.78;
-      if (year === 2020) return 0.72;
-      if (year === 2019) return 0.66;
-      if (year === 2018) return 0.60;
-      return 0.55;
+      if (year === 2025) return 0.97;
+      if (year === 2024) return 0.91;
+      if (year === 2023) return 0.83;
+      if (year === 2022) return 0.74;
+      if (year === 2021) return 0.66;
+      if (year === 2020) return 0.58;
+      if (year === 2019) return 0.50;
+      if (year === 2018) return 0.43;
+      if (year === 2017) return 0.37;
+      if (year === 2016) return 0.32;
+      return 0.27;
     }
     if (display) {
-      if (year === 2024) return 0.98;
-      if (year === 2023) return 0.95;
-      if (year === 2022) return 0.92;
-      if (year === 2021) return 0.88;
-      if (year === 2020) return 0.84;
-      return 0.78;
+      if (year === 2025) return 0.98;
+      if (year === 2024) return 0.95;
+      if (year === 2023) return 0.92;
+      if (year === 2022) return 0.88;
+      if (year === 2021) return 0.84;
+      if (year === 2020) return 0.78;
+      return 0.72;
     }
-    if (year === 2024) return 0.97;
-    if (year === 2023) return 0.93;
-    if (year === 2022) return 0.89;
-    if (year === 2021) return 0.84;
-    return 0.78;
+    if (year === 2025) return 0.97;
+    if (year === 2024) return 0.93;
+    if (year === 2023) return 0.89;
+    if (year === 2022) return 0.84;
+    if (year === 2021) return 0.79;
+    if (year === 2020) return 0.74;
+    return 0.68;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1597,8 +1654,20 @@
       }
       const bm = _brandModifier(c.row.p, cat);
       const rawFinal = Math.round(stretched * c.decay * bm.mod);
-      const evidenceCap = confidence < 0.45 ? 82 : confidence < 0.65 ? 92 : SCORE_MAX;
-      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, evidenceCap, rawFinal)));
+      // Evidence cap calibrated for real-world spec coverage. The old curve
+      // (<0.45 → 82, <0.65 → 92) was crushing every product to 82 when the
+      // runner only loaded keySpecs. With the full spec surface loaded the
+      // typical confidence is 0.55–0.85; cap only HARSHLY low coverage so we
+      // don't reward products that have almost no spec data — but a typical
+      // ~70% covered flagship reaches 100 unhindered.
+      const evidenceCap =
+        confidence < 0.15 ? 60 :
+        confidence < 0.25 ? 75 :
+        confidence < 0.40 ? 88 :
+        confidence < 0.55 ? 95 :
+        SCORE_MAX;
+      const yearCap = _yearCeiling(c.row.year, cat);
+      const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, evidenceCap, yearCap, rawFinal)));
       const subscores = _makeSubscores(c.finalBreakdown);
       const evidence = _makeEvidence(c.finalBreakdown, c.row.missing);
       return {
@@ -1628,20 +1697,40 @@
         sumW: c.sumW,
       };
     });
-    if (cat !== 'smartphones') {
-      const maxScore = Math.max(...results.map(r => Number(r.score) || 0));
-      if (maxScore > 0 && maxScore < SCORE_MAX) {
-        const finalStretch = SCORE_MAX / maxScore;
+    // Final category stretch — guarantee a 100-point product in every
+    // category, but respect each product's per-row year + tier ceilings.
+    // Pick the "stretch reference" as the highest score among products
+    // that are both (a) flagship-tier (or anchor-less but high confidence)
+    // AND (b) recent enough to legitimately hit 100 (year ceiling >= 95).
+    // If no such product exists, the top product is stretched up to its
+    // own ceiling — so an all-2020-and-older list won't fake a 2026 score.
+    {
+      const eligible = results.filter(r => {
+        const yc = _yearCeiling(r.year, cat);
+        const flagshipOrAnchorless = r.tier === 'flagship' || !r.anchorKey;
+        return flagshipOrAnchorless && yc >= 95 && r.score > 0;
+      });
+      const stretchAnchor = eligible.length
+        ? Math.max(...eligible.map(r => r.score))
+        : Math.max(...results.map(r => Number(r.score) || 0));
+      if (stretchAnchor > 0 && stretchAnchor < SCORE_MAX) {
+        const finalStretch = SCORE_MAX / stretchAnchor;
         for (const r of results) {
           r.preCategoryStretchScore = r.score;
           r.categoryFinalStretch = +finalStretch.toFixed(3);
-          // Relative category stretch is for calibration, not for turning an
-          // upper-mid anchor (RTX 5070 / Core i5 class) into a fake flagship.
-          // Anchor-less categories can still use the full 1-100 range.
-          const stretchCap = r.anchorKey && r.tier !== 'flagship'
+          const yc = _yearCeiling(r.year, cat);
+          // Per-row ceiling: tier cap (for non-flagship anchored items)
+          // ∧ year ceiling — keeps a 2018 phone below current flagship.
+          const tierCeil = r.anchorKey && r.tier !== 'flagship'
             ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
             : SCORE_MAX;
-          r.score = Math.max(1, Math.min(stretchCap, Math.round(r.score * finalStretch)));
+          const cap = Math.min(SCORE_MAX, tierCeil, yc);
+          r.score = Math.max(SCORE_MIN, Math.min(cap, Math.round(r.score * finalStretch)));
+        }
+      } else {
+        // No stretch needed, but still enforce min floor.
+        for (const r of results) {
+          r.score = Math.max(SCORE_MIN, Math.min(SCORE_MAX, r.score));
         }
       }
     }
@@ -1670,6 +1759,7 @@
     recalculateCategory,
     extractYear: _extractYear,
     yearDecay: _yearDecay,
+    yearCeiling: _yearCeiling,
     // Diagnostics / introspection
     WEIGHTS, FIELDS, LOOKUPS,
     GPU_DESKTOP, GPU_LAPTOP, CPU_LAPTOP, CPU_DESKTOP, CHIPSET_PHONE,

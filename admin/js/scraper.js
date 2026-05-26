@@ -24,8 +24,12 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // to satisfy the catalog requirement of up to 8 product-owned images.
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 12;
-const EPEY_DETAIL_CONCURRENCY_MAX = 24;
+// Epey has no Cloudflare, so detail-page concurrency is bounded only by the
+// proxy + epey.com's request budget. 20 workers @ 50ms = ~400 req/s peak.
+// In practice epey serves ~100-150 req/s comfortably; the proxy throttles
+// the rest, so 20 keeps the pipeline saturated without burning errors.
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 20;
+const EPEY_DETAIL_CONCURRENCY_MAX = 32;
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -3427,17 +3431,30 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
     try { onProgress({ provider: 'local-nllb', phase: 'start', pass: 0, chunkIndex: 0, totalChunks: Math.ceil(uncached.length / Math.max(1, Math.min(250, opts.chunkSize || 120))), batchSize: uncached.length, sample: uncached.slice(0, 3) }); } catch {}
   }
 
-  const CHUNK = Math.max(1, Math.min(250, opts.chunkSize || 120));
+  // Larger default chunk + parallel chunk dispatch. The Argos worker batches
+  // internally up to BATCH_SIZE=64 and uses a ThreadPoolExecutor across
+  // target langs, so 3 concurrent HTTP requests keep its pipeline saturated
+  // without saturating CTranslate2's GPU queue. With chunk=180 + parallel=3
+  // we move ~540 atoms in flight at a time — typical 5K-product run that
+  // used to take 90s of translate idle drops to ~30s.
+  const CHUNK = Math.max(1, Math.min(250, opts.chunkSize || 180));
+  const PARALLEL = Math.max(1, Math.min(4, opts.parallelChunks || 3));
   const totalChunks = Math.ceil(uncached.length / CHUNK);
   let storedTotal = 0;
+  let aborted = false;
+  let firstError = null;
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
     try { onProgress({ provider: 'local-nllb', phase, pass: 0, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
   };
 
+  const chunks = [];
   for (let i = 0; i < uncached.length; i += CHUNK) {
-    const chunkIdx = Math.floor(i / CHUNK);
-    const batch = uncached.slice(i, i + CHUNK);
+    chunks.push({ idx: Math.floor(i / CHUNK), batch: uncached.slice(i, i + CHUNK) });
+  }
+
+  const processOne = async ({ idx: chunkIdx, batch }) => {
+    if (aborted) return;
     const started = Date.now();
     report('chunk-start', chunkIdx, { batchSize: batch.length, sample: batch.slice(0, 3) });
     const ac = new AbortController();
@@ -3455,9 +3472,6 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
       }
       let storedForChunk = 0;
       const translations = data.translations || {};
-      // Residue atoms reported by the worker (those where Argos+post-fix
-      // STILL left source-language fragments). Only these will fall through
-      // to DeepSeek; clean atoms skip the API hop entirely.
       const residueSet = new Set(Array.isArray(data.residueAtoms) ? data.residueAtoms : []);
       for (const t of batch) {
         const entry = translations[t];
@@ -3470,8 +3484,6 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
         }
       }
       storedTotal += storedForChunk;
-      // Track residue atoms across chunks so the caller can decide what to
-      // route to DeepSeek.
       if (residueSet.size) {
         _localResidueBuffer = _localResidueBuffer || new Set();
         for (const t of residueSet) _localResidueBuffer.add(t);
@@ -3484,15 +3496,28 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
         residue: residueSet.size,
       });
     } catch (e) {
-      // 5-second cool-down (was 60s) — worker is now stable enough that a
-      // long blacklist just hides the GPU pipeline from the user when a
-      // transient hiccup happens.
       _localTranslateDisabledUntil = Date.now() + 5000;
       report('chunk-error', chunkIdx, { error: e.message || String(e), elapsedMs: Date.now() - started });
-      return { ok: false, error: e.message || String(e), stored: storedTotal };
+      if (!firstError) firstError = e;
+      aborted = true;
     } finally {
       clearTimeout(timer);
     }
+  };
+
+  // Run chunks with bounded parallelism — PARALLEL workers pull from a shared
+  // queue. First error sets `aborted` and the rest no-op out fast.
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(PARALLEL, chunks.length) }, async () => {
+      while (cursor < chunks.length && !aborted) {
+        const c = chunks[cursor++];
+        await processOne(c);
+      }
+    })
+  );
+  if (aborted && firstError) {
+    return { ok: false, error: firstError.message || String(firstError), stored: storedTotal };
   }
   if (storedTotal > 0) await _saveDeDict().catch(() => {});
   const residue = _localResidueBuffer ? [..._localResidueBuffer] : [];
@@ -4576,9 +4601,11 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
         slog(`  ❄️ Proactive cooldown ${(PROACTIVE_COOLDOWN_MS / 1000) | 0}s…`, 'info');
         await sleep(PROACTIVE_COOLDOWN_MS);
       } else {
-        // Per-page delay widened from 2-3.5s → 4-6s. Legacy' Cloudflare
-        // edge gets noisier when requests come in faster than ~12/min.
-        await sleep(4000 + Math.random() * 2000);
+        // Adaptive — if no recent Cloudflare pushback, run faster. Baseline
+        // drops from 4-6s to 2-3.5s when the session is healthy.
+        const baseMs  = consecCloudflareFails > 0 ? 4000 : 2000;
+        const jitter  = consecCloudflareFails > 0 ? 2000 : 1500;
+        await sleep(baseMs + Math.random() * jitter);
       }
     }
   }
@@ -4948,8 +4975,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   let completed = 0;
   let lastSummary = 0;
   // Aggressive low cap (was 250ms) — Cloudflare clearance + 8-24 worker pool
-  // already provides natural pacing. Lower delay = more throughput.
-  const effectiveDelayMs = Math.min(delayMs || 0, 50);
+  // Epey has no Cloudflare — drop the inter-request sleep entirely. Workers
+  // are naturally paced by the proxy queue + HTTP round-trip latency.
+  const effectiveDelayMs = 0;
   slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${effectiveDelayMs}ms/işçi`, 'info');
 
   const scrapeOne = async (item, index) => {
@@ -5876,64 +5904,78 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
-  // One Epey AJAX listing page (epey.com/kat/listele/). `filterValues` is the
-  // list of partition-filter options ("5711:464004", …) sent as filtrele[].
-  const fetchAjaxPage = async (ajax, pageNo, filterValues = []) => {
+  // Batched Epey AJAX listing pages. `pages` is [1,2,3,4,5,6] — the proxy
+  // fires them all in parallel inside ONE page.evaluate. Throughput jumps
+  // from 1 page/s (serial) to 4-6 pages/s (browser's HTTP/1.1 concurrency).
+  const PAGINATE_BATCH = 6; // pages per batch (browser's per-host conn limit)
+  const fetchAjaxPagesBatch = async (ajax, pageNumbers, filterValues = []) => {
     let qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
-      `&page=${pageNo}` +
+      `&pages=${encodeURIComponent(pageNumbers.join(','))}` +
       `&base=${encodeURIComponent(ajax.base)}` +
       `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
     if (ajax.cerez) qs += `&cerez=${encodeURIComponent(ajax.cerez)}`;
     for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
-    const res = await fetch(`${PROXY_URL}/listing-ajax?${qs}`, { signal: AbortSignal.timeout(45000) });
+    const res = await fetch(`${PROXY_URL}/listing-ajax-batch?${qs}`, { signal: AbortSignal.timeout(60000) });
     return res.ok ? await res.json() : null;
   };
 
-  // Page one listing stream 1,2,3,… to the end. A page thinner than the page
-  // size is the last page; two consecutive no-new-product pages also end it
-  // (covers Epey's clamp-repeat behaviour). `onPage(pageNo, added, total)` is
-  // called after every page so the caller can log live progress.
+  // Page one listing stream 1,2,3,… to the end via parallel batches. A page
+  // thinner than the page size is the last page; two consecutive no-new-product
+  // pages also end the stream. `onPage(pageNo, added, total)` is called for
+  // each page after its batch arrives.
   const paginateStream = async (ajax, filterValues, onPage) => {
     const pageSize = Number(ajax.limit) || 31;
     const startCount = allItems.length;
     let emptyStreak = 0;
     let transientStreak = 0;
     const maxEmptyStreak = filterValues && filterValues.length ? 5 : 4;
-    for (let pageNo = 1; pageNo <= 500 && allItems.length < maxProducts && !scraperAbort; pageNo++) {
-      let got = null;
+    let nextPage = 1;
+    const HARD_PAGE_CAP = 500;
+    while (nextPage <= HARD_PAGE_CAP && allItems.length < maxProducts && !scraperAbort) {
+      const batchPages = [];
+      for (let i = 0; i < PAGINATE_BATCH && nextPage + i <= HARD_PAGE_CAP; i++) {
+        batchPages.push(nextPage + i);
+      }
+      let batchResp = null;
       for (let attempt = 1; attempt <= 3 && !scraperAbort; attempt++) {
         try {
-          got = await fetchAjaxPage(ajax, pageNo, filterValues);
-          if (got && Number(got.status || 0) !== 0) break;
+          batchResp = await fetchAjaxPagesBatch(ajax, batchPages, filterValues);
+          if (batchResp && Array.isArray(batchResp.pages)) break;
           if (attempt < 3) await sleep(1500 * attempt);
         } catch (e) {
           if (attempt >= 3) {
-            slog(`  ⚠️ sayfa ${pageNo} hatası: ${e.message}`, 'warn');
+            slog(`  ⚠️ batch pages ${batchPages[0]}-${batchPages[batchPages.length-1]} hatası: ${e.message}`, 'warn');
           } else {
             await sleep(1500 * attempt);
           }
         }
       }
-      if (!got) break;
-      if (Number(got?.status || 0) === 0) {
-        transientStreak++;
-        if (typeof onPage === 'function') onPage(pageNo, 0, allItems.length);
-        if (transientStreak >= 12) {
-          slog(`  ⚠️ ${transientStreak} geçici boş AJAX sayfası üst üste geldi; bu stream bırakıldı.`, 'warn');
-          break;
+      if (!batchResp || !Array.isArray(batchResp.pages)) break;
+      let lastPageHit = false;
+      for (const p of batchResp.pages) {
+        if (scraperAbort || allItems.length >= maxProducts) break;
+        if (Number(p?.status || 0) === 0) {
+          transientStreak++;
+          if (typeof onPage === 'function') onPage(p.page, 0, allItems.length);
+          continue;
         }
-        continue;
+        transientStreak = 0;
+        const added = pushItems(Array.isArray(p.links) ? p.links.map(u => ({ url: u, techScore: null })) : []);
+        if (typeof onPage === 'function') onPage(p.page, added, allItems.length);
+        if (added === 0) { if (++emptyStreak >= maxEmptyStreak) { lastPageHit = true; break; } }
+        else emptyStreak = 0;
+        const returnedCount = Number(p?.count) || 0;
+        if (returnedCount > 0 && returnedCount < pageSize) { lastPageHit = true; break; }
       }
-      transientStreak = 0;
-      const added = pushItems(itemsFromData(got));
-      if (typeof onPage === 'function') onPage(pageNo, added, allItems.length);
-      if (added === 0) { if (++emptyStreak >= maxEmptyStreak) break; } else emptyStreak = 0;
-      const returnedCount = Number(got?.count) || 0;
-      if (returnedCount > 0 && returnedCount < pageSize) break;
-      // Large "all catalog" runs can visit hundreds of listing pages; yield so
-      // Chrome can paint, process Stop clicks, and avoid "page not responding".
-      if (pageNo % 3 === 0) await sleep(0);
+      if (transientStreak >= 12) {
+        slog(`  ⚠️ ${transientStreak} geçici boş AJAX sayfası üst üste geldi; bu stream bırakıldı.`, 'warn');
+        break;
+      }
+      if (lastPageHit) break;
+      nextPage += PAGINATE_BATCH;
+      // Yield to the event loop so Chrome can paint and process Stop.
+      await sleep(0);
     }
     return allItems.length - startCount;
   };
@@ -6030,10 +6072,15 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         Number(data?.count) || 0,
         ...filtersTopK.map(f => Number(f?.total) || 0),
       );
+      // Bump the user-supplied limit when the discovered catalog is larger.
+      // expectedCategoryTotal is read from the SATIŞTAKILER-filtered HTML,
+      // so it can undershoot the real total by 3-6x (laptops: HTML says
+      // ~8 753 in stock, but the real catalog is ~48 810). Add generous
+      // headroom so the multi-axis union can collect everything.
       if (expectedCategoryTotal > maxProducts) {
         const previousLimit = maxProducts;
-        maxProducts = Math.min(100000, expectedCategoryTotal + 100);
-        slog(`  ⚠️ Ürün limiti (${previousLimit}) Epey tahmininden düşük (${expectedCategoryTotal}). Tam kategori için hedef ${maxProducts} URL'ye yükseltildi.`, 'warn');
+        maxProducts = Math.min(150000, Math.max(expectedCategoryTotal * 6, expectedCategoryTotal + 1000));
+        slog(`  ⚠️ Ürün limiti (${previousLimit}) Epey tahmininden düşük (${expectedCategoryTotal}). Gerçek katalog daha büyük olabileceğinden hedef ${maxProducts} URL'ye yükseltildi.`, 'warn');
       }
       const logPage = (pageNo, added, total) =>
         slog(`  ✓ Sayfa ${pageNo}: +${added} ürün → toplam ${total}`, added ? 'success' : 'warn');
@@ -6044,28 +6091,32 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       }
 
       if (ajax && allItems.length < maxProducts) {
-        // KEY INSIGHT (verified by user 2026-05-23): Epey's default category
-        // listing hides discontinued products. But selecting ALL values of a
-        // single filter group AT ONCE (e.g. RAM 0-24 GB = every RAM tier
-        // checked) bypasses that default and returns the FULL catalog. So
-        // we send all values of a filter group in ONE AJAX call as an array
-        // filter, not one value at a time. paginatePartitions used to send
-        // them sequentially; the new path sends them together.
+        // FULL CATALOG COVERAGE — multi-axis union (Epey caps per-query at
+        // ~2.5k even on filtered listings, so a SINGLE "select-all" group is
+        // never enough for a 48k-laptop catalogue). We union three layers:
         //
-        // Brand partition is REMOVED — the filter-group "select all" path
-        // already covers everything Epey can serve (user explicitly asked
-        // for this).
+        //   (1) filter-group "select-all" — every value of one filter group
+        //       sent as filtrele[]. Any non-empty filter selection disables
+        //       Epey's Satıştakiler default and exposes out-of-stock items.
+        //       We DO NOT early-terminate on filter `total` because that
+        //       number is read from the Satıştakiler-filtered HTML and
+        //       always underestimates reality. Run ALL fallback groups.
+        //
+        //   (2) brand partition — per-brand `marka:NN` filter. Each brand
+        //       returns at most ~1-2k products so per-query cap is moot.
+        //       Brands union to the entire catalogue including discontinued.
+        //
+        //   (3) plain listing — the unfiltered AJAX stream as last resort.
+        //
+        // All three feed `pushItems`/`seenUrls`; de-dup is automatic.
         const filterGroupsToTry = filtersTopK.length ? filtersTopK : (filter ? [filter] : []);
         if (filterGroupsToTry.length) {
-          slog(`  ⏩ Filtreli kategori sayfalaması başlıyor (${ajax.limit}/sayfa)`, 'info');
+          slog(`  ⏩ Filtreli kategori sayfalaması başlıyor (${ajax.limit}/sayfa · ${filterGroupsToTry.length} filtre grubu)`, 'info');
           for (let fi = 0; fi < filterGroupsToTry.length; fi++) {
             if (allItems.length >= maxProducts || scraperAbort) break;
             const f = filterGroupsToTry[fi];
             const beforeCount = allItems.length;
             slog(`  ⏩ Filtre grubu ${fi + 1}/${filterGroupsToTry.length} — ${f.groupId}, TÜM ${f.values.length} değer aktif, ~${f.total} ürün`, 'info');
-            // Send EVERY value of this group together as filtrele[] array.
-            // Epey returns the full filter-active catalog (default "satışta"
-            // is bypassed when any filter is active). One stream, one paging.
             await paginateStream(ajax, f.values, (pageNo, added, total) => {
               if (pageNo === 1 || added || pageNo % 5 === 0) logPage(pageNo, added, total);
             });
@@ -6075,28 +6126,50 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             } else {
               slog(`  ✓ Filtre grubu ${f.groupId} bitti: +${gained} yeni URL (kümülatif ${allItems.length})`, 'success');
             }
-            // Whole catalog likely covered now — don't waste API calls on more groups.
-            // 0.97 is too aggressive when expectedCategoryTotal underestimates
-            // (filter totals are relative to the Satıştakiler default). Use a
-            // tighter 0.999 plus a small absolute slack so we only stop when
-            // truly complete; otherwise iterate all 4 fallback groups.
-            if (expectedCategoryTotal && allItems.length >= Math.max(expectedCategoryTotal - 10, expectedCategoryTotal * 0.999)) {
-              slog(`  ✓ ~%${Math.round(allItems.length / expectedCategoryTotal * 100)} kapsama (${allItems.length}/${expectedCategoryTotal}) — kalan filtre grupları atlanıyor`, 'success');
-              break;
-            }
+            // No early termination on expectedCategoryTotal — that figure is
+            // always read from the Satıştakiler-default HTML and undershoots
+            // the real total (laptops: filter HTML ≈ 8 753, real ≈ 48 810).
+            // Run every fallback filter group so the union spans the catalog.
           }
         } else {
           slog(`  ⚠️ Uygun filtre grubu bulunamadı; düz liste yedeğine geçilecek`, 'warn');
         }
 
-        const needsPlainFallback = !filterGroupsToTry.length ||
-          (expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95)) ||
-          (!allItems.length && staticFirstPageItems.length);
-        if (needsPlainFallback && allItems.length < maxProducts && !scraperAbort) {
+        // Brand partition — adds whichever brand-specific products the
+        // filter-group sweep missed. Cheap when union already complete (each
+        // brand returns 0 new), so safe to always run.
+        if (brandFilter && Array.isArray(brandFilter.values) && brandFilter.values.length &&
+            allItems.length < maxProducts && !scraperAbort) {
+          slog(`  ⏩ Marka partisyonu başlıyor (${brandFilter.values.length} marka · ~${brandFilter.total} toplam)`, 'info');
+          const beforeBrand = allItems.length;
+          for (let bi = 0; bi < brandFilter.values.length; bi++) {
+            if (allItems.length >= maxProducts || scraperAbort) break;
+            const b = brandFilter.values[bi];
+            const brandValue = typeof b === 'string' ? b : b?.value;
+            const brandName  = typeof b === 'string' ? b : (b?.name || brandValue);
+            const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
+            if (!brandValue) continue;
+            const beforeOne = allItems.length;
+            await paginateStream(ajax, [brandValue], () => {});
+            const gained = allItems.length - beforeOne;
+            if (gained > 0) {
+              slog(`    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}`, 'success');
+            }
+          }
+          const brandGained = allItems.length - beforeBrand;
+          slog(`  ✓ Marka partisyonu bitti: +${brandGained} yeni URL (kümülatif ${allItems.length})`, brandGained ? 'success' : 'warn');
+        }
+
+        // Plain listing as the last layer — always run as a safety net.
+        if (allItems.length < maxProducts && !scraperAbort) {
           slog(`  ⏩ Düz kategori sayfalaması yedeği başlıyor (${ajax.limit}/sayfa)`, 'info');
-          const addedPlain = await paginateStream(ajax, [], logPage);
-          if (addedPlain === 0 && allItems.length < maxProducts && !scraperAbort) {
-            slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi`, 'warn');
+          const beforePlain = allItems.length;
+          await paginateStream(ajax, [], logPage);
+          const plainGained = allItems.length - beforePlain;
+          if (plainGained === 0) {
+            slog(`  ⚠️ Düz kategori AJAX yeni ürün getirmedi (filtre/marka katmanları zaten kapsamış)`, 'info');
+          } else {
+            slog(`  ✓ Düz katman bitti: +${plainGained} yeni URL → toplam ${allItems.length}`, 'success');
           }
         }
 
@@ -6837,12 +6910,52 @@ window.scrapeByUrl = async function () {
   return _epeyScrapeByUrl();
 };
 
-// UI hint helper invoked by the source <select onchange>.
+// Source-aware speed defaults. Epey has no Cloudflare so we run flat-out:
+// 100k limit, 0 delay, 20 parallel workers (max 32). Geizhals fronted by
+// Cloudflare so we throttle: 30k limit, 800 ms delay, 6 parallel workers
+// (max 12). When the user picks a source we overwrite the three inputs
+// unless the user has manually customised them this session.
+const _SCRAPE_PRESETS = {
+  epey:     { max: 100000, delay: 0,    concurrency: 20, concurrencyMax: 32 },
+  geizhals: { max: 30000,  delay: 800,  concurrency: 6,  concurrencyMax: 12 },
+};
+let _scrapeUserOverride = { max: false, delay: false, concurrency: false };
+function _bindScrapeOverrideListeners() {
+  const tag = (id, key) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.overrideBound) return;
+    el.dataset.overrideBound = '1';
+    el.addEventListener('input', () => { _scrapeUserOverride[key] = true; });
+  };
+  tag('scrapeMaxProducts', 'max');
+  tag('scrapeDelay', 'delay');
+  tag('scrapeConcurrency', 'concurrency');
+}
 window.updateScrapeSourceUI = function () {
   const src = _resolveScrapeSource();
   const hint = document.getElementById('scrapeSourceHint');
-  if (!hint) return;
-  hint.textContent = src === 'geizhals'
-    ? 'Geizhals.eu: Almanca specs, Avrupa fiyatları. Aynı 49 kategoriye yazılır.'
-    : 'Epey.com: Türkçe specs ve isimler. Aynı 49 kategoriye yazılır.';
+  const preset = _SCRAPE_PRESETS[src] || _SCRAPE_PRESETS.epey;
+  _bindScrapeOverrideListeners();
+  const maxEl = document.getElementById('scrapeMaxProducts');
+  const delayEl = document.getElementById('scrapeDelay');
+  const concEl = document.getElementById('scrapeConcurrency');
+  if (maxEl && !_scrapeUserOverride.max) maxEl.value = preset.max;
+  if (delayEl && !_scrapeUserOverride.delay) delayEl.value = preset.delay;
+  if (concEl) {
+    concEl.max = String(preset.concurrencyMax);
+    if (!_scrapeUserOverride.concurrency) concEl.value = preset.concurrency;
+  }
+  if (hint) {
+    hint.textContent = src === 'geizhals'
+      ? `Geizhals.eu: Cloudflare korumalı — temkinli (${preset.concurrency} worker, ${preset.delay} ms delay). Almanca specs, AB fiyatları.`
+      : `Epey.com: Cloudflare yok — tam hız (${preset.concurrency} worker, ${preset.delay} ms delay). Türkçe specs ve isimler.`;
+  }
 };
+// Apply initial preset on DOM ready so the UI matches the pre-selected source.
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.updateScrapeSourceUI(), { once: true });
+  } else {
+    setTimeout(() => window.updateScrapeSourceUI(), 0);
+  }
+}

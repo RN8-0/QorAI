@@ -26,9 +26,12 @@ const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] ||
 const CONCURRENCY = 16;
 const SYNC_TS = !argv.includes('--no-ts');
 
-// Score engine probes specs / keySpecs / specsEn. Avoid specSections here:
-// it is the largest field and makes category runs crawl over the admin tunnel.
-const FIELDS = 'id,category,name,brand,keySpecs,specsCount,techScore,scrapedAt,created';
+// Score engine probes ALL spec surfaces. Loading only keySpecs (the old
+// behavior) made every product look sparsely specced, confidence dropped
+// below 0.45 and every score got clamped to 82. We load specs/specsEn too.
+// specSections is heavy but needed for proper extraction; per-category
+// pagination keeps it from saturating the tunnel.
+const FIELDS = 'id,category,name,brand,keySpecs,specs,specsEn,specSections,multiLangSpecs,specsCount,techScore,scrapedAt,created';
 
 async function fetchAll() {
   const out = [];
