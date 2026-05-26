@@ -3630,12 +3630,13 @@ window.QorAiDict = {
 
 // Batch translate Turkish texts → ALL target languages in ONE DeepSeek call.
 // Response shape: { "turkish text": { en: "...", de: "...", ... }, ... }
-// This collapses what used to be 11 sequential API hits per product into a
-// single round-trip: ~11x faster AND ~11x cheaper (token overlap on the
-// system prompt + single network latency).
+// One round-trip per atom covers all 6 target languages (TR is the source).
+// The longer list of language names that used to live here (it/ja/nl/pl/sv/ar)
+// is gone — those target geographies are not part of the active rollout and
+// translating into them only burns dictionary cache for languages no
+// downstream UI ever renders.
 const _LANG_NAMES = {
-  en: 'English', de: 'German', tr: 'Turkish', es: 'Spanish', fr: 'French', it: 'Italian',
-  ja: 'Japanese', nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', sv: 'Swedish', ar: 'Arabic'
+  tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', pt: 'Portuguese', ru: 'Russian'
 };
 
 // Best-effort recovery from a truncated DeepSeek JSON response. Walks the
