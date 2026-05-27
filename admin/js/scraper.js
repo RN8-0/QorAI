@@ -5087,6 +5087,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     try {
       const VERIFY_BATCH = 25;
       let verifiedExtraSkips = 0;
+      let verifyFailStreak = 0;
+      const VERIFY_FAIL_STREAK_BAIL = 3;
       const escFV = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       for (let bi = 0; bi < freshItems.length && !scraperAbort; bi += VERIFY_BATCH) {
         const slice = freshItems.slice(bi, bi + VERIFY_BATCH);
@@ -5140,8 +5142,14 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           }
           freshItems.splice(bi, slice.length, ...stillFresh);
           bi -= (slice.length - stillFresh.length);
+          verifyFailStreak = 0;
         } catch (e) {
           slog(`  (verify batch ${bi}+ failed: ${e.message})`, 'warn');
+          verifyFailStreak++;
+          if (verifyFailStreak >= VERIFY_FAIL_STREAK_BAIL) {
+            slog(`  ⚠ Verify pass: ${verifyFailStreak} ardışık batch hatası — preload'a güvenip scrape'e geçiyorum`, 'warn');
+            break;
+          }
         }
       }
       if (verifiedExtraSkips > 0) {
@@ -5225,6 +5233,12 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     const productNum = index + 1;
     const slug = slugFromUrl(item.url);
     if (scraperAbort) return;
+    // True once proxyFetch + CF check passed. Any failure AFTER this point
+    // (parse/translate/merge/save) is treated as a soft per-item error — it
+    // shouldn't trigger the hard-abort errorStreak, which is reserved for
+    // signs that the fetch pipeline itself is dead (proxy banned, CF
+    // challenge spam, network gone).
+    let fetchDone = false;
     try {
       slog(`[${productNum}/${urlItems.length}] ${slug}`);
       const html = await proxyFetch(item.url, 1);
@@ -5250,6 +5264,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         return;
       }
       challengeStreak = 0;
+      fetchDone = true;
 
       const product = await scrapeProductDetail(html, item.url, categoryId);
       if (!product || product.name === 'Unknown Product' || product.specsCount === 0) {
@@ -5288,7 +5303,26 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         }
       }
 
-      const saved = await _saveProductWithRetry(clean, product.name || clean.name || clean.slug);
+      let saved;
+      try {
+        saved = await _saveProductWithRetry(clean, product.name || clean.name || clean.slug);
+      } catch (saveErr) {
+        // PB save failed after all retries. The product scrape itself was fine
+        // — Epey worked, parsing worked, only the backend write blew up
+        // (transient PB 500 / Coolify edge timeout / rate-limit). Don't let
+        // that kill the entire run: queue the item for Resume, count it as an
+        // error for stats, but DO NOT touch errorStreak. errorStreak is for
+        // detail-fetch failures (proxy dead, CF ban) — confusing PB write
+        // hiccups with those caused gamepads to nuke 22 remaining categories.
+        if (scraperAbort || saveErr.message === 'aborted') return;
+        results.errors++;
+        markRetryLater(item);
+        recent.push('err');
+        slog(`  → PB save failed (kuyruğa alındı): ${slug} — ${saveErr.message}`, 'error');
+        // Light cooldown so we don't hammer a struggling PB.
+        await sleep(1500);
+        return;
+      }
       // Register the new record in the in-memory VG map so subsequent
       // products from a different source merge into THIS one.
       if (mergeKey && saved?.id) {
@@ -5310,7 +5344,6 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     } catch (e) {
       if (scraperAbort || e.message === 'aborted') return;
       results.errors++;
-      errorStreak++;
       recent.push('err');
       markRetryLater(item);
       const details = e.response?.data || e.data || {};
@@ -5319,19 +5352,28 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         slog(`     ${k}: ${JSON.stringify(v).substring(0,200)}`, 'error');
       });
 
-      // HARD ABORT: too many consecutive errors → likely IP-banned / browser dead
-      if (errorStreak >= _MAX_CONSEC_ERRORS) {
-        slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık hata. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
-        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
-        scraperAbort = true;
-        _abortAllScrapeControllers();
-        return;
-      }
-
-      if (errorStreak >= 3) {
-        const backoff = Math.min(2000 * Math.pow(2, errorStreak - 3), 15000);
-        slog(`Error streak (${errorStreak}), backing off ${(backoff / 1000).toFixed(0)}s...`, 'warn');
-        await sleep(backoff);
+      // Only count toward the hard-abort streak if the failure was in the
+      // FETCH stage. Post-fetch errors (parse/translate/merge/PB write) are
+      // queued for Resume but never trigger abort — one flaky backend
+      // category must not nuke the remaining 28 categories.
+      if (!fetchDone) {
+        errorStreak++;
+        if (errorStreak >= _MAX_CONSEC_ERRORS) {
+          slog(`🛑 ${_MAX_CONSEC_ERRORS} ardışık fetch hatası. Scrape durduruldu. Checkpoint kaydedildi — Resume ile devam edebilirsin.`, 'error');
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
+          scraperAbort = true;
+          _abortAllScrapeControllers();
+          return;
+        }
+        if (errorStreak >= 3) {
+          const backoff = Math.min(2000 * Math.pow(2, errorStreak - 3), 15000);
+          slog(`Fetch error streak (${errorStreak}), backing off ${(backoff / 1000).toFixed(0)}s...`, 'warn');
+          await sleep(backoff);
+        }
+      } else {
+        // Post-fetch failure — short cooldown to avoid hammering a struggling
+        // downstream (translate worker / PB) but keep moving.
+        await sleep(1500);
       }
     }
   };

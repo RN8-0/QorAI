@@ -114,7 +114,11 @@ const CATEGORY_ALIASES = Object.freeze({
   multifunction_printers: 'printers',
   laser_printers: 'printers',
   label_printers: 'printers',
-  robot_vacuums: 'vacuums',
+  // Canonical taxonomy (post 2026-05-23 EU pivot) uses `robot_vacuums`. The
+  // legacy PB records tagged `vacuums` are aliased *into* the canonical id so
+  // both Products and Scraper UIs display the same "Robot Vacuums" label and
+  // count the same records.
+  vacuums: 'robot_vacuums',
   xbox_one: 'gaming_consoles',
   xbox_series: 'gaming_consoles',
   ps5_consoles: 'gaming_consoles',
@@ -197,14 +201,18 @@ const CATEGORY_ALIASES = Object.freeze({
   wifi_antennas: 'wifi_routers',
   wifi_accessories: 'wifi_routers',
   access_points: 'wifi_repeaters',
-  coffee_makers: 'small_appliances',
-  dishwashers: 'small_appliances',
-  microwaves: 'small_appliances',
-  tumble_dryers: 'small_appliances',
-  washing_machines: 'small_appliances',
-  hobs: 'small_appliances',
-  fridge_freezers: 'small_appliances',
-  ovens: 'small_appliances',
+  // Canonical taxonomy keeps `coffee_makers` as the small-appliance bucket;
+  // every other legacy "small appliance" id collapses into it so historical
+  // dishwasher/microwave/etc records show up under the same Scraper +
+  // Products dropdown entry.
+  small_appliances: 'coffee_makers',
+  dishwashers: 'coffee_makers',
+  microwaves: 'coffee_makers',
+  tumble_dryers: 'coffee_makers',
+  washing_machines: 'coffee_makers',
+  hobs: 'coffee_makers',
+  fridge_freezers: 'coffee_makers',
+  ovens: 'coffee_makers',
   led_bulbs: 'smart_home',
   switch2_consoles: 'gaming_consoles',
   switch2_accessories: 'gaming_accessories',

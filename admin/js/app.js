@@ -1154,6 +1154,12 @@ function _adminCategoryFilterVariants(categoryId){
     gaming_consoles:['gaming_consoles','gaming-consoles','switch2_consoles','switch2-consoles','ps5_consoles','ps5-consoles','xbox_one','xbox-one','xbox_series','xbox-series'],
     gaming_accessories:['gaming_accessories','gaming-accessories','switch2_accessories','switch2-accessories','ps5_accessories','ps5-accessories','xbox_accessories','xbox-accessories'],
     games:['games','switch2_games','switch2-games','ps5_games','ps5-games'],
+    // Canonical taxonomy renamed these post 2026-05-23 EU pivot. Keep both
+    // legacy + canonical slugs so an "Robot Vacuums" filter still returns
+    // pre-migration records tagged `vacuums`, and "Coffee Makers" picks up
+    // the entire small-appliances back catalogue.
+    robot_vacuums:['robot_vacuums','robot-vacuums','vacuums'],
+    coffee_makers:['coffee_makers','coffee-makers','small_appliances','small-appliances','dishwashers','microwaves','tumble_dryers','washing_machines','hobs','fridge_freezers','ovens'],
   };
   return [...new Set([canonical,...(aliases[canonical]||[])].filter(Boolean))];
 }
@@ -1413,8 +1419,13 @@ async function populateCategoryFilterFromCollection(){
       const id=normalizeAdminCategoryValue(c.slug);
       if(!id)continue;
       const count=Number(c.productCount)||0;
+      // Multiple PB rows can canonicalize to the same id (e.g. legacy
+      // `vacuums` + canonical `robot_vacuums`). Sum the counts so the filter
+      // dropdown shows the true total — `byId.set` used to keep the larger
+      // count instead, which hid legacy records and broke parity with Scraper.
       const ex=byId.get(id);
-      if(!ex||count>ex.count)byId.set(id,{id,name:_adminCategoryLabel(id),count});
+      if(ex)ex.count+=count;
+      else byId.set(id,{id,name:_adminCategoryLabel(id),count});
     }
     const list=[...byId.values()].sort((a,b)=>a.name.localeCompare(b.name));
     if(list.length)_applySelectOptions('categoryFilter',_categoryOptionsHtml(list));
