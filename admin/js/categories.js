@@ -98,7 +98,7 @@ const CATEGORY_ALIASES = Object.freeze({
   internal_ssds: 'ssd',
   hdd: 'hard_drives',
   hdds: 'hard_drives',
-  external_hdds: 'external_hdd',
+  // external_hdds collapses to canonical flash_drives (see below).
   psus: 'psu',
   power_supplies: 'psu',
   cases: 'pc_cases',
@@ -108,8 +108,20 @@ const CATEGORY_ALIASES = Object.freeze({
   nas: 'nas_servers',
   network_cards: 'pcie_nic',
   mobile_phones: 'smartphones',
-  cameras: 'digital_cameras',
-  camcorders: 'video_cameras',
+  // Canonical Photo & Video bucket is `camera_lenses` (post 2026-05-23 EU
+  // pivot). All legacy "anything with a sensor" ids collapse into it so
+  // existing PB records show up in the new dropdown + scraper count, and
+  // future scrapes save under the canonical id instead of being aliased
+  // away into `digital_cameras` (which is not in the canonical list).
+  cameras: 'camera_lenses',
+  digital_cameras: 'camera_lenses',
+  camcorders: 'camera_lenses',
+  video_cameras: 'camera_lenses',
+  film_cameras: 'camera_lenses',
+  camera_objectives: 'camera_lenses',
+  lenses: 'camera_lenses',
+  action_cameras: 'camera_lenses',
+  security_cameras: 'camera_lenses',
   portable_speakers: 'speakers',
   multifunction_printers: 'printers',
   laser_printers: 'printers',
@@ -132,11 +144,8 @@ const CATEGORY_ALIASES = Object.freeze({
   joysticks: 'gamepads',
   tv_remotes: 'tvs',
   signage_displays: 'tvs',
-  camera_lenses: 'digital_cameras',
-  camera_objectives: 'digital_cameras',
-  lenses: 'digital_cameras',
-  video_cameras: 'digital_cameras',
-  film_cameras: 'digital_cameras',
+  // (camera_lenses + variants moved above — they now collapse INTO the
+  // canonical `camera_lenses` bucket instead of into legacy `digital_cameras`.)
   hifi_receivers: 'speakers',
   surround_systems: 'speakers',
   subwoofers: 'speakers',
@@ -164,8 +173,12 @@ const CATEGORY_ALIASES = Object.freeze({
   storage_systems: 'nas_servers',
   storage_accessories: 'hard_drives',
   optical_drives: 'hard_drives',
-  flash_drives: 'external_hdd',
-  memory_cards: 'external_hdd',
+  // Canonical Components bucket is `flash_drives` (USB Flash Drives). Reverse
+  // the old direction so legacy external_hdd / memory_card records show up
+  // under "USB Flash Drives" and new scrapes save under the canonical id.
+  external_hdd: 'flash_drives',
+  external_hdds: 'flash_drives',
+  memory_cards: 'flash_drives',
   external_ssd: 'ssd',
   cpu_amd_am4: 'cpus',
   cpu_intel_1151: 'cpus',
@@ -365,7 +378,12 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
       //   speakers     → /hoparlor/ menüde var ama 404; /ses-sistemi/ alternatifi
       //                  audio_systems ile çakışır, post-hoc split gerekir
       { id: 'projectors',        name: 'Projectors',            tr: 'Projeksiyon',              epeyPath: 'projeksiyon-makinesi' },
-      { id: 'speakers',          name: 'Speakers',              tr: 'Hoparlör',                 LegacySlug: 'hifibox',     epeyPath: 'ses-sistemi' },
+      // Both `speakers` and `audio_systems` used to share epeyPath
+      // 'ses-sistemi' — every scrape landed in whichever ran first and the
+      // other category showed 0. Speakers now uses the verified specific
+      // sub-path; audio_systems keeps the parent hub for receivers /
+      // amplifiers / soundbar bundles that aren't pure speakers.
+      { id: 'speakers',          name: 'Speakers',              tr: 'Hoparlör',                 LegacySlug: 'hifibox',     epeyPath: 'ses-sistemi/urun-tipi/hoparlor' },
       { id: 'audio_systems',     name: 'Audio Systems',         tr: 'Ses Sistemi',              epeyPath: 'ses-sistemi' },
       { id: 'av_receivers',      name: 'AV Receivers',          tr: 'Görüntü ve Ses Aktarıcı',  LegacySlug: 'hifirec',     epeyPath: 'goruntu-ve-ses-aktarici' },
       { id: 'media_players',     name: 'Media Players',         tr: 'Medya Oynatıcı',           epeyPath: 'medya-oynatici' },

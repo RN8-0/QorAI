@@ -1160,6 +1160,12 @@ function _adminCategoryFilterVariants(categoryId){
     // the entire small-appliances back catalogue.
     robot_vacuums:['robot_vacuums','robot-vacuums','vacuums'],
     coffee_makers:['coffee_makers','coffee-makers','small_appliances','small-appliances','dishwashers','microwaves','tumble_dryers','washing_machines','hobs','fridge_freezers','ovens'],
+    // EU pivot collapsed every "thing with a sensor" into `camera_lenses`
+    // and every USB/portable storage stick into `flash_drives`. Filter
+    // dropdown must still return legacy-tagged PB records when the user
+    // clicks the canonical entry.
+    camera_lenses:['camera_lenses','camera-lenses','digital_cameras','digital-cameras','cameras','video_cameras','video-cameras','camcorders','film_cameras','film-cameras','camera_objectives','camera-objectives','lenses','action_cameras','action-cameras','security_cameras','security-cameras'],
+    flash_drives:['flash_drives','flash-drives','external_hdd','external-hdd','external_hdds','external-hdds','memory_cards','memory-cards'],
   };
   return [...new Set([canonical,...(aliases[canonical]||[])].filter(Boolean))];
 }

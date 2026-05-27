@@ -4408,12 +4408,20 @@ async function scrapeProductDetail(html, url, categoryId) {
   const brand = extractBrand(originalName, rawSpecs);
 
   // ── Category ──
+  // When the scrape loop hands us an explicit categoryId (bulk-scrape from
+  // a known Epey listing), TRUST it. Letting detectCategoryFromDoc re-scan
+  // the page text used to silently re-bucket items: a "Laptop Soğutucu"
+  // detail page mentions the word "Laptop" in breadcrumbs and got
+  // reclassified as `laptops`, so the entire laptop_coolers category
+  // ended up at 0 in both the Products dropdown and the Scraper count.
+  // Only fall back to doc-sniffing when we genuinely don't know the
+  // category (single-URL Add by URL flow).
   let category = categoryId || '';
   if (!category) {
     const found = findCategoryByLegacyUrl(url);
     category = found ? found.id : categorySlugFromUrl(url);
+    category = detectCategoryFromDoc(doc, category);
   }
-  category = detectCategoryFromDoc(doc, category);
   if (window.QorAiCategories?.canonicalId) {
     category = window.QorAiCategories.canonicalId(category);
   }
