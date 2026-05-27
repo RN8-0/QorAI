@@ -5096,8 +5096,17 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       const VERIFY_BATCH = 25;
       let verifiedExtraSkips = 0;
       let verifyFailStreak = 0;
+      let healedCategory = 0;
       const VERIFY_FAIL_STREAK_BAIL = 3;
       const escFV = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      // categoryId is the explicit bucket the user picked (e.g. 'laptop_coolers').
+      // Older scrapes occasionally mis-tagged products because
+      // detectCategoryFromDoc ran on top of the bulk categoryId; those records
+      // are now sitting in PB under a wrong category. When verify-pass finds
+      // them, we heal the row in-place: same product, correct bucket.
+      const healTargetId = window.QorAiCategories?.canonicalId
+        ? window.QorAiCategories.canonicalId(categoryId || '')
+        : String(categoryId || '');
       for (let bi = 0; bi < freshItems.length && !scraperAbort; bi += VERIFY_BATCH) {
         const slice = freshItems.slice(bi, bi + VERIFY_BATCH);
         const sliceMeta = []; // parallel to slice with computed keys
@@ -5116,23 +5125,44 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           const found = await _pbGetAllPaged('products', {
             filter: orParts.join(' || '),
             sort: 'id',
-            fields: 'id,sourceUrl,slug',
+            // include category + id so we can heal misclassified rows
+            fields: 'id,sourceUrl,slug,category',
           }, 100, 30000);
           if (!found.length) continue;
           const foundUrlKeys = new Set();
           const foundSlugs = new Set();
+          // Track PB rows whose category disagrees with the bucket we're
+          // currently scraping, keyed by both URL and slug so the per-item
+          // loop below can find them.
+          const healByUrl = new Map();
+          const healBySlug = new Map();
           for (const d of found) {
             const data = typeof d.data === 'function' ? d.data() : (d.data || d);
+            const recId = String(data?.id || '').trim();
             const rawUrl = String(data?.sourceUrl || '').trim();
+            const slug = String(data?.slug || '').trim();
+            const rawCat = String(data?.category || '').trim();
+            const canCat = window.QorAiCategories?.canonicalId
+              ? window.QorAiCategories.canonicalId(rawCat)
+              : rawCat;
+            const isMis = healTargetId && recId && canCat !== healTargetId;
             if (rawUrl) {
               const k = normalizeScrapeUrlKey(rawUrl);
-              if (k) foundUrlKeys.add(k);
+              if (k) {
+                foundUrlKeys.add(k);
+                if (isMis) healByUrl.set(k, { id: recId, oldCat: rawCat });
+              }
             }
-            const slug = String(data?.slug || '').trim();
-            if (slug) foundSlugs.add(slug);
+            if (slug) {
+              foundSlugs.add(slug);
+              if (isMis) healBySlug.set(slug, { id: recId, oldCat: rawCat });
+            }
           }
-          // Move any matched item to skipped.
+          // Move any matched item to skipped; if its PB row is misclassified,
+          // queue a category update so the user's next render shows the
+          // canonical bucket.
           const stillFresh = [];
+          const healOps = [];
           for (let si = 0; si < slice.length; si++) {
             const item = slice[si];
             const meta = sliceMeta[si];
@@ -5144,8 +5174,26 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
               skippedExisting.push(item);
               if (meta.url) existingUrlKeys.add(meta.url);
               verifiedExtraSkips++;
+              const heal =
+                (meta.url && healByUrl.get(meta.url)) ||
+                (meta.slug && healBySlug.get(meta.slug)) ||
+                (meta.idLike && healBySlug.get(meta.idLike));
+              if (heal?.id) healOps.push(heal);
             } else {
               stillFresh.push(item);
+            }
+          }
+          if (healOps.length) {
+            // Update in small parallel chunks; the patch is tiny (one field)
+            // so PB handles 5-wide fine without 500ing.
+            for (let hi = 0; hi < healOps.length; hi += 5) {
+              const chunk = healOps.slice(hi, hi + 5);
+              await Promise.all(chunk.map(op =>
+                getPb().collection('products')
+                  .update(op.id, { category: healTargetId }, { $autoCancel: false })
+                  .then(() => { healedCategory++; })
+                  .catch(err => slog(`  (heal ${op.id}: ${op.oldCat}→${healTargetId} failed: ${err.message})`, 'warn'))
+              ));
             }
           }
           freshItems.splice(bi, slice.length, ...stillFresh);
@@ -5164,6 +5212,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         slog(`🔎 Verify pass caught ${verifiedExtraSkips} extra already-saved products the preload missed`, 'success');
       } else {
         slog(`🔎 Verify pass: 0 extra hits — preload was already complete`, 'info');
+      }
+      if (healedCategory > 0) {
+        slog(`🛠 Healed ${healedCategory} misclassified rows → category="${healTargetId}"`, 'success');
       }
     } catch (e) {
       slog(`  (URL verification pass failed: ${e.message})`, 'warn');
