@@ -163,7 +163,29 @@ async function main() {
   await Promise.all(workers);
 
   const totalSec = ((Date.now() - t0) / 1000).toFixed(1);
-  log(`\n  Done — ${offersWritten} offers written · ${noMatch} unmatched · ${errors} errors · ${totalSec}s\n`);
+  log(`\n  Done — ${offersWritten} offers written · ${noMatch} unmatched · ${errors} errors · ${totalSec}s`);
+
+  // Push the freshly-computed lowestPriceUSD into Typesense so the admin
+  // Products page (and any Typesense-backed listing on the website) sees
+  // the "Fiyatlı" filter return the right rows immediately. Without this
+  // step the index lagged PB by hours/days and the dropdown looked broken.
+  if (offersWritten > 0) {
+    try {
+      const { spawnSync } = require('child_process');
+      log(`\n  Reindexing Typesense lowestPriceUSD…`);
+      const r = spawnSync('node', ['scripts/ts_backfill_lowest_price.js', '--confirm'], {
+        cwd: require('path').join(__dirname, '..'),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        encoding: 'utf8',
+      });
+      const tail = (r.stdout || '').trim().split(/\r?\n/).slice(-2).join(' · ');
+      if (r.status === 0) log(`  ✓ TS reindex: ${tail}`);
+      else log(`  ! TS reindex exit=${r.status}: ${(r.stderr || '').slice(0, 200)}`);
+    } catch (e) {
+      log(`  ! TS reindex failed to spawn: ${e.message}`);
+    }
+  }
+  log('');
 }
 
 main().catch(e => { log('  ✗ ' + e.message); process.exit(1); });
