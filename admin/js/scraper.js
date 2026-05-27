@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260527-epey-brand-partitions-pb-throttle';
+const SCRAPER_BUILD = '20260527-epey-brand-url-candidates-name-translate';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6602,16 +6602,51 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             const brandUrl   = typeof b === 'string' ? b : (b?.url || b?.value);
             const brandName  = typeof b === 'string' ? b : (b?.name || brandUrl);
             const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
-            if (!brandUrl || !/^https?:/i.test(String(brandUrl))) {
+            const brandUrlCandidates = [];
+            const addBrandUrlCandidate = (url) => {
+              const value = String(url || '').trim();
+              if (!/^https?:/i.test(value) || brandUrlCandidates.includes(value)) return;
+              brandUrlCandidates.push(value);
+            };
+            addBrandUrlCandidate(brandUrl);
+            if (typeof b === 'object' && Array.isArray(b?.candidateUrls)) {
+              for (const candidateUrl of b.candidateUrls) addBrandUrlCandidate(candidateUrl);
+            }
+            if (!brandUrlCandidates.length) {
               const rawToken = typeof b === 'object' ? (b?.filterValue || b?.value || '') : String(b || '');
               slog(`    ↳ ${brandName}: marka URL'si yok, atlandı${/^marka:/i.test(rawToken) ? ' (proxy yeniden başlatılmalı)' : ''}`, 'warn');
               continue;
             }
             const beforeOne = allItems.length;
-            // Fetch the brand page metadata — its own kategoriId/cerez set.
-            let brandData;
-            try { brandData = await fetchLinks(brandUrl); }
-            catch (e) { slog(`    ↳ ${brandName}: meta hatası (${e.message})`, 'warn'); continue; }
+            // Fetch the brand page metadata. Some Epey brand labels map to
+            // non-obvious slugs (Tecno -> tecno-mobile), so try proxy-provided
+            // URL candidates before giving up on the brand partition.
+            let brandData = null;
+            let usedBrandUrl = '';
+            let lastBrandError = '';
+            for (const candidateUrl of brandUrlCandidates) {
+              try {
+                const candidateData = await fetchLinks(candidateUrl);
+                const candidateItems = itemsFromData(candidateData);
+                const candidateAjax = candidateData?.ajax && candidateData.ajax.kategoriId ? candidateData.ajax : null;
+                if (!candidateItems.length && !candidateAjax) {
+                  lastBrandError = 'ürün/AJAX yok';
+                  continue;
+                }
+                brandData = candidateData;
+                usedBrandUrl = candidateUrl;
+                break;
+              } catch (e) {
+                lastBrandError = e?.message || String(e || 'bilinmeyen hata');
+              }
+            }
+            if (!brandData) {
+              slog(`    ↳ ${brandName}: meta hatası (${lastBrandError || 'aday URL başarısız'})`, 'warn');
+              continue;
+            }
+            if (usedBrandUrl && usedBrandUrl !== brandUrlCandidates[0]) {
+              slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${usedBrandUrl})`, 'info');
+            }
             const brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
             // Push the inline first-page links so we don't miss them.
             pushItems(itemsFromData(brandData));

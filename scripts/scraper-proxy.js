@@ -824,10 +824,45 @@ function epeyListingSlug(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-function epeyBrandUrlFromName(prefix, name) {
+const EPEY_BRAND_SLUG_ALIASES = {
+  'akilli-telefonlar': {
+    tecno: ['tecno-mobile'],
+  },
+};
+
+function uniqueTruthy(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values || []) {
+    const key = String(value || '').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
+function epeyBrandUrlCandidates(prefix, name) {
   const cleanPrefix = String(prefix || '').replace(/^\/|\/$/g, '');
   const slug = epeyListingSlug(name);
-  return cleanPrefix && slug ? `https://www.epey.com/${cleanPrefix}/${slug}/` : '';
+  if (!cleanPrefix || !slug) return [];
+
+  const exactAliases = EPEY_BRAND_SLUG_ALIASES[cleanPrefix]?.[slug] || [];
+  const globalAliases = EPEY_BRAND_SLUG_ALIASES['*']?.[slug] || [];
+  const slugs = [...exactAliases, ...globalAliases, slug];
+
+  // Some phone brands use their market-facing Epey slug instead of the raw
+  // brand label, e.g. Tecno -> tecno-mobile. Keep this as a fallback candidate
+  // so future label/slug mismatches do not zero out the whole brand partition.
+  if (cleanPrefix === 'akilli-telefonlar' && !slug.endsWith('-mobile')) {
+    slugs.push(`${slug}-mobile`);
+  }
+
+  return uniqueTruthy(slugs).map(s => `https://www.epey.com/${cleanPrefix}/${s}/`);
+}
+
+function epeyBrandUrlFromName(prefix, name) {
+  return epeyBrandUrlCandidates(prefix, name)[0] || '';
 }
 
 function extractBrandFilter(html, requirePrefix = '') {
@@ -845,10 +880,12 @@ function extractBrandFilter(html, requirePrefix = '') {
     const count = parseInt((text.match(/\(([\d.]+)\)/)?.[1] || '0').replace(/\./g, ''), 10) || 0;
     if (count <= 0) continue;
     seen.add(filterValue);
-    const url = epeyBrandUrlFromName(prefix, name);
+    const candidateUrls = epeyBrandUrlCandidates(prefix, name);
+    const url = candidateUrls[0] || '';
     values.push({
       value: url || filterValue,
       ...(url ? { url } : {}),
+      ...(candidateUrls.length > 1 ? { candidateUrls } : {}),
       filterValue,
       name,
       count,
