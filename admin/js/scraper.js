@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260526-epey-flash-residue-fix';
+const SCRAPER_BUILD = '20260527-epey-brand-partitions-pb-throttle';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -24,13 +24,11 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // to satisfy the catalog requirement of up to 8 product-owned images.
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
-// Epey has no Cloudflare, so detail-page concurrency is bounded only by the
-// proxy + epey.com's request budget. 20 workers @ 50ms = ~400 req/s peak.
-// In practice epey serves ~100-150 req/s comfortably; the proxy throttles
-// the rest, so 20 keeps the pipeline saturated without burning errors.
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 20;
-const EPEY_DETAIL_CONCURRENCY_MAX = 32;
-const EPEY_PB_WRITE_CONCURRENCY = 4;
+// Detail fetches are cheap; translated product writes are not. Keep the
+// pipeline fast enough without piling 20+ large PocketBase writes at once.
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 10;
+const EPEY_DETAIL_CONCURRENCY_MAX = 12;
+const EPEY_PB_WRITE_CONCURRENCY = 2;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
@@ -3230,6 +3228,7 @@ function _sanitizeEnglishTranslationMap(map, inferredProcessorBrand = '') {
 
 function _sanitizeEnglishPayload(payload) {
   if (!payload || typeof payload !== 'object') return payload;
+  _promoteEnglishProductName(payload);
   payload.specs = _sanitizeEnglishSpecMap(payload.specs || {});
   payload.specSections = _sanitizeEnglishSectionMap(payload.specSections || {});
   payload.specsEn = _sanitizeEnglishSpecMap(payload.specsEn || payload.specs || {});
@@ -3277,13 +3276,15 @@ function _englishPayloadResidues(payload) {
     keySpecs: payload?.keySpecs || {},
   };
   const entries = _walkEnglishPayloadStrings(roots, '', []);
+  if (payload?.name) entries.push({ path: 'name', value: String(payload.name) });
+  if (payload?.nameTranslated?.en) entries.push({ path: 'nameTranslated.en', value: String(payload.nameTranslated.en) });
   for (const [source, value] of Object.entries(payload?.multiLangSpecs?.en || {})) {
     _walkEnglishPayloadStrings(value, `multiLangSpecsEn.${source}`, entries);
   }
   for (const [source, value] of Object.entries(payload?.multiLangSections?.en || {})) {
     _walkEnglishPayloadStrings(value, `multiLangSectionsEn.${source}`, entries);
   }
-  const residueRe = /[çğıİöşüÇĞŞÜÖ]|\b(?:Azami|Asgari|Maksimum|Polimer|Polimerli|Sağlığı|Sağlık|Sertifikasyonu|Sertifikasyon|Sertifikasi|Sertifikası|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.[a-z]+ frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity|Ozellik(?:leri|leriri)?|Bellek\b|Boyut(?:u|lari|lar)?|Sayisi|Sayisi|Cozunurluk(?:u)?|Cozunurlugu|Genisligi|Yuksekligi|Derinligi|Agirligi|Hizi|Hizli|Sicakligi|Kalitesi|Frekansi|Frekans(?:i)?|Cekirdek|Cekirdegi|Cekirdekleri|Islemci(?:si)?|Sertifikali|Sertifikadan|Cikis(?:i)?|Cikar(?:ilabilir|tilabilir)|Aydinlatma(?:li)?|Goz\b|Sertifika|Performans(?:i)?|Verimlilik(?:i)?)\b/i;
+  const residueRe = /[çğıİöşüÇĞŞÜÖ]|\b(?:Akilli|Akıllı|Azami|Asgari|Maksimum|Polimer|Polimerli|Sağlığı|Sağlık|Sertifikasyonu|Sertifikasyon|Sertifikasi|Sertifikası|Monster hunter|Keyboard back lighting|Virtual core|Transistor distance|Productivity check\.[a-z]+ frequency|Processor increased frequency|Built-in graphic|Hard disk \(SSD\) type|Increased memory|Heat spread capacity|Ozellik(?:leri|leriri)?|Bellek\b|Bilgisayar|Boyut(?:u|lari|lar)?|Dizustu|Dizüstü|Fare|Klavye|Kulaklik|Kulaklık|Masaustu|Masaüstü|Monitor|Monitör|Oyuncu|Sayisi|Sayisi|Sarj|Şarj|Sogutucu|Soğutucu|Supurge|Süpürge|Telefon|Tuslu|Tuşlu|Yazici|Yazıcı|Cozunurluk(?:u)?|Cozunurlugu|Genisligi|Yuksekligi|Derinligi|Agirligi|Hizi|Hizli|Sicakligi|Kalitesi|Frekansi|Frekans(?:i)?|Cekirdek|Cekirdegi|Cekirdekleri|Islemci(?:si)?|Sertifikali|Sertifikadan|Cikis(?:i)?|Cikar(?:ilabilir|tilabilir)|Aydinlatma(?:li)?|Goz\b|Sertifika|Performans(?:i)?|Verimlilik(?:i)?)\b/i;
   return entries.filter(({ value }) => {
     const s = String(value || '').trim();
     if (!s) return false;
@@ -3417,7 +3418,97 @@ function _shouldTranslateProductName(name) {
   // across languages. Only spend AI budget when the name actually contains
   // Turkish wording such as "akıllı saat" or "oyuncu monitörü".
   if (/[çğıöşüÇĞİÖŞÜ]/.test(s)) return true;
-  return /\b(akilli|akıllı|alet|bellek|bilgisayar|cihaz|dizustu|dizüstü|ekran|fare|fotograf|fotoğraf|guc|güç|hoparlor|hoparlör|islemci|işlemci|kahve|kablosuz|kablolu|kamera|kasa|klavye|kulaklik|kulaklık|makine|makinesi|modem|monitor|monitör|oyun|oyuncu|projeksiyon|robot|sarj|şarj|saat|sogutucu|soğutucu|supurge|süpürge|telefon|yazici|yazıcı)\b/i.test(s);
+  return /\b(akilli|akıllı|alet|bellek|bilgisayar|cihaz|desktop|dizustu|dizüstü|ekran|fare|fotograf|fotoğraf|guc|güç|hoparlor|hoparlör|islemci|işlemci|kahve|kablosuz|kablolu|kamera|kasa|klavye|kulaklik|kulaklık|makine|makinesi|masaustu|masaüstü|modem|monitor|monitör|oyun|oyuncu|projeksiyon|robot|sarj|şarj|saat|seti|sogutucu|soğutucu|supurge|süpürge|telefon|televizyon|tuslu|tuşlu|yazici|yazıcı)\b/i.test(s);
+}
+
+function _sanitizeEnglishProductName(name, sourceName = '') {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  const source = String(sourceName || raw).trim();
+  let out = raw;
+  const phraseRules = [
+    [_tb('Akıllı\\s+Saat|Akilli\\s+Saat', 'gi'), 'Smartwatch'],
+    [_tb('Tuşlu\\s+Telefon|Tuslu\\s+Telefon', 'gi'), 'Feature Phone'],
+    [_tb('Masaüstü\\s+Bilgisayar|Masaustu\\s+Bilgisayar', 'gi'), 'Desktop Computer'],
+    [_tb('Dizüstü\\s+Bilgisayar|Dizustu\\s+Bilgisayar', 'gi'), 'Laptop'],
+    [_tb('Şarj\\s+Aleti|Sarj\\s+Aleti', 'gi'), 'Charger'],
+    [_tb('Fotoğraf\\s+Makinesi|Fotograf\\s+Makinesi', 'gi'), 'Camera'],
+    [_tb('Kahve\\s+Makinesi', 'gi'), 'Coffee Machine'],
+    [_tb('Bilgisayar\\s+Kasası|Bilgisayar\\s+Kasasi', 'gi'), 'PC Case'],
+    [_tb('İşlemci\\s+Soğutucu|Islemci\\s+Sogutucu', 'gi'), 'CPU Cooler'],
+    [_tb('Oyuncu\\s+Klavye', 'gi'), 'Gaming Keyboard'],
+    [_tb('Oyuncu\\s+(?:Mouse|Fare)', 'gi'), 'Gaming Mouse'],
+    [_tb('Klavye\\s+(?:Mouse|Fare)\\s+Seti', 'gi'), 'Keyboard Mouse Set'],
+  ];
+  for (const [re, replacement] of phraseRules) out = out.replace(re, replacement);
+
+  const wordRules = [
+    [_tb('Akıllı|Akilli', 'gi'), 'Smart'],
+    [_tb('Oyuncu|Oyun', 'gi'), 'Gaming'],
+    [_tb('Kablosuz', 'gi'), 'Wireless'],
+    [_tb('Kablolu', 'gi'), 'Wired'],
+    [_tb('Klavye', 'gi'), 'Keyboard'],
+    [_tb('Fare', 'gi'), 'Mouse'],
+    [_tb('Kulaklık|Kulaklik', 'gi'), 'Headphones'],
+    [_tb('Hoparlör|Hoparlor', 'gi'), 'Speaker'],
+    [_tb('Telefon', 'gi'), 'Phone'],
+    [_tb('Tuşlu|Tuslu', 'gi'), 'Feature'],
+    [_tb('Saat', 'gi'), 'Watch'],
+    [_tb('Monitör|Monitor', 'gi'), 'Monitor'],
+    [_tb('Televizyon', 'gi'), 'TV'],
+    [_tb('Ekran', 'gi'), 'Display'],
+    [_tb('Bilgisayar', 'gi'), 'Computer'],
+    [_tb('Masaüstü|Masaustu', 'gi'), 'Desktop'],
+    [_tb('Dizüstü|Dizustu', 'gi'), 'Laptop'],
+    [_tb('Kasa', 'gi'), 'Case'],
+    [_tb('İşlemci|Islemci', 'gi'), 'Processor'],
+    [_tb('Soğutucu|Sogutucu', 'gi'), 'Cooler'],
+    [_tb('Süpürge|Supurge', 'gi'), 'Vacuum Cleaner'],
+    [_tb('Yazıcı|Yazici', 'gi'), 'Printer'],
+    [_tb('Tarayıcı|Tarayici', 'gi'), 'Scanner'],
+    [_tb('Projektör|Projektor|Projeksiyon', 'gi'), 'Projector'],
+    [_tb('Şarj|Sarj', 'gi'), 'Charging'],
+    [_tb('Aleti', 'gi'), 'Device'],
+    [_tb('Makinesi', 'gi'), 'Machine'],
+    [_tb('Seti', 'gi'), 'Set'],
+    [_tb('Beyaz', 'gi'), 'White'],
+    [_tb('Siyah', 'gi'), 'Black'],
+    [_tb('Mavi', 'gi'), 'Blue'],
+    [_tb('Kırmızı|Kirmizi', 'gi'), 'Red'],
+    [_tb('Yeşil|Yesil', 'gi'), 'Green'],
+    [_tb('Gri', 'gi'), 'Gray'],
+    [_tb('Gümüş|Gumus', 'gi'), 'Silver'],
+    [_tb('Altın|Altin', 'gi'), 'Gold'],
+  ];
+  for (const [re, replacement] of wordRules) out = out.replace(re, replacement);
+  out = _normalizeTurkishSourceTranslation(source, 'en', out);
+  out = _finalPassTurkishCleanup(out, source);
+  out = out
+    .replace(/\bCharging\s+Device\b/gi, 'Charger')
+    .replace(/\bKeyboard\s+Mouse\s+Set\b/gi, 'Keyboard Mouse Set')
+    .replace(/\bFeature\s+Phone\b/gi, 'Feature Phone')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return cleanCountryCodes(out);
+}
+
+function _promoteEnglishProductName(product) {
+  if (!product || typeof product !== 'object') return product;
+  const sourceLang = String(product.sourceLang || '').toLowerCase();
+  const sourceName = String(product.sourceName || product.name || '').trim();
+  if (sourceLang !== 'tr' || !sourceName) return product;
+  product.nameTranslated = product.nameTranslated && typeof product.nameTranslated === 'object'
+    ? { ...product.nameTranslated }
+    : {};
+  product.nameTranslated.tr = product.nameTranslated.tr || sourceName;
+  const dictName = _deDictLookup(sourceName, 'en');
+  const existingEnglish = product.nameTranslated.en || dictName || product.name;
+  const englishName = _sanitizeEnglishProductName(existingEnglish, sourceName);
+  if (englishName) {
+    product.name = englishName;
+    product.nameTranslated.en = englishName;
+  }
+  return product;
 }
 
 const _TECH_PROTECTED_TERMS = new Set([
@@ -3899,10 +3990,10 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
               messages: [
                 {
                   role: 'system',
-                  content: `You are a technical product specification translator. For each Turkish, English, or mixed-language tech spec term, return a JSON object mapping the original text to translations in the following languages: ${langCodes}.
+                  content: `You are a technical product specification and product-name translator. For each Turkish, English, or mixed-language tech term, return a JSON object mapping the original text to translations in the following languages: ${langCodes}.
 Rules:
 - Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
-- Product names / brand names stay as-is.
+- In product names, preserve brand/model/series/codes exactly, but translate generic Turkish category, color, and descriptor words. Example: "GameBooster Elya G75 Klavye (GB-G75)" -> "GameBooster Elya G75 Keyboard (GB-G75)" in English.
 - If the requested target language is the same as the input language, return the clean original text for that language.
 - Translate Turkish warranty/support phrases such as "6 Yıl Güvenlik Güncellemesi Garantisi" into natural English/German/etc.; do not leave them in Turkish.
 - Preserve newlines (\\n) inside multi-line values.
@@ -3912,7 +4003,7 @@ Rules:
                 },
                 {
                   role: 'user',
-                  content: `Translate these ${batch.length} product specification terms into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
+                  content: `Translate these ${batch.length} product specification terms and product names into ${targetLangs.length} languages (${langCodes}):\n${textsJson}\n\nReturn only the JSON object.`
                 }
               ],
               max_tokens: 8000,
@@ -5030,7 +5121,7 @@ async function _saveProductWithRetry(clean, label = '') {
       } catch (e) {
         lastError = e;
         if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= EPEY_PB_SAVE_RETRIES) break;
-        const delay = Math.min(1500 * Math.pow(2, attempt - 1), 12000) + Math.random() * 750;
+        const delay = Math.min(2500 * Math.pow(2, attempt - 1), 20000) + Math.random() * 1200;
         slog(`  ↻ PB save retry ${attempt}/${EPEY_PB_SAVE_RETRIES}: ${title} — ${e.message || e}`, 'warn');
         await sleep(delay);
       }
@@ -5401,7 +5492,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         recent.push('err');
         slog(`  → PB save failed (kuyruğa alındı): ${slug} — ${saveErr.message}`, 'error');
         // Light cooldown so we don't hammer a struggling PB.
-        await sleep(1500);
+        await sleep(4000);
         return;
       }
       // Register the new record in the in-memory VG map so subsequent
@@ -6508,10 +6599,14 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           for (let bi = 0; bi < brandFilter.values.length; bi++) {
             if (allItems.length >= maxProducts || scraperAbort) break;
             const b = brandFilter.values[bi];
-            const brandUrl   = typeof b === 'string' ? b : b?.value;
+            const brandUrl   = typeof b === 'string' ? b : (b?.url || b?.value);
             const brandName  = typeof b === 'string' ? b : (b?.name || brandUrl);
             const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
-            if (!brandUrl || !/^https?:/i.test(String(brandUrl))) continue;
+            if (!brandUrl || !/^https?:/i.test(String(brandUrl))) {
+              const rawToken = typeof b === 'object' ? (b?.filterValue || b?.value || '') : String(b || '');
+              slog(`    ↳ ${brandName}: marka URL'si yok, atlandı${/^marka:/i.test(rawToken) ? ' (proxy yeniden başlatılmalı)' : ''}`, 'warn');
+              continue;
+            }
             const beforeOne = allItems.length;
             // Fetch the brand page metadata — its own kategoriId/cerez set.
             let brandData;
@@ -7114,7 +7209,7 @@ async function scrapeByUrl() {
 }
 
 // ═══════════════════════════════════════
-//  AFFILIATE OFFER SYNC (eBay) — admin tab
+//  AFFILIATE OFFER SYNC — admin tab
 //  Spawns scripts/sync_offers.js via the local proxy and streams its log.
 // ═══════════════════════════════════════
 let _offersPollTimer = null;
@@ -7134,7 +7229,7 @@ async function offersStartSync() {
     if (!r.ok) { toast('Başlatılamadı: ' + (j.error || r.status), 'e'); return; }
     document.getElementById('btnOffersSync').style.display = 'none';
     document.getElementById('btnOffersStop').style.display = '';
-    document.getElementById('offersLog').textContent = 'Başlatıldı — eBay kotası hesaplanıyor…\n';
+    document.getElementById('offersLog').textContent = 'Başlatıldı — affiliate kaynakları kontrol ediliyor…\n';
     _offersStartPolling();
   } catch (e) {
     toast('Proxy ulaşılamadı: ' + e.message, 'e');

@@ -1,17 +1,17 @@
 /**
  * Qor AI — Amazon Associates offer connector
  *
- * Amazon's Product Advertising API (PA-API 5.0) requires 3 confirmed sales
- * in the first 180 days before granting access. A brand-new app cannot
- * meet that threshold, so until the account is approved this connector
+ * Amazon's current API path is guarded behind Associates approval and
+ * recent qualifying sales (Creators API / PA-API access is not available
+ * to a brand-new account). Until the account is approved this connector
  * runs in SEARCH-LINK mode:
  *   - no API call, no rate limit, no credentials beyond the associates tag
  *   - one affiliate-tagged Amazon SEARCH URL is produced per marketplace
  *   - `priceUnknown: true` is set on every offer so the front-end renders
  *     "Amazon'da Görüntüle →" instead of a price tag
  *
- * Once PA-API credentials land in migration/.env (AMAZON_ACCESS_KEY +
- * AMAZON_SECRET_KEY) the priced path below activates automatically.
+ * Once Amazon API credentials land in migration/.env (AMAZON_ACCESS_KEY +
+ * AMAZON_SECRET_KEY) a priced SearchItems path can be enabled here.
  *
  * Credentials (migration/.env):
  *   AMAZON_TAG               default associates tag (e.g. qorai-20)
@@ -20,8 +20,8 @@
  *                            tag for every storefront — required, since a
  *                            US tag does not track on amazon.de etc.)
  *   AMAZON_MARKETPLACES      optional CSV (default: US,GB,DE,FR,ES,IT)
- *   AMAZON_ACCESS_KEY        (future) PA-API access key
- *   AMAZON_SECRET_KEY        (future) PA-API secret key
+ *   AMAZON_ACCESS_KEY        (future) Creators/PA-API access key
+ *   AMAZON_SECRET_KEY        (future) Creators/PA-API secret key
  *
  * Without any tag set, searchOffers() returns [] (no-op).
  */
@@ -90,7 +90,7 @@ function tagFor(country) {
 const isConfigured = () => ACTIVE.some(c => tagFor(c));
 
 // Build a clean search query from the product name. Same heuristic as the
-// eBay connector — strip the spec tail so amazon search returns the right
+// Strip the spec tail so amazon search returns the right
 // model. "Motorola moto g37 16.9 cm (6.67")…" → "Motorola moto g37".
 function buildKeywordQuery(product) {
   let name = String(product.name || '').replace(/\s+/g, ' ').trim();

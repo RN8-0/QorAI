@@ -361,7 +361,6 @@ class GeminiService implements AIService {
         'bkmkitap',
         'epey.com',
         'akakce',
-        'ebay',
         'aliexpress',
         'banggood',
         'bestbuy',

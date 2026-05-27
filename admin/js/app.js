@@ -1742,7 +1742,7 @@ function renderProductsPage(){
     const langOffer=_adminOfferForLang(p);
     const priceText=_adminFormatOfferPrice(langOffer);
     const offerUrl=safeUrl(langOffer?.url||'');
-    const offerStore=escHtml(langOffer?.store||p.lowestOfferStore||'eBay');
+    const offerStore=escHtml(langOffer?.store||p.lowestOfferStore||'Affiliate');
     const offerHtml=priceText
       ? `<div class="product-offer" style="display:flex;align-items:center;gap:6px;margin:1px 0 2px">`
         + `<span style="font-weight:800;color:#22c55e;font-size:13px">${priceText}</span>`
@@ -2940,13 +2940,6 @@ async function openProduct(id){
   _renderProductModal(p,variants);
 }
 
-// eBay wordmark recreated in the brand colours (red-e blue-b yellow-a green-y).
-function _ebayLogoHtml(){
-  return '<span style="font-weight:800;font-size:18px;font-style:italic;letter-spacing:-1px">'
-    +'<span style="color:#e53238">e</span><span style="color:#0064d2">b</span>'
-    +'<span style="color:#f5af02">a</span><span style="color:#86b817">y</span></span>';
-}
-
 // Single cheapest-offer row for the product modal: store logo + lowest price
 // + a "Satın Al" affiliate button. Built from the product's price rollup
 // (lowestPrice / lowestOfferStore / lowestOfferUrl) — no extra query.
@@ -2954,9 +2947,9 @@ function _buildOfferRow(p){
   const offer=_adminOfferForLang(p,_modalLang||'tr');
   if(!offer)return'';
   const priceText=escHtml(_adminFormatOfferPrice(offer));
-  const store=offer.store||p.lowestOfferStore||'eBay';
+  const store=offer.store||p.lowestOfferStore||'Affiliate';
   const url=safeUrl(offer.url||p.lowestOfferUrl||'');
-  const logo=/ebay/i.test(store)?_ebayLogoHtml():`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
+  const logo=`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
   const countryNote=offer.country?`<span style="font-size:11px;color:var(--text3)">(${escHtml(offer.country)})</span>`:'';
   return`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">`
     +logo

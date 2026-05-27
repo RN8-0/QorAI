@@ -82,9 +82,7 @@ class _PricesTabContent extends ConsumerWidget {
             ),
           ),
         SliverToBoxAdapter(
-          child: SizedBox(
-            height: MediaQuery.of(context).padding.bottom + 40,
-          ),
+          child: SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
         ),
       ],
     );
@@ -170,11 +168,8 @@ class _StoreLinksCard extends StatelessWidget {
               ),
             ),
           ...entries.map(
-            (e) => _StoreLinkRow(
-              name: e.key,
-              url: e.value,
-              productId: product.id,
-            ),
+            (e) =>
+                _StoreLinkRow(name: e.key, url: e.value, productId: product.id),
           ),
         ],
       ),
@@ -259,52 +254,105 @@ class _StoreBrandData {
 _StoreBrandData _resolveStoreBrand(String rawName) {
   final n = rawName.toLowerCase().trim();
   if (n.contains('amazon')) {
-    return _StoreBrandData('Amazon', const Color(0xFFFF9900), Icons.shopping_cart_rounded);
-  }
-  if (n.contains('ebay')) {
-    return _StoreBrandData('eBay', const Color(0xFFE53238), Icons.gavel_rounded);
+    return _StoreBrandData(
+      'Amazon',
+      const Color(0xFFFF9900),
+      Icons.shopping_cart_rounded,
+    );
   }
   if (n.contains('bestbuy') || n.contains('best buy')) {
-    return _StoreBrandData('Best Buy', const Color(0xFF003B70), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Best Buy',
+      const Color(0xFF003B70),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('walmart')) {
-    return _StoreBrandData('Walmart', const Color(0xFF0071CE), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Walmart',
+      const Color(0xFF0071CE),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('aliexpress') || n.contains('ali ')) {
-    return _StoreBrandData('AliExpress', const Color(0xFFE62E04), Icons.local_shipping_rounded);
+    return _StoreBrandData(
+      'AliExpress',
+      const Color(0xFFE62E04),
+      Icons.local_shipping_rounded,
+    );
   }
   if (n.contains('trendyol')) {
-    return _StoreBrandData('Trendyol', const Color(0xFFF27A1A), Icons.shopping_bag_rounded);
+    return _StoreBrandData(
+      'Trendyol',
+      const Color(0xFFF27A1A),
+      Icons.shopping_bag_rounded,
+    );
   }
   if (n.contains('hepsiburada')) {
-    return _StoreBrandData('Hepsiburada', const Color(0xFFFF6000), Icons.shopping_bag_rounded);
+    return _StoreBrandData(
+      'Hepsiburada',
+      const Color(0xFFFF6000),
+      Icons.shopping_bag_rounded,
+    );
   }
   if (n.contains('n11')) {
-    return _StoreBrandData('n11', const Color(0xFF923899), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'n11',
+      const Color(0xFF923899),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('gittigidiyor')) {
-    return _StoreBrandData('GittiGidiyor', const Color(0xFFFFC600), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'GittiGidiyor',
+      const Color(0xFFFFC600),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('vatan')) {
-    return _StoreBrandData('Vatan', const Color(0xFFE60000), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Vatan',
+      const Color(0xFFE60000),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('teknosa')) {
-    return _StoreBrandData('Teknosa', const Color(0xFFE30613), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Teknosa',
+      const Color(0xFFE30613),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('mediamarkt')) {
-    return _StoreBrandData('MediaMarkt', const Color(0xFFE5121A), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'MediaMarkt',
+      const Color(0xFFE5121A),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('newegg')) {
-    return _StoreBrandData('Newegg', const Color(0xFFF7A028), Icons.memory_rounded);
+    return _StoreBrandData(
+      'Newegg',
+      const Color(0xFFF7A028),
+      Icons.memory_rounded,
+    );
   }
   if (n.contains('apple')) {
     return _StoreBrandData('Apple', const Color(0xFF000000), Icons.apple);
   }
   if (n.contains('samsung')) {
-    return _StoreBrandData('Samsung', const Color(0xFF1428A0), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Samsung',
+      const Color(0xFF1428A0),
+      Icons.storefront_rounded,
+    );
   }
   if (n.contains('google')) {
-    return _StoreBrandData('Google Store', const Color(0xFF4285F4), Icons.storefront_rounded);
+    return _StoreBrandData(
+      'Google Store',
+      const Color(0xFF4285F4),
+      Icons.storefront_rounded,
+    );
   }
   // Generic fallback — title-case the raw name.
   final display = rawName

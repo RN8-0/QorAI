@@ -156,9 +156,7 @@ class _CompareStoreLinksCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ...entries.map(
-            (e) => _CompareStoreRow(name: e.key, url: e.value),
-          ),
+          ...entries.map((e) => _CompareStoreRow(name: e.key, url: e.value)),
         ],
       ),
     );
@@ -232,27 +230,47 @@ class _CompareStoreRow extends StatelessWidget {
 
 (String, Color, IconData) _resolveCompareStoreBrand(String rawName) {
   final n = rawName.toLowerCase().trim();
-  if (n.contains('amazon')) return ('Amazon', const Color(0xFFFF9900), Icons.shopping_cart_rounded);
-  if (n.contains('ebay')) return ('eBay', const Color(0xFFE53238), Icons.gavel_rounded);
-  if (n.contains('bestbuy') || n.contains('best buy')) return ('Best Buy', const Color(0xFF003B70), Icons.storefront_rounded);
-  if (n.contains('walmart')) return ('Walmart', const Color(0xFF0071CE), Icons.storefront_rounded);
-  if (n.contains('aliexpress')) return ('AliExpress', const Color(0xFFE62E04), Icons.local_shipping_rounded);
-  if (n.contains('trendyol')) return ('Trendyol', const Color(0xFFF27A1A), Icons.shopping_bag_rounded);
-  if (n.contains('hepsiburada')) return ('Hepsiburada', const Color(0xFFFF6000), Icons.shopping_bag_rounded);
-  if (n.contains('n11')) return ('n11', const Color(0xFF923899), Icons.storefront_rounded);
-  if (n.contains('vatan')) return ('Vatan', const Color(0xFFE60000), Icons.storefront_rounded);
-  if (n.contains('teknosa')) return ('Teknosa', const Color(0xFFE30613), Icons.storefront_rounded);
-  if (n.contains('mediamarkt')) return ('MediaMarkt', const Color(0xFFE5121A), Icons.storefront_rounded);
-  if (n.contains('newegg')) return ('Newegg', const Color(0xFFF7A028), Icons.memory_rounded);
+  if (n.contains('amazon'))
+    return ('Amazon', const Color(0xFFFF9900), Icons.shopping_cart_rounded);
+  if (n.contains('bestbuy') || n.contains('best buy'))
+    return ('Best Buy', const Color(0xFF003B70), Icons.storefront_rounded);
+  if (n.contains('walmart'))
+    return ('Walmart', const Color(0xFF0071CE), Icons.storefront_rounded);
+  if (n.contains('aliexpress'))
+    return (
+      'AliExpress',
+      const Color(0xFFE62E04),
+      Icons.local_shipping_rounded,
+    );
+  if (n.contains('trendyol'))
+    return ('Trendyol', const Color(0xFFF27A1A), Icons.shopping_bag_rounded);
+  if (n.contains('hepsiburada'))
+    return ('Hepsiburada', const Color(0xFFFF6000), Icons.shopping_bag_rounded);
+  if (n.contains('n11'))
+    return ('n11', const Color(0xFF923899), Icons.storefront_rounded);
+  if (n.contains('vatan'))
+    return ('Vatan', const Color(0xFFE60000), Icons.storefront_rounded);
+  if (n.contains('teknosa'))
+    return ('Teknosa', const Color(0xFFE30613), Icons.storefront_rounded);
+  if (n.contains('mediamarkt'))
+    return ('MediaMarkt', const Color(0xFFE5121A), Icons.storefront_rounded);
+  if (n.contains('newegg'))
+    return ('Newegg', const Color(0xFFF7A028), Icons.memory_rounded);
   if (n.contains('apple')) return ('Apple', Colors.black, Icons.apple);
-  if (n.contains('samsung')) return ('Samsung', const Color(0xFF1428A0), Icons.storefront_rounded);
-  if (n.contains('google')) return ('Google Store', const Color(0xFF4285F4), Icons.storefront_rounded);
+  if (n.contains('samsung'))
+    return ('Samsung', const Color(0xFF1428A0), Icons.storefront_rounded);
+  if (n.contains('google'))
+    return ('Google Store', const Color(0xFF4285F4), Icons.storefront_rounded);
   final display = rawName
       .split(RegExp(r'[\s_-]+'))
       .where((p) => p.isNotEmpty)
       .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
       .join(' ');
-  return (display.isEmpty ? 'Store' : display, AppTheme.primaryBlue, Icons.storefront_rounded);
+  return (
+    display.isEmpty ? 'Store' : display,
+    AppTheme.primaryBlue,
+    Icons.storefront_rounded,
+  );
 }
 
 // ─── Compare image match-score badge (local algorithm) ─────────────────────
@@ -267,10 +285,10 @@ class _CompareMatchBadge extends ConsumerWidget {
     final color = score >= 80
         ? AppTheme.scoreExcellent
         : score >= 60
-            ? AppTheme.scoreAverage
-            : score >= 40
-                ? AppTheme.orange500
-                : AppTheme.error;
+        ? AppTheme.scoreAverage
+        : score >= 40
+        ? AppTheme.orange500
+        : AppTheme.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
@@ -578,7 +596,9 @@ class _CompareUserReviewsCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              ...sorted.take(3).map((r) => _CompareReviewPreviewTile(review: r)),
+              ...sorted
+                  .take(3)
+                  .map((r) => _CompareReviewPreviewTile(review: r)),
               const SizedBox(height: 8),
               Center(
                 child: GestureDetector(
@@ -804,10 +824,7 @@ class _CompareReviewsSheetState extends State<_CompareReviewsSheet> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: context.textPrimary,
-                    ),
+                    icon: Icon(Icons.close_rounded, color: context.textPrimary),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -871,9 +888,7 @@ class _CompareReviewsSheetState extends State<_CompareReviewsSheet> {
                   16,
                   MediaQuery.of(context).padding.bottom + 16,
                 ),
-                children: [
-                  _CompareUserReviewsCard(product: _selectedProduct),
-                ],
+                children: [_CompareUserReviewsCard(product: _selectedProduct)],
               ),
             ),
           ],
@@ -963,5 +978,3 @@ class _ShimmerBlockState extends State<_ShimmerBlock>
 }
 
 // ─── In-App YouTube Comparison Videos (uses YouTubeService) ───
-
-

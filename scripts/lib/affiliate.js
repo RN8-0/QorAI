@@ -8,7 +8,6 @@
  *   migration/.env keys (add when you join each program):
  *     AMAZON_TAG            default Amazon Associates store id
  *     AMAZON_TAG_DE / _US…  per-country override (Amazon tags are per-marketplace)
- *     EBAY_CAMPID           eBay Partner Network campaign id
  *     AWIN_PUBLISHER_ID     Awin publisher id (for Awin-brokered shops)
  */
 'use strict';
@@ -35,24 +34,6 @@ function amazonUrl(url, country) {
   catch { return url; }
 }
 
-function ebayUrl(url, _country) {
-  const campid = ENV.EBAY_CAMPID || '';
-  if (!campid || !url) return url;
-  // Modern EPN tracking — append the campaign params straight to the item
-  // URL. (The old rover.ebay.com/rover wrapper is deprecated and now lands
-  // on a blank page.) Normally unused: the Browse API already returns a
-  // ready `itemAffiliateWebUrl` when the affiliate header is sent.
-  try {
-    const u = new URL(url);
-    u.searchParams.set('mkevt', '1');
-    u.searchParams.set('mkcid', '1');
-    u.searchParams.set('mkrid', '711-53200-19255-0');
-    u.searchParams.set('campid', campid);
-    u.searchParams.set('toolid', '10001');
-    return u.toString();
-  } catch { return url; }
-}
-
 function awinUrl(url, _country) {
   const pub = ENV.AWIN_PUBLISHER_ID || '';
   const mid = ENV.AWIN_MERCHANT_ID || '';
@@ -62,7 +43,7 @@ function awinUrl(url, _country) {
 }
 
 /**
- * @param {string} network  amazon | ebay | awin | direct | geizhals | …
+ * @param {string} network  amazon | awin | direct | geizhals | …
  * @param {string} url      raw retailer URL
  * @param {{country?:string}} opts
  * @returns {string} affiliate-wrapped URL (or the plain URL if not configured)
@@ -71,7 +52,6 @@ function buildAffiliateUrl(network, url, opts = {}) {
   if (!url) return '';
   switch (String(network || '').toLowerCase()) {
     case 'amazon': return amazonUrl(url, opts.country);
-    case 'ebay':   return ebayUrl(url, opts.country);
     case 'awin':   return awinUrl(url, opts.country);
     default:       return url; // direct / geizhals deep links need no wrap
   }
@@ -79,7 +59,7 @@ function buildAffiliateUrl(network, url, opts = {}) {
 
 /** True when at least one affiliate program is configured. */
 function hasAnyAffiliateConfig() {
-  return !!(ENV.AMAZON_TAG || ENV.EBAY_CAMPID || ENV.AWIN_PUBLISHER_ID ||
+  return !!(ENV.AMAZON_TAG || ENV.AWIN_PUBLISHER_ID ||
     Object.keys(ENV).some(k => k.startsWith('AMAZON_TAG_')));
 }
 

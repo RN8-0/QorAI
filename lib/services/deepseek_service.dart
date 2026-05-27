@@ -830,7 +830,6 @@ Return valid JSON:
         'kitapyurdu',
         'idefix',
         'bkmkitap',
-        'ebay',
         'aliexpress',
         'bestbuy',
         'walmart',

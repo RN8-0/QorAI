@@ -2,7 +2,7 @@
  * Qor AI — create the `offers` collection
  *
  * One row per (product × retailer × country): live price + affiliate deep
- * link. Source-agnostic — the Geizhals scraper, an eBay connector, an Amazon
+ * link. Source-agnostic — the Geizhals scraper, an Amazon
  * PA-API connector etc. all write here through scripts/lib/offers.js.
  *
  * Icecat stays specs-only; it just supplies the canonical product plus its
@@ -29,13 +29,13 @@ const COLLECTION = {
     { name: 'productId',    type: 'text', max: 50 },   // PB id of the product
     { name: 'gtin',         type: 'text', max: 20 },   // fallback match key
     { name: 'mpn',          type: 'text', max: 80 },
-    { name: 'store',        type: 'text', max: 80 },   // "Amazon", "eBay"…
-    { name: 'network',      type: 'text', max: 40 },   // "amazon","ebay","geizhals"…
+    { name: 'store',        type: 'text', max: 80 },   // "Amazon", "Awin"…
+    { name: 'network',      type: 'text', max: 40 },   // "amazon","awin","geizhals"…
     { name: 'country',      type: 'text', max: 4 },    // "US","DE","TR"…
     { name: 'price',        type: 'number', min: 0 },
     { name: 'currency',     type: 'text', max: 4 },
     { name: 'priceText',    type: 'text', max: 60 },
-    { name: 'url',          type: 'text', max: 2500 }, // retailer URL (eBay links are long)
+    { name: 'url',          type: 'text', max: 2500 }, // retailer URL
     { name: 'affiliateUrl', type: 'text', max: 2500 }, // affiliate deep link
     { name: 'condition',    type: 'text', max: 20 },   // new / refurbished / used
     { name: 'inStock',      type: 'bool' },

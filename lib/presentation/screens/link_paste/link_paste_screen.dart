@@ -3099,7 +3099,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           children: [
             for (final store in [
               'Amazon',
-              'eBay',
               'Best Buy',
               'Trendyol',
               'AliExpress',

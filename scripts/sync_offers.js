@@ -12,12 +12,11 @@
  *   node scripts/sync_offers.js --missing-only     only products with no
  *                                                  offers yet (incremental —
  *                                                  use this for automation)
- *   node scripts/sync_offers.js --auto             size the run to whatever
- *                                                  is left of the eBay daily
- *                                                  API quota (never overruns)
+ *   node scripts/sync_offers.js --auto             accepted for backwards
+ *                                                  compatibility; currently no-op
  *
  * Connectors with no credentials are skipped — add keys to migration/.env
- * (see scripts/connectors/*.js headers) to enable eBay / Amazon / …
+ * (see scripts/connectors/*.js headers) to enable Amazon / Awin / …
  */
 'use strict';
 
@@ -25,11 +24,8 @@ const { req } = require('../migration/pb');
 const { upsertOffer, deleteOffersForProductNetwork, refreshProductRollup } = require('./lib/offers');
 
 const CONNECTORS = [
-  require('./connectors/ebay'),
   require('./connectors/amazon'),
 ];
-
-const ebay = require('./connectors/ebay');
 
 const argv = process.argv.slice(2);
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
@@ -39,16 +35,14 @@ const ALL_VARIANTS = argv.includes('--all-variants');
 // Use this after every scrape batch — it skips the thousands of products
 // already covered, so a daily/automated run stays cheap as the catalog grows.
 const MISSING_ONLY = argv.includes('--missing-only') || argv.includes('--new');
-// --auto: size the run to whatever is left of the eBay daily API quota, so
-// the job never blows the limit.
+// --auto is kept as a harmless compatibility flag for the admin UI/proxy.
+// It used to size runs around an external marketplace quota; no quota-limited
+// offer source is currently active.
 const AUTO = argv.includes('--auto');
-// Parallel worker pool size. eBay's daily quota is the real ceiling
-// (5000 Browse calls), not concurrency — they happily accept 8 in-flight
-// requests from one app key. With CALLS_PER_PRODUCT ≈ 6, 8 workers move
-// us from ~1.5 products/sec to ~8 products/sec → 219 products goes from
-// ~22 min to ~30 sec.
+// Parallel worker pool size. With search-link connectors this mostly controls
+// PocketBase write concurrency.
 const CONCURRENCY = Math.max(1, parseInt((argv.find(a => a.startsWith('--concurrency=')) || '').split('=')[1] || '8', 10));
-// Tiny inter-task spacing so we never burst right at eBay's per-second cap.
+// Tiny inter-task spacing so downstream APIs and PocketBase are not bursty.
 const TASK_GAP_MS = 60;
 const SUPPORTED_CATEGORY_IDS = new Set([
   'smartphones',
@@ -115,16 +109,9 @@ function log(line = '') {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Cap LIMIT to the remaining eBay Browse quota / calls-per-product.
+// Kept for backwards compatibility with --auto.
 async function applyAutoLimit() {
-  const rl = await ebay.getRateLimit();
-  if (!rl) { console.log('  --auto: eBay rate limit unavailable, running uncapped.'); return; }
-  const perProduct = ebay.CALLS_PER_PRODUCT || 6;
-  // Keep a 10% safety margin so other calls (and rounding) never overrun.
-  const safe = Math.max(0, Math.floor((rl.remaining * 0.9) / perProduct));
-  console.log(`  eBay quota: ${rl.remaining}/${rl.limit} left → safe for ~${safe} products (resets ${rl.reset || '?'})`);
-  if (safe <= 0) { LIMIT = -1; console.log('  Quota exhausted — nothing will run today.'); return; }
-  LIMIT = (LIMIT > 0) ? Math.min(LIMIT, safe) : safe;
+  if (AUTO) log('  --auto: no external quota source is active; running with the requested limit.');
 }
 
 async function fetchProducts() {
@@ -164,7 +151,7 @@ async function main() {
   log(`  Active connectors: ${active.map(c => c.id).join(', ')}`);
 
   if (AUTO) await applyAutoLimit();
-  if (LIMIT < 0) { log('\n  Skipped — eBay daily quota is used up.\n'); return; }
+  if (LIMIT < 0) { log('\n  Skipped — limit is exhausted.\n'); return; }
 
   const products = await fetchProducts();
   const t0 = Date.now();

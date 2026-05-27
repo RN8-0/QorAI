@@ -809,28 +809,54 @@ function extractTopFilters(html, limit = 4) {
   }));
 }
 
-function extractBrandFilter(html) {
+function epeyListingSlug(text) {
+  const tr = {
+    'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'I': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U',
+    'ç': 'c', 'ğ': 'g', 'ı': 'i', 'i': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+  };
+  return String(text || '')
+    .replace(/[ÇĞİIÖŞÜçğıiöşü]/g, ch => tr[ch] || ch)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function epeyBrandUrlFromName(prefix, name) {
+  const cleanPrefix = String(prefix || '').replace(/^\/|\/$/g, '');
+  const slug = epeyListingSlug(name);
+  return cleanPrefix && slug ? `https://www.epey.com/${cleanPrefix}/${slug}/` : '';
+}
+
+function extractBrandFilter(html, requirePrefix = '') {
   const source = String(html || '');
+  const prefix = String(requirePrefix || '').replace(/^\/|\/$/g, '');
   const values = [];
   const seen = new Set();
   const re = /filtre\(['"]?(marka:\d+)['"]?\)[^>]*>[\s\S]{0,260}?<label\b[^>]*>([\s\S]{0,220}?)<\/label>/gi;
   let m;
   while ((m = re.exec(source)) !== null) {
-    const value = m[1];
-    if (seen.has(value)) continue;
+    const filterValue = m[1];
+    if (seen.has(filterValue)) continue;
     const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = text.replace(/\s*\([\d.]+\)\s*$/, '').trim();
     const count = parseInt((text.match(/\(([\d.]+)\)/)?.[1] || '0').replace(/\./g, ''), 10) || 0;
     if (count <= 0) continue;
-    seen.add(value);
+    seen.add(filterValue);
+    const url = epeyBrandUrlFromName(prefix, name);
     values.push({
-      value,
-      name: text.replace(/\s*\([\d.]+\)\s*$/, '').trim(),
+      value: url || filterValue,
+      ...(url ? { url } : {}),
+      filterValue,
+      name,
       count,
     });
   }
   values.sort((a, b) => b.count - a.count);
   return values.length
-    ? { groupId: 'marka', total: values.reduce((n, x) => n + x.count, 0), values }
+    ? { groupId: prefix ? 'brand-pages-generated' : 'marka', total: values.reduce((n, x) => n + x.count, 0), values }
     : null;
 }
 
@@ -1615,11 +1641,9 @@ const server = http.createServer(async (req, res) => {
         // filter group selects a different slice of the catalog so their
         // union covers more than any single group on its own.
         const filtersTopK = extractTopFilters(html, 4);
-        const brandFilter = extractBrandFilter(html);
+        const brandFilter = extractBrandFilter(html, prefix);
         const featuredBrandFilter = extractFeaturedBrandPages(html, prefix);
-        const bestBrandFilter = featuredBrandFilter && (!brandFilter || featuredBrandFilter.total > brandFilter.total)
-          ? featuredBrandFilter
-          : brandFilter;
+        const bestBrandFilter = brandFilter || featuredBrandFilter;
         console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
           `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
           `${filtersTopK.length > 1 ? ` · +${filtersTopK.length - 1} fallback filter groups` : ''}` +
@@ -1645,6 +1669,7 @@ const server = http.createServer(async (req, res) => {
         pages: result.pages || [],
         ajax: result.ajax || null,
         filter: result.filter || null,
+        filtersTopK: result.filtersTopK || [],
         brandFilter: result.brandFilter || null,
       }));
     } catch (err) {

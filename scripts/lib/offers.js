@@ -2,7 +2,7 @@
  * Qor AI — offers writer
  *
  * The single, source-agnostic entry point for writing retailer offers.
- * The Geizhals scraper, an eBay connector, an Amazon PA-API connector — any
+ * The Geizhals scraper, Amazon/Awin connectors — any
  * price source — calls upsertOffer() and the `offers` collection plus the
  * product's price rollup (lowestPrice* / offerCount) stay consistent.
  *
