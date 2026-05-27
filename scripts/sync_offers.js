@@ -42,7 +42,22 @@ const MISSING_ONLY = argv.includes('--missing-only') || argv.includes('--new');
 // --auto: size the run to whatever is left of the eBay daily API quota, so
 // the job never blows the limit.
 const AUTO = argv.includes('--auto');
-const DELAY = 250; // ms between products — be gentle with retailer APIs
+// Parallel worker pool size. eBay's daily quota is the real ceiling
+// (5000 Browse calls), not concurrency — they happily accept 8 in-flight
+// requests from one app key. With CALLS_PER_PRODUCT ≈ 6, 8 workers move
+// us from ~1.5 products/sec to ~8 products/sec → 219 products goes from
+// ~22 min to ~30 sec.
+const CONCURRENCY = Math.max(1, parseInt((argv.find(a => a.startsWith('--concurrency=')) || '').split('=')[1] || '8', 10));
+// Tiny inter-task spacing so we never burst right at eBay's per-second cap.
+const TASK_GAP_MS = 60;
+
+// stdout is buffered when piped through the scraper-proxy spawn → user sees
+// silence for tens of seconds. Wrapping console.log in a write+drain pattern
+// flushes each line, so the UI's 2-second poll picks up real-time progress.
+const _stdoutWrite = process.stdout.write.bind(process.stdout);
+function log(line = '') {
+  _stdoutWrite(line + '\n');
+}
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -80,44 +95,75 @@ async function fetchProducts() {
 }
 
 async function main() {
-  console.log('\n  Offer sync\n');
+  log('\n  Offer sync\n');
   const active = CONNECTORS.filter(c => c.isConfigured());
   if (!active.length) {
-    console.log('  No affiliate connector is configured.');
-    console.log('  Add credentials to migration/.env — see scripts/connectors/*.js headers:');
-    CONNECTORS.forEach(c => console.log(`    • ${c.id}`));
-    console.log('');
+    log('  No affiliate connector is configured.');
+    log('  Add credentials to migration/.env — see scripts/connectors/*.js headers:');
+    CONNECTORS.forEach(c => log(`    • ${c.id}`));
+    log('');
     return;
   }
-  console.log(`  Active connectors: ${active.map(c => c.id).join(', ')}`);
+  log(`  Active connectors: ${active.map(c => c.id).join(', ')}`);
 
   if (AUTO) await applyAutoLimit();
-  if (LIMIT < 0) { console.log('\n  Skipped — eBay daily quota is used up.\n'); return; }
+  if (LIMIT < 0) { log('\n  Skipped — eBay daily quota is used up.\n'); return; }
 
   const products = await fetchProducts();
-  console.log(`  ${products.length} products to enrich\n`);
+  const t0 = Date.now();
+  log(`  ${products.length} products to enrich · concurrency=${CONCURRENCY}\n`);
 
-  let offersWritten = 0, noMatch = 0, errors = 0;
-  for (let i = 0; i < products.length; i++) {
-    const p = products[i];
+  let offersWritten = 0;
+  let noMatch = 0;
+  let errors = 0;
+  let processed = 0;
+
+  const processOne = async (p, idx) => {
+    const tag = `[${String(idx + 1).padStart(4)}/${products.length}]`;
+    const label = `${p.brand ? p.brand + ' ' : ''}${p.name || p.id}`.slice(0, 60);
+    let productOffers = 0;
+    const countries = [];
     for (const conn of active) {
       try {
         const offers = await conn.searchOffers(p);
         for (const offer of offers) {
-          offer.productId = offer.productId || p.id; // we already know the product
+          offer.productId = offer.productId || p.id;
           const res = await upsertOffer(offer);
-          if (res.ok) offersWritten++;
-          else noMatch++;
+          if (res.ok) {
+            offersWritten++;
+            productOffers++;
+            if (offer.country) countries.push(offer.country);
+          } else {
+            noMatch++;
+          }
         }
       } catch (e) {
         errors++;
-        if (errors <= 10) console.log(`  ! ${conn.id} / ${p.id}: ${e.message}`);
+        log(`  ! ${tag} ${label} — ${conn.id}: ${e.message}`);
       }
     }
-    if ((i + 1) % 100 === 0) console.log(`   …${i + 1}/${products.length} — ${offersWritten} offers`);
-    await sleep(DELAY);
-  }
-  console.log(`\n  Done — ${offersWritten} offers written, ${noMatch} unmatched, ${errors} errors.\n`);
+    processed++;
+    const sym = productOffers > 0 ? '✓' : '·';
+    const cntStr = productOffers > 0 ? `${productOffers} offer · ${countries.join(',')}` : 'no match';
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    const rate = (processed / Math.max(1, (Date.now() - t0) / 1000)).toFixed(1);
+    log(`  ${sym} ${tag} ${label.padEnd(60)} ${cntStr.padEnd(30)} · ${elapsed}s · ${rate}/s · total ${offersWritten}`);
+  };
+
+  // Simple worker pool: keep CONCURRENCY tasks in flight.
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(CONCURRENCY, products.length) }, async () => {
+    for (;;) {
+      const idx = cursor++;
+      if (idx >= products.length) return;
+      await processOne(products[idx], idx);
+      if (TASK_GAP_MS > 0) await sleep(TASK_GAP_MS);
+    }
+  });
+  await Promise.all(workers);
+
+  const totalSec = ((Date.now() - t0) / 1000).toFixed(1);
+  log(`\n  Done — ${offersWritten} offers written · ${noMatch} unmatched · ${errors} errors · ${totalSec}s\n`);
 }
 
-main().catch(e => { console.error('  ✗', e.message); process.exit(1); });
+main().catch(e => { log('  ✗ ' + e.message); process.exit(1); });
