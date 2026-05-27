@@ -9,6 +9,45 @@
 // Stored as: [{ id, name, nameDe, LegacySlug, custom: true }]
 // ────────────────────────────────────────────────────────────────
 const _CUSTOM_CATS_KEY = 'qorai_custom_categories_v1';
+const REMOVED_CATEGORY_IDS = new Set([
+  'coffee_makers',
+  'coffee_maker',
+  'coffee-makers',
+  'coffeemakers',
+  'small_appliances',
+  'small-appliances',
+]);
+const REMOVED_CATEGORY_TEXT_RE = /\b(coffee\s*makers?|coffee\s*machines?|kahve\s*makinesi|small\s*appliances?)\b/i;
+
+function _categorySlugToken(input) {
+  return String(input || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function isRemovedCategoryLike(value) {
+  if (!value) return false;
+  if (typeof value === 'object') {
+    return [
+      value.id,
+      value.slug,
+      value.name,
+      value.nameDe,
+      value.tr,
+      value.LegacySlug,
+      value.epeyPath,
+    ].some(isRemovedCategoryLike);
+  }
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  const slug = _categorySlugToken(raw);
+  return REMOVED_CATEGORY_IDS.has(slug)
+    || REMOVED_CATEGORY_IDS.has(raw.toLowerCase())
+    || REMOVED_CATEGORY_TEXT_RE.test(raw);
+}
 
 window.QorAiCustomCategories = {
   _slugifyId(input) {
@@ -38,12 +77,16 @@ window.QorAiCustomCategories = {
       const raw = localStorage.getItem(_CUSTOM_CATS_KEY);
       if (!raw) return [];
       const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
+      if (!Array.isArray(arr)) return [];
+      const filtered = arr.filter(c => !isRemovedCategoryLike(c));
+      if (filtered.length !== arr.length) this.save(filtered);
+      return filtered;
     } catch { return []; }
   },
   save(list) {
     try {
-      localStorage.setItem(_CUSTOM_CATS_KEY, JSON.stringify(list));
+      const filtered = Array.isArray(list) ? list.filter(c => !isRemovedCategoryLike(c)) : [];
+      localStorage.setItem(_CUSTOM_CATS_KEY, JSON.stringify(filtered));
       return true;
     } catch (e) {
       console.error('[custom-categories] save failed:', e);
@@ -56,6 +99,9 @@ window.QorAiCustomCategories = {
     const cleanName = String(name || '').trim();
     if (!cleanName) throw new Error('İngilizce kategori adı zorunlu.');
     const id = this._slugifyId(cleanName) || `custom_${slug}`;
+    if (isRemovedCategoryLike({ id, name: cleanName, nameDe, LegacySlug: slug })) {
+      throw new Error('Bu kategori katalogdan kaldırıldı.');
+    }
     const entry = {
       id,
       name: cleanName,
@@ -214,18 +260,6 @@ const CATEGORY_ALIASES = Object.freeze({
   wifi_antennas: 'wifi_routers',
   wifi_accessories: 'wifi_routers',
   access_points: 'wifi_repeaters',
-  // Canonical taxonomy keeps `coffee_makers` as the small-appliance bucket;
-  // every other legacy "small appliance" id collapses into it so historical
-  // dishwasher/microwave/etc records show up under the same Scraper +
-  // Products dropdown entry.
-  small_appliances: 'coffee_makers',
-  dishwashers: 'coffee_makers',
-  microwaves: 'coffee_makers',
-  tumble_dryers: 'coffee_makers',
-  washing_machines: 'coffee_makers',
-  hobs: 'coffee_makers',
-  fridge_freezers: 'coffee_makers',
-  ovens: 'coffee_makers',
   led_bulbs: 'smart_home',
   switch2_consoles: 'gaming_consoles',
   switch2_accessories: 'gaming_accessories',
@@ -405,7 +439,6 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
       { id: 'routers',           name: 'Routers',               tr: 'Router',                   LegacySlug: 'router',      epeyPath: 'router' },
       { id: 'modem_routers',     name: 'Modems',                tr: 'Modem',                    LegacySlug: 'wlanroutmod', epeyPath: 'modem' },
       { id: 'robot_vacuums',     name: 'Robot Vacuums',         tr: 'Robot Süpürge',            LegacySlug: 'hsauger',     epeyPath: 'robot-supurge' },
-      { id: 'coffee_makers',     name: 'Coffee Makers',         tr: 'Kahve Makinesi',           epeyPath: 'kahve-makinesi' },
       { id: 'hardware_wallets',  name: 'Hardware Wallets',      tr: 'Soğuk Cüzdan',             epeyPath: 'soguk-cuzdan' },
     ],
   },
@@ -418,14 +451,26 @@ const ALLOWED_CATEGORY_IDS = new Set(
 );
 window.QorAiAllowedCategoryIds = ALLOWED_CATEGORY_IDS;
 
+function isAllowedCategoryId(id) {
+  const slug = String(id || '').trim();
+  if (!slug) return false;
+  if (isRemovedCategoryLike(slug)) return false;
+  if (ALLOWED_CATEGORY_IDS.has(slug)) return true;
+  try {
+    return QorAiCustomCategories.getAll().some(c => c?.id === slug);
+  } catch {
+    return false;
+  }
+}
+
 function normalizeCategoryId(input) {
   const raw = String(input || '').trim().toLowerCase();
   if (!raw) return '';
-  const slug = raw
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return CATEGORY_ALIASES[slug] || slug;
+  if (isRemovedCategoryLike(raw)) return '';
+  const slug = _categorySlugToken(raw);
+  const canonical = CATEGORY_ALIASES[slug] || slug;
+  if (isRemovedCategoryLike(canonical)) return '';
+  return isAllowedCategoryId(canonical) ? canonical : '';
 }
 
 window.QorAiCategories = {
@@ -568,14 +613,6 @@ window.QorAiCategories = {
         { id: 'e_readers',             name: 'E-Readers' },
         { id: 'drones',                name: 'Drones' },
         { id: 'power_adapters',        name: 'Power Adapters' },
-        { id: 'coffee_makers',         name: 'Coffee Makers' },
-        { id: 'dishwashers',           name: 'Dishwashers' },
-        { id: 'microwaves',            name: 'Microwaves' },
-        { id: 'tumble_dryers',         name: 'Tumble Dryers' },
-        { id: 'washing_machines',      name: 'Washing Machines' },
-        { id: 'hobs',                  name: 'Hobs' },
-        { id: 'fridge_freezers',       name: 'Fridge-Freezers' },
-        { id: 'ovens',                 name: 'Ovens' },
         { id: 'led_bulbs',             name: 'LED Bulbs' },
         { id: 'electric_scooters',     name: 'Electric Scooters',          LegacySlug: 'escooter' },
       ]
@@ -587,7 +624,7 @@ window.QorAiCategories = {
   },
 
   getAll() {
-    const base = this.groups.flatMap(g => g.categories);
+    const base = this.groups.flatMap(g => g.categories).filter(c => !isRemovedCategoryLike(c));
     const custom = QorAiCustomCategories.getAll();
     const attachEpey = (c) => ({ ...c, epeyPath: c.epeyPath || EPEY_PATHS[c.id] || '' });
     if (!custom.length) return base.map(attachEpey);
@@ -883,12 +920,18 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
   let bulkOpts = '<option value="">Select Category</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   let dictOpts = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   let flatOpts = '<option value="">All Categories</option>';
+  const visibleCat = (cat) => {
+    if (!cat || isRemovedCategoryLike(cat)) return false;
+    const id = QorAiCategories.canonicalId?.(cat.id) || '';
+    return !!id && !isRemovedCategoryLike(id);
+  };
 
   const grouped = {};
   const canonicalGroups = Array.isArray(QorAiCategories.groups) ? QorAiCategories.groups : [];
   canonicalGroups.forEach(group => {
     (group.categories || []).forEach(cat => {
       const full = QorAiCategories.getById?.(cat.id) || cat;
+      if (!visibleCat(full)) return;
       (grouped[group.name] = grouped[group.name] || []).push(full);
     });
   });
@@ -928,7 +971,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
     });
   });
 
-  const customs = QorAiCustomCategories.getAll();
+  const customs = QorAiCustomCategories.getAll().filter(visibleCat);
   if (customs.length) {
     bulkOpts += `<optgroup label="Custom">`;
     customs.forEach(cat => {
@@ -943,8 +986,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
     bulkOpts += '</optgroup>';
   }
 
-  const knownIds = new Set(QorAiCategories.getAll().map(cat => cat.id));
-  const syncedIds = includeSynced ? Object.keys(counts).filter(id => id && !knownIds.has(id)).sort() : [];
+  const syncedIds = [];
   if (syncedIds.length) {
     flatOpts += `<optgroup label="Synced">`;
     const dictSynced = [];
@@ -969,7 +1011,7 @@ function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynce
 function _buildFallbackDictCategoryOptions(counts = {}, epeyCounts = {}) {
   let html = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   const all = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
-    ? QorAiCategories.getAll().filter(c => c?.id && !c.scrapeDisabled)
+    ? QorAiCategories.getAll().filter(c => c?.id && !c.scrapeDisabled && !isRemovedCategoryLike(c))
     : [];
   if (!all.length) return html;
   const grouped = {};
@@ -1017,7 +1059,12 @@ function _syncScrapeCategoryChecklistFromSelect() {
   const parts = [];
   for (const node of [...select.children]) {
     if (node.tagName === 'OPTGROUP') {
-      const opts = [...node.children].filter(opt => opt.value && opt.value !== '__all_epey__');
+      const opts = [...node.children].filter(opt => (
+        opt.value
+        && opt.value !== '__all_epey__'
+        && !isRemovedCategoryLike(opt.value)
+        && !isRemovedCategoryLike(opt.textContent || '')
+      ));
       if (!opts.length) continue;
       parts.push(`<div class="scrape-category-group">${escHtml(node.label || 'Categories')}</div>`);
       opts.forEach(opt => {
@@ -1028,7 +1075,13 @@ function _syncScrapeCategoryChecklistFromSelect() {
           : '<span class="scrape-category-count muted">henüz çekilmedi</span>';
         parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
       });
-    } else if (node.tagName === 'OPTION' && node.value && node.value !== '__all_epey__') {
+    } else if (
+      node.tagName === 'OPTION'
+      && node.value
+      && node.value !== '__all_epey__'
+      && !isRemovedCategoryLike(node.value)
+      && !isRemovedCategoryLike(node.textContent || '')
+    ) {
       const checked = previous.has(node.value) ? ' checked' : '';
       const label = splitOptionLabel(node.textContent || node.value);
       const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>';

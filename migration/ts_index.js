@@ -69,6 +69,16 @@ function tsDate(value) {
 
 function toTsDoc(pb) {
   const browseFilters = extractBrowseFilters(pb);
+  const raw = {
+    ...pb,
+    imageUrl: pb.imageUrl || pb.imageURL || '',
+    imageURL: pb.imageURL || pb.imageUrl || '',
+    nameTranslated: pb.nameTranslated || {},
+    multiLangSpecs: pb.multiLangSpecs || {},
+    multiLangSections: pb.multiLangSections || {},
+    affiliateLinks: pb.affiliateLinks || {},
+    affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
+  };
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -92,6 +102,7 @@ function toTsDoc(pb) {
     screenSizeValue: browseFilters.screenSizeValue,
     batteryCapacityValue: browseFilters.batteryCapacityValue,
     weightValueKg: browseFilters.weightValueKg,
+    _raw: JSON.stringify(raw),
   };
 }
 

@@ -2942,7 +2942,7 @@ class _WideProductCard extends StatelessWidget {
   });
 
   String _displayName(BuildContext context) => localizeProductName(
-    product.name,
+    product.nameForLanguage(Localizations.localeOf(context).languageCode),
     Localizations.localeOf(context).languageCode,
   );
 
@@ -3137,7 +3137,7 @@ class _TrendingWideCard extends StatelessWidget {
       : const Color(0xFF6366F1);
 
   String _displayName(BuildContext context) => localizeProductName(
-    product.name,
+    product.nameForLanguage(Localizations.localeOf(context).languageCode),
     Localizations.localeOf(context).languageCode,
   );
 

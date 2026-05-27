@@ -123,6 +123,16 @@ function tsBuildDoc(pb) {
     const t = value ? new Date(value).getTime() : 0;
     return Number.isFinite(t) ? t : 0;
   };
+  const raw = {
+    ...pb,
+    imageUrl: pb.imageUrl || pb.imageURL || '',
+    imageURL: pb.imageURL || pb.imageUrl || '',
+    nameTranslated: pb.nameTranslated || {},
+    multiLangSpecs: pb.multiLangSpecs || {},
+    multiLangSections: pb.multiLangSections || {},
+    affiliateLinks: pb.affiliateLinks || {},
+    affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
+  };
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -143,6 +153,7 @@ function tsBuildDoc(pb) {
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
     filterTokens: _extractSocketTokens(pb),
+    _raw: JSON.stringify(raw),
   };
 }
 

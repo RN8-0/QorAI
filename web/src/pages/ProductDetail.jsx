@@ -39,17 +39,25 @@ function sectionIcon(name) {
 }
 
 function aiPrompt(p, lang) {
+  const productName = localizedProductName(p, lang);
   const ks = p.keySpecs && typeof p.keySpecs === 'object'
     ? Object.entries(p.keySpecs).slice(0, 14).map(([k, v]) => `${k}: ${v}`).join(', ')
     : '';
   return (
     'Analyze this tech product as Qor AI, a product advisor.\n' +
-    `Product: ${p.name}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Product: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
     `Qor AI score: ${p.techScore || '-'}/100\nKey specs: ${ks || '-'}\n\n` +
     'Give a concise review: a 2-3 sentence verdict, then **Strengths**, **Weaknesses** ' +
     'and **Who it is for** sections. Use "-" for bullets and **bold** headings. ' +
     `Reply ONLY in the language with ISO code: ${lang}.`
   );
+}
+
+function localizedProductName(product, lang) {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const translated = product?.nameTranslated?.[code];
+  if (translated && String(translated).trim()) return translated;
+  return trSpec(product?.name || '', code);
 }
 
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
@@ -232,7 +240,7 @@ export default function ProductDetail() {
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
-  const displayName = trSpec(p.name, lang);
+  const displayName = localizedProductName(p, lang);
 
   return (
     <div className="pd">

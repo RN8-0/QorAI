@@ -8,7 +8,8 @@
  *      (hyphenated old Icecat slugs, "switch2_consoles", aliases…) to the
  *      single canonical slug. Mirrors canonicalCategory() in icecat_ingest.js
  *      and normalizeCategoryId() in admin/js/categories.js.
- *   2. Deletes the now-orphaned non-canonical category records.
+ *   2. Clears products assigned to categories outside the current whitelist
+ *      and deletes the stale category records.
  *   3. Recounts every remaining category against the live product catalog and
  *      writes the real productCount + isActive (empty => inactive).
  *
@@ -20,8 +21,10 @@
 'use strict';
 
 const { req } = require('../migration/pb');
+const { deleteOffersForProductNetwork, refreshProductRollup } = require('./lib/offers');
 
 const DRY = process.argv.includes('--dry');
+const OFFER_NETWORKS_TO_CLEAR = ['ebay', 'amazon', 'awin', 'direct'];
 
 // Slugs that are app sections, not scraper product categories — never touch.
 const SKIP_SLUGS = new Set(['gaming', 'subscription', 'tech', 'travel']);
@@ -36,26 +39,33 @@ const ALIASES = {
   cpu: 'cpus', processor: 'cpus', processors: 'cpus',
   ssds: 'ssd', internal_ssds: 'ssd',
   hdd: 'hard_drives', hdds: 'hard_drives',
-  external_hdds: 'external_hdd',
+  external_hdd: 'flash_drives', external_hdds: 'flash_drives',
   psus: 'psu', power_supplies: 'psu',
   cases: 'pc_cases', computer_cases: 'pc_cases',
   coolers: 'cpu_coolers', computer_cooling_systems: 'cpu_coolers',
   nas: 'nas_servers',
   network_cards: 'pcie_nic',
   mobile_phones: 'smartphones',
-  cameras: 'digital_cameras',
-  camcorders: 'video_cameras',
+  cameras: 'camera_lenses',
+  digital_cameras: 'camera_lenses',
+  camcorders: 'camera_lenses',
+  video_cameras: 'camera_lenses',
+  film_cameras: 'camera_lenses',
+  camera_objectives: 'camera_lenses',
+  lenses: 'camera_lenses',
+  action_cameras: 'camera_lenses',
+  security_cameras: 'camera_lenses',
   portable_speakers: 'speakers',
   multifunction_printers: 'printers', laser_printers: 'printers', label_printers: 'printers',
-  robot_vacuums: 'vacuums',
+  vacuums: 'robot_vacuums',
   xbox_one: 'gaming_consoles', xbox_series: 'gaming_consoles',
   ps5_consoles: 'gaming_consoles', switch2_consoles: 'gaming_consoles',
   ps5_games: 'games', switch2_games: 'games',
   xbox_accessories: 'gaming_accessories', ps5_accessories: 'gaming_accessories', switch2_accessories: 'gaming_accessories',
   racing_wheels: 'gamepads', joysticks: 'gamepads',
   tv_remotes: 'tvs', signage_displays: 'tvs',
-  camera_lenses: 'digital_cameras', camera_objectives: 'digital_cameras', lenses: 'digital_cameras',
-  video_cameras: 'digital_cameras', film_cameras: 'digital_cameras',
+  camera_lenses: 'camera_lenses', camera_objectives: 'camera_lenses', lenses: 'camera_lenses',
+  video_cameras: 'camera_lenses', film_cameras: 'camera_lenses',
   hifi_receivers: 'speakers', surround_systems: 'speakers', subwoofers: 'speakers', compact_hifi: 'speakers',
   multiroom_audio: 'speakers', wireless_audio: 'speakers', amplifiers: 'speakers', preamplifiers: 'speakers',
   power_amplifiers: 'speakers', dj_turntables: 'speakers', dj_controllers: 'speakers', hifi_accessories: 'speakers', hifi_filters: 'speakers',
@@ -65,7 +75,7 @@ const ALIASES = {
   handheld_computers: 'tablets',
   hdd_docks: 'hard_drives', hdd_enclosures: 'external_hdd', sata_cables: 'hard_drives',
   drive_adapters: 'hard_drives', storage_systems: 'hard_drives', storage_accessories: 'hard_drives',
-  optical_drives: 'hard_drives', flash_drives: 'external_hdd', memory_cards: 'external_hdd', external_ssd: 'ssd',
+  optical_drives: 'hard_drives', flash_drives: 'flash_drives', memory_cards: 'flash_drives', external_ssd: 'ssd',
   cpu_amd_am4: 'cpus', cpu_intel_1151: 'cpus', cpu_server: 'cpus',
   server_motherboards: 'motherboards', mb_cables: 'motherboards',
   gpu_coolers: 'graphics_cards',
@@ -79,26 +89,58 @@ const ALIASES = {
   dsl_modems: 'modem_routers', cordless_phones: 'smartphones',
   firewalls: 'network_switches', media_converters: 'network_switches', wifi_antennas: 'wifi_routers', wifi_accessories: 'wifi_routers',
   access_points: 'wifi_repeaters',
-  coffee_makers: 'small_appliances', dishwashers: 'small_appliances', microwaves: 'small_appliances',
-  tumble_dryers: 'small_appliances', washing_machines: 'small_appliances', hobs: 'small_appliances',
-  fridge_freezers: 'small_appliances', ovens: 'small_appliances',
   led_bulbs: 'smart_home',
 };
 
 const CANONICAL_NAMES = {
-  smartphones: 'Smartphones', tablets: 'Tablets', smartwatches: 'Smartwatches', headphones: 'Headphones', powerbanks: 'Power Banks',
-  laptops: 'Laptops', desktops: 'Desktop PCs', mini_pcs: 'Mini PCs', monitors: 'Monitors', webcams: 'Webcams',
-  graphics_cards: 'Graphics Cards', cpus: 'Processors', motherboards: 'Motherboards', ram: 'RAM', ssd: 'SSDs',
-  hard_drives: 'Hard Drives', external_hdd: 'External Hard Drives', pc_cases: 'PC Cases', psu: 'Power Supplies (PSU)',
-  cpu_coolers: 'CPU Coolers', case_fans: 'Case Fans',
-  keyboards: 'Keyboards', mice: 'Mice', printers: 'Printers', gamepads: 'Gamepads',
-  tvs: 'TVs', projectors: 'Projectors', soundbars: 'Soundbars', speakers: 'Speakers',
-  modem_routers: 'Modem Routers', wifi_routers: 'WiFi Routers', routers: 'Routers', network_switches: 'Network Switches',
-  pcie_nic: 'PCIe Network Cards', wifi_repeaters: 'WiFi Repeaters',
-  digital_cameras: 'Digital Cameras', action_cameras: 'Action Cameras', security_cameras: 'Security Cameras', drones: 'Drones',
-  gaming_consoles: 'Game Consoles', gaming_accessories: 'Gaming Accessories', games: 'Games',
-  vacuums: 'Vacuum Cleaners', ups: 'UPS', small_appliances: 'Small Appliances', smart_home: 'Smart Home',
-  e_readers: 'E-Readers', electric_scooters: 'Electric Scooters',
+  smartphones: 'Smartphones',
+  feature_phones: 'Feature Phones',
+  smartwatches: 'Smartwatches',
+  smart_rings: 'Smart Rings',
+  headphones: 'Headphones',
+  powerbanks: 'Power Banks',
+  chargers: 'Chargers',
+  laptops: 'Laptops',
+  desktops: 'Desktop PCs',
+  tablets: 'Tablets',
+  e_readers: 'E-Readers',
+  vr_headsets: 'VR Headsets',
+  graphics_cards: 'Graphics Cards',
+  cpus: 'Processors',
+  motherboards: 'Motherboards',
+  ram: 'RAM',
+  ssd: 'SSDs',
+  psu: 'Power Supplies (PSU)',
+  pc_cases: 'PC Cases',
+  ups: 'UPS',
+  flash_drives: 'USB Flash Drives',
+  cpu_coolers: 'CPU Coolers',
+  laptop_coolers: 'Laptop Coolers',
+  case_fans: 'Case Fans',
+  keyboards: 'Keyboards',
+  mice: 'Mice',
+  gamepads: 'Gamepads',
+  gaming_consoles: 'Game Consoles',
+  webcams: 'Webcams',
+  microphones: 'Microphones',
+  printers: 'Printers',
+  '3d_printers': '3D Printers',
+  monitors: 'Monitors',
+  tvs: 'TVs',
+  projectors: 'Projectors',
+  speakers: 'Speakers',
+  audio_systems: 'Audio Systems',
+  av_receivers: 'AV Receivers',
+  media_players: 'Media Players',
+  camera_lenses: 'Camera Lenses',
+  ip_cameras: 'IP Cameras',
+  dashcams: 'Dash Cameras',
+  gimbals: 'Gimbals',
+  drones: 'Drones',
+  routers: 'Routers',
+  modem_routers: 'Modems',
+  robot_vacuums: 'Robot Vacuums',
+  hardware_wallets: 'Hardware Wallets',
 };
 
 const CANONICAL_SLUGS = new Set(Object.keys(CANONICAL_NAMES));
@@ -141,6 +183,37 @@ async function retagProducts(from, to) {
   return moved;
 }
 
+// Remove a category assignment from products whose category is no longer in
+// the catalog whitelist. The products stay in PB; they just stop belonging to
+// a scraper/admin category.
+async function clearProductsCategory(from) {
+  let cleared = 0;
+  let offersDeleted = 0;
+  for (;;) {
+    const r = await req('GET', `/api/collections/products/records?perPage=100&fields=id,offerCount&filter=${enc(filt(from))}`);
+    if (r.status !== 200) throw new Error(`product fetch failed: ${JSON.stringify(r.body).slice(0, 160)}`);
+    const items = r.body.items || [];
+    if (!items.length) break;
+    for (const p of items) {
+      if (DRY) { cleared++; continue; }
+      for (const network of OFFER_NETWORKS_TO_CLEAR) {
+        const res = await deleteOffersForProductNetwork(p.id, network, { refresh: false });
+        offersDeleted += res.deleted || 0;
+      }
+      const u = await req('PATCH', `/api/collections/products/records/${p.id}`, { category: '' });
+      if (u.status === 200) cleared++;
+      else console.log(`   ! clear ${p.id} failed: ${JSON.stringify(u.body).slice(0, 120)}`);
+      await refreshProductRollup(p.id);
+    }
+    if (DRY) break;
+  }
+  if (DRY) {
+    const r = await req('GET', `/api/collections/products/records?perPage=1&fields=id&filter=${enc(filt(from))}`);
+    cleared = r.status === 200 ? (r.body.totalItems || 0) : 0;
+  }
+  return { cleared, offersDeleted };
+}
+
 async function main() {
   console.log(`\n  Category repair ${DRY ? '(DRY RUN)' : ''}\n`);
 
@@ -150,7 +223,16 @@ async function main() {
   console.log(`  ${categories.length} category records found\n`);
 
   const bySlug = new Map(categories.map(c => [c.slug, c]));
-  const noncanonical = categories.filter(c => c.slug && !SKIP_SLUGS.has(c.slug) && canon(c.slug) !== c.slug);
+  const noncanonical = categories.filter(c => {
+    if (!c.slug || SKIP_SLUGS.has(c.slug)) return false;
+    const target = canon(c.slug);
+    return target && CANONICAL_SLUGS.has(target) && target !== c.slug;
+  });
+  const unsupported = categories.filter(c => {
+    if (!c.slug || SKIP_SLUGS.has(c.slug)) return false;
+    const target = canon(c.slug);
+    return !CANONICAL_SLUGS.has(target);
+  });
 
   // ─── 1+2. Merge non-canonical categories into their canonical slug ──────────
   for (const cat of noncanonical) {
@@ -176,6 +258,19 @@ async function main() {
       console.log(`    - deleted stale record "${cat.slug}" (${del.status})`);
     } else {
       console.log(`    - would delete stale record "${cat.slug}"`);
+    }
+    bySlug.delete(cat.slug);
+  }
+
+  for (const cat of unsupported) {
+    const { cleared, offersDeleted } = await clearProductsCategory(cat.slug);
+    const offerText = !DRY && offersDeleted ? `, ${offersDeleted} offer(s) deleted` : '';
+    console.log(`  • ${cat.slug}: ${cleared} product category value(s) cleared${offerText}; category record ${DRY ? 'would be deleted' : 'deleted'}`);
+    if (!DRY) {
+      const del = await req('DELETE', `/api/collections/categories/records/${cat.id}`);
+      if (![200, 204].includes(del.status)) {
+        console.log(`   ! delete ${cat.slug} failed: ${JSON.stringify(del.body).slice(0, 120)}`);
+      }
     }
     bySlug.delete(cat.slug);
   }

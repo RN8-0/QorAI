@@ -102,8 +102,12 @@ function buildTsDoc(record) {
   // app needs for local filtering (FilterApplier checks specs + specSections).
   var specs        = _parseJson(record.get('specs'))        || {};
   var specSections = _parseJson(record.get('specSections')) || {};
+  var multiLangSpecs = _parseJson(record.get('multiLangSpecs')) || {};
+  var multiLangSections = _parseJson(record.get('multiLangSections')) || {};
+  var nameTranslated = _parseJson(record.get('nameTranslated')) || {};
   var prices       = _parseJson(record.get('prices'))       || {};
   var affiliateLinks = _parseJson(record.get('affiliateLinks')) || {};
+  var affiliateLinksByCountry = _parseJson(record.get('affiliateLinksByCountry')) || {};
 
   // Full _raw snapshot — matches the shape stored by admin/js/ts_client.js
   // and migration/ts_index.js so FilterApplier has specs/specSections to work with.
@@ -125,8 +129,18 @@ function buildTsDoc(record) {
     tags:          tags,
     specs:         specs,
     specSections:  specSections,
+    multiLangSpecs: multiLangSpecs,
+    multiLangSections: multiLangSections,
+    nameTranslated: nameTranslated,
     prices:        prices,
     affiliateLinks: affiliateLinks,
+    affiliateLinksByCountry: affiliateLinksByCountry,
+    lowestPrice:   parseFloat(record.get('lowestPrice')) || 0,
+    lowestPriceCurrency: record.get('lowestPriceCurrency') || '',
+    lowestPriceUSD: parseFloat(record.get('lowestPriceUSD')) || 0,
+    lowestOfferUrl: record.get('lowestOfferUrl') || '',
+    lowestOfferStore: record.get('lowestOfferStore') || '',
+    offerCount:    parseInt(record.get('offerCount'), 10) || 0,
     description:   record.get('description') || '',
     variantGroup:  record.get('variantGroup') || '',
     isActive:      record.get('isActive') !== false,

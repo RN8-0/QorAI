@@ -81,6 +81,77 @@ export function formatPrice(usd) {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
+export const PRICE_COUNTRIES_BY_LANG = {
+  tr: ['TR', 'DE', 'GB'],
+  en: ['US', 'GB', 'CA', 'AU'],
+  de: ['DE', 'AT', 'CH'],
+  es: ['ES', 'MX', 'US'],
+  fr: ['FR', 'BE', 'CA'],
+  pt: ['PT', 'BR', 'ES', 'GB'],
+  ru: ['RU', 'DE', 'GB'],
+};
+
+export const CURRENCY_BY_COUNTRY = {
+  US: 'USD', GB: 'GBP', CA: 'CAD', AU: 'AUD',
+  DE: 'EUR', AT: 'EUR', FR: 'EUR', BE: 'EUR', ES: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR',
+  CH: 'CHF', PL: 'PLN', MX: 'MXN', BR: 'BRL', TR: 'TRY', RU: 'RUB',
+};
+
+export function offerForLang(product, lang = 'en') {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};
+  const links = product?.affiliateLinksByCountry && typeof product.affiliateLinksByCountry === 'object'
+    ? product.affiliateLinksByCountry
+    : {};
+  const countries = PRICE_COUNTRIES_BY_LANG[code] || PRICE_COUNTRIES_BY_LANG.en;
+  for (const country of countries) {
+    const price = Number(prices[country] ?? prices[country.toLowerCase()]);
+    if (!price || price <= 0) continue;
+    const stores = links[country] || links[country.toLowerCase()] || {};
+    const link = Object.entries(stores).find(([, url]) => String(url || '').trim());
+    return {
+      price,
+      currency: CURRENCY_BY_COUNTRY[country] || 'USD',
+      country,
+      store: link?.[0] || product?.lowestOfferStore || '',
+      url: link?.[1] || product?.lowestOfferUrl || '',
+    };
+  }
+  if (Number(product?.lowestPrice) > 0) {
+    return {
+      price: Number(product.lowestPrice),
+      currency: product.lowestPriceCurrency || 'USD',
+      country: '',
+      store: product.lowestOfferStore || '',
+      url: product.lowestOfferUrl || '',
+    };
+  }
+  if (Number(product?.lowestPriceUSD) > 0) {
+    return {
+      price: Number(product.lowestPriceUSD),
+      currency: 'USD',
+      country: 'US',
+      store: product.lowestOfferStore || '',
+      url: product.lowestOfferUrl || '',
+    };
+  }
+  return null;
+}
+
+export function formatLocalizedPrice(product, lang = 'en') {
+  const offer = offerForLang(product, lang);
+  if (!offer) return '';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: offer.currency || 'USD',
+      maximumFractionDigits: 0,
+    }).format(offer.price);
+  } catch {
+    return `${offer.currency || '$'} ${Number(offer.price || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  }
+}
+
 const clamp = (n) => Math.max(6, Math.min(100, Math.round(n)));
 
 // Pulls the four headline specs (screen / RAM / storage / battery) from a

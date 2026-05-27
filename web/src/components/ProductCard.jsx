@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
-import { catMeta, scoreClass, scoreLabel, keySpecChips, formatPrice, PLACEHOLDER_IMG } from '../lib/format';
-import { useT } from '../i18n/index.jsx';
+import { catMeta, scoreClass, scoreLabel, keySpecChips, formatLocalizedPrice, PLACEHOLDER_IMG } from '../lib/format';
+import { useI18n } from '../i18n/index.jsx';
 import './ProductCard.css';
 
 export default function ProductCard({ product: p, variant = 'card' }) {
-  const t = useT();
+  const { t, lang } = useI18n();
   const meta = catMeta(p.category);
   const chips = keySpecChips(p).slice(0, 4);
-  const price = formatPrice(p.lowestPriceUSD);
+  const price = formatLocalizedPrice(p, lang);
   const list = variant === 'list';
 
   return (

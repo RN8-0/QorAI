@@ -442,6 +442,12 @@ class SupportedCountries {
       currency: 'UAH',
       language: 'en',
     ),
+    'RU': CountryInfo(
+      code: 'RU',
+      name: 'Russia',
+      currency: 'RUB',
+      language: 'ru',
+    ),
     'IL': CountryInfo(
       code: 'IL',
       name: 'Israel',
@@ -570,7 +576,6 @@ class AppCategories {
       'routers',
       'modem_routers',
       'robot_vacuums',
-      'coffee_makers',
       'hardware_wallets',
     ],
     subscription: ['streaming', 'music', 'vpn', 'ai_tools', 'cloud_storage'],

@@ -146,7 +146,10 @@ class _TitlePriceSection extends ConsumerWidget {
         ? (countryInfo?.currency ?? 'USD')
         : 'USD';
     final locale = Localizations.localeOf(context).languageCode;
-    final displayName = localizeProductName(product.name, locale);
+    final displayName = localizeProductName(
+      product.nameForLanguage(locale),
+      locale,
+    );
 
     return Container(
       width: double.infinity,

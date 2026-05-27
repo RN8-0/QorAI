@@ -81,10 +81,10 @@ const EBAY_CATEGORY = {
   printers: '1245',
 };
 
-// Conservative accessory filter — a backup for cases/covers that sellers
-// mis-list inside the product category. Only unambiguous accessory words so
-// a real device listing is never dropped.
-const ACCESSORY_RE = /\b(case|cover|kılıf|kilif|sleeve|pouch|protector|tempered|screen\s*guard|bumper|\bskin\b|lanyard|for\s+(?:samsung|apple|iphone|ipad|xiaomi|huawei|lenovo|hp|dell|asus|sony|lg)\b|replacement\s+(?:screen|battery|part)|spare\s+part)\b/i;
+// Conservative accessory filter — sellers often list accessories in the same
+// eBay category as the real device. These must never become the catalog price.
+const ACCESSORY_RE = /\b(case|cover|kılıf|kilif|sleeve|pouch|protector|tempered|screen\s*guard|bumper|\bskin\b|lanyard|holder|mount|bracket|stand|dock|tray|organizer|storage\s+(?:box|bag)|for\s+(?:samsung|apple|iphone|ipad|xiaomi|huawei|lenovo|hp|dell|asus|sony|lg|nespresso)\b|replacement\s+(?:screen|battery|part|glass|keyboard|shell)|spare\s+part)\b/i;
+const NON_PRODUCT_RE = /\b(refill|quick\s*refill|capsules?|pods?|filters?|bags?|brush(?:es)?|nozzles?|repair\s+kit|parts?\s+only|manual|booklet|empty\s+box)\b/i;
 
 // Broken / spare-parts listings — never a valid price for a working device.
 const JUNK_RE = /\b(for\s+parts|not\s+working|spares?\s+(?:or\s+)?repairs?|faulty|defective|cracked|screen\s+only|lcd\s+only|digitizer|motherboard\s+only|board\s+only|housing\s+only)\b/i;
@@ -141,11 +141,25 @@ function buildKeywordQuery(product) {
 function modelTokens(query) {
   return query.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 2 && /\d/.test(w));
 }
-function titleMatches(title, brandFirst, tokens) {
+function titleMatches(title, brandFirst, tokens, product = {}) {
   const t = String(title || '').toLowerCase();
   if (ACCESSORY_RE.test(t)) return false;                       // case / cover / "for iPhone" …
+  if (NON_PRODUCT_RE.test(t)) return false;                      // refill kits, pods, spare filters …
   if (brandFirst && brandFirst.length > 1 && !t.includes(brandFirst.toLowerCase())) return false;
-  if (tokens.length && !tokens.some(tok => t.includes(tok))) return false;
+  if (tokens.length) {
+    const hits = tokens.filter(tok => t.includes(tok));
+    // One matching model token is enough only when it is distinctive. For
+    // short codes like "D40", require another query word or the listing may be
+    // an accessory ("D40 refill kit") rather than the product.
+    if (!hits.length) return false;
+    const distinctiveHits = hits.filter(tok => tok.length >= 4 || /[a-z]+\d+[a-z0-9]*|\d+[a-z]+[a-z0-9]*/i.test(tok));
+    if (!distinctiveHits.length) return false;
+    const qWords = String(buildKeywordQuery(product)).toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length >= 4 && w !== String(brandFirst || '').toLowerCase());
+    const wordHits = qWords.filter(w => t.includes(w)).length;
+    if (tokens.length === 1 && tokens[0].length <= 3 && wordHits < 1) return false;
+  }
   return true;
 }
 
@@ -191,7 +205,7 @@ async function searchOffers(product) {
     let matched = items.filter(usable);
     if (!matched.length && kw) {
       items = await hit(`q=${encodeURIComponent(kw)}`);
-      matched = items.filter(it => usable(it) && titleMatches(it.title, brandFirst, tokens));
+      matched = items.filter(it => usable(it) && titleMatches(it.title, brandFirst, tokens, product));
     }
     if (!matched.length) continue;
 

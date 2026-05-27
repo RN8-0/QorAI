@@ -36,6 +36,8 @@ class CompactProductRow extends ConsumerWidget {
         : null;
     final matchScore = ref.watch(localMatchScoreProvider(product));
     final techScore = product.techScore.toInt();
+    final locale = Localizations.localeOf(context).languageCode;
+    final displayName = product.nameForLanguage(locale);
 
     return Material(
       color: Colors.transparent,
@@ -88,7 +90,7 @@ class CompactProductRow extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      product.name,
+                      displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(

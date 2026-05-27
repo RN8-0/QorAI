@@ -41,36 +41,60 @@ async function refreshProductRollup(productId) {
     `&filter=${encodeURIComponent(`productId="${esc(productId)}"`)}`);
   const offers = (r.status === 200 && r.body.items) ? r.body.items : [];
   const live = offers.filter(o => o.inStock !== false);
+  const pricedLive = live.filter(o => Number(o.price) > 0);
   let best = null, bestUsd = Infinity;
   // Per-country price + affiliate links so the Flutter app can show the price
   // in the visitor's own country/currency and a buy link for it.
   const prices = {};
   const affiliateLinksByCountry = {};
-  for (const o of live) {
+  const putLink = (country, store, link) => {
+    const c = String(country || '').toUpperCase();
+    if (!c || !link) return;
+    const bucket = (affiliateLinksByCountry[c] = affiliateLinksByCountry[c] || {});
+    if (!bucket[store]) bucket[store] = link;
+  };
+  const mirrorFallbackLinks = (o, sourceCountry, link) => {
+    const store = o.store || 'Store';
+    const label = `${store} ${sourceCountry}`;
+    const mirrors = {
+      DE: ['TR', 'RU'],
+      GB: ['TR', 'RU', 'PT'],
+      ES: ['PT'],
+      FR: ['BE'],
+      BE: ['FR'],
+      US: ['BR', 'CA', 'MX'],
+    }[sourceCountry] || [];
+    for (const target of mirrors) putLink(target, label, link);
+  };
+
+  for (const o of pricedLive) {
     const usd = toUsd(o.price, o.currency);
     if (usd > 0 && usd < bestUsd) { bestUsd = usd; best = o; }
     const c = String(o.country || '').toUpperCase();
     const pr = Number(o.price) || 0;
     if (c && pr > 0 && (prices[c] === undefined || pr < prices[c])) prices[c] = pr;
+  }
+
+  for (const o of live) {
+    const c = String(o.country || '').toUpperCase();
     const link = o.affiliateUrl || o.url || '';
-    if (c && link) {
-      (affiliateLinksByCountry[c] = affiliateLinksByCountry[c] || {})[o.store || 'eBay'] = link;
-    }
+    putLink(c, o.store || 'Store', link);
+    mirrorFallbackLinks(o, c, link);
   }
   // Stash the cheapest offer's store + affiliate link on the product so the
   // catalog list can show a price and a buy link without querying offers.
   const payload = best
     ? {
         lowestPrice: best.price, lowestPriceCurrency: best.currency, lowestPriceUSD: bestUsd,
-        offerCount: live.length,
+        offerCount: pricedLive.length,
         lowestOfferUrl: best.affiliateUrl || best.url || '',
         lowestOfferStore: best.store || '',
         prices, affiliateLinksByCountry,
       }
     : {
         lowestPrice: 0, lowestPriceCurrency: '', lowestPriceUSD: 0,
-        offerCount: live.length, lowestOfferUrl: '', lowestOfferStore: '',
-        prices: {}, affiliateLinksByCountry: {},
+        offerCount: pricedLive.length, lowestOfferUrl: '', lowestOfferStore: '',
+        prices: {}, affiliateLinksByCountry,
       };
   await req('PATCH', `/api/collections/products/records/${productId}`, payload);
 }
@@ -117,4 +141,25 @@ async function upsertOffer(offer) {
   return { ok: true, productId };
 }
 
-module.exports = { upsertOffer, refreshProductRollup, resolveProductId, toUsd };
+async function deleteOffersForProductNetwork(productId, network, opts = {}) {
+  const pid = String(productId || '').trim();
+  const net = String(network || '').trim();
+  if (!pid || !net) return { deleted: 0 };
+  const filter = `productId="${esc(pid)}" && network="${esc(net)}"`;
+  const found = await req('GET',
+    `/api/collections/offers/records?perPage=200&fields=id&filter=${encodeURIComponent(filter)}`);
+  if (found.status !== 200) {
+    throw new Error(`offer cleanup failed: ${JSON.stringify(found.body).slice(0, 200)}`);
+  }
+  const items = found.body.items || [];
+  let deleted = 0;
+  for (const item of items) {
+    const res = await req('DELETE', `/api/collections/offers/records/${item.id}`);
+    if ([200, 204].includes(res.status)) deleted++;
+    else throw new Error(`offer delete failed: ${JSON.stringify(res.body).slice(0, 200)}`);
+  }
+  if (opts.refresh !== false) await refreshProductRollup(pid);
+  return { deleted };
+}
+
+module.exports = { upsertOffer, refreshProductRollup, resolveProductId, toUsd, deleteOffersForProductNetwork };

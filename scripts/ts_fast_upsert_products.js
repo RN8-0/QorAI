@@ -224,6 +224,16 @@ function extractSocketTokens(pb) {
 }
 
 function toDoc(pb) {
+  const raw = {
+    ...pb,
+    imageUrl: pb.imageUrl || pb.imageURL || '',
+    imageURL: pb.imageURL || pb.imageUrl || '',
+    nameTranslated: pb.nameTranslated || {},
+    multiLangSpecs: pb.multiLangSpecs || {},
+    multiLangSections: pb.multiLangSections || {},
+    affiliateLinks: pb.affiliateLinks || {},
+    affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
+  };
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -244,6 +254,7 @@ function toDoc(pb) {
     keySpecsText: flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
     filterTokens: extractSocketTokens(pb),
+    _raw: JSON.stringify(raw),
   };
 }
 

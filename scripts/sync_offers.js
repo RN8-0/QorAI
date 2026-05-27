@@ -22,7 +22,7 @@
 'use strict';
 
 const { req } = require('../migration/pb');
-const { upsertOffer } = require('./lib/offers');
+const { upsertOffer, deleteOffersForProductNetwork, refreshProductRollup } = require('./lib/offers');
 
 const CONNECTORS = [
   require('./connectors/ebay'),
@@ -50,6 +50,60 @@ const AUTO = argv.includes('--auto');
 const CONCURRENCY = Math.max(1, parseInt((argv.find(a => a.startsWith('--concurrency=')) || '').split('=')[1] || '8', 10));
 // Tiny inter-task spacing so we never burst right at eBay's per-second cap.
 const TASK_GAP_MS = 60;
+const SUPPORTED_CATEGORY_IDS = new Set([
+  'smartphones',
+  'feature_phones',
+  'smartwatches',
+  'smart_rings',
+  'headphones',
+  'powerbanks',
+  'chargers',
+  'laptops',
+  'desktops',
+  'tablets',
+  'e_readers',
+  'vr_headsets',
+  'graphics_cards',
+  'cpus',
+  'motherboards',
+  'ram',
+  'ssd',
+  'psu',
+  'pc_cases',
+  'ups',
+  'flash_drives',
+  'cpu_coolers',
+  'laptop_coolers',
+  'case_fans',
+  'keyboards',
+  'mice',
+  'gamepads',
+  'gaming_consoles',
+  'webcams',
+  'microphones',
+  'printers',
+  '3d_printers',
+  'monitors',
+  'tvs',
+  'projectors',
+  'speakers',
+  'audio_systems',
+  'av_receivers',
+  'media_players',
+  'camera_lenses',
+  'ip_cameras',
+  'dashcams',
+  'gimbals',
+  'drones',
+  'routers',
+  'modem_routers',
+  'robot_vacuums',
+  'hardware_wallets',
+]);
+
+function isSupportedProductCategory(category) {
+  return SUPPORTED_CATEGORY_IDS.has(String(category || '').trim());
+}
 
 // stdout is buffered when piped through the scraper-proxy spawn → user sees
 // silence for tens of seconds. Wrapping console.log in a write+drain pattern
@@ -75,6 +129,7 @@ async function applyAutoLimit() {
 
 async function fetchProducts() {
   const out = [];
+  if (ONLY_CAT && !isSupportedProductCategory(ONLY_CAT)) return out;
   const parts = [];
   if (!ALL_VARIANTS) parts.push('variantPrimary=true');
   if (ONLY_CAT) parts.push(`category="${ONLY_CAT.replace(/"/g, '\\"')}"`);
@@ -86,7 +141,9 @@ async function fetchProducts() {
       `/api/collections/products/records?perPage=500&page=${page}&sort=id` +
       `&fields=id,name,brand,gtin,mpn,category${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
-    out.push(...(r.body.items || []));
+    for (const item of (r.body.items || [])) {
+      if (isSupportedProductCategory(item.category)) out.push(item);
+    }
     if (LIMIT > 0 && out.length >= LIMIT) return out.slice(0, LIMIT);
     if (page >= (r.body.totalPages || 1)) break;
     page++;
@@ -126,6 +183,7 @@ async function main() {
     for (const conn of active) {
       try {
         const offers = await conn.searchOffers(p);
+        const cleanup = await deleteOffersForProductNetwork(p.id, conn.id, { refresh: false });
         for (const offer of offers) {
           offer.productId = offer.productId || p.id;
           const res = await upsertOffer(offer);
@@ -137,6 +195,7 @@ async function main() {
             noMatch++;
           }
         }
+        if (!offers.length || cleanup.deleted) await refreshProductRollup(p.id);
       } catch (e) {
         errors++;
         log(`  ! ${tag} ${label} — ${conn.id}: ${e.message}`);

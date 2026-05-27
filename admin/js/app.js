@@ -773,7 +773,14 @@ async function refreshDashboard(){
     // dashboard actually reads. Without this projection PocketBase ships the
     // full record (specs + 12-language multiLangSpecs ≈ 80KB each) and the
     // 500-row sample alone becomes a ~40MB download over the tunnel.
-    const sRes=await pbGetList('products',1,500,{sort:'-scrapedAt',fields:'id,name,brand,category,techScore,imageUrl,images,scrapedAt,specsCount,keySpecs'});
+    const dashCategoryFilter=_adminAllowedProductCategories()
+      .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
+      .join(' || ');
+    const sRes=await pbGetList('products',1,500,{
+      sort:'-scrapedAt',
+      fields:'id,name,nameTranslated,sourceLang,brand,category,techScore,imageUrl,images,scrapedAt,specsCount,keySpecs',
+      filter:dashCategoryFilter?`(${dashCategoryFilter})`:'',
+    });
     const sampleProducts=sRes.items;
     dashSampleProducts=sampleProducts;
 
@@ -835,7 +842,7 @@ async function refreshDashboard(){
 
     // Recent (from sample)
     const rEl=document.getElementById('dashRecentProducts');
-    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>{const id=escJs(p.id);const img=safeUrl(p.images?.[0]||p.imageUrl);const name=escHtml(p.name||'');const brand=escHtml(normalizeAdminBrand(p.brand)||p.brand||'');const category=escHtml(_adminCategoryLabel(normalizeAdminCategoryValue(p.category,p)));const score=Number(p.techScore)||0;return`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${id}'),300)">${img?`<img class="recent-img" src="${img}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${name}</div><div class="recent-meta">${brand} · ${category}</div></div>${score?`<span class="badge badge-green">${score}</span>`:''}</div>`;}).join('')||'<div class="placeholder">No products</div>';
+    if(rEl)rEl.innerHTML=sampleProducts.slice(0,8).map(p=>{const id=escJs(p.id);const img=safeUrl(p.images?.[0]||p.imageUrl);const name=escHtml(_adminProductDisplayName(p)||p.name||'');const brand=escHtml(normalizeAdminBrand(p.brand)||p.brand||'');const category=escHtml(_adminCategoryLabel(normalizeAdminCategoryValue(p.category,p)));const score=Number(p.techScore)||0;return`<div class="recent-row" onclick="showView('products');setTimeout(()=>openProduct('${id}'),300)">${img?`<img class="recent-img" src="${img}" onerror="this.style.display='none'">`:`<div class="recent-img" style="display:flex;align-items:center;justify-content:center;font-size:14px">📦</div>`}<div class="recent-info"><div class="recent-name">${name}</div><div class="recent-meta">${brand} · ${category}</div></div>${score?`<span class="badge badge-green">${score}</span>`:''}</div>`;}).join('')||'<div class="placeholder">No products</div>';
 
     const brands={};sampleProducts.forEach(p=>{const b=normalizeAdminBrand(p.brand);if(b)brands[b]=(brands[b]||0)+1});
     updateTopBrands(statsBrandCounts&&Object.keys(statsBrandCounts).length?statsBrandCounts:brands);
@@ -936,7 +943,11 @@ async function countAllProductsInBackground(){
   if(_bgCountRunning)return;
   _bgCountRunning=true;
   try{
-    const firstRes=await pbGetList('products',1,1,{});
+    const allowedFilter=_adminAllowedProductCategories()
+      .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
+      .join(' || ');
+    const productFilter=allowedFilter?`(${allowedFilter})`:'';
+    const firstRes=await pbGetList('products',1,1,{filter:productFilter});
     const total=firstRes.totalItems;
     // This is the raw SKU total for the dashboard. The Products view tracks
     // its own (grouped) count via loadPage — don't clobber it here.
@@ -951,7 +962,7 @@ async function countAllProductsInBackground(){
       // Project to the 3 fields the aggregation needs — pulling full records
       // here downloads the entire catalog with all specs and is the single
       // biggest cause of the admin freezing during ingestion.
-      const res=await pbGetList('products',page,500,{fields:'id,brand,category,keySpecs,name'});
+      const res=await pbGetList('products',page,500,{fields:'id,brand,category,keySpecs,name',filter:productFilter});
       res.items.forEach(p=>{
         const cat=normalizeAdminCategoryValue(p.category,p);
         const brand=normalizeAdminBrand(p.brand);
@@ -1098,7 +1109,7 @@ let totalProductCount=0;
 let _productRefreshTimer=null;
 const PRODUCT_RAW_PER=120;
 const CATALOG_REPAIR_LIMIT=0;
-const PRODUCT_CARD_FIELDS='id,slug,name,brand,category,techScore,imageUrl,images,price,lowestPrice,lowestPriceCurrency,lowestPriceUSD,lowestOfferUrl,lowestOfferStore,offerCount,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
+const PRODUCT_CARD_FIELDS='id,slug,name,nameTranslated,sourceLang,brand,category,techScore,imageUrl,images,price,prices,affiliateLinksByCountry,lowestPrice,lowestPriceCurrency,lowestPriceUSD,lowestOfferUrl,lowestOfferStore,offerCount,sourceUrl,variantGroup,variantCount,keySpecs,scrapedAt,updatedAt';
 let _productUiPages=new Map();
 let _lastProductQueryKey='';
 let _facetWarmupRunning=false;
@@ -1118,6 +1129,9 @@ function normalizeAdminBrand(value){
 function normalizeAdminCategoryValue(value,product){
   let raw=String(value||'').trim();
   if(window.QorAiCategories?.canonicalId)raw=window.QorAiCategories.canonicalId(raw);
+  const allowed=window.QorAiAllowedCategoryIds;
+  const isCustom=window.QorAiCustomCategories?.getAll?.()?.some?.(c=>c?.id===raw);
+  if(!raw||(allowed&& !allowed.has(raw)&&!isCustom))return '';
   const brand=String(product?.brand||'').toLowerCase();
   const name=String(product?.name||'').toLowerCase();
   const text=`${brand} ${name} ${Object.values(product?.keySpecs||{}).join(' ')}`.toLowerCase();
@@ -1130,6 +1144,12 @@ function normalizeAdminCategoryValue(value,product){
     if(/redmi|smartphone|phone|android|iphone/.test(text))return 'smartphones';
   }
   return raw;
+}
+
+function _adminAllowedProductCategories(){
+  const allowed=window.QorAiAllowedCategoryIds;
+  const ids=allowed?[...allowed]:(window.QorAiCategories?.getAll?.()||[]).map(c=>c?.id);
+  return [...new Set(ids.map(id=>String(id||'').trim()).filter(Boolean))];
 }
 
 function _adminCategoryFilterVariants(categoryId){
@@ -1154,12 +1174,10 @@ function _adminCategoryFilterVariants(categoryId){
     gaming_consoles:['gaming_consoles','gaming-consoles','switch2_consoles','switch2-consoles','ps5_consoles','ps5-consoles','xbox_one','xbox-one','xbox_series','xbox-series'],
     gaming_accessories:['gaming_accessories','gaming-accessories','switch2_accessories','switch2-accessories','ps5_accessories','ps5-accessories','xbox_accessories','xbox-accessories'],
     games:['games','switch2_games','switch2-games','ps5_games','ps5-games'],
-    // Canonical taxonomy renamed these post 2026-05-23 EU pivot. Keep both
+    // Canonical taxonomy renamed this post 2026-05-23 EU pivot. Keep both
     // legacy + canonical slugs so an "Robot Vacuums" filter still returns
-    // pre-migration records tagged `vacuums`, and "Coffee Makers" picks up
-    // the entire small-appliances back catalogue.
+    // pre-migration records tagged `vacuums`.
     robot_vacuums:['robot_vacuums','robot-vacuums','vacuums'],
-    coffee_makers:['coffee_makers','coffee-makers','small_appliances','small-appliances','dishwashers','microwaves','tumble_dryers','washing_machines','hobs','fridge_freezers','ovens'],
     // EU pivot collapsed every "thing with a sensor" into `camera_lenses`
     // and every USB/portable storage stick into `flash_drives`. Filter
     // dropdown must still return legacy-tagged PB records when the user
@@ -1502,6 +1520,11 @@ function buildQuery(){
       .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
       .join(' || ');
     if(catFilter)filters.push(`(${catFilter})`);
+  }else{
+    const allowedFilter=_adminAllowedProductCategories()
+      .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
+      .join(' || ');
+    if(allowedFilter)filters.push(`(${allowedFilter})`);
   }
   if(date){
     const now=new Date();
@@ -1710,22 +1733,16 @@ function renderProductsPage(){
     const id=escJs(p.id);
     const image=safeUrl(p.imageUrl||(p.images?.[0])||'');
     const brand=escHtml(p.brand||'');
-    const name=escHtml(p.name||'');
+    const name=escHtml(_adminProductDisplayName(p)||p.name||'');
     const catId=normalizeAdminCategoryValue(p.category,p);
     const category=escHtml(_adminCategoryLabel(catId));
     const vc=Number(p.variantCount)||0;
     const effectiveVariantCount=vc||Number(p._variantCount)||0;
     const variantBadge=(_groupVariants&&effectiveVariantCount>1)?`<div class="variant-badge" title="${effectiveVariantCount} varyant">×${effectiveVariantCount>99?'99+':effectiveVariantCount}</div>`:'';
-    // Admin list always shows ONE comparable currency (USD). Offers are stored
-    // per-country (EUR/GBP/USD) for the app; the admin would otherwise show a
-    // different currency on every card. lowestPriceUSD is the converted value.
-    const priceUsd=Number(p.lowestPriceUSD||0);
-    const priceText=priceUsd?`$${priceUsd.toLocaleString('en-US',{maximumFractionDigits:0})}`:'';
-    // Price + buy link sit ABOVE the product name. The link opens the cheapest
-    // offer's affiliate URL directly; stopPropagation keeps the card's own
-    // click (open modal) from firing.
-    const offerUrl=safeUrl(p.lowestOfferUrl||'');
-    const offerStore=escHtml(p.lowestOfferStore||'eBay');
+    const langOffer=_adminOfferForLang(p);
+    const priceText=_adminFormatOfferPrice(langOffer);
+    const offerUrl=safeUrl(langOffer?.url||'');
+    const offerStore=escHtml(langOffer?.store||p.lowestOfferStore||'eBay');
     const offerHtml=priceText
       ? `<div class="product-offer" style="display:flex;align-items:center;gap:6px;margin:1px 0 2px">`
         + `<span style="font-weight:800;color:#22c55e;font-size:13px">${priceText}</span>`
@@ -1777,6 +1794,10 @@ async function _pbSearch(q){
     const e=sani(q);
     filter=`name~"${e}" || brand~"${e}" || category~"${e}"`;
   }
+  const allowedFilter=_adminAllowedProductCategories()
+    .map(c=>`category = "${c.replace(/"/g,'\\"')}"`)
+    .join(' || ');
+  if(allowedFilter)filter=`(${filter}) && (${allowedFilter})`;
   if(_groupVariants)filter=`(${filter}) && variantPrimary=true`;
   const result=await pbGetList('products',1,500,{filter,sort:'-techScore',fields:PRODUCT_CARD_FIELDS});
   return {items:result.items||[],total:result.totalItems||0,source:'PocketBase'};
@@ -1815,6 +1836,9 @@ function _tsAdminFilterBy(){
     const cats=_adminCategoryFilterVariants(cat).map(esc).filter(Boolean);
     if(cats.length===1)filters.push(`category:="${cats[0]}"`);
     else if(cats.length)filters.push(`category:=[${cats.map(c=>`"${c}"`).join(',')}]`);
+  }else{
+    const cats=_adminAllowedProductCategories().map(esc).filter(Boolean);
+    if(cats.length)filters.push(`category:=[${cats.map(c=>`"${c}"`).join(',')}]`);
   }
   if(offer==='with')filters.push('lowestPriceUSD:>0');
   else if(offer==='without')filters.push('lowestPriceUSD:<=0');
@@ -1842,7 +1866,7 @@ async function _tsAdminList(page=1,perPage=PRODUCT_RAW_PER,opts={}){
     page,
     filterBy:_tsAdminFilterBy(),
     sortBy:_tsAdminSortBy(q),
-    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount',
+    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount,_raw',
   });
   return {
     items:opts.countOnly?[]:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
@@ -1859,7 +1883,7 @@ async function _tsAdminSearch(q){
     page:1,
     filterBy,
     sortBy:_tsAdminSortBy(q),
-    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount',
+    includeFields:'id,name,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount,_raw',
   });
   return {
     items:(res.hits||[]).map(_tsParseProductHit).filter(p=>p.id),
@@ -2708,6 +2732,72 @@ const MODAL_LANGS = [
 ];
 let _modalLang = 'tr';
 
+function _adminActiveProductLang() {
+  return localStorage.getItem('qorai_modal_lang') || _modalLang || 'tr';
+}
+
+function _adminProductDisplayName(p, lang = _adminActiveProductLang()) {
+  const nameMap = p?.nameTranslated && typeof p.nameTranslated === 'object' ? p.nameTranslated : {};
+  const sourceIsGeizhals = /geizhals/i.test(String(p?.source || p?.sourceUrl || ''));
+  const storedSourceLang = String(p?.sourceLang || '').toLowerCase().trim();
+  const sourceLang = /^(tr|de)$/.test(storedSourceLang) ? storedSourceLang : (sourceIsGeizhals ? 'de' : 'tr');
+  if (lang && lang !== sourceLang && nameMap[lang]) return nameMap[lang];
+  if (sourceLang && nameMap[sourceLang]) return nameMap[sourceLang];
+  return p?.name || '';
+}
+
+const ADMIN_PRICE_COUNTRIES_BY_LANG = {
+  tr: ['TR','DE','GB'],
+  en: ['US','GB','CA','AU'],
+  de: ['DE','AT','CH'],
+  es: ['ES','MX','US'],
+  fr: ['FR','BE','CA'],
+  pt: ['PT','BR','ES','GB'],
+  ru: ['RU','DE','GB'],
+};
+const ADMIN_CURRENCY_BY_COUNTRY = {
+  US:'USD',GB:'GBP',CA:'CAD',AU:'AUD',DE:'EUR',AT:'EUR',CH:'CHF',
+  FR:'EUR',BE:'EUR',ES:'EUR',IT:'EUR',PT:'EUR',NL:'EUR',PL:'PLN',
+  MX:'MXN',BR:'BRL',TR:'TRY',RU:'RUB',
+};
+
+function _adminFirstStoreLink(linksForCountry){
+  if(!linksForCountry||typeof linksForCountry!=='object')return {store:'',url:''};
+  const entry=Object.entries(linksForCountry).find(([,url])=>String(url||'').trim());
+  return entry?{store:entry[0],url:entry[1]}:{store:'',url:''};
+}
+
+function _adminOfferForLang(p, lang = _adminActiveProductLang()){
+  const code=String(lang||'en').slice(0,2).toLowerCase();
+  const prices=p?.prices&&typeof p.prices==='object'?p.prices:{};
+  const links=p?.affiliateLinksByCountry&&typeof p.affiliateLinksByCountry==='object'?p.affiliateLinksByCountry:{};
+  const countries=[...(ADMIN_PRICE_COUNTRIES_BY_LANG[code]||ADMIN_PRICE_COUNTRIES_BY_LANG.en)];
+  for(const country of countries){
+    const value=Number(prices[country]??prices[country.toLowerCase()]);
+    if(!value||value<=0)continue;
+    const link=_adminFirstStoreLink(links[country]||links[country.toLowerCase()]);
+    return {price:value,currency:ADMIN_CURRENCY_BY_COUNTRY[country]||'USD',country,store:link.store||p?.lowestOfferStore||'Store',url:link.url||p?.lowestOfferUrl||''};
+  }
+  const native=Number(p?.lowestPrice)||0;
+  if(native>0){
+    return {price:native,currency:p?.lowestPriceCurrency||'USD',country:'',store:p?.lowestOfferStore||'Store',url:p?.lowestOfferUrl||''};
+  }
+  const usd=Number(p?.lowestPriceUSD)||0;
+  if(usd>0){
+    return {price:usd,currency:'USD',country:'US',store:p?.lowestOfferStore||'Store',url:p?.lowestOfferUrl||''};
+  }
+  return null;
+}
+
+function _adminFormatOfferPrice(offer){
+  if(!offer)return '';
+  try{
+    return new Intl.NumberFormat('en-US',{style:'currency',currency:offer.currency||'USD',maximumFractionDigits:0}).format(offer.price);
+  }catch{
+    return `${offer.currency||'$'} ${Number(offer.price||0).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  }
+}
+
 function normalizeSpecSectionsShape(raw){
   if(!raw)return null;
   const out={};
@@ -2861,19 +2951,17 @@ function _ebayLogoHtml(){
 // + a "Satın Al" affiliate button. Built from the product's price rollup
 // (lowestPrice / lowestOfferStore / lowestOfferUrl) — no extra query.
 function _buildOfferRow(p){
-  const usd=Number(p.lowestPriceUSD)||0;
-  if(!usd)return'';
-  const native=Number(p.lowestPrice)||0;
-  const cur=escHtml(p.lowestPriceCurrency||'');
-  const store=p.lowestOfferStore||'eBay';
-  const url=safeUrl(p.lowestOfferUrl||'');
+  const offer=_adminOfferForLang(p,_modalLang||'tr');
+  if(!offer)return'';
+  const priceText=escHtml(_adminFormatOfferPrice(offer));
+  const store=offer.store||p.lowestOfferStore||'eBay';
+  const url=safeUrl(offer.url||p.lowestOfferUrl||'');
   const logo=/ebay/i.test(store)?_ebayLogoHtml():`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
-  // Headline price in USD (comparable); the native-currency amount in brackets.
-  const nativeNote=(native&&cur)?`<span style="font-size:11px;color:var(--text3)">(${native.toLocaleString()} ${cur})</span>`:'';
+  const countryNote=offer.country?`<span style="font-size:11px;color:var(--text3)">(${escHtml(offer.country)})</span>`:'';
   return`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">`
     +logo
-    +`<span style="font-weight:800;color:#22c55e;font-size:22px">$${usd.toLocaleString('en-US',{maximumFractionDigits:0})}</span>`
-    +nativeNote
+    +`<span style="font-weight:800;color:#22c55e;font-size:22px">${priceText}</span>`
+    +countryNote
     +`<span style="font-size:11px;color:var(--text3)">en ucuz fiyat</span>`
     +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Satın Al ↗</a>`:'')
     +`</div>`;
@@ -3311,7 +3399,8 @@ function _renderProductModal(p,variants=[]){
   const safeId=escJs(id);
   const safeBrand=escHtml(p.brand||'');
   const safeName=escHtml(localizedName||'');
-  const safeCategory=escHtml(p.category||'');
+  const normalizedModalCategory = normalizeAdminCategoryValue(p.category, p);
+  const safeCategory=escHtml(normalizedModalCategory ? _adminCategoryLabel(normalizedModalCategory) : '');
   const safeSourceUrl=safeUrl(p.sourceUrl);
   let bricks='';
   // Localised affirmative/negative labels — boolean specs must render in the
@@ -3418,6 +3507,7 @@ function switchModalLang(id, lang){
   _modalLang = MODAL_LANGS.some(([code]) => code === lang) ? lang : 'tr';
   try { localStorage.setItem('qorai_modal_lang', lang); } catch {}
   openProduct(id);
+  renderProductsPage();
 }
 async function saveProductEdit(id){
   const updates={};

@@ -956,6 +956,15 @@ function prepareProductPayload(product) {
   return typeof _clean === 'function' ? _clean(payload) : payload;
 }
 
+function _isSupportedScrapePayload(product) {
+  const category = String(product?.category || '').trim();
+  if (!category) return false;
+  if (window.QorAiCategories?.canonicalId) {
+    return !!window.QorAiCategories.canonicalId(category);
+  }
+  return true;
+}
+
 function isBlockedSpec(key, value) {
   const text = `${key || ''} ${value || ''}`.toLowerCase();
   if (/\b(?:antutu|an\s*tu\s*tu|dxomark|dxo\s*mark|geekbench|benchmark|passmark|pcmark|3dmark|cinebench|basemark|gfxbench|ai\s*benchmark)\b/i.test(text)) {
@@ -3408,7 +3417,7 @@ function _shouldTranslateProductName(name) {
   // across languages. Only spend AI budget when the name actually contains
   // Turkish wording such as "akıllı saat" or "oyuncu monitörü".
   if (/[çğıöşüÇĞİÖŞÜ]/.test(s)) return true;
-  return /\b(akilli|akıllı|oyuncu|kablolu|kablosuz|sarj|şarj|kulaklik|kulaklık|telefon|saat|monitor|monitör|kamera|yazici|yazıcı)\b/i.test(s);
+  return /\b(akilli|akıllı|alet|bellek|bilgisayar|cihaz|dizustu|dizüstü|ekran|fare|fotograf|fotoğraf|guc|güç|hoparlor|hoparlör|islemci|işlemci|kahve|kablosuz|kablolu|kamera|kasa|klavye|kulaklik|kulaklık|makine|makinesi|modem|monitor|monitör|oyun|oyuncu|projeksiyon|robot|sarj|şarj|saat|sogutucu|soğutucu|supurge|süpürge|telefon|yazici|yazıcı)\b/i.test(s);
 }
 
 const _TECH_PROTECTED_TERMS = new Set([
@@ -4122,7 +4131,8 @@ function _translationSourceProduct(p) {
   const specs = p.sourceSpecs && typeof p.sourceSpecs === 'object' ? p.sourceSpecs : p.specs;
   const specSections = p.sourceSpecSections && typeof p.sourceSpecSections === 'object' ? p.sourceSpecSections : p.specSections;
   const keySpecs = p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' ? p.sourceKeySpecs : p.keySpecs;
-  return { ...p, specs: specs || {}, specSections: specSections || {}, keySpecs: keySpecs || {} };
+  const sourceName = String(p.sourceName || p.name || '').trim();
+  return { ...p, name: sourceName, specs: specs || {}, specSections: specSections || {}, keySpecs: keySpecs || {} };
 }
 
 function _collectAtomsFromProduct(p, sink) {
@@ -4203,7 +4213,12 @@ function _buildProductTranslations(p, targetLangs) {
     }
     multiLangSections[lang] = secMap;
 
-    nameTranslated[lang] = _shouldTranslateProductName(p.name) ? (_deDictLookup(p.name, lang) || p.name) : p.name;
+    if (_shouldTranslateProductName(p.name)) {
+      const translatedName = _deDictLookup(p.name, lang);
+      if (translatedName && translatedName !== p.name) nameTranslated[lang] = translatedName;
+    } else {
+      nameTranslated[lang] = p.name;
+    }
   }
   return { multiLangSpecs, multiLangSections, nameTranslated };
 }
@@ -4310,9 +4325,10 @@ async function _translateProductInline(product) {
     if (String(product.sourceLang || '').toLowerCase() === 'tr') {
       const trSpecs = product.sourceSpecs && typeof product.sourceSpecs === 'object' ? product.sourceSpecs : translationSource.specs;
       const trSections = product.sourceSpecSections && typeof product.sourceSpecSections === 'object' ? product.sourceSpecSections : translationSource.specSections;
+      const trName = String(product.sourceName || translationSource.name || product.name || productLabel).trim();
       product.multiLangSpecs = { ...(product.multiLangSpecs || {}), tr: trSpecs || {} };
       product.multiLangSections = { ...(product.multiLangSections || {}), tr: trSections || {} };
-      product.nameTranslated = { ...(product.nameTranslated || {}), tr: product.nameTranslated?.tr || product.name || productLabel };
+      product.nameTranslated = { ...(product.nameTranslated || {}), tr: product.nameTranslated?.tr || trName };
     }
     _sanitizeEnglishPayload(product);
     // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
@@ -5334,6 +5350,12 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       const clean = prepareProductPayload(product);
+      if (!_isSupportedScrapePayload(clean)) {
+        slog(`  → Skipped unsupported category: ${slug}`, 'warn');
+        results.skipped++;
+        clearRetryLater(item);
+        return;
+      }
       // Inline translation hook (EU pivot): every scraped product gets the
       // full 7-language package (source + 6 target languages) before PB write.
       await _translateProductInline(clean);
@@ -6715,7 +6737,13 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
     }
     const nameTranslated = { ...(oldData.nameTranslated || {}) };
     for (const [lang, name] of Object.entries(incoming.nameTranslated || {})) {
-      if (name && !nameTranslated[lang]) nameTranslated[lang] = name;
+      const current = String(nameTranslated[lang] || '').trim();
+      const next = String(name || '').trim();
+      if (!next) continue;
+      const currentLooksUntranslated = lang !== 'tr' && _shouldTranslateProductName(current);
+      if (!current || currentLooksUntranslated || current === String(oldData.name || '').trim()) {
+        nameTranslated[lang] = next;
+      }
     }
 
     const existingImages = Array.isArray(oldData.images) ? [...oldData.images] : [];
@@ -7051,6 +7079,11 @@ async function scrapeByUrl() {
     const product = await scrapeProductDetail(html, url, document.getElementById('singleUrlCategory')?.value || '');
     if (!product) { slog('Could not parse product data', 'error'); return; }
     const clean = prepareProductPayload(product);
+    if (!_isSupportedScrapePayload(clean)) {
+      slog(`Skipped unsupported category: ${clean.name || url}`, 'warn');
+      toast('Bu kategori katalogdan kaldırıldı; ürün kaydedilmedi', 'w');
+      return;
+    }
     // Single-URL path mirrors bulk-scrape: inline translation + cross-source
     // dedup so manually-added products are indistinguishable from bulk-scraped ones.
     await _translateProductInline(clean);

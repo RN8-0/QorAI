@@ -12,7 +12,7 @@ const LIST_FIELDS = [
   'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
   'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
   'keySpecsText', 'filterTokens', 'screenSizeValue', 'batteryCapacityValue',
-  'weightValueKg',
+  'weightValueKg', '_raw',
 ].join(',');
 
 function lit(v) {
@@ -65,6 +65,12 @@ export function docToProduct(doc) {
     trendScore: base.trendScore != null ? base.trendScore : doc.trendScore || 0,
     price_segment: base.price_segment || doc.price_segment || '',
     lowestPriceUSD: doc.lowestPriceUSD || base.lowestPriceUSD || 0,
+    lowestPrice: base.lowestPrice || 0,
+    lowestPriceCurrency: base.lowestPriceCurrency || '',
+    lowestOfferUrl: base.lowestOfferUrl || '',
+    lowestOfferStore: base.lowestOfferStore || '',
+    prices: base.prices || {},
+    affiliateLinksByCountry: base.affiliateLinksByCountry || {},
     slug: base.slug || doc.slug || '',
     keySpecsText: doc.keySpecsText || '',
     filterTokens: Array.isArray(doc.filterTokens) ? doc.filterTokens : [],
