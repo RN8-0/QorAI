@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-bg-translate-no-drain';
+const SCRAPER_BUILD = '20260528-fast-brand-filter-batch';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6638,6 +6638,33 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return res.ok ? await res.json() : null;
   };
 
+  const fetchBrandFilterBatch = async (ajax, brandValues) => {
+    const partitions = (Array.isArray(brandValues) ? brandValues : [])
+      .filter(b => b && String(b.filterValue || '').startsWith('marka:'))
+      .map(b => ({
+        name: b.name || b.value || b.filterValue,
+        count: Number(b.count) || 0,
+        filterValue: String(b.filterValue || ''),
+      }));
+    if (!partitions.length) return null;
+    const res = await fetch(`${PROXY_URL}/listing-brand-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kid: ajax.kategoriId,
+        limit: ajax.limit,
+        base: ajax.base,
+        prefix: ajax.prefix || '',
+        cerez: ajax.cerez || '',
+        concurrency: 48,
+        workers: 8,
+        partitions,
+      }),
+      signal: AbortSignal.timeout(150000),
+    });
+    return res.ok ? await res.json() : null;
+  };
+
   // Page one listing stream 1,2,3,… to the end via parallel batches. A page
   // thinner than the page size is the last page; two consecutive no-new-product
   // pages also end the stream. `onPage(pageNo, added, total)` is called for
@@ -6860,7 +6887,51 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             allItems.length < maxProducts && !scraperAbort) {
           slog(`  ⏩ Marka partisyonu başlıyor (${brandFilter.values.length} marka · ~${brandFilter.total} toplam)`, 'info');
           const beforeBrand = allItems.length;
+          let fastBrandSatisfied = false;
 
+          const targetTotal = Number(brandFilter.total) || 0;
+          const targetTolerance = targetTotal
+            ? Math.min(14, Math.max(2, Math.ceil(targetTotal * 0.003)))
+            : 0;
+          const targetReached = () => (
+            targetTotal > 0 &&
+            allItems.length >= Math.max(0, targetTotal - targetTolerance)
+          );
+
+          const markaFilterBrands = brandFilter.values.filter(b =>
+            b && String(b.filterValue || '').startsWith('marka:')
+          );
+          if (markaFilterBrands.length && ajax && !scraperAbort) {
+            const fastStart = Date.now();
+            slog(`  ⚡ Hızlı marka AJAX partisyonu başlıyor (${markaFilterBrands.length} marka · 8 izole worker)`, 'info');
+            try {
+              const fastResp = await fetchBrandFilterBatch(ajax, markaFilterBrands);
+              if (fastResp && Array.isArray(fastResp.partitions)) {
+                for (const part of fastResp.partitions) {
+                  if (scraperAbort || allItems.length >= maxProducts) break;
+                  const links = Array.isArray(part.links) ? part.links : [];
+                  const added = pushItems(links.map(u => ({ url: u, techScore: null })));
+                  const expected = Number(part.count) || 0;
+                  const unique = Number(part.unique) || links.length;
+                  const iconLevel = added ? 'success' : (unique ? 'info' : 'warn');
+                  slog(`    ↳ ${part.name} (~${expected}): +${added} yeni (${unique} URL) → toplam ${allItems.length}`, iconLevel);
+                }
+                const fastGained = allItems.length - beforeBrand;
+                fastBrandSatisfied = targetReached() || (!targetTotal && fastGained > 0);
+                slog(
+                  `  ✓ Hızlı marka AJAX bitti: +${fastGained} yeni URL (${((Date.now() - fastStart) / 1000).toFixed(1)}s) → toplam ${allItems.length}`,
+                  fastGained ? 'success' : 'warn'
+                );
+                if (!fastBrandSatisfied && targetTotal && !scraperAbort && allItems.length < maxProducts) {
+                  slog(`  ⚠️ Hızlı marka katmanı hedefin altında kaldı (${allItems.length}/${targetTotal}); yavaş marka URL yedeği devreye giriyor.`, 'warn');
+                }
+              }
+            } catch (e) {
+              slog(`  ⚠️ Hızlı marka AJAX başarısız: ${e.message}`, 'warn');
+            }
+          }
+
+          if (!fastBrandSatisfied && allItems.length < maxProducts && !scraperAbort) {
           const buildBrandCandidates = (b) => {
             const list = [];
             const add = (u) => {
@@ -6987,7 +7058,10 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               const filterValue = typeof b === 'object'
                 ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
                 : '';
-              const acceptBrandUrl = makeBrandUrlPredicate(b);
+              // Dedicated brand pages and parent marka:N AJAX are already
+              // scoped by Epey; strict slug-prefix guards drop legitimate
+              // sub-brand/model URLs (e.g. Redmi/Nubia/CMF variants).
+              const acceptBrandUrl = () => true;
               let gained = 0;
 
               if (meta.error === 'no-url') {
@@ -7045,6 +7119,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             }
           };
           await Promise.all(Array.from({ length: BRAND_CONCURRENCY }, runBrandWorker));
+          }
 
           const brandGained = allItems.length - beforeBrand;
           slog(`  ✓ Marka partisyonu bitti: +${brandGained} yeni URL (kümülatif ${allItems.length})`, brandGained ? 'success' : 'warn');

@@ -1678,7 +1678,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.6-plainpost-batch-light',
+      version: '4.3.7-brand-filter-batch',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1867,7 +1867,10 @@ const server = http.createServer(async (req, res) => {
             if (cerezV) body.append('cerez', String(cerezV));
             body.append('limit', String(limitV));
             body.append('sayfa', String(sayfaV));
-            for (const v of (filterVals || [])) body.append('filtrele[]', v);
+            for (const v of (filterVals || [])) {
+              if (String(v) === 'temizle') body.append('filtrele', 'temizle');
+              else body.append('filtrele[]', v);
+            }
             const r = await fetch('/kat/listele/', {
               method: 'POST',
               headers: {
@@ -1966,7 +1969,10 @@ const server = http.createServer(async (req, res) => {
           if (cerez) body.append('cerez', String(cerez));
           body.append('limit', String(limit));
           body.append('sayfa', String(pageNo));
-          for (const v of fvs) body.append('filtrele[]', v);
+          for (const v of fvs) {
+            if (String(v) === 'temizle') body.append('filtrele', 'temizle');
+            else body.append('filtrele[]', v);
+          }
           return plainPost(ajaxUrl, body, base);
         });
         const settled = await Promise.all(tasks);
@@ -2001,7 +2007,10 @@ const server = http.createServer(async (req, res) => {
                 if (cerezV) body.append('cerez', String(cerezV));
                 body.append('limit', String(limitV));
                 body.append('sayfa', String(pageNo));
-                for (const v of (filterVals || [])) body.append('filtrele[]', v);
+                for (const v of (filterVals || [])) {
+                  if (String(v) === 'temizle') body.append('filtrele', 'temizle');
+                  else body.append('filtrele[]', v);
+                }
                 const r = await fetch('/kat/listele/', {
                   method: 'POST',
                   headers: {
@@ -2034,6 +2043,236 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ pages: [], error: err.message }));
     }
+    return;
+  }
+
+  // ── BRAND FILTER BATCH (many marka:N partitions in isolated browser passes) ──
+  // Epey's flat category AJAX can under-cover large catalogues, while brand
+  // route navigation is slow because every brand page serialises through the
+  // shared browser lock. This endpoint splits marka:N filters across isolated
+  // browser contexts so Epey's session-scoped filter state cannot leak between
+  // brands, while each worker still fetches its pages in parallel.
+  if (req.url === '/listing-brand-batch' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => {
+      body += c;
+      if (body.length > 2 * 1024 * 1024) req.destroy(new Error('request_too_large'));
+    });
+    req.on('end', async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const kid = payload.kid || payload.kategoriId;
+        const limit = parseInt(payload.limit, 10) || EPEY_AJAX_PAGE_SIZE;
+        const base = payload.base || 'https://www.epey.com/akilli-telefonlar/';
+        const prefix = payload.prefix || '';
+        const cerez = payload.cerez || '';
+        const concurrency = Math.max(4, Math.min(48, parseInt(payload.concurrency, 10) || 32));
+        const workerCount = Math.max(1, Math.min(8, parseInt(payload.workers, 10) || 6));
+        const rawPartitions = Array.isArray(payload.partitions) ? payload.partitions : [];
+        const partitions = rawPartitions
+          .map((p, index) => ({
+            index,
+            name: String(p?.name || p?.label || p?.filterValue || `brand-${index + 1}`),
+            count: Math.max(0, parseInt(p?.count, 10) || 0),
+            filterValue: String(p?.filterValue || p?.value || '').trim(),
+          }))
+          .filter(p => /^marka:/i.test(p.filterValue));
+
+        if (!kid || !partitions.length) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing kid or marka partitions' }));
+          return;
+        }
+
+        const partitionSpecs = partitions.map(p => ({
+          ...p,
+          pages: Math.max(1, Math.min(260, Math.ceil((p.count || limit) / limit) + 3)),
+        }));
+        const requestedPages = partitionSpecs.reduce((n, p) => n + p.pages, 0);
+
+        const t0 = Date.now();
+        const rows = await withBrowserLock(async () => {
+          const mainPage = await getPage();
+          let onEpey = false;
+          try { onEpey = /(^|\.)epey\.com$/i.test(new URL(mainPage.url()).hostname); } catch {}
+          let baseChanged = false;
+          try {
+            const cur = new URL(mainPage.url());
+            const target = new URL(base);
+            const curPath = cur.pathname.replace(/\/+$/, '');
+            const targetPath = target.pathname.replace(/\/+$/, '');
+            baseChanged = cur.origin !== target.origin || curPath !== targetPath;
+          } catch {}
+          if (!onEpey || baseChanged) await fetchWithPuppeteer(base);
+
+          const buckets = Array.from({ length: Math.min(workerCount, partitionSpecs.length) }, () => ({ pages: 0, parts: [] }));
+          for (const part of [...partitionSpecs].sort((a, b) => b.pages - a.pages)) {
+            buckets.sort((a, b) => a.pages - b.pages);
+            buckets[0].parts.push(part);
+            buckets[0].pages += part.pages;
+          }
+
+          const browserRef = await getBrowser();
+          const initWorkerPage = async (idx) => {
+            if (idx === 0) return { page: mainPage, close: false, cerez: cerez || '' };
+            let context = null;
+            try {
+              if (typeof browserRef.createBrowserContext === 'function') {
+                context = await browserRef.createBrowserContext();
+              } else if (typeof browserRef.createIncognitoBrowserContext === 'function') {
+                context = await browserRef.createIncognitoBrowserContext();
+              }
+            } catch {
+              context = null;
+            }
+            const p = context ? await context.newPage() : await browserRef.newPage();
+            try { await p.setUserAgent(currentUA); } catch {}
+            try {
+              await p.setExtraHTTPHeaders({
+                'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'DNT': '1','Upgrade-Insecure-Requests': '1',
+              });
+            } catch {}
+            try { await p.goto(base, { waitUntil: 'domcontentloaded', timeout: 45000 }); } catch {}
+            let pageCerez = cerez || '';
+            try {
+              const html = await p.content();
+              const m = String(html || '').match(/cerez\s*:\s*['"]([^'"]+)['"]/);
+              if (m && m[1]) pageCerez = m[1];
+            } catch {}
+            return { page: p, context, close: true, cerez: pageCerez };
+          };
+
+          const evaluateParts = async (workerPage, parts, pageCerez) => workerPage.evaluate(async (kidV, limitV, cerezV, partsArr, poolSize) => {
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+            const postListing = async ({ pageNo = 1, filterValue = '', reset = false }) => {
+              for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                  const body = new URLSearchParams();
+                  body.append('kategori_id', String(kidV));
+                  if (cerezV) body.append('cerez', String(cerezV));
+                  body.append('limit', String(limitV));
+                  body.append('sayfa', String(pageNo));
+                  if (reset) {
+                    body.append('tarih', String(Math.floor(Date.now() / 1000)));
+                    body.append('filtrele', 'temizle');
+                  } else if (filterValue) {
+                    body.append('tarih', String(Math.floor(Date.now() / 1000)));
+                    body.append('filtrele[]', filterValue);
+                  }
+                  const r = await fetch('/kat/listele/', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                      'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: body.toString(),
+                    credentials: 'include',
+                  });
+                  const html = r.ok ? await r.text() : '';
+                  if (html || attempt === 2) {
+                    return { status: r.status || 0, html };
+                  }
+                } catch {
+                  if (attempt === 2) return { status: 0, html: '' };
+                }
+                await sleep(250);
+              }
+              return { status: 0, html: '' };
+            };
+
+            const runPool = async (items, fn) => {
+              const out = new Array(items.length);
+              let cursor = 0;
+              const workers = Array.from({ length: Math.max(1, Math.min(poolSize, items.length)) }, async () => {
+                while (cursor < items.length) {
+                  const i = cursor++;
+                  out[i] = await fn(items[i], i);
+                }
+              });
+              await Promise.all(workers);
+              return out;
+            };
+
+            const out = [];
+            for (const part of partsArr) {
+              await postListing({ reset: true, pageNo: 1 });
+              const first = await postListing({ filterValue: part.filterValue, pageNo: 1 });
+              out.push({ pi: part.index, page: 1, status: first.status, html: first.html });
+              const restPages = [];
+              for (let pageNo = 2; pageNo <= part.pages; pageNo++) restPages.push(pageNo);
+              const rest = await runPool(restPages, async (pageNo) => {
+                const row = await postListing({ pageNo });
+                return { pi: part.index, page: pageNo, status: row.status, html: row.html };
+              });
+              for (const row of rest) {
+                out.push(row);
+              }
+            }
+            return out;
+          }, kid, limit, pageCerez, parts, Math.max(4, Math.min(12, Math.ceil(concurrency / Math.max(1, buckets.length)))));
+
+          const workers = await Promise.all(buckets.map((_, idx) => initWorkerPage(idx)));
+          try {
+            const chunks = await Promise.all(buckets.map((bucket, idx) =>
+              evaluateParts(workers[idx].page, bucket.parts, workers[idx].cerez)
+            ));
+            return chunks.flat();
+          } finally {
+            await Promise.all(workers.map(async w => {
+              if (w.close) {
+                try { await w.page.close(); } catch {}
+                try { if (w.context) await w.context.close(); } catch {}
+              }
+            }));
+          }
+        });
+
+        const byIndex = new Map(partitions.map(p => [p.index, { ...p, pages: 0, rawLinks: 0, emptyPages: 0, links: [] }]));
+        for (const row of rows || []) {
+          const part = byIndex.get(row?.pi);
+          if (!part) continue;
+          part.pages++;
+          const links = extractListingLinksWithPrefixFallback(row.html || '', 3000, prefix);
+          part.rawLinks += links.length;
+          if (!links.length) part.emptyPages++;
+          for (const u of links) {
+            if (!part.links.includes(u)) part.links.push(u);
+          }
+        }
+
+        const resultPartitions = partitions.map(p => {
+          const got = byIndex.get(p.index) || { ...p, pages: 0, rawLinks: 0, emptyPages: 0, links: [] };
+          return {
+            index: p.index,
+            name: p.name,
+            count: p.count,
+            filterValue: p.filterValue,
+            pages: got.pages,
+            rawLinks: got.rawLinks,
+            emptyPages: got.emptyPages,
+            unique: got.links.length,
+            links: got.links,
+          };
+        });
+        const totalUnique = new Set(resultPartitions.flatMap(p => p.links)).size;
+        console.log(`  ⚡ listing-brand-batch (${((Date.now() - t0) / 1000).toFixed(1)}s): ${partitions.length} brands · ${requestedPages} pages · ${totalUnique} unique`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          engine: 'browser-batch',
+          brands: partitions.length,
+          requestedPages,
+          totalUnique,
+          seconds: (Date.now() - t0) / 1000,
+          partitions: resultPartitions,
+        }));
+      } catch (err) {
+        console.error(`  ❌ /listing-brand-batch: ${err.message}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ partitions: [], error: err.message }));
+      }
+    });
     return;
   }
 
