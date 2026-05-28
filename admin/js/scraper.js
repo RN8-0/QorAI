@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260527-epey-brand-url-candidates-name-translate';
+const SCRAPER_BUILD = '20260528-epey-pb-retry-drain-safe-browser';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -26,10 +26,11 @@ const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
 // Detail fetches are cheap; translated product writes are not. Keep the
 // pipeline fast enough without piling 20+ large PocketBase writes at once.
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 10;
-const EPEY_DETAIL_CONCURRENCY_MAX = 12;
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
+const EPEY_DETAIL_CONCURRENCY_MAX = 10;
 const EPEY_PB_WRITE_CONCURRENCY = 2;
 const EPEY_PB_SAVE_RETRIES = 4;
+const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
 let scraperRunning = false;
@@ -5109,25 +5110,51 @@ function _isTransientPocketBaseError(error) {
   return /something went wrong|timeout|timed out|network|failed to fetch|fetch failed|rate|busy|locked|connection/i.test(msg);
 }
 
-async function _saveProductWithRetry(clean, label = '') {
+function _formatPocketBaseError(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const msg = String(error?.message || error || '').trim();
+  const data = error?.data || error?.response?.data || null;
+  const parts = [];
+  if (status) parts.push(`HTTP ${status}`);
+  if (msg) parts.push(msg);
+  if (data && typeof data === 'object') {
+    const fieldHints = Object.entries(data)
+      .slice(0, 4)
+      .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120)}`);
+    if (fieldHints.length) parts.push(fieldHints.join(' | '));
+  }
+  return parts.join(' — ') || 'PocketBase write failed';
+}
+
+function _pbRetryDelay(attempt, options = {}) {
+  const base = Number(options.baseDelayMs || 1800);
+  const max = Number(options.maxDelayMs || 16000);
+  const jitter = Number(options.jitterMs || 900);
+  return Math.min(base * Math.pow(2, Math.max(0, attempt - 1)), max) + Math.random() * jitter;
+}
+
+async function _saveProductWithRetry(clean, label = '', options = {}) {
   const id = clean.sourceUrl || clean.slug || clean.id;
   const title = String(label || clean.name || clean.slug || id || '').slice(0, 120);
-  return _epeyPbWriteLimit(async () => {
-    let lastError = null;
-    for (let attempt = 1; attempt <= EPEY_PB_SAVE_RETRIES; attempt++) {
-      try {
-        if (scraperAbort) throw new Error('aborted');
-        return await pbSetDoc('products', id, clean);
-      } catch (e) {
-        lastError = e;
-        if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= EPEY_PB_SAVE_RETRIES) break;
-        const delay = Math.min(2500 * Math.pow(2, attempt - 1), 20000) + Math.random() * 1200;
-        slog(`  ↻ PB save retry ${attempt}/${EPEY_PB_SAVE_RETRIES}: ${title} — ${e.message || e}`, 'warn');
-        await sleep(delay);
-      }
+  const retries = Math.max(1, parseInt(options.retries, 10) || EPEY_PB_SAVE_RETRIES);
+  const logPrefix = options.logPrefix || 'PB save retry';
+  let lastError = null;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      if (scraperAbort) throw new Error('aborted');
+      // Important: acquire the PB write slot for the actual write only.
+      // Backoff sleeps happen outside the limiter, otherwise two transient
+      // failures can block the whole scrape pipeline for minutes.
+      return await _epeyPbWriteLimit(() => pbSetDoc('products', id, clean));
+    } catch (e) {
+      lastError = e;
+      if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= retries) break;
+      const delay = _pbRetryDelay(attempt, options);
+      slog(`  ↻ ${logPrefix} ${attempt}/${retries}: ${title} — ${_formatPocketBaseError(e)}`, 'warn');
+      await sleep(delay);
     }
-    throw lastError;
-  });
+  }
+  throw lastError;
 }
 
 // Skip-existing: see the active _loadExistingSourceUrls() in the EPEY.COM
@@ -5379,14 +5406,28 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   let completed = 0;
   let lastSummary = 0;
   const retryLaterByKey = new Map();
+  const pendingSaveByKey = new Map();
   const retryKeyFor = (item) => normalizeScrapeUrlKey(item?.url) || String(item?.url || '').trim();
-  const markRetryLater = (item) => {
+  const markRetryLater = (item, pendingSave = null) => {
     const key = retryKeyFor(item);
-    if (key) retryLaterByKey.set(key, { ...item, categoryId: item?.categoryId || categoryId || '' });
+    if (key) {
+      retryLaterByKey.set(key, { ...item, categoryId: item?.categoryId || categoryId || '' });
+      if (pendingSave?.clean) {
+        pendingSaveByKey.set(key, {
+          item: { ...item, categoryId: item?.categoryId || categoryId || '' },
+          clean: pendingSave.clean,
+          label: pendingSave.label || pendingSave.clean.name || pendingSave.clean.slug || key,
+          mergeKey: pendingSave.mergeKey || pendingSave.clean.variantGroup || '',
+        });
+      }
+    }
   };
   const clearRetryLater = (item) => {
     const key = retryKeyFor(item);
-    if (key) retryLaterByKey.delete(key);
+    if (key) {
+      retryLaterByKey.delete(key);
+      pendingSaveByKey.delete(key);
+    }
   };
   const retryLaterItems = () => Array.from(retryLaterByKey.values());
   // Aggressive low cap (was 250ms) — Cloudflare clearance + 8-24 worker pool
@@ -5481,18 +5522,15 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       } catch (saveErr) {
         // PB save failed after all retries. The product scrape itself was fine
         // — Epey worked, parsing worked, only the backend write blew up
-        // (transient PB 500 / Coolify edge timeout / rate-limit). Don't let
-        // that kill the entire run: queue the item for Resume, count it as an
-        // error for stats, but DO NOT touch errorStreak. errorStreak is for
-        // detail-fetch failures (proxy dead, CF ban) — confusing PB write
-        // hiccups with those caused gamepads to nuke 22 remaining categories.
+        // (transient PB 500 / Coolify edge timeout / rate-limit). Keep the
+        // fully parsed payload in memory for a calm final drain, and keep the
+        // URL in the checkpoint as a fallback if the user stops before then.
         if (scraperAbort || saveErr.message === 'aborted') return;
-        results.errors++;
-        markRetryLater(item);
+        markRetryLater(item, { clean, label: product.name || clean.name || clean.slug, mergeKey });
         recent.push('err');
-        slog(`  → PB save failed (kuyruğa alındı): ${slug} — ${saveErr.message}`, 'error');
+        slog(`  ↻ PB geçici yoğunluk: sona ertelendi ${slug} — ${_formatPocketBaseError(saveErr)}`, 'warn');
         // Light cooldown so we don't hammer a struggling PB.
-        await sleep(4000);
+        await sleep(1200 + Math.random() * 1200);
         return;
       }
       // Register the new record in the in-memory VG map so subsequent
@@ -5568,6 +5606,37 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
   await Promise.all(workers);
+
+  if (!scraperAbort && pendingSaveByKey.size > 0) {
+    const pending = Array.from(pendingSaveByKey.values());
+    slog(`↻ PB kayıt kuyruğu sakin modda tekrar deneniyor: ${pending.length} ürün`, 'warn');
+    for (let pi = 0; pi < pending.length && !scraperAbort; pi++) {
+      const entry = pending[pi];
+      const slug = slugFromUrl(entry.item?.url) || entry.clean?.slug || entry.label;
+      try {
+        const saved = await _saveProductWithRetry(entry.clean, entry.label, {
+          retries: EPEY_PB_FINAL_SAVE_RETRIES,
+          logPrefix: 'PB final retry',
+          baseDelayMs: 3500,
+          maxDelayMs: 30000,
+          jitterMs: 1800,
+        });
+        if (entry.mergeKey && saved?.id) {
+          existingByVG.set(entry.mergeKey, { id: saved.id, source: entry.clean.source, name: entry.clean.name });
+        }
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || entry.clean.slug, product: entry.clean } }));
+        results.added++;
+        recent.push('ok');
+        clearRetryLater(entry.item);
+        slog(`  → Eklendi (PB final): ${entry.label}`, 'success');
+      } catch (e) {
+        if (scraperAbort || e.message === 'aborted') break;
+        results.errors++;
+        slog(`  → PB kayıt hâlâ başarısız, Resume'a kaldı: ${slug} — ${_formatPocketBaseError(e)}`, 'warn');
+      }
+    }
+  }
+
   if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
 
   // Self-healing: any TR word that hit the transliteration fallback during
@@ -7434,13 +7503,13 @@ window.scrapeByUrl = async function () {
   return _epeyScrapeByUrl();
 };
 
-// Source-aware speed defaults. Epey has no Cloudflare so we run flat-out:
-// 100k per category, 0 delay, 20 parallel workers (max 32). Geizhals fronted
-// by Cloudflare so we throttle: 30k limit, 800 ms delay, 6 parallel workers
-// (max 12). When the user picks a source we overwrite the shared inputs
-// unless the user has manually customised them this session.
+// Source-aware speed defaults. Epey detail fetches are fast, but product
+// writes are large translated payloads; keep workers below the PB write
+// limiter so retries do not flood the backend. Geizhals is Cloudflare-fronted
+// so it stays slower. When the user picks a source we overwrite the shared
+// inputs unless the user has manually customised them this session.
 const _SCRAPE_PRESETS = {
-  epey:     { max: 100000, delay: 0,   concurrency: 20, concurrencyMax: 32 },
+  epey:     { max: 100000, delay: 0,   concurrency: EPEY_DETAIL_CONCURRENCY_DEFAULT, concurrencyMax: EPEY_DETAIL_CONCURRENCY_MAX },
   geizhals: { max: 30000,  delay: 800, concurrency: 6,  concurrencyMax: 12 },
 };
 let _scrapeUserOverride = { max: false, delay: false, concurrency: false };
@@ -7472,7 +7541,7 @@ window.updateScrapeSourceUI = function () {
   if (hint) {
     hint.textContent = src === 'geizhals'
       ? `Geizhals.eu: Cloudflare korumalı — temkinli (${preset.concurrency} worker, ${preset.delay} ms delay). Almanca specs, AB fiyatları.`
-      : `Epey.com: Cloudflare yok — tam hız (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
+      : `Epey.com: güvenli hızlı mod (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
   }
 };
 // Apply initial preset on DOM ready so the UI matches the pre-selected source.

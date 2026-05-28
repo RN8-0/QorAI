@@ -1098,35 +1098,35 @@ async function fetchWithPuppeteer(url, opts = {}) {
 }
 
 async function fetchWithBrowserFetch(url) {
-  await withBrowserLock(async () => {
+  return withBrowserLock(async () => {
     const page = await getPage();
     let onEpey = false;
     try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
     if (!onEpey) await fetchWithPuppeteer('https://www.epey.com/');
+    const lockedPage = activePage;
+    if (!lockedPage || lockedPage.isClosed()) return { html: '', status: 0, isChallenge: false };
+    requestCount++;
+    const result = await lockedPage.evaluate(async (target) => {
+      try {
+        const r = await fetch(target, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        });
+        return { html: await r.text(), status: r.status };
+      } catch (e) {
+        return { html: '', status: 0, error: e.message };
+      }
+    }, url);
+    const html = result?.html || '';
+    return {
+      html,
+      status: result?.status || 0,
+      isChallenge: _isChallengeContent(html),
+    };
   });
-  const page = activePage;
-  if (!page || page.isClosed()) return { html: '', status: 0, isChallenge: false };
-  requestCount++;
-  const result = await page.evaluate(async (target) => {
-    try {
-      const r = await fetch(target, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-      });
-      return { html: await r.text(), status: r.status };
-    } catch (e) {
-      return { html: '', status: 0, error: e.message };
-    }
-  }, url);
-  const html = result?.html || '';
-  return {
-    html,
-    status: result?.status || 0,
-    isChallenge: _isChallengeContent(html),
-  };
 }
 
 function setCORSHeaders(res, origin) {
@@ -1625,7 +1625,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.3-geizhals-generic-fetch',
+      version: '4.3.4-safe-browser-fetch-lock',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -2091,7 +2091,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.3 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.4 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);
