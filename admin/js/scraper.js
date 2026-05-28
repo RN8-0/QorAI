@@ -672,6 +672,39 @@ function modelFamilyKey({ name, brand, category }) {
   let s = String(name || '').toLowerCase();
   const b = String(brand || '').toLowerCase().trim();
   if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
+
+  // CPU/GPU products: the chip name IS the product, not a spec inside a
+  // bigger device. The generic strip-chips rules below (originally written
+  // for laptops/phones that mention CPU/GPU in their name) would erase the
+  // whole name and collapse every Intel CPU into one variantGroup and every
+  // AMD CPU into another. For these categories we instead group ONLY suffix
+  // variants together (i3-9100 / i3-9100F / i3-9100T, Ryzen 5 7500 / 7500F,
+  // RTX 5070 / 5070 OC) so different SKUs stay separate.
+  const cat = String(category || '').toLowerCase();
+  const isChipProduct = /(?:^|[-_])(?:cpus?|gpus?|processors?|graphics[-_]?cards?|islemci|ekran[-_]?karti)(?:$|[-_])/.test(cat);
+  if (isChipProduct) {
+    let chipFam = s
+      .replace(/[()[\],"'’]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    // Strip variant suffix letters from the LAST numeric SKU token.
+    //   intel-core-i3-9100f  -> intel-core-i3-9100
+    //   intel-core-i3-9100ks -> intel-core-i3-9100
+    //   amd-ryzen-7-7500x3d  -> amd-ryzen-7-7500
+    //   amd-ryzen-9-9950x    -> amd-ryzen-9-9950
+    //   geforce-rtx-5070-oc  -> geforce-rtx-5070
+    chipFam = chipFam.replace(/(\d{3,5})[a-z][a-z0-9]{0,4}$/i, '$1');
+    // Also drop common GPU edition labels that distinguish minor SKUs but
+    // belong to the same chip family (gaming, edition, oc, ti only when not
+    // part of the model number — already handled by the regex above for "oc").
+    chipFam = chipFam.replace(/-(?:edition|gaming|noctua|white|black|lp|brk)$/i, '');
+    const out = [b, chipFam].filter(Boolean).join('-').slice(0, 180);
+    return out || normalizeProductDedupText(name) || normalizeProductDedupText(category);
+  }
+
   const familyProbe = s
     .replace(/[()[\],"'’]/g, ' ')
     .replace(/\s+/g, ' ')
