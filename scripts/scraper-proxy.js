@@ -216,6 +216,30 @@ function withBrowserLock(task) {
   return run;
 }
 
+// ─── Detail-fetch CF-cascade guard ───────────────────────────────────────
+// When Cloudflare rate-limits the parallel plainFetch fast path, EVERY
+// detail-fetch worker falls into the slow (browser-locked) path at once
+// and queues behind the shared Puppeteer page. With 8 workers and a 45 s
+// challenge wait per request that produced multi-minute stalls in
+// production. This guard tracks how many workers are currently inside the
+// slow path and exposes a Promise that resolves when ANY of them finishes.
+// New requests that fail the fast path can `await` the guard, then retry
+// plainFetch — once one worker refreshes cf_clearance every other worker
+// gets through without ever entering the lock. Result: at most ONE worker
+// pays the CF tax, the other 7 keep flowing.
+let _slowPathBusy = 0;
+let _slowPathWaiters = [];
+function _slowPathBeacon() {
+  return new Promise((resolve) => {
+    _slowPathWaiters.push(resolve);
+  });
+}
+function _slowPathRelease() {
+  const queued = _slowPathWaiters;
+  _slowPathWaiters = [];
+  for (const r of queued) { try { r(); } catch {} }
+}
+
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
   const chromePath = findChromePath();
@@ -2095,7 +2119,7 @@ const server = http.createServer(async (req, res) => {
     // normal browser-like HTTPS request. This path is NOT browser-locked, so
     // the admin can fetch many product detail pages in parallel. If Epey ever
     // returns a real challenge/403/empty body, we fall back to Puppeteer below.
-    const fast = await plainFetch(targetUrl, 4, referer);
+    let fast = await plainFetch(targetUrl, 4, referer);
     if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeContent(fast.html)) {
       requestCount++;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -2105,32 +2129,67 @@ const server = http.createServer(async (req, res) => {
       res.end(fast.html);
       return;
     }
-    const browserFetch = await fetchWithBrowserFetch(targetUrl);
-    if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
+
+    // CF-cascade mitigation: if another worker is already in the slow path,
+    // wait for it to finish (it will refresh cf_clearance) and retry
+    // plainFetch up to twice. Most of the time the second worker through
+    // never has to enter the browser lock. Cuts multi-minute stalls under
+    // 8-worker parallel detail fetching.
+    if (_slowPathBusy > 0) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await Promise.race([_slowPathBeacon(), new Promise((r) => setTimeout(r, 4000))]);
+        fast = await plainFetch(targetUrl, 4, referer);
+        if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeContent(fast.html)) {
+          requestCount++;
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('X-Status-Code', String(fast.status || 200));
+          res.setHeader('X-Fetch-Engine', 'plain-cf-recovered');
+          res.writeHead(200);
+          res.end(fast.html);
+          return;
+        }
+        if (_slowPathBusy === 0) break;
+      }
+    }
+
+    // Slow path: take the cascade lock so other workers wait for us.
+    let heldSlowLock = false;
+    _slowPathBusy++; heldSlowLock = true;
+    try {
+      const browserFetch = await fetchWithBrowserFetch(targetUrl);
+      if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('X-Status-Code', String(browserFetch.status || 200));
+        res.setHeader('X-Fetch-Engine', 'browser-fetch');
+        res.writeHead(200);
+        res.end(browserFetch.html);
+        return;
+      }
+      // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
+      // (GET or POST) to epey.com is always answered with a 403 challenge — only
+      // the real browser gets through. Everything therefore goes via Puppeteer.
+      // `referer` is forwarded so Epey's gallery pages (…-resimleri.html), which
+      // 404 without a Referer, load correctly.
+      let { html, status } = await withBrowserLock(() => fetchHtml(targetUrl, { referer }));
+      if (!html || status === 404) {
+        res.setHeader('X-Status-Code', '404');
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Page not found (404).' }));
+        return;
+      }
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Status-Code', String(browserFetch.status || 200));
-      res.setHeader('X-Fetch-Engine', 'browser-fetch');
+      res.setHeader('X-Status-Code', String(status));
+      res.setHeader('X-Fetch-Engine', 'puppeteer');
       res.writeHead(200);
-      res.end(browserFetch.html);
-      return;
+      res.end(html);
+    } finally {
+      if (heldSlowLock) {
+        _slowPathBusy--;
+        // Wake every worker waiting on a cf_clearance refresh — they will
+        // retry plainFetch with the fresh cookie set by the slow path.
+        _slowPathRelease();
+      }
     }
-    // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
-    // (GET or POST) to epey.com is always answered with a 403 challenge — only
-    // the real browser gets through. Everything therefore goes via Puppeteer.
-    // `referer` is forwarded so Epey's gallery pages (…-resimleri.html), which
-    // 404 without a Referer, load correctly.
-    let { html, status } = await withBrowserLock(() => fetchHtml(targetUrl, { referer }));
-    if (!html || status === 404) {
-      res.setHeader('X-Status-Code', '404');
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Page not found (404).' }));
-      return;
-    }
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('X-Status-Code', String(status));
-    res.setHeader('X-Fetch-Engine', 'puppeteer');
-    res.writeHead(200);
-    res.end(html);
   } catch (err) {
     res.writeHead(502, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }));

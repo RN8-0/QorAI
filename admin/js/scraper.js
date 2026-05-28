@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-detail-concurrency-revert';
+const SCRAPER_BUILD = '20260528-epey-cf-cascade-guard';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6820,7 +6820,20 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${meta.url})`, 'info');
             }
             let brandData = meta.data;
-            let brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
+            const parentKid = ajax?.kategoriId ? String(ajax.kategoriId) : '';
+            // A "good" brand AJAX is one whose kategori_id is brand-specific,
+            // i.e. NOT equal to the parent category's id. When the brand page
+            // is fetched without JS execution (light=1 plainFetch), Epey leaks
+            // the parent kid in the inline boot script — paginate would then
+            // walk the parent catalog and contribute nothing new. We must
+            // re-fetch with light=0 (puppeteer) so JS injects the real
+            // brand-scoped kid before paginating.
+            const isGoodBrandAjax = (a) => {
+              if (!a || !a.kategoriId) return false;
+              if (!parentKid) return true;
+              return String(a.kategoriId) !== parentKid;
+            };
+            let brandAjax = isGoodBrandAjax(brandData?.ajax) ? brandData.ajax : null;
             const inlineItems = itemsFromData(brandData);
             // Push the inline first-page links so we don't miss them even
             // if the upcoming pagination fails.
@@ -6828,17 +6841,15 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
 
             // Re-fetch with light=0 ONLY when the brand has more products
             // than the inline first page exposed AND we don't already have
-            // a valid paginate handle. Epey injects the brand-specific
-            // kategori_id via JavaScript on brand pages, so the plain HTTPS
-            // response (light=1) often returns inline links with `ajax: null`.
-            // The puppeteer fallback (light=0) executes JS and returns the
-            // injected handle so paginateStream can walk every brand page.
+            // a brand-specific paginate handle. This keeps single-page
+            // brands on the fast path while big brands recover their proper
+            // brand-AJAX kid via the puppeteer fallback.
             const inlineCount = inlineItems.length;
             const needsPaginate = brandCount > 0 && inlineCount < brandCount;
             if (needsPaginate && !brandAjax) {
               try {
                 const fullData = await fetchLinks(meta.url || meta.candidates[0], { light: false });
-                if (fullData?.ajax?.kategoriId) {
+                if (isGoodBrandAjax(fullData?.ajax)) {
                   brandData = fullData;
                   brandAjax = fullData.ajax;
                   // Push any additional inline links the rendered page exposed.
@@ -6852,8 +6863,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             }
 
             // Last-resort marka:NN fallback for the residual gap (e.g. CF
-            // ate the brand page fetch). Only fires when paginate could
-            // not run and the brand still looks under-covered.
+            // ate the brand page fetch, or the brand page legitimately has
+            // no separate kid). Only fires when paginate could not run and
+            // the brand still looks under-covered.
             const gainedNow = allItems.length - beforeOne;
             if (brandFilterValue && ajax && needsPaginate && !brandAjax && gainedNow < brandCount) {
               try { await paginateStream(ajax, [brandFilterValue], () => {}); } catch {}
