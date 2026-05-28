@@ -1674,7 +1674,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.5-brand-filter-reset',
+      version: '4.3.6-plainpost-batch-light',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1928,48 +1928,87 @@ const server = http.createServer(async (req, res) => {
       const prefix = urlObj.searchParams.get('prefix') || '';
       const cerez = urlObj.searchParams.get('cerez') || '';
       const reset = urlObj.searchParams.get('reset') === '1';
+      const wantLight = urlObj.searchParams.get('light') === '1';
       const fvs = urlObj.searchParams.getAll('fv').filter(Boolean);
       if (!kid || !pages.length) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing kid or pages' }));
         return;
       }
-      const htmls = await withBrowserLock(async () => {
-        const page = await getPage();
-        let onEpey = false;
-        try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-        if (reset || !onEpey) await fetchWithPuppeteer(base);
-        return await page.evaluate(async (kidV, limitV, pagesArr, cerezV, filterVals) => {
-          const doOne = async (pageNo) => {
-            try {
-              const body = new URLSearchParams();
-              body.append('kategori_id', String(kidV));
-              if (cerezV) body.append('cerez', String(cerezV));
-              body.append('limit', String(limitV));
-              body.append('sayfa', String(pageNo));
-              for (const v of (filterVals || [])) body.append('filtrele[]', v);
-              const r = await fetch('/kat/listele/', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                  'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: body.toString(),
-                credentials: 'include',
-              });
-              return r.ok ? await r.text() : '';
-            } catch { return ''; }
-          };
-          return Promise.all(pagesArr.map(doOne));
-        }, kid, limit, pages, cerez, fvs);
-      });
+
+      const t0 = Date.now();
+      let htmls = null;
+      let fetchEngine = 'puppeteer';
+
+      // light=1 — plainPost in PARALLEL to /kat/listele/ with the warmed
+      // cf_clearance cookies. Bypasses the puppeteer browser lock entirely.
+      // ~50x faster than the in-browser fetch path. Falls back to the
+      // browser path if any response is missing or carries a CF challenge.
+      // Critical: this is parallel-safe across requests — multiple brand
+      // paginations can run concurrently with no shared mutable state.
+      if (wantLight && Array.isArray(sessionCookies) && sessionCookies.length) {
+        const ajaxUrl = 'https://www.epey.com/kat/listele/';
+        const tasks = pages.map((pageNo) => {
+          const body = new URLSearchParams();
+          body.append('kategori_id', String(kid));
+          if (cerez) body.append('cerez', String(cerez));
+          body.append('limit', String(limit));
+          body.append('sayfa', String(pageNo));
+          for (const v of fvs) body.append('filtrele[]', v);
+          return plainPost(ajaxUrl, body, base);
+        });
+        const settled = await Promise.all(tasks);
+        const allOk = settled.every(s =>
+          s && s.html && s.status >= 200 && s.status < 400 && !_isChallengeContent(s.html)
+        );
+        if (allOk) {
+          htmls = settled.map(s => s.html);
+          fetchEngine = 'plain';
+        }
+      }
+
+      if (!htmls) {
+        htmls = await withBrowserLock(async () => {
+          const page = await getPage();
+          let onEpey = false;
+          try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
+          if (reset || !onEpey) await fetchWithPuppeteer(base);
+          return await page.evaluate(async (kidV, limitV, pagesArr, cerezV, filterVals) => {
+            const doOne = async (pageNo) => {
+              try {
+                const body = new URLSearchParams();
+                body.append('kategori_id', String(kidV));
+                if (cerezV) body.append('cerez', String(cerezV));
+                body.append('limit', String(limitV));
+                body.append('sayfa', String(pageNo));
+                for (const v of (filterVals || [])) body.append('filtrele[]', v);
+                const r = await fetch('/kat/listele/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest',
+                  },
+                  body: body.toString(),
+                  credentials: 'include',
+                });
+                return r.ok ? await r.text() : '';
+              } catch { return ''; }
+            };
+            return Promise.all(pagesArr.map(doOne));
+          }, kid, limit, pages, cerez, fvs);
+        });
+      }
+
       const results = pages.map((pageNo, i) => {
         const html = htmls[i] || '';
         const links = extractListingLinksWithPrefixFallback(html, 2000, prefix);
         return { page: pageNo, count: links.length, links, status: html ? 200 : 0 };
       });
+      if (wantLight) {
+        console.log(`  ⚡ listing-ajax-batch (${((Date.now() - t0) / 1000).toFixed(1)}s · ${fetchEngine}): ${pages.length} pages · ${results.reduce((n, r) => n + r.count, 0)} links`);
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ pages: results }));
+      res.end(JSON.stringify({ pages: results, engine: fetchEngine }));
     } catch (err) {
       console.error(`  ❌ /listing-ajax-batch: ${err.message}`);
       res.writeHead(200, { 'Content-Type': 'application/json' });

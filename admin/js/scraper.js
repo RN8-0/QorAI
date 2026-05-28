@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-cf-cascade-guard';
+const SCRAPER_BUILD = '20260528-epey-plainpost-parallel-brands';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6498,13 +6498,20 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   // browser is HTTP/2 capable when Epey supports it, so we can push past
   // the HTTP/1.1 six-connection limit. 12 measured ~140 ms/page from the
   // proxy on a warm session (verified 2026-05-26 against laptop catalog).
+  // PAGINATE_BATCH=12 + light=1 = a single proxy call fires twelve parallel
+  // plainPost requests directly to /kat/listele/ with the warmed cf_clearance
+  // cookies. Bypasses the puppeteer browser lock entirely, so multiple brand
+  // paginations can also run concurrently in Phase B (worker pool). Falls
+  // back transparently to the in-browser fetch path if any response carries
+  // a CF challenge or is empty.
   const PAGINATE_BATCH = 12;
   const fetchAjaxPagesBatch = async (ajax, pageNumbers, filterValues = []) => {
     let qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
       `&pages=${encodeURIComponent(pageNumbers.join(','))}` +
       `&base=${encodeURIComponent(ajax.base)}` +
-      `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
+      `&prefix=${encodeURIComponent(ajax.prefix || '')}` +
+      `&light=1`;
     if (ajax.cerez) qs += `&cerez=${encodeURIComponent(ajax.cerez)}`;
     for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
     if (filterValues && filterValues.length) qs += `&reset=1`;
@@ -6516,9 +6523,13 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   // thinner than the page size is the last page; two consecutive no-new-product
   // pages also end the stream. `onPage(pageNo, added, total)` is called for
   // each page after its batch arrives.
+  // `localAdded` (and not `allItems.length - startCount`) is the per-call
+  // tally. Critical for the parallel brand worker pool below: multiple
+  // streams run concurrently and mutate `allItems`, so a length-based delta
+  // would attribute other brands' contributions to this stream.
   const paginateStream = async (ajax, filterValues, onPage) => {
     const pageSize = Number(ajax.limit) || 31;
-    const startCount = allItems.length;
+    let localAdded = 0;
     let emptyStreak = 0;
     let transientStreak = 0;
     const maxEmptyStreak = filterValues && filterValues.length ? 5 : 4;
@@ -6554,6 +6565,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         }
         transientStreak = 0;
         const added = pushItems(Array.isArray(p.links) ? p.links.map(u => ({ url: u, techScore: null })) : []);
+        localAdded += added;
         if (typeof onPage === 'function') onPage(p.page, added, allItems.length);
         if (added === 0) { if (++emptyStreak >= maxEmptyStreak) { lastPageHit = true; break; } }
         else emptyStreak = 0;
@@ -6569,7 +6581,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       // Yield to the event loop so Chrome can paint and process Stop.
       await sleep(0);
     }
-    return allItems.length - startCount;
+    return localAdded;
   };
 
   const paginatePartitions = async (ajax, partitions, labelFor, onPage) => {
@@ -6740,7 +6752,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           // Phase A — fetch every brand's first page in parallel (light=1).
           // Workers are bounded so we don't overwhelm sessionCookies / the
           // remote host. Each worker tries every URL candidate.
-          const META_CONCURRENCY = 4;
+          // Bumped 4→8: light=1 is parallel-safe (plainFetch with warmed
+          // cookies, no browser lock) so we can saturate the network.
+          const META_CONCURRENCY = 8;
           const brandMetas = new Array(brandFilter.values.length).fill(null);
           let metaCursor = 0;
           const fetchBrandMeta = async (b, candidates) => {
@@ -6774,109 +6788,108 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             }
           }));
 
-          // Phase B — process metadata sequentially. For brands whose
-          // light=1 first page already exposes every product (small brands,
-          // ~80 % of the partition list) we are done. For brands that
-          // need paginate we re-fetch with light=0 to obtain the
-          // JS-injected brand-specific `kategori_id`, then drive the
-          // brand-AJAX stream. Pagination + the heavy fetch both still
-          // serialise on the proxy browser lock, but only the brands that
-          // genuinely need them pay the cost.
-          for (let bi = 0; bi < brandMetas.length; bi++) {
-            if (allItems.length >= maxProducts || scraperAbort) break;
-            const meta = brandMetas[bi];
-            if (!meta) continue;
-            const b = meta.brand;
-            const brandName  = typeof b === 'string' ? b : (b?.name || meta.candidates[0] || 'brand');
-            const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
-            const brandFilterValue = typeof b === 'object'
-              ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
-              : '';
-            const beforeOne = allItems.length;
+          // Phase B — PARALLEL worker pool. Each brand uses the fastest
+          // available pagination path:
+          //   1. Inline first-page items from light=1 (already in meta.data).
+          //   2. paginateStream(parentAjax, [marka:NN]) — plainPost in
+          //      parallel via /listing-ajax-batch?light=1, NO browser lock.
+          //      Multiple brand paginations run concurrently across workers,
+          //      bounded only by the network.
+          //   3. Last-resort: light=0 puppeteer brand-page fetch. Only fires
+          //      for brands that lack a `marka:NN` filter value (featured-
+          //      brand pages) or when the marka filter under-covers. This
+          //      path is still browser-locked but is hit by ≤ 1-2 brands per
+          //      category in practice.
+          //
+          // Concurrency note: paginateStream returns its own local additions
+          // so concurrent invocations report accurate per-brand gain even
+          // though they share `allItems`/`seen` under the hood.
+          const BRAND_CONCURRENCY = 6;
+          const parentKid = ajax?.kategoriId ? String(ajax.kategoriId) : '';
+          const isGoodBrandAjax = (a) => {
+            if (!a || !a.kategoriId) return false;
+            if (!parentKid) return true;
+            return String(a.kategoriId) !== parentKid;
+          };
+          let brandCursor = 0;
+          const runBrandWorker = async () => {
+            while (true) {
+              if (allItems.length >= maxProducts || scraperAbort) return;
+              const bi = brandCursor++;
+              if (bi >= brandMetas.length) return;
+              const meta = brandMetas[bi];
+              if (!meta) continue;
+              const b = meta.brand;
+              const brandName  = typeof b === 'string' ? b : (b?.name || meta.candidates[0] || 'brand');
+              const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
+              const filterValue = typeof b === 'object'
+                ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
+                : '';
+              let gained = 0;
 
-            if (meta.error === 'no-url') {
-              const rawToken = typeof b === 'object' ? (b?.filterValue || b?.value || '') : String(b || '');
-              slog(`    ↳ ${brandName}: marka URL'si yok, atlandı${/^marka:/i.test(rawToken) ? ' (proxy yeniden başlatılmalı)' : ''}`, 'warn');
-              continue;
-            }
-
-            if (!meta.data) {
-              if (brandFilterValue && ajax) {
-                try {
-                  const beforeFallback = allItems.length;
-                  await paginateStream(ajax, [brandFilterValue], () => {});
-                  const fallbackGained = allItems.length - beforeFallback;
-                  if (fallbackGained > 0) {
-                    slog(`    ↳ ${brandName} (~${brandCount}): marka filtresiyle kurtarıldı +${fallbackGained} → toplam ${allItems.length}`, 'success');
-                    continue;
-                  }
-                } catch { /* fall through to warn */ }
+              if (meta.error === 'no-url') {
+                const rawToken = typeof b === 'object' ? (b?.filterValue || b?.value || '') : String(b || '');
+                slog(`    ↳ ${brandName}: marka URL'si yok, atlandı${/^marka:/i.test(rawToken) ? ' (proxy yeniden başlatılmalı)' : ''}`, 'warn');
+                continue;
               }
-              slog(`    ↳ ${brandName}: meta hatası (${meta.error || 'aday URL başarısız'})`, 'warn');
-              continue;
-            }
 
-            if (meta.url && meta.url !== meta.candidates[0]) {
-              slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${meta.url})`, 'info');
-            }
-            let brandData = meta.data;
-            const parentKid = ajax?.kategoriId ? String(ajax.kategoriId) : '';
-            // A "good" brand AJAX is one whose kategori_id is brand-specific,
-            // i.e. NOT equal to the parent category's id. When the brand page
-            // is fetched without JS execution (light=1 plainFetch), Epey leaks
-            // the parent kid in the inline boot script — paginate would then
-            // walk the parent catalog and contribute nothing new. We must
-            // re-fetch with light=0 (puppeteer) so JS injects the real
-            // brand-scoped kid before paginating.
-            const isGoodBrandAjax = (a) => {
-              if (!a || !a.kategoriId) return false;
-              if (!parentKid) return true;
-              return String(a.kategoriId) !== parentKid;
-            };
-            let brandAjax = isGoodBrandAjax(brandData?.ajax) ? brandData.ajax : null;
-            const inlineItems = itemsFromData(brandData);
-            // Push the inline first-page links so we don't miss them even
-            // if the upcoming pagination fails.
-            pushItems(inlineItems);
-
-            // Re-fetch with light=0 ONLY when the brand has more products
-            // than the inline first page exposed AND we don't already have
-            // a brand-specific paginate handle. This keeps single-page
-            // brands on the fast path while big brands recover their proper
-            // brand-AJAX kid via the puppeteer fallback.
-            const inlineCount = inlineItems.length;
-            const needsPaginate = brandCount > 0 && inlineCount < brandCount;
-            if (needsPaginate && !brandAjax) {
-              try {
-                const fullData = await fetchLinks(meta.url || meta.candidates[0], { light: false });
-                if (isGoodBrandAjax(fullData?.ajax)) {
-                  brandData = fullData;
-                  brandAjax = fullData.ajax;
-                  // Push any additional inline links the rendered page exposed.
-                  pushItems(itemsFromData(fullData));
+              if (!meta.data) {
+                // light=1 meta failed; recover with marka:NN filter if available.
+                if (filterValue && ajax) {
+                  try {
+                    gained += await paginateStream(ajax, [filterValue], () => {});
+                    if (gained > 0) {
+                      slog(`    ↳ ${brandName} (~${brandCount}): marka filtresiyle kurtarıldı +${gained} → toplam ${allItems.length}`, 'success');
+                      continue;
+                    }
+                  } catch { /* fall through to warn */ }
                 }
-              } catch { /* fall through — brand-filter fallback below covers it */ }
-            }
+                slog(`    ↳ ${brandName}: meta hatası (${meta.error || 'aday URL başarısız'})`, 'warn');
+                continue;
+              }
 
-            if (brandAjax && needsPaginate && allItems.length < maxProducts && !scraperAbort) {
-              await paginateStream(brandAjax, [], () => {});
-            }
+              if (meta.url && meta.url !== meta.candidates[0]) {
+                slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${meta.url})`, 'info');
+              }
 
-            // Last-resort marka:NN fallback for the residual gap (e.g. CF
-            // ate the brand page fetch, or the brand page legitimately has
-            // no separate kid). Only fires when paginate could not run and
-            // the brand still looks under-covered.
-            const gainedNow = allItems.length - beforeOne;
-            if (brandFilterValue && ajax && needsPaginate && !brandAjax && gainedNow < brandCount) {
-              try { await paginateStream(ajax, [brandFilterValue], () => {}); } catch {}
-            }
+              // (1) Inline first-page links from the light=1 meta response.
+              gained += pushItems(itemsFromData(meta.data));
 
-            const gained = allItems.length - beforeOne;
-            slog(
-              `    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}${gained ? '' : ' (zaten kapsandı)'}`,
-              gained ? 'success' : 'info'
-            );
-          }
+              const needsPaginate = brandCount > 0 && gained < brandCount;
+              if (needsPaginate && allItems.length < maxProducts && !scraperAbort) {
+                // (2) FAST PATH — parent ajax + marka:NN filter, plainPost
+                //     in parallel through /listing-ajax-batch?light=1. No
+                //     browser lock, parallel-safe across workers.
+                if (filterValue && ajax) {
+                  try {
+                    gained += await paginateStream(ajax, [filterValue], () => {});
+                  } catch { /* fall through to brand-URL fallback */ }
+                }
+                // (3) SLOW PATH fallback — only when marka:NN is unavailable
+                //     (featured-brand entries) or under-covers. Browser-
+                //     locked, so it serialises across workers, but in
+                //     practice it fires for ≤ 1-2 brands per category.
+                if (gained < Math.max(1, brandCount * 0.5) && meta.url && !scraperAbort && allItems.length < maxProducts) {
+                  try {
+                    const fullData = await fetchLinks(meta.url || meta.candidates[0], { light: false });
+                    if (isGoodBrandAjax(fullData?.ajax)) {
+                      gained += pushItems(itemsFromData(fullData));
+                      if (allItems.length < maxProducts && !scraperAbort) {
+                        gained += await paginateStream(fullData.ajax, [], () => {});
+                      }
+                    }
+                  } catch { /* coverage warn will surface any residual gap */ }
+                }
+              }
+
+              slog(
+                `    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}${gained ? '' : ' (zaten kapsandı)'}`,
+                gained ? 'success' : 'info'
+              );
+            }
+          };
+          await Promise.all(Array.from({ length: BRAND_CONCURRENCY }, runBrandWorker));
+
           const brandGained = allItems.length - beforeBrand;
           slog(`  ✓ Marka partisyonu bitti: +${brandGained} yeni URL (kümülatif ${allItems.length})`, brandGained ? 'success' : 'warn');
         }
