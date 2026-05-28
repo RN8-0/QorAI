@@ -598,6 +598,10 @@ function plainPost(url, formObj, referer = '') {
         'Accept-Encoding': 'gzip, deflate, br',
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest',
+        'Origin': 'https://www.epey.com',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
         'Content-Length': Buffer.byteLength(body),
         ...(referer ? { 'Referer': referer } : {}),
         ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
@@ -1847,7 +1851,15 @@ const server = http.createServer(async (req, res) => {
         // leave the local page elsewhere). Later pages reuse the document.
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-        if (reset || !onEpey) await fetchWithPuppeteer(base);
+        let baseChanged = false;
+        try {
+          const cur = new URL(page.url());
+          const target = new URL(base);
+          const curPath = cur.pathname.replace(/\/+$/, '');
+          const targetPath = target.pathname.replace(/\/+$/, '');
+          baseChanged = cur.origin !== target.origin || curPath !== targetPath;
+        } catch {}
+        if (reset || !onEpey || baseChanged) await fetchWithPuppeteer(base);
         return await page.evaluate(async (kidV, limitV, sayfaV, cerezV, filterVals) => {
           try {
             const body = new URLSearchParams();
@@ -1972,7 +1984,15 @@ const server = http.createServer(async (req, res) => {
           const page = await getPage();
           let onEpey = false;
           try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-          if (reset || !onEpey) await fetchWithPuppeteer(base);
+          let baseChanged = false;
+          try {
+            const cur = new URL(page.url());
+            const target = new URL(base);
+            const curPath = cur.pathname.replace(/\/+$/, '');
+            const targetPath = target.pathname.replace(/\/+$/, '');
+            baseChanged = cur.origin !== target.origin || curPath !== targetPath;
+          } catch {}
+          if (reset || !onEpey || baseChanged) await fetchWithPuppeteer(base);
           return await page.evaluate(async (kidV, limitV, pagesArr, cerezV, filterVals) => {
             const doOne = async (pageNo) => {
               try {

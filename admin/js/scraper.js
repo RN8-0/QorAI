@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-decoupled-scrape-translate';
+const SCRAPER_BUILD = '20260528-decoupled-fast-brand-filter';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -5482,8 +5482,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // the next URL fetch. Translation continues running after scrape ends
   // and drains the queue before sequentialScrape() returns. This is the
   // "scrape and translate in parallel" mode the user explicitly asked for.
-  const TRANSLATE_CONCURRENCY = 2;
-  const TRANSLATE_QUEUE_SOFT_CAP = 64;
+  const TRANSLATE_CONCURRENCY = 3;
+  const TRANSLATE_QUEUE_SOFT_CAP = 50000;
   const translationQueue = [];
   let translationDrainSignal = false;
   let translationActive = 0;
@@ -5493,10 +5493,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   const translatePipelineStart = Date.now();
 
   const enqueueTranslation = async (job) => {
-    // Soft backpressure: if translate workers are far behind, slow scrape
-    // down a bit so we don't accumulate gigabytes of pending products in
-    // memory on a 5k-URL run. Scrape workers still keep moving at the
-    // translate-pool's drain rate.
+    // Effectively unbounded for our catalog sizes: scrape workers must not
+    // wait for translation/PB writes. Translation drains in the background.
     while (translationQueue.length >= TRANSLATE_QUEUE_SOFT_CAP && !scraperAbort) {
       await sleep(250);
     }
@@ -5636,7 +5634,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // Hand off to the background translation+save pool. Scrape worker
       // returns immediately and picks up the next URL.
       const label = product.name || clean.name || clean.slug;
-      slog(`  ⇢ Kuyrukta: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'info');
+      if (index < 20 || productNum % 25 === 0) {
+        slog(`  ⇢ Kuyrukta: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'info');
+      }
       await enqueueTranslation({ item, clean, label, mergeKey });
       errorStreak = 0;
       recent.push('ok');
@@ -5710,6 +5710,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
   await Promise.all(workers);
+  const scrapeElapsedSec = Math.max(0.001, (Date.now() - translatePipelineStart) / 1000);
 
   // Drain the translation+save queue. Scrape workers have stopped feeding
   // jobs, so this is the bounded tail: queue length + active translations.
@@ -5741,11 +5742,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   translationDrainSignal = true;
   await Promise.all(translateWorkers);
   const totalElapsed = (Date.now() - translatePipelineStart) / 1000;
-  const finalScrapeRate = completed > 0 ? (completed * 100 / Math.max(0.001, totalElapsed)).toFixed(0) : '?';
-  const finalTrRate = translationCompleted > 0 ? (translationCompleted * 100 / Math.max(0.001, totalElapsed)).toFixed(0) : '?';
+  const finalScrapePer100 = completed > 0 ? (scrapeElapsedSec * 100 / Math.max(1, completed)).toFixed(0) : '?';
+  const finalTrPer100 = translationCompleted > 0 ? (totalElapsed * 100 / Math.max(1, translationCompleted)).toFixed(0) : '?';
   slog(
     `📊 Pipeline özet: ${completed} scrape, ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
-    `100 ürün scrape≈${finalScrapeRate}s · 100 ürün çeviri+kayıt≈${finalTrRate}s · toplam ${totalElapsed.toFixed(0)}s`,
+    `100 ürün scrape≈${finalScrapePer100}s · 100 ürün çeviri+kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
     'success'
   );
 
@@ -6608,7 +6609,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   // back transparently to the in-browser fetch path if any response carries
   // a CF challenge or is empty.
   const PAGINATE_BATCH = 12;
-  const fetchAjaxPagesBatch = async (ajax, pageNumbers, filterValues = []) => {
+  const fetchAjaxPagesBatch = async (ajax, pageNumbers, filterValues = [], resetFilters = false) => {
     let qs = `kid=${encodeURIComponent(ajax.kategoriId)}` +
       `&limit=${encodeURIComponent(ajax.limit)}` +
       `&pages=${encodeURIComponent(pageNumbers.join(','))}` +
@@ -6617,7 +6618,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       `&light=1`;
     if (ajax.cerez) qs += `&cerez=${encodeURIComponent(ajax.cerez)}`;
     for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
-    if (filterValues && filterValues.length) qs += `&reset=1`;
+    if (filterValues && filterValues.length && resetFilters) qs += `&reset=1`;
     const res = await fetch(`${PROXY_URL}/listing-ajax-batch?${qs}`, { signal: AbortSignal.timeout(60000) });
     return res.ok ? await res.json() : null;
   };
@@ -6630,7 +6631,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
   // tally. Critical for the parallel brand worker pool below: multiple
   // streams run concurrently and mutate `allItems`, so a length-based delta
   // would attribute other brands' contributions to this stream.
-  const paginateStream = async (ajax, filterValues, onPage) => {
+  const paginateStream = async (ajax, filterValues, onPage, acceptUrl = null) => {
     const pageSize = Number(ajax.limit) || 31;
     let localAdded = 0;
     let emptyStreak = 0;
@@ -6638,6 +6639,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     const maxEmptyStreak = filterValues && filterValues.length ? 5 : 4;
     let nextPage = 1;
     const HARD_PAGE_CAP = 500;
+    let resetFilters = !!(filterValues && filterValues.length);
     while (nextPage <= HARD_PAGE_CAP && allItems.length < maxProducts && !scraperAbort) {
       const batchPages = [];
       for (let i = 0; i < PAGINATE_BATCH && nextPage + i <= HARD_PAGE_CAP; i++) {
@@ -6646,8 +6648,13 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       let batchResp = null;
       for (let attempt = 1; attempt <= 3 && !scraperAbort; attempt++) {
         try {
-          batchResp = await fetchAjaxPagesBatch(ajax, batchPages, filterValues);
-          if (batchResp && Array.isArray(batchResp.pages)) break;
+          const shouldReset = resetFilters;
+          batchResp = await fetchAjaxPagesBatch(ajax, batchPages, filterValues, shouldReset);
+          if (batchResp && Array.isArray(batchResp.pages)) {
+            resetFilters = false;
+            break;
+          }
+          if (batchResp) resetFilters = false;
           if (attempt < 3) await sleep(1500 * attempt);
         } catch (e) {
           if (attempt >= 3) {
@@ -6667,12 +6674,14 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           continue;
         }
         transientStreak = 0;
-        const added = pushItems(Array.isArray(p.links) ? p.links.map(u => ({ url: u, techScore: null })) : []);
+        const rawLinks = Array.isArray(p.links) ? p.links : [];
+        const acceptedLinks = typeof acceptUrl === 'function' ? rawLinks.filter(acceptUrl) : rawLinks;
+        const added = pushItems(acceptedLinks.map(u => ({ url: u, techScore: null })));
         localAdded += added;
         if (typeof onPage === 'function') onPage(p.page, added, allItems.length);
         if (added === 0) { if (++emptyStreak >= maxEmptyStreak) { lastPageHit = true; break; } }
         else emptyStreak = 0;
-        const returnedCount = Number(p?.count) || 0;
+        const returnedCount = Number(p?.count) || rawLinks.length || 0;
         if (returnedCount > 0 && returnedCount < pageSize) { lastPageHit = true; break; }
       }
       if (transientStreak >= 25) {
@@ -6851,10 +6860,51 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             }
             return list;
           };
+          const makeBrandUrlPredicate = (b) => {
+            const tokens = new Set();
+            const addToken = (value) => {
+              let raw = String(value || '').trim();
+              try {
+                if (/^https?:\/\//i.test(raw)) {
+                  const parts = new URL(raw).pathname.split('/').filter(Boolean);
+                  raw = parts[parts.length - 1] || raw;
+                } else if (raw.includes('/')) {
+                  const parts = raw.split('/').filter(Boolean);
+                  raw = parts[parts.length - 1] || raw;
+                }
+              } catch {}
+              let token = normalizeCategoryToken(raw);
+              token = token.replace(/-mobile$/i, '').replace(/-cep-telefonu$/i, '').replace(/-telefon$/i, '');
+              if (token && token.length >= 2) tokens.add(token);
+            };
+            if (typeof b === 'string') addToken(b);
+            else {
+              addToken(b?.name);
+              addToken(b?.value);
+              addToken(b?.url);
+              if (Array.isArray(b?.candidateUrls)) for (const u of b.candidateUrls) addToken(u);
+            }
+            const nameToken = typeof b === 'object' ? normalizeCategoryToken(b?.name) : normalizeCategoryToken(b);
+            if (nameToken === 'xiaomi') tokens.add('redmi');
+            if (nameToken === 'zte') tokens.add('nubia');
+            if (nameToken === 'motorola') { tokens.add('moto'); tokens.add('lenovo-moto'); }
+            if (nameToken === 'preo') tokens.add('teknosa-preo');
+            if (nameToken === 'tp-link') tokens.add('neffos');
+            if (nameToken === 'nothing') tokens.add('cmf');
+            return (url) => {
+              const slug = slugFromUrl(url);
+              if (!slug || tokens.size === 0) return true;
+              for (const token of tokens) {
+                if (slug === token || slug.startsWith(`${token}-`)) return true;
+              }
+              return false;
+            };
+          };
 
-          // Phase A — fetch every brand's first page in parallel (light=1).
-          // Workers are bounded so we don't overwhelm sessionCookies / the
-          // remote host. Each worker tries every URL candidate.
+          // Phase A — fetch every brand route first. The route's own cerez
+          // is the reliable pagination key; the parent `marka:NN` AJAX can
+          // drop the brand after page 1 on Epey. Every collected URL is still
+          // checked against the brand slug guard below.
           // Bumped 4→8: light=1 is parallel-safe (plainFetch with warmed
           // cookies, no browser lock) so we can saturate the network.
           const META_CONCURRENCY = 8;
@@ -6908,12 +6958,6 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
           // so concurrent invocations report accurate per-brand gain even
           // though they share `allItems`/`seen` under the hood.
           const BRAND_CONCURRENCY = 6;
-          const parentKid = ajax?.kategoriId ? String(ajax.kategoriId) : '';
-          const isGoodBrandAjax = (a) => {
-            if (!a || !a.kategoriId) return false;
-            if (!parentKid) return true;
-            return String(a.kategoriId) !== parentKid;
-          };
           let brandCursor = 0;
           const runBrandWorker = async () => {
             while (true) {
@@ -6928,6 +6972,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               const filterValue = typeof b === 'object'
                 ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
                 : '';
+              const acceptBrandUrl = makeBrandUrlPredicate(b);
               let gained = 0;
 
               if (meta.error === 'no-url') {
@@ -6940,7 +6985,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
                 // light=1 meta failed; recover with marka:NN filter if available.
                 if (filterValue && ajax) {
                   try {
-                    gained += await paginateStream(ajax, [filterValue], () => {});
+                    gained += await paginateStream(ajax, [filterValue], () => {}, acceptBrandUrl);
                     if (gained > 0) {
                       slog(`    ↳ ${brandName} (~${brandCount}): marka filtresiyle kurtarıldı +${gained} → toplam ${allItems.length}`, 'success');
                       continue;
@@ -6956,31 +7001,24 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               }
 
               // (1) Inline first-page links from the light=1 meta response.
-              gained += pushItems(itemsFromData(meta.data));
+              gained += pushItems(itemsFromData(meta.data).filter(item => acceptBrandUrl(item.url)));
 
               const needsPaginate = brandCount > 0 && gained < brandCount;
               if (needsPaginate && allItems.length < maxProducts && !scraperAbort) {
-                // (2) FAST PATH — parent ajax + marka:NN filter, plainPost
-                //     in parallel through /listing-ajax-batch?light=1. No
-                //     browser lock, parallel-safe across workers.
-                if (filterValue && ajax) {
+                // (2) FAST PATH — the dedicated brand URL exposes its own
+                //     cerez/base pair. This is the reliable source; the
+                //     parent marka:NN filter can drop the brand after page 1.
+                const brandAjax = meta.data?.ajax && meta.data.ajax.kategoriId ? meta.data.ajax : null;
+                if (brandAjax) {
                   try {
-                    gained += await paginateStream(ajax, [filterValue], () => {});
-                  } catch { /* fall through to brand-URL fallback */ }
+                    gained += await paginateStream(brandAjax, [], () => {}, acceptBrandUrl);
+                  } catch { /* fall through to parent filter fallback */ }
                 }
-                // (3) SLOW PATH fallback — only when marka:NN is unavailable
-                //     (featured-brand entries) or under-covers. Browser-
-                //     locked, so it serialises across workers, but in
-                //     practice it fires for ≤ 1-2 brands per category.
-                if (gained < Math.max(1, brandCount * 0.5) && meta.url && !scraperAbort && allItems.length < maxProducts) {
+                // (3) Parent marka:NN fallback can rescue odd URLs, but every
+                //     returned URL still passes the brand slug guard above.
+                if (filterValue && ajax && gained < Math.max(1, brandCount * 0.85) && !scraperAbort && allItems.length < maxProducts) {
                   try {
-                    const fullData = await fetchLinks(meta.url || meta.candidates[0], { light: false });
-                    if (isGoodBrandAjax(fullData?.ajax)) {
-                      gained += pushItems(itemsFromData(fullData));
-                      if (allItems.length < maxProducts && !scraperAbort) {
-                        gained += await paginateStream(fullData.ajax, [], () => {});
-                      }
-                    }
+                    gained += await paginateStream(ajax, [filterValue], () => {}, acceptBrandUrl);
                   } catch { /* coverage warn will surface any residual gap */ }
                 }
               }
