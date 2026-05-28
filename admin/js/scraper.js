@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-pb-retry-drain-safe-browser';
+const SCRAPER_BUILD = '20260528-epey-pb-timeout-quiet-retry';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -28,9 +28,10 @@ const SCRAPER_LOG_MAX_LINES = 900;
 // pipeline fast enough without piling 20+ large PocketBase writes at once.
 const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
 const EPEY_DETAIL_CONCURRENCY_MAX = 10;
-const EPEY_PB_WRITE_CONCURRENCY = 2;
+const EPEY_PB_WRITE_CONCURRENCY = 1;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
+const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
 const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
 let scraperRunning = false;
@@ -5133,11 +5134,44 @@ function _pbRetryDelay(attempt, options = {}) {
   return Math.min(base * Math.pow(2, Math.max(0, attempt - 1)), max) + Math.random() * jitter;
 }
 
+async function _pbSetDocWithTimeout(collection, id, data, timeoutMs = EPEY_PB_WRITE_TIMEOUT_MS) {
+  const ms = Math.max(0, Number(timeoutMs || 0));
+  if (!ms || typeof AbortController === 'undefined') return pbSetDoc(collection, id, data);
+  const ac = new AbortController();
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      try { ac.abort(); } catch (_) {}
+      const err = new Error(`PB write timeout after ${(ms / 1000).toFixed(0)}s`);
+      err.status = 408;
+      reject(err);
+    }, ms);
+  });
+  const writePromise = pbSetDoc(collection, id, data, { signal: ac.signal })
+    .catch((e) => {
+      if (ac.signal?.aborted) {
+        const err = new Error(`PB write timeout after ${(ms / 1000).toFixed(0)}s`);
+        err.status = 408;
+        err.cause = e;
+        throw err;
+      }
+      throw e;
+    });
+  writePromise.catch(() => {});
+  try {
+    return await Promise.race([writePromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function _saveProductWithRetry(clean, label = '', options = {}) {
   const id = clean.sourceUrl || clean.slug || clean.id;
   const title = String(label || clean.name || clean.slug || id || '').slice(0, 120);
   const retries = Math.max(1, parseInt(options.retries, 10) || EPEY_PB_SAVE_RETRIES);
   const logPrefix = options.logPrefix || 'PB save retry';
+  const logRetries = options.logRetries === true;
+  const timeoutMs = Math.max(10000, Number(options.timeoutMs || EPEY_PB_WRITE_TIMEOUT_MS));
   let lastError = null;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -5145,12 +5179,12 @@ async function _saveProductWithRetry(clean, label = '', options = {}) {
       // Important: acquire the PB write slot for the actual write only.
       // Backoff sleeps happen outside the limiter, otherwise two transient
       // failures can block the whole scrape pipeline for minutes.
-      return await _epeyPbWriteLimit(() => pbSetDoc('products', id, clean));
+      return await _epeyPbWriteLimit(() => _pbSetDocWithTimeout('products', id, clean, timeoutMs));
     } catch (e) {
       lastError = e;
       if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= retries) break;
       const delay = _pbRetryDelay(attempt, options);
-      slog(`  ↻ ${logPrefix} ${attempt}/${retries}: ${title} — ${_formatPocketBaseError(e)}`, 'warn');
+      if (logRetries) slog(`  ↻ ${logPrefix} ${attempt}/${retries}: ${title} — ${_formatPocketBaseError(e)}`, 'warn');
       await sleep(delay);
     }
   }

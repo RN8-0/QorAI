@@ -43,14 +43,20 @@ async function pbEnsureAuth() {
   throw new Error('Admin authentication required');
 }
 
-async function _findRecord(collection, identifier, data = {}) {
+function _pbRequestOptions(options = {}) {
+  const out = { $autoCancel: false };
+  if (options.signal) out.signal = options.signal;
+  return out;
+}
+
+async function _findRecord(collection, identifier, data = {}, options = {}) {
   collection = _resolveCollection(collection);
   const id = String(identifier || '').trim();
   const filters = [];
 
   if (_isPocketBaseRecordId(id)) {
     try {
-      return await getPb().collection(collection).getOne(id, { $autoCancel: false });
+      return await getPb().collection(collection).getOne(id, _pbRequestOptions(options));
     } catch (e) {
       if (e.status !== 404) throw e;
     }
@@ -85,7 +91,7 @@ async function _findRecord(collection, identifier, data = {}) {
 
   const result = await getPb().collection(collection).getList(1, 1, {
     filter: filters.join(' || '),
-    $autoCancel: false
+    ..._pbRequestOptions(options),
   });
   return result.items[0] || null;
 }
@@ -125,13 +131,13 @@ async function pbGetDoc(collection, id) {
 }
 
 // Upsert doc by ID (set with merge)
-async function pbSetDoc(collection, id, data) {
+async function pbSetDoc(collection, id, data, options = {}) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
   const clean = _clean(data);
   let existing;
   try {
-    existing = await _findRecord(collection, id, clean);
+    existing = await _findRecord(collection, id, clean, options);
   } catch (e) {
     console.error('[pbSetDoc] _findRecord failed:', { collection, id, error: e.message, status: e.status, data: e.data });
     throw e;
@@ -139,7 +145,7 @@ async function pbSetDoc(collection, id, data) {
   let record;
   try {
     if (existing) {
-      record = await getPb().collection(collection).update(existing.id, clean, { $autoCancel: false });
+      record = await getPb().collection(collection).update(existing.id, clean, _pbRequestOptions(options));
     } else {
       const createData = _prepareCreateData(collection, id, clean);
       // New product: flag it as the variant-group primary unless its family
@@ -149,7 +155,7 @@ async function pbSetDoc(collection, id, data) {
         try {
           const fam = await getPb().collection('products').getList(1, 1, {
             filter: `variantGroup = "${_escapeFilterValue(createData.variantGroup)}" && category = "${_escapeFilterValue(createData.category || '')}" && variantPrimary = true`,
-            $autoCancel: false, fields: 'id',
+            ..._pbRequestOptions(options), fields: 'id',
           });
           createData.variantPrimary = !(fam.items && fam.items.length);
         } catch (_) {
@@ -157,7 +163,7 @@ async function pbSetDoc(collection, id, data) {
         }
         if (createData.variantPrimary && createData.variantCount === undefined) createData.variantCount = 1;
       }
-      record = await getPb().collection(collection).create(createData, { $autoCancel: false });
+      record = await getPb().collection(collection).create(createData, _pbRequestOptions(options));
     }
   } catch (e) {
     // Log full error details for debugging
