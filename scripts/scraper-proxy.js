@@ -1685,9 +1685,19 @@ const server = http.createServer(async (req, res) => {
       // and parallel-safe (no shared browser state). Falls through to the
       // full puppeteer/FlareSolverr path automatically when plainFetch fails
       // (challenge / 403 / empty body).
+      //
+      // NOTE: Epey injects the brand-specific `kategori_id` via JavaScript at
+      // runtime, so light-mode responses on brand pages return inline product
+      // links but NO paginate handle (`ajax: null`). That is by design — the
+      // client (admin/js/scraper.js) uses the inline links as a fast first
+      // pass and selectively retries with `light=0` for brands whose inline
+      // count is below `brandCount` (i.e. brands that need paginate). This
+      // keeps single-page brands on the fast path while big brands still get
+      // proper brand-specific pagination via the puppeteer fallback.
       const wantLight = urlObj.searchParams.get('light') === '1';
       console.log(`  🔗 Category links: ${targetUrl}${wantLight ? ' (light)' : ''}`);
       let result = null;
+      let fetchEngine = 'puppeteer';
 
       {
         const t0 = Date.now();
@@ -1697,6 +1707,7 @@ const server = http.createServer(async (req, res) => {
             const lightRes = await plainFetch(targetUrl);
             if (lightRes.html && lightRes.status >= 200 && lightRes.status < 400 && !_isChallengeContent(lightRes.html)) {
               html = lightRes.html;
+              fetchEngine = 'plain';
             }
           } catch { /* fall through to puppeteer path */ }
         }
@@ -1724,7 +1735,7 @@ const server = http.createServer(async (req, res) => {
         const brandFilter = extractBrandFilter(html, prefix);
         const featuredBrandFilter = extractFeaturedBrandPages(html, prefix);
         const bestBrandFilter = brandFilter || featuredBrandFilter;
-        console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s): ${links.length} on p1` +
+        console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s · ${fetchEngine}): ${links.length} on p1` +
           `${filter ? ` · filter group ${filter.groupId} (~${filter.total} ürün)` : ' · no partition filter'}` +
           `${filtersTopK.length > 1 ? ` · +${filtersTopK.length - 1} fallback filter groups` : ''}` +
           `${bestBrandFilter ? ` · brand partitions ${bestBrandFilter.values.length} (~${bestBrandFilter.total} ürün)` : ''}` +

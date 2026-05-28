@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-parallel-brand-meta-light';
+const SCRAPER_BUILD = '20260528-epey-brand-meta-selective-retry';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6771,9 +6771,14 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             }
           }));
 
-          // Phase B — process metadata sequentially. Pagination still uses
-          // the proxy browser lock, but most brands fit in one page (Epey
-          // returns 31 products per call) so they are zero-cost.
+          // Phase B — process metadata sequentially. For brands whose
+          // light=1 first page already exposes every product (small brands,
+          // ~80 % of the partition list) we are done. For brands that
+          // need paginate we re-fetch with light=0 to obtain the
+          // JS-injected brand-specific `kategori_id`, then drive the
+          // brand-AJAX stream. Pagination + the heavy fetch both still
+          // serialise on the proxy browser lock, but only the brands that
+          // genuinely need them pay the cost.
           for (let bi = 0; bi < brandMetas.length; bi++) {
             if (allItems.length >= maxProducts || scraperAbort) break;
             const meta = brandMetas[bi];
@@ -6811,19 +6816,46 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             if (meta.url && meta.url !== meta.candidates[0]) {
               slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${meta.url})`, 'info');
             }
-            const brandData = meta.data;
-            const brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
+            let brandData = meta.data;
+            let brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
             const inlineItems = itemsFromData(brandData);
-            // Push the inline first-page links so we don't miss them.
+            // Push the inline first-page links so we don't miss them even
+            // if the upcoming pagination fails.
             pushItems(inlineItems);
-            // Skip pagination when the brand fit in one page — saves a
-            // proxy round-trip and a browser-lock wait per single-page
-            // brand (typically ≥ 80 % of the partition list).
-            const pageSize = Number(brandAjax?.limit) || 31;
-            const needsMorePages = brandAjax && inlineItems.length >= pageSize;
-            if (needsMorePages && allItems.length < maxProducts && !scraperAbort) {
+
+            // Re-fetch with light=0 ONLY when the brand has more products
+            // than the inline first page exposed AND we don't already have
+            // a valid paginate handle. Epey injects the brand-specific
+            // kategori_id via JavaScript on brand pages, so the plain HTTPS
+            // response (light=1) often returns inline links with `ajax: null`.
+            // The puppeteer fallback (light=0) executes JS and returns the
+            // injected handle so paginateStream can walk every brand page.
+            const inlineCount = inlineItems.length;
+            const needsPaginate = brandCount > 0 && inlineCount < brandCount;
+            if (needsPaginate && !brandAjax) {
+              try {
+                const fullData = await fetchLinks(meta.url || meta.candidates[0], { light: false });
+                if (fullData?.ajax?.kategoriId) {
+                  brandData = fullData;
+                  brandAjax = fullData.ajax;
+                  // Push any additional inline links the rendered page exposed.
+                  pushItems(itemsFromData(fullData));
+                }
+              } catch { /* fall through — brand-filter fallback below covers it */ }
+            }
+
+            if (brandAjax && needsPaginate && allItems.length < maxProducts && !scraperAbort) {
               await paginateStream(brandAjax, [], () => {});
             }
+
+            // Last-resort marka:NN fallback for the residual gap (e.g. CF
+            // ate the brand page fetch). Only fires when paginate could
+            // not run and the brand still looks under-covered.
+            const gainedNow = allItems.length - beforeOne;
+            if (brandFilterValue && ajax && needsPaginate && !brandAjax && gainedNow < brandCount) {
+              try { await paginateStream(ajax, [brandFilterValue], () => {}); } catch {}
+            }
+
             const gained = allItems.length - beforeOne;
             slog(
               `    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}${gained ? '' : ' (zaten kapsandı)'}`,
