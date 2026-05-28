@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-translate-pb-pipeline';
+const SCRAPER_BUILD = '20260528-translate-batch-pb-throttle';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -37,11 +37,12 @@ const EPEY_PB_WRITE_CONCURRENCY = 2;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
-const EPEY_TRANSLATE_CONCURRENCY = 4;
-const EPEY_TRANSLATE_SAVE_RETRIES = 1;
-const EPEY_TRANSLATE_SAVE_TIMEOUT_MS = 22000;
-const EPEY_TRANSLATE_DEFER_BASE_MS = 5000;
-const EPEY_TRANSLATE_DEFER_MAX_MS = 45000;
+const EPEY_TRANSLATE_CONCURRENCY = 2;
+const EPEY_TRANSLATE_PRODUCT_BATCH_SIZE = 8;
+const EPEY_TRANSLATE_SAVE_RETRIES = 3;
+const EPEY_TRANSLATE_SAVE_TIMEOUT_MS = 45000;
+const EPEY_TRANSLATE_DEFER_BASE_MS = 4000;
+const EPEY_TRANSLATE_DEFER_MAX_MS = 30000;
 const EPEY_TRANSLATE_DEFER_MAX_ATTEMPTS = 10;
 const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
@@ -1737,31 +1738,35 @@ function BufferLikeJsonSize(value) {
 }
 
 async function _mergeActiveDeDictFromPocketBase() {
-  const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
-  let merged = 0;
-  if (doc.exists) {
-    const stored = _dictDocValue(doc);
-    if (!stored?.sharded) merged += _mergeDictObject(stored);
+  try {
+    const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
+    let merged = 0;
+    if (doc.exists) {
+      const stored = _dictDocValue(doc);
+      if (!stored?.sharded) merged += _mergeDictObject(stored);
+    }
+
+    const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
+    if (!manifestDoc.exists) return merged;
+    const manifest = _dictDocValue(manifestDoc);
+    const batchId = manifest?.batchId || '';
+    if (!manifest?.sharded || !batchId) return merged;
+
+    const docs = await pbGetAll('public_config', {
+      filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
+      fields: 'key,value',
+      batch: 200,
+    }).catch(() => []);
+
+    for (const doc of docs.sort((a, b) => String(a.data().key || '').localeCompare(String(b.data().key || '')))) {
+      const value = _dictDocValue(doc);
+      if (value?.batchId !== batchId) continue;
+      merged += _mergeDictObject(value.terms || {});
+    }
+    return merged;
+  } finally {
+    _deDictLastRemoteMergeAt = Date.now();
   }
-
-  const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
-  if (!manifestDoc.exists) return merged;
-  const manifest = _dictDocValue(manifestDoc);
-  const batchId = manifest?.batchId || '';
-  if (!manifest?.sharded || !batchId) return merged;
-
-  const docs = await pbGetAll('public_config', {
-    filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
-    fields: 'key,value',
-    batch: 200,
-  }).catch(() => []);
-
-  for (const doc of docs.sort((a, b) => String(a.data().key || '').localeCompare(String(b.data().key || '')))) {
-    const value = _dictDocValue(doc);
-    if (value?.batchId !== batchId) continue;
-    merged += _mergeDictObject(value.terms || {});
-  }
-  return merged;
 }
 
 function _seedStaticEnglishDict() {
@@ -1802,10 +1807,12 @@ async function _loadDeDict() {
 // Throttle dict saves: each save uploads the entire sharded dict to
 // PocketBase (~9k entries, multi-MB). Previously we did this on every
 // product scrape => 5-15s per product. Now we coalesce dirty saves and
-// only actually upload if the last upload was >30s ago. The bulk-scrape
+// only upload during long runs every couple of minutes. The bulk-scrape
 // path calls _flushDeDictBeforeExit() at the end to guarantee final save.
 let _deDictLastSavedAt = 0;
-const _DE_DICT_SAVE_MIN_INTERVAL_MS = 30000;
+const _DE_DICT_SAVE_MIN_INTERVAL_MS = 120000;
+const _DE_DICT_REMOTE_MERGE_INTERVAL_MS = 10 * 60 * 1000;
+let _deDictLastRemoteMergeAt = 0;
 let _deDictPendingSave = null;
 async function _flushDeDictBeforeExit() {
   if (_deDictPendingSave) clearTimeout(_deDictPendingSave);
@@ -1846,7 +1853,9 @@ async function _saveDeDictNow() {
         // The Dictionary tab may render a static fallback while PB is slow; a
         // Stop/Save from that state used to overwrite the full remote dict.
         await _loadDeDict();
-        await _mergeActiveDeDictFromPocketBase();
+        if (!_deDictLastRemoteMergeAt || Date.now() - _deDictLastRemoteMergeAt > _DE_DICT_REMOTE_MERGE_INTERVAL_MS) {
+          await _mergeActiveDeDictFromPocketBase();
+        }
         const snapshot = JSON.parse(JSON.stringify(_deDictCache));
         const shards = _buildDictShards(snapshot);
         const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -4429,15 +4438,131 @@ async function _translateProductInline(product) {
       product.nameTranslated = { ...(product.nameTranslated || {}), tr: product.nameTranslated?.tr || trName };
     }
     _sanitizeEnglishPayload(product);
-    // Persist the (possibly grown) dictionary lazily — _saveDeDict is throttled.
-    _deDictDirty = true;
-    await _saveDeDict().catch(() => {});
+    // Persist only when this product actually grew the dictionary. Forcing
+    // dirty on cache hits made long scrapes upload the multi-MB dict every
+    // throttle window and starved product writes in PocketBase.
+    if (_deDictDirty) await _saveDeDict().catch(() => {});
     xlog(`✓ ${productLabel} — çeviri payload hazır · toplam ${((Date.now() - startedAt) / 1000).toFixed(1)}s · dict ${Object.keys(_deDictCache).length}`, 'success');
   } catch (e) {
     xlog(`✗ ${productLabel} — error: ${e.message}`, 'error');
     slog(`  ⚠ inline translate error: ${e.message}`, 'warn');
   }
   return product;
+}
+
+async function _translateProductsInlineBatch(jobs) {
+  const batch = (jobs || []).filter(j => j && j.clean);
+  if (!batch.length) return batch;
+  const translatable = batch.filter(j => _isEpeyTranslateProduct(j.clean));
+  if (!translatable.length) return batch;
+
+  const label = translatable.length === 1
+    ? String(translatable[0].label || translatable[0].clean?.name || '?').slice(0, 60)
+    : `${translatable.length} ürün`;
+
+  const applyPayload = (job, translationSource) => {
+    const product = job.clean;
+    const productLabel = String(job.label || product.name || product.slug || '?').slice(0, 60);
+    const payload = _buildProductTranslations(translationSource, TARGET_LANGS);
+    if (payload && typeof payload === 'object') {
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), ...(payload.multiLangSpecs || {}) };
+      product.multiLangSections = { ...(product.multiLangSections || {}), ...(payload.multiLangSections || {}) };
+      product.nameTranslated = { ...(product.nameTranslated || {}), ...(payload.nameTranslated || {}) };
+    }
+    if (String(product.sourceLang || '').toLowerCase() === 'tr') {
+      const trSpecs = product.sourceSpecs && typeof product.sourceSpecs === 'object' ? product.sourceSpecs : translationSource.specs;
+      const trSections = product.sourceSpecSections && typeof product.sourceSpecSections === 'object' ? product.sourceSpecSections : translationSource.specSections;
+      const trName = String(product.sourceName || translationSource.name || product.name || productLabel).trim();
+      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), tr: trSpecs || {} };
+      product.multiLangSections = { ...(product.multiLangSections || {}), tr: trSections || {} };
+      product.nameTranslated = { ...(product.nameTranslated || {}), tr: product.nameTranslated?.tr || trName };
+    }
+    _sanitizeEnglishPayload(product);
+  };
+
+  try {
+    const startedAt = Date.now();
+    xlog(`▶ Batch çeviri — ${label} · sözlük yükleniyor`, 'info');
+    await _loadDeDict();
+
+    const sink = new Set();
+    const sources = new Map();
+    for (const job of translatable) {
+      const source = _translationSourceProduct(job.clean);
+      sources.set(job, source);
+      _collectAtomsFromProduct(source, sink);
+    }
+
+    const unique = [...sink].filter(_shouldTranslateAtom);
+    let missing = unique.filter(
+      t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
+        TARGET_LANGS.some(l => !_deDictLookup(t, l))
+    );
+
+    const sharedWaits = [...new Set(
+      missing
+        .map(t => _deDictInflight.get(_normalizeDictSourceKey(t)))
+        .filter(Boolean)
+    )];
+    if (sharedWaits.length) {
+      xlog(`  · batch ${sharedWaits.length} mevcut çeviri işini bekliyor`, 'info');
+      await Promise.allSettled(sharedWaits);
+      missing = unique.filter(
+        t => !_deDictFailedThisRun.has(_normalizeDictSourceKey(t)) &&
+          TARGET_LANGS.some(l => !_deDictLookup(t, l))
+      );
+    }
+
+    const cached = unique.length - missing.length;
+    if (missing.length === 0) {
+      xlog(`✓ Batch çeviri — ${label} · ${cached} atom dict cache (0 API)`, 'success');
+    } else {
+      xlog(`⟳ Batch çeviri — ${label} · ${cached}/${unique.length} cached, ${missing.length} yeni atom`, 'info');
+      const t0 = Date.now();
+      const translatePromise = _deepSeekAllLangsBatch(missing, TARGET_LANGS, (ev) => {
+        const provider = ev.provider === 'local-nllb' ? 'GPU Argos' : 'DeepSeek';
+        if (ev.phase === 'start' && ev.provider === 'local-nllb') {
+          xlog(`  ⚡ GPU batch başlıyor · ${translatable.length} ürün · ${ev.batchSize} atom · ${ev.totalChunks} chunk`, 'info');
+        } else if (ev.phase === 'skipped' && ev.provider === 'local-nllb') {
+          xlog(`  ⏭ GPU worker atlandı (cooldown=${ev.reason}) · ${ev.batchSize} atom`, 'warn');
+        } else if (ev.phase === 'chunk-start') {
+          const sample = (ev.sample || []).map(s => s.length > 28 ? `${s.slice(0, 26)}…` : s).join(', ');
+          xlog(`  → ${provider} batch chunk ${ev.chunkIndex + 1}/${ev.totalChunks} · ${ev.batchSize} atom · ${sample || '...'}`, 'info');
+        } else if (ev.phase === 'chunk-done') {
+          const tag = ev.provider === 'local-nllb' ? 'GPU' : 'DeepSeek';
+          xlog(`  ✓ ${tag} batch chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.stored} çeviri · ${(ev.elapsedMs / 1000).toFixed(1)}s · dict ${ev.dictSize}`, 'success');
+        } else if (ev.phase === 'chunk-error') {
+          xlog(`  ⚠ ${provider} batch chunk ${ev.chunkIndex + 1}/${ev.totalChunks}: ${ev.error}`, 'warn');
+        } else if (ev.phase === 'fallback-skipped') {
+          xlog(`  ⏭ DeepSeek kapalı · ${ev.batchSize} atom bu tur atlandı`, 'warn');
+        }
+      });
+      for (const t of missing) _deDictInflight.set(_normalizeDictSourceKey(t), translatePromise);
+      try {
+        await translatePromise;
+      } finally {
+        for (const t of missing) {
+          const key = _normalizeDictSourceKey(t);
+          if (_deDictInflight.get(key) === translatePromise) _deDictInflight.delete(key);
+        }
+      }
+      xlog(`  ✓ Batch atom işleme bitti · ${missing.length} atom · ${((Date.now() - t0) / 1000).toFixed(1)}s`, 'success');
+    }
+
+    for (const job of translatable) {
+      applyPayload(job, sources.get(job) || _translationSourceProduct(job.clean));
+      try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
+    }
+    if (_deDictDirty) await _saveDeDict().catch(() => {});
+    xlog(`✓ Batch çeviri payload hazır — ${label} · toplam ${((Date.now() - startedAt) / 1000).toFixed(1)}s`, 'success');
+  } catch (e) {
+    xlog(`✗ Batch çeviri hata — ${label}: ${e.message}`, 'error');
+    slog(`  ⚠ batch translate failed (${translatable.length} products): ${e.message}`, 'warn');
+    for (const job of translatable) {
+      await _translateProductInline(job.clean);
+    }
+  }
+  return batch;
 }
 
 // Public API consumed by app.js category translator panel
@@ -5525,73 +5650,115 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     return true;
   };
 
+  const nextTranslationReadyDelay = () => {
+    const now = Date.now();
+    let minDelay = 1000;
+    for (const job of translationQueue) {
+      if (!job.readyAt || job.readyAt <= now) return 100;
+      minDelay = Math.min(minDelay, job.readyAt - now);
+    }
+    return Math.max(100, Math.min(1000, minDelay));
+  };
+
+  const takeTranslationBatch = () => {
+    const now = Date.now();
+    const jobs = [];
+    for (let i = 0; i < translationQueue.length && jobs.length < EPEY_TRANSLATE_PRODUCT_BATCH_SIZE;) {
+      const job = translationQueue[i];
+      if (job.readyAt && job.readyAt > now) {
+        i++;
+        continue;
+      }
+      jobs.push(job);
+      translationQueue.splice(i, 1);
+    }
+    return jobs;
+  };
+
+  const saveTranslatedJob = async (job) => {
+    let saved;
+    try {
+      saved = await _saveProductWithRetry(job.clean, job.label, {
+        retries: EPEY_TRANSLATE_SAVE_RETRIES,
+        timeoutMs: EPEY_TRANSLATE_SAVE_TIMEOUT_MS,
+      });
+    } catch (saveErr) {
+      if (scraperAbort || saveErr.message === 'aborted') return;
+      if (_isTransientPocketBaseError(saveErr) && deferTranslationSave(job, saveErr)) {
+        return;
+      }
+      markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+      translationFailed++;
+      slog(`  → PB kayıt Resume'a kaldı: ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
+      return;
+    }
+    if (job.mergeKey && saved?.id) {
+      existingByVG.set(job.mergeKey, { id: saved.id, source: job.clean.source, name: job.clean.name });
+    }
+    window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || job.clean.slug, product: job.clean } }));
+    results.added++;
+    clearRetryLater(job.item);
+    translationCompleted++;
+    slog(`  ✓ Çeviri+kayıt: ${job.label}`, 'success');
+    if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
+      _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
+    }
+  };
+
   const translationWorker = async () => {
     while (true) {
       if (scraperAbort) {
         translationQueue.length = 0;
         return;
       }
-      const job = translationQueue.shift();
-      if (!job) {
-        if (translationDrainSignal) return;
-        await sleep(150);
+      const jobs = takeTranslationBatch();
+      if (!jobs.length) {
+        if (translationDrainSignal && translationQueue.length === 0) return;
+        await sleep(nextTranslationReadyDelay());
         continue;
       }
-      if (job.readyAt && job.readyAt > Date.now()) {
-        translationQueue.push(job);
-        await sleep(Math.min(1000, Math.max(100, job.readyAt - Date.now())));
-        continue;
+      for (const job of jobs) {
+        job.readyAt = 0;
+        if (!job.started) {
+          job.started = true;
+          translationStarted++;
+        }
       }
-      job.readyAt = 0;
-      translationActive++;
-      if (!job.started) {
-        job.started = true;
-        translationStarted++;
-      }
+      translationActive += jobs.length;
       try {
         // Translation feeds multiLangSpecs/Sections/nameTranslated into
-        // `clean`; the PB write below persists the FULL 7-language payload
-        // so downstream consumers never rerun DeepSeek for these specs.
-        if (!job.translated) {
+        // `clean`; the PB writes below persist the FULL 7-language payload
+        // so downstream consumers never rerun translation for these specs.
+        const needsTranslation = jobs.filter(job => !job.translated);
+        if (needsTranslation.length > 1) {
+          await _translateProductsInlineBatch(needsTranslation);
+          for (const job of needsTranslation) job.translated = true;
+        } else if (needsTranslation.length === 1) {
+          const job = needsTranslation[0];
           await _translateProductInline(job.clean);
           try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
           job.translated = true;
         }
 
-        let saved;
-        try {
-          saved = await _saveProductWithRetry(job.clean, job.label, {
-            retries: EPEY_TRANSLATE_SAVE_RETRIES,
-            timeoutMs: EPEY_TRANSLATE_SAVE_TIMEOUT_MS,
-          });
-        } catch (saveErr) {
-          if (scraperAbort || saveErr.message === 'aborted') return;
-          if (_isTransientPocketBaseError(saveErr) && deferTranslationSave(job, saveErr)) {
-            continue;
+        for (const job of jobs) {
+          try {
+            await saveTranslatedJob(job);
+          } catch (e) {
+            translationFailed++;
+            results.errors++;
+            slog(`  ⚠ background kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
+            markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
           }
-          markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
-          translationFailed++;
-          slog(`  → PB kayıt Resume'a kaldı: ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
-          continue;
-        }
-        if (job.mergeKey && saved?.id) {
-          existingByVG.set(job.mergeKey, { id: saved.id, source: job.clean.source, name: job.clean.name });
-        }
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || job.clean.slug, product: job.clean } }));
-        results.added++;
-        clearRetryLater(job.item);
-        translationCompleted++;
-        slog(`  ✓ Çeviri+kayıt: ${job.label}`, 'success');
-        if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
-          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
         }
       } catch (e) {
-        translationFailed++;
-        results.errors++;
-        slog(`  ⚠ background çeviri+kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
-        markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+        for (const job of jobs) {
+          translationFailed++;
+          results.errors++;
+          slog(`  ⚠ background çeviri+kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
+          markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+        }
       } finally {
-        translationActive--;
+        translationActive -= jobs.length;
       }
     }
   };
@@ -5841,24 +6008,25 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     );
   };
 
-  const queuedAtReturn = translationQueue.length + translationActive;
+  const queuedAtDrain = translationQueue.length + translationActive;
   translationDrainSignal = true;
-  results.translationQueued = queuedAtReturn;
-  results.translationBackground = queuedAtReturn > 0;
-  if (queuedAtReturn > 0) {
+  if (queuedAtDrain > 0) {
     slog(
-      `⏩ Scrape tamamlandı; ${queuedAtReturn} çeviri+kayıt işi arka planda devam ediyor. Sonraki kategoriye geçiliyor.`,
+      `⏳ Scrape tamamlandı; ${queuedAtDrain} çeviri+kayıt işi var. Sonraki kategoriye geçmeden kuyruk boşaltılıyor.`,
       'info'
     );
   }
-  finishTranslationInBackground().catch(e => {
+  try {
+    await finishTranslationInBackground();
+  } catch (e) {
     slog(`Arka plan çeviri kuyruğu hata verdi: ${e.message}`, 'error');
-  });
+  }
+  results.translationQueued = 0;
+  results.translationBackground = false;
 
   const finalScrapePer100 = completed > 0 ? (scrapeElapsedSec * 100 / Math.max(1, completed)).toFixed(0) : '?';
   slog(
-    `📊 Scrape özet: ${completed} ürün çekildi · 100 ürün scrape≈${finalScrapePer100}s` +
-    (queuedAtReturn > 0 ? ` · ${queuedAtReturn} çeviri+kayıt arka planda` : ''),
+    `📊 Scrape özet: ${completed} ürün çekildi · 100 ürün scrape≈${finalScrapePer100}s · çeviri+kayıt kuyruğu temiz`,
     'success'
   );
   return results;
