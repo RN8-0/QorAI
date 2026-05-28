@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-decoupled-fast-brand-filter';
+const SCRAPER_BUILD = '20260528-bg-translate-no-drain';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -5479,10 +5479,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // Scrape workers parse + queue, translation workers translate + save in
   // PARALLEL on a dedicated pool. Scrape workers never await DeepSeek or
   // the PB write for new products, so a slow DeepSeek call never blocks
-  // the next URL fetch. Translation continues running after scrape ends
-  // and drains the queue before sequentialScrape() returns. This is the
-  // "scrape and translate in parallel" mode the user explicitly asked for.
-  const TRANSLATE_CONCURRENCY = 3;
+  // the next URL fetch. Translation continues in the background after each
+  // category scrape returns, so category/page traversal never waits for PB.
+  const TRANSLATE_CONCURRENCY = 1;
   const TRANSLATE_QUEUE_SOFT_CAP = 50000;
   const translationQueue = [];
   let translationDrainSignal = false;
@@ -5503,7 +5502,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   const translationWorker = async () => {
     while (true) {
-      if (scraperAbort && translationQueue.length === 0) return;
+      if (scraperAbort) {
+        translationQueue.length = 0;
+        return;
+      }
       const job = translationQueue.shift();
       if (!job) {
         if (translationDrainSignal) return;
@@ -5712,95 +5714,108 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   await Promise.all(workers);
   const scrapeElapsedSec = Math.max(0.001, (Date.now() - translatePipelineStart) / 1000);
 
-  // Drain the translation+save queue. Scrape workers have stopped feeding
-  // jobs, so this is the bounded tail: queue length + active translations.
-  // Important: emit progress every 5 s so the user knows it's still moving.
-  if (translationQueue.length > 0 || translationActive > 0) {
+  const finishTranslationInBackground = async () => {
     const drainStart = Date.now();
-    const initialQueue = translationQueue.length;
     const initialDone = translationCompleted;
-    slog(
-      `⏳ Çeviri kuyruğu drenajı: ${initialQueue} bekleyen + ${translationActive} aktif · arka plan ${TRANSLATE_CONCURRENCY} işçi devam ediyor`,
-      'info'
-    );
     let lastDrainLog = Date.now();
+
     while ((translationQueue.length > 0 || translationActive > 0) && !scraperAbort) {
-      await sleep(500);
-      if (Date.now() - lastDrainLog >= 5000) {
+      await sleep(1000);
+      if (Date.now() - lastDrainLog >= 30000) {
         lastDrainLog = Date.now();
         const drained = translationCompleted - initialDone;
         const remaining = translationQueue.length + translationActive;
         const drainElapsed = (Date.now() - drainStart) / 1000;
         const drainRate = drainElapsed > 0 ? (drained / drainElapsed).toFixed(2) : '0.00';
         slog(
-          `  … çeviri drenajı: ${drained} tamam · ${remaining} kaldı · ${drainRate}/s · ${drainElapsed.toFixed(0)}s`,
+          `  … arka plan çeviri: ${drained} tamam · ${remaining} kaldı · ${drainRate}/s · ${drainElapsed.toFixed(0)}s`,
           'info'
         );
       }
     }
-  }
-  translationDrainSignal = true;
-  await Promise.all(translateWorkers);
-  const totalElapsed = (Date.now() - translatePipelineStart) / 1000;
-  const finalScrapePer100 = completed > 0 ? (scrapeElapsedSec * 100 / Math.max(1, completed)).toFixed(0) : '?';
-  const finalTrPer100 = translationCompleted > 0 ? (totalElapsed * 100 / Math.max(1, translationCompleted)).toFixed(0) : '?';
-  slog(
-    `📊 Pipeline özet: ${completed} scrape, ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
-    `100 ürün scrape≈${finalScrapePer100}s · 100 ürün çeviri+kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
-    'success'
-  );
 
-  if (!scraperAbort && pendingSaveByKey.size > 0) {
-    const pending = Array.from(pendingSaveByKey.values());
-    slog(`↻ PB kayıt kuyruğu sakin modda tekrar deneniyor: ${pending.length} ürün`, 'warn');
-    for (let pi = 0; pi < pending.length && !scraperAbort; pi++) {
-      const entry = pending[pi];
-      const slug = slugFromUrl(entry.item?.url) || entry.clean?.slug || entry.label;
-      try {
-        const saved = await _saveProductWithRetry(entry.clean, entry.label, {
-          retries: EPEY_PB_FINAL_SAVE_RETRIES,
-          logPrefix: 'PB final retry',
-          baseDelayMs: 3500,
-          maxDelayMs: 30000,
-          jitterMs: 1800,
-        });
-        if (entry.mergeKey && saved?.id) {
-          existingByVG.set(entry.mergeKey, { id: saved.id, source: entry.clean.source, name: entry.clean.name });
+    if (scraperAbort) translationQueue.length = 0;
+    await Promise.all(translateWorkers);
+
+    if (!scraperAbort && pendingSaveByKey.size > 0) {
+      const pending = Array.from(pendingSaveByKey.values());
+      slog(`↻ PB kayıt kuyruğu sakin modda tekrar deneniyor: ${pending.length} ürün`, 'warn');
+      for (let pi = 0; pi < pending.length && !scraperAbort; pi++) {
+        const entry = pending[pi];
+        const slug = slugFromUrl(entry.item?.url) || entry.clean?.slug || entry.label;
+        try {
+          const saved = await _saveProductWithRetry(entry.clean, entry.label, {
+            retries: EPEY_PB_FINAL_SAVE_RETRIES,
+            logPrefix: 'PB final retry',
+            baseDelayMs: 3500,
+            maxDelayMs: 30000,
+            jitterMs: 1800,
+          });
+          if (entry.mergeKey && saved?.id) {
+            existingByVG.set(entry.mergeKey, { id: saved.id, source: entry.clean.source, name: entry.clean.name });
+          }
+          window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || entry.clean.slug, product: entry.clean } }));
+          results.added++;
+          recent.push('ok');
+          clearRetryLater(entry.item);
+          slog(`  → Eklendi (PB final): ${entry.label}`, 'success');
+        } catch (e) {
+          if (scraperAbort || e.message === 'aborted') break;
+          results.errors++;
+          slog(`  → PB kayıt hâlâ başarısız, Resume'a kaldı: ${slug} — ${_formatPocketBaseError(e)}`, 'warn');
         }
-        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || entry.clean.slug, product: entry.clean } }));
-        results.added++;
-        recent.push('ok');
-        clearRetryLater(entry.item);
-        slog(`  → Eklendi (PB final): ${entry.label}`, 'success');
-      } catch (e) {
-        if (scraperAbort || e.message === 'aborted') break;
-        results.errors++;
-        slog(`  → PB kayıt hâlâ başarısız, Resume'a kaldı: ${slug} — ${_formatPocketBaseError(e)}`, 'warn');
       }
     }
+
+    // Self-healing: any TR word that hit the transliteration fallback during
+    // this run is now sent to Argos for a real translation and added to the
+    // dictionary so the SAME word never falls through again.
+    try { await _flushUnknownTurkishWords(); } catch {}
+    // Force a final dict save: throughout the scrape we throttle saves to
+    // every ~30s. At the end we must flush whatever's pending.
+    try { await _flushDeDictBeforeExit(); } catch {}
+
+    if (!scraperAbort && retryLaterByKey.size > 0) {
+      results.retryLater = retryLaterItems();
+      _saveCheckpoint(urlItems, urlItems.length, categoryId, results, retryLaterItems());
+      slog(`↻ ${retryLaterByKey.size} hatalı ürün Resume için checkpoint'e geri koyuldu.`, 'warn');
+    } else if (!scraperAbort) {
+      results.retryLater = [];
+      _saveCheckpoint(urlItems, urlItems.length, categoryId, results, []);
+    } else {
+      results.retryLater = retryLaterItems();
+      _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
+    }
+
+    const totalElapsed = (Date.now() - translatePipelineStart) / 1000;
+    const finalTrPer100 = translationCompleted > 0 ? (totalElapsed * 100 / Math.max(1, translationCompleted)).toFixed(0) : '?';
+    slog(
+      `📊 Arka plan çeviri özet: ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
+      `100 ürün çeviri+kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
+      translationFailed ? 'warn' : 'success'
+    );
+  };
+
+  const queuedAtReturn = translationQueue.length + translationActive;
+  translationDrainSignal = true;
+  results.translationQueued = queuedAtReturn;
+  results.translationBackground = queuedAtReturn > 0;
+  if (queuedAtReturn > 0) {
+    slog(
+      `⏩ Scrape tamamlandı; ${queuedAtReturn} çeviri+kayıt işi arka planda devam ediyor. Sonraki kategoriye geçiliyor.`,
+      'info'
+    );
   }
+  finishTranslationInBackground().catch(e => {
+    slog(`Arka plan çeviri kuyruğu hata verdi: ${e.message}`, 'error');
+  });
 
-  if (scraperAbort) _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
-
-  // Self-healing: any TR word that hit the transliteration fallback during
-  // this run is now sent to Argos for a real translation and added to the
-  // dictionary so the SAME word never falls through again.
-  try { await _flushUnknownTurkishWords(); } catch {}
-  // Force a final dict save: throughout the scrape we throttle saves to
-  // every ~30s. At the end we must flush whatever's pending.
-  try { await _flushDeDictBeforeExit(); } catch {}
-
-  // Final checkpoint clear (success path). If a few products failed while the
-  // rest completed, keep just those URLs for Resume instead of dropping them.
-  if (!scraperAbort && retryLaterByKey.size > 0) {
-    results.retryLater = retryLaterItems();
-    _saveCheckpoint(urlItems, urlItems.length, categoryId, results, retryLaterItems());
-    slog(`↻ ${retryLaterByKey.size} hatalı ürün Resume için checkpoint'e geri koyuldu.`, 'warn');
-  } else if (!scraperAbort) {
-    results.retryLater = [];
-    _clearCheckpoint();
-  }
-  if (scraperAbort) results.retryLater = retryLaterItems();
+  const finalScrapePer100 = completed > 0 ? (scrapeElapsedSec * 100 / Math.max(1, completed)).toFixed(0) : '?';
+  slog(
+    `📊 Scrape özet: ${completed} ürün çekildi · 100 ürün scrape≈${finalScrapePer100}s` +
+    (queuedAtReturn > 0 ? ` · ${queuedAtReturn} çeviri+kayıt arka planda` : ''),
+    'success'
+  );
   return results;
 }
 
@@ -7431,7 +7446,7 @@ async function startBulkScrape() {
         finishScraping();
         return;
       }
-      const totals = { added: 0, updated: 0, skipped: 0, errors: 0, missingCats: [] };
+      const totals = { added: 0, updated: 0, skipped: 0, errors: 0, queued: 0, missingCats: [] };
       // Surface admin categories that have NO epeyPath so the user knows
       // up front which ones can never be scraped from Epey.
       try {
@@ -7506,11 +7521,16 @@ async function startBulkScrape() {
         totals.updated += res.updated || 0;
         totals.skipped += res.skipped || 0;
         totals.errors += res.errors || 0;
+        totals.queued += res.translationQueued || 0;
         if (Array.isArray(res.retryLater) && res.retryLater.length) {
           multiCategoryRetryLater.push(...res.retryLater.map(u => ({ ...u, categoryId: u.categoryId || cat.id })));
         }
         processed += items.length;
-        slog(`━━━ ${cat.id} done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata · ilerleme ${processed}/${totalUrls} URL ━━━`, 'success');
+        slog(
+          `━━━ ${cat.id} scrape done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata` +
+          `${res.translationQueued ? ` | ${res.translationQueued} çeviri+kayıt arka planda` : ''} · ilerleme ${processed}/${totalUrls} URL ━━━`,
+          'success'
+        );
         if (ci < collected.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
       }
 
@@ -7519,7 +7539,11 @@ async function startBulkScrape() {
         slog(`↻ Toplam ${multiCategoryRetryLater.length} hatalı URL kategori bilgisiyle Resume için saklandı.`, 'warn');
       }
 
-      slog(`\n═══ All categories done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata${scraperAbort ? ' | STOPPED' : ''} ═══`, scraperAbort ? 'warn' : 'success');
+      slog(
+        `\n═══ All categories scrape done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata` +
+        `${totals.queued ? ` | ${totals.queued} çeviri+kayıt arka planda` : ''}${scraperAbort ? ' | STOPPED' : ''} ═══`,
+        scraperAbort ? 'warn' : 'success'
+      );
       if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
       finishScraping();
       return;
@@ -7535,7 +7559,11 @@ async function startBulkScrape() {
       return;
     }
     const results = await sequentialScrape(urlItems.slice(0, singleLimit), singleCat?.id || categoryId, delay, concurrency);
-    slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
+    slog(
+      `\n═══ Scrape done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata` +
+      `${results.translationQueued ? ` | ${results.translationQueued} çeviri+kayıt arka planda` : ''} ═══`,
+      'success'
+    );
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Fatal error: ${e.message}`, 'error');
