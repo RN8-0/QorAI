@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-fast-brand-filter-batch';
+const SCRAPER_BUILD = '20260528-translate-pb-pipeline';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -33,10 +33,16 @@ const SCRAPER_LOG_MAX_LINES = 900;
 // per-IP burst threshold while still feeding the GPU translator.
 const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
 const EPEY_DETAIL_CONCURRENCY_MAX = 10;
-const EPEY_PB_WRITE_CONCURRENCY = 1;
+const EPEY_PB_WRITE_CONCURRENCY = 2;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
+const EPEY_TRANSLATE_CONCURRENCY = 4;
+const EPEY_TRANSLATE_SAVE_RETRIES = 1;
+const EPEY_TRANSLATE_SAVE_TIMEOUT_MS = 22000;
+const EPEY_TRANSLATE_DEFER_BASE_MS = 5000;
+const EPEY_TRANSLATE_DEFER_MAX_MS = 45000;
+const EPEY_TRANSLATE_DEFER_MAX_ATTEMPTS = 10;
 const EPEY_FULL_CATEGORY_URL_LIMIT = 150000;
 
 let scraperRunning = false;
@@ -3688,6 +3694,7 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
   let storedTotal = 0;
   let aborted = false;
   let firstError = null;
+  const residueBuffer = new Set();
   const report = (phase, idx, extra) => {
     if (typeof onProgress !== 'function') return;
     try { onProgress({ provider: 'local-nllb', phase, pass: 0, chunkIndex: idx, totalChunks, chunkSize: CHUNK, ...extra }); } catch {}
@@ -3730,8 +3737,7 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
       }
       storedTotal += storedForChunk;
       if (residueSet.size) {
-        _localResidueBuffer = _localResidueBuffer || new Set();
-        for (const t of residueSet) _localResidueBuffer.add(t);
+        for (const t of residueSet) residueBuffer.add(t);
       }
       report('chunk-done', chunkIdx, {
         batchSize: batch.length,
@@ -3765,14 +3771,8 @@ async function _localTranslateAllLangsBatch(sourceTexts, targetLangs, onProgress
     return { ok: false, error: firstError.message || String(firstError), stored: storedTotal };
   }
   if (storedTotal > 0) await _saveDeDict().catch(() => {});
-  const residue = _localResidueBuffer ? [..._localResidueBuffer] : [];
-  _localResidueBuffer = null;
-  return { ok: true, stored: storedTotal, residueAtoms: residue };
+  return { ok: true, stored: storedTotal, residueAtoms: [...residueBuffer] };
 }
-
-// Module-level buffer for residue atoms aggregated across chunks of a single
-// _localTranslateAllLangsBatch call. Cleared at the end of that call.
-let _localResidueBuffer = null;
 
 // ── Public dictionary API (used by the Dictionary admin tab) ────────────
 //
@@ -5481,7 +5481,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // the PB write for new products, so a slow DeepSeek call never blocks
   // the next URL fetch. Translation continues in the background after each
   // category scrape returns, so category/page traversal never waits for PB.
-  const TRANSLATE_CONCURRENCY = 1;
+  const TRANSLATE_CONCURRENCY = EPEY_TRANSLATE_CONCURRENCY;
   const TRANSLATE_QUEUE_SOFT_CAP = 50000;
   const translationQueue = [];
   let translationDrainSignal = false;
@@ -5489,6 +5489,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   let translationStarted = 0;
   let translationCompleted = 0;
   let translationFailed = 0;
+  let translationDeferred = 0;
   const translatePipelineStart = Date.now();
 
   const enqueueTranslation = async (job) => {
@@ -5498,6 +5499,30 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       await sleep(250);
     }
     translationQueue.push(job);
+  };
+
+  const translationDeferDelay = (attempt) =>
+    Math.min(EPEY_TRANSLATE_DEFER_MAX_MS, EPEY_TRANSLATE_DEFER_BASE_MS * Math.pow(1.7, Math.max(0, attempt - 1))) +
+    Math.random() * 1200;
+
+  const deferTranslationSave = (job, saveErr) => {
+    job.pbDeferAttempts = (job.pbDeferAttempts || 0) + 1;
+    markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+    if (job.pbDeferAttempts > EPEY_TRANSLATE_DEFER_MAX_ATTEMPTS) {
+      translationFailed++;
+      slog(`  → PB kayıt sakin moda kaldı: ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
+      return false;
+    }
+    const delay = translationDeferDelay(job.pbDeferAttempts);
+    job.readyAt = Date.now() + delay;
+    translationDeferred++;
+    translationQueue.push(job);
+    slog(
+      `  ↻ PB geçici yoğunluk: ${Math.round(delay / 1000)}s sonra tekrar denenecek ` +
+      `${job.label} — ${_formatPocketBaseError(saveErr)}`,
+      'warn'
+    );
+    return true;
   };
 
   const translationWorker = async () => {
@@ -5512,23 +5537,41 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         await sleep(150);
         continue;
       }
-      translationActive++; translationStarted++;
+      if (job.readyAt && job.readyAt > Date.now()) {
+        translationQueue.push(job);
+        await sleep(Math.min(1000, Math.max(100, job.readyAt - Date.now())));
+        continue;
+      }
+      job.readyAt = 0;
+      translationActive++;
+      if (!job.started) {
+        job.started = true;
+        translationStarted++;
+      }
       try {
         // Translation feeds multiLangSpecs/Sections/nameTranslated into
         // `clean`; the PB write below persists the FULL 7-language payload
         // so downstream consumers never rerun DeepSeek for these specs.
-        await _translateProductInline(job.clean);
-        try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
+        if (!job.translated) {
+          await _translateProductInline(job.clean);
+          try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
+          job.translated = true;
+        }
 
         let saved;
         try {
-          saved = await _saveProductWithRetry(job.clean, job.label);
+          saved = await _saveProductWithRetry(job.clean, job.label, {
+            retries: EPEY_TRANSLATE_SAVE_RETRIES,
+            timeoutMs: EPEY_TRANSLATE_SAVE_TIMEOUT_MS,
+          });
         } catch (saveErr) {
           if (scraperAbort || saveErr.message === 'aborted') return;
+          if (_isTransientPocketBaseError(saveErr) && deferTranslationSave(job, saveErr)) {
+            continue;
+          }
           markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
           translationFailed++;
-          slog(`  ↻ PB geçici yoğunluk: sona ertelendi ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
-          await sleep(800 + Math.random() * 800);
+          slog(`  → PB kayıt Resume'a kaldı: ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
           continue;
         }
         if (job.mergeKey && saved?.id) {
@@ -5537,6 +5580,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || job.clean.slug, product: job.clean } }));
         results.added++;
         clearRetryLater(job.item);
+        translationCompleted++;
         slog(`  ✓ Çeviri+kayıt: ${job.label}`, 'success');
         if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
           _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
@@ -5548,7 +5592,6 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
       } finally {
         translationActive--;
-        translationCompleted++;
       }
     }
   };
@@ -5702,7 +5745,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         slog(
           `  ↳ scrape ${completed}/${urlItems.length} · ${scrapeRate}/s · 100ürün≈${per100Scrape}s — ` +
           `çeviri ${translationCompleted}/${translationStarted} · ${trRate}/s · 100ürün≈${per100Tr}s · ` +
-          `kuyruk ${translationQueue.length}${translationFailed ? ` · fail ${translationFailed}` : ''}`,
+          `kuyruk ${translationQueue.length}${translationDeferred ? ` · erteleme ${translationDeferred}` : ''}${translationFailed ? ` · fail ${translationFailed}` : ''}`,
           'info'
         );
       }
@@ -5756,6 +5799,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           }
           window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || entry.clean.slug, product: entry.clean } }));
           results.added++;
+          translationCompleted++;
           recent.push('ok');
           clearRetryLater(entry.item);
           slog(`  → Eklendi (PB final): ${entry.label}`, 'success');
@@ -5791,6 +5835,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     const finalTrPer100 = translationCompleted > 0 ? (totalElapsed * 100 / Math.max(1, translationCompleted)).toFixed(0) : '?';
     slog(
       `📊 Arka plan çeviri özet: ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
+      `${translationDeferred ? `${translationDeferred} PB erteleme · ` : ''}` +
       `100 ürün çeviri+kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
       translationFailed ? 'warn' : 'success'
     );
