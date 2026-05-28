@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-plainpost-parallel-brands';
+const SCRAPER_BUILD = '20260528-decoupled-scrape-translate';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -5475,6 +5475,85 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   const effectiveDelayMs = 0;
   slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${effectiveDelayMs}ms/işçi`, 'info');
 
+  // ── Decoupled translation pipeline ────────────────────────────────────
+  // Scrape workers parse + queue, translation workers translate + save in
+  // PARALLEL on a dedicated pool. Scrape workers never await DeepSeek or
+  // the PB write for new products, so a slow DeepSeek call never blocks
+  // the next URL fetch. Translation continues running after scrape ends
+  // and drains the queue before sequentialScrape() returns. This is the
+  // "scrape and translate in parallel" mode the user explicitly asked for.
+  const TRANSLATE_CONCURRENCY = 2;
+  const TRANSLATE_QUEUE_SOFT_CAP = 64;
+  const translationQueue = [];
+  let translationDrainSignal = false;
+  let translationActive = 0;
+  let translationStarted = 0;
+  let translationCompleted = 0;
+  let translationFailed = 0;
+  const translatePipelineStart = Date.now();
+
+  const enqueueTranslation = async (job) => {
+    // Soft backpressure: if translate workers are far behind, slow scrape
+    // down a bit so we don't accumulate gigabytes of pending products in
+    // memory on a 5k-URL run. Scrape workers still keep moving at the
+    // translate-pool's drain rate.
+    while (translationQueue.length >= TRANSLATE_QUEUE_SOFT_CAP && !scraperAbort) {
+      await sleep(250);
+    }
+    translationQueue.push(job);
+  };
+
+  const translationWorker = async () => {
+    while (true) {
+      if (scraperAbort && translationQueue.length === 0) return;
+      const job = translationQueue.shift();
+      if (!job) {
+        if (translationDrainSignal) return;
+        await sleep(150);
+        continue;
+      }
+      translationActive++; translationStarted++;
+      try {
+        // Translation feeds multiLangSpecs/Sections/nameTranslated into
+        // `clean`; the PB write below persists the FULL 7-language payload
+        // so downstream consumers never rerun DeepSeek for these specs.
+        await _translateProductInline(job.clean);
+        try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
+
+        let saved;
+        try {
+          saved = await _saveProductWithRetry(job.clean, job.label);
+        } catch (saveErr) {
+          if (scraperAbort || saveErr.message === 'aborted') return;
+          markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+          translationFailed++;
+          slog(`  ↻ PB geçici yoğunluk: sona ertelendi ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
+          await sleep(800 + Math.random() * 800);
+          continue;
+        }
+        if (job.mergeKey && saved?.id) {
+          existingByVG.set(job.mergeKey, { id: saved.id, source: job.clean.source, name: job.clean.name });
+        }
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || job.clean.slug, product: job.clean } }));
+        results.added++;
+        clearRetryLater(job.item);
+        slog(`  ✓ Çeviri+kayıt: ${job.label}`, 'success');
+        if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
+          _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
+        }
+      } catch (e) {
+        translationFailed++;
+        results.errors++;
+        slog(`  ⚠ background çeviri+kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
+        markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+      } finally {
+        translationActive--;
+        translationCompleted++;
+      }
+    }
+  };
+  const translateWorkers = Array.from({ length: TRANSLATE_CONCURRENCY }, () => translationWorker());
+
   const scrapeOne = async (item, index) => {
     const productNum = index + 1;
     const slug = slugFromUrl(item.url);
@@ -5527,16 +5606,15 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         clearRetryLater(item);
         return;
       }
-      // Inline translation hook (EU pivot): every scraped product gets the
-      // full 7-language package (source + 6 target languages) before PB write.
-      await _translateProductInline(clean);
-      _assertCleanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
       // Cross-source dedup: same variantGroup already in PB?
       //   • SAME source  → skip (slug-level dedup handled elsewhere already)
       //   • OTHER source → MERGE specs into existing record (specs union
       //     across TR + DE), keep the existing record's id/source/affiliate
       //     fields, never create a duplicate.
+      // Cross-source merge is FAST (no DeepSeek), so it runs inline here.
+      // Pure-new products are pushed to the translation queue and saved by
+      // the background translation workers — scrape worker keeps moving.
       const mergeKey = clean.variantGroup;
       const existing = mergeKey ? existingByVG.get(mergeKey) : null;
       if (existing && existing.source && existing.source !== clean.source) {
@@ -5555,41 +5633,13 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         }
       }
 
-      let saved;
-      try {
-        saved = await _saveProductWithRetry(clean, product.name || clean.name || clean.slug);
-      } catch (saveErr) {
-        // PB save failed after all retries. The product scrape itself was fine
-        // — Epey worked, parsing worked, only the backend write blew up
-        // (transient PB 500 / Coolify edge timeout / rate-limit). Keep the
-        // fully parsed payload in memory for a calm final drain, and keep the
-        // URL in the checkpoint as a fallback if the user stops before then.
-        if (scraperAbort || saveErr.message === 'aborted') return;
-        markRetryLater(item, { clean, label: product.name || clean.name || clean.slug, mergeKey });
-        recent.push('err');
-        slog(`  ↻ PB geçici yoğunluk: sona ertelendi ${slug} — ${_formatPocketBaseError(saveErr)}`, 'warn');
-        // Light cooldown so we don't hammer a struggling PB.
-        await sleep(1200 + Math.random() * 1200);
-        return;
-      }
-      // Register the new record in the in-memory VG map so subsequent
-      // products from a different source merge into THIS one.
-      if (mergeKey && saved?.id) {
-        existingByVG.set(mergeKey, { id: saved.id, source: clean.source, name: clean.name });
-      }
-      window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-      results.added++;
+      // Hand off to the background translation+save pool. Scrape worker
+      // returns immediately and picks up the next URL.
+      const label = product.name || clean.name || clean.slug;
+      slog(`  ⇢ Kuyrukta: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'info');
+      await enqueueTranslation({ item, clean, label, mergeKey });
       errorStreak = 0;
       recent.push('ok');
-      slog(`  → Eklendi: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'success');
-      clearRetryLater(item);
-
-      // Adaptive checkpoint every 50 saved products. In parallel mode the
-      // cursor may be ahead of completed workers; durable skip-existing makes
-      // Resume safe even if a few in-flight URLs are retried later.
-      if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
-        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
-      }
     } catch (e) {
       if (scraperAbort || e.message === 'aborted') return;
       results.errors++;
@@ -5635,9 +5685,24 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       completed++;
       _scrapeProductCount = completed;
       updateProgress(completed, urlItems.length, 'Products');
+      // Per-100 telemetry — emits BOTH scrape and translate rates so the
+      // user can see whether the scrape pool is paced by Epey (network)
+      // or DeepSeek (translation).
       if (completed - lastSummary >= 100 || completed === urlItems.length) {
         lastSummary = completed;
-        slog(`  ↳ progress ${completed}/${urlItems.length} · added ${results.added} · updated ${results.updated} · skipped ${results.skipped} · errors ${results.errors}`, 'info');
+        const elapsed = Math.max(0.001, (Date.now() - translatePipelineStart) / 1000);
+        const scrapeRate = (completed / elapsed).toFixed(2);
+        const trRate = translationCompleted > 0 ? (translationCompleted / elapsed).toFixed(2) : '0.00';
+        const per100Scrape = (elapsed * 100 / Math.max(1, completed)).toFixed(0);
+        const per100Tr = translationCompleted > 0
+          ? (elapsed * 100 / Math.max(1, translationCompleted)).toFixed(0)
+          : '?';
+        slog(
+          `  ↳ scrape ${completed}/${urlItems.length} · ${scrapeRate}/s · 100ürün≈${per100Scrape}s — ` +
+          `çeviri ${translationCompleted}/${translationStarted} · ${trRate}/s · 100ürün≈${per100Tr}s · ` +
+          `kuyruk ${translationQueue.length}${translationFailed ? ` · fail ${translationFailed}` : ''}`,
+          'info'
+        );
       }
       if (effectiveDelayMs > 0 && !scraperAbort) await sleep(effectiveDelayMs);
     }
@@ -5645,6 +5710,44 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   const workers = Array.from({ length: Math.min(concurrency, urlItems.length) }, () => worker());
   await Promise.all(workers);
+
+  // Drain the translation+save queue. Scrape workers have stopped feeding
+  // jobs, so this is the bounded tail: queue length + active translations.
+  // Important: emit progress every 5 s so the user knows it's still moving.
+  if (translationQueue.length > 0 || translationActive > 0) {
+    const drainStart = Date.now();
+    const initialQueue = translationQueue.length;
+    const initialDone = translationCompleted;
+    slog(
+      `⏳ Çeviri kuyruğu drenajı: ${initialQueue} bekleyen + ${translationActive} aktif · arka plan ${TRANSLATE_CONCURRENCY} işçi devam ediyor`,
+      'info'
+    );
+    let lastDrainLog = Date.now();
+    while ((translationQueue.length > 0 || translationActive > 0) && !scraperAbort) {
+      await sleep(500);
+      if (Date.now() - lastDrainLog >= 5000) {
+        lastDrainLog = Date.now();
+        const drained = translationCompleted - initialDone;
+        const remaining = translationQueue.length + translationActive;
+        const drainElapsed = (Date.now() - drainStart) / 1000;
+        const drainRate = drainElapsed > 0 ? (drained / drainElapsed).toFixed(2) : '0.00';
+        slog(
+          `  … çeviri drenajı: ${drained} tamam · ${remaining} kaldı · ${drainRate}/s · ${drainElapsed.toFixed(0)}s`,
+          'info'
+        );
+      }
+    }
+  }
+  translationDrainSignal = true;
+  await Promise.all(translateWorkers);
+  const totalElapsed = (Date.now() - translatePipelineStart) / 1000;
+  const finalScrapeRate = completed > 0 ? (completed * 100 / Math.max(0.001, totalElapsed)).toFixed(0) : '?';
+  const finalTrRate = translationCompleted > 0 ? (translationCompleted * 100 / Math.max(0.001, totalElapsed)).toFixed(0) : '?';
+  slog(
+    `📊 Pipeline özet: ${completed} scrape, ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
+    `100 ürün scrape≈${finalScrapeRate}s · 100 ürün çeviri+kayıt≈${finalTrRate}s · toplam ${totalElapsed.toFixed(0)}s`,
+    'success'
+  );
 
   if (!scraperAbort && pendingSaveByKey.size > 0) {
     const pending = Array.from(pendingSaveByKey.values());
