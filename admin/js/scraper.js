@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-pb-timeout-quiet-retry';
+const SCRAPER_BUILD = '20260528-epey-brand-filter-fallback';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -6494,6 +6494,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
       `&prefix=${encodeURIComponent(ajax.prefix || '')}`;
     if (ajax.cerez) qs += `&cerez=${encodeURIComponent(ajax.cerez)}`;
     for (const v of filterValues) qs += `&fv=${encodeURIComponent(v)}`;
+    if (filterValues && filterValues.length) qs += `&reset=1`;
     const res = await fetch(`${PROXY_URL}/listing-ajax-batch?${qs}`, { signal: AbortSignal.timeout(60000) });
     return res.ok ? await res.json() : null;
   };
@@ -6705,6 +6706,9 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
             const brandUrl   = typeof b === 'string' ? b : (b?.url || b?.value);
             const brandName  = typeof b === 'string' ? b : (b?.name || brandUrl);
             const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
+            const brandFilterValue = typeof b === 'object'
+              ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
+              : '';
             const brandUrlCandidates = [];
             const addBrandUrlCandidate = (url) => {
               const value = String(url || '').trim();
@@ -6744,6 +6748,21 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               }
             }
             if (!brandData) {
+              if (brandFilterValue && ajax) {
+                try {
+                  const beforeFallback = allItems.length;
+                  await paginateStream(ajax, [brandFilterValue], () => {});
+                  const fallbackGained = allItems.length - beforeFallback;
+                  if (fallbackGained > 0) {
+                    slog(`    ↳ ${brandName} (~${brandCount}): marka filtresiyle kurtarıldı +${fallbackGained} → toplam ${allItems.length}`, 'success');
+                    continue;
+                  }
+                  slog(`    ↳ ${brandName} (~${brandCount}): +0 yeni (Epey filtre boş döndü veya URL'ler zaten kapsandı)`, 'info');
+                  continue;
+                } catch (e) {
+                  lastBrandError = e?.message || String(e || lastBrandError || 'marka filtresi başarısız');
+                }
+              }
               slog(`    ↳ ${brandName}: meta hatası (${lastBrandError || 'aday URL başarısız'})`, 'warn');
               continue;
             }
@@ -6757,7 +6776,10 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
               await paginateStream(brandAjax, [], () => {});
             }
             const gained = allItems.length - beforeOne;
-            slog(`    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}`, gained ? 'success' : 'warn');
+            slog(
+              `    ↳ ${brandName} (~${brandCount}): +${gained} yeni → toplam ${allItems.length}${gained ? '' : ' (zaten kapsandı)'}`,
+              gained ? 'success' : 'info'
+            );
           }
           const brandGained = allItems.length - beforeBrand;
           slog(`  ✓ Marka partisyonu bitti: +${brandGained} yeni URL (kümülatif ${allItems.length})`, brandGained ? 'success' : 'warn');

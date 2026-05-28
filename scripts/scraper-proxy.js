@@ -810,11 +810,16 @@ function extractTopFilters(html, limit = 4) {
 }
 
 function epeyListingSlug(text) {
+  const decoded = String(text || '')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#x27;|&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&nbsp;/gi, ' ');
   const tr = {
     'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'I': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U',
     'ç': 'c', 'ğ': 'g', 'ı': 'i', 'i': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
   };
-  return String(text || '')
+  return decoded
     .replace(/[ÇĞİIÖŞÜçğıiöşü]/g, ch => tr[ch] || ch)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -825,8 +830,13 @@ function epeyListingSlug(text) {
 }
 
 const EPEY_BRAND_SLUG_ALIASES = {
+  '*': {
+    't-and-g': ['tg'],
+  },
   'akilli-telefonlar': {
+    umidigi: ['umi'],
     tecno: ['tecno-mobile'],
+    yotaphone: ['yota-phone'],
   },
 };
 
@@ -875,7 +885,7 @@ function extractBrandFilter(html, requirePrefix = '') {
   while ((m = re.exec(source)) !== null) {
     const filterValue = m[1];
     if (seen.has(filterValue)) continue;
-    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').trim();
     const name = text.replace(/\s*\([\d.]+\)\s*$/, '').trim();
     const count = parseInt((text.match(/\(([\d.]+)\)/)?.[1] || '0').replace(/\./g, ''), 10) || 0;
     if (count <= 0) continue;
@@ -1625,7 +1635,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.4-safe-browser-fetch-lock',
+      version: '4.3.5-brand-filter-reset',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1748,6 +1758,7 @@ const server = http.createServer(async (req, res) => {
       const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
       const prefix = urlObj.searchParams.get('prefix') || '';
       const cerez = urlObj.searchParams.get('cerez') || '';
+      const reset = urlObj.searchParams.get('reset') === '1';
       const debug = urlObj.searchParams.get('debug') === '1';
       // Filter values, e.g. ["5711:464004","5711:464003","5711:1118558"] —
       // all options of one partitioning group. Sent as PHP-array filtrele[].
@@ -1768,7 +1779,7 @@ const server = http.createServer(async (req, res) => {
         // leave the local page elsewhere). Later pages reuse the document.
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-        if (!onEpey) await fetchWithPuppeteer(base);
+        if (reset || !onEpey) await fetchWithPuppeteer(base);
         return await page.evaluate(async (kidV, limitV, sayfaV, cerezV, filterVals) => {
           try {
             const body = new URLSearchParams();
@@ -1848,6 +1859,7 @@ const server = http.createServer(async (req, res) => {
       const base = urlObj.searchParams.get('base') || 'https://www.epey.com/akilli-telefonlar/';
       const prefix = urlObj.searchParams.get('prefix') || '';
       const cerez = urlObj.searchParams.get('cerez') || '';
+      const reset = urlObj.searchParams.get('reset') === '1';
       const fvs = urlObj.searchParams.getAll('fv').filter(Boolean);
       if (!kid || !pages.length) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1858,7 +1870,7 @@ const server = http.createServer(async (req, res) => {
         const page = await getPage();
         let onEpey = false;
         try { onEpey = /(^|\.)epey\.com$/i.test(new URL(page.url()).hostname); } catch {}
-        if (!onEpey) await fetchWithPuppeteer(base);
+        if (reset || !onEpey) await fetchWithPuppeteer(base);
         return await page.evaluate(async (kidV, limitV, pagesArr, cerezV, filterVals) => {
           const doOne = async (pageNo) => {
             try {
@@ -2091,7 +2103,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.4 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.5 — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);
