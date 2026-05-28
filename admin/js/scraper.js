@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-translate-batch-pb-throttle';
+const SCRAPER_BUILD = '20260528-translate-batch-pb-throttle-stop-safe';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -5594,6 +5594,13 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     }
   };
   const retryLaterItems = () => Array.from(retryLaterByKey.values());
+  const checkpointQueuedTranslationJobs = () => {
+    const queued = translationQueue.splice(0, translationQueue.length);
+    for (const job of queued) {
+      markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
+    }
+    return queued.length;
+  };
   // Aggressive low cap (was 250ms) — Cloudflare clearance + 8-24 worker pool
   // Epey has no Cloudflare — drop the inter-request sleep entirely. Workers
   // are naturally paced by the proxy queue + HTTP round-trip latency.
@@ -5708,7 +5715,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   const translationWorker = async () => {
     while (true) {
       if (scraperAbort) {
-        translationQueue.length = 0;
+        checkpointQueuedTranslationJobs();
         return;
       }
       const jobs = takeTranslationBatch();
@@ -6012,8 +6019,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   translationDrainSignal = true;
   if (queuedAtDrain > 0) {
     slog(
-      `⏳ Scrape tamamlandı; ${queuedAtDrain} çeviri+kayıt işi var. Sonraki kategoriye geçmeden kuyruk boşaltılıyor.`,
-      'info'
+      scraperAbort
+        ? `⏹ Stop alındı; ${queuedAtDrain} çeviri+kayıt işi Resume checkpoint'e geri konacak.`
+        : `⏳ Scrape tamamlandı; ${queuedAtDrain} çeviri+kayıt işi var. Sonraki kategoriye geçmeden kuyruk boşaltılıyor.`,
+      scraperAbort ? 'warn' : 'info'
     );
   }
   try {
