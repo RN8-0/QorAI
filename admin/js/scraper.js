@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-translate-batch-pb-throttle-stop-safe';
+const SCRAPER_BUILD = '20260528-fast-epey-pipeline';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -25,20 +25,27 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
 // Detail fetches: every worker first tries the proxy's plainFetch fast path
-// (parallel-safe, no browser lock). When Cloudflare rate-limits that path,
-// EVERY worker falls back to the puppeteer-side fetchWithBrowserFetch which
-// is serialised on the shared browser lock. So pushing the worker count too
-// high actually slows things down — 10+ workers queueing on one Puppeteer
-// page produced 4-5 minute stalls in production. 8 keeps us under CF's
-// per-IP burst threshold while still feeding the GPU translator.
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
-const EPEY_DETAIL_CONCURRENCY_MAX = 10;
-const EPEY_PB_WRITE_CONCURRENCY = 2;
+// (parallel-safe, no browser lock). Epey serves >99% of detail pages on the
+// fast path because cf_clearance from the warmed Puppeteer browser is
+// inherited by every plain HTTPS request. The proxy's _slowPathBusy guard
+// (scripts/scraper-proxy.js) still queues stragglers if plainFetch ever
+// trips a challenge, so high worker counts no longer cascade-stall. With the
+// GPU translator capable of ~10+ products/s, scrape concurrency must match.
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 24;
+const EPEY_DETAIL_CONCURRENCY_MAX = 40;
+// PB writes are tiny (~30-80 KB per product) and PocketBase handles many
+// concurrent writes; the previous cap of 2 was the second-largest bottleneck
+// after scrape concurrency. _epeyPbWriteLimit still serialises retries
+// inside _pbSetDocWithTimeout so a struggling backend self-throttles.
+const EPEY_PB_WRITE_CONCURRENCY = 8;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
-const EPEY_TRANSLATE_CONCURRENCY = 2;
-const EPEY_TRANSLATE_PRODUCT_BATCH_SIZE = 8;
+// GPU Argos worker batches 178 atoms in ~0.4s. With 4 translate workers each
+// pushing a 20-product batch (~250-350 atoms after dict cache hits), the
+// pipeline saturates VRAM without OOM on a 4 GB card. Bumped from 2/8.
+const EPEY_TRANSLATE_CONCURRENCY = 4;
+const EPEY_TRANSLATE_PRODUCT_BATCH_SIZE = 20;
 const EPEY_TRANSLATE_SAVE_RETRIES = 3;
 const EPEY_TRANSLATE_SAVE_TIMEOUT_MS = 45000;
 const EPEY_TRANSLATE_DEFER_BASE_MS = 4000;
@@ -3960,17 +3967,28 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   // API hop entirely. This keeps per-product latency low while AI still
   // catches the handful Argos can't translate, so we don't need a manual
   // post-fix rule for every new word.
+  //
+  // 2026-05-28: re-enabled DeepSeek for residue ONLY because EN product view
+  // was showing partial/Turkish-bleed translations ("Yayma Capacity (TDP)",
+  // "Kilidi", etc.) and dropping rows entirely when Argos produced unusable
+  // output. Without a fallback those atoms never reach the shared dict, so
+  // the SPA's trSpec() can't translate them. Residue is typically <12 atoms
+  // per product so one tight DeepSeek pass adds ~1-2 s and rescues those
+  // missing translations. To kill DeepSeek again set
+  // opts.skipDeepSeekResidue = true.
   if (local.ok) {
-    // DeepSeek is a REMOTE API — it cannot use the local GPU. Per user request
-    // (2026-05-24): skip DeepSeek entirely. Argos+beam=4+POST_FIX glossary
-    // covers 99% cleanly; the last 1% gets fixed by adding POST_FIX entries
-    // on the fly. Latency saved: 60-90s per product on failed DeepSeek calls.
-    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
-    await _saveDeDict();
-    if (typeof onProgress === 'function') {
-      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-disabled' }); } catch {}
+    if (opts.skipDeepSeekResidue) {
+      for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
+      await _saveDeDict();
+      if (typeof onProgress === 'function') {
+        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-disabled' }); } catch {}
+      }
+      return;
     }
-    return;
+    // Residue-only mode: small batch, fail fast on rate limit (no 305 s wait).
+    // Override caller's pass config so a smartphone-style 24-pass plan can't
+    // accidentally apply here.
+    opts = { ...opts, passes: [{ size: 30, concurrency: 2 }], residueFastFail: true };
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -4072,10 +4090,20 @@ Rules:
           return;
         } catch (e) {
           const msg = e.message || (typeof e === 'string' ? e : JSON.stringify(e));
-          if (attempt === 0 && isRateLimit(msg)) {
+          // residueFastFail (set by the local.ok branch above): residue is a
+          // small bonus pass — if the API is rate-limited, give up instead of
+          // blocking the scrape pipeline for 305 s. The atoms fall back to
+          // their TR source in the SPA, which is the same outcome as the
+          // pre-fix behaviour, just without the stall.
+          if (attempt === 0 && isRateLimit(msg) && !opts.residueFastFail) {
             report('chunk-error', chunkIdx, { error: `${msg} · waiting 305s then retrying`, elapsedMs: Date.now() - chunkStart });
             await sleep(305000);
             continue;
+          }
+          if (opts.residueFastFail) {
+            // Mark these atoms as failed-this-run so the scrape never retries
+            // them and the dict save throttle isn't churned.
+            for (const t of batch) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
           }
           console.warn('[tr-translate] all-langs batch error:', msg);
           report('chunk-error', chunkIdx, { error: msg, elapsedMs: Date.now() - chunkStart });
@@ -5747,7 +5775,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           job.translated = true;
         }
 
-        for (const job of jobs) {
+        // Run PB writes in parallel — _epeyPbWriteLimit (EPEY_PB_WRITE_CONCURRENCY)
+        // already throttles the real concurrency, so kicking all jobs off at
+        // once just lets the limiter pipeline the saves. Previously this loop
+        // serialised 20 saves at ~300 ms each = 6 s per batch.
+        await Promise.all(jobs.map(async (job) => {
           try {
             await saveTranslatedJob(job);
           } catch (e) {
@@ -5756,7 +5788,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
             slog(`  ⚠ background kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
             markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
           }
-        }
+        }));
       } catch (e) {
         for (const job of jobs) {
           translationFailed++;
