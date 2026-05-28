@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-brand-meta-selective-retry';
+const SCRAPER_BUILD = '20260528-epey-detail-concurrency-revert';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -24,12 +24,15 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // to satisfy the catalog requirement of up to 8 product-owned images.
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
-// Detail fetches are cheap (plainFetch fast-path bypasses the proxy browser
-// lock); translated product writes are not. Keep the pipeline fast enough
-// without piling 20+ large PocketBase writes at once. The cap was raised
-// from 10 → 16 after the parallel brand-meta fix freed proxy throughput.
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 10;
-const EPEY_DETAIL_CONCURRENCY_MAX = 16;
+// Detail fetches: every worker first tries the proxy's plainFetch fast path
+// (parallel-safe, no browser lock). When Cloudflare rate-limits that path,
+// EVERY worker falls back to the puppeteer-side fetchWithBrowserFetch which
+// is serialised on the shared browser lock. So pushing the worker count too
+// high actually slows things down — 10+ workers queueing on one Puppeteer
+// page produced 4-5 minute stalls in production. 8 keeps us under CF's
+// per-IP burst threshold while still feeding the GPU translator.
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
+const EPEY_DETAIL_CONCURRENCY_MAX = 10;
 const EPEY_PB_WRITE_CONCURRENCY = 1;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
