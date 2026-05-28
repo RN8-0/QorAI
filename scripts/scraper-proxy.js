@@ -450,6 +450,21 @@ async function fetchWithFlareSolverr(url) {
   // FlareSolverr returns the post-CF page; if status === 200 it's clean.
   // Still run our challenge detector as a safety net.
   const isChallenge = _isChallengeContent(html) || _isChallengeTitle(sol.title || '');
+  // Mirror cf_clearance + UA into sessionCookies / currentUA so the plain
+  // HTTPS fast path (`/?url=` and `/category-links?light=1`) can inherit
+  // them. Without this sync, light-mode is effectively disabled whenever
+  // FlareSolverr is the primary engine.
+  if (!isChallenge && Array.isArray(sol.cookies) && sol.cookies.length) {
+    sessionCookies = sol.cookies.map(c => ({
+      name: c.name,
+      value: c.value,
+      domain: c.domain || '',
+      path: c.path || '/',
+    }));
+  }
+  if (!isChallenge && sol.userAgent && typeof sol.userAgent === 'string') {
+    currentUA = sol.userAgent;
+  }
   return { html, status, isChallenge };
 }
 
@@ -1664,16 +1679,34 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      console.log(`  🔗 Category links: ${targetUrl}`);
+      // light=1 — fast path for sub-pages (brand listings) once the parent
+      // category has warmed sessionCookies. Skips the puppeteer browser lock
+      // and uses a plain HTTPS GET that inherits cf_clearance. ~10x faster
+      // and parallel-safe (no shared browser state). Falls through to the
+      // full puppeteer/FlareSolverr path automatically when plainFetch fails
+      // (challenge / 403 / empty body).
+      const wantLight = urlObj.searchParams.get('light') === '1';
+      console.log(`  🔗 Category links: ${targetUrl}${wantLight ? ' (light)' : ''}`);
       let result = null;
 
       {
         const t0 = Date.now();
-        const html = await withBrowserLock(async () => {
-          const r = await fetchHtml(targetUrl);
-          if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
-          return r.html;
-        });
+        let html = '';
+        if (wantLight && Array.isArray(sessionCookies) && sessionCookies.length) {
+          try {
+            const lightRes = await plainFetch(targetUrl);
+            if (lightRes.html && lightRes.status >= 200 && lightRes.status < 400 && !_isChallengeContent(lightRes.html)) {
+              html = lightRes.html;
+            }
+          } catch { /* fall through to puppeteer path */ }
+        }
+        if (!html) {
+          html = await withBrowserLock(async () => {
+            const r = await fetchHtml(targetUrl);
+            if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
+            return r.html;
+          });
+        }
         let catPath = '';
         try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
         const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';

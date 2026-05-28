@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-epey-brand-filter-fallback';
+const SCRAPER_BUILD = '20260528-epey-parallel-brand-meta-light';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -24,10 +24,12 @@ const TARGET_LANGS = ['en','de','es','fr','pt','ru'];
 // to satisfy the catalog requirement of up to 8 product-owned images.
 const EPEY_FETCH_GALLERY_IMAGES = true;
 const SCRAPER_LOG_MAX_LINES = 900;
-// Detail fetches are cheap; translated product writes are not. Keep the
-// pipeline fast enough without piling 20+ large PocketBase writes at once.
-const EPEY_DETAIL_CONCURRENCY_DEFAULT = 8;
-const EPEY_DETAIL_CONCURRENCY_MAX = 10;
+// Detail fetches are cheap (plainFetch fast-path bypasses the proxy browser
+// lock); translated product writes are not. Keep the pipeline fast enough
+// without piling 20+ large PocketBase writes at once. The cap was raised
+// from 10 → 16 after the parallel brand-meta fix freed proxy throughput.
+const EPEY_DETAIL_CONCURRENCY_DEFAULT = 10;
+const EPEY_DETAIL_CONCURRENCY_MAX = 16;
 const EPEY_PB_WRITE_CONCURRENCY = 1;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
@@ -6472,9 +6474,17 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
     return added;
   };
 
-  const fetchLinks = async (url) => {
+  // `light=1` skips the proxy's puppeteer browser-lock and uses a plain
+  // HTTPS GET that inherits the warm cf_clearance cookies. Used for brand
+  // sub-pages once the parent category page has bootstrapped the session;
+  // safe to call concurrently because it does NOT serialise on the shared
+  // browser. The proxy falls back to the full puppeteer/FlareSolverr path
+  // automatically if plainFetch fails (challenge / 403 / empty body).
+  const fetchLinks = async (url, { light = false } = {}) => {
+    let qs = `url=${encodeURIComponent(url)}&max=${encodeURIComponent(maxProducts)}`;
+    if (light) qs += '&light=1';
     const res = await fetch(
-      `${PROXY_URL}/category-links?url=${encodeURIComponent(url)}&max=${encodeURIComponent(maxProducts)}`,
+      `${PROXY_URL}/category-links?${qs}`,
       { signal: AbortSignal.timeout(120000) }
     );
     return res.ok ? await res.json() : null;
@@ -6547,7 +6557,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         const returnedCount = Number(p?.count) || 0;
         if (returnedCount > 0 && returnedCount < pageSize) { lastPageHit = true; break; }
       }
-      if (transientStreak >= 12) {
+      if (transientStreak >= 25) {
         slog(`  ⚠️ ${transientStreak} geçici boş AJAX sayfası üst üste geldi; bu stream bırakıldı.`, 'warn');
         break;
       }
@@ -6695,59 +6705,94 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         // its own dedicated listing URL like /laptop/lenovo/. The brand
         // page exposes a SEPARATE ajax (kid + cerez + base) that paginates
         // brand-filtered results correctly. Sending fv=marka:NN to /kat/listele/
-        // is silently ignored (Epey deprecated that interface).
+        // is silently ignored by Epey for non-brand filter groups, but for
+        // the marka:NN value itself it does work as a last-resort fallback.
+        //
+        // Speed: brand metadata fetch is parallelised with `light=1` (the
+        // proxy uses plainFetch with the warm cf_clearance cookies — no
+        // puppeteer goto, no browser lock). Pagination still serialises on
+        // the browser lock, but ~85 % of brands are single-page so they
+        // skip pagination entirely. Net effect: 287-brand smartwatch
+        // partition drops from ~640 s → ~120 s.
         if (brandFilter && Array.isArray(brandFilter.values) && brandFilter.values.length &&
             allItems.length < maxProducts && !scraperAbort) {
           slog(`  ⏩ Marka partisyonu başlıyor (${brandFilter.values.length} marka · ~${brandFilter.total} toplam)`, 'info');
           const beforeBrand = allItems.length;
-          for (let bi = 0; bi < brandFilter.values.length; bi++) {
+
+          const buildBrandCandidates = (b) => {
+            const list = [];
+            const add = (u) => {
+              const v = String(u || '').trim();
+              if (!/^https?:/i.test(v) || list.includes(v)) return;
+              list.push(v);
+            };
+            if (typeof b === 'string') add(b);
+            else {
+              add(b?.url || b?.value);
+              if (Array.isArray(b?.candidateUrls)) for (const u of b.candidateUrls) add(u);
+            }
+            return list;
+          };
+
+          // Phase A — fetch every brand's first page in parallel (light=1).
+          // Workers are bounded so we don't overwhelm sessionCookies / the
+          // remote host. Each worker tries every URL candidate.
+          const META_CONCURRENCY = 4;
+          const brandMetas = new Array(brandFilter.values.length).fill(null);
+          let metaCursor = 0;
+          const fetchBrandMeta = async (b, candidates) => {
+            let lastErr = '';
+            for (const u of candidates) {
+              try {
+                const data = await fetchLinks(u, { light: true });
+                const items = itemsFromData(data);
+                const hasAjax = !!(data?.ajax && data.ajax.kategoriId);
+                if (items.length || hasAjax) return { data, url: u };
+                lastErr = 'ürün/AJAX yok';
+              } catch (e) {
+                lastErr = e?.message || String(e || 'bilinmeyen hata');
+              }
+            }
+            return { data: null, error: lastErr };
+          };
+          await Promise.all(Array.from({ length: META_CONCURRENCY }, async () => {
+            while (true) {
+              if (scraperAbort || allItems.length >= maxProducts) return;
+              const idx = metaCursor++;
+              if (idx >= brandFilter.values.length) return;
+              const b = brandFilter.values[idx];
+              const candidates = buildBrandCandidates(b);
+              if (!candidates.length) {
+                brandMetas[idx] = { brand: b, candidates, data: null, error: 'no-url' };
+                continue;
+              }
+              const meta = await fetchBrandMeta(b, candidates);
+              brandMetas[idx] = { brand: b, candidates, ...meta };
+            }
+          }));
+
+          // Phase B — process metadata sequentially. Pagination still uses
+          // the proxy browser lock, but most brands fit in one page (Epey
+          // returns 31 products per call) so they are zero-cost.
+          for (let bi = 0; bi < brandMetas.length; bi++) {
             if (allItems.length >= maxProducts || scraperAbort) break;
-            const b = brandFilter.values[bi];
-            const brandUrl   = typeof b === 'string' ? b : (b?.url || b?.value);
-            const brandName  = typeof b === 'string' ? b : (b?.name || brandUrl);
+            const meta = brandMetas[bi];
+            if (!meta) continue;
+            const b = meta.brand;
+            const brandName  = typeof b === 'string' ? b : (b?.name || meta.candidates[0] || 'brand');
             const brandCount = typeof b === 'object' ? (b?.count || 0) : 0;
             const brandFilterValue = typeof b === 'object'
               ? (String(b?.filterValue || '').startsWith('marka:') ? String(b.filterValue) : '')
               : '';
-            const brandUrlCandidates = [];
-            const addBrandUrlCandidate = (url) => {
-              const value = String(url || '').trim();
-              if (!/^https?:/i.test(value) || brandUrlCandidates.includes(value)) return;
-              brandUrlCandidates.push(value);
-            };
-            addBrandUrlCandidate(brandUrl);
-            if (typeof b === 'object' && Array.isArray(b?.candidateUrls)) {
-              for (const candidateUrl of b.candidateUrls) addBrandUrlCandidate(candidateUrl);
-            }
-            if (!brandUrlCandidates.length) {
+            const beforeOne = allItems.length;
+
+            if (meta.error === 'no-url') {
               const rawToken = typeof b === 'object' ? (b?.filterValue || b?.value || '') : String(b || '');
               slog(`    ↳ ${brandName}: marka URL'si yok, atlandı${/^marka:/i.test(rawToken) ? ' (proxy yeniden başlatılmalı)' : ''}`, 'warn');
               continue;
             }
-            const beforeOne = allItems.length;
-            // Fetch the brand page metadata. Some Epey brand labels map to
-            // non-obvious slugs (Tecno -> tecno-mobile), so try proxy-provided
-            // URL candidates before giving up on the brand partition.
-            let brandData = null;
-            let usedBrandUrl = '';
-            let lastBrandError = '';
-            for (const candidateUrl of brandUrlCandidates) {
-              try {
-                const candidateData = await fetchLinks(candidateUrl);
-                const candidateItems = itemsFromData(candidateData);
-                const candidateAjax = candidateData?.ajax && candidateData.ajax.kategoriId ? candidateData.ajax : null;
-                if (!candidateItems.length && !candidateAjax) {
-                  lastBrandError = 'ürün/AJAX yok';
-                  continue;
-                }
-                brandData = candidateData;
-                usedBrandUrl = candidateUrl;
-                break;
-              } catch (e) {
-                lastBrandError = e?.message || String(e || 'bilinmeyen hata');
-              }
-            }
-            if (!brandData) {
+
+            if (!meta.data) {
               if (brandFilterValue && ajax) {
                 try {
                   const beforeFallback = allItems.length;
@@ -6757,22 +6802,26 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
                     slog(`    ↳ ${brandName} (~${brandCount}): marka filtresiyle kurtarıldı +${fallbackGained} → toplam ${allItems.length}`, 'success');
                     continue;
                   }
-                  slog(`    ↳ ${brandName} (~${brandCount}): +0 yeni (Epey filtre boş döndü veya URL'ler zaten kapsandı)`, 'info');
-                  continue;
-                } catch (e) {
-                  lastBrandError = e?.message || String(e || lastBrandError || 'marka filtresi başarısız');
-                }
+                } catch { /* fall through to warn */ }
               }
-              slog(`    ↳ ${brandName}: meta hatası (${lastBrandError || 'aday URL başarısız'})`, 'warn');
+              slog(`    ↳ ${brandName}: meta hatası (${meta.error || 'aday URL başarısız'})`, 'warn');
               continue;
             }
-            if (usedBrandUrl && usedBrandUrl !== brandUrlCandidates[0]) {
-              slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${usedBrandUrl})`, 'info');
+
+            if (meta.url && meta.url !== meta.candidates[0]) {
+              slog(`    ↳ ${brandName}: alternatif marka URL kullanıldı (${meta.url})`, 'info');
             }
+            const brandData = meta.data;
             const brandAjax = brandData?.ajax && brandData.ajax.kategoriId ? brandData.ajax : null;
+            const inlineItems = itemsFromData(brandData);
             // Push the inline first-page links so we don't miss them.
-            pushItems(itemsFromData(brandData));
-            if (brandAjax) {
+            pushItems(inlineItems);
+            // Skip pagination when the brand fit in one page — saves a
+            // proxy round-trip and a browser-lock wait per single-page
+            // brand (typically ≥ 80 % of the partition list).
+            const pageSize = Number(brandAjax?.limit) || 31;
+            const needsMorePages = brandAjax && inlineItems.length >= pageSize;
+            if (needsMorePages && allItems.length < maxProducts && !scraperAbort) {
               await paginateStream(brandAjax, [], () => {});
             }
             const gained = allItems.length - beforeOne;
@@ -6808,8 +6857,17 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryI
         slog(`  ⚠️ Kategori AJAX bilgisi bulunamadı — sadece 1. sayfa alındı.`, 'warn');
       }
 
-      if (collectAll && expectedCategoryTotal && allItems.length < Math.floor(expectedCategoryTotal * 0.95) && !scraperAbort) {
-        slog(`  ⚠️ Eksik URL şüphesi: Epey tahmini ${expectedCategoryTotal}, toplanan ${allItems.length}. Bu kategori için proxy/partition tekrar denenmeli.`, 'warn');
+      // Coverage warning is anchored to the brand-partition total (the only
+      // total Epey reports that is NOT inflated by overlapping filter groups).
+      // The other filter groups sum products across every value, so a single
+      // product can appear in multiple slices and the total is far higher
+      // than the catalog size — comparing against that produced a false
+      // "Eksik URL şüphesi" on every category. brandFilter.total is the
+      // sum of per-brand counts which, for non-overlapping brands, is the
+      // actual catalog size.
+      const coverageTarget = Number(brandFilter?.total) || expectedCategoryTotal;
+      if (collectAll && coverageTarget && allItems.length < Math.floor(coverageTarget * 0.85) && !scraperAbort) {
+        slog(`  ⚠️ Eksik URL şüphesi: marka toplamı ${coverageTarget}, toplanan ${allItems.length}. Bu kategori için proxy/partition tekrar denenmeli.`, 'warn');
       }
       slog(`📦 Toplam ${allItems.length} ürün URL'si toplandı (${((Date.now() - t0) / 1000).toFixed(1)}s)`, 'success');
       return allItems.slice(0, maxProducts);
