@@ -1138,6 +1138,8 @@ _RESIDUE_RULES = [
     # "Audioli command" — bad TR "Sesli komut" → "Voice command"
     (_re.compile(r"\bAudioli\s+command\b", _re.IGNORECASE),   "Voice command"),
     (_re.compile(r"\bAudiole\s+command\b", _re.IGNORECASE),   "Voice command"),
+    (_re.compile(r"\bAudioli\b"),                             "Voice"),
+    (_re.compile(r"\bAudiole\b"),                             "Voice"),
     # "Displaya Dual Tapping" — TR locative "a" on Display
     (_re.compile(r"\bDisplaya\b"),                            "Display"),
     # "Kolay Interface" — TR "Kolay" = Easy
@@ -1182,8 +1184,13 @@ _RESIDUE_RULES_DE = [
     (_re.compile(r"\bTakip\b"),                               "Tracking"),
     (_re.compile(r"\(Tipik\)"),                               "(typisch)"),
     (_re.compile(r"\bTipik\b"),                               "typisch"),
-    (_re.compile(r"\bAudioli\s+command\b", _re.IGNORECASE),   "Sprachbefehl"),
-    (_re.compile(r"\bAudiole\s+command\b", _re.IGNORECASE),   "Sprachbefehl"),
+    # NLLB may have already translated "command"→"Befehl" before residue
+    # runs, so catch both forms.
+    (_re.compile(r"\bAudioli\s+(?:command|Befehl)\b", _re.IGNORECASE),   "Sprachbefehl"),
+    (_re.compile(r"\bAudiole\s+(?:command|Befehl)\b", _re.IGNORECASE),   "Sprachbefehl"),
+    # Standalone "Audioli" with anything after → drop "Audioli" prefix.
+    (_re.compile(r"\bAudioli\b"),                             "Sprach"),
+    (_re.compile(r"\bAudiole\b"),                             "Sprach"),
     (_re.compile(r"\bDisplaya\b"),                            "Display"),
     (_re.compile(r"\bKolay\s+Interface\b"),                   "Einfacher Modus"),
     (_re.compile(r"\bKolay\b"),                               "Einfach"),
