@@ -208,10 +208,25 @@
   function canonicalizeProduct(product) {
     const maps = canonicalizeMaps(product?.specs || {}, product?.specSections || {});
     const keySpecs = canonicalizeKeySpecs(product?.keySpecs || {});
+    // 2026-05-29: keep the ORIGINAL specSections structure (source-language
+    // section names + original spec keys). The canonicalised re-bucketing
+    // was dropping whole sections — e.g. Epey CPU products lost TEMEL
+    // BİLGİLER (Desteklediği Teknolojiler / Jenerasyon / PassMark Puanı /
+    // Çıkış Dönemi / Çıkış Yılı / İşlemci Mimarisi / Serisi / Türü /
+    // Üst Modeli) because their canonical keys had no match in KEY_RULES
+    // and the canonical section bucket they landed in collided with other
+    // content. The admin modal already runs per-row dict lookup so the
+    // section title, key, and value all get translated on display — it
+    // does not need pre-canonicalised buckets. Search, scoring, and
+    // comparison still consume the canonical flat `specs` / `specsEn`
+    // map below, so nothing downstream breaks.
+    const originalSections = product?.specSections && typeof product.specSections === 'object' && !Array.isArray(product.specSections)
+      ? product.specSections
+      : maps.specSections;
     return {
       ...product,
       specs: maps.specs,
-      specSections: maps.specSections,
+      specSections: originalSections,
       specsEn: maps.specs,
       keySpecs,
       specsCount: Object.keys(maps.specs).length,
