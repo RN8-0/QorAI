@@ -20,10 +20,11 @@ const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
-// EU pivot (2026-05-23): app supports TR/EN/DE/FR/ES/PT/RU only.
-const SUPPORTED_LANGS = ['en','de','tr','es','fr','pt','ru'];
+// Scope cut (2026-05-29): app focuses on DE/UK/TR markets only.
+// Geizhals (German source) → translate to TR + EN. DE is native, no translation.
+const SUPPORTED_LANGS = ['en','de','tr'];
 // Languages to translate German specs into (skip 'de' since source is German).
-const TARGET_LANGS = ['en','tr','es','fr','pt','ru'];
+const TARGET_LANGS = ['en','tr'];
 
 let scraperRunning = false;
 let scraperAbort = false;
@@ -2322,7 +2323,7 @@ function _deDictStore(germanText, targetLang, translation) {
   }
 }
 
-const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de','es','fr','pt','ru']);
+const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de']);
 let _localTranslateDisabledUntil = 0;
 
 function _localTranslationLooksUseful(sourceText, targetLang, translation) {

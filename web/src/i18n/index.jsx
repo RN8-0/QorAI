@@ -1,20 +1,11 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { STRINGS } from './strings';
 
-// The 12 languages the mobile app ships with.
+// Scope cut (2026-05-29): app focuses on DE/UK/TR markets only.
 export const LANGS = [
   { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', label: 'Português', flag: '🇵🇹' },
-  { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
-  { code: 'pl', label: 'Polski', flag: '🇵🇱' },
-  { code: 'sv', label: 'Svenska', flag: '🇸🇪' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
 ];
 
 // Only languages that actually have a string table are offered in the
