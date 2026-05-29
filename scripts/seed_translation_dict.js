@@ -423,6 +423,152 @@ const SEED = {
   'Donanım':                  ['Hardware', 'Hardware', 'Hardware', 'Matériel', 'Hardware', 'Оборудование'],
   'Donanım Teknolojileri':    ['Hardware Technologies', 'Hardware-Technologien', 'Tecnologías de Hardware', 'Technologies Matérielles', 'Tecnologias de Hardware', 'Аппаратные Технологии'],
   'Donanım Güvenilirlik Doğrulaması':['Hardware Reliability Verification', 'Hardware-Zuverlässigkeitsprüfung', 'Verificación de Fiabilidad del Hardware', 'Vérification de Fiabilité du Matériel', 'Verificação de Confiabilidade do Hardware', 'Проверка Надежности Оборудования'],
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 2026-05-29 — atoms collected from a fresh smartwatches+laptops+CPU
+  // sample scrape (find_untranslated_atoms.js). Every entry below was
+  // observed leaking Turkish into the EN modal, so we map each one to its
+  // proper English / DE / ES / FR / PT / RU translation here.
+  // ════════════════════════════════════════════════════════════════════════
+
+  // Argos-mangled fragments (English stem + Turkish suffix or partial)
+  'Mesafesi':                 ['Process Node', 'Strukturbreite', 'Nodo de Proceso', 'Finesse de Gravure', 'Nó de Processo', 'Техпроцесс'],
+  'GPU Mesafesi':             ['GPU Process Node', 'GPU-Strukturbreite', 'Nodo de Proceso del GPU', 'Finesse de Gravure du GPU', 'Nó de Processo do GPU', 'Техпроцесс GPU'],
+  'Processor Ailesi':         ['Processor Family', 'Prozessorfamilie', 'Familia de Procesadores', 'Famille de Processeurs', 'Família de Processadores', 'Семейство Процессоров'],
+  'Product Ailesi':           ['Product Family', 'Produktfamilie', 'Familia de Producto', 'Famille de Produit', 'Família do Produto', 'Семейство Продуктов'],
+  '(Kilitli)':                ['(Locked)', '(Gesperrt)', '(Bloqueado)', '(Verrouillé)', '(Bloqueado)', '(Заблокирован)'],
+  'Display Kilidi':           ['Screen Lock', 'Bildschirmsperre', 'Bloqueo de Pantalla', 'Verrouillage de l\'Écran', 'Bloqueio de Tela', 'Блокировка Экрана'],
+  'Teknolojiler':             ['Technologies', 'Technologien', 'Tecnologías', 'Technologies', 'Tecnologias', 'Технологии'],
+  '13.Nesil Intel Core':      ['13th Gen Intel Core', 'Intel Core 13. Generation', 'Intel Core de 13ª Generación', 'Intel Core 13e Génération', 'Intel Core de 13ª Geração', 'Intel Core 13-го поколения'],
+  '14.Nesil Intel Core':      ['14th Gen Intel Core', 'Intel Core 14. Generation', 'Intel Core de 14ª Generación', 'Intel Core 14e Génération', 'Intel Core de 14ª Geração', 'Intel Core 14-го поколения'],
+  '2.Nesil Intel Core Ultra': ['2nd Gen Intel Core Ultra', 'Intel Core Ultra 2. Generation', 'Intel Core Ultra de 2ª Generación', 'Intel Core Ultra 2e Génération', 'Intel Core Ultra de 2ª Geração', 'Intel Core Ultra 2-го поколения'],
+  '13.Nesil Processors Intel UHD Graphics':['Intel UHD Graphics for 13th Gen Processors', 'Intel UHD Graphics für Prozessoren der 13. Generation', 'Intel UHD Graphics para Procesadores de 13ª Generación', 'Intel UHD Graphics pour Processeurs 13e Génération', 'Intel UHD Graphics para Processadores de 13ª Geração', 'Intel UHD Graphics для процессоров 13-го поколения'],
+  '14.Nesil Processors Intel UHD Graphics':['Intel UHD Graphics for 14th Gen Processors', 'Intel UHD Graphics für Prozessoren der 14. Generation', 'Intel UHD Graphics para Procesadores de 14ª Generación', 'Intel UHD Graphics pour Processeurs 14e Génération', 'Intel UHD Graphics para Processadores de 14ª Geração', 'Intel UHD Graphics для процессоров 14-го поколения'],
+
+  // Smartwatch display / material values
+  'Gece Mode':                ['Night Mode', 'Nachtmodus', 'Modo Nocturno', 'Mode Nuit', 'Modo Noturno', 'Ночной Режим'],
+  'Gece Modu':                ['Night Mode', 'Nachtmodus', 'Modo Nocturno', 'Mode Nuit', 'Modo Noturno', 'Ночной Режим'],
+  'Gece Mode Glass':          ['Nightmode Glass', 'Nachtmodus-Glas', 'Cristal de Modo Nocturno', 'Verre Mode Nuit', 'Vidro de Modo Noturno', 'Стекло Ночного Режима'],
+  'Sürekli Açık (Always-On)': ['Always-On', 'Always-On', 'Siempre Encendido', 'Toujours Activé', 'Sempre Ligado', 'Всегда Включён'],
+  'Çiziklere Dayanıklı':      ['Scratch Resistant', 'Kratzfest', 'Resistente a Arañazos', 'Résistant aux Rayures', 'Resistente a Arranhões', 'Устойчив к Царапинам'],
+  'Geniş Açılı OLED Cam':     ['Wide Angle OLED Glass', 'Weitwinkel-OLED-Glas', 'Cristal OLED de Ángulo Amplio', 'Verre OLED Grand Angle', 'Vidro OLED de Ângulo Amplio', 'Широкоугольное OLED Стекло'],
+  'Safir Kristal':            ['Sapphire Crystal', 'Saphirkristall', 'Cristal de Zafiro', 'Cristal Saphir', 'Cristal de Safira', 'Сапфировое Стекло'],
+  'Paslanmaz Çelik':          ['Stainless Steel', 'Edelstahl', 'Acero Inoxidable', 'Acier Inoxydable', 'Aço Inoxidável', 'Нержавеющая Сталь'],
+  'Alüminyum':                ['Aluminum', 'Aluminium', 'Aluminio', 'Aluminium', 'Alumínio', 'Алюминий'],
+  'Titanyum':                 ['Titanium', 'Titan', 'Titanio', 'Titane', 'Titânio', 'Титан'],
+  'Mor':                      ['Purple', 'Violett', 'Morado', 'Violet', 'Roxo', 'Фиолетовый'],
+  'Sarı':                     ['Yellow', 'Gelb', 'Amarillo', 'Jaune', 'Amarelo', 'Жёлтый'],
+  'Kahverengi':               ['Brown', 'Braun', 'Marrón', 'Marron', 'Marrom', 'Коричневый'],
+  'Turuncu':                  ['Orange', 'Orange', 'Naranja', 'Orange', 'Laranja', 'Оранжевый'],
+  'Pembe':                    ['Pink', 'Pink', 'Rosa', 'Rose', 'Rosa', 'Розовый'],
+  'Lacivert':                 ['Navy Blue', 'Marineblau', 'Azul Marino', 'Bleu Marine', 'Azul Marinho', 'Тёмно-Синий'],
+
+  // Smartwatch microphones
+  '3 Mikrofonlu':             ['3 Microphones', '3 Mikrofone', '3 Micrófonos', '3 Microphones', '3 Microfones', '3 Микрофона'],
+  '2 Mikrofonlu':             ['2 Microphones', '2 Mikrofone', '2 Micrófonos', '2 Microphones', '2 Microfones', '2 Микрофона'],
+  '4 Mikrofonlu':             ['4 Microphones', '4 Mikrofone', '4 Micrófonos', '4 Microphones', '4 Microfones', '4 Микрофона'],
+  'Gürültü Önleyici Mikrofon':['Noise-Cancelling Microphone', 'Geräuschunterdrückendes Mikrofon', 'Micrófono con Cancelación de Ruido', 'Microphone à Réduction de Bruit', 'Microfone com Cancelamento de Ruído', 'Микрофон с Шумоподавлением'],
+
+  // Health spec keys (whole-string entries the SPA looks up)
+  'Sağlık ve Kalori Takibi':  ['Health and Calorie Tracking', 'Gesundheits- und Kalorienverfolgung', 'Seguimiento de Salud y Calorías', 'Suivi Santé et Calories', 'Monitoramento de Saúde e Calorias', 'Отслеживание Здоровья и Калорий'],
+  'Health ve':                ['Health and', 'Gesundheit und', 'Salud y', 'Santé et', 'Saúde e', 'Здоровье и'],
+  'Health ve Kalori Takibi':  ['Health and Calorie Tracking', 'Gesundheits- und Kalorienverfolgung', 'Seguimiento de Salud y Calorías', 'Suivi Santé et Calories', 'Monitoramento de Saúde e Calorias', 'Отслеживание Здоровья и Калорий'],
+  'Health Tavsiyesi':         ['Health Advice', 'Gesundheitsempfehlung', 'Consejo de Salud', 'Conseil Santé', 'Conselho de Saúde', 'Рекомендации по Здоровью'],
+  '(Heart Speed) Kalori Takibi':['Heart Rate / Calorie Tracking', 'Herzfrequenz / Kalorienverfolgung', 'Ritmo Cardíaco / Seguimiento de Calorías', 'Fréquence Cardiaque / Suivi des Calories', 'Frequência Cardíaca / Monitoramento de Calorias', 'Частота Пульса / Отслеживание Калорий'],
+  'Nabız (Kalori Takibi)':    ['Heart Rate (Calorie Tracking)', 'Herzfrequenz (Kalorienverfolgung)', 'Ritmo Cardíaco (Seguimiento de Calorías)', 'Fréquence Cardiaque (Suivi des Calories)', 'Frequência Cardíaca (Monitoramento de Calorias)', 'Частота Пульса (Отслеживание Калорий)'],
+  'Uyku Hareketsizlik Kandaki Oksijen Level (SpO2) Health Nefes Stres Level Display':
+                              ['Sleep Inactivity / Blood Oxygen (SpO2) / Health Breathing / Stress Level Display', 'Schlafinaktivität / Blutsauerstoff (SpO2) / Gesundheits-Atmung / Stress-Level-Anzeige', 'Inactividad del Sueño / Oxígeno en Sangre (SpO2) / Respiración / Visualización del Nivel de Estrés', 'Inactivité du Sommeil / Oxygène Sanguin (SpO2) / Respiration Santé / Affichage du Niveau de Stress', 'Inatividade do Sono / Oxigênio no Sangue (SpO2) / Respiração / Visualização do Nível de Estresse', 'Бездействие во сне / Кислород в крови (SpO2) / Дыхание / Уровень стресса'],
+  'Uyku Hareketsizlik Health Nefes Stres Level Display':
+                              ['Sleep Inactivity / Health Breathing / Stress Level Display', 'Schlafinaktivität / Gesundheits-Atmung / Stress-Level-Anzeige', 'Inactividad del Sueño / Respiración Saludable / Pantalla de Nivel de Estrés', 'Inactivité du Sommeil / Respiration Santé / Affichage du Niveau de Stress', 'Inatividade do Sono / Respiração Saudável / Visualização do Nível de Estresse', 'Бездействие во сне / Здоровое дыхание / Уровень стресса'],
+  'Uyku Kandaki Oksijen Level (SpO2) Health Nefes Elektriksel Heart (ECG/ECG)':
+                              ['Sleep / Blood Oxygen (SpO2) / Health Breathing / Electrical Heart Rate (ECG/EKG)', 'Schlaf / Blutsauerstoff (SpO2) / Gesundheits-Atmung / Elektrische Herzfrequenz (EKG)', 'Sueño / Oxígeno en Sangre (SpO2) / Respiración Saludable / Frecuencia Cardíaca Eléctrica (ECG/EKG)', 'Sommeil / Oxygène Sanguin (SpO2) / Respiration Santé / Fréquence Cardiaque Électrique (ECG)', 'Sono / Oxigênio no Sangue (SpO2) / Respiração Saudável / Frequência Cardíaca Elétrica (ECG/EKG)', 'Сон / Кислород в крови (SpO2) / Здоровое дыхание / ЭКГ'],
+  'Uyku Hareketsizlik Health Nefes Stres Level Display Ritim Notification Ruh Hali Takibi':
+                              ['Sleep Inactivity / Breathing / Stress / Rhythm Notification / Mood Tracking', 'Schlafinaktivität / Atmung / Stress / Rhythmus-Benachrichtigung / Stimmungsverfolgung', 'Inactividad del Sueño / Respiración / Estrés / Notificación de Ritmo / Seguimiento del Estado de Ánimo', 'Inactivité du Sommeil / Respiration / Stress / Notification de Rythme / Suivi de l\'Humeur', 'Inatividade do Sono / Respiração / Estresse / Notificação de Ritmo / Monitoramento de Humor', 'Бездействие во сне / Дыхание / Стресс / Уведомление о ритме / Отслеживание настроения'],
+  'Body Ritim Notification':  ['Body Rhythm Notification', 'Körperrhythmus-Benachrichtigung', 'Notificación de Ritmo Corporal', 'Notification de Rythme Corporel', 'Notificação de Ritmo Corporal', 'Уведомление о Ритме Тела'],
+  'Body Ritim Notification Ruh Hali Takibi':
+                              ['Body Rhythm Notification / Mood Tracking', 'Körperrhythmus-Benachrichtigung / Stimmungsverfolgung', 'Notificación de Ritmo Corporal / Seguimiento del Estado de Ánimo', 'Notification de Rythme Corporel / Suivi de l\'Humeur', 'Notificação de Ritmo Corporal / Monitoramento de Humor', 'Уведомление о ритме тела / Отслеживание настроения'],
+  'Hiper Tansiyon Notification Ruh Hali Takibi':
+                              ['Hypertension Notification / Mood Tracking', 'Bluthochdruck-Benachrichtigung / Stimmungsverfolgung', 'Notificación de Hipertensión / Seguimiento del Estado de Ánimo', 'Notification d\'Hypertension / Suivi de l\'Humeur', 'Notificação de Hipertensão / Monitoramento de Humor', 'Уведомление о гипертонии / Отслеживание настроения'],
+  'Health Tavsiyesi Kimlik Uyku Apnesi Notification':
+                              ['Health Recommendation / ID / Sleep Apnea Notification', 'Gesundheitsempfehlung / ID / Schlafapnoe-Benachrichtigung', 'Recomendación de Salud / ID / Notificación de Apnea del Sueño', 'Recommandation Santé / ID / Notification d\'Apnée du Sommeil', 'Recomendação de Saúde / ID / Notificação de Apneia do Sono', 'Рекомендация по здоровью / ID / Уведомление об апноэ во сне'],
+  'Uyku Apnesi Notification': ['Sleep Apnea Notification', 'Schlafapnoe-Benachrichtigung', 'Notificación de Apnea del Sueño', 'Notification d\'Apnée du Sommeil', 'Notificação de Apneia do Sono', 'Уведомление об Апноэ во Сне'],
+  'İlaç Hatırlatıcısı':       ['Medication Reminder', 'Medikamentenerinnerung', 'Recordatorio de Medicación', 'Rappel de Médicaments', 'Lembrete de Medicação', 'Напоминание о Лекарствах'],
+  'Vücut Ateş Ölçer':         ['Body Temperature Sensor', 'Körpertemperatursensor', 'Sensor de Temperatura Corporal', 'Capteur de Température Corporelle', 'Sensor de Temperatura Corporal', 'Датчик Температуры Тела'],
+  'Elektriksel Kalp Monitörü':['Electrical Heart Monitor', 'Elektrischer Herzmonitor', 'Monitor Cardíaco Eléctrico', 'Moniteur Cardiaque Électrique', 'Monitor Cardíaco Elétrico', 'Электрический Кардиомонитор'],
+  'Elektriksel Heart (ECG/ECG)':['Electrical Heart Rate (ECG/EKG)', 'Elektrische Herzfrequenz (EKG)', 'Frecuencia Cardíaca Eléctrica (ECG/EKG)', 'Fréquence Cardiaque Électrique (ECG)', 'Frequência Cardíaca Elétrica (ECG/EKG)', 'Электрическая ЭКГ'],
+  'Sim ile Saat Üzerinden':   ['Via SIM on Watch', 'Über SIM auf der Uhr', 'Vía SIM en el Reloj', 'Via SIM sur la Montre', 'Via SIM no Relógio', 'Через SIM на часах'],
+
+  // Emergency / security
+  'Acil Durum':               ['Emergency', 'Notfall', 'Emergencia', 'Urgence', 'Emergência', 'Экстренный'],
+  'Acil Durum Çağrı':         ['Emergency Call', 'Notrufanruf', 'Llamada de Emergencia', 'Appel d\'Urgence', 'Chamada de Emergência', 'Экстренный Вызов'],
+  'Acil Durum Calling (SOS)': ['Emergency Calling (SOS)', 'Notruf (SOS)', 'Llamada de Emergencia (SOS)', 'Appel d\'Urgence (SOS)', 'Chamada de Emergência (SOS)', 'Экстренный Вызов (SOS)'],
+  'Acil Durum Smart Ev Compatibility Location Takibi':
+                              ['Emergency Smart Home Compatibility / Location Tracking', 'Notfall-Smart-Home-Kompatibilität / Standortverfolgung', 'Compatibilidad de Casa Inteligente de Emergencia / Seguimiento de Ubicación', 'Compatibilité Maison Connectée d\'Urgence / Suivi de Localisation', 'Compatibilidade de Casa Inteligente de Emergência / Rastreamento de Localização', 'Совместимость с умным домом / Отслеживание местоположения'],
+  'Location Info Acil Call':  ['Location Info Emergency Call', 'Standortinformations-Notruf', 'Llamada de Emergencia con Información de Ubicación', 'Appel d\'Urgence avec Informations de Localisation', 'Chamada de Emergência com Informações de Localização', 'Экстренный вызов с информацией о местоположении'],
+  'Location Info Siren Audioi Acil Call':
+                              ['Location Info / Siren / Audio Emergency Call', 'Standortinformation / Sirene / Audio-Notruf', 'Información de Ubicación / Sirena / Llamada de Emergencia por Audio', 'Informations de Localisation / Sirène / Appel d\'Urgence Audio', 'Informações de Localização / Sirene / Chamada de Emergência por Áudio', 'Информация о местоположении / Сирена / Голосовой экстренный вызов'],
+  'Geriye Location Takibi':   ['Reverse Location Tracking', 'Rückwärts-Standortverfolgung', 'Seguimiento de Ubicación Inverso', 'Suivi de Localisation Inversé', 'Rastreamento de Localização Reverso', 'Обратное Отслеживание Местоположения'],
+  'Security ve Protection':   ['Security and Protection', 'Sicherheit und Schutz', 'Seguridad y Protección', 'Sécurité et Protection', 'Segurança e Proteção', 'Безопасность и Защита'],
+  'Kaza Algılama':            ['Crash Detection', 'Unfallerkennung', 'Detección de Choque', 'Détection d\'Accident', 'Detecção de Acidente', 'Обнаружение Аварии'],
+
+  // Battery / charging — minutesda / hourslik pattern + Dolum
+  'Battery Dolum Time':       ['Charging Time', 'Ladezeit', 'Tiempo de Carga', 'Temps de Charge', 'Tempo de Carregamento', 'Время Зарядки'],
+  '15 minutesda 8 hourslik Use':['8 Hours Use in 15 Minutes', '8 Stunden Nutzung in 15 Minuten', '8 Horas de Uso en 15 Minutos', '8 Heures d\'Utilisation en 15 Minutes', '8 Horas de Uso em 15 Minutos', '8 часов использования за 15 минут'],
+  '15 minutesda 12 hourslik use':['12 Hours Use in 15 Minutes', '12 Stunden Nutzung in 15 Minuten', '12 Horas de Uso en 15 Minutos', '12 Heures d\'Utilisation en 15 Minutes', '12 Horas de Uso em 15 Minutos', '12 часов использования за 15 минут'],
+  '30 minutesda %80 Dolum':   ['80% Charge in 30 Minutes', '80% Aufladung in 30 Minuten', '80% de Carga en 30 Minutos', '80% de Charge en 30 Minutes', '80% de Carga em 30 Minutos', '80% заряда за 30 минут'],
+  '45 minutesda %80 Dolum':   ['80% Charge in 45 Minutes', '80% Aufladung in 45 Minuten', '80% de Carga en 45 Minutos', '80% de Charge en 45 Minutes', '80% de Carga em 45 Minutos', '80% заряда за 45 минут'],
+  '60 minutesda %80 Dolum':   ['80% Charge in 60 Minutes', '80% Aufladung in 60 Minuten', '80% de Carga en 60 Minutos', '80% de Charge en 60 Minutes', '80% de Carga em 60 Minutos', '80% заряда за 60 минут'],
+  '90 minutesda %80 Dolum':   ['80% Charge in 90 Minutes', '80% Aufladung in 90 Minuten', '80% de Carga en 90 Minutos', '90% de Charge en 90 Minutes', '80% de Carga em 90 Minutos', '80% заряда за 90 минут'],
+  '80 minutesda %100 Charging':['100% Charge in 80 Minutes', '100% Aufladung in 80 Minuten', '100% de Carga en 80 Minutos', '100% de Charge en 80 Minutes', '100% de Carga em 80 Minutos', '100% заряда за 80 минут'],
+  'Li-Po (lithium polymer) 30 minutesda %50 Charging':
+                              ['Li-Po (lithium polymer), 50% charge in 30 minutes', 'Li-Po (Lithium-Polymer), 50% Aufladung in 30 Minuten', 'Li-Po (polímero de litio), 50% de carga en 30 minutos', 'Li-Po (lithium polymère), 50% de charge en 30 minutes', 'Li-Po (polímero de lítio), 50% de carga em 30 minutos', 'Li-Po (литий-полимер), 50% заряда за 30 минут'],
+
+  // Display / panel — extra long compound atoms
+  'TÜV Rheinland Low Blue Light':['TÜV Rheinland Low Blue Light', 'TÜV Rheinland geringes Blaulicht', 'TÜV Rheinland Luz Azul Reducida', 'TÜV Rheinland Faible Lumière Bleue', 'TÜV Rheinland Baixa Luz Azul', 'TÜV Rheinland низкий уровень синего света'],
+  'TÜV Rheinland Low Blue Light (Hardware Solution)':
+                              ['TÜV Rheinland Low Blue Light (Hardware Solution)', 'TÜV Rheinland geringes Blaulicht (Hardware-Lösung)', 'TÜV Rheinland Luz Azul Reducida (Solución de Hardware)', 'TÜV Rheinland Faible Lumière Bleue (Solution Matérielle)', 'TÜV Rheinland Baixa Luz Azul (Solução de Hardware)', 'TÜV Rheinland низкий уровень синего света (Аппаратное решение)'],
+  'TÜV Rheinland Low blue light Certificate':['TÜV Rheinland Low Blue Light Certificate', 'TÜV Rheinland-Zertifikat geringes Blaulicht', 'Certificado TÜV Rheinland de Luz Azul Reducida', 'Certificat TÜV Rheinland Faible Lumière Bleue', 'Certificado TÜV Rheinland de Baixa Luz Azul', 'Сертификат TÜV Rheinland о низком уровне синего света'],
+  'TÜV Rheinland Low blue light Certificate ()':['TÜV Rheinland Low Blue Light Certificate', 'TÜV Rheinland-Zertifikat geringes Blaulicht', 'Certificado TÜV Rheinland de Luz Azul Reducida', 'Certificat TÜV Rheinland Faible Lumière Bleue', 'Certificado TÜV Rheinland de Baixa Luz Azul', 'Сертификат TÜV Rheinland о низком уровне синего света'],
+  'TÜV Rheinland Low blue light certification ()':['TÜV Rheinland Low Blue Light Certification', 'TÜV Rheinland-Zertifizierung geringes Blaulicht', 'Certificación TÜV Rheinland de Luz Azul Reducida', 'Certification TÜV Rheinland Faible Lumière Bleue', 'Certificação TÜV Rheinland de Baixa Luz Azul', 'Сертификация TÜV Rheinland низкого уровня синего света'],
+  'TÜV Rheinland High Game Performance':['TÜV Rheinland High Gaming Performance', 'TÜV Rheinland Hochleistungs-Gaming', 'TÜV Rheinland Alto Rendimiento de Juego', 'TÜV Rheinland Haute Performance de Jeu', 'TÜV Rheinland Alto Desempenho de Jogos', 'TÜV Rheinland Высокая игровая производительность'],
+  'Fabrika Color Kalibrasyonu':['Factory Color Calibration', 'Werkskalibrierung der Farben', 'Calibración de Color de Fábrica', 'Calibration Couleur d\'Usine', 'Calibração de Cor de Fábrica', 'Заводская Цветовая Калибровка'],
+  'Fabrika Renk Kalibrasyonu': ['Factory Color Calibration', 'Werkskalibrierung der Farben', 'Calibración de Color de Fábrica', 'Calibration Couleur d\'Usine', 'Calibração de Cor de Fábrica', 'Заводская Цветовая Калибровка'],
+
+  // Smartwatch — sport / activity / sea
+  'Multi Spor Mode':          ['Multi-Sport Mode', 'Mehrsportmodus', 'Modo Multideporte', 'Mode Multi-Sport', 'Modo Multiesporte', 'Многоспортивный Режим'],
+  'Çoklu Spor Modu':          ['Multi-Sport Mode', 'Mehrsportmodus', 'Modo Multideporte', 'Mode Multi-Sport', 'Modo Multiesporte', 'Многоспортивный Режим'],
+  'Hibrit Cooling (/Hava/Metal Plaka)':['Hybrid Cooling (Air/Metal Plate)', 'Hybridkühlung (Luft/Metallplatte)', 'Refrigeración Híbrida (Aire/Placa Metálica)', 'Refroidissement Hybride (Air/Plaque Métallique)', 'Refrigeração Híbrida (Ar/Placa Metálica)', 'Гибридное охлаждение (воздух/металлическая пластина)'],
+  'Hibrit Soğutma':           ['Hybrid Cooling', 'Hybridkühlung', 'Refrigeración Híbrida', 'Refroidissement Hybride', 'Refrigeração Híbrida', 'Гибридное Охлаждение'],
+  'Hava Status':              ['Weather', 'Wetter', 'Tiempo', 'Météo', 'Tempo', 'Погода'],
+  'Hava Durumu':              ['Weather', 'Wetter', 'Tiempo', 'Météo', 'Tempo', 'Погода'],
+  'Mesafe Aktivite Takibi ve History':['Distance Activity Tracking and History', 'Distanz-Aktivitätsverfolgung und Verlauf', 'Seguimiento de Actividad por Distancia e Historial', 'Suivi d\'Activité par Distance et Historique', 'Monitoramento de Atividade por Distância e Histórico', 'Отслеживание активности по расстоянию и история'],
+  'Deniz Suyu Temperature Geri Rotation Hedef Belirleme':
+                              ['Sea Water Temperature / Reverse Heading / Target Setting', 'Meerwassertemperatur / Rückwärtsrichtung / Zieleinstellung', 'Temperatura del Agua de Mar / Rumbo Inverso / Establecer Objetivo', 'Température de l\'Eau de Mer / Cap Inverse / Définir un Objectif', 'Temperatura da Água do Mar / Direção Reversa / Definir Objetivo', 'Температура морской воды / Обратное направление / Установка цели'],
+  'Speed Rota (Parkur) Takibi Virtual Antreman Partneri':
+                              ['Speed Route Tracking / Virtual Workout Partner', 'Geschwindigkeits-Streckenverfolgung / Virtueller Trainingspartner', 'Seguimiento de Ruta de Velocidad / Compañero de Entrenamiento Virtual', 'Suivi d\'Itinéraire de Vitesse / Partenaire d\'Entraînement Virtuel', 'Rastreamento de Rota de Velocidade / Parceiro de Treino Virtual', 'Отслеживание скоростного маршрута / Виртуальный партнёр по тренировке'],
+  'Rota (Parkur) Takibi Virtual Antreman Partneri':
+                              ['Route Tracking / Virtual Workout Partner', 'Streckenverfolgung / Virtueller Trainingspartner', 'Seguimiento de Ruta / Compañero de Entrenamiento Virtual', 'Suivi d\'Itinéraire / Partenaire d\'Entraînement Virtuel', 'Rastreamento de Rota / Parceiro de Treino Virtual', 'Отслеживание маршрута / Виртуальный партнёр по тренировке'],
+  'Rota Takibi':              ['Route Tracking', 'Streckenverfolgung', 'Seguimiento de Ruta', 'Suivi d\'Itinéraire', 'Rastreamento de Rota', 'Отслеживание Маршрута'],
+  'Parkur Takibi':            ['Course Tracking', 'Kurs-Verfolgung', 'Seguimiento de Recorrido', 'Suivi de Parcours', 'Rastreamento de Percurso', 'Отслеживание Курса'],
+  'Sanal Antreman Partneri':  ['Virtual Workout Partner', 'Virtueller Trainingspartner', 'Compañero de Entrenamiento Virtual', 'Partenaire d\'Entraînement Virtuel', 'Parceiro de Treino Virtual', 'Виртуальный Партнёр по Тренировке'],
+  'Antreman':                 ['Workout', 'Training', 'Entrenamiento', 'Entraînement', 'Treino', 'Тренировка'],
+  'Smart Geri Rotation Hedef Belirleme':['Smart Reverse Rotation Target Setting', 'Smarte Rückwärtsrotation-Zieleinstellung', 'Configuración Inteligente de Objetivo de Rotación Inversa', 'Réglage Intelligent de Cible de Rotation Inverse', 'Configuração Inteligente de Alvo de Rotação Reversa', 'Умная установка цели обратного вращения'],
+  'Smart Deniz Suyu Temperature Geri Rotation Hedef Belirleme':['Smart Sea Water Temperature / Reverse Heading / Target Setting', 'Smarte Meerwassertemperatur / Rückwärtsrichtung / Zieleinstellung', 'Temperatura Inteligente del Agua de Mar / Rumbo Inverso / Establecer Objetivo', 'Température Intelligente de l\'Eau de Mer / Cap Inverse / Définir un Objectif', 'Temperatura Inteligente da Água do Mar / Direção Reversa / Definir Objetivo', 'Умная температура морской воды / Обратное направление / Установка цели'],
+  'Geri Rotation':            ['Reverse Heading', 'Rückwärtsrichtung', 'Rumbo Inverso', 'Cap Inverse', 'Direção Reversa', 'Обратное Направление'],
+  'Geriye Yön':               ['Reverse Heading', 'Rückwärtsrichtung', 'Rumbo Inverso', 'Cap Inverse', 'Direção Reversa', 'Обратное Направление'],
+  'Hedef Belirleme':          ['Target Setting', 'Zieleinstellung', 'Establecer Objetivo', 'Définir un Objectif', 'Definir Objetivo', 'Установка Цели'],
+  'Deniz Suyu Sıcaklığı':     ['Sea Water Temperature', 'Meerwassertemperatur', 'Temperatura del Agua de Mar', 'Température de l\'Eau de Mer', 'Temperatura da Água do Mar', 'Температура Морской Воды'],
+  'Deniz Suyu':               ['Sea Water', 'Meerwasser', 'Agua de Mar', 'Eau de Mer', 'Água do Mar', 'Морская Вода'],
+  'Gelgit Grafikleri':        ['Tide Graphics', 'Gezeitendiagramme', 'Gráficos de Mareas', 'Graphiques de Marées', 'Gráficos de Marés', 'Графики Приливов'],
+  'Gelgit Graphics':          ['Tide Graphics', 'Gezeitendiagramme', 'Gráficos de Mareas', 'Graphiques de Marées', 'Gráficos de Marés', 'Графики Приливов'],
+
+  // Services / Apps section common atoms
+  'Services ve Applications': ['Services and Applications', 'Dienste und Anwendungen', 'Servicios y Aplicaciones', 'Services et Applications', 'Serviços e Aplicações', 'Сервисы и Приложения'],
+  'Sesli Komut':              ['Voice Command', 'Sprachbefehl', 'Comando de Voz', 'Commande Vocale', 'Comando de Voz', 'Голосовая Команда'],
+  '1 x Uyku Modunda Charging Support':['1 x Sleep Mode Charging Support', '1 x Lade-Unterstützung im Schlafmodus', '1 x Carga Compatible en Modo Suspensión', '1 x Support de Charge en Mode Veille', '1 x Suporte de Carregamento em Modo de Suspensão', '1 x поддержка зарядки в спящем режиме'],
+  '1 x Uyku Modunda Şarj Desteği':['1 x Sleep Mode Charging Support', '1 x Lade-Unterstützung im Schlafmodus', '1 x Carga Compatible en Modo Suspensión', '1 x Support de Charge en Mode Veille', '1 x Suporte de Carregamento em Modo de Suspensão', '1 x поддержка зарядки в спящем режиме'],
+  'TÜV Rheinland Flicker Free':['TÜV Rheinland Flicker Free', 'TÜV Rheinland Flicker Free', 'TÜV Rheinland Sin Parpadeo', 'TÜV Rheinland Sans Scintillement', 'TÜV Rheinland Sem Cintilação', 'TÜV Rheinland без мерцания'],
+  'Flicker Free':             ['Flicker Free', 'Flimmerfrei', 'Sin Parpadeo', 'Sans Scintillement', 'Sem Cintilação', 'Без Мерцания'],
 };
 
 // ──────────────────────────────────────────────────────────────────────────
