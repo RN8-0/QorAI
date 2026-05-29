@@ -29,7 +29,7 @@ const path = require('path');
 const PROXY = 'http://localhost:3456';
 const PRODUCTS_PER_CATEGORY = Math.max(
   1,
-  Math.min(8, Number((process.argv.find(a => a.startsWith('--products=')) || '').split('=')[1] || 3)),
+  Math.min(10, Number((process.argv.find(a => a.startsWith('--products=')) || '').split('=')[1] || 3)),
 );
 
 // Pulled from `grep epeyPath admin/js/categories.js | sort -u`.

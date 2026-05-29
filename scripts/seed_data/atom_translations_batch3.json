@@ -1,0 +1,51 @@
+{
+  "Dual Fan":["Dual Fan","Doppellüfter","Doble Ventilador","Double Ventilateur","Ventilador Duplo","Двойной вентилятор"],
+  "Dual Way Fan":["Bi-directional Fan","Bidirektionaler Lüfter","Ventilador Bidireccional","Ventilateur Bidirectionnel","Ventilador Bidirecional","Двунаправленный вентилятор"],
+  "Fan Count":["Fan Count","Lüfteranzahl","Número de Ventiladores","Nombre de Ventilateurs","Quantidade de Ventiladores","Количество вентиляторов"],
+  "Fan Cooled":["Fan Cooled","Lüftergekühlt","Refrigerado por Ventilador","Refroidi par Ventilateur","Refrigerado a Ar","Воздушное охлаждение"],
+  "Fan Cooling":["Fan Cooling","Lüfterkühlung","Refrigeración por Ventilador","Refroidissement par Ventilateur","Refrigeração por Ventilador","Воздушное охлаждение"],
+  "Asus Fan Xpert 4":["Asus Fan Xpert 4","Asus Fan Xpert 4","Asus Fan Xpert 4","Asus Fan Xpert 4","Asus Fan Xpert 4","Asus Fan Xpert 4"],
+
+  "Blue/Gece":["Blue / Night","Blau / Nacht","Azul / Noche","Bleu / Nuit","Azul / Noite","Синий / Ночной"],
+  "Black/Gece":["Black / Night","Schwarz / Nacht","Negro / Noche","Noir / Nuit","Preto / Noite","Чёрный / Ночной"],
+
+  "Key Kilidi":["Key Lock","Tastensperre","Bloqueo de Teclas","Verrouillage des Touches","Bloqueio de Teclas","Блокировка клавиш"],
+  "Audio Key Kilidi":["Audio Key Lock","Audio-Tastensperre","Bloqueo de Tecla de Audio","Verrouillage des Touches Audio","Bloqueio de Tecla de Áudio","Аудио-блокировка клавиш"],
+  "Audio Key Kilidi mode":["Audio Key Lock Mode","Audio-Tastensperrmodus","Modo Bloqueo de Teclas de Audio","Mode Verrouillage Touches Audio","Modo de Bloqueio de Teclas de Áudio","Режим аудио-блокировки клавиш"],
+
+  "Focus Takibi":["Focus Tracking","Fokusverfolgung","Seguimiento de Enfoque","Suivi de la Mise au Point","Rastreamento de Foco","Отслеживание фокуса"],
+  "Health Takibi":["Health Tracking","Gesundheitsverfolgung","Seguimiento de Salud","Suivi Santé","Monitoramento de Saúde","Отслеживание здоровья"],
+  "Aktivite Detection":["Activity Detection","Aktivitätserkennung","Detección de Actividad","Détection d'Activité","Detecção de Atividade","Обнаружение активности"],
+  "Heart Ritmi Takibi":["Heart Rhythm Tracking","Herzrhythmusverfolgung","Seguimiento del Ritmo Cardíaco","Suivi du Rythme Cardiaque","Monitoramento do Ritmo Cardíaco","Отслеживание сердечного ритма"],
+  "Heart Ritmi Takibi Health Takibi":["Heart Rhythm & Health Tracking","Herzrhythmus- und Gesundheitsverfolgung","Seguimiento del Ritmo Cardíaco y Salud","Suivi du Rythme Cardiaque et de la Santé","Monitoramento do Ritmo Cardíaco e Saúde","Отслеживание сердечного ритма и здоровья"],
+  "Body Temperature Takibi":["Body Temperature Tracking","Körpertemperaturverfolgung","Seguimiento de Temperatura Corporal","Suivi de la Température Corporelle","Monitoramento da Temperatura Corporal","Отслеживание температуры тела"],
+  "Body Temperature Takibi Health Takibi":["Body Temperature & Health Tracking","Körpertemperatur- und Gesundheitsverfolgung","Seguimiento de Temperatura y Salud","Suivi Température et Santé","Monitoramento de Temperatura e Saúde","Отслеживание температуры и здоровья"],
+  "Smart Uyku Mode":["Smart Sleep Mode","Smarter Schlafmodus","Modo de Sueño Inteligente","Mode Sommeil Intelligent","Modo de Sono Inteligente","Умный режим сна"],
+  "Automatic Uyku Mode":["Automatic Sleep Mode","Automatischer Schlafmodus","Modo de Sueño Automático","Mode Sommeil Automatique","Modo de Sono Automático","Автоматический режим сна"],
+  "Automatic Uyku Mode Resistant PTFE Ayaklar":["Automatic Sleep Mode, Resistant PTFE Feet","Automatischer Schlafmodus, beständige PTFE-Füße","Modo de Sueño Automático, Pies Resistentes de PTFE","Mode Sommeil Auto, Pieds PTFE Résistants","Modo de Sono Automático, Pés PTFE Resistentes","Автоматический режим сна, износостойкие PTFE ножки"],
+  "Uyku Enerji Skoru":["Sleep Energy Score","Schlafenergie-Score","Puntuación de Energía del Sueño","Score d'Énergie du Sommeil","Pontuação de Energia do Sono","Оценка энергии сна"],
+  "Uyku Stres Takibi":["Sleep Stress Tracking","Schlaf-Stress-Verfolgung","Seguimiento de Estrés del Sueño","Suivi du Stress du Sommeil","Monitoramento do Estresse do Sono","Отслеживание стресса во сне"],
+
+  "Lithium-iyon":["Lithium-Ion","Lithium-Ionen","Iones de Litio","Lithium-Ion","Íons de Lítio","Литий-ионный"],
+
+  "Game / E-Spor":["Gaming / E-Sports","Gaming / E-Sports","Juegos / E-Sports","Jeux / E-Sport","Jogos / E-Sports","Игры / Киберспорт"],
+  "Spor Specifications":["Sport Specifications","Sport-Spezifikationen","Especificaciones Deportivas","Spécifications Sport","Especificações Esportivas","Спортивные характеристики"],
+  "HEALTH & SPOR &":["Health & Sport","Gesundheit & Sport","Salud y Deporte","Santé et Sport","Saúde e Esporte","Здоровье и спорт"],
+  "AB PRODUCT RECORDING ve":["EU Product Recording","EU-Produktregistrierung","Registro de Producto UE","Enregistrement Produit UE","Registo do Produto UE","Регистрация продукта ЕС"],
+
+  "Weight (Asgari)":["Weight (Minimum)","Gewicht (Minimum)","Peso (Mínimo)","Poids (Minimum)","Peso (Mínimo)","Вес (Минимум)"],
+  "Thickness (Asgari)":["Thickness (Minimum)","Dicke (Minimum)","Grosor (Mínimo)","Épaisseur (Minimum)","Espessura (Mínimo)","Толщина (Минимум)"],
+
+  "POWER VE CONNECTIONS":["Power & Connections","Stromversorgung & Anschlüsse","Energía y Conexiones","Alimentation et Connexions","Energia e Conexões","Питание и Подключения"],
+
+  "Nvidia Tensor 5.Nesil":["Nvidia Tensor 5th Gen","Nvidia Tensor 5. Generation","Nvidia Tensor 5ª Generación","Nvidia Tensor 5e Génération","Nvidia Tensor 5ª Geração","Nvidia Tensor 5-го поколения"],
+  "Nvidia Viewing 4.Nesil":["Nvidia Ray Tracing 4th Gen","Nvidia Raytracing 4. Generation","Nvidia Ray Tracing 4ª Generación","Nvidia Ray Tracing 4e Génération","Nvidia Ray Tracing 4ª Geração","Nvidia трассировка лучей 4-го поколения"],
+
+  "30 minutesda %55 Dolum":["55% Charge in 30 Minutes","55% Aufladung in 30 Minuten","55% de Carga en 30 Minutos","55% de Charge en 30 Minutes","55% de Carga em 30 Minutos","55% заряда за 30 минут"],
+  "30 minutesda %69 Dolum":["69% Charge in 30 Minutes","69% Aufladung in 30 Minuten","69% de Carga en 30 Minutos","69% de Charge en 30 Minutes","69% de Carga em 30 Minutos","69% заряда за 30 минут"],
+  "30 minutesda %75 Dolum":["75% Charge in 30 Minutes","75% Aufladung in 30 Minuten","75% de Carga en 30 Minutos","75% de Charge en 30 Minutes","75% de Carga em 30 Minutos","75% заряда за 30 минут"],
+
+  "Audioli Mesaj Sending (SOS)":["Voice Message Sending (SOS)","Sprachnachricht senden (SOS)","Envío de Mensaje de Voz (SOS)","Envoi de Message Vocal (SOS)","Envio de Mensagem de Voz (SOS)","Отправка голосового сообщения (SOS)"],
+
+  "Asus Axial Fan (Eksen)":["Asus Axial Fan","Asus Axiallüfter","Ventilador Axial Asus","Ventilateur Axial Asus","Ventilador Axial Asus","Asus осевой вентилятор"]
+}

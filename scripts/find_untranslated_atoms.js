@@ -145,7 +145,7 @@ const BROKEN_SUFFIX_RE = /\b[a-z]{3,}(?:sda|sde|sta|ste|sdan|sden|stan|sten|slik
 const TR_VERY_FREQUENT_RE = /\b(?:ve|ile|için|olan|olarak|gibi|kadar|hatta|bile|sonra|önce|burada|orada|şurada|nasıl|neden|nerede|hangi|kim|ne|kaç|bir|iki|üç|dört|beş|adet|takibi|tavsiyesi|hücreli|hücre|ailesi|serisi|türü|sürümü|kapasitesi|sayısı|özellikleri|özelliği|özellik|teknolojisi|teknoloji|adedi|destekli|destekleği|desteği|sistemi|bilgileri|bilgisi|durum|durumu|cihaz|cihazı|cihazlar|kontrol|kontrolü|komut|komutu|modu|modunda|mesaj|mesajı|notu|hatırlatıcısı|hatırlatıcı|bildirimi|bildirim|bildirimleri|ölçer|sağlık|kalori|oksijen|kandaki|kanda|nefes|stres|ritim|tansiyon|ruh|hali|tavsiyesi|kimlik|uyku|apnesi|aktivite|kalp|nabız|nabızı|kavisli|safir|kristal|paslanmaz|çelik|hava|fabrika|kalibrasyonu|kalibrasyon|acil|durum|geriye|geri|ileri|kilit|kilidi|kilitli|sesli|sesi|spor|gelgit|yapay|zeka|tasarruf|dolum|şarj|şarjı|hızlı|kablosuz|kablolu|ters|soğutma|fan|önbellek|çekirdeği|çekirdek|iş|parçacığı|bellek|hızı|türü|frekansı|temel|artırılmış|verimlilik|performans|genel|teknik|donanım|yazılım|işletim|sistemi|sıcaklık|soket|transistör|mesafesi|işlemci|işlemcisi|çarpan|desteklediği|teknolojiler|teknoloji|çıkanlar|öne|gece|modu|çıkış|yılı|çeyrek|jenerasyon|nesli|nesil|sayısı|adet|birim|kanalı|yuvası|kart|okuyucu|klavye|fare|pil|pili|şarj|gücü|güvenlik|koruma|şifre|şifreleme|üretim|üretimi|fabrika|fabrikasyon|mikrofonlu|mikrofonu|hoparlör|kamera|kamerası|flaş|ön|arka|ana|ikinci|üçüncü|lityum|iyon|polimer|dakika|saat|döngü|dakikada|saatlik|ortalama|azami|asgari|tane|çift|tek)\b/i;
 
 function looksTurkish(text) {
-  const s = String(text || '');
+  const s = String(text || '').replace(/TÜV/gi, 'TUV');
   if (!s) return false;
   if (TURKISH_CHARS.test(s)) return true;
   if (BROKEN_SUFFIX_RE.test(s)) return true;
@@ -200,8 +200,9 @@ function collectAtoms(product, sink) {
       untranslated.push(atom);
     } else if (entry.en) {
       const en = String(entry.en);
+      const cleanEn = en.replace(/TÜV/gi, 'TUV');
       // Translation exists but might still be broken (TR residue / suffix glue)
-      if (TURKISH_CHARS.test(en) || TR_VERY_FREQUENT_RE.test(en) || BROKEN_SUFFIX_RE.test(en)) {
+      if (TURKISH_CHARS.test(cleanEn) || TR_VERY_FREQUENT_RE.test(cleanEn) || BROKEN_SUFFIX_RE.test(cleanEn)) {
         badTranslation.push([atom, en]);
       }
     } else {
