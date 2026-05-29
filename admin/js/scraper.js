@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  QOR AI SCRAPER MODULE — epey.com Scraper
 //  Scrapes products from epey.com via local Puppeteer proxy.
-//  Stores Epey Turkish specs as English canonical specs via the local dictionary.
+//  Stores raw Epey Turkish specs first; EN/DE are materialized later from the Translate tab.
 //  Uses QorAiCategories / QorAiBrands (categories.js).
 //  Persists to PocketBase via pb_client.js helpers.
 // ═══════════════════════════════════════════════════════════════════
@@ -43,9 +43,8 @@ const EPEY_PB_WRITE_CONCURRENCY = 8;
 const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
-// GPU Argos worker batches 178 atoms in ~0.4s. With 4 translate workers each
-// pushing a 20-product batch (~250-350 atoms after dict cache hits), the
-// pipeline saturates VRAM without OOM on a 4 GB card. Bumped from 2/8.
+// Raw-save workers drain parsed products to PocketBase while scrape workers
+// keep fetching. Translation workers are only used from the Translate tab.
 const EPEY_TRANSLATE_CONCURRENCY = 4;
 const EPEY_TRANSLATE_PRODUCT_BATCH_SIZE = 20;
 const EPEY_TRANSLATE_SAVE_RETRIES = 3;
@@ -592,9 +591,12 @@ function switchScraperTab(btn) {
   // The category dropdowns live in panels that may render before the category
   // catalog finishes loading. Re-populate them whenever a tab is opened so the
   // "Add by URL" / "Bulk Scrape" selects are never empty.
-  if (['singleUrl', 'bulkScrape', 'offers'].includes(btn.dataset.tab)
+  if (['singleUrl', 'bulkScrape', 'offers', 'translate'].includes(btn.dataset.tab)
       && typeof populateScraperCategories === 'function') {
     populateScraperCategories().catch(() => {});
+  }
+  if (btn.dataset.tab === 'translate' && typeof openDictionaryPanel === 'function') {
+    openDictionaryPanel().catch(() => {});
   }
 }
 
@@ -991,7 +993,8 @@ function prepareProductPayload(product) {
   if (sourceProduct.mpn) payload.mpn = String(sourceProduct.mpn).trim().slice(0, 200);
   if (sourceProduct.price_raw) payload.price_raw = String(sourceProduct.price_raw).trim().slice(0, 200);
 
-  // Canonical English payload. Other languages are resolved at render time.
+  // Raw-first payload. Epey products keep only the Turkish source snapshot
+  // during scrape; EN/DE are materialized later from the Translate tab.
   if (sourceProduct.multiLangSpecs && typeof sourceProduct.multiLangSpecs === 'object') {
     payload.multiLangSpecs = sourceProduct.multiLangSpecs;
   }
@@ -1001,10 +1004,14 @@ function prepareProductPayload(product) {
   if (sourceProduct.nameTranslated && typeof sourceProduct.nameTranslated === 'object') {
     payload.nameTranslated = sourceProduct.nameTranslated;
   }
-  payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), en: payload.specs };
-  payload.multiLangSections = { ...(payload.multiLangSections || {}), en: payload.specSections };
   _applySourceSnapshot(payload, sourceSnapshot);
-  _sanitizeEnglishPayload(payload);
+  if (sourceSnapshot.sourceLang !== 'tr') {
+    payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), en: payload.specs };
+    payload.multiLangSections = { ...(payload.multiLangSections || {}), en: payload.specSections };
+    _sanitizeEnglishPayload(payload);
+  } else {
+    delete payload.specsEn;
+  }
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
   if (!payload.name) throw new Error('Product name is empty');
@@ -1980,6 +1987,8 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const raw = String(sourceText || '').trim();
   const lang = targetLang || 'en';
   const s = _normalizeDictSourceKey(raw)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
     .replace(/ü/g, 'u')
@@ -2003,6 +2012,186 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
   };
   const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
+  const exact = {
+    'ab urun kayit ve enerji etiketi': { en: 'EU product registration & energy label', de: 'EU-Produktregistrierung und Energielabel' },
+    'ag baglantilari': { en: 'Network connections', de: 'Netzwerkverbindungen' },
+    'batarya': { en: 'Battery', de: 'Akku' },
+    'diger baglantilar': { en: 'Other connections', de: 'Weitere Verbindungen' },
+    'ekran': { en: 'Display', de: 'Display' },
+    'kablosuz baglantilar': { en: 'Wireless connections', de: 'Drahtlose Verbindungen' },
+    'kamera': { en: 'Camera', de: 'Kamera' },
+    'tasarim': { en: 'Design', de: 'Design' },
+    'temel bilgiler': { en: 'Basics', de: 'Grundlagen' },
+    'temel donanim': { en: 'Core hardware', de: 'Kern-Hardware' },
+    'coklu ortam': { en: 'Multimedia', de: 'Multimedia' },
+    'ozellikler': { en: 'Features', de: 'Funktionen' },
+    'one cikanlar': { en: 'Highlights', de: 'Highlights' },
+    'isletim sistemi': { en: 'Operating system', de: 'Betriebssystem' },
+    '4.5g destegi': { en: '4.5G support', de: '4.5G-Unterstützung' },
+    '4g ozellikleri': { en: '4G features', de: '4G-Funktionen' },
+    'batarya kapasitesi (tipik)': { en: 'Battery capacity (typical)', de: 'Akkukapazität (typisch)' },
+    'batarya ozellikleri': { en: 'Battery features', de: 'Akku-Eigenschaften' },
+    'degisir batarya': { en: 'Removable battery', de: 'Wechselbarer Akku' },
+    'hizli sarj': { en: 'Fast charging', de: 'Schnellladen' },
+    'hizli sarj gucu (maks.)': { en: 'Fast charging power (max.)', de: 'Schnellladeleistung (max.)' },
+    'hizli sarj ozellikleri': { en: 'Fast charging features', de: 'Schnellladefunktionen' },
+    'kablosuz sarj': { en: 'Wireless charging', de: 'Kabelloses Laden' },
+    'kablosuz sarj ozellikleri': { en: 'Wireless charging features', de: 'Kabellose Ladefunktionen' },
+    'video oynatma': { en: 'Video playback', de: 'Videowiedergabe' },
+    'sarj': { en: 'Charging', de: 'Laden' },
+    'hat sayisi': { en: 'Number of SIMs', de: 'SIM-Anzahl' },
+    'usb baglanti tipi': { en: 'USB connection type', de: 'USB-Verbindungsart' },
+    'usb versiyonu': { en: 'USB version', de: 'USB-Version' },
+    'usb ozellikleri': { en: 'USB features', de: 'USB-Funktionen' },
+    'cift hat ozelligi': { en: 'Dual SIM feature', de: 'Dual-SIM-Funktion' },
+    'ekran / govde orani': { en: 'Display-to-body ratio', de: 'Display-Gehäuse-Verhältnis' },
+    'ekran alani': { en: 'Display area', de: 'Displayfläche' },
+    'ekran boyutu': { en: 'Screen size', de: 'Bildschirmgröße' },
+    'ekran dayanikliligi': { en: 'Display durability', de: 'Display-Haltbarkeit' },
+    'ekran orani (aspect ratio)': { en: 'Display aspect ratio', de: 'Display-Seitenverhältnis' },
+    'ekran teknolojisi': { en: 'Display technology', de: 'Display-Technologie' },
+    'ekran yenileme hizi': { en: 'Display refresh rate', de: 'Bildwiederholrate' },
+    'ekran cozunurlugu': { en: 'Display resolution', de: 'Bildschirmauflösung' },
+    'ekran cozunurlugu standardi': { en: 'Display resolution standard', de: 'Auflösungsstandard' },
+    'ekran ozellikleri': { en: 'Display features', de: 'Display-Funktionen' },
+    'cizilmeye direncli cam': { en: 'Scratch-resistant glass', de: 'Kratzfestes Glas' },
+    'cercevesiz tasarim': { en: 'Frameless design', de: 'Rahmenloses Design' },
+    'surekli acik ekran (always-on display)': { en: 'Always-on display', de: 'Always-on-Display' },
+    'ekran icinde on kamera': { en: 'In-display front camera', de: 'Frontkamera im Display' },
+    'piksel yogunlugu': { en: 'Pixel density', de: 'Pixeldichte' },
+    'renk sayisi': { en: 'Color count', de: 'Farbtiefe' },
+    'bluetooth versiyonu': { en: 'Bluetooth version', de: 'Bluetooth-Version' },
+    'kizilotesi': { en: 'Infrared', de: 'Infrarot' },
+    'navigasyon ozellikleri': { en: 'Navigation features', de: 'Navigationsfunktionen' },
+    'wi-fi kanallari': { en: 'Wi-Fi channels', de: 'Wi-Fi-Kanäle' },
+    'wi-fi ozellikleri': { en: 'Wi-Fi features', de: 'Wi-Fi-Funktionen' },
+    'agir cekim kayit secenekleri': { en: 'Slow-motion recording options', de: 'Zeitlupen-Aufnahmeoptionen' },
+    'diyafram acikligi': { en: 'Aperture', de: 'Blende' },
+    'dorduncu arka kamera': { en: 'Fourth rear camera', de: 'Vierte Rückkamera' },
+    'dorduncu arka kamera diyafram': { en: 'Fourth rear camera aperture', de: 'Blende der vierten Rückkamera' },
+    'dorduncu arka kamera cozunurlugu': { en: 'Fourth rear camera resolution', de: 'Auflösung der vierten Rückkamera' },
+    'dorduncu arka kamera ozellikleri': { en: 'Fourth rear camera features', de: 'Funktionen der vierten Rückkamera' },
+    'ucuncu arka kamera': { en: 'Third rear camera', de: 'Dritte Rückkamera' },
+    'ucuncu arka kamera diyafram': { en: 'Third rear camera aperture', de: 'Blende der dritten Rückkamera' },
+    'ucuncu arka kamera cozunurlugu': { en: 'Third rear camera resolution', de: 'Auflösung der dritten Rückkamera' },
+    'ucuncu arka kamera ozellikleri': { en: 'Third rear camera features', de: 'Funktionen der dritten Rückkamera' },
+    'ikinci arka kamera': { en: 'Second rear camera', de: 'Zweite Rückkamera' },
+    'ikinci arka kamera diyafram': { en: 'Second rear camera aperture', de: 'Blende der zweiten Rückkamera' },
+    'ikinci arka kamera cozunurlugu': { en: 'Second rear camera resolution', de: 'Auflösung der zweiten Rückkamera' },
+    'ikinci arka kamera ozellikleri': { en: 'Second rear camera features', de: 'Funktionen der zweiten Rückkamera' },
+    'flas': { en: 'Flash', de: 'Blitz' },
+    'kamera sensor boyutu': { en: 'Camera sensor size', de: 'Kamerasensorgröße' },
+    'kamera cozunurlugu': { en: 'Camera resolution', de: 'Kameraauflösung' },
+    'kamera ozellikleri': { en: 'Camera features', de: 'Kamerafunktionen' },
+    'yapay zeka (ai) sahne algilama': { en: 'AI scene detection', de: 'KI-Szenenerkennung' },
+    'perde hizi (shutter speed) kontrolu': { en: 'Shutter speed control', de: 'Verschlusszeitsteuerung' },
+    'raw kayit yapabilme': { en: 'RAW recording support', de: 'RAW-Aufnahmeunterstützung' },
+    'otomatik odaklama': { en: 'Autofocus', de: 'Autofokus' },
+    'sesli komut': { en: 'Voice command', de: 'Sprachbefehl' },
+    'sesle komut': { en: 'Voice command', de: 'Sprachbefehl' },
+    'dahili qr kod okuyucu': { en: 'Built-in QR code reader', de: 'Integrierter QR-Code-Reader' },
+    'seri cekim (burst) modu': { en: 'Burst shooting mode', de: 'Serienbildmodus' },
+    'kayipsiz yakinlastirma': { en: 'Lossless zoom', de: 'Verlustfreier Zoom' },
+    'odak uzakligi': { en: 'Focal length', de: 'Brennweite' },
+    'optik goruntu sabitleyici (ois)': { en: 'Optical image stabilizer (OIS)', de: 'Optischer Bildstabilisator (OIS)' },
+    'video fps degeri': { en: 'Video FPS', de: 'Video-FPS' },
+    'video kayit secenekleri': { en: 'Video recording options', de: 'Videoaufnahmeoptionen' },
+    'video kayit cozunurlugu': { en: 'Video recording resolution', de: 'Videoaufnahmeauflösung' },
+    'video kayit ozellikleri': { en: 'Video recording features', de: 'Videoaufnahmefunktionen' },
+    'odak takibi': { en: 'Focus tracking', de: 'Fokusverfolgung' },
+    'yavas cekim video kayit (slow motion video)': { en: 'Slow-motion video recording', de: 'Zeitlupen-Videoaufnahme' },
+    'on kamera diyafram acikligi': { en: 'Front camera aperture', de: 'Blende der Frontkamera' },
+    'on kamera fps degeri': { en: 'Front camera FPS', de: 'Frontkamera-FPS' },
+    'on kamera video cozunurlugu': { en: 'Front camera video resolution', de: 'Videoauflösung der Frontkamera' },
+    'on kamera cozunurlugu': { en: 'Front camera resolution', de: 'Frontkameraauflösung' },
+    'on kamera ozellikleri': { en: 'Front camera features', de: 'Frontkamera-Funktionen' },
+    'video kayitta portre modu': { en: 'Portrait mode in video recording', de: 'Porträtmodus bei Videoaufnahmen' },
+    'sanal flas': { en: 'Virtual flash', de: 'Virtueller Blitz' },
+    'zamanlayici (self-timer)': { en: 'Self-timer', de: 'Selbstauslöser' },
+    'hizli odaklama': { en: 'Fast focus', de: 'Schnellfokus' },
+    'panorama selfi': { en: 'Panorama selfie', de: 'Panorama-Selfie' },
+    'ekstra genis aci': { en: 'Ultra-wide angle', de: 'Ultraweitwinkel' },
+    'agirlik': { en: 'Weight', de: 'Gewicht' },
+    'boy': { en: 'Height', de: 'Höhe' },
+    'en': { en: 'Width', de: 'Breite' },
+    'govde malzemesi (kapak)': { en: 'Body material (back cover)', de: 'Gehäusematerial (Rückseite)' },
+    'govde malzemesi (cerceve)': { en: 'Body material (frame)', de: 'Gehäusematerial (Rahmen)' },
+    'kalinlik': { en: 'Thickness', de: 'Dicke' },
+    'renk secenekleri': { en: 'Color options', de: 'Farboptionen' },
+    'alt seri': { en: 'Sub-series', de: 'Unterserie' },
+    'duyurulma tarihi': { en: 'Announcement date', de: 'Ankündigungsdatum' },
+    'seri': { en: 'Series', de: 'Serie' },
+    '1. yardimci islemci': { en: '1. Auxiliary processor', de: '1. Hilfsprozessor' },
+    'antutu puani (v10)': { en: 'AnTuTu score (v10)', de: 'AnTuTu-Punktzahl (v10)' },
+    'antutu puani (v11)': { en: 'AnTuTu score (v11)', de: 'AnTuTu-Punktzahl (v11)' },
+    'ana islemci (cpu)': { en: 'Main processor (CPU)', de: 'Hauptprozessor (CPU)' },
+    'bellek (ram)': { en: 'Memory (RAM)', de: 'Speicher (RAM)' },
+    'cpu frekansi': { en: 'CPU frequency', de: 'CPU-Frequenz' },
+    'cpu cekirdegi': { en: 'CPU cores', de: 'CPU-Kerne' },
+    'cpu uretim teknolojisi': { en: 'CPU manufacturing process', de: 'CPU-Fertigungsprozess' },
+    'dahili depolama': { en: 'Internal storage', de: 'Interner Speicher' },
+    'diger bellek (ram) secenekleri': { en: 'Other memory (RAM) options', de: 'Weitere Speicheroptionen (RAM)' },
+    'diger hafiza secenekleri': { en: 'Other storage options', de: 'Weitere Speicheroptionen' },
+    'gpu frekansi': { en: 'GPU frequency', de: 'GPU-Frequenz' },
+    'grafik islemcisi (gpu)': { en: 'Graphics processor (GPU)', de: 'Grafikprozessor (GPU)' },
+    'hafiza karti destegi': { en: 'Memory card support', de: 'Speicherkartenunterstützung' },
+    'ram tipi': { en: 'RAM type', de: 'RAM-Typ' },
+    'yonga seti (chipset)': { en: 'Chipset', de: 'Chipsatz' },
+    'islemci mimarisi': { en: 'Processor architecture', de: 'Prozessorarchitektur' },
+    'hoparlor ozellikleri': { en: 'Speaker features', de: 'Lautsprecherfunktionen' },
+    'ses cikisi': { en: 'Audio output', de: 'Audioausgang' },
+    'bildirim isigi (led)': { en: 'Notification LED', de: 'Benachrichtigungs-LED' },
+    'goruntulu konusma (uygulama)': { en: 'Video calling (app)', de: 'Videoanruf (App)' },
+    'kutu icerigi': { en: 'Box contents', de: 'Lieferumfang' },
+    'parmak izi okuyucu': { en: 'Fingerprint reader', de: 'Fingerabdruckleser' },
+    'parmak izi okuyucu ozellikleri': { en: 'Fingerprint reader features', de: 'Fingerabdruckleser-Funktionen' },
+    'sar degeri 10g (bas)': { en: 'SAR value 10g (head)', de: 'SAR-Wert 10g (Kopf)' },
+    'sar degeri 10g (vucut)': { en: 'SAR value 10g (body)', de: 'SAR-Wert 10g (Körper)' },
+    'sensorler': { en: 'Sensors', de: 'Sensoren' },
+    'servis ve uygulamalar': { en: 'Services and applications', de: 'Dienste und Anwendungen' },
+    'suya dayaniklilik': { en: 'Water resistance', de: 'Wasserbeständigkeit' },
+    'suya dayaniklilik seviyesi': { en: 'Water resistance level', de: 'Wasserbeständigkeitsstufe' },
+    'toza dayaniklilik': { en: 'Dust resistance', de: 'Staubbeständigkeit' },
+    'toza dayaniklilik seviyesi': { en: 'Dust resistance level', de: 'Staubbeständigkeitsstufe' },
+    'buhar basinci (maks.)': { en: 'Steam pressure (max.)', de: 'Dampfdruck (max.)' },
+    'isinma suresi': { en: 'Heat-up time', de: 'Aufheizzeit' },
+    'max. isitici gucu': { en: 'Max. heater power', de: 'Max. Heizleistung' },
+    'kullanici arayuzu': { en: 'User interface', de: 'Benutzeroberfläche' },
+    'lansman arayuz versiyonu': { en: 'Launch interface version', de: 'Launch-Oberflächenversion' },
+    'isletim sistemi versiyonu': { en: 'OS version', de: 'Betriebssystemversion' },
+    'siyah': { en: 'Black', de: 'Schwarz' },
+    'beyaz': { en: 'White', de: 'Weiß' },
+    'altin': { en: 'Gold', de: 'Gold' },
+    'gumus': { en: 'Silver', de: 'Silber' },
+    'mavi': { en: 'Blue', de: 'Blau' },
+    'mor': { en: 'Purple', de: 'Violett' },
+    'subat': { en: 'February', de: 'Februar' },
+    'cift hat': { en: 'Dual SIM', de: 'Dual-SIM' },
+    'cift hoparlor': { en: 'Dual speaker', de: 'Doppellautsprecher' },
+    'ekran icinde': { en: 'In-display', de: 'Im Display' },
+    'ultrasonic sensor': { en: 'Ultrasonic sensor', de: 'Ultraschallsensor' },
+    'sim cikartma ignesi': { en: 'SIM eject pin', de: 'SIM-Auswurfstift' },
+    "usb kablosu (type-c'den type-c'ye)": { en: 'USB cable (Type-C to Type-C)', de: 'USB-Kabel (Type-C auf Type-C)' },
+    'ekrana cift dokunarak acma (knockon)': { en: 'Double-tap to wake (KnockON)', de: 'Doppeltippen zum Aktivieren (KnockON)' },
+    'kablosuz sarj ile baska cihazlari sarj edebilme': { en: 'Reverse wireless charging', de: 'Umgekehrtes kabelloses Laden' },
+    'kolay arayuz (easy mode)': { en: 'Easy Mode', de: 'Einfacher Modus' },
+    'tek elde kullanim modu': { en: 'One-handed mode', de: 'Einhandmodus' },
+    'yuz tanimlama': { en: 'Face recognition', de: 'Gesichtserkennung' },
+    'vapor-chamber sogutma': { en: 'Vapor-chamber cooling', de: 'Vapor-Chamber-Kühlung' },
+  };
+  if (exact[s]?.[lang]) return exact[s][lang];
+  const inch = s.match(/^(\d+(?:[.,]\d+)?(?:\/\d+(?:[.,]\d+)?)?)\s*inc$/);
+  if (inch) return ({ en: `${inch[1]} inches`, de: `${inch[1].replace('.', ',')} Zoll` })[lang] || `${inch[1]} inches`;
+  const chargeFill = s.match(/^(\d+(?:[.,]\d+)?)\s*dakikada\s*%(\d+)\s*dolum$/);
+  if (chargeFill) return ({ en: `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`, de: `${chargeFill[2]} % Ladung in ${chargeFill[1].replace('.', ',')} Minuten` })[lang] || `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`;
+  const score = s.match(/^(\d+(?:[.,]\d+)?)\s*puan$/);
+  if (score) return ({ en: `${score[1]} score`, de: `${score[1]} Punkte` })[lang] || `${score[1]} score`;
+  const cores = s.match(/^(\d+)\s*cekirdek$/);
+  if (cores) return ({ en: `${cores[1]} cores`, de: `${cores[1]} Kerne` })[lang] || `${cores[1]} cores`;
+  const ramOptions = s.match(/^(.+)\s*ram\s*secenegi\s*var$/);
+  if (ramOptions) return ({ en: `${ramOptions[1]} RAM options available`, de: `${ramOptions[1]} RAM-Optionen verfügbar` })[lang] || `${ramOptions[1]} RAM options available`;
+  const storageOptions = s.match(/^(.+)\s*depolama\s*secenegi\s*var$/);
+  if (storageOptions) return ({ en: `${storageOptions[1]} storage options available`, de: `${storageOptions[1]} Speicheroptionen verfügbar` })[lang] || `${storageOptions[1]} storage options available`;
   if (/^(?:usb\s+)?flash\s+bellek$|^usb\s+bellek$/.test(s)) {
     return ({
       en: 'USB flash drive', de: 'USB-Stick', es: 'unidad flash USB',
@@ -3075,6 +3264,13 @@ const _ARGOS_BAD_OUTPUTS = new Set([
   'card reader features',
   'low blue',
   '720p ()',
+  "i 'm not .", "i'm not .", "i 'm not",
+  'the most', 'height.',
+  '30 minutesda %75 dolum',
+  'focus takibi',
+  'services ve applications',
+  'ekrana dual tapping do not open (knockon)',
+  'kolay interface (easy mode)',
 ]);
 
 // Per-session list of (source, badOutput) pairs that we suppressed. Surfaces
@@ -4381,7 +4577,7 @@ function _isEpeyTranslateProduct(p) {
 function _translationSourceProduct(p) {
   if (!_isEpeyTranslateProduct(p)) return p;
   const sourceLang = String(p?.sourceLang || '').toLowerCase();
-  if (sourceLang !== 'tr') return p;
+  if (sourceLang && sourceLang !== 'tr') return p;
   const specs = p.sourceSpecs && typeof p.sourceSpecs === 'object' ? p.sourceSpecs : p.specs;
   const specSections = p.sourceSpecSections && typeof p.sourceSpecSections === 'object' ? p.sourceSpecSections : p.specSections;
   const keySpecs = p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' ? p.sourceKeySpecs : p.keySpecs;
@@ -5754,12 +5950,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   const effectiveDelayMs = 0;
   slog(`⚡ Paralel detay çekimi: ${concurrency} işçi · delay ${effectiveDelayMs}ms/işçi`, 'info');
 
-  // ── Decoupled translation pipeline ────────────────────────────────────
-  // Scrape workers parse + queue, translation workers translate + save in
-  // PARALLEL on a dedicated pool. Scrape workers never await DeepSeek or
-  // the PB write for new products, so a slow DeepSeek call never blocks
-  // the next URL fetch. Translation continues in the background after each
-  // category scrape returns, so category/page traversal never waits for PB.
+  // ── Decoupled raw-save pipeline ───────────────────────────────────────
+  // Scrape workers parse + queue raw source products. Save workers persist
+  // them in parallel without calling Argos/DeepSeek. Translation is a separate
+  // Translate-tab job that runs after the raw catalog is safely in PocketBase.
   const TRANSLATE_CONCURRENCY = EPEY_TRANSLATE_CONCURRENCY;
   const TRANSLATE_QUEUE_SOFT_CAP = 50000;
   const translationQueue = [];
@@ -5853,7 +6047,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     results.added++;
     clearRetryLater(job.item);
     translationCompleted++;
-    slog(`  ✓ Çeviri+kayıt: ${job.label}`, 'success');
+    slog(`  ✓ Raw kayıt: ${job.label}`, 'success');
     if ((results.added + results.updated) > 0 && (results.added + results.updated) % 50 === 0) {
       _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results, retryLaterItems());
     }
@@ -5880,20 +6074,6 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
       translationActive += jobs.length;
       try {
-        // Translation feeds multiLangSpecs/Sections/nameTranslated into
-        // `clean`; the PB writes below persist the FULL 7-language payload
-        // so downstream consumers never rerun translation for these specs.
-        const needsTranslation = jobs.filter(job => !job.translated);
-        if (needsTranslation.length > 1) {
-          await _translateProductsInlineBatch(needsTranslation);
-          for (const job of needsTranslation) job.translated = true;
-        } else if (needsTranslation.length === 1) {
-          const job = needsTranslation[0];
-          await _translateProductInline(job.clean);
-          try { _assertCleanEnglishPayload(job.clean, job.label); } catch (_) {}
-          job.translated = true;
-        }
-
         // Run PB writes in parallel — _epeyPbWriteLimit (EPEY_PB_WRITE_CONCURRENCY)
         // already throttles the real concurrency, so kicking all jobs off at
         // once just lets the limiter pipeline the saves. Previously this loop
@@ -5912,7 +6092,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         for (const job of jobs) {
           translationFailed++;
           results.errors++;
-          slog(`  ⚠ background çeviri+kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
+          slog(`  ⚠ background raw kayıt başarısız: ${job.label} — ${e.message}`, 'warn');
           markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
         }
       } finally {
@@ -5981,8 +6161,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       //     across TR + DE), keep the existing record's id/source/affiliate
       //     fields, never create a duplicate.
       // Cross-source merge is FAST (no DeepSeek), so it runs inline here.
-      // Pure-new products are pushed to the translation queue and saved by
-      // the background translation workers — scrape worker keeps moving.
+      // Pure-new products are pushed to the raw-save queue and persisted by
+      // background save workers — scrape worker keeps moving.
       const mergeKey = clean.variantGroup;
       const existing = mergeKey ? existingByVG.get(mergeKey) : null;
       if (existing && existing.source && existing.source !== clean.source) {
@@ -6001,11 +6181,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         }
       }
 
-      // Hand off to the background translation+save pool. Scrape worker
+      // Hand off to the background raw-save pool. Scrape worker
       // returns immediately and picks up the next URL.
       const label = product.name || clean.name || clean.slug;
       if (index < 20 || productNum % 25 === 0) {
-        slog(`  ⇢ Kuyrukta: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'info');
+        slog(`  ⇢ Raw kayıt kuyruğu: ${product.name} (${product.specsCount} özellik, ${product.images.length} görsel)`, 'info');
       }
       await enqueueTranslation({ item, clean, label, mergeKey });
       errorStreak = 0;
@@ -6055,9 +6235,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       completed++;
       _scrapeProductCount = completed;
       updateProgress(completed, urlItems.length, 'Products');
-      // Per-100 telemetry — emits BOTH scrape and translate rates so the
-      // user can see whether the scrape pool is paced by Epey (network)
-      // or DeepSeek (translation).
+      // Per-100 telemetry — scrape rate and raw-save drain rate.
       if (completed - lastSummary >= 100 || completed === urlItems.length) {
         lastSummary = completed;
         const elapsed = Math.max(0.001, (Date.now() - translatePipelineStart) / 1000);
@@ -6069,7 +6247,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
           : '?';
         slog(
           `  ↳ scrape ${completed}/${urlItems.length} · ${scrapeRate}/s · 100ürün≈${per100Scrape}s — ` +
-          `çeviri ${translationCompleted}/${translationStarted} · ${trRate}/s · 100ürün≈${per100Tr}s · ` +
+          `raw kayıt ${translationCompleted}/${translationStarted} · ${trRate}/s · 100ürün≈${per100Tr}s · ` +
           `kuyruk ${translationQueue.length}${translationDeferred ? ` · erteleme ${translationDeferred}` : ''}${translationFailed ? ` · fail ${translationFailed}` : ''}`,
           'info'
         );
@@ -6096,7 +6274,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         const drainElapsed = (Date.now() - drainStart) / 1000;
         const drainRate = drainElapsed > 0 ? (drained / drainElapsed).toFixed(2) : '0.00';
         slog(
-          `  … arka plan çeviri: ${drained} tamam · ${remaining} kaldı · ${drainRate}/s · ${drainElapsed.toFixed(0)}s`,
+          `  … arka plan raw kayıt: ${drained} tamam · ${remaining} kaldı · ${drainRate}/s · ${drainElapsed.toFixed(0)}s`,
           'info'
         );
       }
@@ -6136,13 +6314,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
     }
 
-    // Self-healing: any TR word that hit the transliteration fallback during
-    // this run is now sent to Argos for a real translation and added to the
-    // dictionary so the SAME word never falls through again.
-    try { await _flushUnknownTurkishWords(); } catch {}
-    // Force a final dict save: throughout the scrape we throttle saves to
-    // every ~30s. At the end we must flush whatever's pending.
-    try { await _flushDeDictBeforeExit(); } catch {}
+    // Translation is intentionally deferred to the Translate tab. Do not flush
+    // unknown words or dictionary shards from the raw scrape path.
 
     if (!scraperAbort && retryLaterByKey.size > 0) {
       results.retryLater = retryLaterItems();
@@ -6159,9 +6332,9 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     const totalElapsed = (Date.now() - translatePipelineStart) / 1000;
     const finalTrPer100 = translationCompleted > 0 ? (totalElapsed * 100 / Math.max(1, translationCompleted)).toFixed(0) : '?';
     slog(
-      `📊 Arka plan çeviri özet: ${translationCompleted} çeviri+kayıt, ${translationFailed} başarısız · ` +
+      `📊 Arka plan raw kayıt özet: ${translationCompleted} kayıt, ${translationFailed} başarısız · ` +
       `${translationDeferred ? `${translationDeferred} PB erteleme · ` : ''}` +
-      `100 ürün çeviri+kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
+      `100 ürün raw kayıt≈${finalTrPer100}s · toplam ${totalElapsed.toFixed(0)}s`,
       translationFailed ? 'warn' : 'success'
     );
   };
@@ -6171,22 +6344,22 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   if (queuedAtDrain > 0) {
     slog(
       scraperAbort
-        ? `⏹ Stop alındı; ${queuedAtDrain} çeviri+kayıt işi Resume checkpoint'e geri konacak.`
-        : `⏳ Scrape tamamlandı; ${queuedAtDrain} çeviri+kayıt işi var. Sonraki kategoriye geçmeden kuyruk boşaltılıyor.`,
+        ? `⏹ Stop alındı; ${queuedAtDrain} raw kayıt işi Resume checkpoint'e geri konacak.`
+        : `⏳ Scrape tamamlandı; ${queuedAtDrain} raw kayıt işi var. Sonraki kategoriye geçmeden kuyruk boşaltılıyor.`,
       scraperAbort ? 'warn' : 'info'
     );
   }
   try {
     await finishTranslationInBackground();
   } catch (e) {
-    slog(`Arka plan çeviri kuyruğu hata verdi: ${e.message}`, 'error');
+    slog(`Arka plan raw kayıt kuyruğu hata verdi: ${e.message}`, 'error');
   }
   results.translationQueued = 0;
   results.translationBackground = false;
 
   const finalScrapePer100 = completed > 0 ? (scrapeElapsedSec * 100 / Math.max(1, completed)).toFixed(0) : '?';
   slog(
-    `📊 Scrape özet: ${completed} ürün çekildi · 100 ürün scrape≈${finalScrapePer100}s · çeviri+kayıt kuyruğu temiz`,
+    `📊 Scrape özet: ${completed} ürün çekildi · 100 ürün scrape≈${finalScrapePer100}s · raw kayıt kuyruğu temiz · çeviri için Translate sekmesini kullan`,
     'success'
   );
   return results;
@@ -7976,7 +8149,7 @@ async function startBulkScrape() {
         processed += items.length;
         slog(
           `━━━ ${cat.id} scrape done: ${res.added} eklendi | ${res.updated} güncellendi | ${res.skipped} atlandı | ${res.errors} hata` +
-          `${res.translationQueued ? ` | ${res.translationQueued} çeviri+kayıt arka planda` : ''} · ilerleme ${processed}/${totalUrls} URL ━━━`,
+          `${res.translationQueued ? ` | ${res.translationQueued} raw kayıt arka planda` : ''} · ilerleme ${processed}/${totalUrls} URL ━━━`,
           'success'
         );
         if (ci < collected.length - 1 && !scraperAbort) await sleep(Math.max(1000, Math.min(delay * 3, 5000)));
@@ -7989,7 +8162,7 @@ async function startBulkScrape() {
 
       slog(
         `\n═══ All categories scrape done: ${totals.added} eklendi | ${totals.updated} güncellendi | ${totals.skipped} atlandı | ${totals.errors} hata` +
-        `${totals.queued ? ` | ${totals.queued} çeviri+kayıt arka planda` : ''}${scraperAbort ? ' | STOPPED' : ''} ═══`,
+        `${totals.queued ? ` | ${totals.queued} raw kayıt arka planda` : ''}${scraperAbort ? ' | STOPPED' : ''} ═══`,
         scraperAbort ? 'warn' : 'success'
       );
       if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
@@ -8009,7 +8182,7 @@ async function startBulkScrape() {
     const results = await sequentialScrape(urlItems.slice(0, singleLimit), singleCat?.id || categoryId, delay, concurrency);
     slog(
       `\n═══ Scrape done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata` +
-      `${results.translationQueued ? ` | ${results.translationQueued} çeviri+kayıt arka planda` : ''} ═══`,
+      `${results.translationQueued ? ` | ${results.translationQueued} raw kayıt arka planda` : ''} ═══`,
       'success'
     );
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') await loadProducts();
@@ -8074,10 +8247,8 @@ async function scrapeByUrl() {
       toast('Bu kategori katalogdan kaldırıldı; ürün kaydedilmedi', 'w');
       return;
     }
-    // Single-URL path mirrors bulk-scrape: inline translation + cross-source
-    // dedup so manually-added products are indistinguishable from bulk-scraped ones.
-    await _translateProductInline(clean);
-    _assertCleanEnglishPayload(clean, clean.name || clean.slug || url);
+    // Single-URL path mirrors bulk scrape: raw source save first. Use the
+    // Translate tab afterwards to materialize EN/DE for the saved product.
     if (clean.variantGroup) {
       const existing = await _findExistingByVariantGroup(clean.variantGroup);
       if (existing && existing.source && existing.source !== clean.source) {
@@ -8092,8 +8263,7 @@ async function scrapeByUrl() {
     }
     const saved = await _saveProductWithRetry(clean, clean.name || clean.slug || url);
     window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-    const langCount = Object.keys(clean.multiLangSpecs || {}).length;
-    slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images, ${langCount} dilde çeviri)`, 'success');
+    slog(`Saved raw: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images)`, 'success');
     if (typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Error: ${e.message}`, 'error');
@@ -8239,8 +8409,8 @@ window.showDictCounterPopup = function () {
 //
 //  Both sources share:
 //   - the same 49 PB category ids (categories.js whitelist)
-//   - the same inline translation pipeline (window.QorAiBulkTranslate)
-//   - the same dictionary (public_config.tr_translation_dict)
+//   - the same deferred bulk translation API (window.QorAiBulkTranslate)
+//   - the same dictionary shards (public_config.tr_translation_dict*)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Stash the Epey entry points BEFORE we reassign the globals.

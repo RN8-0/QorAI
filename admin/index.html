@@ -491,10 +491,10 @@
         <!-- Scraper Tabs -->
         <div class="scraper-tabs">
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
+          <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Translate</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
-          <!-- Dictionary tab removed (inline translation now runs during scrape) -->
         </div>
 
         <!-- Bulk Scrape -->
@@ -553,6 +553,63 @@
           </div>
 
           <div class="card" id="customCategoriesCard" style="display:none"></div>
+        </div>
+
+        <!-- Translate -->
+        <div class="scraper-panel" id="translatePanel">
+          <div class="card">
+            <div class="card-title">🌐 Bulk Translate <span class="text-muted" style="font-weight:normal;font-size:12px"> · raw scrape sonrası dictionary lookup</span></div>
+            <p class="text-muted" style="margin-bottom:12px;font-size:13px">
+              Scraper ürünleri önce orijinal kaynak diliyle kaydeder. Bu sekme DB'deki source specs alanlarından benzersiz atomları çıkarır, sözlüğü doldurur ve ürünlere multiLang payload'u topluca patch eder.
+            </p>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Çevrilecek kategori</label>
+                <select class="input" id="dictXlateCategory">
+                  <option value="">Kategori seç</option>
+                  <option value="__all_epey__">Tüm Epey kategorileri</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Sözlük kaynağı</label>
+                <select class="input" id="dictSourceSelect" onchange="switchDictionarySource(this.value)">
+                  <option value="tr">TR source → EN + DE</option>
+                  <option value="de">DE source → TR + EN</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btnDictXlateStart" onclick="startCategoryTranslation()">Start Translation</button>
+              <button class="btn btn-danger" id="btnDictXlateStop" onclick="stopCategoryTranslation()" style="display:none">Stop</button>
+              <button class="btn btn-ghost btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Save Dictionary</button>
+              <button class="btn btn-ghost btn-sm" onclick="wipeDictionary()">Wipe Dictionary</button>
+            </div>
+            <div id="dictXlateProgress" style="display:none;margin-top:14px">
+              <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
+                <div id="dictXlateBar" style="background:linear-gradient(90deg,#7C3AED,#06B6D4);height:100%;width:0;transition:width .2s"></div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;margin-top:6px;font-size:12px">
+                <span id="dictXlateStatus" class="text-muted">Ready</span>
+                <span id="dictXlateCounter" class="text-muted"></span>
+              </div>
+              <div id="dictXlateDetail" class="text-muted" style="font-size:11px;margin-top:4px"></div>
+            </div>
+            <div class="scraper-log" id="dictXlateLog" style="display:none;height:220px;overflow:auto;margin-top:12px"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📚 Dictionary <span class="text-muted" id="dictStats" style="font-weight:normal;font-size:12px"></span></div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <input class="input" id="dictSearch" placeholder="Search dictionary..." oninput="renderDictionaryTable()" style="max-width:360px">
+              <button class="btn btn-sm" onclick="addDictionaryRow()">Add Term</button>
+            </div>
+            <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr id="dictHead"></tr></thead>
+                <tbody id="dictBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- Affiliate offer sync -->
@@ -786,11 +843,6 @@
           </div>
         </div>
 
-        <!-- Dictionary panel removed (2026-05-23) — translation now runs inline
-             during scrape (Epey + Geizhals workers translate each product as
-             it's saved, so the dictionary view isn't needed). -->
-
-
         <!-- Scraper Log + Translation Log (side-by-side) -->
         <div class="card" id="scraperLogCard">
           <div class="card-title">
@@ -811,9 +863,9 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:11px;font-weight:600;letter-spacing:.4px;margin-bottom:4px;padding:0 4px">
-                🌍 TRANSLATE — paralel çeviri (TR → EN+DE)
+                🌍 TRANSLATE — ayrı bulk job (Translate sekmesi)
               </div>
-              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Çeviri logu burada akacak. Dict-first → eksik atomlar NLLB GPU worker'a gider (port 8797 · batch 64 · beam 4).</div></div>
+              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Scrape artık raw kayıt yapar. Çeviri için üstteki Translate sekmesini çalıştır.</div></div>
             </div>
           </div>
         </div>
