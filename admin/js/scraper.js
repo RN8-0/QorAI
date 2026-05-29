@@ -4089,19 +4089,23 @@ async function _deepSeekAllLangsBatch(germanTexts, targetLangs, onProgress, shou
   // per product so one tight DeepSeek pass adds ~1-2 s and rescues those
   // missing translations. To kill DeepSeek again set
   // opts.skipDeepSeekResidue = true.
+  // 2026-05-29: DeepSeek fallback PERMANENTLY DISABLED.
+  // Reason: DeepSeek's output does not pass through the NLLB worker's
+  // residue cleaner, producing leaks like "Audiole Command",
+  // "Wireless Charging Etme", "Kolay Interface". With the worker's
+  // override+residue stack at 0/4840 on real atoms, the residue rescue
+  // logic is no longer useful — the leftover atoms (~12 per product)
+  // are either passthrough-acceptable (brand/model names) or need
+  // manual correction. Forcing NLLB-only guarantees a single clean
+  // path. Mark all uncached atoms as failed-this-run so they don't
+  // loop and persist whatever the worker returned.
   if (local.ok) {
-    if (opts.skipDeepSeekResidue) {
-      for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
-      await _saveDeDict();
-      if (typeof onProgress === 'function') {
-        try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-disabled' }); } catch {}
-      }
-      return;
+    for (const t of uncached) _deDictFailedThisRun.add(_normalizeDictSourceKey(t));
+    await _saveDeDict();
+    if (typeof onProgress === 'function') {
+      try { onProgress({ provider: 'local-nllb', phase: 'fallback-skipped', pass: 0, chunkIndex: 0, totalChunks: 0, batchSize: uncached.length, sample: uncached.slice(0, 3), reason: 'deepseek-permanently-disabled' }); } catch {}
     }
-    // Residue-only mode: small batch, fail fast on rate limit (no 305 s wait).
-    // Override caller's pass config so a smartphone-style 24-pass plan can't
-    // accidentally apply here.
-    opts = { ...opts, passes: [{ size: 30, concurrency: 2 }], residueFastFail: true };
+    return;
   }
   const langCodes = targetLangs.join(',');
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));

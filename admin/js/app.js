@@ -2727,8 +2727,6 @@ const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','
 // <select> elements, which previously made every option look identical.
 const MODAL_LANGS = [
   ['tr','Türkçe (source)'], ['en','English'], ['de','Deutsch'],
-  ['es','Español'],         ['fr','Français'], ['pt','Português'],
-  ['ru','Русский'],
 ];
 let _modalLang = 'tr';
 
