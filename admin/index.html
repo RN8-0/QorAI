@@ -441,12 +441,12 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
             <div style="padding:12px;background:var(--surface-1,#0e0e0e);border-radius:8px">
-              <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇹🇷 EPEY (TR → 6 dil)</div>
+              <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇹🇷 EPEY (TR → EN+DE)</div>
               <div style="font-size:24px;font-weight:800;color:#06b6d4;margin-top:4px" id="dictCountTr">—</div>
               <div class="text-muted" style="font-size:11px">term · public_config.tr_translation_dict</div>
             </div>
             <div style="padding:12px;background:var(--surface-1,#0e0e0e);border-radius:8px">
-              <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇩🇪 GEIZHALS (DE → 6 dil)</div>
+              <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇩🇪 GEIZHALS (DE → TR+EN)</div>
               <div style="font-size:24px;font-weight:800;color:#f59e0b;margin-top:4px" id="dictCountDe">—</div>
               <div class="text-muted" style="font-size:11px">term · public_config.de_translation_dict</div>
             </div>
@@ -811,9 +811,9 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:11px;font-weight:600;letter-spacing:.4px;margin-bottom:4px;padding:0 4px">
-                🌍 TRANSLATE — paralel çeviri (TR → 6 dil)
+                🌍 TRANSLATE — paralel çeviri (TR → EN+DE)
               </div>
-              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Çeviri logu burada akacak. Dict-first → eksik atomlar Argos GPU worker'a gider (port 8797 · batch 96 · 8 thread · beam 4 · 3 paralel chunk).</div></div>
+              <div class="scraper-log" id="xlateLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Çeviri logu burada akacak. Dict-first → eksik atomlar NLLB GPU worker'a gider (port 8797 · batch 64 · beam 4).</div></div>
             </div>
           </div>
         </div>

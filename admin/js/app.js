@@ -1968,7 +1968,7 @@ function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=docum
 // PocketBase `public_config.tr_translation_dict`. Add new Turkish terms,
 // override DeepSeek output, or fix wrong translations — the next scrape
 // run automatically uses these values via _deDictLookup.
-const DICT_VIEW_LANGS = ['en','de','es','fr','pt','ru'];
+const DICT_VIEW_LANGS = ['en','de'];
 let _dictSource = 'tr';
 
 function _currentDictApi(){
@@ -3048,6 +3048,37 @@ function _renderProductModal(p,variants=[]){
         'Tastatur mit DE layout (beleuchtet, Rubber-Dome)': 'Keyboard with German layout (backlit, rubber-dome)',
         'Baubform': 'Form factor',
         'Bauform': 'Form factor',
+        'Charging Box': 'Charging Case',
+        'Tam Wireless': 'True Wireless',
+        'Use Mesafesi': 'Use Distance',
+        'IP Protection Class (Su)': 'IP Protection Class (Water)',
+        'Tere Resistant': 'Sweat Resistant',
+        'Audioli Assistant Feature': 'Voice Assistant Feature',
+        'Audioli Assistant Support': 'Voice Assistant Support',
+        'Ambient Audioli Mode': 'Ambient Audio Mode',
+        'Deep Head': 'Deep Bass',
+        'Single ve Dual Kullanabilme': 'Single and Dual Use',
+        'Annound': 'Compatible OS',
+        'My phone Find': 'Find My Phone',
+        'Calculator Machine': 'Calculator',
+        'Tide Graphics': 'Tide Charts',
+        'Location Info Emergency Call': 'Emergency Call with Location Info',
+        'El with Device Control': 'Hand Gesture Device Control',
+        'Power Tasarruf Mode': 'Power Saving Mode',
+        'GymKit Radio Etmeyin Mode': 'GymKit, Walkie-Talkie Mode',
+        'Audio with Command Verme': 'Voice Command',
+        'Audio Audioli Mesaj': 'Voice Message',
+        'Audioli Not (Voice Memo)': 'Voice Memo',
+        'Audioli SMS Sending': 'Voice SMS Sending',
+        'Bisiklet Eliptik Bisiklet': 'Cycling, Elliptical',
+        'Yoga (Havuz)': 'Swimming (Pool)',
+        'Car rental': 'Skiing',
+        'Matching with bluetooth headset': 'Bluetooth Headphone Pairing',
+        'Bass talk (walkie-talkie)': 'Walkie-Talkie',
+        'Device control with hand motions': 'Gesture Device Control',
+        'Commanding with voice': 'Voice Command',
+        'Single and double use': 'Single and Dual Use',
+        'Charging Case time (general)': 'Charging Case Runtime (General)',
       };
       if (exact[out]) out = exact[out];
       out = out
@@ -3057,6 +3088,53 @@ function _renderProductModal(p,variants=[]){
         .replace(/\bLi-?po\s*\(\s*lityum-polymer\s*\)/gi, 'Li-Po (lithium polymer)')
         .replace(/\bLi-?po\s*\(\s*lithium-Polimer\s*\)/gi, 'Li-Po (lithium polymer)')
         .replace(/\blithium-Polimer\b/gi, 'lithium polymer')
+        .replace(/\bCharging Box\b/gi, 'Charging Case')
+        .replace(/\bTam Wireless\b/gi, 'True Wireless')
+        .replace(/\bUse Mesafesi\b/gi, 'Use Distance')
+        .replace(/\bIP Protection Class\s*\(\s*Su\s*\)/gi, 'IP Protection Class (Water)')
+        .replace(/\bTere Resistant\b/gi, 'Sweat Resistant')
+        .replace(/\bAudioli Assistant Feature\b/gi, 'Voice Assistant Feature')
+        .replace(/\bAudioli Assistant Support\b/gi, 'Voice Assistant Support')
+        .replace(/\bAudioli\b/gi, 'Audio')
+        .replace(/\bAmbient Audio Mode\b/gi, 'Ambient Audio Mode')
+        .replace(/\bDeep Head\b/gi, 'Deep Bass')
+        .replace(/\bSingle ve Dual Kullanabilme\b/gi, 'Single and Dual Use')
+        .replace(/\bAnnound\b/gi, 'Compatible OS')
+        .replace(/\bMy phone Find\b/gi, 'Find My Phone')
+        .replace(/\bCalculator Machine\b/gi, 'Calculator')
+        .replace(/\bTide Graphics\b/gi, 'Tide Charts')
+        .replace(/\bLocation Info Emergency Call\b/gi, 'Emergency Call with Location Info')
+        .replace(/\bEl with Device Control\b/gi, 'Hand Gesture Device Control')
+        .replace(/\bPower Tasarruf Mode\b/gi, 'Power Saving Mode')
+        .replace(/\bGymKit Radio Etmeyin Mode\b/gi, 'GymKit, Walkie-Talkie Mode')
+        .replace(/\bAudio with Command Verme\b/gi, 'Voice Command')
+        .replace(/\bAudio Audio Mesaj\b/gi, 'Voice Message')
+        .replace(/\bAudio Not\s*\(\s*Voice Memo\s*\)/gi, 'Voice Memo')
+        .replace(/\bAudio SMS Sending\b/gi, 'Voice SMS Sending')
+        .replace(/\bBisiklet Eliptik Bisiklet\b/gi, 'Cycling, Elliptical')
+        .replace(/\bYoga\s*\(\s*Havuz\s*\)/gi, 'Swimming (Pool)')
+        .replace(/\bCar rental\b/gi, 'Skiing')
+        .replace(/\bReverse Heading\b/gi, 'Return Route')
+        .replace(/\bSmart Sea Water Temperature\b/gi, 'Sea Water Temperature')
+        .replace(/\bMatching with bluetooth headset\b/gi, 'Bluetooth Headphone Pairing')
+        .replace(/\bBass talk\s*\(\s*walkie-talkie\s*\)/gi, 'Walkie-Talkie')
+        .replace(/\bDevice control with hand motions\b/gi, 'Gesture Device Control')
+        .replace(/\bTide chart\b/gi, 'Tide Charts')
+        .replace(/\bPower saving mode\b/gi, 'Power Saving Mode')
+        .replace(/\bCommanding with voice\b/gi, 'Voice Command')
+        .replace(/\bSms sending\b/gi, 'SMS Sending')
+        .replace(/\bGoogle fast pair\b/gi, 'Google Fast Pair')
+        .replace(/\bSingle and double use\b/gi, 'Single and Dual Use')
+        .replace(/\bCharging Case time\s*\(\s*general\s*\)/gi, 'Charging Case Runtime (General)')
+        .replace(/\bSmart notifications\b/gi, 'Smart Notifications')
+        .replace(/\bBuilt-in media player\b/gi, 'Internal Media Player')
+        .replace(/\bWorld hours\b/gi, 'World Clock')
+        .replace(/\bSearch history\b/gi, 'Call History')
+        .replace(/\bCamera control\b/gi, 'Camera Control')
+        .replace(/\bVoice alert\b/gi, 'Voice Alert')
+        .replace(/\bVoice translation\b/gi, 'Voice Translation')
+        .replace(/\bGymkit\b/g, 'GymKit')
+        .replace(/\bDigital crown\b/gi, 'Digital Crown')
         .replace(/\bAzami\s+(\d)/gi, 'up to $1')
         .replace(/\beye\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
         .replace(/\bGöz\s+Sağlığı\s+Sertifikasyonu\b/gi, 'eye health certification')
