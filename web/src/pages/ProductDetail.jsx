@@ -63,7 +63,6 @@ function localizedProductName(product, lang) {
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   const bricks = [];
   const seen = new Set();
-  const canonical = canonicalizeSpecMaps(product);
   const addRows = (title, icon, entries) => {
     const rows = [];
     (entries || []).forEach(([k, v]) => {
@@ -71,32 +70,45 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
       const value = v == null ? '' : String(v).trim();
       if (!key || !value) return;
       const sig = key.toLowerCase();
+      if (seen.has(sig)) return;
       rows.push([key, v]);
       seen.add(sig);
     });
     if (rows.length) bricks.push({ title, icon, rows });
   };
 
-  const keySpecs = canonical.keySpecs && typeof canonical.keySpecs === 'object' ? canonical.keySpecs : null;
-  if (keySpecs && Object.keys(keySpecs).length > 0) {
-    addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
+  // Render the ORIGINAL product.specSections structure intact and translate
+  // section names / keys / values via trSpec(). Earlier we ran the data
+  // through canonicalizeSpecMaps which collapsed many keys into hard-coded
+  // canonical names (Processor, CPU cores, …) and re-bucketed sections via
+  // a small Vv/keyRules list. For CPU products that list has gaps, so whole
+  // sections like TEMEL BİLGİLER (Desteklediği Teknolojiler, Jenerasyon,
+  // PassMark Puanı, Çıkış Dönemi/Yılı, İşlemci Mimarisi / Serisi / Türü /
+  // Üst Modeli) silently disappeared from the EN view because their
+  // canonical key collided with nothing and the canonical section bucket
+  // they landed in got overwritten by other content. Per-row trSpec()
+  // translation already handles localisation; the canonical step was just
+  // throwing data away.
+  if (product?.keySpecs && typeof product.keySpecs === 'object' && Object.keys(product.keySpecs).length > 0) {
+    addRows(keySpecsTitle, '⭐', Object.entries(product.keySpecs));
   }
 
-  const sections = canonical.specSections && typeof canonical.specSections === 'object' ? canonical.specSections : null;
+  const sections = product?.specSections && typeof product.specSections === 'object' ? product.specSections : null;
   if (sections) {
     for (const [section, specs] of Object.entries(sections)) {
-      if (specs && typeof specs === 'object') {
+      if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
         addRows(trSpec(section, lang), sectionIcon(section), Object.entries(specs));
       }
     }
   }
 
-  const flat = canonical.specs && typeof canonical.specs === 'object' ? canonical.specs : null;
+  // Catch-all: any flat spec that didn't make it into a section above.
+  const flat = product?.specs && typeof product.specs === 'object' ? product.specs : null;
   if (flat) {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),
     );
-    if (missing.length) addRows(canonicalSpecSection(allSpecsTitle), '📋', missing);
+    if (missing.length) addRows(trSpec(allSpecsTitle, lang), '📋', missing);
   }
   return bricks;
 }

@@ -2261,7 +2261,38 @@ function _translationHasTurkishResidue(targetLang, translation, sourceText = '')
     // Argos mistranslations that look English but mean something else
     'aauppercase', 'business system', 'curtain speed', 'bulk battery',
     'heavy duty shooting', 'multipiece', 'heart shooting',
+    // ── 2026-05-29 batch: Apple Watch / Smartwatch / CPU residue ────────
+    // Turkish words Argos passed verbatim into the English hop.
+    've', 'ile', 'icin', 'olan', 'olarak', 'gibi', 'kadar', 'sonra',
+    'once', 'icindeki', 'arasinda', 'altinda', 'uzerinde',
+    'hava', 'resmi', 'tasarruf', 'dolum', 'takibi', 'takip',
+    'mesafe', 'gelgit', 'spor', 'kilidi', 'kilit', 'kilitli',
+    'yapay', 'zeka', 'sesli', 'audioli', 'sesli not', 'ses mesaj',
+    'etmeyin', 'verme', 'verir', 'almak', 'gormek',
+    'kalori', 'oksijen', 'kandaki', 'kanda', 'hareketsizlik',
+    'nefes', 'stres', 'ritim', 'tansiyon', 'ruh', 'hali',
+    'tavsiyesi', 'kimlik', 'uyku', 'apnesi', 'el',
+    'aktivite', 'durum', 'cihaz', 'kontrol', 'komut', 'mesaj',
+    'modu', 'modunda', 'gunluk', 'haftalik', 'aylik',
+    'cagri', 'gecmisi', 'asistan', 'asistani', 'bildirim',
+    // Turkish suffix patterns leaking onto English stems
+    // ("minutesda", "hourslik", "kameralik") - English word + TR suffix
+    'minutesda', 'minutesde', 'hourslik', 'hourslık',
+    'audioli', 'audiolu', 'audiosu', 'audionun',
+    // Argos word salad — duplicate words, very common pattern
+    'offline offline', 'audio audio', 'audioli audioli',
+    // Turkish bare verbs/nouns Argos didn't translate
+    'gormek', 'duymak', 'almak', 'olcmek', 'soylemek',
+    'verme', 'alma', 'gelme', 'gitme', 'yapma',
   ];
+  // Catch Argos's signature pattern: English-looking stem glued to a
+  // distinctively-Turkish suffix that NO real English word ends with.
+  // Examples we've seen leak through: "minutesda" ("minutes" + locative
+  // suffix), "hourslik" ("hours" + "-ness/-ity"), "kameralik". Restrict
+  // to suffixes that almost never appear at the end of real English words
+  // so we don't false-positive things like "mode" or "table".
+  const trBrokenSuffix = /\b(?:[a-z]{4,})(?:sda|sde|sta|ste|sdan|sden|stan|sten|slik|slık|sluk|slük|sli|slı|slu|slü|nin|nun|nın|nün|olarak|icin|sinden|sından|cisinden|cisinden)\b/i;
+  if (trBrokenSuffix.test(translation)) return true;
   const hasTerm = (term) => new RegExp(`(^|[^a-z0-9])${_escapeRegExp(term)}([^a-z0-9]|$)`, 'i').test(folded);
   if (residue.some(hasTerm)) return true;
 
