@@ -1272,15 +1272,9 @@ async function productsLiveTick(){
   if(!view||!view.classList.contains('active')){stopProductsLivePoll();return;}
   if(document.hidden)return;
   try{
-    let total=0;
-    try{
-      const res=await _tsAdminList(1,1,{countOnly:true});
-      total=res.total||0;
-    }catch(_){
-      const {filter}=buildQuery();
-      const res=await pbGetList('products',1,1,{filter,fields:'id'});
-      total=res.totalItems||0;
-    }
+    const {filter}=buildQuery();
+    const res=await pbGetList('products',1,1,{filter,fields:'id'});
+    const total=res.totalItems||0;
     if(!total||total===totalProductCount)return;
     const searching=!!(document.getElementById('searchInput')?.value||'').trim();
     const sort=document.getElementById('sortFilter')?.value||'newest';
@@ -1662,13 +1656,21 @@ async function loadPage(direction,pageOverride){
     }
     let result;
     let usedTypesense=false;
-    try{
-      const tsResult=await _tsAdminList(currentPage,PRODUCT_RAW_PER);
-      result={items:tsResult.items,totalItems:tsResult.total,empty:!tsResult.items.length};
-      usedTypesense=true;
-    }catch(tsErr){
-      console.warn('[products] Typesense list failed; falling back to PocketBase:',tsErr.message||tsErr);
+    const searchQRaw=(document.getElementById('searchInput')?.value||'').trim();
+    if(!searchQRaw){
+      // Admin Products is an audit surface: it must reflect every PB record
+      // immediately after scrape, even if Typesense indexing is a few seconds
+      // behind. Search still uses Typesense below for speed.
       result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
+    }else{
+      try{
+        const tsResult=await _tsAdminList(currentPage,PRODUCT_RAW_PER);
+        result={items:tsResult.items,totalItems:tsResult.total,empty:!tsResult.items.length};
+        usedTypesense=true;
+      }catch(tsErr){
+        console.warn('[products] Typesense list failed; falling back to PocketBase:',tsErr.message||tsErr);
+        result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
+      }
     }
     if(seq!==_loadPageSeq)return; // a newer query superseded this one
     if(result.empty&&direction==='next'){currentPage--;toast('Last page','i');return}
@@ -1688,7 +1690,7 @@ async function loadPage(direction,pageOverride){
 
     // PocketBase fallback still needs client-side search because the fast path
     // delegates the query to Typesense.
-    const searchQ=(document.getElementById('searchInput')?.value||'').toLowerCase();
+    const searchQ=searchQRaw.toLowerCase();
     if(searchQ&&!usedTypesense){
       displayProducts=allProducts.filter(p=>
         (p.name||'').toLowerCase().includes(searchQ)||
@@ -2906,13 +2908,11 @@ async function _adminFetchProductVariants(p){
     const byId=new Map();
     items.forEach(v=>byId.set(v.id,v));
     if(!byId.has(p.id))byId.set(p.id,p);
-    const byConfig=new Map();
-    for(const v of byId.values()){
-      const key=String(v.configKey||_adminVariantLabel(v)||v.id);
-      const prev=byConfig.get(key);
-      if(!prev||Number(v.specsCount||0)>Number(prev.specsCount||0))byConfig.set(key,v);
-    }
-    return [...byConfig.values()].sort((a,b)=>{
+    // Show every saved SKU/source product in the family. Do not dedupe by
+    // configKey: Epey can expose separate product pages that share a model
+    // family or even a similar config, and the Products view/modal must still
+    // let the admin inspect each saved record.
+    return [...byId.values()].sort((a,b)=>{
       const storageDelta=_adminVariantStorageMB(a)-_adminVariantStorageMB(b);
       if(storageDelta)return storageDelta;
       return String(a.name||'').localeCompare(String(b.name||''));
@@ -3385,6 +3385,49 @@ function _renderProductModal(p,variants=[]){
       .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u')
       .replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c')
       .replace(/\s+/g,' ');
+    const cpuExact = {
+      'transistor mesafesi': { en:'Process Node', de:'Fertigungsprozess' },
+      'mesafesi': { en:'Process Node', de:'Fertigungsprozess' },
+      'carpan kilidi': { en:'Multiplier Lock', de:'Multiplikatorsperre' },
+      'kilidi': { en:'Multiplier Lock', de:'Multiplikatorsperre' },
+      'isi yayma kapasitesi (tdp)': { en:'Thermal Design Power (TDP)', de:'Thermal Design Power (TDP)' },
+      'isi yayma kapasitesi': { en:'Thermal Design Power', de:'Thermal Design Power' },
+      'yapay zeka (yz)': { en:'Artificial Intelligence (AI)', de:'Künstliche Intelligenz (KI)' },
+      'destekledigi teknolojiler': { en:'Supported Technologies', de:'Unterstützte Technologien' },
+      'passmark puani (tekil)': { en:'PassMark Single-Thread Score', de:'PassMark Single-Thread-Wert' },
+      'passmark puani (cogul)': { en:'PassMark Multi-Thread Score', de:'PassMark Multi-Thread-Wert' },
+      'cikis donemi': { en:'Release Quarter', de:'Erscheinungsquartal' },
+      'cikis yili': { en:'Release Year', de:'Erscheinungsjahr' },
+      'jenerasyon': { en:'Generation', de:'Generation' },
+      'islemci ailesi': { en:'Processor Family', de:'Prozessorfamilie' },
+      'islemci mimarisi': { en:'Processor Architecture', de:'Prozessorarchitektur' },
+      'islemci modeli': { en:'Processor Model', de:'Prozessormodell' },
+      'islemci serisi': { en:'Processor Series', de:'Prozessorserie' },
+      'islemci turu': { en:'Processor Type', de:'Prozessortyp' },
+      'islemci ust modeli': { en:'Processor Parent Model', de:'Prozessor-Basismodell' },
+      'temel frekans': { en:'Base Frequency', de:'Basistakt' },
+      'artirilmis frekans': { en:'Boost Frequency', de:'Boost-Takt' },
+      'is parcacigi': { en:'Threads', de:'Threads' },
+      'cekirdek': { en:'CPU cores', de:'CPU-Kerne' },
+      'performans cekirdegi': { en:'Performance Core', de:'Performance-Kerne' },
+      'verimlilik cekirdegi': { en:'Efficiency Core', de:'Effizienz-Kerne' },
+      'onbellek l1': { en:'Cache L1', de:'Cache L1' },
+      'onbellek l2': { en:'Cache L2', de:'Cache L2' },
+      'onbellek l3': { en:'Cache L3', de:'Cache L3' },
+      'dahili grafik islemci': { en:'Integrated Graphics Processor', de:'Integrierter Grafikprozessor' },
+      'grafik islemci modeli': { en:'Graphics Processor Model', de:'Grafikprozessormodell' },
+      'sicaklik': { en:'Temperature', de:'Temperatur' },
+      'soket': { en:'Socket', de:'Sockel' },
+      'pcie hatti sayisi': { en:'PCIe Lane Count', de:'PCIe-Lane-Anzahl' },
+      'pcie surumu': { en:'PCIe Version', de:'PCIe-Version' },
+      'bellek hizi': { en:'Memory Speed', de:'Speichergeschwindigkeit' },
+      '2.bellek hizi': { en:'2.Memory Speed', de:'2.Speichergeschwindigkeit' },
+      'bellek turu': { en:'Memory Type', de:'Speichertyp' },
+      '2.bellek turu': { en:'2.Memory Type', de:'2.Speichertyp' },
+      'bellek kanali': { en:'Memory Channel', de:'Speicherkanäle' },
+      'ecc bellek destegi': { en:'ECC Memory Support', de:'ECC-Speicherunterstützung' },
+    };
+    if (cpuExact[s]?.[lang]) return cleanupModalText(cpuExact[s][lang]);
     const phrase = {
       minute: { en:'minutes', de:'Minuten', es:'minutos', fr:'minutes', pt:'minutos', ru:'минут' },
       hour: { en:'hours', de:'Stunden', es:'horas', fr:'heures', pt:'horas', ru:'часов' },
@@ -3437,7 +3480,7 @@ function _renderProductModal(p,variants=[]){
   // Build localized sections on the fly: keep the original Turkish section
   // grouping (Chip / Processor, Camera, …) but translate the key+value
   // inside via the cached multiLangSpecs lookup.
-  let sections = normalizeSpecSectionsShape(lang === sourceLang ? sourceSectionsRaw : p.specSections);
+  let sections = normalizeSpecSectionsShape(sourceSectionsRaw);
   let directLocalizedSections = false;
   const rawLangSections = (lang !== sourceLang && p.multiLangSections && p.multiLangSections[lang]) ? p.multiLangSections[lang] : null;
   const isSimpleSectionNameMap = rawLangSections && !Array.isArray(rawLangSections) && typeof rawLangSections === 'object' &&

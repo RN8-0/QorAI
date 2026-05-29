@@ -74,17 +74,12 @@ async function _findRecord(collection, identifier, data = {}, options = {}) {
 
   if (collection === 'products') {
     const sourceUrl = String(data.sourceUrl || '').trim();
-    const name = String(data.name || '').trim();
-    const category = String(data.category || '').trim();
-    const gtin = String(data.gtin || '').trim();
-    const mpn = String(data.mpn || '').trim();
-    const brand = String(data.brand || '').trim();
-    const configKey = String(data.configKey || '').trim();
-    if (gtin) filters.push(`gtin="${_escapeFilterValue(gtin)}"`);
-    if (mpn && brand) filters.push(`mpn="${_escapeFilterValue(mpn)}" && brand="${_escapeFilterValue(brand)}"`);
-    if (category && configKey) filters.push(`category = "${_escapeFilterValue(category)}" && configKey = "${_escapeFilterValue(configKey)}"`);
+    // Product records are SKU/source-page records. Variants can share a model
+    // family, configKey, name, MPN, or GTIN-like values and still must remain
+    // visible as separate Products rows. Only the stable source identity should
+    // turn a save into an update; variant grouping is handled separately via
+    // variantGroup and the modal.
     if (sourceUrl) filters.push(`sourceUrl="${_escapeFilterValue(sourceUrl)}"`);
-    if (name && category) filters.push(`name = "${_escapeFilterValue(name)}" && category = "${_escapeFilterValue(category)}"`);
   }
 
   if (!filters.length) return null;

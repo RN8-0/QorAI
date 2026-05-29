@@ -142,6 +142,33 @@ function modelFamilyKey({ name, brand, category }) {
   const b = String(brand || '').toLowerCase().trim();
   if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
 
+  // CPU/GPU products: the chip name is the product, not a configuration
+  // token inside a laptop/phone name. Without this guard the generic STRIP
+  // rules below erase "Core i3-9100" / "Ryzen 5 7500F" and collapse whole
+  // brands into one variantGroup.
+  const cat = String(category || '').toLowerCase();
+  const isChipProduct = /(?:^|[-_])(?:cpus?|gpus?|processors?|graphics[-_]?cards?|islemci|ekran[-_]?karti)(?:$|[-_])/.test(cat);
+  if (isChipProduct) {
+    let chipFam = s
+      .replace(/[()[\],"'’]/g, ' ')
+      .replace(/\b(?:bx|cm|cd|pk)\d[a-z0-9-]*\b/gi, ' ')
+      .replace(/\b100[-\s]*\d{6,}[a-z0-9-]*\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    // Keep major branches distinct: 7600X, 7800X3D, 13900HX, 5070 Ti, etc.
+    // Collapse only close suffix siblings such as i3-9100/i3-9100F and
+    // Ryzen 5 7500/7500F.
+    chipFam = chipFam
+      .replace(/(\d{3,5})(?:kf|ks|f|k|t|te)$/i, '$1')
+      .replace(/(\d{3,5})-(?:kf|ks|f|k|t|te)$/i, '$1')
+      .replace(/-(?:edition|gaming|noctua|white|black|lp|brk|oc)$/i, '');
+    const out = [b, chipFam].filter(Boolean).join('-').slice(0, 180);
+    return out || slugify(name) || slugify(category);
+  }
+
   // "+" carries meaning (S24 vs S24+) — turn it into a word so \b patterns see it.
   const probe = s.replace(/\+/g, ' plus ').replace(/[()[\],"'’]/g, ' ').replace(/\s+/g, ' ').trim();
   // Pattern names (thinkpad, iphone, ideacentre…) are brand-exclusive, so the

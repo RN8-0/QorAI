@@ -11,7 +11,6 @@ import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
-import { canonicalizeSpecMaps, canonicalSpecSection } from '../lib/specCanonical';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -89,11 +88,17 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   // they landed in got overwritten by other content. Per-row trSpec()
   // translation already handles localisation; the canonical step was just
   // throwing data away.
-  if (product?.keySpecs && typeof product.keySpecs === 'object' && Object.keys(product.keySpecs).length > 0) {
-    addRows(keySpecsTitle, '⭐', Object.entries(product.keySpecs));
+  const usesTurkishSource = String(product?.sourceLang || '').toLowerCase() === 'tr';
+  const keySpecs = usesTurkishSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object'
+    ? product.sourceKeySpecs
+    : product?.keySpecs;
+  if (keySpecs && typeof keySpecs === 'object' && Object.keys(keySpecs).length > 0) {
+    addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
   }
 
-  const sections = product?.specSections && typeof product.specSections === 'object' ? product.specSections : null;
+  const sections = usesTurkishSource && product?.sourceSpecSections && typeof product.sourceSpecSections === 'object'
+    ? product.sourceSpecSections
+    : (product?.specSections && typeof product.specSections === 'object' ? product.specSections : null);
   if (sections) {
     for (const [section, specs] of Object.entries(sections)) {
       if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
@@ -103,7 +108,9 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   }
 
   // Catch-all: any flat spec that didn't make it into a section above.
-  const flat = product?.specs && typeof product.specs === 'object' ? product.specs : null;
+  const flat = usesTurkishSource && product?.sourceSpecs && typeof product.sourceSpecs === 'object'
+    ? product.sourceSpecs
+    : (product?.specs && typeof product.specs === 'object' ? product.specs : null);
   if (flat) {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),

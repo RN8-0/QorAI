@@ -687,18 +687,20 @@ function modelFamilyKey({ name, brand, category }) {
   if (isChipProduct) {
     let chipFam = s
       .replace(/[()[\],"'’]/g, ' ')
+      .replace(/\b(?:bx|cm|cd|pk)\d[a-z0-9-]*\b/gi, ' ')
+      .replace(/\b100[-\s]*\d{6,}[a-z0-9-]*\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-    // Strip variant suffix letters from the LAST numeric SKU token.
-    //   intel-core-i3-9100f  -> intel-core-i3-9100
-    //   intel-core-i3-9100ks -> intel-core-i3-9100
-    //   amd-ryzen-7-7500x3d  -> amd-ryzen-7-7500
-    //   amd-ryzen-9-9950x    -> amd-ryzen-9-9950
-    //   geforce-rtx-5070-oc  -> geforce-rtx-5070
-    chipFam = chipFam.replace(/(\d{3,5})[a-z][a-z0-9]{0,4}$/i, '$1');
+    // Strip only minor CPU suffix variants from the LAST SKU token.
+    // Do NOT collapse big model branches like 7600X, 7800X3D, 13900HX,
+    // or RTX 5070 Ti into the base product. User-facing variants should be
+    // close SKU siblings such as i3-9100/i3-9100F or Ryzen 5 7500/7500F.
+    chipFam = chipFam
+      .replace(/(\d{3,5})(?:kf|ks|f|k|t|te)$/i, '$1')
+      .replace(/(\d{3,5})-(?:kf|ks|f|k|t|te)$/i, '$1');
     // Also drop common GPU edition labels that distinguish minor SKUs but
     // belong to the same chip family (gaming, edition, oc, ti only when not
     // part of the model number — already handled by the regex above for "oc").

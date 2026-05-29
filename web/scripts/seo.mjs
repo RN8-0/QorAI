@@ -12,7 +12,7 @@
 //  the runtime useSeo() hook — this guarantees parity for the rest.
 // ═══════════════════════════════════════════════════════════════
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { catMeta } from '../src/lib/format.js';
@@ -73,10 +73,37 @@ function renderPage(template, seo) {
   );
 }
 
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function writeTextFile(file, body, { optional = false } = {}) {
+  const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    try {
+      writeFileSync(tmp, body);
+      try { rmSync(file, { force: true }); } catch (_) {}
+      renameSync(tmp, file);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      try { rmSync(tmp, { force: true }); } catch (_) {}
+      if (!['UNKNOWN', 'EPERM', 'EBUSY', 'EACCES'].includes(err?.code) || attempt === 8) break;
+      sleepSync(80 * attempt);
+    }
+  }
+  if (optional) {
+    console.warn(`[seo] skipped locked file ${file}: ${lastErr?.message || lastErr}`);
+    return false;
+  }
+  throw lastErr;
+}
+
 function writeHtml(routeDir, html) {
   const dir = routeDir ? join(site, routeDir) : site;
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'index.html'), html);
+  writeTextFile(join(dir, 'index.html'), html);
 }
 
 // ── Typesense: pull the whole catalogue ─────────────────────────
@@ -238,7 +265,7 @@ async function main() {
     writeHtml(r.dir, renderPage(template, { ...r.seo, url: `${SITE}${r.path}` }));
   }
   // 404 shell — noindex, keeps deep-link fallback working
-  writeFileSync(
+  writeTextFile(
     join(site, '404.html'),
     renderPage(template, {
       title: 'Sayfa bulunamadı — Qor AI', description: 'Aradığın sayfa taşınmış olabilir.',
@@ -277,10 +304,10 @@ async function main() {
       + `<changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`,
     ).join('\n')
     + '\n</urlset>\n';
-  writeFileSync(join(site, 'sitemap.xml'), sitemap);
+  writeTextFile(join(site, 'sitemap.xml'), sitemap, { optional: true });
 
   // 4) robots.txt
-  writeFileSync(
+  writeTextFile(
     join(site, 'robots.txt'),
     [
       'User-agent: *',
