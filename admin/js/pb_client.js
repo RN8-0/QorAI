@@ -179,6 +179,55 @@ async function pbSetDoc(collection, id, data, options = {}) {
   return record;
 }
 
+function _isUniqueViolation(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  if (status !== 400) return false;
+  const data = error?.data || error?.response?.data || {};
+  const flat = JSON.stringify(data || {}).toLowerCase();
+  return /validation_not_unique|must be unique|already exists|not_unique/.test(flat);
+}
+
+// ── Fast create path for the bulk scraper ────────────────────────
+// The scraper's skip-existing preload (when it completes) already holds EVERY
+// existing record for the category, so the per-save `_findRecord` round-trip is
+// pure waste here. Each `pbSetDoc` does 2-3 PB requests (find + variant-primary
+// lookup + write); on the RAM-constrained single host that request
+// amplification at 8-way concurrency is what floods PocketBase and triggers the
+// 500 "Something went wrong" storm that collapses save throughput to ~200/hour.
+//
+// `pbCreateProductFast` issues a single create. variantPrimary is pre-computed
+// by the caller (the scraper claims the first product of each new variantGroup
+// synchronously), so no lookup is needed. Belt-and-suspenders: if the create
+// still collides with an existing row (a unique-constraint violation — e.g. the
+// preload somehow missed it), we reconcile via find+update so NO duplicate is
+// ever created. Net effect: 1 light write per save instead of 2-3 → saves
+// outrun the scraper and the 500 storm disappears, with zero duplicate risk.
+async function pbCreateProductFast(id, data, options = {}) {
+  await pbEnsureAuth();
+  const clean = _clean(data);
+  const createData = _prepareCreateData('products', id, clean);
+  try {
+    const record = await getPb().collection('products').create(createData, _pbRequestOptions(options));
+    _syncToTypesense('products', record);
+    return record;
+  } catch (e) {
+    if (_isUniqueViolation(e)) {
+      // A record slipped past the preload — reconcile via update, never duplicate.
+      try {
+        const existing = await _findRecord('products', id, clean, options);
+        if (existing) {
+          const record = await getPb().collection('products').update(existing.id, clean, _pbRequestOptions(options));
+          _syncToTypesense('products', record);
+          return record;
+        }
+      } catch (reconcileErr) {
+        console.warn('[pbCreateProductFast] unique-violation reconcile failed:', reconcileErr.message);
+      }
+    }
+    throw e;
+  }
+}
+
 // Update existing doc
 async function pbUpdateDoc(collection, id, data) {
   collection = _resolveCollection(collection);

@@ -11,7 +11,7 @@ const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
 const PROXY_START_COMMAND = 'npm run scraper:proxy';
-const SCRAPER_BUILD = '20260528-fast-epey-pipeline';
+const SCRAPER_BUILD = '20260530-fast-create-save';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
@@ -5638,6 +5638,40 @@ async function _pbSetDocWithTimeout(collection, id, data, timeoutMs = EPEY_PB_WR
   }
 }
 
+// Same timeout/abort wrapper as _pbSetDocWithTimeout, but routes through
+// pbCreateProductFast (direct create, no find). Used by the bulk scraper when
+// the skip-existing preload completed, so a find round-trip is redundant.
+async function _pbCreateFastWithTimeout(id, data, timeoutMs = EPEY_PB_WRITE_TIMEOUT_MS) {
+  const ms = Math.max(0, Number(timeoutMs || 0));
+  if (!ms || typeof AbortController === 'undefined') return pbCreateProductFast(id, data);
+  const ac = new AbortController();
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      try { ac.abort(); } catch (_) {}
+      const err = new Error(`PB write timeout after ${(ms / 1000).toFixed(0)}s`);
+      err.status = 408;
+      reject(err);
+    }, ms);
+  });
+  const writePromise = pbCreateProductFast(id, data, { signal: ac.signal })
+    .catch((e) => {
+      if (ac.signal?.aborted) {
+        const err = new Error(`PB write timeout after ${(ms / 1000).toFixed(0)}s`);
+        err.status = 408;
+        err.cause = e;
+        throw err;
+      }
+      throw e;
+    });
+  writePromise.catch(() => {});
+  try {
+    return await Promise.race([writePromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function _saveProductWithRetry(clean, label = '', options = {}) {
   const id = clean.sourceUrl || clean.slug || clean.id;
   const title = String(label || clean.name || clean.slug || id || '').slice(0, 120);
@@ -5645,6 +5679,11 @@ async function _saveProductWithRetry(clean, label = '', options = {}) {
   const logPrefix = options.logPrefix || 'PB save retry';
   const logRetries = options.logRetries === true;
   const timeoutMs = Math.max(10000, Number(options.timeoutMs || EPEY_PB_WRITE_TIMEOUT_MS));
+  // Fast path: skip the per-save find when the caller guarantees this is a new
+  // record (complete preload). Removes the request amplification that floods PB.
+  const writeOnce = options.fastCreate
+    ? () => _pbCreateFastWithTimeout(id, clean, timeoutMs)
+    : () => _pbSetDocWithTimeout('products', id, clean, timeoutMs);
   let lastError = null;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -5652,7 +5691,7 @@ async function _saveProductWithRetry(clean, label = '', options = {}) {
       // Important: acquire the PB write slot for the actual write only.
       // Backoff sleeps happen outside the limiter, otherwise two transient
       // failures can block the whole scrape pipeline for minutes.
-      return await _epeyPbWriteLimit(() => _pbSetDocWithTimeout('products', id, clean, timeoutMs));
+      return await _epeyPbWriteLimit(writeOnce);
     } catch (e) {
       lastError = e;
       if (scraperAbort || !_isTransientPocketBaseError(e) || attempt >= retries) break;
@@ -5696,7 +5735,21 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const { urls: existingUrls, slugs: existingSlugs, byVariantGroup: existingByVG } = await _loadExistingSourceUrls(categoryId);
+  const { urls: existingUrls, slugs: existingSlugs, byVariantGroup: existingByVG, complete: preloadComplete } = await _loadExistingSourceUrls(categoryId);
+  // When the preload paged through everything, every enqueued product is
+  // genuinely new → use the create-only fast path (no per-save find). Otherwise
+  // keep the safe find-or-create path so a partial preload never duplicates.
+  const useFastCreate = preloadComplete === true;
+  // In-run dedup + variant-primary claim for the fast path. Seed primaries from
+  // variant groups already on record so we don't re-flag an existing primary.
+  const savedSourceUrls = new Set();
+  const claimedPrimaryVG = new Set([...existingByVG.keys()]);
+  slog(
+    useFastCreate
+      ? '⚡ Hızlı kayıt modu: preload tam, ürünler doğrudan create edilecek (find atlanıyor).'
+      : '🛡 Güvenli kayıt modu: preload tam değil, find-or-create kullanılacak.',
+    'info'
+  );
   const beforeCount = urlItems.length;
   const existingUrlKeys = new Set([...existingUrls].map(normalizeScrapeUrlKey).filter(Boolean));
   const existingSlugKeys = new Set([...(existingSlugs || [])].map(v => String(v || '').trim()).filter(Boolean));
@@ -6023,14 +6076,47 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
     return jobs;
   };
 
+  // Fast-path prologue: claim the sourceUrl (prevents same-run duplicate
+  // creates) and the variant-group primary flag, both synchronously before any
+  // await so concurrent save workers stay consistent. Returns a `dedupKey` to
+  // release on failure so a deferred/Resume retry can re-claim it.
+  const claimFastCreate = (job) => {
+    if (!useFastCreate || !job.clean) return null;
+    const dedupKey = job.clean.sourceUrl || job.clean.slug || '';
+    if (job.clean.variantGroup && job.clean.variantPrimary === undefined) {
+      const vg = String(job.clean.variantGroup);
+      if (!claimedPrimaryVG.has(vg)) {
+        claimedPrimaryVG.add(vg);
+        job.clean.variantPrimary = true;
+        if (job.clean.variantCount === undefined) job.clean.variantCount = 1;
+      } else {
+        job.clean.variantPrimary = false;
+      }
+    }
+    return dedupKey || null;
+  };
+
   const saveTranslatedJob = async (job) => {
+    const dedupKey = claimFastCreate(job);
+    if (useFastCreate && dedupKey) {
+      if (savedSourceUrls.has(dedupKey)) {
+        // Already created this exact source in this run — skip the duplicate.
+        clearRetryLater(job.item);
+        translationCompleted++;
+        return;
+      }
+      savedSourceUrls.add(dedupKey);
+    }
     let saved;
     try {
       saved = await _saveProductWithRetry(job.clean, job.label, {
         retries: EPEY_TRANSLATE_SAVE_RETRIES,
         timeoutMs: EPEY_TRANSLATE_SAVE_TIMEOUT_MS,
+        fastCreate: useFastCreate,
       });
     } catch (saveErr) {
+      // Release the in-run claim so a deferred/Resume retry can save it later.
+      if (dedupKey) savedSourceUrls.delete(dedupKey);
       if (scraperAbort || saveErr.message === 'aborted') return;
       if (_isTransientPocketBaseError(saveErr) && deferTranslationSave(job, saveErr)) {
         return;
@@ -6296,6 +6382,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
             baseDelayMs: 3500,
             maxDelayMs: 30000,
             jitterMs: 1800,
+            fastCreate: useFastCreate,
           });
           if (entry.mergeKey && saved?.id) {
             existingByVG.set(entry.mergeKey, { id: saved.id, source: entry.clean.source, name: entry.clean.name });
@@ -7944,7 +8031,12 @@ if (typeof window !== 'undefined') {
 }
 
 async function _loadExistingSourceUrls(categoryId) {
-  const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
+  // `complete` tells the caller whether the preload paged through EVERY existing
+  // record for the category. When true, the bulk scrape can trust that anything
+  // not in these sets is genuinely new and skip the per-save find (fast create).
+  // When false (a paged-query timeout), the caller must keep the safe
+  // find-or-create path so it never duplicates an existing record.
+  const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map(), complete: false };
   const isScrapedRecord = (record = {}) => {
     const src = String(record.source || '').toLowerCase();
     return /(epey|geizhals)/.test(src) ||
@@ -7984,7 +8076,7 @@ async function _loadExistingSourceUrls(categoryId) {
       }
     }
     slog(`  preload OK: ${docs.length} kayıt, ${urls.size} URL key, ${slugs.size} slug key`, 'success');
-    return { urls, slugs, byVariantGroup };
+    return { urls, slugs, byVariantGroup, complete: true };
   } catch (e) {
     slog(`  (existing-product preload failed: ${e.message})`, 'warn');
     return empty;
