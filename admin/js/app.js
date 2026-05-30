@@ -1424,9 +1424,36 @@ async function populateFiltersFromData(){
     _applySelectOptions('categoryFilter',_categoryOptionsHtml(cats));
 }
 
-// The cleaned `categories` collection is the single source of truth for the
-// Category filter — one tiny request, always canonical, never a product scan.
+// Live Typesense category facet counts — one fast request, always reflects the
+// real catalog. Used to build the Category dropdown so it never depends on the
+// `categories` collection's productCount, which goes stale after wipes/scrapes
+// and silently drops real categories (e.g. chargers/smartwatches/headphones
+// showing 0 while Typesense has thousands).
+async function _tsCategoryCounts(){
+  if(!window.TsClient?.request)throw new Error('Typesense client not loaded');
+  const params=new URLSearchParams({q:'*',query_by:'name',per_page:'0',facet_by:'category',max_facet_values:'200'});
+  const res=await window.TsClient.request('GET',`/collections/${window.TsClient.COLLECTION}/documents/search?${params.toString()}`);
+  const out={};
+  for(const c of (res?.facet_counts?.[0]?.counts||[])){
+    const id=normalizeAdminCategoryValue(c.value);
+    if(id)out[id]=(out[id]||0)+(Number(c.count)||0);
+  }
+  return out;
+}
+
+// The Category filter is built from live Typesense facets (accurate + fast);
+// the cleaned `categories` collection is only a fallback when Typesense is down.
 async function populateCategoryFilterFromCollection(){
+  // Primary: live Typesense facets.
+  try{
+    const counts=await _tsCategoryCounts();
+    const list=Object.entries(counts)
+      .filter(([id,n])=>id&&n>0)
+      .map(([id,n])=>({id,name:_adminCategoryLabel(id),count:n}))
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    if(list.length){_applySelectOptions('categoryFilter',_categoryOptionsHtml(list));return;}
+  }catch(e){console.warn('[category-filter] Typesense facet load failed; using categories collection:',e.message||e);}
+  // Fallback: cleaned `categories` collection (may be stale).
   try{
     const res=await getPb().collection('categories').getList(1,300,{
       filter:'isActive=true',sort:'name',fields:'slug,name,productCount',$autoCancel:false,
@@ -1657,10 +1684,15 @@ async function loadPage(direction,pageOverride){
     let result;
     let usedTypesense=false;
     const searchQRaw=(document.getElementById('searchInput')?.value||'').trim();
-    if(!searchQRaw){
-      // Admin Products is an audit surface: it must reflect every PB record
-      // immediately after scrape, even if Typesense indexing is a few seconds
-      // behind. Search still uses Typesense below for speed.
+    // Default path is Typesense for BOTH browse and search: PB's category
+    // allowlist filter is a ~49-clause `category="..." || ...` OR scan that, on
+    // the RAM-constrained single host, makes every page load crawl (and is the
+    // main source of the "PocketBase meşgul" 500s). Typesense answers the same
+    // faceted `category:=[...]` filter in ~one indexed lookup. We only fall back
+    // to PB while a scrape is live, where the audit surface must reflect every
+    // freshly written row immediately (Typesense sync is fire-and-forget and
+    // lags a few seconds behind during a bulk run).
+    if(window.qoraiScrapeActive){
       result=await pbGetList('products',currentPage,PRODUCT_RAW_PER,{filter,sort,fields:PRODUCT_CARD_FIELDS});
     }else{
       try{
