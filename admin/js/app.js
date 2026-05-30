@@ -2322,6 +2322,26 @@ async function stopCategoryTranslation(){
 
 const QORAI_TRANSLATION_BUILD = 'canonical-english-runtime-locale-20260521';
 
+// Order-insensitive JSON serializer: sorts object keys recursively so two
+// maps with identical content but different key order compare equal. Used to
+// decide whether a freshly-built translation payload differs from what's
+// already stored on the product (PB may persist a different key order).
+function _stableJson(value){
+  if (value === null || typeof value !== 'object') return JSON.stringify(value ?? null);
+  if (Array.isArray(value)) return `[${value.map(_stableJson).join(',')}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map(k => `${JSON.stringify(k)}:${_stableJson(value[k])}`).join(',')}}`;
+}
+
+// True when every field in `patch` already equals the product's stored value,
+// i.e. the PB UPDATE would be a no-op. Lets the patch loop skip the write.
+function _translationPatchUnchanged(product, patch){
+  for (const key of Object.keys(patch)){
+    if (_stableJson(patch[key]) !== _stableJson(product?.[key] ?? null)) return false;
+  }
+  return true;
+}
+
 async function _fetchDictionaryProducts(categoryId){
   const allEpey = categoryId === '__all_epey__';
   const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
@@ -2332,6 +2352,11 @@ async function _fetchDictionaryProducts(categoryId){
     'id','name','category','source','sourceUrl',
     'sourceLang','sourceName','sourceSpecs','sourceSpecSections','sourceKeySpecs',
     'specs','specSections','keySpecs',
+    // Existing translation payload — fetched so the patch loop can skip
+    // products whose multiLang* already match the freshly-built payload.
+    // Reads are cheap; the redundant WRITEs they let us skip are what
+    // hammered the RAM-constrained host into "meşgul"/500 storms.
+    'multiLangSpecs','multiLangSections','nameTranslated','specsEn',
   ].join(',');
   const perPage = allEpey ? 250 : 300;
   const products = [];
@@ -2399,6 +2424,7 @@ async function startCategoryTranslation(){
   let products = [];
   let done = 0;
   let failed = 0;
+  let skipped = 0;
   let learned = 0;
 
   try {
@@ -2615,6 +2641,7 @@ async function startCategoryTranslation(){
               ? window.QorAiBulkTranslate.sanitizeEnglishSpecMap(specsEn)
               : specsEn;
           }
+          if (_translationPatchUnchanged(p, patch)) return { skipped: true };
           await pbUpdateDoc('products', p.id, patch);
           return p;
         }));
@@ -2623,6 +2650,7 @@ async function startCategoryTranslation(){
           const p = patchBatch[idx];
           if (result.status === 'fulfilled') {
             done++;
+            if (result.value?.skipped) skipped++;
             if (done <= 3 || done % 25 === 0 || done === products.length) {
               _xlateLog(`✓ ${done}/${products.length} patched · ${p.name?.substring(0, 50) || p.id}`, 'success');
             }
@@ -2631,9 +2659,9 @@ async function startCategoryTranslation(){
             _xlateLog(`✗ ${p.name?.substring(0, 40) || p.id}: ${result.reason?.message || result.reason}`, 'error');
           }
         });
-        _xlateProgress(done + failed, products.length, `Patched ${done} ok, ${failed} fail · batch ${batchNo}/${totalBatches}`, {
+        _xlateProgress(done + failed, products.length, `Patched ${done} ok (${skipped} skip), ${failed} fail · batch ${batchNo}/${totalBatches}`, {
           counter: `Products ${done + failed}/${products.length}`,
-          detail: `Last patch sub-batch ${Math.min(i, productBatch.length)}/${productBatch.length} in batch ${batchNo}.`,
+          detail: `Last patch sub-batch ${Math.min(i, productBatch.length)}/${productBatch.length} in batch ${batchNo} · ${skipped} unchanged, no PB write.`,
         });
       }
       if (_catXlateAbort) throw new Error('aborted');
@@ -2641,8 +2669,8 @@ async function startCategoryTranslation(){
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     _xlateProgress(done + failed, products.length, _catXlateAbort ? 'Stopped' : 'Done');
-    _xlateLog(`✅ Completed: ${done} translated · ${failed} failed · ${elapsed}s`, 'success');
-    toast(`✅ ${done}/${products.length} ürün çevrildi`, done ? 's' : 'w');
+    _xlateLog(`✅ Completed: ${done} translated (${skipped} already up-to-date, skipped PB write) · ${failed} failed · ${elapsed}s`, 'success');
+    toast(`✅ ${done}/${products.length} ürün çevrildi (${skipped} atlandı)`, done ? 's' : 'w');
     try { logActivity('category_translation', `${categoryId}: ${done}/${products.length} (+${learned} new terms)`); } catch {}
 
     // Refresh dict table + in-memory product list so modals show the new data
