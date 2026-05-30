@@ -2400,7 +2400,14 @@ async function startCategoryTranslation(){
     if (_catXlateAbort) throw new Error('aborted');
 
     const PRODUCT_BATCH = 150;
-    const PATCH_CONCURRENCY = 25;
+    // PB-dostu patch concurrency. 25 paralel UPDATE bu tek RAM-kısıtlı host için
+    // fazla agresif — scrape'te yaşadığımız "Something went wrong" (500)
+    // fırtınasının aynısını tetikler. Scrape aktifken PB zaten create-only
+    // yazmalarıyla meşgul, o yüzden translate patch'lerini iyice kıs; scrape
+    // yokken makul bir seviyede tut. Her alt-batch öncesi yeniden okunur, böylece
+    // scrape ortada başlar/biterse otomatik uyum sağlar.
+    const patchConcurrency = () =>
+      (typeof window !== 'undefined' && window.qoraiScrapeActive) ? 4 : 10;
     const totalBatches = Math.ceil(products.length / PRODUCT_BATCH);
     _xlateProgress(0, products.length, 'Starting DeepSeek depot translate + patch…');
 
@@ -2532,8 +2539,10 @@ async function startCategoryTranslation(){
         counter: `Products ${done}/${products.length} · dictionary ${Object.keys(window.QorAiDict?.cache?.() || {}).length} terms`,
         detail: 'Now writing multiLangSpecs, multiLangSections, nameTranslated into products.',
       });
-      for (let i = 0; i < productBatch.length; i += PATCH_CONCURRENCY) {
-        const patchBatch = productBatch.slice(i, i + PATCH_CONCURRENCY);
+      for (let i = 0; i < productBatch.length;) {
+        const cc = patchConcurrency();
+        const patchBatch = productBatch.slice(i, i + cc);
+        i += cc;
         const settled = await Promise.allSettled(patchBatch.map(async (p) => {
           const payload = window.QorAiBulkTranslate.buildPayload(p, targets);
           const patch = {
@@ -2592,7 +2601,7 @@ async function startCategoryTranslation(){
         });
         _xlateProgress(done + failed, products.length, `Patched ${done} ok, ${failed} fail · batch ${batchNo}/${totalBatches}`, {
           counter: `Products ${done + failed}/${products.length}`,
-          detail: `Last patch sub-batch ${Math.min(i + PATCH_CONCURRENCY, productBatch.length)}/${productBatch.length} in batch ${batchNo}.`,
+          detail: `Last patch sub-batch ${Math.min(i, productBatch.length)}/${productBatch.length} in batch ${batchNo}.`,
         });
       }
       if (_catXlateAbort) throw new Error('aborted');
