@@ -2178,6 +2178,22 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
     'tek elde kullanim modu': { en: 'One-handed mode', de: 'Einhandmodus' },
     'yuz tanimlama': { en: 'Face recognition', de: 'Gesichtserkennung' },
     'vapor-chamber sogutma': { en: 'Vapor-chamber cooling', de: 'Vapor-Chamber-Kühlung' },
+    // Standalone ambiguous terms NLLB-600M mistranslates without context:
+    // "çözünürlük" → "Solvability"/"Lösungsfähigkeit" (chemistry sense),
+    // "su geçirmez(lik)" → a sentence / "Durchlässigkeit" (opposite),
+    // "(dahili) hafıza" → "Inneres Gedächtnis"/"Gedächtnis" (human memory).
+    // The compound forms (ekran/kamera çözünürlüğü, dahili depolama, suya
+    // dayanıklılık) already resolve correctly above — only the bare words do not.
+    'cozunurluk': { en: 'Resolution', de: 'Auflösung' },
+    'cozunurlugu': { en: 'Resolution', de: 'Auflösung' },
+    'su gecirmezlik': { en: 'Water resistance', de: 'Wasserdichtigkeit' },
+    'su gecirmezligi': { en: 'Water resistance', de: 'Wasserdichtigkeit' },
+    'su gecirmez': { en: 'Waterproof', de: 'Wasserdicht' },
+    'suya dayanikli': { en: 'Water resistant', de: 'Wasserbeständig' },
+    'hafiza': { en: 'Memory', de: 'Speicher' },
+    'dahili hafiza': { en: 'Internal storage', de: 'Interner Speicher' },
+    'hafiza karti': { en: 'Memory card', de: 'Speicherkarte' },
+    'depolama': { en: 'Storage', de: 'Speicher' },
   };
   if (exact[s]?.[lang]) return exact[s][lang];
   const inch = s.match(/^(\d+(?:[.,]\d+)?(?:\/\d+(?:[.,]\d+)?)?)\s*inc$/);
@@ -4939,8 +4955,13 @@ window.QorAiBulkTranslate = {
   sanitizeEnglishText: (text, sourceText) => _sanitizeEnglishSpecText(text, sourceText),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
   assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
-  // Persist the dictionary cache to PocketBase (force-save)
-  saveDict() { _deDictDirty = true; return _saveDeDict(); },
+  // Persist the dictionary cache to PocketBase. Bypass the 2-minute save
+  // throttle: the bulk-translate checkpoint calls this and then immediately
+  // asserts !isDirty(). Throttled _saveDeDict() would debounce the write and
+  // return early, leaving _deDictDirty=true → false "save did not settle"
+  // abort after batch 1. _flushDeDictBeforeExit forces a synchronous write
+  // (and no-ops when nothing is dirty, so cached batches don't re-upload).
+  saveDict() { return _flushDeDictBeforeExit(); },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting; must match the first
   // DeepSeek depot pass size above. Keep chunks modest: one request returns
