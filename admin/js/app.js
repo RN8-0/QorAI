@@ -2310,8 +2310,7 @@ async function stopCategoryTranslation(){
   _xlateLog('⏹ Stop requested — current in-flight chunk will finish, completed chunks stay saved in PocketBase.', 'warn');
   try {
     if (window.QorAiBulkTranslate?.saveDict) {
-      await window.QorAiBulkTranslate.saveDict();
-      if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
+      await window.QorAiBulkTranslate.saveDict({ force: true });
       _scheduleDictionaryLiveRender('Stop checkpoint saved to PocketBase.', 50);
       _xlateLog('✓ Dictionary checkpoint saved after stop request.', 'success');
     }
@@ -2582,10 +2581,19 @@ async function startCategoryTranslation(){
           counter: `Depot complete · products patched ${done}/${products.length}`,
           detail: `Batch ${batchNo}: ${learnedNow} atoms learned, final checkpoint writing to PocketBase.`,
         });
-        await window.QorAiBulkTranslate.saveDict();
-        if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
+        // Best-effort checkpoint. Mid-run uses the throttled save (≤1 multi-shard
+        // write / 2 min) so we never overload the RAM-bound PocketBase host by
+        // rewriting the whole dictionary on every batch; the final batch (or a
+        // stop) forces a full flush. GPU chunks already persist learned atoms
+        // during translation and the in-memory dict drives the patch phase below,
+        // so a transient PB failure here must NEVER abort the run — log & continue.
+        try {
+          await window.QorAiBulkTranslate.saveDict({ force: batchNo === totalBatches || abortAfterCheckpoint });
+        } catch (saveErr) {
+          _xlateLog(`⚠ Batch ${batchNo} sözlük checkpoint kaydı ertelendi (sonraki kayıtta tekrar denenecek): ${saveErr.message || saveErr}`, 'warn');
+        }
         try { renderDictionaryTable(); } catch { _refreshDictionaryStatsOnly(); }
-        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: dictionary saved (+${learnedNow} atoms · ${sec}s)`, 'success');
+        _xlateLog(`✓ Batch ${batchNo}/${totalBatches}: +${learnedNow} atom öğrenildi (${sec}s)`, 'success');
         if (abortAfterCheckpoint) {
           _xlateLog(`⏹ Stop detected after dictionary checkpoint; patching batch ${batchNo} with available translations before exit.`, 'warn');
         }
@@ -2685,8 +2693,7 @@ async function startCategoryTranslation(){
       _xlateLog('⏹ Stopped by user. Saving dictionary checkpoint…', 'warn');
     }
     try {
-      await window.QorAiBulkTranslate.saveDict();
-      if (window.QorAiDict?.isDirty?.()) throw new Error('Dictionary save did not settle; PocketBase still has pending changes.');
+      await window.QorAiBulkTranslate.saveDict({ force: true });
       _scheduleDictionaryLiveRender('Dictionary checkpoint saved after stop/error.', 50);
       _xlateLog('✓ Dictionary checkpoint saved to PocketBase.', 'success');
     } catch (saveErr) {

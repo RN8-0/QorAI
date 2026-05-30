@@ -1885,6 +1885,23 @@ async function _saveDeDict() {
   }
   return _saveDeDictNow();
 }
+// Write a single public_config doc, retrying transient PocketBase failures
+// (cold-start 500s, "Something went wrong", timeouts) with exponential backoff.
+// The RAM-bound single host occasionally drops a write under load; without
+// retry one dropped shard would throw and abort the entire bulk run.
+async function _pbSetDocWithRetry(collection, id, data, attempts = 5) {
+  let delay = 800;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await pbSetDoc(collection, id, data);
+    } catch (e) {
+      if (attempt >= attempts) throw e;
+      console.warn(`[de-dict] write ${id} attempt ${attempt} failed (${e.message || e}); retrying in ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+      delay = Math.min(delay * 2, 8000);
+    }
+  }
+}
 async function _saveDeDictNow() {
   if (!_deDictDirty) return;
   if (_deDictSavePromise) {
@@ -1913,7 +1930,7 @@ async function _saveDeDictNow() {
         const updatedAt = new Date().toISOString();
         for (let i = 0; i < shards.length; i++) {
           const key = `${DE_DICT_SHARD_PREFIX}${String(i).padStart(4, '0')}`;
-          await pbSetDoc('public_config', key, {
+          await _pbSetDocWithRetry('public_config', key, {
             key,
             value: {
               sharded: true,
@@ -1925,7 +1942,7 @@ async function _saveDeDictNow() {
             updatedAt,
           });
         }
-        await pbSetDoc('public_config', DE_DICT_MANIFEST_KEY, {
+        await _pbSetDocWithRetry('public_config', DE_DICT_MANIFEST_KEY, {
           key: DE_DICT_MANIFEST_KEY,
           value: {
             sharded: true,
@@ -1936,7 +1953,7 @@ async function _saveDeDictNow() {
           },
           updatedAt,
         });
-        await pbSetDoc('public_config', DE_DICT_PB_KEY, {
+        await _pbSetDocWithRetry('public_config', DE_DICT_PB_KEY, {
           key: DE_DICT_PB_KEY,
           value: {
             sharded: true,
@@ -4955,13 +4972,21 @@ window.QorAiBulkTranslate = {
   sanitizeEnglishText: (text, sourceText) => _sanitizeEnglishSpecText(text, sourceText),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
   assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
-  // Persist the dictionary cache to PocketBase. Bypass the 2-minute save
-  // throttle: the bulk-translate checkpoint calls this and then immediately
-  // asserts !isDirty(). Throttled _saveDeDict() would debounce the write and
-  // return early, leaving _deDictDirty=true → false "save did not settle"
-  // abort after batch 1. _flushDeDictBeforeExit forces a synchronous write
-  // (and no-ops when nothing is dirty, so cached batches don't re-upload).
-  saveDict() { return _flushDeDictBeforeExit(); },
+  // Persist the dictionary cache to PocketBase.
+  //   saveDict()              → throttled/debounced (mark dirty, coalesce to
+  //                             ≤1 write / 2 min). Use for per-batch checkpoints
+  //                             so we don't rewrite the whole multi-shard dict
+  //                             on every batch and overload the RAM-bound host.
+  //   saveDict({ force:true }) → synchronous full flush, bypassing the throttle.
+  //                             Use at end-of-run and on stop/abort so the final
+  //                             state is guaranteed persisted. No-ops when clean.
+  // Per-shard writes inside _saveDeDictNow retry with backoff, so a transient
+  // PocketBase 500 self-heals instead of throwing.
+  saveDict(opts) {
+    if (opts && opts.force) return _flushDeDictBeforeExit();
+    _deDictDirty = true;
+    return _saveDeDict();
+  },
   targetLangs: () => TARGET_LANGS.slice(),
   // Estimated chunk count for progress reporting; must match the first
   // DeepSeek depot pass size above. Keep chunks modest: one request returns
