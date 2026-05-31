@@ -1870,17 +1870,27 @@
           r.categoryFinalStretch = +finalStretch.toFixed(3);
           const yc = _yearCeiling(r.year, cat);
           const isTopOfCategory = stretchAnchorIds.has(r.id);
-          // The top-of-category product(s) lose their tier cap — they ARE
-          // the category's flagship by construction. Everyone else still
-          // honours tier / year / NO_ANCHOR caps so no-name brands can't
-          // ride the stretch ratio to fake-flagship territory.
+          // The top-of-category product(s) lose all category-relative ceilings
+          // (tier cap, NO_ANCHOR cap, year cap) — they ARE the category's
+          // flagship by construction. Everyone else still honours their caps
+          // so no-name brands and older SKUs don't ride the stretch ratio
+          // upward.
+          //
+          // Year cap is a cross-category statement ("a 2018 phone is not a
+          // 2025 flagship"), but for the in-category "best of this category"
+          // verdict it would unfairly hold feature_phones, niche cameras and
+          // discontinued SKUs below 100 even when nothing newer exists in
+          // their slice. The user's expectation is "every category shows a
+          // 100 somewhere"; honouring that requires releasing the top entry
+          // from year cap too.
           const tierCeil = isTopOfCategory
             ? SCORE_MAX
             : (r.anchorKey && r.tier !== 'flagship'
                 ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
                 : SCORE_MAX);
           const noAnchorCeil = (r.anchorKey || isTopOfCategory) ? SCORE_MAX : noAnchorCategoryCap;
-          const cap = Math.min(SCORE_MAX, tierCeil, yc, noAnchorCeil);
+          const yearCeil = isTopOfCategory ? SCORE_MAX : yc;
+          const cap = Math.min(SCORE_MAX, tierCeil, yearCeil, noAnchorCeil);
           r.score = Math.max(SCORE_MIN, Math.min(cap, Math.round(r.score * finalStretch)));
         }
       } else {
