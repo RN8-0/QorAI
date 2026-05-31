@@ -533,7 +533,12 @@
 
   const _autoQueue = new Set();
   let _autoTimer = null;
-  const AUTO_SCORE_FROM_PRODUCT_SAVE = false;
+  // Turned ON 2026-05-31 per user request: every scraped/saved product fires
+  // `qorai:product-saved`, the touched category goes into _autoQueue, and the
+  // debounced flush re-scores only that category once the scrape settles. This
+  // is the "scraper otomatik puanlasın" behaviour — the admin no longer has
+  // to manually click Score Engine after a scrape batch.
+  const AUTO_SCORE_FROM_PRODUCT_SAVE = true;
   async function _flushAutoScoreQueue() {
     // Defer when:
     //   - a manual score run is already in flight (`_running`)
