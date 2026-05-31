@@ -343,7 +343,15 @@ async function pbCreateProductFast(id, data, options = {}) {
       // clean skip instead of a new record. No duplicate, no churn, no data loss.
       try {
         const existing = await _findRecord('products', id, clean, options);
-        if (existing) { try { existing.__qExisted = true; } catch (_) {} return existing; }
+        if (existing) {
+          try { existing.__qExisted = true; } catch (_) {}
+          // Re-scrape of an already-stored product. We intentionally do NOT
+          // overwrite PB (keeps translations), but we DO re-mirror the existing
+          // PB record to Typesense — this is what heals a product that lives in
+          // PB yet drifted out of the index (so it reappears in the app).
+          _syncToTypesense('products', existing);
+          return existing;
+        }
       } catch (lookupErr) {
         console.warn('[pbCreateProductFast] unique-violation lookup failed:', lookupErr.message);
       }
@@ -382,30 +390,93 @@ async function pbDeleteDoc(collection, id) {
   return result;
 }
 
-// ── Typesense mirror ─────────────────────────────────────────
-// Every successful mutation on `products` is mirrored to the
-// Typesense `products` collection so that search/list endpoints
-// reflect the new value immediately. Failures are non-fatal and
-// surface only as console warnings.
+// ── Typesense mirror (reliable background queue) ──────────────
+// Every successful `products` mutation is mirrored to the Typesense
+// `products` collection, which is what the app's list/search read. The
+// old path was fire-and-forget with `.catch(()=>{})`: under host load (the
+// scraper hammering the single RAM-constrained box) the upsert failed and
+// was dropped silently — that is how products drifted out of the app even
+// though they existed in PB.
+//
+// Instead we enqueue onto a background queue that retries with backoff and
+// records terminal failures (dead-letter) so nothing is lost without a
+// trace. It stays non-blocking (the PB write call site never awaits it) but
+// is bounded-concurrency so it can't itself flood Typesense.
+const _TS_QUEUE = [];
+const _TS_MAX_ATTEMPTS = 5;
+const _TS_CONCURRENCY = 4;
+let _tsActive = 0;
+
+function _tsEnqueue(task) {
+  if (typeof window === 'undefined' || !window.TsClient) return;
+  task.attempts = 0;
+  _TS_QUEUE.push(task);
+  _tsPump();
+}
+
+function _tsPump() {
+  while (_tsActive < _TS_CONCURRENCY && _TS_QUEUE.length) {
+    const task = _TS_QUEUE.shift();
+    _tsActive++;
+    _tsRunTask(task).finally(() => { _tsActive--; _tsPump(); });
+  }
+}
+
+async function _tsRunTask(task) {
+  let ok = false;
+  try {
+    ok = task.op === 'delete'
+      ? await _tsDeleteOnce(task.id)
+      : await window.TsClient.upsertDoc(task.record);
+  } catch (_) { ok = false; }
+  if (ok) return;
+  task.attempts++;
+  if (task.attempts < _TS_MAX_ATTEMPTS) {
+    const delay = Math.min(8000, 400 * Math.pow(2, task.attempts));
+    await new Promise((r) => setTimeout(r, delay));
+    _TS_QUEUE.push(task);
+    _tsPump();
+  } else {
+    _tsRecordFailure(task);
+  }
+}
+
+// DELETE is idempotent and a 404 means "already gone" — that is the goal, so
+// treat it as success. Only transient errors (5xx / network) return false → retry.
+async function _tsDeleteOnce(id) {
+  try {
+    await window.TsClient.request(
+      'DELETE',
+      `/collections/${window.TsClient.COLLECTION}/documents/${encodeURIComponent(id)}`,
+    );
+    return true;
+  } catch (e) {
+    if (e && e.status === 404) return true;
+    return false;
+  }
+}
+
+// Persist ids we could not sync after all retries so a reconciliation pass
+// (or a full resync) can heal them, and make the failure loud in the console.
+function _tsRecordFailure(task) {
+  const id = task.op === 'delete' ? task.id : (task.record && task.record.id);
+  console.error('[pb→ts] sync permanently failed after retries:', task.op, id);
+  try {
+    const key = 'qor_ts_sync_failures';
+    const cur = JSON.parse(localStorage.getItem(key) || '{}');
+    cur[id] = { op: task.op, at: Date.now() };
+    localStorage.setItem(key, JSON.stringify(cur));
+  } catch (_) {}
+}
+
 function _syncToTypesense(collection, record) {
   if (collection !== 'products' || !record || !record.id) return;
-  if (typeof window === 'undefined' || !window.TsClient) return;
-  try {
-    // fire-and-forget — don't block the PB call site
-    window.TsClient.upsertDoc(record).catch(() => {});
-  } catch (e) {
-    console.warn('[pb→ts] sync failed', e.message);
-  }
+  _tsEnqueue({ op: 'upsert', record });
 }
 
 function _syncDeleteFromTypesense(collection, id) {
   if (collection !== 'products' || !id) return;
-  if (typeof window === 'undefined' || !window.TsClient) return;
-  try {
-    window.TsClient.request('DELETE', `/collections/${window.TsClient.COLLECTION}/documents/${encodeURIComponent(id)}`).catch(() => {});
-  } catch (e) {
-    console.warn('[pb→ts] delete sync failed', e.message);
-  }
+  _tsEnqueue({ op: 'delete', id });
 }
 
 // Get all docs matching filter

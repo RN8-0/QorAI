@@ -20,26 +20,37 @@ class ProductRepository {
   }) : _pbDS = pbDS,
        _hiveDS = hiveDS;
 
-  /// Get single product — PocketBase is the source of truth.
+  /// Get single product — PocketBase is the source of truth, with a Typesense
+  /// fallback so the detail page still loads when PocketBase is overloaded
+  /// (e.g. while the scraper runs) or the record 404s but is still indexed.
   Future<Result<ProductEntity>> getProduct(String id) async {
     try {
       final product = await _pbDS.getProduct(id);
       if (product == null) {
+        // PB returned 404. Before giving up, try the Typesense copy — its
+        // `_raw` holds the full product, so a stale/lagging index still
+        // renders instead of "Product not found".
+        final tsProduct = await _pbDS.getProductFromTypesense(id);
+        if (tsProduct != null) {
+          _cacheProduct(id, tsProduct);
+          return Success(tsProduct);
+        }
         try {
           await _hiveDS.deleteSetting('product_$id');
         } catch (_) {}
         return const Failure(ServerException(message: 'Product not found'));
       }
 
-      try {
-        final dataToCache = _serializeForCache(product.toFirestore());
-        dataToCache['_cachedAt'] = DateTime.now().millisecondsSinceEpoch;
-        await _hiveDS.saveSetting('product_$id', dataToCache);
-      } catch (_) {}
-
+      _cacheProduct(id, product);
       return Success(product);
     } catch (e) {
-      // Network failed: only then fall back to a still-fresh local copy.
+      // PocketBase failed (timeout/overload/network). Prefer the Typesense
+      // copy, then a still-fresh local cache, before surfacing an error.
+      final tsProduct = await _pbDS.getProductFromTypesense(id);
+      if (tsProduct != null) {
+        _cacheProduct(id, tsProduct);
+        return Success(tsProduct);
+      }
       try {
         final cached = _hiveDS.getSetting<Map<String, dynamic>>('product_$id');
         if (cached != null) {
@@ -52,6 +63,14 @@ class ProductRepository {
       } catch (_) {}
       return Failure(ServerException(message: e.toString()));
     }
+  }
+
+  void _cacheProduct(String id, ProductModel product) {
+    try {
+      final dataToCache = _serializeForCache(product.toFirestore());
+      dataToCache['_cachedAt'] = DateTime.now().millisecondsSinceEpoch;
+      _hiveDS.saveSetting('product_$id', dataToCache);
+    } catch (_) {}
   }
 
   /// Get product list (with pagination) - Section 15.2

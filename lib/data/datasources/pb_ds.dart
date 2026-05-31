@@ -2576,6 +2576,33 @@ class PbDataSource {
     }
   }
 
+  /// Fetch a single product from Typesense by id (full record via `_raw`).
+  /// Detail-page fallback: when PocketBase is overloaded/slow or the record
+  /// 404s (deleted from PB but still indexed), the Typesense doc carries the
+  /// complete PocketBase JSON in `_raw`, so the detail screen can still render
+  /// instead of failing with "Product not found".
+  Future<ProductModel?> getProductFromTypesense(String id) async {
+    if (id.isEmpty) return null;
+    try {
+      final response = await _dio.get(
+        '/collections/products/documents/${Uri.encodeComponent(id)}',
+        options: Options(receiveTimeout: const Duration(seconds: 12)),
+      );
+      final doc = response.data;
+      if (doc is! Map) return null;
+      final map = Map<String, dynamic>.from(doc);
+      final rawStr = map['_raw'] as String?;
+      if (rawStr != null && rawStr.isNotEmpty) {
+        final raw = jsonDecode(rawStr) as Map<String, dynamic>;
+        return ProductModel.fromMap(raw);
+      }
+      return ProductModel.fromMap(map);
+    } catch (e) {
+      debugPrint('=== QOR AI: getProductFromTypesense $id failed: $e ===');
+      return null;
+    }
+  }
+
   /// Fetch products for a single category from Typesense.
   /// Much faster than PocketBase pagination (10-50ms vs 1-2s).
   Future<List<ProductModel>> getProductsByCategoryTs({
