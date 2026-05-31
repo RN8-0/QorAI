@@ -296,7 +296,6 @@ final categoriesProvider = FutureProvider<Result<List<CategoryModel>>>((
           .map(
             (e) => CategoryModel.fromMap(Map<String, dynamic>.from(e as Map)),
           )
-          .where((c) => c.isActive && c.productCount > 0)
           .toList();
       if (cats.isNotEmpty) return Success(cats);
     }

@@ -13,9 +13,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
-import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_name_localizer.dart';
-import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -1476,13 +1474,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildCategoriesSection() {
-    final liveIds = _liveCategoryIds();
-    final allCategories = _getCachedFlatCategories();
-    final categories = liveIds == null
-        ? allCategories
-        : allCategories
-              .where((cat) => liveIds.contains(cat['id'] as String))
-              .toList(growable: false);
+    final categories = _getCachedFlatCategories();
     if (categories.isEmpty) return const SizedBox.shrink();
     final half = (categories.length / 2).ceil();
     final row1 = categories.sublist(0, half);
@@ -1517,19 +1509,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
       ],
     );
-  }
-
-  Set<String>? _liveCategoryIds() {
-    final result = ref.watch(categoriesProvider).valueOrNull;
-    if (result is Success<List<CategoryModel>>) {
-      final ids = result.data
-          .where((c) => c.isActive && c.productCount > 0)
-          .map((c) => c.id.toLowerCase().trim())
-          .where((id) => id.isNotEmpty)
-          .toSet();
-      return ids.isEmpty ? null : ids;
-    }
-    return null;
   }
 
   Widget _buildFlatCategoryChip(Map<String, Object> cat, int index) {
