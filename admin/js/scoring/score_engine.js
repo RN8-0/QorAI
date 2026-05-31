@@ -1832,42 +1832,60 @@
         sumW: c.sumW,
       };
     });
-    // Final category stretch — only pull up to 100 if the category actually
-    // has a flagship anchor. Anchorless categories (smartwatches without a
-    // detectable SoC, niche peripherals) used to stretch their top no-name
-    // product to 100; now they cap at the per-category NO_ANCHOR_CAP so the
-    // "Top Rated" surface keeps real brands at the top.
+    // Final category stretch — guarantee at least one 100 per category.
+    // Picks the "anchor" as the best-evidenced top scorer (flagship-tier
+    // anchored if available, otherwise the top scorer with sufficient
+    // confidence). Every other product is multiplied by the same factor,
+    // but its own tier cap / year cap / NO_ANCHOR cap still applies — so
+    // generic / no-name products at 27 stay around 30, not at 100.
+    //
+    // The user wanted the green "100" badge to actually appear in every
+    // category. The previous pass refused to stretch anchorless categories
+    // (smartwatches with mis-tagged SoCs, niche peripherals), leaving their
+    // top product stuck at ~87 even when it was a legitimately flagship
+    // Apple Watch Ultra 3. This finds the most credible top and pulls it.
     {
-      const eligible = results.filter(r => {
-        const yc = _yearCeiling(r.year, cat);
-        // Only flagship-anchored products can pull the category to 100.
-        // Anchorless / sub-flagship items never act as the stretch reference.
-        return r.tier === 'flagship' && r.anchorKey && yc >= 95 && r.score > 0;
-      });
       const noAnchorCategoryCap = NO_ANCHOR_CAP_BY_CAT[cat] || NO_ANCHOR_CAP;
-      const stretchAnchor = eligible.length
-        ? Math.max(...eligible.map(r => r.score))
-        : 0;
-      const stretchTargetCeiling = eligible.length ? SCORE_MAX : noAnchorCategoryCap;
+      // Prefer flagship-anchored recent products. Fall back to any recent
+      // high-confidence product. Final fallback: the overall top.
+      const recent = r => _yearCeiling(r.year, cat) >= 95;
+      const conf = r => Number(r.confidence) >= 0.50;
+      const tiers = [
+        results.filter(r => r.tier === 'flagship' && r.anchorKey && recent(r) && r.score > 0),
+        results.filter(r => r.anchorKey && recent(r) && conf(r) && r.score > 0),
+        results.filter(r => recent(r) && conf(r) && r.score > 0),
+        results.filter(r => r.score > 0),
+      ];
+      const pick = tiers.find(t => t.length > 0) || [];
+      const stretchAnchor = pick.length ? Math.max(...pick.map(r => r.score)) : 0;
+      // Top scorers in the picked tier get their caps lifted to 100 so the
+      // category's #1 actually shows the green "100" badge the admin expects.
+      // We allow ties (multiple products at the exact same top score), so e.g.
+      // every RTX 5090 SKU reaches 100, not just the first one.
+      const stretchAnchorIds = new Set(pick.filter(r => r.score === stretchAnchor).map(r => r.id));
       if (stretchAnchor > 0 && stretchAnchor < SCORE_MAX) {
         const finalStretch = SCORE_MAX / stretchAnchor;
         for (const r of results) {
           r.preCategoryStretchScore = r.score;
           r.categoryFinalStretch = +finalStretch.toFixed(3);
           const yc = _yearCeiling(r.year, cat);
-          const tierCeil = r.anchorKey && r.tier !== 'flagship'
-            ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
-            : SCORE_MAX;
-          // Anchorless products still capped by NO_ANCHOR ceiling — the
-          // stretch can't lift them above what the category trusts them to be.
-          const noAnchorCeil = r.anchorKey ? SCORE_MAX : noAnchorCategoryCap;
+          const isTopOfCategory = stretchAnchorIds.has(r.id);
+          // The top-of-category product(s) lose their tier cap — they ARE
+          // the category's flagship by construction. Everyone else still
+          // honours tier / year / NO_ANCHOR caps so no-name brands can't
+          // ride the stretch ratio to fake-flagship territory.
+          const tierCeil = isTopOfCategory
+            ? SCORE_MAX
+            : (r.anchorKey && r.tier !== 'flagship'
+                ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
+                : SCORE_MAX);
+          const noAnchorCeil = (r.anchorKey || isTopOfCategory) ? SCORE_MAX : noAnchorCategoryCap;
           const cap = Math.min(SCORE_MAX, tierCeil, yc, noAnchorCeil);
           r.score = Math.max(SCORE_MIN, Math.min(cap, Math.round(r.score * finalStretch)));
         }
       } else {
-        // No flagship-anchored reference — enforce floors + anchorless cap.
         for (const r of results) {
-          const noAnchorCeil = r.anchorKey ? SCORE_MAX : stretchTargetCeiling;
+          const noAnchorCeil = r.anchorKey ? SCORE_MAX : noAnchorCategoryCap;
           r.score = Math.max(SCORE_MIN, Math.min(SCORE_MAX, noAnchorCeil, r.score));
         }
       }
