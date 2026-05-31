@@ -1843,6 +1843,11 @@ function _tsParseProductHit(hit){
   if(doc._raw){
     try{raw=typeof doc._raw==='string'?JSON.parse(doc._raw):doc._raw}catch{}
   }
+  // doc.techScore is the live PATCH-updated value (score_catalog writes it
+  // directly), while _raw is a stale snapshot from the last full upsert.
+  // Prefer the live root field so the green badge reflects the latest run
+  // — the old "raw first" priority left RTX 5090 reading 0 in the admin
+  // because the JSON snapshot was older than the last score write.
   return {
     ...(raw||{}),
     id: raw?.id||doc.id,
@@ -1850,9 +1855,9 @@ function _tsParseProductHit(hit){
     brand: raw?.brand||doc.brand||'',
     category: raw?.category||doc.category||'',
     imageUrl: raw?.imageUrl||doc.imageUrl||'',
-    techScore: Number(raw?.techScore??doc.techScore)||0,
-    lowestPriceUSD: Number(raw?.lowestPriceUSD??doc.lowestPriceUSD)||0,
-    specsCount: raw?.specsCount??doc.specsCount??0,
+    techScore: Number(doc?.techScore??raw?.techScore)||0,
+    lowestPriceUSD: Number(doc?.lowestPriceUSD??raw?.lowestPriceUSD)||0,
+    specsCount: doc?.specsCount??raw?.specsCount??0,
     keySpecs: raw?.keySpecs||{},
     _partial:true,
     _searchScore: hit?.text_match||0,
