@@ -2182,10 +2182,13 @@ class PbDataSource {
 
       final filtered = ProductFilter.filterRelaxed(results);
 
-      final ranked = await _filterLivePocketBaseProducts(
-        rankProductsForQuery(filtered, q, limit: limit),
-        context: 'search "$q"',
-      );
+      // Trust Typesense. The pb_hooks/typesense_sync.pb.js delete hook + the
+      // admin pb_client.js retry queue keep TS in sync with PB. Round-tripping
+      // through `getProductsByIds` to "validate" was costing 50-id chunks ×
+      // every search — turning a 100ms TS hit into ~5-20s on a busy host.
+      // Genuinely deleted rows now short-circuit at the detail-screen dead-id
+      // cache after one failed lookup (see PbDataSource._knownDeadProductIds).
+      final ranked = rankProductsForQuery(filtered, q, limit: limit);
 
       _evictSearchResultCache();
       _searchResultCache[cacheKey] = (results: ranked, time: DateTime.now());
@@ -2558,43 +2561,6 @@ class PbDataSource {
     return compute(_parseTypesenseHitsToProducts, hitMaps);
   }
 
-  Future<List<ProductModel>> _filterLivePocketBaseProducts(
-    List<ProductModel> products, {
-    String context = 'Typesense',
-  }) async {
-    if (products.isEmpty) return products;
-    try {
-      final ids = <String>[];
-      final seen = <String>{};
-      for (final product in products) {
-        if (product.id.isNotEmpty && seen.add(product.id)) {
-          ids.add(product.id);
-        }
-      }
-      if (ids.isEmpty) return products;
-
-      final live = await getProductsByIds(
-        ids,
-      ).timeout(const Duration(seconds: 12));
-      final liveById = {for (final product in live) product.id: product};
-      final filtered = <ProductModel>[];
-      for (final product in products) {
-        final fresh = liveById[product.id];
-        if (fresh != null) filtered.add(fresh);
-      }
-      final removed = products.length - filtered.length;
-      if (removed > 0) {
-        debugPrint(
-          '=== QOR AI: $context filtered $removed stale Typesense products ===',
-        );
-      }
-      return filtered;
-    } catch (e) {
-      debugPrint('=== QOR AI: $context live PB validation skipped: $e ===');
-      return products;
-    }
-  }
-
   /// Fetch a single product from Typesense by id (full record via `_raw`).
   /// Detail-page fallback: when PocketBase is overloaded/slow or the record
   /// 404s (deleted from PB but still indexed), the Typesense doc carries the
@@ -2671,10 +2637,9 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = await _filterLivePocketBaseProducts(
-        await _parseTypesenseProductsOffMainThread(hits),
-        context: 'TS cat=$category',
-      );
+      // Trust Typesense (see search-path comment) — the PB validation pass
+      // used to add 50-id chunks × ~1s each on top of every category fetch.
+      final products = await _parseTypesenseProductsOffMainThread(hits);
       if (_verboseTypesenseLogs) {
         debugPrint(
           '=== QOR AI: TS cat=$category → ${products.length} in ${sw.elapsedMilliseconds}ms ===',
@@ -2720,28 +2685,18 @@ class PbDataSource {
       );
       sw.stop();
 
-      final parsedByCategory = <String, List<ProductModel>>{};
-      final allParsed = <ProductModel>[];
+      final results = <String, List<ProductModel>>{};
       final resultsList = (response.data['results'] as List?) ?? [];
       for (var i = 0; i < resultsList.length && i < categories.length; i++) {
         final catResult = resultsList[i] as Map<String, dynamic>;
         final hits = (catResult['hits'] as List?) ?? [];
-        final products = await _parseTypesenseProductsOffMainThread(hits);
-        parsedByCategory[categories[i]] = products;
-        allParsed.addAll(products);
-      }
-
-      final live = await _filterLivePocketBaseProducts(
-        allParsed,
-        context: 'TS multi_search',
-      );
-      final liveById = {for (final product in live) product.id: product};
-      final results = <String, List<ProductModel>>{};
-      for (final entry in parsedByCategory.entries) {
-        results[entry.key] = entry.value
-            .map((product) => liveById[product.id])
-            .whereType<ProductModel>()
-            .toList(growable: false);
+        // Trust TS — the PB `getProductsByIds` post-validation used to fire
+        // up to 23 sequential PB requests (50-id chunks across 1120
+        // multi-category hits) and was the single biggest source of
+        // home-feed cold-start latency on the shared host.
+        results[categories[i]] = await _parseTypesenseProductsOffMainThread(
+          hits,
+        );
       }
 
       final total = results.values.fold<int>(0, (s, l) => s + l.length);
@@ -2798,14 +2753,12 @@ class PbDataSource {
         page++;
       }
       sw.stop();
-      final liveAll = await _filterLivePocketBaseProducts(
-        all,
-        context: 'TS allInCat cat=$category',
-      );
+      // Trust TS — PB post-validation was costing this category-browse path
+      // up to N×50 sequential PB requests on top of the Typesense pagination.
       debugPrint(
-        '=== QOR AI: TS allInCat cat=$category → ${liveAll.length} in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS allInCat cat=$category → ${all.length} in ${sw.elapsedMilliseconds}ms ===',
       );
-      return liveAll;
+      return all;
     } catch (e) {
       debugPrint('=== QOR AI: TS allInCat cat=$category FAILED: $e ===');
       return [];
@@ -3030,10 +2983,10 @@ class PbDataSource {
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = await _filterLivePocketBaseProducts(
-        await _parseTypesenseProductsOffMainThread(hits),
-        context: 'TS getProductsPage cat=$category page=$page',
-      );
+      // Trust TS — pre-existing PB validation was the hidden source of
+      // category-browse latency. Stale rows get caught at detail-screen
+      // open via the dead-id memoization.
+      final products = await _parseTypesenseProductsOffMainThread(hits);
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
@@ -3095,17 +3048,14 @@ class PbDataSource {
           .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
           .whereType<ProductModel>()
           .toList();
-      final liveProducts = await _filterLivePocketBaseProducts(
-        products,
-        context: 'TS getTopRated page=$page',
-      );
+      // Trust TS (same reasoning as the other TS callers in this file).
       final found = (response.data['found'] as int?) ?? 0;
       final hasMore = (page * limit) < found;
       debugPrint(
-        '=== QOR AI: TS getTopRated page=$page → ${liveProducts.length}/$found in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getTopRated page=$page → ${products.length}/$found in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
-        products: liveProducts,
+        products: products,
         nextPage: page + 1,
         hasMore: hasMore,
         totalFound: found,

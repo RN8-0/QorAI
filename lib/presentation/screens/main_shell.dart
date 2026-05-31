@@ -58,6 +58,18 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
+  // ── Products-collection realtime: throttle, don't debounce ────────────────
+  // The scraper writes thousands of products per hour. The original 700ms
+  // debounce never fired during a burst, then nuked the persistent home_feed
+  // cache the moment the burst paused — which immediately fanned into a full
+  // multi-cat Typesense refetch (and, before commit 8b…, an extra 23 PB
+  // requests via _filterLivePocketBaseProducts). End-user devices don't need
+  // bleeding-edge product freshness; the home feed already revalidates on
+  // its own cadence. We now only clear the in-memory feed, at most once per
+  // 5 minutes, and never touch the persistent cache from this hook.
+  static const Duration _productInvalidationCooldown = Duration(minutes: 5);
+  DateTime? _lastProductInvalidationAt;
+
   void _subscribeProductCatalogChanges() {
     unawaited(() async {
       try {
@@ -65,13 +77,20 @@ class _MainShellState extends ConsumerState<MainShell> {
             .collection(AppConstants.productsCollection)
             .subscribe('*', (event) {
               if (!mounted) return;
+              final now = DateTime.now();
+              final last = _lastProductInvalidationAt;
+              if (last != null &&
+                  now.difference(last) < _productInvalidationCooldown) {
+                return;
+              }
+              _lastProductInvalidationAt = now;
               _productCacheInvalidationDebounce?.cancel();
               _productCacheInvalidationDebounce = Timer(
-                const Duration(milliseconds: 700),
+                const Duration(seconds: 2),
                 () {
                   if (!mounted) return;
                   unawaited(
-                    invalidateProductCatalogCaches(ref, clearPersistent: true),
+                    invalidateProductCatalogCaches(ref, clearPersistent: false),
                   );
                 },
               );
