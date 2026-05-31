@@ -305,6 +305,30 @@ class PbDataSource {
     }
   }
 
+  /// Removes recently-viewed records whose product no longer exists. Called
+  /// after a `repo.getProduct` round-trip returns 404 on both PB and TS so
+  /// the next launch doesn't replay the same dead-id lookups.
+  Future<void> pruneRecentlyViewed(String uid, Set<String> productIds) async {
+    if (uid.isEmpty || productIds.isEmpty) return;
+    for (final pid in productIds) {
+      try {
+        final escaped = pid.replaceAll('"', r'\"');
+        final hits = await _pb
+            .collection('recently_viewed')
+            .getList(
+              page: 1,
+              perPage: 20,
+              filter: 'userId = "$uid" && productId = "$escaped"',
+            );
+        for (final r in hits.items) {
+          await _pb.collection('recently_viewed').delete(r.id);
+        }
+      } catch (_) {
+        // Best-effort cleanup; a failure here just means we'll retry next launch.
+      }
+    }
+  }
+
   Stream<List<String>> watchRecentlyViewed(String uid) {
     return _createRealtimeStream<List<String>>(
       collection: 'recently_viewed',
@@ -2576,13 +2600,39 @@ class PbDataSource {
   /// 404s (deleted from PB but still indexed), the Typesense doc carries the
   /// complete PocketBase JSON in `_raw`, so the detail screen can still render
   /// instead of failing with "Product not found".
+  ///
+  /// In-process "dead id" cache: when a product 404s on BOTH PB and TS, every
+  /// downstream rebuild of `recentlyViewedProductsProvider` /
+  /// `homeFeedProvider` would re-issue the same lookup, fanning into 5-10
+  /// failed requests per dead id per minute on Riverpod rebuilds. The set
+  /// short-circuits those callers so a deleted product is paid for exactly
+  /// once per app session.
+  static final Set<String> _knownDeadProductIds = <String>{};
+
+  static void markProductMissing(String id) {
+    if (id.isNotEmpty) _knownDeadProductIds.add(id);
+  }
+
+  static bool isProductKnownMissing(String id) =>
+      _knownDeadProductIds.contains(id);
+
   Future<ProductModel?> getProductFromTypesense(String id) async {
     if (id.isEmpty) return null;
+    if (_knownDeadProductIds.contains(id)) return null;
     try {
       final response = await _dio.get(
         '/collections/products/documents/${Uri.encodeComponent(id)}',
-        options: Options(receiveTimeout: const Duration(seconds: 12)),
+        // validateStatus keeps 404 from throwing a noisy DioException —
+        // a deleted product is the expected case here, not an error.
+        options: Options(
+          receiveTimeout: const Duration(seconds: 12),
+          validateStatus: (code) => code != null && code < 500,
+        ),
       );
+      if (response.statusCode == 404) {
+        _knownDeadProductIds.add(id);
+        return null;
+      }
       final doc = response.data;
       if (doc is! Map) return null;
       final map = Map<String, dynamic>.from(doc);
@@ -2593,7 +2643,8 @@ class PbDataSource {
       }
       return ProductModel.fromMap(map);
     } catch (e) {
-      debugPrint('=== QOR AI: getProductFromTypesense $id failed: $e ===');
+      // Only network/parse failures land here now — 404 returns above.
+      debugPrint('[PbDs] getProductFromTypesense $id: $e');
       return null;
     }
   }

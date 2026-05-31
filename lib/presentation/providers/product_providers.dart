@@ -2994,20 +2994,39 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
   // Fetch missing from Firestore in parallel (max 10)
   if (missingIds.isNotEmpty) {
     final repo = ref.read(productRepositoryProvider);
-    final futures = missingIds.take(10).map((id) async {
+    final lookup = missingIds.take(10).toList();
+    final dead = <String>{};
+    final futures = lookup.map((id) async {
       try {
         final result = await repo.getProduct(id);
         return result.when(
           success: (p) => MapEntry(id, p),
-          failure: (_) => null,
+          failure: (_) {
+            dead.add(id);
+            return null;
+          },
         );
       } catch (_) {
+        dead.add(id);
         return null;
       }
     });
     final fetched = await Future.wait(futures);
     for (final entry in fetched) {
       if (entry != null) results[entry.key] = entry.value;
+    }
+    // Drop deleted products from Hive AND the PB recently_viewed collection
+    // so subsequent provider rebuilds (and the next app launch) don't keep
+    // refetching them. Without the PB prune the firestoreIds stream just
+    // reseeds the Hive cache with the same dead ids next time.
+    if (dead.isNotEmpty) {
+      unawaited(hiveDs.pruneViewedProducts(dead));
+      final uid = ref.read(authStateProvider).valueOrNull;
+      if (uid != null && uid.isNotEmpty) {
+        unawaited(
+          ref.read(pbDataSourceProvider).pruneRecentlyViewed(uid, dead),
+        );
+      }
     }
   }
 

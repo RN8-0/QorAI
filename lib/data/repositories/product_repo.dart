@@ -24,6 +24,14 @@ class ProductRepository {
   /// fallback so the detail page still loads when PocketBase is overloaded
   /// (e.g. while the scraper runs) or the record 404s but is still indexed.
   Future<Result<ProductEntity>> getProduct(String id) async {
+    // Session-level dead-id short-circuit. `recentlyViewedProductsProvider`
+    // re-runs on every homeFeedProvider rebuild, and without this each dead
+    // id costs (PB call + TS call) every time — 5-10 wasted requests per
+    // deleted product per minute, which is the exact pattern captured in
+    // the device log that drove this fix.
+    if (PbDataSource.isProductKnownMissing(id)) {
+      return const Failure(ServerException(message: 'Product not found'));
+    }
     try {
       final product = await _pbDS.getProduct(id);
       if (product == null) {
@@ -35,6 +43,9 @@ class ProductRepository {
           _cacheProduct(id, tsProduct);
           return Success(tsProduct);
         }
+        // Both sources 404'd — the product is genuinely gone. Mark it dead
+        // so the next caller short-circuits, and drop the stale local cache.
+        PbDataSource.markProductMissing(id);
         try {
           await _hiveDS.deleteSetting('product_$id');
         } catch (_) {}

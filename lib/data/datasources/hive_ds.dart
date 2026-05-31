@@ -94,6 +94,17 @@ class HiveDataSource {
     return List<String>.from(jsonDecode(data));
   }
 
+  /// Drops deleted product ids from the recently-viewed list. Prevents the
+  /// retry storm seen in the launch log where deleted products lived
+  /// indefinitely in Hive and got refetched on every provider rebuild.
+  Future<void> pruneViewedProducts(Set<String> deadIds) async {
+    if (deadIds.isEmpty) return;
+    final viewed = getViewedProducts();
+    final keep = viewed.where((id) => !deadIds.contains(id)).toList();
+    if (keep.length == viewed.length) return;
+    await _settingsDataBox.put('viewed_products', jsonEncode(keep));
+  }
+
   // ─── Freemium Usage Tracking ───
 
   String _usageKey(String feature, String period) {
