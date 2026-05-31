@@ -318,28 +318,34 @@ async function pbCreateProductFast(id, data, options = {}) {
   await pbEnsureAuth();
   const clean = _clean(data);
   const createData = _prepareCreateData('products', id, clean);
+  // The bulk scraper passes writeAttempts:1. It owns its OWN transient-backoff
+  // loop *outside* the PB write-concurrency limiter (see _saveProductWithRetry).
+  // If the inner wrapper also slept on a transient 500 it would hold a limiter
+  // slot for ~26s; with 8 workers all stalling at once the entire save pool
+  // froze for 30-60s (the throughput collapse the user saw). attempts:1 means:
+  // one in-wrapper auth refresh is still allowed, but a transient failure throws
+  // immediately so the slot is released and the OUTER loop backs off — slot-free.
+  const attempts = Number(options.writeAttempts) > 0 ? Number(options.writeAttempts) : 6;
   try {
     // Unique-violation is NOT transient → it throws straight out of the retry
-    // wrapper into the reconcile path below; only overload/auth lapses retry.
+    // wrapper into the already-exists path below; only overload/auth lapses retry.
     const record = await _withPbWriteRetry(`create products/${id}`, () =>
-      getPb().collection('products').create(createData, _pbRequestOptions(options))
+      getPb().collection('products').create(createData, _pbRequestOptions(options)), attempts
     );
     _syncToTypesense('products', record);
     return record;
   } catch (e) {
     if (_isUniqueViolation(e)) {
-      // A record slipped past the preload — reconcile via update, never duplicate.
+      // The product already exists (preload missed it, or this is a re-scrape).
+      // Do NOT overwrite it — a raw re-scrape carries untranslated specs and an
+      // update would wipe any translation already applied via the Translate tab.
+      // Return the existing row UNTOUCHED, tagged so the caller counts it as a
+      // clean skip instead of a new record. No duplicate, no churn, no data loss.
       try {
         const existing = await _findRecord('products', id, clean, options);
-        if (existing) {
-          const record = await _withPbWriteRetry(`reconcile products/${existing.id}`, () =>
-            getPb().collection('products').update(existing.id, clean, _pbRequestOptions(options))
-          );
-          _syncToTypesense('products', record);
-          return record;
-        }
-      } catch (reconcileErr) {
-        console.warn('[pbCreateProductFast] unique-violation reconcile failed:', reconcileErr.message);
+        if (existing) { try { existing.__qExisted = true; } catch (_) {} return existing; }
+      } catch (lookupErr) {
+        console.warn('[pbCreateProductFast] unique-violation lookup failed:', lookupErr.message);
       }
     }
     throw e;

@@ -5637,6 +5637,20 @@ function _isTransientPocketBaseError(error) {
   return /something went wrong|timeout|timed out|network|failed to fetch|fetch failed|rate|busy|locked|connection/i.test(msg);
 }
 
+// A 400 slug/sourceUrl unique-violation means the product is ALREADY in the
+// catalog. During a raw scrape that is not an error — the record exists and we
+// must not overwrite a translated row. We skip it cleanly so it never churns
+// through the Resume queue on every run (the recurring "PB kayıt Resume'a
+// kaldı" warnings the user reads as a crash).
+function _isUniqueViolationSave(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  if (status !== 400) return false;
+  const data = error?.data || error?.response?.data || {};
+  let flat = '';
+  try { flat = JSON.stringify(data || {}).toLowerCase(); } catch (_) { flat = String(data || '').toLowerCase(); }
+  return /validation_not_unique|must be unique|already exists|not_unique/.test(flat);
+}
+
 function _formatPocketBaseError(error) {
   const status = Number(error?.status || error?.response?.status || 0);
   const msg = String(error?.message || error || '').trim();
@@ -5696,7 +5710,7 @@ async function _pbSetDocWithTimeout(collection, id, data, timeoutMs = EPEY_PB_WR
 // the skip-existing preload completed, so a find round-trip is redundant.
 async function _pbCreateFastWithTimeout(id, data, timeoutMs = EPEY_PB_WRITE_TIMEOUT_MS) {
   const ms = Math.max(0, Number(timeoutMs || 0));
-  if (!ms || typeof AbortController === 'undefined') return pbCreateProductFast(id, data);
+  if (!ms || typeof AbortController === 'undefined') return pbCreateProductFast(id, data, { writeAttempts: 1 });
   const ac = new AbortController();
   let timer = null;
   const timeoutPromise = new Promise((_, reject) => {
@@ -5707,7 +5721,7 @@ async function _pbCreateFastWithTimeout(id, data, timeoutMs = EPEY_PB_WRITE_TIME
       reject(err);
     }, ms);
   });
-  const writePromise = pbCreateProductFast(id, data, { signal: ac.signal })
+  const writePromise = pbCreateProductFast(id, data, { signal: ac.signal, writeAttempts: 1 })
     .catch((e) => {
       if (ac.signal?.aborted) {
         const err = new Error(`PB write timeout after ${(ms / 1000).toFixed(0)}s`);
@@ -6168,15 +6182,34 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         fastCreate: useFastCreate,
       });
     } catch (saveErr) {
+      if (scraperAbort || saveErr.message === 'aborted') { if (dedupKey) savedSourceUrls.delete(dedupKey); return; }
+      // Already in the catalog (slug/sourceUrl unique-violation). NOT a failure:
+      // keep the in-run claim and skip cleanly — never overwrite, never Resume.
+      if (_isUniqueViolationSave(saveErr)) {
+        clearRetryLater(job.item);
+        results.skipped = (results.skipped || 0) + 1;
+        translationCompleted++;
+        slog(`  ↩ Zaten katalogda (atlandı): ${job.label}`, 'info');
+        return;
+      }
       // Release the in-run claim so a deferred/Resume retry can save it later.
       if (dedupKey) savedSourceUrls.delete(dedupKey);
-      if (scraperAbort || saveErr.message === 'aborted') return;
       if (_isTransientPocketBaseError(saveErr) && deferTranslationSave(job, saveErr)) {
         return;
       }
       markRetryLater(job.item, { clean: job.clean, label: job.label, mergeKey: job.mergeKey });
       translationFailed++;
       slog(`  → PB kayıt Resume'a kaldı: ${job.label} — ${_formatPocketBaseError(saveErr)}`, 'warn');
+      return;
+    }
+    // create() collided and pbCreateProductFast returned the existing row
+    // untouched → it already exists in the catalog. Count as a skip, not a new
+    // raw record, and do not re-dispatch/overwrite.
+    if (saved && saved.__qExisted) {
+      clearRetryLater(job.item);
+      results.skipped = (results.skipped || 0) + 1;
+      translationCompleted++;
+      slog(`  ↩ Zaten katalogda (atlandı): ${job.label}`, 'info');
       return;
     }
     if (job.mergeKey && saved?.id) {
