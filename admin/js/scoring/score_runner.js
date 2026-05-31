@@ -13,7 +13,7 @@
   let _activeWorkerReject = null;
   let _activeWorkerCleanup = null;
   let _lastProgressPaint = 0;
-  const SCORE_WORKER_CACHE_BUSTER = '20260531-score-worker';
+  const SCORE_WORKER_CACHE_BUSTER = '20260531-fast-yield';
 
   // ─── UI helpers ─────────────────────────────────────────────
   function _slog(msg, type) {
@@ -43,14 +43,50 @@
     if (el) el.style.display = 'none';
   }
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // MessageChannel-based yield. requestAnimationFrame + setTimeout(0) used to
+  // throttle catastrophically when the admin tab was backgrounded:
+  //   - rAF pauses entirely for hidden tabs
+  //   - setTimeout clamps to 1000ms in most browsers when hidden
+  //   - the runner could go from 4 ms/yield to ~1 s/yield, turning a
+  //     6-min write phase into 30+ minutes (matches the 21:23 → 21:30 gap
+  //     in the user's log: 100 products in 6 min while the tab was hidden).
+  // MessageChannel posts are NOT throttled when the tab is hidden, so the
+  // yield latency stays under 1 ms in either state. And when the tab is
+  // genuinely hidden there is no UI to feed, so we skip yielding entirely.
+  const _yieldChannel = (typeof MessageChannel === 'function') ? new MessageChannel() : null;
+  const _yieldQueue = [];
+  if (_yieldChannel) {
+    _yieldChannel.port1.onmessage = () => {
+      const cb = _yieldQueue.shift();
+      if (cb) cb();
+    };
+  }
   function _yieldToUi() {
+    // Tab hidden → no UI to paint, just continue. This is the single biggest
+    // speedup for "I switched tabs and it crawled."
+    if (typeof document !== 'undefined' && document.hidden) return Promise.resolve();
+    if (!_yieldChannel) return new Promise(resolve => setTimeout(resolve, 0));
     return new Promise(resolve => {
-      if (typeof global.requestAnimationFrame === 'function') {
-        global.requestAnimationFrame(() => setTimeout(resolve, 0));
-      } else {
-        setTimeout(resolve, 0);
-      }
+      _yieldQueue.push(resolve);
+      _yieldChannel.port2.postMessage(0);
     });
+  }
+
+  // Hold a screen wake lock during the run so OS-level throttling (battery
+  // saver, mobile / dock display sleep) doesn't suspend the page mid-write.
+  let _wakeLockHandle = null;
+  async function _acquireWakeLock() {
+    try {
+      if (navigator?.wakeLock?.request) {
+        _wakeLockHandle = await navigator.wakeLock.request('screen');
+        _wakeLockHandle.addEventListener?.('release', () => { _wakeLockHandle = null; });
+      }
+    } catch (_) { /* not fatal — older browsers / permission denied */ }
+  }
+  async function _releaseWakeLock() {
+    try { await _wakeLockHandle?.release?.(); } catch (_) {}
+    _wakeLockHandle = null;
   }
   function _formatPbError(e) {
     const parts = [];
@@ -278,7 +314,13 @@
           errors.push({ id: row.id, name: row.name, error: e.message });
         }
         onProgress(updated + failed, row);
-        if ((updated + failed) % 25 === 0) await _yieldToUi();
+        // Yield less aggressively. The old "every 25 writes" yield meant 6
+        // workers all paused at the same time, and when the tab was hidden
+        // the (clamped) setTimeout(0) added a ~1 s stall per pause — that's
+        // why one screenshot batch showed 100 products in 6 minutes.
+        // 100 writes between yields is fine; the writes themselves are
+        // already async so the UI isn't starved while the tab is visible.
+        if ((updated + failed) % 100 === 0) await _yieldToUi();
       }
     }
 
@@ -298,13 +340,14 @@
     if (!global.ScoreEngine) { _slog('ScoreEngine not loaded', 'error'); return; }
     opts = opts || {};
     const overwrite = opts.overwrite !== false;
-    const requestedConcurrency = Number(opts.concurrency || 6);
-    const concurrency = Math.max(1, Math.min(8, Number.isFinite(requestedConcurrency) ? requestedConcurrency : 6));
+    const requestedConcurrency = Number(opts.concurrency || 10);
+    const concurrency = Math.max(1, Math.min(16, Number.isFinite(requestedConcurrency) ? requestedConcurrency : 10));
     const auto = !!opts.auto;
 
     _running = true; _abort = false; _startTime = Date.now();
     _lastProgressPaint = 0;
     _hideSummary();
+    _acquireWakeLock();
     if (!auto && typeof clearScraperLog === 'function') clearScraperLog();
     _slog(`🚀 Score Engine v7 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
     _slog('⚙️ Heavy scoring now runs in a browser worker so the admin panel stays responsive.');
@@ -317,11 +360,11 @@
       products = await _loadProducts(category);
     } catch (e) {
       _slog(`✗ Load error: ${e.message}`, 'error');
-      _running = false; return;
+      _running = false; _releaseWakeLock(); return;
     }
     if (!products.length) {
       _slog('No products found.', 'warn');
-      _running = false; return;
+      _running = false; _releaseWakeLock(); return;
     }
     _setProgress('Loaded', products.length, products.length, '', true);
     _slog(`✓ ${products.length} products loaded`);
@@ -348,7 +391,7 @@
       } catch (e) {
         if (_abort) break;
         _slog(`✗ Compute error (${cat}): ${e.message || e}`, 'error');
-        _running = false; return;
+        _running = false; _releaseWakeLock(); return;
       }
       if (_abort) break;
       _setProgress(`Computed (${cat})`, gi, groupKeys.length, `${categoryProducts.length} products`, true);
@@ -374,7 +417,7 @@
 
     if (_abort) {
       _slog('⏹ Stopped before writing scores.', 'warn');
-      _running = false; _abort = false; return;
+      _running = false; _abort = false; _releaseWakeLock(); return;
     }
 
     // Filter: only what actually changes (unless overwrite=true → force write all)
@@ -401,7 +444,7 @@
     if (!toUpdate.length) {
       _setProgress('Done', 1, 1);
       _showSummary(`<div><strong>✅ All scores are already current</strong> — ${allComputed.length} products checked · <strong>⏱️ ${((Date.now()-_startTime)/1000).toFixed(1)}s</strong></div>`);
-      _running = false; return;
+      _running = false; _releaseWakeLock(); return;
     }
 
     // ── PHASE 3: PERSIST ────────────────────────────────────
@@ -452,11 +495,13 @@
 
     try { if (typeof renderProducts === 'function') renderProducts(); } catch (_) { }
     _running = false; _abort = false;
+    _releaseWakeLock();
   }
 
   function stopScoreEngine() {
     if (!_running) return;
     _abort = true;
+    _releaseWakeLock();
     if (_activeWorker) {
       const reject = _activeWorkerReject;
       const cleanup = _activeWorkerCleanup;
