@@ -2195,35 +2195,21 @@ Future<List<String>> _resolveHomeFeedCategories(
   ProductRepository repo,
   List<String> disabledCats,
 ) async {
+  // Use the hardcoded `_feedCategories` directly. Previously we hit PB's
+  // `categories` collection on every cold start and ranked by `productCount`,
+  // which added up to 5s before the TS multi-cat fetch could even start.
+  // The counters drift (same root cause as commit 360c174e41 for HomeScreen)
+  // and the ordering they produced rarely beat the curated default — paying
+  // the round-trip just to filter on `isActive && productCount > 0` was pure
+  // cold-start latency for no UX gain.
   final disabled = disabledCats.map((c) => c.toLowerCase().trim()).toSet();
   final seen = <String>{};
-
-  List<String> takeUseful(Iterable<String> ids) => ids
+  return _feedCategories
       .map((id) => id.toLowerCase().trim())
       .where((id) => id.isNotEmpty && !disabled.contains(id))
       .where(seen.add)
       .take(_homeFeedInitialCategoryCount)
       .toList(growable: false);
-
-  try {
-    final result = await repo.getCategories().timeout(
-      const Duration(seconds: 5),
-    );
-    if (result is Success<List<CategoryModel>>) {
-      final live = List<CategoryModel>.from(result.data)
-        ..sort((a, b) {
-          final countCmp = b.productCount.compareTo(a.productCount);
-          if (countCmp != 0) return countCmp;
-          return a.order.compareTo(b.order);
-        });
-      final ids = takeUseful(
-        live.where((c) => c.isActive && c.productCount > 0).map((c) => c.id),
-      );
-      if (ids.isNotEmpty) return ids;
-    }
-  } catch (_) {}
-
-  return takeUseful(_feedCategories);
 }
 
 void _saveProductsToCache(

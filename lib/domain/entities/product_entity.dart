@@ -103,13 +103,20 @@ class ProductEntity extends Equatable {
   /// Convenience getter - screens use categoryId
   String get categoryId => category;
 
-  /// Drops Epey ad banners (`/reklam/`, `/banner/`) from product galleries.
-  /// The scraper used to ingest these alongside real product images.
+  /// Cleans an Epey CDN product image URL:
+  /// - drops `/reklam/` and `/banner/` ad slots (the scraper used to ingest them)
+  /// - upgrades the small (`s_`) and thumb (`t_`, `c_`) size prefixes to the
+  ///   big (`b_`) variant so the hero carousel is not blurry. `m_` already
+  ///   renders sharp on the device so we leave it alone — touching it churns
+  ///   CachedNetworkImage's disk cache for no gain.
   static String _cleanProductImage(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
     if (trimmed.contains('/reklam/') || trimmed.contains('/banner/')) return '';
-    return trimmed;
+    return trimmed.replaceFirst(
+      RegExp(r'(resim\.epey\.com/[^/]+/)[stc]_'),
+      r'$1b_',
+    );
   }
 
   String nameForLanguage(String languageCode) {
