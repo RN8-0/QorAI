@@ -234,7 +234,9 @@ class AuthRepository {
         scopes: const ['email', 'profile'],
         serverClientId: _kGoogleWebClientId,
       );
-      await googleSignIn.signOut();
+      // No pre-signOut: every signIn() already returns a fresh account picker
+      // on Android; the extra signOut() round-trip used to add ~1-3s of latency
+      // for no behavioural gain.
       final account = await googleSignIn.signIn();
       if (account == null) {
         return const Failure(
@@ -250,16 +252,21 @@ class AuthRepository {
         );
       }
 
-      // Firebase Auth ile de oturum aç (fire-and-forget, başarısız olursa devam et)
-      try {
-        final credential = GoogleAuthProvider.credential(
-          idToken: idToken,
-          accessToken: accessToken,
-        );
-        await FirebaseAuth.instance.signInWithCredential(credential);
-      } catch (e) {
-        debugPrint('[auth] Firebase Auth sync failed (non-fatal): $e');
-      }
+      // Firebase Auth sign-in is fire-and-forget — the app's source of truth
+      // is PocketBase, and the Firebase project bindings are being torn down
+      // (see project_backend_migration). Awaiting it added 5-10s on cold start
+      // because the Firebase Auth handshake blocked the PB exchange below.
+      unawaited(() async {
+        try {
+          final credential = GoogleAuthProvider.credential(
+            idToken: idToken,
+            accessToken: accessToken,
+          );
+          await FirebaseAuth.instance.signInWithCredential(credential);
+        } catch (e) {
+          debugPrint('[auth] Firebase Auth sync failed (non-fatal): $e');
+        }
+      }());
 
       // PocketBase backend hook ile kullanıcıyı PB'ye kaydet/al
       final httpResp = await http

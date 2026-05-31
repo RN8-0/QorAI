@@ -77,17 +77,45 @@ class ProductEntity extends Equatable {
   });
 
   /// Convenience getter - screens use imageUrl
-  String? get imageUrl => imageURL.isEmpty ? null : imageURL;
+  String? get imageUrl {
+    final cleaned = _cleanProductImage(imageURL);
+    return cleaned.isEmpty ? null : cleaned;
+  }
 
   /// All images including primary - for gallery display
+  /// Filters out Epey ad banners (`/reklam/`) and upgrades low-res `m_`
+  /// thumbnails to the full-resolution variant so the hero is crisp.
   List<String> get allImages {
-    if (images.isNotEmpty) return images;
-    if (imageURL.isNotEmpty) return [imageURL];
-    return [];
+    final source = images.isNotEmpty
+        ? images
+        : (imageURL.isNotEmpty ? [imageURL] : const <String>[]);
+    final seen = <String>{};
+    final out = <String>[];
+    for (final raw in source) {
+      final cleaned = _cleanProductImage(raw);
+      if (cleaned.isEmpty) continue;
+      if (!seen.add(cleaned.toLowerCase())) continue;
+      out.add(cleaned);
+    }
+    return out;
   }
 
   /// Convenience getter - screens use categoryId
   String get categoryId => category;
+
+  /// Cleans an Epey CDN image URL:
+  /// - drops `/reklam/` banner ads that the scraper used to keep
+  /// - upgrades the small `m_` (medium) thumbnail prefix to `b_` (big) so the
+  ///   detail-screen hero is sharp instead of blurry on high-DPI devices
+  static String _cleanProductImage(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.contains('/reklam/') || trimmed.contains('/banner/')) return '';
+    return trimmed.replaceFirst(
+      RegExp(r'(resim\.epey\.com/[^/]+/)m_'),
+      r'$1b_',
+    );
+  }
 
   String nameForLanguage(String languageCode) {
     final code = languageCode.toLowerCase().trim();

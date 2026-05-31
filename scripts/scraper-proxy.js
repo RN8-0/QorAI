@@ -1350,7 +1350,7 @@ async function extractProductDetail(page) {
       if (!clean) return;
       if (clean.startsWith('//')) clean = 'https:' + clean;
       if (!clean.includes('resim.epey.com')) return;
-      if (/\/(?:tema|marka|kategori|logo|site|grup)\//i.test(clean)) return;
+      if (/\/(?:tema|marka|kategori|logo|site|grup|reklam|banner)\//i.test(clean)) return;
       if (/(favicon|yildiz|profil|yukleniyor|loading|placeholder)/i.test(clean)) return;
       clean = clean.split(/[?#]/)[0];
       if (!/\.(?:jpe?g|png|webp|avif)$/i.test(clean)) return;
