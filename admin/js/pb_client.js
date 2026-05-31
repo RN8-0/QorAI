@@ -429,47 +429,44 @@ async function pbGetAll(collection, options = {}) {
 async function pbGetList(collection, page, perPage, options = {}) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
-  try {
-    const listOpts = {
-      sort: options.sort || 'id',
+  const buildOpts = (withSort) => {
+    const o = {
       filter: options.filter || '',
       fields: options.fields || undefined,
-      $autoCancel: false
+      $autoCancel: false,
     };
-    if (options.skipTotal !== undefined) listOpts.skipTotal = !!options.skipTotal;
-    const result = await getPb().collection(collection).getList(page, perPage, listOpts);
-    return {
-      items: result.items,
-      totalItems: result.totalItems,
-      totalPages: result.totalPages,
-      page: result.page,
-      size: result.items.length,
-      empty: result.items.length === 0,
-      docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
-    };
+    if (withSort) o.sort = options.sort || 'id';
+    if (options.skipTotal !== undefined) o.skipTotal = !!options.skipTotal;
+    return o;
+  };
+  const toResult = (result) => ({
+    items: result.items,
+    totalItems: result.totalItems,
+    totalPages: result.totalPages,
+    page: result.page,
+    size: result.items.length,
+    empty: result.items.length === 0,
+    docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) })),
+  });
+  try {
+    // Transient overload (500) / auth lapse (403/401) under load are retried
+    // with backoff + a single token refresh; a 400 "something went wrong"
+    // (usually an unindexed sort) is NOT transient and falls through below.
+    const result = await _withPbWriteRetry(`list ${collection} p${page}`, () =>
+      getPb().collection(collection).getList(page, perPage, buildOpts(true)),
+    );
+    return toResult(result);
   } catch (e) {
     const shouldRetryWithoutSort =
-      !!options.sort &&
+      !!(options.sort || true) &&
       e &&
       e.status === 400 &&
       /something went wrong while processing your request/i.test(e.message || '');
     if (shouldRetryWithoutSort) {
-      const retryOptions = {
-        filter: options.filter || '',
-        fields: options.fields || undefined,
-        $autoCancel: false
-      };
-      if (options.skipTotal !== undefined) retryOptions.skipTotal = !!options.skipTotal;
-      const result = await getPb().collection(collection).getList(page, perPage, retryOptions);
-      return {
-        items: result.items,
-        totalItems: result.totalItems,
-        totalPages: result.totalPages,
-        page: result.page,
-        size: result.items.length,
-        empty: result.items.length === 0,
-        docs: result.items.map(item => ({ id: item.id, exists: true, data: () => _strip(item) }))
-      };
+      const result = await _withPbWriteRetry(`list ${collection} p${page} nosort`, () =>
+        getPb().collection(collection).getList(page, perPage, buildOpts(false)),
+      );
+      return toResult(result);
     }
     if (e && (e.status === 404 || /missing collection/i.test(e.message || ''))) {
       return { items: [], totalItems: 0, totalPages: 0, page: 1, size: 0, empty: true, docs: [] };

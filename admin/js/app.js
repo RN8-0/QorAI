@@ -2344,7 +2344,7 @@ function _translationPatchUnchanged(product, patch){
 async function _fetchDictionaryProducts(categoryId){
   const allEpey = categoryId === '__all_epey__';
   const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
-  const filter = allEpey
+  const baseFilter = allEpey
     ? '(source ~ "epey" || sourceUrl ~ "epey.com")'
     : `category = "${safeCategory}"`;
   const fields = [
@@ -2360,25 +2360,46 @@ async function _fetchDictionaryProducts(categoryId){
   const perPage = allEpey ? 250 : 300;
   const products = [];
   let rawSeen = 0;
-  let page = 1;
-  let totalPages = 1;
+  let pageNo = 0;
+  let totalPages = 0;
+  let lastId = '';
+
+  // SEEK / keyset pagination instead of deep page-offset. With `sort=id` and a
+  // `id > "<lastId>"` cursor every request is a fast index seek, so page 280 is
+  // as cheap as page 1. The old offset pagination made PocketBase scan & skip
+  // ~70k rows per request near the end; that progressively slowed each page
+  // (3s → 18s → 29s) until the query timed out and returned a 500 that killed
+  // the whole run. skipTotal keeps each request from also running a COUNT.
+  let totalItems = 0;
+  try {
+    totalItems = await pbCountWhere('products', baseFilter);
+    totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+  } catch (_) { /* best-effort, only drives the progress label */ }
+
   let lastLog = Date.now();
   const heartbeat = setInterval(() => {
-    _xlateLog(`… still fetching products · page ${page}/${totalPages || '?'} · raw ${rawSeen} · eligible ${products.length}`, 'warn');
+    _xlateLog(`… still fetching products · page ${pageNo}/${totalPages || '?'} · raw ${rawSeen} · eligible ${products.length}`, 'warn');
     _xlateProgress(0, 0, 'Fetching products…', {
-      detail: `PocketBase page ${page}/${totalPages || '?'} · eligible Epey products ${products.length}`,
+      detail: `PocketBase page ${pageNo}/${totalPages || '?'} · eligible Epey products ${products.length}`,
     });
   }, 10000);
   try {
-    for (; page <= totalPages && !_catXlateAbort; page++) {
-      const res = await pbGetList('products', page, perPage, {
-        filter,
+    while (!_catXlateAbort) {
+      const seekFilter = lastId
+        ? `(${baseFilter}) && id > "${lastId.replace(/"/g, '\\"')}"`
+        : baseFilter;
+      // page is always 1 — the cursor advances via the filter, never the offset.
+      const res = await pbGetList('products', 1, perPage, {
+        filter: seekFilter,
         fields,
         sort: 'id',
+        skipTotal: true,
       });
-      totalPages = res.totalPages || totalPages || 1;
-      rawSeen += (res.items || []).length;
-      for (const p of res.items || []) {
+      const items = res.items || [];
+      if (!items.length) break;
+      pageNo++;
+      rawSeen += items.length;
+      for (const p of items) {
         const isEpey = window.QorAiBulkTranslate?.isEpeyProduct
           ? window.QorAiBulkTranslate.isEpeyProduct(p)
           : /epey/i.test(String(p?.source || p?.sourceUrl || ''));
@@ -2386,19 +2407,21 @@ async function _fetchDictionaryProducts(categoryId){
         if (!isEpey || !sourceSpecs || !Object.keys(sourceSpecs).length) continue;
         products.push(p);
       }
-      if (Date.now() - lastLog > 2500 || page === 1 || page === totalPages) {
+      lastId = items[items.length - 1].id;
+      if (Date.now() - lastLog > 2500 || pageNo === 1) {
         lastLog = Date.now();
-        _xlateLog(`✓ fetch page ${page}/${totalPages}: raw ${rawSeen}, eligible ${products.length}`);
+        _xlateLog(`✓ fetch page ${pageNo}/${totalPages || '?'}: raw ${rawSeen}, eligible ${products.length}`);
         _xlateProgress(0, 0, 'Fetching products…', {
-          detail: `PocketBase page ${page}/${totalPages} · eligible Epey products ${products.length}`,
+          detail: `PocketBase page ${pageNo}/${totalPages || '?'} · eligible Epey products ${products.length}`,
         });
       }
-      if (res.empty) break;
+      if (items.length < perPage) break; // last page
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   } finally {
     clearInterval(heartbeat);
   }
+  _xlateLog(`✓ fetch complete: ${pageNo} pages · raw ${rawSeen} · eligible ${products.length}`, 'success');
   return { products, rawSeen };
 }
 
