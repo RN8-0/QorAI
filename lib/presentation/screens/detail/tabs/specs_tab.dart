@@ -200,11 +200,26 @@ class _SpecsCardState extends State<_SpecsCard> {
     if (val is List) {
       return val
           .whereType<Object>()
-          .map((e) => e.toString().trim())
+          .map((e) => _sanitizeSpec(e.toString()))
           .where((s) => s.isNotEmpty)
           .join('\n');
     }
-    return val?.toString() ?? '';
+    return _sanitizeSpec(val?.toString() ?? '');
+  }
+
+  /// Repairs known NLLB-200 hallucinations on stored spec strings.
+  /// The TR→EN run mistranslates short technical fragments — most visibly
+  /// "İnç ." → "I 'm not ." / "I 'm note ." — and the Turkish source has
+  /// already been overwritten in the DB, so the only display-time recovery
+  /// is to rewrite the well-known bad outputs to plausible English.
+  static String _sanitizeSpec(String raw) {
+    var s = raw.trim();
+    if (s.isEmpty) return s;
+    // Inches: "6.5 I 'm not .", "6.5 I 'm note ."
+    s = s.replaceAll(RegExp(r"\s*I\s*'?\s*m\s+not(?:e)?\s*\.?", caseSensitive: false), ' inch');
+    // Stray spaces left from the rewrite
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return s;
   }
 
   static bool _isBlankSpecValue(String value) {
