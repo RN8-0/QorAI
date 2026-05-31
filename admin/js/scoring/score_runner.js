@@ -9,13 +9,22 @@
   let _running = false;
   let _abort = false;
   let _startTime = 0;
+  let _activeWorker = null;
+  let _activeWorkerReject = null;
+  let _activeWorkerCleanup = null;
+  let _lastProgressPaint = 0;
+  const SCORE_WORKER_CACHE_BUSTER = '20260531-score-worker';
 
   // ─── UI helpers ─────────────────────────────────────────────
   function _slog(msg, type) {
     if (typeof slog === 'function') return slog(msg, type || 'info');
     console.log(`[score] ${msg}`);
   }
-  function _setProgress(phase, cur, total, extra) {
+  function _setProgress(phase, cur, total, extra, force) {
+    const now = Date.now();
+    const done = total > 0 && cur >= total;
+    if (!force && !done && now - _lastProgressPaint < 120) return;
+    _lastProgressPaint = now;
     const bar = document.getElementById('scoreEngineProgressBar');
     const counter = document.getElementById('scoreEngineCounter');
     const pct = total > 0 ? (cur / total) * 100 : 0;
@@ -34,6 +43,15 @@
     if (el) el.style.display = 'none';
   }
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function _yieldToUi() {
+    return new Promise(resolve => {
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(() => setTimeout(resolve, 0));
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+  }
   function _formatPbError(e) {
     const parts = [];
     if (e?.status) parts.push(`HTTP ${e.status}`);
@@ -77,12 +95,12 @@
 
   async function _loadProducts(category) {
     const baseFilter = category ? `category="${category}"` : '';
-    const perPage = 500;
+    const perPage = 250;
     const loaded = [];
 
     _slog(`  • Load filter: ${baseFilter || '(all products)'}`);
     _slog(`  • Fields: ${SCORE_LOAD_FIELDS}`);
-    _slog(`  • Page size: ${perPage} · cursor pagination by id`);
+    _slog(`  • Page size: ${perPage} · cursor pagination by id · UI-friendly batches`);
 
     try {
       _slog('  • Counting products with a lightweight query...');
@@ -121,11 +139,11 @@
         if (!items.length) break;
         lastId = items[items.length - 1].id;
         const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-        _setProgress('Loading', Math.min(loaded.length, total || loaded.length), total || loaded.length, `page ${page}/${totalPages}`);
+        _setProgress('Loading', Math.min(loaded.length, total || loaded.length), total || loaded.length, `page ${page}/${totalPages}`, true);
         _slog(`  ✓ page ${page}/${totalPages}: ${items.length} products · ${elapsed}s · total ${loaded.length}/${total} · cursor ${lastId}`);
         if (items.length < perPage || (total && loaded.length >= total)) break;
         page++;
-        await _sleep(0);
+        await _yieldToUi();
       } catch (e) {
         throw new Error(`page ${page}/${totalPages} failed after ${((Date.now() - started) / 1000).toFixed(1)}s · ${_formatPbError(e)}`);
       }
@@ -170,10 +188,63 @@
     return [...scored].sort((a, b) => b.score - a.score).slice(0, n);
   }
 
+  function _scoreWorkerUrl() {
+    const url = new URL('js/scoring/score_worker.js', global.location?.href || document.baseURI);
+    url.searchParams.set('v', SCORE_WORKER_CACHE_BUSTER);
+    return url.href;
+  }
+
+  async function _scoreCategoryInWorker(cat, products) {
+    if (!products || !products.length) return [];
+    if (typeof global.Worker !== 'function') {
+      _slog(`  ⚠ Worker unsupported; computing ${cat} on main thread`, 'warn');
+      await _yieldToUi();
+      return ScoreEngine.scoreCategory(products);
+    }
+
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(_scoreWorkerUrl());
+      const timeoutMs = Math.max(120000, Math.min(600000, products.length * 250));
+      const timer = setTimeout(() => {
+        finish(reject, new Error(`Score worker timed out for ${cat} after ${(timeoutMs / 1000).toFixed(0)}s`));
+      }, timeoutMs);
+
+      function cleanup() {
+        clearTimeout(timer);
+        try { worker.terminate(); } catch (_) { }
+        if (_activeWorker === worker) _activeWorker = null;
+        if (_activeWorkerReject === reject) _activeWorkerReject = null;
+        if (_activeWorkerCleanup === cleanup) _activeWorkerCleanup = null;
+      }
+      function finish(fn, value) {
+        cleanup();
+        fn(value);
+      }
+
+      _activeWorker = worker;
+      _activeWorkerReject = reject;
+      _activeWorkerCleanup = cleanup;
+      worker.onmessage = ev => {
+        const data = ev.data || {};
+        if (data.requestId !== requestId) return;
+        if (data.ok) {
+          finish(resolve, data.scored || []);
+        } else {
+          finish(reject, new Error(data.error || data.stack || `Score worker failed for ${cat}`));
+        }
+      };
+      worker.onerror = ev => {
+        finish(reject, new Error(ev?.message || `Score worker crashed for ${cat}`));
+      };
+      worker.postMessage({ requestId, products });
+    });
+  }
+
   // ─── Parallel batch persist ──────────────────────────────────
   // Concurrent writers reduce wall time ~5× vs sequential, while still
   // respecting PB rate limits (10 in flight is safe for sqlite-backed PB).
-  async function _persistInParallel(toUpdate, byId, concurrency, onProgress) {
+  async function _persistInParallel(toUpdate, byId, concurrency, onProgress, adminProductById) {
     let cursor = 0;
     let updated = 0, failed = 0;
     const errors = [];
@@ -200,15 +271,14 @@
           updated++;
           const mem = byId.get(row.id);
           if (mem) mem.techScore = row.score;
-          if (typeof allProducts !== 'undefined') {
-            const m2 = allProducts.find(x => x.id === row.id);
-            if (m2) m2.techScore = row.score;
-          }
+          const m2 = adminProductById?.get(row.id);
+          if (m2) m2.techScore = row.score;
         } catch (e) {
           failed++;
           errors.push({ id: row.id, name: row.name, error: e.message });
         }
         onProgress(updated + failed, row);
+        if ((updated + failed) % 25 === 0) await _yieldToUi();
       }
     }
 
@@ -228,16 +298,19 @@
     if (!global.ScoreEngine) { _slog('ScoreEngine not loaded', 'error'); return; }
     opts = opts || {};
     const overwrite = opts.overwrite !== false;
-    const concurrency = opts.concurrency || 20;
+    const requestedConcurrency = Number(opts.concurrency || 6);
+    const concurrency = Math.max(1, Math.min(8, Number.isFinite(requestedConcurrency) ? requestedConcurrency : 6));
     const auto = !!opts.auto;
 
     _running = true; _abort = false; _startTime = Date.now();
+    _lastProgressPaint = 0;
     _hideSummary();
     if (!auto && typeof clearScraperLog === 'function') clearScraperLog();
     _slog(`🚀 Score Engine v7 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
+    _slog('⚙️ Heavy scoring now runs in a browser worker so the admin panel stays responsive.');
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
-    _setProgress('Loading', 0, 1);
+    _setProgress('Loading', 0, 1, '', true);
     _slog('📥 [1/3] Loading products from PocketBase...');
     let products;
     try {
@@ -250,7 +323,7 @@
       _slog('No products found.', 'warn');
       _running = false; return;
     }
-    _setProgress('Loaded', products.length, products.length);
+    _setProgress('Loaded', products.length, products.length, '', true);
     _slog(`✓ ${products.length} products loaded`);
 
     // ── PHASE 2: COMPUTE ────────────────────────────────────
@@ -260,9 +333,25 @@
     const allComputed = [];
     let gi = 0;
     for (const cat of groupKeys) {
+      if (_abort) break;
       gi++;
-      _setProgress(`Hesaplanıyor (${cat})`, gi, groupKeys.length);
-      const scored = ScoreEngine.scoreCategory(groups[cat]);
+      const categoryProducts = groups[cat];
+      _setProgress(`Hesaplanıyor (${cat})`, gi - 1, groupKeys.length, `${categoryProducts.length} products · worker`, true);
+      await _yieldToUi();
+      let scored;
+      try {
+        scored = await _withHeartbeat(
+          _scoreCategoryInWorker(cat, categoryProducts),
+          `score worker ${cat}`,
+          10000,
+        );
+      } catch (e) {
+        if (_abort) break;
+        _slog(`✗ Compute error (${cat}): ${e.message || e}`, 'error');
+        _running = false; return;
+      }
+      if (_abort) break;
+      _setProgress(`Computed (${cat})`, gi, groupKeys.length, `${categoryProducts.length} products`, true);
       const dist = _distribution(scored);
       const bk = dist.buckets;
       const calibTags = [];
@@ -280,7 +369,12 @@
       );
       allComputed.push(...scored.map(s => ({ ...s, category: cat })));
       // Yield to UI thread between heavy categories
-      if (groupKeys.length > 1) await _sleep(0);
+      if (groupKeys.length > 1) await _yieldToUi();
+    }
+
+    if (_abort) {
+      _slog('⏹ Stopped before writing scores.', 'warn');
+      _running = false; _abort = false; return;
     }
 
     // Filter: only what actually changes (unless overwrite=true → force write all)
@@ -312,9 +406,12 @@
 
     // ── PHASE 3: PERSIST ────────────────────────────────────
     _slog(`💾 [3/3] Writing to PocketBase + Typesense (${concurrency} parallel)...`);
-    _setProgress('Writing', 0, toUpdate.length, `total ${products.length} products, ${unchanged} unchanged`);
+    _setProgress('Writing', 0, toUpdate.length, `total ${products.length} products, ${unchanged} unchanged`, true);
 
     let lastLogged = 0;
+    const adminProductById = (typeof allProducts !== 'undefined' && Array.isArray(allProducts))
+      ? new Map(allProducts.map(p => [p.id, p]))
+      : null;
     const result = await _persistInParallel(toUpdate, byId, concurrency, (done, lastRow) => {
       _setProgress('Writing', done, toUpdate.length, `total ${products.length} products, ${unchanged} unchanged`);
       // Log a sample every ~10% or every 100, whichever is smaller
@@ -324,7 +421,7 @@
         const sample = lastRow ? ` · last: ${(lastRow.name || lastRow.id).slice(0, 40)} → ${lastRow.score}` : '';
         _slog(`  → ${done}/${toUpdate.length} written${sample}`);
       }
-    });
+    }, adminProductById);
 
     // ── DONE ───────────────────────────────────────────────
     const seconds = ((Date.now() - _startTime) / 1000).toFixed(1);
@@ -360,6 +457,18 @@
   function stopScoreEngine() {
     if (!_running) return;
     _abort = true;
+    if (_activeWorker) {
+      const reject = _activeWorkerReject;
+      const cleanup = _activeWorkerCleanup;
+      if (cleanup) cleanup();
+      else {
+        try { _activeWorker.terminate(); } catch (_) { }
+        _activeWorker = null;
+        _activeWorkerReject = null;
+        _activeWorkerCleanup = null;
+      }
+      if (reject) reject(new Error('Score engine stopped by user'));
+    }
     _slog('⏹ Stop requested; stopping after in-flight operations finish...', 'warn');
   }
 
