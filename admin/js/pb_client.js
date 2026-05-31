@@ -187,6 +187,118 @@ function _isUniqueViolation(error) {
   return /validation_not_unique|must be unique|already exists|not_unique/.test(flat);
 }
 
+// ── PB write resilience (single RAM-bound host) ─────────────────
+// On the shared single-host PocketBase the bulk scraper + translator
+// can saturate the box. Under that pressure three failure classes show up:
+//   • 500 "Something went wrong while processing your request" (overloaded)
+//   • 408 / 502 / 503 / 504 / network resets (timeouts)
+//   • 403 "Only superusers can perform this action" / 401 — the auth
+//     middleware momentarily fails to validate the token under load (or the
+//     superuser token actually expired during a multi-hour run), so the write
+//     is processed as a guest and the collection rule rejects it.
+// All three are *recoverable*: transient ones via backoff, auth ones via a
+// single token refresh + immediate retry. Without this every saturated write
+// was counted as a permanent "fail" and thousands of products silently lost
+// their translation patch.
+
+function _pbErrorFlat(e) {
+  try {
+    return JSON.stringify({
+      m: e?.message || '',
+      d: e?.data || e?.response?.data || {},
+    }).toLowerCase();
+  } catch (_) {
+    return String(e?.message || e || '').toLowerCase();
+  }
+}
+
+function _pbStatus(e) {
+  return Number(e?.status || e?.response?.status || 0);
+}
+
+// Transient = worth a backoff retry (server overloaded / timed out / network).
+function _isTransientPbError(e) {
+  const status = _pbStatus(e);
+  if (status === 0) return true; // network error / reset / abort with no status
+  if ([408, 429, 500, 502, 503, 504].includes(status)) {
+    if (status === 500) {
+      // Only "something went wrong" style 500s are transient; a 500 that carries
+      // a real validation payload should surface immediately.
+      const flat = _pbErrorFlat(e);
+      return /something went wrong|processing your request|failed to/.test(flat) || !/validation/.test(flat);
+    }
+    return true;
+  }
+  return false;
+}
+
+// Auth degradation = a single re-auth + retry should fix it.
+function _isAuthError(e) {
+  const status = _pbStatus(e);
+  if (status === 401) return true;
+  if (status === 403) {
+    const flat = _pbErrorFlat(e);
+    return /superuser|only superusers|not authorized|unauthorized|forbidden|missing or invalid|auth/.test(flat);
+  }
+  return false;
+}
+
+// De-duped admin token refresh. Many concurrent writes can fail at once; we
+// only want ONE refresh in flight so we don't stampede the bridge endpoint.
+let _adminAuthRefreshInFlight = null;
+async function _refreshAdminAuth() {
+  if (_adminAuthRefreshInFlight) return _adminAuthRefreshInFlight;
+  _adminAuthRefreshInFlight = (async () => {
+    const pb = getPb();
+    const hadToken = !!pb.authStore?.token;
+    // 1) Standard PocketBase token refresh on the stored auth collection
+    //    (the GitHub→superuser bridge mints a real _superusers auth token, so
+    //    authRefresh re-issues a fresh one while the current one is still valid).
+    const coll = pb.authStore?.record?.collectionName || '_superusers';
+    try {
+      await pb.collection(coll).authRefresh({ $autoCancel: false });
+      if (pb.authStore.isValid) return true;
+    } catch (_) { /* fall through to the bridge re-exchange */ }
+    // 2) Fall back to re-running the GitHub→superuser exchange. Only meaningful
+    //    while a token still exists for the Authorization header.
+    try {
+      if (hadToken && pb.authStore?.token) {
+        await exchangeGitHubAdminSession();
+        if (pb.authStore.isValid) return true;
+      }
+    } catch (_) { /* unrecoverable without an interactive re-login */ }
+    return false;
+  })().finally(() => { _adminAuthRefreshInFlight = null; });
+  return _adminAuthRefreshInFlight;
+}
+
+// Wraps a single PB write so transient overload retries with jittered backoff
+// and an auth lapse triggers exactly one token refresh before retrying.
+async function _withPbWriteRetry(label, fn, attempts = 6) {
+  let delay = 700;
+  let triedReauth = false;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const authErr = _isAuthError(e);
+      if (authErr && !triedReauth) {
+        triedReauth = true;
+        const ok = await _refreshAdminAuth();
+        if (ok) continue; // fresh token → retry immediately, no backoff
+      }
+      const transient = authErr || _isTransientPbError(e);
+      if (!transient || attempt >= attempts) throw e;
+      const jitter = Math.floor(Math.random() * 300);
+      if (typeof console !== 'undefined') {
+        console.warn(`[pb-write] ${label} attempt ${attempt} failed (${_pbStatus(e)} ${e?.message || e}); retrying in ${delay + jitter}ms`);
+      }
+      await new Promise(r => setTimeout(r, delay + jitter));
+      delay = Math.min(delay * 2, 8000);
+    }
+  }
+}
+
 // ── Fast create path for the bulk scraper ────────────────────────
 // The scraper's skip-existing preload (when it completes) already holds EVERY
 // existing record for the category, so the per-save `_findRecord` round-trip is
@@ -207,7 +319,11 @@ async function pbCreateProductFast(id, data, options = {}) {
   const clean = _clean(data);
   const createData = _prepareCreateData('products', id, clean);
   try {
-    const record = await getPb().collection('products').create(createData, _pbRequestOptions(options));
+    // Unique-violation is NOT transient → it throws straight out of the retry
+    // wrapper into the reconcile path below; only overload/auth lapses retry.
+    const record = await _withPbWriteRetry(`create products/${id}`, () =>
+      getPb().collection('products').create(createData, _pbRequestOptions(options))
+    );
     _syncToTypesense('products', record);
     return record;
   } catch (e) {
@@ -216,7 +332,9 @@ async function pbCreateProductFast(id, data, options = {}) {
       try {
         const existing = await _findRecord('products', id, clean, options);
         if (existing) {
-          const record = await getPb().collection('products').update(existing.id, clean, _pbRequestOptions(options));
+          const record = await _withPbWriteRetry(`reconcile products/${existing.id}`, () =>
+            getPb().collection('products').update(existing.id, clean, _pbRequestOptions(options))
+          );
           _syncToTypesense('products', record);
           return record;
         }
@@ -232,7 +350,10 @@ async function pbCreateProductFast(id, data, options = {}) {
 async function pbUpdateDoc(collection, id, data) {
   collection = _resolveCollection(collection);
   await pbEnsureAuth();
-  const record = await getPb().collection(collection).update(id, _clean(data), { $autoCancel: false });
+  const clean = _clean(data);
+  const record = await _withPbWriteRetry(`update ${collection}/${id}`, () =>
+    getPb().collection(collection).update(id, clean, { $autoCancel: false })
+  );
   _syncToTypesense(collection, record);
   return record;
 }

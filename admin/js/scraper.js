@@ -1891,10 +1891,17 @@ async function _saveDeDict() {
 // retry one dropped shard would throw and abort the entire bulk run.
 async function _pbSetDocWithRetry(collection, id, data, attempts = 5) {
   let delay = 800;
+  let triedReauth = false;
   for (let attempt = 1; ; attempt++) {
     try {
       return await pbSetDoc(collection, id, data);
     } catch (e) {
+      // Auth lapse under load (403 "Only superusers" / 401) → refresh the admin
+      // token once and retry immediately before spending the backoff budget.
+      if (!triedReauth && typeof _isAuthError === 'function' && _isAuthError(e) && typeof _refreshAdminAuth === 'function') {
+        triedReauth = true;
+        try { if (await _refreshAdminAuth()) continue; } catch (_) {}
+      }
       if (attempt >= attempts) throw e;
       console.warn(`[de-dict] write ${id} attempt ${attempt} failed (${e.message || e}); retrying in ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
