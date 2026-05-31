@@ -28,30 +28,46 @@
   // ─────────────────────────────────────────────────────────────
 
   const GPU_DESKTOP = [
+    // Workstation / pro cards (treated as own family — do NOT interpolate against RTX 50xx)
+    ['RTX PRO 6000 Blackwell', 99], ['RTX 6000 Ada', 86], ['RTX A6000', 78], ['RTX A5500', 70],
+    ['RTX A5000', 66], ['RTX A4500', 58], ['RTX A4000', 50], ['RTX A2000', 32],
+    ['Quadro RTX 8000', 60], ['Quadro RTX 6000', 56], ['Quadro RTX 5000', 50], ['Quadro RTX 4000', 38],
+    ['Quadro P6000', 28], ['Quadro P5000', 22], ['Quadro M6000', 14], ['Quadro K6000', 8],
+    ['Tesla K80', 18], ['Tesla K40', 12], ['Tesla M60', 14], ['Tesla M40', 10],
+    ['Tesla P40', 22], ['Tesla P100', 26], ['Tesla T4', 30], ['Tesla V100', 42], ['Tesla A100', 58], ['Tesla H100', 72],
+    // GeForce desktop — generation matters (5090 must always beat older flagships)
     ['RTX 5090 D', 99], ['RTX 5090', 100],
-    ['RX 9900 XTX', 97], ['RTX 5080', 96], ['RX 9800 XT', 93],
-    ['RTX 5070 Ti', 90], ['RTX 4090', 88], ['RTX 5070', 85],
-    ['RX 9070 XT', 83], ['RTX 4080 Super', 81], ['RTX 4080', 79],
-    ['RX 9070', 77], ['RTX 5060 Ti', 75],
-    ['RTX 4070 Ti Super', 73], ['RTX 4070 Ti', 71], ['RX 7900 XTX', 70],
-    ['RTX 4070 Super', 68], ['RX 7900 XT', 66],
-    ['RTX 5060', 63], ['RTX 4070', 61],
-    ['RX 7800 XT', 58], ['RTX 4060 Ti', 55], ['RX 7700 XT', 52],
-    ['RTX 4060', 48], ['RX 7600 XT', 45],
-    ['RTX 3060 Ti', 41], ['RTX 4050', 38], ['RX 6700 XT', 35],
-    ['RTX 3060', 32], ['RTX 3050', 26], ['RX 6600', 22],
-    ['RTX 2060', 19], ['GTX 1660 Ti', 15], ['RX 6500 XT', 12], ['GTX 1650', 9],
-    ['MX570', 6],
-    ['Intel Arc A770', 58], ['Intel Arc A750', 52], ['Intel Arc A380', 20],
+    ['RX 9900 XTX', 97], ['RTX 5080', 95], ['RX 9800 XT', 92],
+    ['RTX 5070 Ti', 89], ['RTX 4090', 86], ['RTX 5070', 82],
+    ['RX 9070 XT', 80], ['RTX 4080 Super', 78], ['RTX 4080', 76],
+    ['RX 9070', 73], ['RTX 5060 Ti', 70],
+    ['RTX 4070 Ti Super', 68], ['RTX 4070 Ti', 65], ['RX 7900 XTX', 64],
+    ['RTX 4070 Super', 62], ['RX 7900 XT', 60],
+    ['RTX 5060', 56], ['RTX 4070', 54],
+    ['RX 7800 XT', 52], ['RTX 4060 Ti', 48], ['RX 7700 XT', 46],
+    ['RTX 4060', 42], ['RX 7600 XT', 40],
+    ['RTX 3090 Ti', 50], ['RTX 3090', 45], ['RTX 3080 Ti', 42], ['RTX 3080', 38],
+    ['RTX 3070 Ti', 35], ['RTX 3070', 32],
+    ['RTX 3060 Ti', 28], ['RTX 4050', 25], ['RX 6700 XT', 24],
+    ['RTX 3060', 22], ['RTX 3050', 16], ['RX 6600', 13],
+    ['RTX 2080 Ti', 22], ['RTX 2080', 18], ['RTX 2070', 15], ['RTX 2060', 12],
+    ['GTX 1660 Ti', 10], ['GTX 1660', 8], ['RX 6500 XT', 7], ['GTX 1650', 6],
+    ['GTX 1080 Ti', 14], ['GTX 1080', 11], ['GTX 1070', 8], ['GTX 1060', 6],
+    ['MX570', 4], ['MX450', 3], ['MX350', 2],
+    ['Intel Arc B580', 38], ['Intel Arc A770', 32], ['Intel Arc A750', 26], ['Intel Arc A380', 12],
   ];
 
   const GPU_LAPTOP = [
-    ['RTX 5090 Laptop', 100], ['RTX 5080 Laptop', 94], ['RTX 5070 Ti Laptop', 86],
-    ['RTX 5070 Laptop', 78], ['RTX 5060 Laptop', 67],
-    ['RTX 4090 Laptop', 80], ['RTX 4080 Laptop', 72], ['RTX 4070 Laptop', 62],
-    ['RTX 4060 Laptop', 50], ['RTX 4050 Laptop', 40],
-    ['RTX 3060 Laptop', 30], ['RTX 3050 Laptop', 22],
-    ['RX 7600M XT', 55], ['RX 7600M', 46], ['RX 6700M', 38], ['Arc A770M', 48],
+    ['RTX 5090 Laptop', 100], ['RTX 5080 Laptop', 92], ['RTX 5070 Ti Laptop', 84],
+    ['RTX 5070 Laptop', 76], ['RTX 5060 Laptop', 64], ['RTX 5050 Laptop', 50],
+    ['RTX 4090 Laptop', 78], ['RTX 4080 Laptop', 70], ['RTX 4070 Laptop', 60],
+    ['RTX 4060 Laptop', 48], ['RTX 4050 Laptop', 38],
+    ['RTX 3080 Ti Laptop', 42], ['RTX 3080 Laptop', 36], ['RTX 3070 Ti Laptop', 30],
+    ['RTX 3070 Laptop', 26], ['RTX 3060 Laptop', 22], ['RTX 3050 Ti Laptop', 16], ['RTX 3050 Laptop', 14],
+    ['RTX 2080 Laptop', 14], ['RTX 2070 Laptop', 11], ['RTX 2060 Laptop', 9],
+    ['GTX 1660 Ti Laptop', 7], ['GTX 1650 Laptop', 5],
+    ['RX 7600M XT', 52], ['RX 7600M', 42], ['RX 6700M', 32], ['RX 6600M', 26],
+    ['Arc A770M', 44], ['Arc A730M', 36],
   ].concat(GPU_DESKTOP); // also accept desktop names in laptop SKUs
 
   const CPU_LAPTOP = [
@@ -110,18 +126,41 @@
     ['Apple A17', 82], ['Apple A15', 70], ['Apple A14', 60], ['Apple A13', 48],
     // Apple M (tablets/phones)
     ['Apple M5', 100], ['Apple M4', 96], ['Apple M3', 90], ['Apple M2', 82], ['Apple M1', 72],
+    // Smartwatch SoCs — keep in CHIPSET_PHONE because smartwatches reuse the
+    // 'chipset' field probe. Generic / no-SoC watches will not match anything
+    // here, fall back to anchorless cap.
+    ['Apple S11', 100], ['Apple S10', 96], ['Apple S9', 90], ['Apple S8', 80],
+    ['Apple S7', 70], ['Apple S6', 60], ['Apple S5', 48],
+    ['Samsung Exynos W1000', 92], ['Exynos W1000', 92],
+    ['Samsung Exynos W930', 78], ['Exynos W930', 78],
+    ['Samsung Exynos W920', 66], ['Exynos W920', 66],
+    ['Qualcomm Snapdragon W5+', 84], ['Snapdragon W5+', 84],
+    ['Qualcomm Snapdragon W5', 76], ['Snapdragon W5', 76],
+    ['Snapdragon Wear 4100+', 56], ['Snapdragon Wear 4100', 50],
+    ['Snapdragon Wear 3100', 36], ['Snapdragon Wear 2100', 22],
+    ['Google Tensor', 86], ['HiSilicon Kirin A1', 60], ['Kirin A1', 60],
+    ['MediaTek MT2503', 12], ['MT2503', 12],
+    ['Bluetooth 5.0', 8], ['Realtek 8762', 8], ['Nordic nRF52', 12],
   ];
 
-  // Family detection for interpolation (longest first)
+  // Family detection for interpolation (longest first).
+  // IMPORTANT: workstation families ("RTX A", "Quadro", "Tesla") come BEFORE
+  // generic "RTX" so an A6000 doesn't get interpolated against RTX 5090's slot.
+  // Without this guard "HP RTX A6000" used to score 100 because its number
+  // (6000) exceeded the RTX 5090 reference (5090) and the interpolator picked
+  // the desktop GeForce flagship as nearest. Workstation cards belong to their
+  // own ladder — they never beat current-gen consumer flagships in gaming-style
+  // benchmarks even if VRAM / pro-app perf is higher.
   const FAMILIES = [
     'Threadripper Pro', 'Threadripper',
     'Core Ultra 9', 'Core Ultra 7', 'Core Ultra 5',
     'Core i9', 'Core i7', 'Core i5', 'Core i3',
     'Ryzen 9', 'Ryzen 7', 'Ryzen 5', 'Ryzen 3',
+    'RTX PRO', 'RTX A', 'Quadro RTX', 'Quadro', 'Tesla',
     'RTX', 'GTX', 'RX',
     'Snapdragon 8', 'Snapdragon 7', 'Snapdragon 6', 'Snapdragon 4', 'Snapdragon',
     'Dimensity', 'Exynos', 'Helio', 'Kirin',
-    'Apple A', 'Apple M',
+    'Apple A', 'Apple M', 'Apple S',
   ];
 
   // ─────────────────────────────────────────────────────────────
@@ -324,16 +363,23 @@
   const WEIGHTS = {
     smartphones: { chipset: 25, release_year: 8, main_camera: 7, camera_system: 7, sensor_size_phone: 4, front_camera: 3, ram: 6, storage: 6, battery: 7, charging: 3, panel: 6, display_features: 5, refresh: 4, resolution: 3, screen_size: 2, network_5g: 2, wifi: 2 },
     tablets:     { chipset: 24, release_year: 8, ram: 10, storage: 9, battery: 10, screen_size: 7, refresh: 5, resolution: 9, panel: 8, display_features: 4, main_camera: 3, network_5g: 3 },
-    laptops:     { gpu: 26, cpu: 24, release_year: 8, ram: 9, storage: 8, battery: 4, screen_size: 3, refresh: 4, resolution: 5, panel: 5, weight_lo: 2, wifi: 2 },
-    desktops:    { gpu: 32, cpu: 28, release_year: 8, ram: 10, storage: 8, watt: 4, cooler_type: 4, lan: 3, case_form: 3 },
+    // Laptops: GPU rank dominant so a 5090 mobile sits at the top of gaming
+    // SKUs. weight_lo removed — users buying a 5090 laptop don't care that it
+    // weighs 3.5 kg. battery split into battery + battery_life so MacBooks
+    // don't ride a single-feature spike to the top.
+    laptops:     { gpu: 32, cpu: 22, release_year: 8, ram: 10, storage: 8, screen_size: 3, refresh: 4, resolution: 5, panel: 4, wifi: 2, battery: 2 },
+    desktops:    { gpu: 36, cpu: 26, release_year: 8, ram: 10, storage: 8, watt: 3, cooler_type: 3, lan: 3, case_form: 3 },
     monitors:    { release_year: 6, screen_size: 14, resolution: 20, refresh: 18, panel: 16, display_features: 8, response_ms_lo: 9, hdr: 5, color_gamut: 4 },
     tvs:         { release_year: 7, screen_size: 16, resolution: 16, panel: 22, display_features: 10, refresh: 12, hdr: 10, smart_os: 4, hdmi21: 3 },
     headphones:  { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
     earphones:   { anc: 24, driver: 12, battery_life: 16, bluetooth: 12, codec: 18, connection_quality: 8, headphone_water: 5, weight_lo: 5 },
     speakers:    { watt_rms: 28, drivers: 16, bluetooth: 10, wifi: 12, battery_life: 14, ip_rating: 10, bass: 10 },
     cameras:     { csensor: 22, megapixels: 16, iso: 16, fps_burst: 14, video_res: 14, ibis: 8, shutter: 6, evf: 4 },
-    gpus:        { gpu_rank: 42, release_year: 8, vram: 16, bandwidth: 10, cores: 8, boost_clock: 6, tdp_lo: 4, ray_tracing: 6 },
-    cpus:        { cpu_rank: 38, release_year: 8, cores: 14, threads: 7, base_clock: 5, boost_clock: 12, cache_l3: 8, ram_speed: 4, pcie_gen: 4 },
+    // GPUs: rank-dominant so the listed model (RTX 5090 = 100) actually wins.
+    // tdp_lo used to penalise flagships for being power-hungry — removed; users
+    // shopping a 5090 do not consider 575 W a downside vs a 6600 at 130 W.
+    gpus:        { gpu_rank: 60, release_year: 6, vram: 12, bandwidth: 8, cores: 6, boost_clock: 4, ray_tracing: 4 },
+    cpus:        { cpu_rank: 55, release_year: 6, cores: 12, threads: 6, base_clock: 3, boost_clock: 8, cache_l3: 6, ram_speed: 2, pcie_gen: 2 },
     motherboards:{ chipset_tier: 25, ram_max: 15, m2_slots: 15, pcie_gen: 12, vrm: 10, lan_speed: 8, wifi_gen: 8, usbc: 7 },
     ram:         { ram: 28, ram_speed: 28, ram_cas_lo: 20, ram_gen: 14, dual_channel: 10 },
     ssd:         { storage: 22, seq_read: 22, seq_write: 18, iops: 14, interface: 14, tbw: 10 },
@@ -420,20 +466,25 @@
   // chipset for phones/tablets). Prevents mid-segment products from reaching flagship scores.
   // Flagship anchors can reach 100; mid-range capped harder so Redmi/budget devices stay
   // clearly below flagships (epey/versus parity).
+  // Tier caps narrowed so the score genuinely reflects the anchor chip's
+  // benchmark position. A SoC at rank 86 (e.g. Snapdragon 8 Gen 3) used to be
+  // allowed to climb to 92 via brand bonus + 90%+ confidence; that masked the
+  // gap between Snapdragon 8 Elite Gen 5 (100) and last year's flagship.
   const TIER_CAPS = [
-    { min: 98, cap: 100, tier: 'flagship'  },
-    { min: 94, cap: 97,  tier: 'near-flagship' },
-    { min: 82, cap: 92,  tier: 'high-end'  },
-    { min: 62, cap: 84,  tier: 'upper-mid' },
-    { min: 42, cap: 68,  tier: 'mid'       },
-    { min: 22, cap: 52,  tier: 'entry'     },
-    { min: 0,  cap: 38,  tier: 'budget'    },
+    { min: 98, cap: 100, tier: 'flagship'      },
+    { min: 92, cap: 94,  tier: 'near-flagship' },
+    { min: 82, cap: 88,  tier: 'high-end'      },
+    { min: 62, cap: 78,  tier: 'upper-mid'     },
+    { min: 42, cap: 62,  tier: 'mid'           },
+    { min: 22, cap: 46,  tier: 'entry'         },
+    { min: 0,  cap: 32,  tier: 'budget'        },
   ];
   const ANCHOR_KEY_BY_CAT = {
     smartphones: ['chipset'], tablets: ['chipset'],
     laptops: ['gpu', 'cpu'], desktops: ['gpu', 'cpu'],
     gpus: ['gpu_rank'], cpus: ['cpu_rank', 'cores'],
     consoles: ['cpu'], 'vr-headsets': ['cpu'],
+    smartwatches: ['chipset'], 'smart-rings': ['chipset'],
   };
   function _tierFor(anchorScore) {
     if (anchorScore == null) return null;
@@ -467,13 +518,17 @@
     cpus: 100, gpus: 100, monitors: 100, tvs: 100, ram: 100, ssd: 100,
     psu: 95, motherboards: 96, cameras: 100, lenses: 96, projectors: 100,
     headphones: 94, earphones: 94, speakers: 94, soundbars: 96,
-    routers: 94, printers: 92, drones: 96, smartwatches: 96,
+    routers: 90, printers: 90, drones: 96,
+    // smartwatches: chipset anchor was added in 2026-05 — anchorless cap kept
+    // low so generic AliExpress / TR no-name watches with no detectable SoC
+    // cap at 68 even if their spec sheets claim "Bluetooth 5.4 + IP68".
+    smartwatches: 68, 'smart-rings': 75,
     tablets: 100, laptops: 100, desktops: 100, smartphones: 100,
-    cases: 92, coolers: 94, 'smart-rings': 92, 'e-readers': 94,
-    microphones: 94, 'action-cameras': 96, dashcams: 94, webcams: 94,
-    gimbals: 94, tripods: 92, consoles: 98, gamepads: 94,
-    'vr-headsets': 98, 'media-players': 94, keyboards: 94, mice: 94,
-    'robot-vacuums': 94,
+    cases: 92, coolers: 94, 'e-readers': 92,
+    microphones: 94, 'action-cameras': 96, dashcams: 92, webcams: 92,
+    gimbals: 94, tripods: 90, consoles: 98, gamepads: 92,
+    'vr-headsets': 98, 'media-players': 92, keyboards: 92, mice: 92,
+    'robot-vacuums': 92,
   };
 
   const CATEGORY_WEIGHT_ALIASES = {
@@ -539,6 +594,12 @@
     motherboards: 'motherboards',
     ram: 'ram',
     ssd: 'ssd',
+    // Newly mapped to keep these categories out of the flat-50 fallback
+    audio_systems: 'speakers',
+    av_receivers: 'soundbars',
+    '3d_printers': 'printers',
+    hardware_wallets: 'chargers',
+    ip_cameras: 'webcams',
   };
 
   function _scoreCategoryKey(category) {
@@ -605,21 +666,33 @@
   const BRAND_MOD_TABLE = {
     // category-aware multipliers; 1.0 = neutral
     smartphones: {
-      // Premium tier
-      apple: 1.06,
-      'samsung galaxy z': 1.05, 'samsung galaxy s ultra': 1.05,
-      'samsung galaxy s': 1.03, 'samsung galaxy note': 1.03,
-      samsung: 1.02,
-      'google pixel pro': 1.04, 'google pixel': 1.02, google: 1.02,
-      sony: 1.03, asus: 1.02, oneplus: 1.01, nothing: 1.01,
-      huawei: 1.01,
+      // Premium tier — iPhone Pro Max > Pro > Air > base, must show in ranking.
+      // 'apple iphone pro max' / 'apple iphone air' have higher specificity
+      // (longest-key wins in _brandModifier), so they override generic 'apple'.
+      'apple iphone pro max': 1.10,
+      'apple iphone pro':     1.08,
+      'apple iphone plus':    1.05,
+      'apple iphone air':     1.02,   // Air is thin / single-camera / smaller battery — not flagship
+      'apple iphone mini':    0.98,
+      apple: 1.04,
+      'samsung galaxy z fold': 1.07, 'samsung galaxy z flip': 1.04,
+      'samsung galaxy z':     1.05,
+      'samsung galaxy s ultra': 1.07, 'samsung galaxy s plus': 1.04,
+      'samsung galaxy s':     1.03, 'samsung galaxy note': 1.03,
+      samsung: 1.01,
+      'google pixel pro xl':  1.05, 'google pixel pro': 1.04, 'google pixel a': 0.96,
+      'google pixel': 1.02, google: 1.0,
+      sony: 1.02, asus: 1.0, 'asus rog': 1.04,
+      oneplus: 1.0, 'oneplus pro': 1.03,
+      nothing: 1.0,
+      huawei: 1.0,
       // Mid penalty
-      xiaomi: 1.0, 'xiaomi mix': 1.02,
-      redmi: 0.93, poco: 0.92,
-      realme: 0.91, 'honor x': 0.90, honor: 0.97,
-      vivo: 0.97, oppo: 0.97, motorola: 0.96,
+      xiaomi: 0.98, 'xiaomi mix': 1.02, 'xiaomi t pro': 0.98,
+      redmi: 0.88, poco: 0.86,
+      realme: 0.86, 'honor x': 0.84, honor: 0.94,
+      vivo: 0.94, oppo: 0.94, motorola: 0.93,
       // Budget penalty
-      infinix: 0.85, tecno: 0.85, itel: 0.80, ulefone: 0.85,
+      infinix: 0.78, tecno: 0.78, itel: 0.70, ulefone: 0.78,
     },
     tablets: {
       apple: 1.07, samsung: 1.03, microsoft: 1.03, lenovo: 1.0,
@@ -638,6 +711,29 @@
     desktops: {
       apple: 1.05, 'razer tomahawk': 1.03, 'asus rog': 1.03,
       'msi mpg': 1.02, alienware: 1.04, lenovo: 1.0,
+    },
+    // Category key is 'smartwatches' (no hyphen) on PB — the old 'smart-watches'
+    // entry never fired and every no-name TR/CN white-label watch got 1.0.
+    // Aggressive penalty on white-label brands is intentional: the Top Rated
+    // list was being dominated by Sekai / Vothoon / Mobitell / Thorq / Onkatech /
+    // Owwotech etc. (per qor admin screenshot, 47 of these reached 100). These
+    // brands have no chip, no health sensors, no app ecosystem.
+    smartwatches: {
+      // Premium tier (real ecosystem + S-series chip)
+      apple: 1.10, 'apple watch ultra': 1.12,
+      samsung: 1.06, 'samsung galaxy watch': 1.06,
+      garmin: 1.08, polar: 1.03,
+      huawei: 1.02, 'google pixel watch': 1.04,
+      // Mid (real chip but no flagship ecosystem)
+      xiaomi: 0.92, 'xiaomi watch s': 0.95, amazfit: 0.88,
+      honor: 0.90, fitbit: 0.95,
+      // White-label / generic Chinese rebrand — penalty 0.55 keeps them out of
+      // the top by construction even with full spec sheets.
+      sekai: 0.55, vothoon: 0.55, mobitell: 0.55, thorq: 0.55, onkatech: 0.55,
+      owwotech: 0.55, polygold: 0.55, 'haino teko': 0.55, optivals: 0.55,
+      winex: 0.55, judas: 0.55, torima: 0.55, spovan: 0.55, lemfo: 0.55,
+      gomax: 0.55, sekoia: 0.55, 'i-chrono': 0.6, 'mf product': 0.55,
+      redmi: 0.85, oppo: 0.92, oneplus: 0.95, nothing: 0.95,
     },
     'smart-watches': {
       apple: 1.07, samsung: 1.03, garmin: 1.05, huawei: 1.0,
@@ -660,8 +756,40 @@
       panasonic: 1.03, philips: 1.0, hisense: 0.96, tcl: 0.95,
       xiaomi: 0.94, vestel: 0.92, arçelik: 0.94, beko: 0.92,
     },
+    // GPU AIB partner premium — top-tier cards (ROG Strix, Aorus Master,
+    // Suprim, FE) earn a small bump; reference/budget AIBs sit neutral.
+    gpus: {
+      'rog strix': 1.03, 'rog matrix': 1.04, 'tuf gaming': 1.01,
+      'aorus master': 1.03, 'aorus xtreme': 1.04,
+      'msi suprim': 1.03, 'msi gaming trio': 1.02, 'msi vanguard': 1.02,
+      'founders edition': 1.02, 'asus prime': 1.0, palit: 0.99,
+      colorful: 0.98, inno3d: 0.98, gainward: 0.98,
+    },
   };
   function _brandKey(s) { return String(s || '').toLowerCase().trim(); }
+
+  // Apple iPhone Pro Max / iPhone Pro / iPhone Air / iPhone mini reranking.
+  // The brand table can't reliably catch "Apple iPhone 17 Pro Max" because the
+  // generation number breaks any contiguous substring match (key="apple iphone
+  // pro max" never appears in "apple iphone 17 pro max"). We probe the name
+  // for word-boundary suffixes once the brand=apple has been established —
+  // this keeps the lookup table clean while still giving Pro Max a real bump
+  // over Air without re-listing every generation.
+  const APPLE_IPHONE_SUFFIX_MODS = [
+    [/\bpro\s*max\b/i, 1.10],
+    [/\bultra\b/i,     1.10],
+    [/\bpro\b/i,       1.08],
+    [/\bplus\b/i,      1.05],
+    [/\bair\b/i,       1.02],
+    [/\bmini\b/i,      0.97],
+  ];
+  function _appleIphoneSuffix(name) {
+    for (const [re, mod] of APPLE_IPHONE_SUFFIX_MODS) {
+      if (re.test(name)) return { mod, suffix: re.source };
+    }
+    return null;
+  }
+
   function _brandModifier(p, cat) {
     const table = BRAND_MOD_TABLE[cat];
     if (!table) return { mod: 1.0, reason: null };
@@ -672,6 +800,13 @@
       const hay = (brand + ' ' + name).trim();
       if (hay.includes(key) && key.length > bestLen) {
         best = table[key]; bestKey = key; bestLen = key.length;
+      }
+    }
+    // Apple iPhone trim-level override (Pro Max / Air / mini etc.)
+    if (cat === 'smartphones' && (brand === 'apple' || /apple/.test(name)) && /iphone/.test(name)) {
+      const suf = _appleIphoneSuffix(name);
+      if (suf && suf.mod !== 1.0 && Math.abs(suf.mod - 1.0) > Math.abs(best - 1.0)) {
+        best = suf.mod; bestKey = `apple iphone (${suf.suffix})`;
       }
     }
     // OS bonus (iOS/iPadOS/macOS) — additive +3%
@@ -996,7 +1131,12 @@
         const t = (num - lo[0]) / (hi[0] - lo[0]);
         return { score: lo[1] + t * (hi[1] - lo[1]), exact: false, key: `${fam} ${num} (interp ${lo[0]}↔${hi[0]})` };
       }
-      return { score: (lo || hi)[1], exact: false, key: `${fam} ${num} (nearest)` };
+      // Out-of-range or single-anchor family. Do NOT extrapolate upward —
+      // an unknown "RTX 9999" or "Apple A99" might be a typo, a future SKU,
+      // or a workstation/marketing label. Clamp to nearest known score and
+      // mark inexact so tier caps stay honest.
+      const nearest = (lo || hi)[1];
+      return { score: nearest, exact: false, key: `${fam} ${num} (nearest)` };
     }
     return null;
   }
@@ -1628,27 +1768,22 @@
       }
     }
 
-    // Pass 4: category-wide stretch — pull the strongest well-evidenced item
-    // in each category toward that category's cap so TV/projector/audio/etc.
-    // can use the full 1-100 range even without a CPU/GPU/chipset anchor.
-    // Tier caps are still respected for anchored categories.
-    const flagshipScores = computed.filter(c => c.tier === 'flagship').map(c => c.cappedBase);
+    // Pass 4: category-wide stretch — pull only flagship-anchored items toward
+    // 100. Anchorless categories used to stretch their top no-name product
+    // upward (that's how 47 white-label smartwatches reached 100). Now we only
+    // stretch when there's a real benchmark anchor saying "this product is
+    // genuinely flagship". Anchorless categories keep their NO_ANCHOR cap as
+    // their natural ceiling.
+    const flagshipScores = computed.filter(c => c.tier === 'flagship' && c.anchorKey).map(c => c.cappedBase);
     const totalCatWeightForStretch = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
-    const categoryCap = NO_ANCHOR_CAP_BY_CAT[cat] || NO_ANCHOR_CAP;
-    const eligibleScores = computed
-      .filter(c => {
-        const trust = (c.sumW || 0) / totalCatWeightForStretch;
-        return trust >= 0.55 && c.cappedBase > 0;
-      })
-      .map(c => c.cappedBase);
-    const topReference = flagshipScores.length ? Math.max(...flagshipScores) : (eligibleScores.length ? Math.max(...eligibleScores) : 0);
-    const stretchTarget = flagshipScores.length ? 100 : categoryCap;
-    const stretchFactor = topReference > 0 && topReference < stretchTarget ? Math.min(1.25, stretchTarget / topReference) : 1.0;
+    const topReference = flagshipScores.length ? Math.max(...flagshipScores) : 0;
+    const stretchTarget = 100;
+    const stretchFactor = topReference > 0 && topReference < stretchTarget ? Math.min(1.20, stretchTarget / topReference) : 1.0;
 
     const results = computed.map(c => {
       let stretched = c.cappedBase;
       const confidence = Math.max(BAYESIAN_MIN_TRUST, Math.min(1, (c.sumW || 0) / (Object.values(weights).reduce((a, b) => a + b, 0) || 1)));
-      const canStretch = c.tier === 'flagship' || (!c.anchorKey && confidence >= 0.55);
+      const canStretch = c.tier === 'flagship' && c.anchorKey;
       if (canStretch && stretchFactor > 1) {
         stretched = Math.min(c.tierCap, c.cappedBase * stretchFactor);
       }
@@ -1697,40 +1832,43 @@
         sumW: c.sumW,
       };
     });
-    // Final category stretch — guarantee a 100-point product in every
-    // category, but respect each product's per-row year + tier ceilings.
-    // Pick the "stretch reference" as the highest score among products
-    // that are both (a) flagship-tier (or anchor-less but high confidence)
-    // AND (b) recent enough to legitimately hit 100 (year ceiling >= 95).
-    // If no such product exists, the top product is stretched up to its
-    // own ceiling — so an all-2020-and-older list won't fake a 2026 score.
+    // Final category stretch — only pull up to 100 if the category actually
+    // has a flagship anchor. Anchorless categories (smartwatches without a
+    // detectable SoC, niche peripherals) used to stretch their top no-name
+    // product to 100; now they cap at the per-category NO_ANCHOR_CAP so the
+    // "Top Rated" surface keeps real brands at the top.
     {
       const eligible = results.filter(r => {
         const yc = _yearCeiling(r.year, cat);
-        const flagshipOrAnchorless = r.tier === 'flagship' || !r.anchorKey;
-        return flagshipOrAnchorless && yc >= 95 && r.score > 0;
+        // Only flagship-anchored products can pull the category to 100.
+        // Anchorless / sub-flagship items never act as the stretch reference.
+        return r.tier === 'flagship' && r.anchorKey && yc >= 95 && r.score > 0;
       });
+      const noAnchorCategoryCap = NO_ANCHOR_CAP_BY_CAT[cat] || NO_ANCHOR_CAP;
       const stretchAnchor = eligible.length
         ? Math.max(...eligible.map(r => r.score))
-        : Math.max(...results.map(r => Number(r.score) || 0));
+        : 0;
+      const stretchTargetCeiling = eligible.length ? SCORE_MAX : noAnchorCategoryCap;
       if (stretchAnchor > 0 && stretchAnchor < SCORE_MAX) {
         const finalStretch = SCORE_MAX / stretchAnchor;
         for (const r of results) {
           r.preCategoryStretchScore = r.score;
           r.categoryFinalStretch = +finalStretch.toFixed(3);
           const yc = _yearCeiling(r.year, cat);
-          // Per-row ceiling: tier cap (for non-flagship anchored items)
-          // ∧ year ceiling — keeps a 2018 phone below current flagship.
           const tierCeil = r.anchorKey && r.tier !== 'flagship'
             ? Math.min(SCORE_MAX, Number(r.tierCap) || SCORE_MAX)
             : SCORE_MAX;
-          const cap = Math.min(SCORE_MAX, tierCeil, yc);
+          // Anchorless products still capped by NO_ANCHOR ceiling — the
+          // stretch can't lift them above what the category trusts them to be.
+          const noAnchorCeil = r.anchorKey ? SCORE_MAX : noAnchorCategoryCap;
+          const cap = Math.min(SCORE_MAX, tierCeil, yc, noAnchorCeil);
           r.score = Math.max(SCORE_MIN, Math.min(cap, Math.round(r.score * finalStretch)));
         }
       } else {
-        // No stretch needed, but still enforce min floor.
+        // No flagship-anchored reference — enforce floors + anchorless cap.
         for (const r of results) {
-          r.score = Math.max(SCORE_MIN, Math.min(SCORE_MAX, r.score));
+          const noAnchorCeil = r.anchorKey ? SCORE_MAX : stretchTargetCeiling;
+          r.score = Math.max(SCORE_MIN, Math.min(SCORE_MAX, noAnchorCeil, r.score));
         }
       }
     }

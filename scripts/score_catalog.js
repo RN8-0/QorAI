@@ -23,7 +23,9 @@ const argv = process.argv.slice(2);
 const DRY = argv.includes('--dry');
 const OVERWRITE = argv.includes('--overwrite');
 const ONLY_CAT = (argv.find(a => a.startsWith('--cat=')) || '').split('=')[1] || '';
-const CONCURRENCY = 16;
+const CONCURRENCY = 8;        // PB+TS on Coolify can drop sockets at 16
+const RETRIES = 3;
+const RETRY_DELAY_MS = 1500;
 const SYNC_TS = !argv.includes('--no-ts');
 
 // Score engine probes ALL spec surfaces. Loading only keySpecs (the old
@@ -54,11 +56,24 @@ async function fetchAll() {
   return out;
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function runPool(items, worker) {
   let i = 0, done = 0;
   async function next() {
     while (i < items.length) {
-      await worker(items[i++]);
+      const item = items[i++];
+      let lastErr = null;
+      for (let attempt = 0; attempt <= RETRIES; attempt++) {
+        try { await worker(item); lastErr = null; break; }
+        catch (e) {
+          lastErr = e;
+          if (attempt < RETRIES) {
+            await sleep(RETRY_DELAY_MS * (attempt + 1));
+          }
+        }
+      }
+      if (lastErr) console.log(`   ! pool give-up ${item.id || ''}: ${lastErr.code || lastErr.message}`);
       if (++done % 1000 === 0) console.log(`   …${done}/${items.length}`);
     }
   }
