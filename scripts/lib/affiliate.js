@@ -27,32 +27,40 @@ function loadEnv() {
 }
 const ENV = loadEnv();
 
-function amazonUrl(url, country) {
-  const tag = ENV[`AMAZON_TAG_${String(country || '').toUpperCase()}`] || ENV.AMAZON_TAG || '';
+function amazonUrl(url, opts = {}) {
+  const country = String(opts.country || '').toUpperCase();
+  const tag = ENV[`AMAZON_TAG_${country}`] || ENV.AMAZON_TAG || '';
   if (!tag) return url;
   try { const u = new URL(url); u.searchParams.set('tag', tag); return u.toString(); }
   catch { return url; }
 }
 
-function awinUrl(url, _country) {
+// Awin deep link. The merchant id (awinmid) is account- AND merchant-specific
+// — you only know it once you're approved for that shop's program — so the
+// connector passes it per-offer via opts.mid. Falls back to a single
+// AWIN_MERCHANT_ID env for the legacy single-merchant path. clickref carries a
+// stable sub-id so we can attribute clicks back to the catalog in reports.
+function awinUrl(url, opts = {}) {
   const pub = ENV.AWIN_PUBLISHER_ID || '';
-  const mid = ENV.AWIN_MERCHANT_ID || '';
+  const mid = opts.mid || ENV.AWIN_MERCHANT_ID || '';
   if (!pub || !mid) return url;
-  return `https://www.awin1.com/cread.php?awinmid=${mid}&awinaffid=${pub}` +
+  const clickref = encodeURIComponent(opts.clickref || 'qorai');
+  return `https://www.awin1.com/cread.php?awinmid=${encodeURIComponent(mid)}` +
+    `&awinaffid=${encodeURIComponent(pub)}&clickref=${clickref}` +
     `&ued=${encodeURIComponent(url)}`;
 }
 
 /**
  * @param {string} network  amazon | awin | direct | geizhals | …
  * @param {string} url      raw retailer URL
- * @param {{country?:string}} opts
+ * @param {{country?:string, mid?:string, clickref?:string}} opts
  * @returns {string} affiliate-wrapped URL (or the plain URL if not configured)
  */
 function buildAffiliateUrl(network, url, opts = {}) {
   if (!url) return '';
   switch (String(network || '').toLowerCase()) {
-    case 'amazon': return amazonUrl(url, opts.country);
-    case 'awin':   return awinUrl(url, opts.country);
+    case 'amazon': return amazonUrl(url, opts);
+    case 'awin':   return awinUrl(url, opts);
     default:       return url; // direct / geizhals deep links need no wrap
   }
 }

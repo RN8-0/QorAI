@@ -25,6 +25,7 @@ const { upsertOffer, deleteOffersForProductNetwork, refreshProductRollup } = req
 
 const CONNECTORS = [
   require('./connectors/amazon'),
+  require('./connectors/awin'),
 ];
 
 const argv = process.argv.slice(2);
