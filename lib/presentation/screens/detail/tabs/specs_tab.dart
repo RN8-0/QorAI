@@ -213,13 +213,20 @@ class _SpecsCardState extends State<_SpecsCard> {
   /// already been overwritten in the DB, so the only display-time recovery
   /// is to rewrite the well-known bad outputs to plausible English.
   static String _sanitizeSpec(String raw) {
-    var s = raw.trim();
+    var s = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
     if (s.isEmpty) return s;
     // Inches: "6.5 I 'm not .", "6.5 I 'm note ."
-    s = s.replaceAll(RegExp(r"\s*I\s*'?\s*m\s+not(?:e)?\s*\.?", caseSensitive: false), ' inch');
-    // Stray spaces left from the rewrite
-    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return s;
+    s = s.replaceAll(
+      RegExp(r"\s*I\s*'?\s*m\s+not(?:e)?\s*\.?", caseSensitive: false),
+      ' inch',
+    );
+    // Preserve admin-style newline-separated feature lists. Collapsing all
+    // whitespace here turns "Display features" into one unreadable paragraph.
+    return s
+        .split('\n')
+        .map((line) => line.replaceAll(RegExp(r'[ \t\f\v]+'), ' ').trim())
+        .where((line) => line.isNotEmpty)
+        .join('\n');
   }
 
   static bool _isBlankSpecValue(String value) {
@@ -772,53 +779,83 @@ class _SpecsCardState extends State<_SpecsCard> {
   @override
   Widget build(BuildContext context) {
     final specs = _sortedSpecs;
+    final sections = <MapEntry<String, List<_SpecPair>>>[];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: specs.entries
-          .map((entry) {
-            final groupKey = entry.key;
-            final value = entry.value;
+    for (final entry in specs.entries) {
+      final groupKey = entry.key;
+      final value = entry.value;
 
-            if (value is Map && value.isNotEmpty) {
-              var rowIdx = 0;
-              final rows = value.entries
-                  .expand<_SpecPair>((sub) {
-                    final subVal = sub.value;
-                    if (subVal is Map && subVal.isNotEmpty) {
-                      return subVal.entries.map((inner) {
-                        return _SpecPair(
-                          label: inner.key.toString(),
-                          value: _specValToString(inner.value),
-                          isOdd: rowIdx++ % 2 == 1,
-                        );
-                      });
-                    }
-                    return [
-                      _SpecPair(
-                        label: sub.key.toString(),
-                        value: _specValToString(subVal),
-                        isOdd: rowIdx++ % 2 == 1,
-                      ),
-                    ];
-                  })
-                  .where((row) => !_isBlankSpecValue(row.value))
-                  .toList(growable: false);
+      if (value is Map && value.isNotEmpty) {
+        var rowIdx = 0;
+        final rows = value.entries
+            .expand<_SpecPair>((sub) {
+              final subVal = sub.value;
+              if (subVal is Map && subVal.isNotEmpty) {
+                return subVal.entries.map((inner) {
+                  return _SpecPair(
+                    label: inner.key.toString(),
+                    value: _specValToString(inner.value),
+                    isOdd: rowIdx++ % 2 == 1,
+                  );
+                });
+              }
+              return [
+                _SpecPair(
+                  label: sub.key.toString(),
+                  value: _specValToString(subVal),
+                  isOdd: rowIdx++ % 2 == 1,
+                ),
+              ];
+            })
+            .where((row) => !_isBlankSpecValue(row.value))
+            .toList(growable: false);
 
-              if (rows.isEmpty) return const SizedBox.shrink();
-              return _SpecBrick(title: groupKey, rows: rows);
-            }
+        if (rows.isNotEmpty) sections.add(MapEntry(groupKey, rows));
+        continue;
+      }
 
-            final flatValue = _specValToString(value);
-            if (_isBlankSpecValue(flatValue)) return const SizedBox.shrink();
-            return _SpecBrick(
-              title: context.l10n?.specs ?? 'Specifications',
-              rows: [
-                _SpecPair(label: groupKey, value: flatValue, isOdd: false),
-              ],
-            );
-          })
-          .toList(growable: false),
+      final flatValue = _specValToString(value);
+      if (!_isBlankSpecValue(flatValue)) {
+        sections.add(
+          MapEntry(context.l10n?.specs ?? 'Specifications', [
+            _SpecPair(label: groupKey, value: flatValue, isOdd: false),
+          ]),
+        );
+      }
+    }
+
+    if (sections.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        border: Border.all(color: context.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SpecsTableHeader(title: context.l10n?.specs ?? 'Specifications'),
+          for (final section in sections) ...[
+            _SpecSectionLabel(title: section.key),
+            ...section.value.map(
+              (row) => _SpecRow(
+                label: row.label,
+                value: row.value,
+                isOdd: row.isOdd,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -835,144 +872,67 @@ class _SpecPair {
   });
 }
 
-class _SpecBrick extends StatelessWidget {
+class _SpecsTableHeader extends StatelessWidget {
   final String title;
-  final List<_SpecPair> rows;
 
-  const _SpecBrick({required this.title, required this.rows});
-
-  IconData _iconForSection(String section) {
-    final k = section.toLowerCase();
-    if (k.contains('öne çıkan') ||
-        k.contains('one cikan') ||
-        k.contains('highlight')) {
-      return Icons.stars_rounded;
-    }
-    if (k.contains('ekran') || k.contains('display')) {
-      return Icons.smartphone_rounded;
-    }
-    if (k.contains('batarya') || k.contains('battery') || k.contains('pil')) {
-      return Icons.battery_charging_full_rounded;
-    }
-    if (k.contains('kamera') || k.contains('camera')) {
-      return Icons.photo_camera_rounded;
-    }
-    if (k.contains('donan') || k.contains('hardware')) {
-      return Icons.developer_board_rounded;
-    }
-    if (k.contains('perform')) return Icons.speed_rounded;
-    if (k.contains('bellek') || k.contains('memory')) {
-      return Icons.memory_rounded;
-    }
-    if (k.contains('depolama') || k.contains('storage')) {
-      return Icons.storage_rounded;
-    }
-    if (k.contains('tasarım') ||
-        k.contains('tasarim') ||
-        k.contains('design')) {
-      return Icons.straighten_rounded;
-    }
-    if (k.contains('ağ') ||
-        k.contains('ag ') ||
-        k.contains('network') ||
-        k.contains('bağlantı') ||
-        k.contains('baglanti') ||
-        k.contains('connect')) {
-      return Icons.settings_input_antenna_rounded;
-    }
-    if (k.contains('işletim') ||
-        k.contains('isletim') ||
-        k.contains('software') ||
-        k.contains('os')) {
-      return Icons.terminal_rounded;
-    }
-    if (k.contains('ses') || k.contains('audio') || k.contains('ortam')) {
-      return Icons.speaker_rounded;
-    }
-    if (k.contains('özellik') ||
-        k.contains('ozellik') ||
-        k.contains('feature')) {
-      return Icons.tune_rounded;
-    }
-    if (k.contains('işlemci') ||
-        k.contains('islemci') ||
-        k.contains('chip') ||
-        k.contains('processor')) {
-      return Icons.memory_rounded;
-    }
-    if (k.contains('grafik') || k.contains('graphics') || k.contains('gpu')) {
-      return Icons.videogame_asset_rounded;
-    }
-    if (k.contains('güç') || k.contains('guc') || k.contains('power')) {
-      return Icons.bolt_rounded;
-    }
-    return Icons.subject_rounded;
-  }
+  const _SpecsTableHeader({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    final locale = Localizations.localeOf(context).languageCode;
-    final service = SpecTranslationService.instance;
-    final displayTitle = service.translateLabelForLocale(title, locale);
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [context.surfaceColor, context.surfaceVariantColor],
-        ),
-        border: Border.all(color: context.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+        color: AppTheme.brandBlue.withValues(alpha: 0.12),
+        border: Border(bottom: BorderSide(color: context.dividerColor)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.subject_rounded, size: 16, color: AppTheme.brandCyan),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              color: context.textPrimary,
+              fontSize: 13,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(_iconForSection(title), size: 14, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    displayTitle.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 11,
-                      height: 1.2,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ...rows.map(
-            (row) =>
-                _SpecRow(label: row.label, value: row.value, isOdd: row.isOdd),
-          ),
-        ],
+    );
+  }
+}
+
+class _SpecSectionLabel extends StatelessWidget {
+  final String title;
+
+  const _SpecSectionLabel({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    // Title is already localized to match the admin modal — render verbatim
+    // (uppercased) without any further translation. Bright cyan is unreadable
+    // on a light background, so light mode uses a deep teal + a soft brand tint.
+    final isDark = context.isDarkMode;
+    final accent = isDark ? AppTheme.brandCyan : const Color(0xFF0E7490);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 9, 10, 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.10)
+            : AppTheme.brandBlue.withValues(alpha: 0.06),
+        border: Border(bottom: BorderSide(color: context.dividerColor)),
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.inter(
+          color: accent,
+          fontSize: 10.5,
+          height: 1.2,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.45,
+        ),
       ),
     );
   }
@@ -1002,7 +962,21 @@ class _SpecRow extends StatelessWidget {
         .join(' ');
   }
 
+  /// Every spec in a box must start with a capital letter (admin parity).
+  /// Capitalizes the first alphabetic character, while leaving values that
+  /// begin with a number/symbol untouched and preserving deliberate
+  /// lowercase brand/unit casing (iPhone, iOS, eSIM, eMMC, mAh, µ…).
   static String _capitalizeLeadingLetter(String s) {
+    for (var i = 0; i < s.length; i++) {
+      final ch = s[i];
+      if (RegExp(r'[\s•\-–·*]').hasMatch(ch)) continue;
+      final rest = s.substring(i);
+      if (RegExp(r'^(i[A-Z]|e[A-Z]|mAh|µ)').hasMatch(rest)) return s;
+      final isLetter = ch.toLowerCase() != ch.toUpperCase();
+      if (!isLetter) return s;
+      if (ch == ch.toUpperCase()) return s;
+      return s.substring(0, i) + ch.toUpperCase() + s.substring(i + 1);
+    }
     return s;
   }
 
@@ -1023,6 +997,49 @@ class _SpecRow extends StatelessWidget {
       '&',
     };
     return connectors.contains(word.toLowerCase());
+  }
+
+  static String _foldSpecLabel(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll('İ', 'i')
+        .replaceAll('Ğ', 'g')
+        .replaceAll('Ü', 'u')
+        .replaceAll('Ş', 's')
+        .replaceAll('Ö', 'o')
+        .replaceAll('Ç', 'c')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim();
+  }
+
+  // ignore: unused_element
+  static String _adminLikeSpecLabel(
+    String rawLabel,
+    String translatedLabel,
+    String locale,
+  ) {
+    if (locale.toLowerCase() == 'tr') return translatedLabel;
+    const exact = <String, String>{
+      'ekran ozellikleri': 'Display features',
+      'navigasyon ozellikleri': 'Navigation features',
+      'kablosuz baglanti ozellikleri': 'Wireless features',
+      'kablosuz baglantilar ozellikleri': 'Wireless features',
+      'kamera ozellikleri': 'Camera features',
+      'on kamera ozellikleri': 'Front camera features',
+      'arka kamera ozellikleri': 'Rear camera features',
+      'batarya ozellikleri': 'Battery specifications',
+      'sarj ozellikleri': 'Charging specifications',
+      'ses ozellikleri': 'Audio features',
+      'video kayit ozellikleri': 'Video recording features',
+      'govde ozellikleri': 'Body features',
+    };
+    return exact[_foldSpecLabel(rawLabel)] ?? translatedLabel;
   }
 
   // ignore: unused_element
@@ -1140,10 +1157,8 @@ class _SpecRow extends StatelessWidget {
     return lines.isEmpty ? [value.trim()] : lines;
   }
 
-  String _localizedValue(BuildContext context, String val) {
-    final locale = Localizations.localeOf(context).languageCode;
-    return SpecTranslationService.instance.translateValueForLocale(val, locale);
-  }
+  // Values arrive already localized (admin parity) — render them verbatim.
+  String _localizedValue(BuildContext context, String val) => val;
 
   static bool _isYesValue(String text) {
     return RegExp(
@@ -1162,11 +1177,9 @@ class _SpecRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trimmed = value.trim();
-    final locale = Localizations.localeOf(context).languageCode;
-    final service = SpecTranslationService.instance;
-    final displayLabel = _capitalizeLeadingLetter(
-      service.translateLabelForLocale(label.trim(), locale).trim(),
-    );
+    // Label is already localized to match the admin modal — only enforce the
+    // leading-capital rule, no further translation.
+    final displayLabel = _capitalizeLeadingLetter(label.trim());
     if (trimmed.isEmpty ||
         trimmed == '?' ||
         trimmed == 'null' ||
@@ -1282,7 +1295,7 @@ class _SpecValueList extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      part,
+                      _SpecRow._capitalizeLeadingLetter(part),
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         height: 1.35,
@@ -1924,21 +1937,17 @@ class _SpecsTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displaySpecs = product.specs;
-    final displaySections = product.specSections;
-    final hasHighlightsSection = displaySections.keys.any((key) {
-      final normalized = key.toLowerCase();
-      return normalized.contains('öne çıkan') ||
-          normalized.contains('one cikan') ||
-          normalized.contains('highlight');
-    });
-    final specsSource = displaySections.isNotEmpty
-        ? <String, dynamic>{
-            if (product.keySpecs.isNotEmpty && !hasHighlightsSection)
-              'Öne Çıkanlar': product.keySpecs,
-            ...displaySections,
-          }
-        : (displaySpecs.isNotEmpty ? displaySpecs : product.keySpecs);
+    final locale = Localizations.localeOf(context).languageCode;
+    // Render specs IDENTICALLY to the admin product modal: reuse the exact
+    // pre-baked per-language payloads (`multiLangSections` / `multiLangSpecs`)
+    // the admin reads. Section headers, keys and values are already translated
+    // at scrape time, so the app must NOT re-translate them here — that is what
+    // used to make the app diverge from the admin. Non-tr/de/en locales fall
+    // back to English (see localizedSpecSections).
+    // The admin modal renders ONLY the (localized) grouped sections — the
+    // "Öne Çıkanlar"/"Highlights" group already comes baked inside them, so we
+    // don't prepend raw keySpecs (that would leak untranslated source text).
+    final specsSource = product.localizedSpecSections(locale);
     final cardBg = context.surfaceVariantColor;
     if (specsSource.isEmpty) {
       return Center(

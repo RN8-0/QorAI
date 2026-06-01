@@ -66,6 +66,30 @@ String _scrubTurkishLeaks(String text, {required bool isValue}) {
   return isValue ? '' : 'Specification';
 }
 
+/// Merges the sharded TR→multi dictionary payloads into a normalized map.
+/// Runs in a background isolate (via compute) so the 78k-entry build never
+/// blocks the UI thread.
+Map<String, Map<String, String>> _parseTrDictShards(
+  List<Map<String, dynamic>> shardTerms,
+) {
+  final loaded = <String, Map<String, String>>{};
+  for (final terms in shardTerms) {
+    for (final entry in terms.entries) {
+      final source = _normalizeSpecText(entry.key).toLowerCase();
+      final rawTranslations = entry.value;
+      if (source.isEmpty || rawTranslations is! Map) continue;
+      final translations = <String, String>{};
+      for (final langEntry in rawTranslations.entries) {
+        final lang = langEntry.key.toString().toLowerCase().trim();
+        final text = langEntry.value?.toString().trim() ?? '';
+        if (lang.isNotEmpty && text.isNotEmpty) translations[lang] = text;
+      }
+      if (translations.isNotEmpty) loaded[source] = translations;
+    }
+  }
+  return loaded;
+}
+
 Map<String, Map<String, String>> _buildSpecTranslationMaps(String rawJson) {
   final decoded = Map<String, String>.from(json.decode(rawJson) as Map);
   final reverse = <String, String>{};
@@ -125,7 +149,11 @@ class SpecTranslationService {
       final totalShards = (manifestValue['totalShards'] as num?)?.toInt() ?? 0;
       if (batchId == null || batchId.isEmpty || totalShards <= 0) return;
 
-      final loaded = <String, Map<String, String>>{};
+      // Fetch shards on the event loop, but keep the heavy 78k-entry parse OFF
+      // the main thread — building this map inline used to freeze the UI for a
+      // beat right after launch. We collect the raw `terms` payloads and merge
+      // them in a background isolate via compute().
+      final rawShards = <Map<String, dynamic>>[];
       for (var i = 0; i < totalShards; i++) {
         final key = '$shardPrefix${i.toString().padLeft(4, '0')}';
         final shard = await pb_client.pb
@@ -134,22 +162,9 @@ class SpecTranslationService {
         final value = shard.data['value'];
         if (value is! Map || value['batchId']?.toString() != batchId) continue;
         final terms = value['terms'];
-        if (terms is! Map) continue;
-        for (final entry in terms.entries) {
-          final source = normalize(entry.key.toString()).toLowerCase();
-          final rawTranslations = entry.value;
-          if (source.isEmpty || rawTranslations is! Map) continue;
-          final translations = <String, String>{};
-          for (final langEntry in rawTranslations.entries) {
-            final lang = langEntry.key.toString().toLowerCase().trim();
-            final text = langEntry.value?.toString().trim() ?? '';
-            if (lang.isNotEmpty && text.isNotEmpty) {
-              translations[lang] = text;
-            }
-          }
-          if (translations.isNotEmpty) loaded[source] = translations;
-        }
+        if (terms is Map) rawShards.add(Map<String, dynamic>.from(terms));
       }
+      final loaded = await compute(_parseTrDictShards, rawShards);
       if (loaded.isNotEmpty) {
         _trLocale
           ..clear()

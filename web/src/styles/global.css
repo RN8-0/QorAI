@@ -5,14 +5,14 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Brand — straight from the Flutter app (lib/core/theme.dart) */
-  --brand-cyan: #00E5FF;
-  --brand-blue: #2196F3;
-  --brand-deep: #1565C0;
-  --brand-sky: #4FC3F7;
-  --brand-grad: linear-gradient(135deg, #2196F3 0%, #00E5FF 100%);
+  /* Brand — matches the admin panel (violet #7c3aed) for one cohesive identity */
+  --brand-cyan: #8b5cf6;
+  --brand-blue: #7c3aed;
+  --brand-deep: #6d28d9;
+  --brand-sky: #a78bfa;
+  --brand-grad: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
 
-  /* Dark surfaces (default) */
+  /* Dark surfaces (default) — same zinc scale as the admin panel */
   --bg: #09090b;
   --bg2: #111113;
   --bg3: #18181b;
@@ -24,9 +24,9 @@
   --border: #27272a;
   --border2: #3f3f46;
 
-  --accent: var(--brand-cyan);
-  --accent-soft: rgba(0, 229, 255, 0.12);
-  --accent-ring: rgba(0, 229, 255, 0.22);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --accent-ring: rgba(124, 58, 237, 0.28);
 
   /* Semantic */
   --green: #10b981;
@@ -39,7 +39,7 @@
   --radius-lg: 22px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 18px 50px rgba(0, 229, 255, 0.18);
+  --shadow-glow: 0 18px 50px rgba(124, 58, 237, 0.22);
 
   --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --header-h: 64px;
@@ -57,12 +57,12 @@
   --text3: #94a3b8;
   --border: #e2e8f0;
   --border2: #cbd5e1;
-  --accent: var(--brand-blue);
-  --accent-soft: rgba(33, 150, 243, 0.1);
-  --accent-ring: rgba(33, 150, 243, 0.2);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.1);
+  --accent-ring: rgba(124, 58, 237, 0.2);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
-  --shadow-glow: 0 18px 50px rgba(33, 150, 243, 0.16);
+  --shadow-glow: 0 18px 50px rgba(124, 58, 237, 0.16);
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -95,7 +95,7 @@ a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 input, textarea, select { font-family: inherit; }
-::selection { background: var(--accent); color: #001018; }
+::selection { background: var(--accent); color: #fff; }
 
 /* ─── Layout helpers ─────────────────────────────────────────── */
 .container { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
@@ -128,8 +128,8 @@ input, textarea, select { font-family: inherit; }
   transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, border-color 0.14s ease;
 }
 .btn:active { transform: translateY(1px) scale(0.99); }
-.btn-primary { background: var(--brand-grad); color: #001018; box-shadow: var(--shadow-glow); }
-.btn-primary:hover { box-shadow: 0 22px 60px rgba(0, 229, 255, 0.3); }
+.btn-primary { background: var(--brand-grad); color: #fff; box-shadow: var(--shadow-glow); }
+.btn-primary:hover { box-shadow: 0 22px 60px rgba(124, 58, 237, 0.34); }
 .btn-ghost { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { background: var(--bg4); border-color: var(--border2); }
 .btn-block { width: 100%; }

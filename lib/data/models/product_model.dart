@@ -37,6 +37,10 @@ class ProductModel extends ProductEntity {
     super.multiLangSpecs,
     super.multiLangSections,
     super.nameTranslated,
+    super.sourceLang,
+    super.sourceSpecs,
+    super.sourceSpecSections,
+    super.sourceKeySpecs,
   });
 
   /// Read from PocketBase
@@ -202,6 +206,10 @@ class ProductModel extends ProductEntity {
       multiLangSpecs: _castNestedDynamicMap(data['multiLangSpecs']),
       multiLangSections: _castNestedDynamicMap(data['multiLangSections']),
       nameTranslated: _castStringMap(data['nameTranslated']),
+      sourceLang: data['sourceLang'] as String? ?? '',
+      sourceSpecs: _deepCastMap(data['sourceSpecs']),
+      sourceSpecSections: _deepCastMap(data['sourceSpecSections']),
+      sourceKeySpecs: _castStringMap(data['sourceKeySpecs']),
     );
   }
 
@@ -272,6 +280,10 @@ class ProductModel extends ProductEntity {
       'multiLangSpecs': multiLangSpecs,
       'multiLangSections': multiLangSections,
       'nameTranslated': nameTranslated,
+      'sourceLang': sourceLang,
+      'sourceSpecs': sourceSpecs,
+      'sourceSpecSections': sourceSpecSections,
+      'sourceKeySpecs': sourceKeySpecs,
     };
   }
 
@@ -311,6 +323,10 @@ class ProductModel extends ProductEntity {
       multiLangSpecs: entity.multiLangSpecs,
       multiLangSections: entity.multiLangSections,
       nameTranslated: entity.nameTranslated,
+      sourceLang: entity.sourceLang,
+      sourceSpecs: entity.sourceSpecs,
+      sourceSpecSections: entity.sourceSpecSections,
+      sourceKeySpecs: entity.sourceKeySpecs,
     );
   }
 
@@ -412,6 +428,10 @@ class ProductModel extends ProductEntity {
       multiLangSpecs: _castNestedDynamicMap(data['multiLangSpecs']),
       multiLangSections: _castNestedDynamicMap(data['multiLangSections']),
       nameTranslated: _castStringMap(data['nameTranslated']),
+      sourceLang: data['sourceLang'] as String? ?? '',
+      sourceSpecs: _deepCastMap(data['sourceSpecs']),
+      sourceSpecSections: _deepCastMap(data['sourceSpecSections']),
+      sourceKeySpecs: _castStringMap(data['sourceKeySpecs']),
     );
   }
 

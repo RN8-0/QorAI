@@ -2,7 +2,7 @@
   margin-top: 72px;
   border-top: 1px solid var(--border);
   background:
-    radial-gradient(ellipse 70% 120% at 50% 0%, rgba(0, 229, 255, 0.05), transparent 70%),
+    radial-gradient(ellipse 70% 120% at 50% 0%, rgba(124, 58, 237, 0.05), transparent 70%),
     var(--bg2);
   padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
@@ -42,18 +42,23 @@
 .ft-col a:hover { color: var(--text); }
 
 .ft-bottom {
-  min-height: 68px;
-  padding-top: 14px;
-  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-  font-size: 12.5px; color: var(--text3);
+  padding: 20px 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 6px 14px;
+  font-size: 12.5px; color: var(--text3); text-align: center;
 }
-.ft-made { opacity: 0.8; }
+.ft-made { opacity: 0.8; position: relative; padding-left: 14px; }
+.ft-made::before {
+  content: '·'; position: absolute; left: 0; opacity: 0.5;
+}
 
 @media (max-width: 760px) {
+  .ft-inner { padding: 48px 20px 0; }
   .ft-top { grid-template-columns: 1fr; gap: 32px; }
   .ft-links { grid-template-columns: repeat(3, 1fr); gap: 18px; }
 }
 @media (max-width: 480px) {
-  .ft-links { grid-template-columns: 1fr 1fr; }
-  .ft-bottom { justify-content: center; text-align: center; }
+  .ft-links { grid-template-columns: 1fr 1fr; gap: 22px 18px; }
+  .ft-made { padding-left: 0; }
+  .ft-made::before { display: none; }
 }

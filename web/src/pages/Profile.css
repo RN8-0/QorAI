@@ -19,7 +19,7 @@
 .pf-id { display: flex; align-items: center; gap: 18px; }
 .pf-avatar {
   width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
-  background: var(--brand-grad); color: #001018;
+  background: var(--brand-grad); color: #ffffff;
   font-size: 26px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
 }
@@ -33,7 +33,7 @@
   display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 16px;
 }
 .pf-coins {
-  background-image: radial-gradient(ellipse 60% 100% at 100% 0%, rgba(0, 229, 255, 0.1), transparent);
+  background-image: radial-gradient(ellipse 60% 100% at 100% 0%, rgba(124, 58, 237, 0.1), transparent);
 }
 .pf-coin-badge {
   width: 48px; height: 48px; border-radius: 14px; margin-bottom: 12px;

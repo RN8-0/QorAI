@@ -510,11 +510,14 @@ class ProfileAlgorithmService {
     final pricePerf =
         pricePerformanceScore ?? _calculatePricePerformanceScore(user, product);
 
-    // Weighted total (weights: 0.50 + 0.20 + 0.15 + 0.15 = 1.0)
+    // Weighted total (weights: 0.55 + 0.18 + 0.12 + 0.15 = 1.0). Personal fit
+    // dominates so scores spread by how well the product matches THIS user;
+    // techScore (expert) is dialed back because it clusters near 100 for all
+    // top products and was collapsing the score range.
     double total =
-        (personalFit * 0.50) +
-        (expert * 0.20) +
-        (community * 0.15) +
+        (personalFit * 0.55) +
+        (expert * 0.18) +
+        (community * 0.12) +
         (pricePerf * 0.15);
 
     // Recency bonus/penalty.
@@ -552,10 +555,11 @@ class ProfileAlgorithmService {
     // Behavior-driven personalization bonus (search/view/compare history).
     total += _calculateHistoryBoost(product, behavior);
 
-    // ── Normalize into the 20-100 band (no zero scores) ─────────────────────
-    // Map raw [0..100] → [20..100] so even mismatches feel like a real result.
+    // ── Normalize into the 10-100 band ──────────────────────────────────────
+    // Map raw [0..100] → [10..100]: a low floor keeps a real spread between a
+    // poor and a great match, while an ideal personal fit can still reach 100.
     final clamped = total.clamp(0.0, 100.0);
-    return 20 + (clamped * 0.80);
+    return 10 + (clamped * 0.90);
   }
 
   /// History boost: rewards products related to what the user actually

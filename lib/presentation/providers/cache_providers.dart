@@ -2028,7 +2028,7 @@ final localMatchScoreProvider = Provider.family<int?, ProductEntity>((
   final score = algo
       .calculateTotalFitScore(user: user, product: product, behavior: behavior)
       .round()
-      .clamp(20, 100);
+      .clamp(10, 100);
   return score;
 });
 

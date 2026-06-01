@@ -3,6 +3,7 @@
 library;
 
 import 'package:equatable/equatable.dart';
+import 'package:qor_ai/core/spec_corrections.dart';
 
 class ProductEntity extends Equatable {
   final String id;
@@ -42,6 +43,10 @@ class ProductEntity extends Equatable {
   final Map<String, Map<String, dynamic>> multiLangSpecs;
   final Map<String, Map<String, dynamic>> multiLangSections;
   final Map<String, String> nameTranslated;
+  final String sourceLang;
+  final Map<String, dynamic> sourceSpecs;
+  final Map<String, dynamic> sourceSpecSections;
+  final Map<String, String> sourceKeySpecs;
 
   const ProductEntity({
     required this.id,
@@ -74,6 +79,10 @@ class ProductEntity extends Equatable {
     this.multiLangSpecs = const {},
     this.multiLangSections = const {},
     this.nameTranslated = const {},
+    this.sourceLang = '',
+    this.sourceSpecs = const {},
+    this.sourceSpecSections = const {},
+    this.sourceKeySpecs = const {},
   });
 
   /// Convenience getter - screens use imageUrl
@@ -122,7 +131,15 @@ class ProductEntity extends Equatable {
   String nameForLanguage(String languageCode) {
     final code = languageCode.toLowerCase().trim();
     final localized = nameTranslated[code];
-    return localized != null && localized.trim().isNotEmpty ? localized : name;
+    if (localized != null && localized.trim().isNotEmpty) return localized;
+    // No baked translation for this locale: prefer English, then a best-effort
+    // fix of the trailing Turkish category word ("… Oyun Kolu" → "… Gamepad").
+    if (code != 'tr') {
+      final en = nameTranslated['en'];
+      if (en != null && en.trim().isNotEmpty) return en;
+      return correctedName(name, code == 'de' ? 'de' : 'en');
+    }
+    return name;
   }
 
   Map<String, dynamic> specsForLanguage(String languageCode) {
@@ -137,6 +154,138 @@ class ProductEntity extends Equatable {
     final localized = multiLangSections[code];
     if (localized != null && localized.isNotEmpty) return localized;
     return specSections;
+  }
+
+  /// Builds the grouped specs to render, localized for [locale], EXACTLY the
+  /// way the admin product modal does it: keep the original source section
+  /// grouping but swap each section name / key / value for its pre-baked
+  /// translation in [multiLangSections] / [multiLangSpecs]. Language-neutral
+  /// tokens (e.g. "5000 mAh", "IP68", "120 Hz") are absent from the baked map
+  /// and simply pass through unchanged — same as the admin.
+  ///
+  /// Locale resolution: the requested locale wins if it has baked data; any
+  /// other locale (Italian, French, …) falls back to English; if even English
+  /// is missing we render the untouched source language.
+  Map<String, Map<String, String>> localizedSpecSections(String locale) {
+    final srcSections = sourceSpecSections.isNotEmpty
+        ? sourceSpecSections
+        : specSections;
+
+    final srcLang = () {
+      final s = sourceLang.toLowerCase().trim();
+      return (s == 'tr' || s == 'de') ? s : 'tr';
+    }();
+
+    final code = locale.toLowerCase().trim();
+    final String lang;
+    if (multiLangSpecs[code]?.isNotEmpty ?? false) {
+      lang = code;
+    } else if (multiLangSpecs['en']?.isNotEmpty ?? false) {
+      lang = 'en';
+    } else {
+      lang = srcLang;
+    }
+
+    final ml = multiLangSpecs[lang];
+    final secNames = multiLangSections[lang];
+    final secNameIsMap =
+        secNames != null &&
+        secNames.isNotEmpty &&
+        secNames.values.every((v) => v is String);
+
+    String tr(String raw) {
+      final t = raw.trim();
+      if (t.isEmpty || lang == srcLang || ml == null) {
+        return lang == srcLang ? t : correctValueText(t);
+      }
+      final direct = ml[t];
+      if (direct is String && direct.trim().isNotEmpty) {
+        return correctValueText(direct.trim());
+      }
+      final lower = ml[t.toLowerCase()];
+      if (lower is String && lower.trim().isNotEmpty) {
+        return correctValueText(lower.trim());
+      }
+      return correctValueText(t);
+    }
+
+    String trValue(String raw) {
+      if (lang == srcLang || ml == null) return raw;
+      final lines = raw.replaceAll('\r\n', '\n').split('\n');
+      if (lines.length <= 1) return tr(raw);
+      return lines.map((l) => l.trim().isEmpty ? l : tr(l)).join('\n');
+    }
+
+    // Section headers: trust the curated glossary over the (often hallucinated)
+    // baked translation. The source section name is clean Turkish, so we
+    // re-derive the correct localized header from it.
+    String sectionLabel(String turkishSource) {
+      if (lang == srcLang) return turkishSource;
+      final corrected = correctedSectionHeader(turkishSource, lang);
+      if (corrected != null) return corrected;
+      return ((secNameIsMap ? secNames[turkishSource] as String? : null) ??
+          tr(turkishSource));
+    }
+
+    final out = <String, Map<String, String>>{};
+
+    // German-sourced products may bake a FULL grouped object per language
+    // (not just a {sectionName: translation} map). Render it verbatim.
+    if (secNames != null && !secNameIsMap && lang != srcLang) {
+      for (final entry in secNames.entries) {
+        final sub = entry.value;
+        if (sub is Map && sub.isNotEmpty) {
+          final rows = <String, String>{};
+          sub.forEach((k, v) {
+            final value = correctValueText(_specSectionValueToString(v));
+            if (value.trim().isNotEmpty) {
+              rows[correctValueText(k.toString())] = value;
+            }
+          });
+          if (rows.isNotEmpty) out[sectionLabel(entry.key.toString())] = rows;
+        }
+      }
+      if (out.isNotEmpty) return out;
+    }
+
+    for (final entry in srcSections.entries) {
+      final sub = entry.value;
+      if (sub is! Map || sub.isEmpty) continue;
+      final secLabel = sectionLabel(entry.key.toString());
+      final rows = <String, String>{};
+      sub.forEach((k, v) {
+        final value = trValue(_specSectionValueToString(v));
+        if (value.trim().isNotEmpty) rows[tr(k.toString())] = value;
+      });
+      if (rows.isNotEmpty) out[secLabel] = rows;
+    }
+
+    // Legacy products without source sections: fall back to a single flat
+    // group built from the (translated) flat spec map.
+    if (out.isEmpty) {
+      final flatSrc = sourceSpecs.isNotEmpty ? sourceSpecs : specs;
+      final rows = <String, String>{};
+      flatSrc.forEach((k, v) {
+        final value = trValue(_specSectionValueToString(v));
+        if (value.trim().isNotEmpty) rows[tr(k.toString())] = value;
+      });
+      if (rows.isNotEmpty) {
+        out[lang == 'tr' ? 'Özellikler' : 'Specifications'] = rows;
+      }
+    }
+
+    return out;
+  }
+
+  static String _specSectionValueToString(dynamic value) {
+    if (value is List) {
+      return value
+          .where((e) => e != null)
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .join('\n');
+    }
+    return value?.toString() ?? '';
   }
 
   /// Get price by country
@@ -170,6 +319,10 @@ class ProductEntity extends Equatable {
     Map<String, Map<String, dynamic>>? multiLangSpecs,
     Map<String, Map<String, dynamic>>? multiLangSections,
     Map<String, String>? nameTranslated,
+    String? sourceLang,
+    Map<String, dynamic>? sourceSpecs,
+    Map<String, dynamic>? sourceSpecSections,
+    Map<String, String>? sourceKeySpecs,
     ProductRatings? ratings,
     List<String>? pros,
     List<String>? cons,
@@ -202,6 +355,10 @@ class ProductEntity extends Equatable {
       multiLangSpecs: multiLangSpecs ?? this.multiLangSpecs,
       multiLangSections: multiLangSections ?? this.multiLangSections,
       nameTranslated: nameTranslated ?? this.nameTranslated,
+      sourceLang: sourceLang ?? this.sourceLang,
+      sourceSpecs: sourceSpecs ?? this.sourceSpecs,
+      sourceSpecSections: sourceSpecSections ?? this.sourceSpecSections,
+      sourceKeySpecs: sourceKeySpecs ?? this.sourceKeySpecs,
       ratings: ratings ?? this.ratings,
       pros: pros ?? this.pros,
       cons: cons ?? this.cons,

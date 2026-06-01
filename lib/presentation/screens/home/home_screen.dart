@@ -1189,258 +1189,246 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<Map<String, Object>> _getCategoryGroups(BuildContext context) {
     final l = context.l10n;
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+    String label({required String tr, required String en}) => isTr ? tr : en;
+    Map<String, Object> item(String id, String name, IconData icon) => {
+      'id': id,
+      'name': name,
+      'icon': icon,
+    };
+
     return [
       {
-        'group': l?.catGroupMobile ?? 'Mobile',
+        'group': label(tr: 'Mobil', en: 'Mobile'),
         'icon': Icons.smartphone_rounded,
         'color': AppTheme.catMobile,
         'items': [
-          {
-            'id': 'smartphones',
-            'name': l?.catSmartphones ?? 'Smartphones',
-            'icon': Icons.smartphone_rounded,
-          },
-          {
-            'id': 'tablets',
-            'name': l?.catTablets ?? 'Tablets',
-            'icon': Icons.tablet_mac_rounded,
-          },
-          {
-            'id': 'smartwatches',
-            'name': l?.catSmartwatches ?? 'Smartwatches',
-            'icon': Icons.watch_rounded,
-          },
+          item(
+            'smartphones',
+            l?.catSmartphones ?? 'Smartphones',
+            Icons.smartphone_rounded,
+          ),
+          item(
+            'feature_phones',
+            label(tr: 'Tuşlu Telefon', en: 'Feature Phones'),
+            Icons.dialpad_rounded,
+          ),
+          item(
+            'smartwatches',
+            l?.catSmartwatches ?? 'Smartwatches',
+            Icons.watch_rounded,
+          ),
+          item(
+            'smart_rings',
+            label(tr: 'Akıllı Yüzük', en: 'Smart Rings'),
+            Icons.radio_button_checked_rounded,
+          ),
+          item(
+            'headphones',
+            l?.catHeadphones ?? 'Headphones',
+            Icons.headphones_rounded,
+          ),
+          item(
+            'powerbanks',
+            l?.catPowerBanks ?? 'Power Banks',
+            Icons.battery_charging_full_rounded,
+          ),
+          item(
+            'chargers',
+            label(tr: 'Şarj Aleti', en: 'Chargers'),
+            Icons.power_rounded,
+          ),
         ],
       },
       {
-        'group': l?.catGroupComputers ?? 'Computers',
+        'group': label(tr: 'Bilgisayar', en: 'Computing'),
         'icon': Icons.laptop_rounded,
         'color': AppTheme.catComputers,
         'items': [
-          {
-            'id': 'laptops',
-            'name': l?.catLaptops ?? 'Laptops',
-            'icon': Icons.laptop_rounded,
-          },
-          {
-            'id': 'desktops',
-            'name': l?.catDesktops ?? 'Desktops',
-            'icon': Icons.desktop_windows_rounded,
-          },
+          item('laptops', l?.catLaptops ?? 'Laptops', Icons.laptop_rounded),
+          item(
+            'desktops',
+            l?.catDesktops ?? 'Desktops',
+            Icons.desktop_windows_rounded,
+          ),
+          item('tablets', l?.catTablets ?? 'Tablets', Icons.tablet_mac_rounded),
+          item(
+            'e_readers',
+            label(tr: 'E-Kitap Okuyucu', en: 'E-Readers'),
+            Icons.menu_book_rounded,
+          ),
+          item(
+            'vr_headsets',
+            label(tr: 'Sanal Gerçeklik', en: 'VR Headsets'),
+            Icons.vrpano_rounded,
+          ),
         ],
       },
       {
-        'group': l?.catGroupComponents ?? 'PC Components',
+        'group': label(tr: 'Bileşenler', en: 'Components'),
         'icon': Icons.memory_rounded,
         'color': AppTheme.catComponents,
         'items': [
-          {
-            'id': 'cpus',
-            'name': l?.catCpus ?? 'CPUs',
-            'icon': Icons.developer_board_rounded,
-          },
-          {
-            'id': 'graphics_cards',
-            'name': l?.catGpus ?? 'Graphics Cards',
-            'icon': Icons.videogame_asset_rounded,
-          },
-          {
-            'id': 'ram',
-            'name': l?.catRam ?? 'RAM',
-            'icon': Icons.memory_rounded,
-          },
-          {
-            'id': 'ssd',
-            'name': l?.catSsd ?? 'SSDs',
-            'icon': Icons.storage_rounded,
-          },
-          {
-            'id': 'motherboards',
-            'name': l?.catMotherboards ?? 'Motherboards',
-            'icon': Icons.developer_board,
-          },
-          {
-            'id': 'psu',
-            'name': l?.catPsu ?? 'Power Supplies',
-            'icon': Icons.bolt_rounded,
-          },
-          {
-            'id': 'pc_cases',
-            'name': l?.catCases ?? 'Cases',
-            'icon': Icons.computer_rounded,
-          },
-          {
-            'id': 'cpu_coolers',
-            'name': l?.catCoolers ?? 'Coolers',
-            'icon': Icons.mode_fan_off_rounded,
-          },
-          {
-            'id': 'case_fans',
-            'name': 'Case Fans',
-            'icon': Icons.mode_fan_off_rounded,
-          },
-          {
-            'id': 'monitors',
-            'name': l?.catMonitors ?? 'Monitors',
-            'icon': Icons.monitor_rounded,
-          },
-          {
-            'id': 'mice',
-            'name': l?.catMice ?? 'Mice',
-            'icon': Icons.mouse_rounded,
-          },
+          item(
+            'graphics_cards',
+            l?.catGpus ?? 'Graphics Cards',
+            Icons.videogame_asset_rounded,
+          ),
+          item('cpus', l?.catCpus ?? 'CPUs', Icons.developer_board_rounded),
+          item(
+            'motherboards',
+            l?.catMotherboards ?? 'Motherboards',
+            Icons.developer_board_rounded,
+          ),
+          item('ram', l?.catRam ?? 'RAM', Icons.memory_rounded),
+          item('ssd', l?.catSsd ?? 'SSDs', Icons.storage_rounded),
+          item('psu', l?.catPsu ?? 'Power Supplies', Icons.bolt_rounded),
+          item('pc_cases', l?.catCases ?? 'Cases', Icons.inventory_2_rounded),
+          item('ups', 'UPS', Icons.power_rounded),
+          item(
+            'flash_drives',
+            label(tr: 'USB Bellek', en: 'USB Flash Drives'),
+            Icons.usb_rounded,
+          ),
         ],
       },
       {
-        'group': l?.catGroupDisplay ?? 'Display',
+        'group': label(tr: 'Soğutma', en: 'Cooling'),
+        'icon': Icons.ac_unit_rounded,
+        'color': AppTheme.catComponents,
+        'items': [
+          item(
+            'cpu_coolers',
+            l?.catCoolers ?? 'CPU Coolers',
+            Icons.ac_unit_rounded,
+          ),
+          item(
+            'laptop_coolers',
+            label(tr: 'Laptop Soğutucu', en: 'Laptop Coolers'),
+            Icons.ac_unit_rounded,
+          ),
+          item(
+            'case_fans',
+            label(tr: 'Kasa Fanı', en: 'Case Fans'),
+            Icons.mode_fan_off_rounded,
+          ),
+        ],
+      },
+      {
+        'group': label(tr: 'Çevre Birimleri', en: 'Peripherals'),
+        'icon': Icons.keyboard_rounded,
+        'color': AppTheme.catPeripherals,
+        'items': [
+          item(
+            'keyboards',
+            l?.catKeyboards ?? 'Keyboards',
+            Icons.keyboard_rounded,
+          ),
+          item('mice', l?.catMice ?? 'Mice', Icons.mouse_rounded),
+          item(
+            'gamepads',
+            l?.catGamepads ?? 'Gamepads',
+            Icons.sports_esports_rounded,
+          ),
+          item(
+            'gaming_consoles',
+            l?.catGamingConsoles ?? 'Gaming Consoles',
+            Icons.gamepad_rounded,
+          ),
+          item('webcams', l?.catWebcams ?? 'Webcams', Icons.videocam_rounded),
+          item(
+            'microphones',
+            label(tr: 'Mikrofon', en: 'Microphones'),
+            Icons.mic_rounded,
+          ),
+          item('printers', l?.catPrinters ?? 'Printers', Icons.print_rounded),
+          item(
+            '3d_printers',
+            label(tr: '3D Yazıcı', en: '3D Printers'),
+            Icons.precision_manufacturing_rounded,
+          ),
+        ],
+      },
+      {
+        'group': label(tr: 'Ekran ve Ses', en: 'Display & Audio'),
         'icon': Icons.tv_rounded,
         'color': AppTheme.catDisplay,
         'items': [
-          {'id': 'tvs', 'name': l?.catTvs ?? 'TVs', 'icon': Icons.tv_rounded},
+          item('monitors', l?.catMonitors ?? 'Monitors', Icons.monitor_rounded),
+          item('tvs', l?.catTvs ?? 'TVs', Icons.tv_rounded),
+          item('projectors', 'Projectors', Icons.video_camera_back_rounded),
+          item('speakers', l?.catSpeakers ?? 'Speakers', Icons.speaker_rounded),
+          item(
+            'audio_systems',
+            label(tr: 'Ses Sistemi', en: 'Audio Systems'),
+            Icons.speaker_group_rounded,
+          ),
+          item(
+            'av_receivers',
+            label(tr: 'AV Receiver', en: 'AV Receivers'),
+            Icons.settings_input_hdmi_rounded,
+          ),
+          item(
+            'media_players',
+            label(tr: 'Medya Oynatıcı', en: 'Media Players'),
+            Icons.live_tv_rounded,
+          ),
         ],
       },
       {
-        'group': l?.catGroupAudio ?? 'Audio',
-        'icon': Icons.headphones_rounded,
-        'color': AppTheme.catAudio,
-        'items': [
-          {
-            'id': 'headphones',
-            'name': l?.catHeadphones ?? 'Headphones',
-            'icon': Icons.headphones_rounded,
-          },
-          {
-            'id': 'speakers',
-            'name': l?.catSpeakers ?? 'Speakers',
-            'icon': Icons.speaker_rounded,
-          },
-          {
-            'id': 'soundbars',
-            'name': l?.catSoundbars ?? 'Soundbars',
-            'icon': Icons.speaker_group_rounded,
-          },
-        ],
-      },
-      {
-        'group': l?.catGroupWearables ?? 'Wearables',
-        'icon': Icons.watch_rounded,
-        'color': AppTheme.catWearables,
-        'items': [],
-      },
-      {
-        'group': l?.catGroupCameras ?? 'Cameras',
+        'group': label(tr: 'Fotoğraf ve Video', en: 'Photo & Video'),
         'icon': Icons.camera_alt_rounded,
         'color': AppTheme.catCameras,
         'items': [
-          {
-            'id': 'action_cameras',
-            'name': l?.catActionCameras ?? 'Action Cameras',
-            'icon': Icons.videocam_outlined,
-          },
-          {
-            'id': 'security_cameras',
-            'name': l?.catSecurityCameras ?? 'Security Cameras',
-            'icon': Icons.security_rounded,
-          },
+          item(
+            'camera_lenses',
+            label(tr: 'Lens', en: 'Camera Lenses'),
+            Icons.camera_rounded,
+          ),
+          item(
+            'ip_cameras',
+            label(tr: 'IP Kamera', en: 'IP Cameras'),
+            Icons.videocam_rounded,
+          ),
+          item(
+            'dashcams',
+            label(tr: 'Araç İçi Kamera', en: 'Dash Cameras'),
+            Icons.directions_car_rounded,
+          ),
+          item('gimbals', 'Gimbals', Icons.control_camera_rounded),
+          item(
+            'drones',
+            l?.catDrones ?? 'Drones',
+            Icons.flight_takeoff_rounded,
+          ),
         ],
       },
       {
-        'group': l?.catGroupGaming ?? 'Gaming',
-        'icon': Icons.gamepad_rounded,
-        'color': AppTheme.catGaming,
-        'items': [
-          {
-            'id': 'gaming_consoles',
-            'name': l?.catGamingConsoles ?? 'Gaming Consoles',
-            'icon': Icons.gamepad_rounded,
-          },
-          {
-            'id': 'gamepads',
-            'name': l?.catGamepads ?? 'Gamepads',
-            'icon': Icons.sports_esports_rounded,
-          },
-          {'id': 'games', 'name': 'Games', 'icon': Icons.vrpano_rounded},
-        ],
-      },
-      {
-        'group': l?.catGroupPeripherals ?? 'Peripherals',
-        'icon': Icons.print_rounded,
-        'color': AppTheme.catPeripherals,
-        'items': [
-          {
-            'id': 'printers',
-            'name': l?.catPrinters ?? 'Printers',
-            'icon': Icons.print_rounded,
-          },
-        ],
-      },
-      {
-        'group': l?.catGroupNetworking ?? 'Networking',
+        'group': label(tr: 'Ağ ve Akıllı Ev', en: 'Network & Smart Home'),
         'icon': Icons.router_rounded,
         'color': AppTheme.catNetworking,
         'items': [
-          {
-            'id': 'wifi_routers',
-            'name': l?.catRoutersModems ?? 'WiFi Routers',
-            'icon': Icons.router_rounded,
-          },
-          {
-            'id': 'modem_routers',
-            'name': 'Modem Routers',
-            'icon': Icons.router_rounded,
-          },
-          {
-            'id': 'network_switches',
-            'name': 'Network Switches',
-            'icon': Icons.hub_rounded,
-          },
-          {
-            'id': 'pcie_nic',
-            'name': 'PCIe Network Cards',
-            'icon': Icons.settings_ethernet_rounded,
-          },
-        ],
-      },
-      {
-        'group': l?.catGroupSmartHome ?? 'Smart Home',
-        'icon': Icons.cleaning_services_rounded,
-        'color': AppTheme.catSmartHome,
-        'items': [
-          {
-            'id': 'vacuums',
-            'name': 'Vacuum Cleaners',
-            'icon': Icons.cleaning_services_rounded,
-          },
-          {
-            'id': 'robot_vacuums',
-            'name': l?.catRobotVacuums ?? 'Robot Vacuums',
-            'icon': Icons.cleaning_services_rounded,
-          },
-        ],
-      },
-      {
-        'group': l?.catGroupAccessories ?? 'Accessories',
-        'icon': Icons.battery_charging_full_rounded,
-        'color': AppTheme.catAccessories,
-        'items': [
-          {
-            'id': 'powerbanks',
-            'name': l?.catPowerBanks ?? 'Power Banks',
-            'icon': Icons.battery_charging_full_rounded,
-          },
-          {'id': 'ups', 'name': 'UPS', 'icon': Icons.power_rounded},
-        ],
-      },
-      {
-        'group': l?.catGroupDrones ?? 'Drones',
-        'icon': Icons.flight_takeoff_rounded,
-        'color': AppTheme.catDrones,
-        'items': [
-          {
-            'id': 'drones',
-            'name': l?.catDrones ?? 'Drones',
-            'icon': Icons.flight_takeoff_rounded,
-          },
+          item(
+            'routers',
+            l?.catRoutersModems ?? 'Routers',
+            Icons.router_rounded,
+          ),
+          item(
+            'modem_routers',
+            label(tr: 'Modem', en: 'Modems'),
+            Icons.router_rounded,
+          ),
+          item(
+            'robot_vacuums',
+            l?.catRobotVacuums ?? 'Robot Vacuums',
+            Icons.cleaning_services_rounded,
+          ),
+          item(
+            'hardware_wallets',
+            label(tr: 'Soğuk Cüzdan', en: 'Hardware Wallets'),
+            Icons.account_balance_wallet_rounded,
+          ),
         ],
       },
     ];
@@ -1451,12 +1439,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final flat = <Map<String, Object>>[];
     for (final group in _getCategoryGroups(context)) {
       final color = group['color'] as Color;
-      for (final item in (group['items'] as List).cast<Map<String, Object>>()) {
+      final items = (group['items'] as List).cast<Map<String, Object>>();
+      final groupItems = items
+          .map<Map<String, dynamic>>(
+            (item) => {
+              'id': item['id'] as String,
+              'name': item['name'] as String,
+            },
+          )
+          .toList(growable: false);
+      for (final item in items) {
         flat.add({
           'id': item['id'] as String,
           'name': item['name'] as String,
           'icon': item['icon'] as IconData? ?? group['icon'] as IconData,
           'color': color,
+          'groupItems': groupItems,
         });
       }
     }
@@ -1516,12 +1514,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final icon = cat['icon'] as IconData;
     final name = cat['name'] as String;
     final id = cat['id'] as String;
+    final groupItems = cat['groupItems'] as List<Map<String, dynamic>>?;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
         context.push(
           '${AppRoutes.browse}?id=$id&name=${Uri.encodeComponent(name)}',
+          extra: groupItems,
         );
       },
       child: Container(
@@ -2597,6 +2597,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         'icon': Icons.battery_charging_full_rounded,
       },
       'ups': {'title': 'UPS', 'icon': Icons.power_rounded},
+      'feature_phones': {
+        'title': 'Feature Phones',
+        'icon': Icons.dialpad_rounded,
+      },
+      'smart_rings': {
+        'title': 'Smart Rings',
+        'icon': Icons.radio_button_checked_rounded,
+      },
+      'chargers': {'title': 'Chargers', 'icon': Icons.power_rounded},
+      'e_readers': {'title': 'E-Readers', 'icon': Icons.menu_book_rounded},
+      'vr_headsets': {'title': 'VR Headsets', 'icon': Icons.vrpano_rounded},
+      'flash_drives': {'title': 'USB Flash Drives', 'icon': Icons.usb_rounded},
+      'laptop_coolers': {
+        'title': 'Laptop Coolers',
+        'icon': Icons.ac_unit_rounded,
+      },
+      '3d_printers': {
+        'title': '3D Printers',
+        'icon': Icons.precision_manufacturing_rounded,
+      },
+      'audio_systems': {
+        'title': 'Audio Systems',
+        'icon': Icons.speaker_group_rounded,
+      },
+      'av_receivers': {
+        'title': 'AV Receivers',
+        'icon': Icons.settings_input_hdmi_rounded,
+      },
+      'media_players': {
+        'title': l?.catMediaPlayers ?? 'Media Players',
+        'icon': Icons.live_tv_rounded,
+      },
+      'camera_lenses': {'title': 'Camera Lenses', 'icon': Icons.camera_rounded},
+      'ip_cameras': {'title': 'IP Cameras', 'icon': Icons.videocam_rounded},
+      'hardware_wallets': {
+        'title': 'Hardware Wallets',
+        'icon': Icons.account_balance_wallet_rounded,
+      },
     };
     // Her entry'e color ekle; _categoryMeta lookup'ında hazır olur.
     return meta.map(

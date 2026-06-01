@@ -1,7 +1,7 @@
 .cmp-hero {
   padding: 36px 0 22px; text-align: center;
   border-bottom: 1px solid var(--border);
-  background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(0, 229, 255, 0.07), transparent 70%);
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(124, 58, 237, 0.07), transparent 70%);
 }
 .cmp-hero h1 { font-size: clamp(24px, 4vw, 34px); font-weight: 800; letter-spacing: -0.02em; }
 .cmp-hero p { color: var(--text2); margin-top: 6px; }

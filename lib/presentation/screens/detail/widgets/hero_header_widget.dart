@@ -89,26 +89,17 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     // Use full screen physical width so hero image is crisp on high-DPI devices.
     final heroCacheWidth = (screenWidth * dpr).round().clamp(720, 1600);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Hero card background stays light so transparent product PNGs render
-    // correctly. The fullscreen viewer adopts the theme background instead.
-    final imageBg = isDark ? Colors.white : Colors.white;
+    // Flat white backdrop in both themes: transparent product PNGs need a light
+    // background, and a single tone (no gradient) matches the app's white
+    // surfaces exactly — no visible seam between the hero and the card below.
+    const imageBg = Colors.white;
 
     const heroBaseHeight = 300.0;
 
     return SliverToBoxAdapter(
       child: Container(
         height: heroBaseHeight,
-        decoration: BoxDecoration(
-          color: imageBg,
-          gradient: isDark
-              ? null
-              : LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [const Color(0xFFF8FAFC), Colors.white],
-                ),
-        ),
+        decoration: const BoxDecoration(color: imageBg),
         child: Stack(
           children: [
             // ── Swipeable main image ──
@@ -145,7 +136,9 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                       }
                     : null,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  // A touch more breathing room so medium-res product images
+                  // aren't upscaled edge-to-edge (which reads as blurry).
+                  padding: const EdgeInsets.fromLTRB(34, 18, 34, 38),
                   child: allImages.isEmpty
                       ? Center(
                           child: _CategoryEmoji(
@@ -155,6 +148,8 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                       : PageView.builder(
                           controller: _pageController,
                           itemCount: allImages.length,
+                          // Preload neighbours so left/right swipes are instant.
+                          allowImplicitScrolling: true,
                           onPageChanged: (i) =>
                               setState(() => _selectedIndex = i),
                           itemBuilder: (context, i) {
@@ -226,8 +221,13 @@ class _HeroScoreStack extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final techScore = product.techScore.toInt();
-    // Local algorithm-based score — no AI, works for free + premium identically.
-    final fitScore = ref.watch(localMatchScoreProvider(product));
+    // Hybrid match score: show the instant, free local heuristic immediately,
+    // then upgrade to the richer AI result (specs + price + profile analyzed)
+    // once the on-demand AI match has been computed for this product.
+    final heuristic = ref.watch(localMatchScoreProvider(product));
+    final cacheKey = _detailLocalizedProductKey(ref, context, product);
+    final aiMatch = ref.watch(geminiMatchScoreProvider(cacheKey)).valueOrNull;
+    final fitScore = aiMatch?.matchScore ?? heuristic;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,

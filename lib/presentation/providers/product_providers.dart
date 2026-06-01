@@ -120,21 +120,26 @@ final pcPickerProvider = StateNotifierProvider.autoDispose
 
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
-const int _homeFeedInitialCategoryCount = 40;
+const int _homeFeedInitialCategoryCount = 48;
 // Home feed now exposes richer shelves: each visible shelf can keep scrolling
 // without needing an immediate refetch, while ListView.builder still renders lazily.
 const int _homeFeedInitialPerCategory = 28;
 
 /// Category aliases used by category browse providers and legacy deep links.
-/// The first item in each list is the current PocketBase slug.
+/// Canonical keys and legacy deep-link keys both resolve to query variants.
 const catalogCategoryAliases = <String, List<String>>{
   'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
+  'feature_phones': ['feature_phones', 'feature-phones', 'tuslu-telefon'],
+  'smart_rings': ['smart_rings', 'smart-rings', 'smart rings'],
   'tablets': ['tablets', 'tablet'],
   'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
   'headphones': ['headphones', 'headsets', 'headset', 'kulaklık'],
   'powerbanks': ['powerbanks', 'power_banks', 'power-banks', 'power bank'],
+  'chargers': ['chargers', 'charger', 'sarj-aleti', 'şarj aleti'],
   'laptops': ['laptops', 'laptop', 'notebook', 'notebooks', 'dizüstü'],
   'desktops': ['desktops', 'desktop', 'masaüstü'],
+  'e_readers': ['e_readers', 'e-readers', 'e reader', 'ebook reader'],
+  'vr_headsets': ['vr_headsets', 'vr-headsets', 'vr headsets'],
   'cpus': ['cpus', 'cpu', 'processors', 'processor', 'işlemci', 'islemci'],
   'graphics_cards': [
     'graphics_cards',
@@ -147,35 +152,77 @@ const catalogCategoryAliases = <String, List<String>>{
   'gpus': ['graphics_cards', 'gpus', 'graphics-cards'],
   'ram': ['ram', 'bellek-ram', 'memory', 'bellek'],
   'ssd': ['ssd', 'ssds', 'storage', 'disk', 'depolama', 'hard-disk'],
+  'flash_drives': [
+    'flash_drives',
+    'flash-drives',
+    'usb flash drives',
+    'memory_cards',
+    'external_hdd',
+    'external_hdds',
+  ],
   'motherboards': ['motherboards', 'motherboard', 'anakart', 'mainboard'],
   'psu': ['psu', 'power_supplies', 'power-supply', 'güç kaynağı'],
+  'ups': ['ups', 'uninterruptible power supply'],
   'pc_cases': ['pc_cases', 'cases', 'case', 'bilgisayar-kasasi', 'kasa'],
   'cases': ['pc_cases', 'cases', 'case'],
   'cpu_coolers': ['cpu_coolers', 'coolers', 'cpu-coolers', 'cooler'],
   'coolers': ['cpu_coolers', 'coolers', 'cooler'],
   'case_fans': ['case_fans', 'case-fans', 'fans'],
+  'laptop_coolers': ['laptop_coolers', 'laptop-coolers'],
   'monitors': ['monitors', 'monitor', 'monitör'],
   'tvs': ['tvs', 'tv', 'televizyon'],
-  'soundbars': ['soundbars', 'soundbar'],
   'speakers': ['speakers', 'speaker', 'hoparlör'],
-  'action_cameras': ['action_cameras', 'action-cameras', 'action camera'],
-  'security_cameras': ['security_cameras', 'security-cameras', 'ip-cameras'],
+  'audio_systems': [
+    'audio_systems',
+    'audio-systems',
+    'soundbars',
+    'surround_systems',
+    'compact_hifi',
+  ],
+  'av_receivers': ['av_receivers', 'av-receivers', 'hifi_receivers'],
+  'media_players': ['media_players', 'media-players'],
+  'camera_lenses': [
+    'camera_lenses',
+    'camera-lenses',
+    'cameras',
+    'digital_cameras',
+    'video_cameras',
+    'film_cameras',
+    'camera_objectives',
+    'lenses',
+    'action_cameras',
+    'security_cameras',
+  ],
+  'ip_cameras': ['ip_cameras', 'ip-cameras'],
+  'dashcams': ['dashcams', 'dash cameras'],
+  'gimbals': ['gimbals', 'gimbal'],
   'drones': ['drones', 'drone'],
+  'action_cameras': ['camera_lenses', 'action_cameras', 'action-cameras'],
+  'security_cameras': ['camera_lenses', 'security_cameras', 'ip-cameras'],
   'gamepads': ['gamepads', 'gamepad', 'controller', 'oyun kolu'],
   'gaming_consoles': ['gaming_consoles', 'consoles', 'console', 'oyun konsolu'],
   'consoles': ['gaming_consoles', 'consoles', 'console'],
-  'games': ['games', 'game', 'oyun'],
   'printers': ['printers', 'printer', 'yazıcı'],
+  '3d_printers': ['3d_printers', '3d-printers', '3d printer'],
+  'webcams': ['webcams', 'webcam'],
+  'microphones': ['microphones', 'microphone', 'mikrofon'],
   'mice': ['mice', 'mouse', 'fare'],
-  'network_switches': ['network_switches', 'network-switches', 'switches'],
-  'wifi_routers': ['wifi_routers', 'wifi-routers', 'routers', 'router'],
-  'routers': ['wifi_routers', 'routers', 'router'],
+  'keyboards': ['keyboards', 'keyboard', 'klavye'],
+  'network_switches': ['routers', 'network_switches', 'network-switches'],
+  'wifi_routers': ['routers', 'wifi_routers', 'wifi-routers', 'router'],
+  'routers': [
+    'routers',
+    'wifi_routers',
+    'wifi-routers',
+    'network_switches',
+    'pcie_nic',
+  ],
   'modem_routers': ['modem_routers', 'modem-routers', 'modem'],
-  'pcie_nic': ['pcie_nic', 'pcie-network-cards', 'network cards'],
-  'ups': ['ups', 'uninterruptible power supply'],
-  'vacuums': ['vacuums', 'vacuum-cleaners', 'vacuum cleaners'],
+  'pcie_nic': ['routers', 'pcie_nic', 'pcie-network-cards', 'network cards'],
   'robot_vacuums': ['robot_vacuums', 'robot-vacuums', 'robot vacuum'],
-  'robot-vacuums': ['robot_vacuums', 'robot-vacuums'],
+  'robot-vacuums': ['robot_vacuums', 'robot-vacuums', 'vacuums'],
+  'vacuums': ['robot_vacuums', 'vacuums', 'vacuum-cleaners'],
+  'hardware_wallets': ['hardware_wallets', 'hardware-wallets'],
 };
 
 const pcCategoryAliases = catalogCategoryAliases;
@@ -542,7 +589,7 @@ class HomeFeed {
   });
 }
 
-const _homeFeedReadyCacheVersion = 'v4';
+const _homeFeedReadyCacheVersion = 'v5';
 
 String _homeFeedReadyCacheKey(String country, UserEntity? user) {
   return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';
@@ -1569,41 +1616,54 @@ HomeFeed _buildHomeFeed(
 // Current non-empty PocketBase technology categories. Home feed tries the live
 // categories collection first; this is the offline/fallback order.
 const _feedCategories = [
-  'headphones',
   'smartphones',
+  'feature_phones',
   'smartwatches',
-  'tablets',
-  'ram',
-  'desktops',
-  'action_cameras',
-  'drones',
-  'network_switches',
+  'smart_rings',
+  'headphones',
   'powerbanks',
-  'security_cameras',
-  'ups',
-  'wifi_routers',
-  'case_fans',
-  'cpu_coolers',
-  'cpus',
-  'mice',
-  'monitors',
-  'motherboards',
-  'tvs',
-  'gamepads',
-  'pc_cases',
-  'psu',
+  'chargers',
   'laptops',
-  'vacuums',
-  'ssd',
+  'desktops',
+  'tablets',
+  'e_readers',
+  'vr_headsets',
   'graphics_cards',
-  'modem_routers',
-  'pcie_nic',
-  'robot_vacuums',
-  'soundbars',
-  'speakers',
+  'cpus',
+  'motherboards',
+  'ram',
+  'ssd',
+  'psu',
+  'pc_cases',
+  'ups',
+  'flash_drives',
+  'cpu_coolers',
+  'laptop_coolers',
+  'case_fans',
+  'keyboards',
+  'mice',
+  'gamepads',
   'gaming_consoles',
-  'games',
+  'webcams',
+  'microphones',
   'printers',
+  '3d_printers',
+  'monitors',
+  'tvs',
+  'projectors',
+  'speakers',
+  'audio_systems',
+  'av_receivers',
+  'media_players',
+  'camera_lenses',
+  'ip_cameras',
+  'dashcams',
+  'gimbals',
+  'drones',
+  'routers',
+  'modem_routers',
+  'robot_vacuums',
+  'hardware_wallets',
 ];
 
 /// In-memory feed cache for instant access across providers
@@ -1636,6 +1696,7 @@ Future<void> invalidateProductCatalogCaches(
       await cache.delete('home_feed_v30_$owner');
       await cache.delete('home_feed_v31_$owner');
       await cache.delete('home_feed_v32_$owner');
+      await cache.delete('home_feed_v33_$owner');
       await cache.delete(
         'home_feed_ready_${country.toLowerCase()}_${owner}_v2',
       );
@@ -1644,6 +1705,9 @@ Future<void> invalidateProductCatalogCaches(
       );
       await cache.delete(
         'home_feed_ready_${country.toLowerCase()}_${owner}_v4',
+      );
+      await cache.delete(
+        'home_feed_ready_${country.toLowerCase()}_${owner}_v5',
       );
     }
   }
@@ -1753,7 +1817,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   await SchedulerBinding.instance.endOfFrame;
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v32_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v33_${user?.uid ?? "anon"}';
   _scheduleLegacyFeedCacheCleanup(cache, user);
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)

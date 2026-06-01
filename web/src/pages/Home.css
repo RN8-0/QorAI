@@ -3,8 +3,8 @@
   padding: 42px 0 26px; text-align: center;
   border-bottom: 1px solid var(--border);
   background:
-    radial-gradient(ellipse 70% 130% at 50% 0%, rgba(0, 229, 255, 0.09), transparent 70%),
-    linear-gradient(180deg, rgba(0, 229, 255, 0.025), transparent 76%);
+    radial-gradient(ellipse 70% 130% at 50% 0%, rgba(124, 58, 237, 0.09), transparent 70%),
+    linear-gradient(180deg, rgba(124, 58, 237, 0.025), transparent 76%);
 }
 .h-searchbar h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 900; letter-spacing: 0; }
 .h-searchbar > .container > p { color: var(--text2); font-size: 14px; margin-top: 6px; }
@@ -110,6 +110,37 @@
 .h-tool:hover { border-color: var(--accent-ring); transform: translateY(-2px); }
 .h-tool b { font-size: 14px; font-weight: 700; }
 .h-tool span { font-size: 12.5px; color: var(--text2); }
+
+/* ─── Entrance animations ────────────────────────────────────── */
+@keyframes hFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes hPop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .h-searchbar { animation: hFadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .h-searchbar h1 { animation: hFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.04s; }
+  .h-search-wrap { animation: hFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.12s; }
+  .home .h-sec { animation: hFadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.06s; }
+
+  .h-catgrid .h-cat { animation: hPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .h-catgrid .h-cat:nth-child(1) { animation-delay: 0.02s; }
+  .h-catgrid .h-cat:nth-child(2) { animation-delay: 0.05s; }
+  .h-catgrid .h-cat:nth-child(3) { animation-delay: 0.08s; }
+  .h-catgrid .h-cat:nth-child(4) { animation-delay: 0.11s; }
+  .h-catgrid .h-cat:nth-child(5) { animation-delay: 0.14s; }
+  .h-catgrid .h-cat:nth-child(6) { animation-delay: 0.17s; }
+  .h-catgrid .h-cat:nth-child(n + 7) { animation-delay: 0.2s; }
+
+  .card-grid > * { animation: hPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .card-grid > *:nth-child(1) { animation-delay: 0.03s; }
+  .card-grid > *:nth-child(2) { animation-delay: 0.07s; }
+  .card-grid > *:nth-child(3) { animation-delay: 0.11s; }
+  .card-grid > *:nth-child(n + 4) { animation-delay: 0.14s; }
+
+  .h-tools .h-tool { animation: hPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .h-tools .h-tool:nth-child(2) { animation-delay: 0.05s; }
+  .h-tools .h-tool:nth-child(3) { animation-delay: 0.1s; }
+  .h-tools .h-tool:nth-child(4) { animation-delay: 0.15s; }
+}
 
 @media (max-width: 920px) {
   .h-catgrid {

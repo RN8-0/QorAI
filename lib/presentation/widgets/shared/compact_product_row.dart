@@ -7,7 +7,6 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
-import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 
 /// Slim, consistent row used by all search / category / filter lists.
@@ -34,7 +33,6 @@ class CompactProductRow extends ConsumerWidget {
     final priceStr = price != null
         ? AppUtils.formatCurrency(price, localCurrency)
         : null;
-    final matchScore = ref.watch(localMatchScoreProvider(product));
     final techScore = product.techScore.toInt();
     final locale = Localizations.localeOf(context).languageCode;
     final displayName = product.nameForLanguage(locale);
@@ -126,14 +124,9 @@ class CompactProductRow extends ConsumerWidget {
                           ),
                           const SizedBox(width: 6),
                         ],
-                        if (matchScore != null) ...[
-                          _MiniScoreChip(
-                            label: '$matchScore',
-                            icon: Icons.person_outline,
-                            color: _scoreColor(matchScore),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
+                        // Personal match score is no longer pre-computed in
+                        // lists — it is calculated dynamically on the product
+                        // detail page (specs + price + profile aware).
                         if (techScore > 0)
                           _MiniScoreChip(
                             label: '$techScore',
@@ -163,12 +156,6 @@ class CompactProductRow extends ConsumerWidget {
     );
   }
 
-  Color _scoreColor(int score) {
-    if (score >= 80) return AppTheme.scoreExcellent;
-    if (score >= 60) return AppTheme.scoreAverage;
-    if (score >= 40) return AppTheme.orange500;
-    return AppTheme.error;
-  }
 }
 
 class _MiniScoreChip extends StatelessWidget {
