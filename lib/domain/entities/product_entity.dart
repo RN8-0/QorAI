@@ -91,13 +91,14 @@ class ProductEntity extends Equatable {
     return cleaned.isEmpty ? null : cleaned;
   }
 
-  /// All images including primary - for gallery display
-  /// Filters out Epey ad banners (`/reklam/`) and upgrades low-res `m_`
-  /// thumbnails to the full-resolution variant so the hero is crisp.
+  /// All images including primary - for gallery display.
+  /// The primary card image must stay first; otherwise detail pages can open on
+  /// a marketing/gallery image instead of the clean product cutout.
   List<String> get allImages {
-    final source = images.isNotEmpty
-        ? images
-        : (imageURL.isNotEmpty ? [imageURL] : const <String>[]);
+    final source = <String>[
+      if (imageURL.isNotEmpty) imageURL,
+      ...images,
+    ];
     final seen = <String>{};
     final out = <String>[];
     for (final raw in source) {
@@ -115,9 +116,8 @@ class ProductEntity extends Equatable {
   /// Cleans an Epey CDN product image URL:
   /// - drops `/reklam/` and `/banner/` ad slots (the scraper used to ingest them)
   /// - upgrades the small (`s_`) and thumb (`t_`, `c_`) size prefixes to the
-  ///   big (`b_`) variant so the hero carousel is not blurry. `m_` already
-  ///   renders sharp on the device so we leave it alone — touching it churns
-  ///   CachedNetworkImage's disk cache for no gain.
+  ///   big (`b_`) variant. `m_` remains a reliable stored fallback; display
+  ///   widgets expand it into a sharper candidate chain when needed.
   static String _cleanProductImage(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';

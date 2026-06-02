@@ -30,13 +30,13 @@ const double _kHorizontalCardRowHeight = 246;
 const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // Yatay listelerde ilk render'da yalnızca viewport + lookahead kadar ürün.
 // ListView.builder lazy çalışsa da, itemCount yüksek olduğunda ilk frame'de
-// extra layout/measurement maliyeti oluşturuyordu (24 → 12 → 8).
+// extra layout/measurement maliyeti oluşturuyordu (24 -> 12 -> 8).
 // Viewport ~3 kart + cacheExtent → ~5 kart fiilen build edilir; kullanıcı
 // kaydırdığında ek kartlar `_HomeScreenState.didUpdateWidget` veya
 // section provider'ı ile gelir.
 // Keep the first shelf payload light; users still get enough horizontal scroll
 // while image decode and item bookkeeping stay small on mid-range devices.
-const int _kHorizontalInitialItemLimit = 12;
+const int _kHorizontalInitialItemLimit = 8;
 // card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
 const double _kCardItemExtent = 167.0;
 // ignore: unused_element
@@ -81,18 +81,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Categories Stage 0'a alındı (feed-bağımsız, ListView.builder lazy).
   // 0 = AppBar (skeleton) + SearchBar + Categories  ← TÜM feed-bağımsız UI
   // 1 = atlanır (Categories Stage 0'a entegre)
-  // 2 = + Real AppBar + For You + Trending          ← feed-aware
-  // 3 = + QuizReminder + TopInCategory + RecentlyViewed + RecentlyAnalyzed
-  // 4 = + NewArrivals
-  // 5 = + Priority + ValuePicks
-  // 6 = + Discover
+  // 2 = + Real AppBar + For You                    <- feed-aware
+  // 3 = + Trending
+  // 4 = + QuizReminder + TopInCategory + RecentlyViewed + RecentlyAnalyzed
+  // 5 = + NewArrivals
+  // 6 = + Priority + ValuePicks
+  // 7 = + Discover
   int _renderStage = 0;
-  static const int _kMaxRenderStage = 6;
-  // Stage'ler arası gecikme. 60ms ≈ 3-4 vsync — zayıf cihazlarda (Xiaomi
+  static const int _kMaxRenderStage = 7;
+  // Stage'ler arası gecikme. 140ms ≈ 8-9 vsync — zayıf cihazlarda (Xiaomi
   // mid-range, eski tablet) her stage arasında frame budget açar. 32ms'de
-  // arka arkaya gelen rebuild'ler aynı vsync'e düşebilir → spike.
-  // Toplam Stage 2→6 reveal: 5 × 60ms = 300ms (fark kullanıcıya hissettirmez).
-  static const Duration _kStageDelay = Duration(milliseconds: 60);
+  // arka arkaya gelen rebuild'ler aynı vsync'e düşebilir -> spike.
+  // Toplam Stage 2->7 reveal: ~700ms; ilk viewport daha akıcı kalır.
+  static const Duration _kStageDelay = Duration(milliseconds: 140);
   // Feed READY guard: feed AsyncValue.data state'e geçmeden Stage 2+
   // açılmaz. Aksi halde shimmer→gerçek geçiş tüm Consumer'ları aynı anda
   // rebuild eder → büyük spike. Feed hazır olunca kademeli olarak açılır.
@@ -159,8 +160,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (_feedReadyForReveal) return;
     _feedReadyForReveal = true;
     // Direkt Stage 2'ye sıçra (postFrame timer beklemesi yok). Feed
-    // hazır → For You + Trending hemen render etmeli. Sonraki stage'ler
-    // (3,4,5,6) normal kademeli akışla 32ms aralıklı açılır.
+    // hazır -> For You hemen render etmeli. Sonraki stage'ler normal
+    // kademeli akışla açılır.
     if (mounted && _renderStage < 2) {
       setState(() {
         _renderStage = 2;
@@ -281,7 +282,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: RepaintBoundary(child: _buildCategoriesSection()),
             ),
 
-            // ── STAGE 2: Real AppBar (üstte değişti) + For You + Trending ─
+            // ── STAGE 2: Real AppBar (üstte değişti) + For You ───────────
             if (_renderStage >= 2) ...[
               SliverToBoxAdapter(
                 child: Consumer(
@@ -298,6 +299,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               SliverToBoxAdapter(child: _buildPersonalizedSection()),
+            ],
+
+            // ── STAGE 3: Trending ────────────────────────────────────────
+            if (_renderStage >= 3) ...[
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.trendingToday ?? 'Trending Today',
@@ -309,19 +314,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: _buildTrendsSection()),
             ],
 
-            // ── STAGE 3: QuizReminder + TopInCat + RecentlyViewed + Analyzed
+            // ── STAGE 4: QuizReminder + TopInCat + RecentlyViewed + Analyzed
             // QuizReminder Stage 0'dan Stage 3'e taşındı: categoryCovers
             // network call + CachedNetworkImage decode artık ilk frame'i
             // bloklamaz.
-            if (_renderStage >= 3) ...[
+            if (_renderStage >= 4) ...[
               _buildQuizReminder(),
               ..._buildTopInCategorySection(),
               ..._buildRecentlyViewedSection(),
               ..._buildRecentlyAnalyzedSection(),
             ],
 
-            // ── STAGE 4: NewArrivals (tek section, izole) ────────────────
-            if (_renderStage >= 4) ...[
+            // ── STAGE 5: NewArrivals (tek section, izole) ────────────────
+            if (_renderStage >= 5) ...[
               // ─── NEW ARRIVALS
               SliverToBoxAdapter(
                 child: _SectionHeader(
@@ -337,14 +342,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(child: _buildNewArrivalsSection()),
             ],
 
-            // ── STAGE 5: Priority categories + ValuePicks ────────────────
-            if (_renderStage >= 5) ...[
+            // ── STAGE 6: Priority categories + ValuePicks ────────────────
+            if (_renderStage >= 6) ...[
               ..._buildPriorityCategorySections(),
               ..._buildValuePicksSection(),
             ],
 
-            // ── STAGE 6: Discover (en alt, ekran dışı genelde) ───────────
-            if (_renderStage >= 6) ...[
+            // ── STAGE 7: Discover (en alt, ekran dışı genelde) ───────────
+            if (_renderStage >= 7) ...[
               SliverToBoxAdapter(
                 child: _SectionHeader(
                   title: context.l10n?.exploreProducts ?? 'Discover',

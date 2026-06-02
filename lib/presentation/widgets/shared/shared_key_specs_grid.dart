@@ -14,7 +14,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
   // Each entry is a list of ALIASES that match the same concept; first match wins.
   static const _categoryKeys = <String, List<List<String>>>{
     'smartphones': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
       ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
       ['Storage', 'Internal Storage', 'Dahili Depolama', 'ROM'],
       ['Battery', 'Battery Capacity', 'Pil', 'Pil Kapasitesi'],
@@ -25,7 +25,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Weight', 'Ağırlık'],
     ],
     'tablets': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
       ['RAM', 'Memory (RAM)', 'RAM Kapasitesi'],
       ['Storage', 'Internal Storage', 'Dahili Depolama'],
       ['Battery', 'Battery Capacity', 'Pil'],
@@ -68,7 +68,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Display Technology', 'Panel', 'Refresh Rate', 'Yenileme Hızı'],
     ],
     'monitors': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
       ['Resolution', 'Çözünürlük'],
       ['Panel Type', 'Panel', 'Panel Tipi'],
       ['Refresh Rate', 'Yenileme Hızı'],
@@ -79,7 +79,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Weight', 'Ağırlık'],
     ],
     'tvs': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
       ['Resolution', 'Çözünürlük'],
       ['Panel Type', 'Panel', 'Panel Tipi'],
       ['Smart TV', 'Akıllı TV'],
@@ -211,7 +211,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Integrated GPU', 'iGPU', 'Dahili GPU'],
     ],
     'smartwatches': [
-      ['Screen Size', 'Display Size', 'Ekran Boyutu'],
+      ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
       ['Battery', 'Battery Life', 'Pil Ömrü'],
       ['OS', 'Operating System', 'İşletim Sistemi'],
       ['Heart Rate', 'Kalp Atış', 'HR'],
@@ -282,19 +282,39 @@ class SharedKeySpecsGrid extends StatelessWidget {
     List<String> aliases,
     Set<String> used,
   ) {
+    final isScreenSizeSlot = aliases.any((alias) {
+      final a = alias.toLowerCase();
+      return a.contains('screen size') ||
+          a.contains('display size') ||
+          a.contains('ekran boyutu') ||
+          a.contains('display boyutu');
+    });
     for (final alias in aliases) {
       final aLower = alias.toLowerCase();
       for (final e in pool.entries) {
         if (used.contains(e.key)) continue;
         final eLower = e.key.toLowerCase();
-        if (eLower == aLower ||
-            eLower.contains(aLower) ||
-            aLower.contains(eLower)) {
+        if (eLower == aLower || eLower.contains(aLower)) {
+          if (isScreenSizeSlot && !_looksLikeScreenSizeValue(e.value)) {
+            continue;
+          }
           return e;
         }
       }
     }
     return null;
+  }
+
+  static bool _looksLikeScreenSizeValue(String value) {
+    final v = value.toLowerCase().trim();
+    if (v.isEmpty) return false;
+    final hasNumber = RegExp(r'\d').hasMatch(v);
+    if (!hasNumber) return false;
+    return v.contains('inch') ||
+        v.contains('inç') ||
+        v.contains('"') ||
+        v.contains('cm') ||
+        RegExp(r'\d+([.,]\d+)?\s*(in|″)').hasMatch(v);
   }
 
   /// Collect specs: always returns a multiple of 3 (6 or 9).

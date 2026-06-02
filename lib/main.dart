@@ -60,14 +60,13 @@ Future<void> _warmupComputeIsolate() async {
 
 int _warmupTask(int x) => x;
 
-/// 333 ürün kartlı feed + horizontal scroll için image cache limitini
-/// explicit ayarla. Default 1000 image / 100 MB; bu device profili için
-/// yeterli ama açıkça set ediyoruz ki framework default değişimlerine
-/// karşı stabil olsun.
+/// Product feeds contain many horizontally-scrollable cards. Keep the decoded
+/// image cache bounded so detail-gallery images do not push mid-range Android
+/// devices into GC churn after a few navigations.
 void _configureImageCache() {
   final cache = PaintingBinding.instance.imageCache;
-  cache.maximumSize = 1500;
-  cache.maximumSizeBytes = 128 * 1024 * 1024; // 128 MB
+  cache.maximumSize = 900;
+  cache.maximumSizeBytes = 72 * 1024 * 1024;
 }
 
 /// Pre-warm the most-used Google Fonts before the first frame is painted.

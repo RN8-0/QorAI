@@ -619,6 +619,16 @@ Map<String, dynamic> _serializeHomeFeedForCache(HomeFeed feed) {
   };
 }
 
+void _deferHomeFeedProductIndexUpdate(Ref ref, HomeFeed feed) {
+  Future<void>.delayed(const Duration(milliseconds: 800), () {
+    try {
+      ref
+          .read(pbDataSourceProvider)
+          .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
+    } catch (_) {}
+  });
+}
+
 /// Tek isolate roundtrip: raw JSON String → HomeFeed entity.
 /// Daha önce ardı ardına iki compute() spawn ediliyordu
 /// (jsonDecode + entity build). Tek isolate'ta birleştirildi → ~80-100ms
@@ -1840,13 +1850,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       // Side-effect'leri post-build'e ertele: provider önce HomeFeed'i
       // dönsün → UI rebuild olsun → ardından PB data source güncellensin.
       // Aksi halde return'den önce UI thread'i ek ~10-30ms blokluyordu.
-      Future.microtask(() {
-        try {
-          ref
-              .read(pbDataSourceProvider)
-              .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
-        } catch (_) {}
-      });
+      _deferHomeFeedProductIndexUpdate(ref, feed);
 
       debugPrint(
         '=== QOR AI: homeFeed READY (ready-cache path) in ${feedSw.elapsedMilliseconds}ms ===',
@@ -1903,12 +1907,8 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
       );
       _inMemoryFeed = feed;
       // Side-effects → post-build (microtask kuyruğu UI paint sonrasında işlenir).
-      Future.microtask(() {
-        try {
-          ref
-              .read(pbDataSourceProvider)
-              .setHomeFeedProducts(feed.all.whereType<ProductModel>().toList());
-        } catch (_) {}
+      Future<void>.delayed(const Duration(milliseconds: 800), () {
+        _deferHomeFeedProductIndexUpdate(ref, feed);
         _saveReadyFeedToCache(cache, feed, readyCacheKey);
       });
 

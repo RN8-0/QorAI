@@ -97,7 +97,9 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
     const fgColor = Colors.black;
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     final screenW = MediaQuery.sizeOf(context).width;
-    final fullCacheWidth = (screenW * dpr).round().clamp(1080, 2400);
+    final screenH = MediaQuery.sizeOf(context).height;
+    final fullCacheWidth = (screenW * dpr).round().clamp(720, 1200);
+    final fullCacheHeight = (screenH * dpr).round().clamp(720, 1400);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -109,23 +111,18 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
           PageView.builder(
             controller: _pageController,
             itemCount: widget.images.length,
+            dragStartBehavior: DragStartBehavior.down,
+            physics: const _GentlePageScrollPhysics(),
             onPageChanged: (i) => setState(() => _currentIndex = i),
             itemBuilder: (context, index) => GestureDetector(
               onTap: () => Navigator.of(context).pop(),
               behavior: HitTestBehavior.opaque,
               child: Center(
-                child: CachedNetworkImage(
-                  imageUrl: widget.images[index],
-                  fit: BoxFit.contain,
-                  memCacheWidth: fullCacheWidth,
-                  maxWidthDiskCache: fullCacheWidth,
-                  placeholder: (_, _) => Center(
-                    child: CircularProgressIndicator(
-                      color: fgColor.withValues(alpha: 0.6),
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  errorWidget: (_, _, _) => Icon(
+                child: _HeroNetworkImage(
+                  url: widget.images[index],
+                  cacheWidth: fullCacheWidth,
+                  cacheHeight: fullCacheHeight,
+                  fallback: Icon(
                     Icons.broken_image,
                     color: fgColor.withValues(alpha: 0.5),
                     size: 64,

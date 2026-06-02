@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math' as dart_math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,14 +128,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     _syncAiPageContext();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Precache the main product image immediately so hero renders instantly
-      final mainImage = widget.product.imageUrl;
-      if (mainImage != null && mainImage.isNotEmpty) {
-        precacheImage(
-          CachedNetworkImageProvider(mainImage),
-          context,
-        ).catchError((_) {});
-      }
       _resetComparePoolIfCategoryChanged();
       if (!mounted) return;
       // Defer ALL heavy content until the route push animation fully completes.
@@ -148,8 +141,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             _contentReady = true;
             _tabViewReady = true;
           });
-          // Precache gallery images after animation
-          _precacheGalleryImages();
         }
       } else {
         void listener(AnimationStatus s) {
@@ -158,8 +149,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             if (!mounted) return;
             // Show overview content first (one frame for layout settle).
             setState(() => _contentReady = true);
-            // Precache remaining gallery images while animation completes
-            _precacheGalleryImages();
             // Give the overview one short frame window, then mount the tabs.
             Future.delayed(_tabWarmupDelay, () {
               if (!mounted) return;
@@ -171,20 +160,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         anim.addStatusListener(listener);
       }
     });
-  }
-
-  /// Precache all product gallery images after route animation completes.
-  void _precacheGalleryImages() {
-    final allImages = widget.product.allImages;
-    // Skip index 0 (already precached above), cache up to 7 gallery images
-    for (final url in allImages.skip(1).take(7)) {
-      if (url.isNotEmpty) {
-        precacheImage(
-          CachedNetworkImageProvider(url),
-          context,
-        ).catchError((_) {});
-      }
-    }
   }
 
   @override

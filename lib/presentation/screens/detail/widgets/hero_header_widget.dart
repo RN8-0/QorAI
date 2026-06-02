@@ -63,12 +63,14 @@ class _HeroHeader extends ConsumerStatefulWidget {
 class _HeroHeaderState extends ConsumerState<_HeroHeader> {
   int _selectedIndex = 0;
   late final PageController _pageController = PageController();
+  final Set<int> _precachedIndexes = <int>{};
 
   @override
   void didUpdateWidget(covariant _HeroHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.product.id != widget.product.id) {
       _selectedIndex = 0;
+      _precachedIndexes.clear();
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -86,15 +88,25 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     final allImages = widget.product.allImages;
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     final screenWidth = MediaQuery.sizeOf(context).width;
-    // Use full screen physical width so hero image is crisp on high-DPI devices.
-    final heroCacheWidth = (screenWidth * dpr).round().clamp(720, 1600);
+    const heroBaseHeight = 300.0;
+    // Hero is padded and product images are mostly cutouts; decoding far beyond
+    // the visible slot wastes memory and causes GC stutter on mid-range phones.
+    final heroCacheWidth = (screenWidth * dpr).round().clamp(540, 960);
+    final heroCacheHeight = (heroBaseHeight * dpr).round().clamp(540, 960);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _precacheAdjacentImages(
+        allImages: allImages,
+        centerIndex: _selectedIndex,
+        cacheWidth: heroCacheWidth,
+        cacheHeight: heroCacheHeight,
+      );
+    });
 
     // Flat white backdrop in both themes: transparent product PNGs need a light
     // background, and a single tone (no gradient) matches the app's white
     // surfaces exactly — no visible seam between the hero and the card below.
     const imageBg = Colors.white;
-
-    const heroBaseHeight = 300.0;
 
     return SliverToBoxAdapter(
       child: Container(
@@ -105,6 +117,7 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
             // ── Swipeable main image ──
             Positioned.fill(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: allImages.isNotEmpty
                     ? () {
                         Navigator.of(context).push(
@@ -148,16 +161,25 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                       : PageView.builder(
                           controller: _pageController,
                           itemCount: allImages.length,
-                          // Preload neighbours so left/right swipes are instant.
-                          allowImplicitScrolling: true,
-                          onPageChanged: (i) =>
-                              setState(() => _selectedIndex = i),
+                          dragStartBehavior: DragStartBehavior.down,
+                          physics: const _GentlePageScrollPhysics(),
+                          onPageChanged: (i) {
+                            if (i == _selectedIndex) return;
+                            setState(() => _selectedIndex = i);
+                            _precacheAdjacentImages(
+                              allImages: allImages,
+                              centerIndex: i,
+                              cacheWidth: heroCacheWidth,
+                              cacheHeight: heroCacheHeight,
+                            );
+                          },
                           itemBuilder: (context, i) {
                             return Hero(
                               tag: 'product_image_${widget.product.id}_$i',
                               child: _HeroNetworkImage(
                                 url: allImages[i],
                                 cacheWidth: heroCacheWidth,
+                                cacheHeight: heroCacheHeight,
                                 fallback: _CategoryEmoji(
                                   cat: widget.product.categoryId,
                                 ),
@@ -204,6 +226,49 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
       ),
     );
   }
+
+  void _precacheAdjacentImages({
+    required List<String> allImages,
+    required int centerIndex,
+    required int cacheWidth,
+    required int cacheHeight,
+  }) {
+    if (allImages.length < 2) return;
+    for (final index in <int>[centerIndex + 1, centerIndex - 1]) {
+      if (index < 0 || index >= allImages.length) continue;
+      if (!_precachedIndexes.add(index)) continue;
+      final url = _HeroNetworkImage.bestCandidate(allImages[index]);
+      Future<void>.delayed(const Duration(milliseconds: 220), () {
+        if (!mounted) return;
+        precacheImage(
+          CachedNetworkImageProvider(
+            url,
+            maxWidth: cacheWidth,
+            maxHeight: cacheHeight,
+          ),
+          context,
+        ).catchError((_) {});
+      });
+    }
+  }
+}
+
+class _GentlePageScrollPhysics extends PageScrollPhysics {
+  const _GentlePageScrollPhysics({super.parent});
+
+  @override
+  _GentlePageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _GentlePageScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double get minFlingDistance => 4;
+
+  @override
+  double get minFlingVelocity => 40;
+
+  @override
+  double? get dragStartDistanceMotionThreshold => 1;
 }
 
 // ─── Compact score stack rendered inside the hero (top-right) ───
@@ -575,11 +640,13 @@ class _HeroNetworkImage extends StatefulWidget {
   const _HeroNetworkImage({
     required this.url,
     required this.cacheWidth,
+    required this.cacheHeight,
     required this.fallback,
   });
 
   final String url;
   final int cacheWidth;
+  final int cacheHeight;
   final Widget fallback;
 
   static final _epey = RegExp(
@@ -593,6 +660,8 @@ class _HeroNetworkImage extends StatefulWidget {
     final file = m.group(3)!;
     return ['${path}b_$file', '$path$file', '${path}m_$file'];
   }
+
+  static String bestCandidate(String url) => _expand(url).first;
 
   @override
   State<_HeroNetworkImage> createState() => _HeroNetworkImageState();
@@ -626,12 +695,18 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
       imageUrl: url,
       fit: BoxFit.contain,
       memCacheWidth: widget.cacheWidth,
+      memCacheHeight: widget.cacheHeight,
       maxWidthDiskCache: widget.cacheWidth,
+      maxHeightDiskCache: widget.cacheHeight,
       filterQuality: FilterQuality.medium,
       fadeInDuration: const Duration(milliseconds: 120),
       placeholder: (_, _) => const ColoredBox(color: Colors.white),
       errorWidget: (_, failed, _) {
-        CachedNetworkImageProvider(failed).evict();
+        CachedNetworkImageProvider(
+          failed,
+          maxWidth: widget.cacheWidth,
+          maxHeight: widget.cacheHeight,
+        ).evict();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && _idx < _urls.length) setState(() => _idx++);
         });

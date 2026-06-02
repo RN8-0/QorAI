@@ -14,6 +14,7 @@ class _OverviewContent extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SharedKeySpecsGrid(product: product),
           if (product.description.isNotEmpty) ...[
             _DescCard(text: product.description, cardBg: cardBg, isDark: isDark),
             const SizedBox(height: 12),
