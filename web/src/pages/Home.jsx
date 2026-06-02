@@ -113,6 +113,14 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
+  // Sync from the ?q query param so the header search works even when the
+  // user is already on the home page (navigating to /?q=… won't remount).
+  useEffect(() => {
+    const qp = (params.get('q') || '').trim();
+    setQ(qp);
+    setSubmitted(qp);
+  }, [params]);
+
   function search(e) {
     e.preventDefault();
     const term = q.trim();

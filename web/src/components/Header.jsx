@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
@@ -14,8 +14,10 @@ const NAV = [
   { to: '/subscriptions', key: 'nav.subscriptions' },
 ];
 
-// Grouped category mega-menu (versus-style). Each entry resolves its icon +
-// label through catMeta(); links go to the existing /category?cat=… route.
+const SEG_LANGS = ['tr', 'en', 'de'];
+
+// Grouped category mega-menu. Each entry resolves its label through catMeta();
+// links go to the existing /category?cat=… route.
 const CAT_GROUPS = [
   { title: { en: 'Mobile Devices', tr: 'Mobil Cihazlar', de: 'Mobilgeräte' },
     cats: ['smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops'] },
@@ -30,18 +32,18 @@ const CAT_GROUPS = [
 ];
 
 export default function Header() {
+  const nav = useNavigate();
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
-  const { t, lang, setLang, langs } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
+  const [hq, setHq] = useState('');
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
-  // Mega-menu open/close with a small grace delay so moving the cursor from
-  // the "Categories" trigger down into the panel doesn't close it (the panel
-  // sits below the header, so there's a gap the cursor must cross).
+  // Mega-menu open/close with a small grace delay so moving the cursor from the
+  // "Categories" trigger down into the panel doesn't close it.
   const catTimer = useRef(null);
   const openCat = () => { if (catTimer.current) clearTimeout(catTimer.current); setCatMenu(true); };
   const closeCatSoon = () => { if (catTimer.current) clearTimeout(catTimer.current); catTimer.current = setTimeout(() => setCatMenu(false), 140); };
@@ -50,24 +52,28 @@ export default function Header() {
   const coins = user ? Math.round(Number(user.bonusQCoins) || 0) : 0;
   const isPremium = premiumStatus(user).isPremium;
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
-  const curLang = langs.find((l) => l.code === lang) || langs[0];
+
+  function submitSearch(e) {
+    e.preventDefault();
+    const term = hq.trim();
+    nav(term ? `/?q=${encodeURIComponent(term)}` : '/');
+  }
 
   return (
     <>
-      <header className="hd">
-        <div className="hd-inner container">
-          <Link to="/" className="hd-logo" onClick={() => setDrawer(false)}>
+      <header className="appbar">
+        <div className="container appbar-inner">
+          <Link to="/" className="brand" onClick={() => setDrawer(false)}>
             <img src="/assets/qor_logo.png" alt="Qor AI" />
-            <span>Qor<b className="grad-text"> AI</b></span>
+            <span className="wm">Qor<b className="grad-text"> AI</b></span>
           </Link>
 
-          <nav className="hd-nav">
+          <nav className="nav" onMouseLeave={closeCatSoon}>
             <button
               type="button"
-              className={'hd-link hd-cat-trigger' + (catMenu ? ' active' : '')}
+              className={'nav-cat' + (catMenu ? ' active' : '')}
               onClick={() => (catMenu ? closeCatNow() : openCat())}
               onMouseEnter={openCat}
-              onMouseLeave={closeCatSoon}
             >
               {L('Categories', 'Kategoriler', 'Kategorien')}
               <svg className="hd-caret" width="13" height="13" viewBox="0 0 24 24"
@@ -76,10 +82,9 @@ export default function Header() {
               </svg>
             </button>
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to}
-                end={n.end}
+              <NavLink key={n.to} to={n.to} end={n.end}
                 onMouseEnter={closeCatNow}
-                className={({ isActive }) => 'hd-link' + (isActive ? ' active' : '')}>
+                className={({ isActive }) => (isActive ? 'active' : '')}>
                 {t(n.key)}
               </NavLink>
             ))}
@@ -93,20 +98,16 @@ export default function Header() {
                   {CAT_GROUPS.map((g) => (
                     <div className="hd-mega-col" key={g.title.en}>
                       <h6>{g.title[lang] || g.title.en}</h6>
-                      {g.cats.map((c) => {
-                        const m = catMeta(c);
-                        return (
-                          <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
-                            className="hd-mega-link" onClick={closeCatNow}>
-                            {m.label}
-                          </Link>
-                        );
-                      })}
+                      {g.cats.map((c) => (
+                        <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
+                          className="hd-mega-link" onClick={closeCatNow}>
+                          {catMeta(c).label}
+                        </Link>
+                      ))}
                     </div>
                   ))}
                   <div className="hd-mega-cta">
-                    <Link to="/category" className="btn btn-primary"
-                      onClick={closeCatNow}>
+                    <Link to="/category" className="btn btn-primary" onClick={closeCatNow}>
                       {L('See all categories', 'Tüm kategoriler', 'Alle Kategorien')} →
                     </Link>
                   </div>
@@ -115,94 +116,66 @@ export default function Header() {
             </>
           )}
 
-          <div className="hd-actions">
-            <div className="hd-apps">
-              <a href="https://play.google.com/store/apps/details?id=com.compair.app"
-                target="_blank" rel="noopener" className="hd-app" aria-label="Google Play"
-                title={t('header.googlePlay')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-                  <path d="M3.6 1.8 13.8 12 3.6 22.2a1 1 0 0 1-.6-.92V2.73a1 1 0 0 1 .6-.93zm11 11 2.3 2.3-10.9 6.3 8.6-8.6zm3.7-3.7 2.4 1.37c.79.46.79 1.6 0 2.05l-2.37 1.37-2.5-2.52 2.47-2.27zM5.86 2.66 16.8 9 14.5 11.3 5.86 2.66z" />
-                </svg>
-              </a>
-              <a href="#" className="hd-app hd-app-soon" aria-label="App Store"
-                title={t('header.appStoreSoon')} onClick={(e) => e.preventDefault()}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                </svg>
-              </a>
-            </div>
+          <div className="grow" />
 
-            <div className="hd-lang">
-              <button className="hd-icon" onClick={() => setLangOpen((o) => !o)} aria-label="Language">
-                <span className="hd-lang-flag">{curLang.flag}</span>
+          <form className="searchbox hide-md" onSubmit={submitSearch}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input value={hq} onChange={(e) => setHq(e.target.value)} placeholder={t('home.searchPlaceholder')} />
+          </form>
+
+          <div className="seg" role="group" aria-label="language">
+            {SEG_LANGS.map((code) => (
+              <button key={code} className={lang === code ? 'on' : ''} onClick={() => setLang(code)}>
+                {code.toUpperCase()}
               </button>
-              {langOpen && (
+            ))}
+          </div>
+
+          <button className="iconbtn" onClick={toggle} aria-label={t('header.theme')}>
+            {theme === 'dark'
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>}
+          </button>
+
+          <a className="gp-badge desk-only"
+            href="https://play.google.com/store/apps/details?id=com.compair.app"
+            target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+              <path d="M3.6 1.8 13.8 12 3.6 22.2a1 1 0 0 1-.6-.92V2.73a1 1 0 0 1 .6-.93zm11 11 2.3 2.3-10.9 6.3 8.6-8.6zm3.7-3.7 2.4 1.37c.79.46.79 1.6 0 2.05l-2.37 1.37-2.5-2.52 2.47-2.27zM5.86 2.66 16.8 9 14.5 11.3 5.86 2.66z" />
+            </svg>
+            <span><small>{L('GET IT ON', 'İNDİR', 'LADE BEI')}</small><span style={{ fontSize: 13, display: 'block' }}>{t('header.googlePlay')}</span></span>
+          </a>
+
+          {user ? (
+            <div className="hd-user">
+              {isPremium && <span className="hd-pro" title={t('header.premium')}>PRO</span>}
+              <span className="hd-coins" title={t('header.coins')}><span className="coin-dot">Q</span>{coins}</span>
+              <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>{displayName[0]?.toUpperCase() || 'U'}</button>
+              {menu && (
                 <>
-                  <div className="hd-menu-backdrop" onClick={() => setLangOpen(false)} />
-                  <div className="hd-menu hd-lang-menu fade-up">
-                    {langs.map((l) => (
-                      <button key={l.code}
-                        className={'hd-menu-item' + (l.code === lang ? ' active' : '')}
-                        onClick={() => { setLang(l.code); setLangOpen(false); }}>
-                        <span className="hd-lang-flag">{l.flag}</span> {l.label}
-                      </button>
-                    ))}
+                  <div className="hd-menu-backdrop" onClick={() => setMenu(false)} />
+                  <div className="hd-menu fade-up">
+                    <div className="hd-menu-head">
+                      <strong>{displayName}{isPremium && <span className="hd-pro hd-pro-sm">PRO</span>}</strong>
+                      <span>{user.email}</span>
+                    </div>
+                    <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coins}</b> Qor Coin</div>
+                    <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.profile')}</Link>
+                    <Link to="/settings" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.settings')}</Link>
+                    <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>{t('nav.signOut')}</button>
                   </div>
                 </>
               )}
             </div>
+          ) : (
+            <button className="btn btn-primary hd-signin" onClick={openAuth}>{t('nav.signIn')}</button>
+          )}
 
-            <button className="hd-icon" onClick={toggle} aria-label={t('header.theme')}>
-              {theme === 'dark' ? '🌙' : '☀️'}
-            </button>
-
-            {user ? (
-              <div className="hd-user">
-                {isPremium && <span className="hd-pro" title={t('header.premium')}>PRO</span>}
-                <span className="hd-coins" title={t('header.coins')}>
-                  <span className="coin-dot">Q</span>{coins}
-                </span>
-                <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>
-                  {displayName[0]?.toUpperCase() || 'U'}
-                </button>
-                {menu && (
-                  <>
-                    <div className="hd-menu-backdrop" onClick={() => setMenu(false)} />
-                    <div className="hd-menu fade-up">
-                      <div className="hd-menu-head">
-                        <strong>
-                          {displayName}
-                          {isPremium && <span className="hd-pro hd-pro-sm">PRO</span>}
-                        </strong>
-                        <span>{user.email}</span>
-                      </div>
-                      <div className="hd-menu-coins">
-                        <span className="coin-dot">Q</span>
-                        <b>{coins}</b> Qor Coin
-                      </div>
-                      <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>
-                        {t('nav.profile')}
-                      </Link>
-                      <Link to="/settings" className="hd-menu-item" onClick={() => setMenu(false)}>
-                        {t('nav.settings')}
-                      </Link>
-                      <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>
-                        {t('nav.signOut')}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <button className="btn btn-primary hd-signin" onClick={openAuth}>
-                {t('nav.signIn')}
-              </button>
-            )}
-
-            <button className="hd-icon hd-burger" onClick={() => setDrawer((d) => !d)} aria-label={t('header.menu')}>
-              <span /><span /><span />
-            </button>
-          </div>
+          <button className="iconbtn hd-burger" onClick={() => setDrawer((d) => !d)} aria-label={t('header.menu')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
         </div>
       </header>
 
@@ -216,15 +189,12 @@ export default function Header() {
             ))}
             <div className="hd-drawer-cats">
               <span className="hd-drawer-h">{L('Categories', 'Kategoriler', 'Kategorien')}</span>
-              {CAT_GROUPS.flatMap((g) => g.cats).map((c) => {
-                const m = catMeta(c);
-                return (
-                  <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
-                    className="hd-drawer-cat" onClick={() => setDrawer(false)}>
-                    {m.label}
-                  </Link>
-                );
-              })}
+              {CAT_GROUPS.flatMap((g) => g.cats).map((c) => (
+                <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
+                  className="hd-drawer-cat" onClick={() => setDrawer(false)}>
+                  {catMeta(c).label}
+                </Link>
+              ))}
             </div>
             {!user && (
               <button className="btn btn-primary btn-block" style={{ marginTop: 8 }}
