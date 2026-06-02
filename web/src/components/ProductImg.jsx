@@ -3,7 +3,7 @@ import { imageCandidates } from '../lib/imageUrl';
 import { PLACEHOLDER_IMG } from '../lib/format';
 
 // <img> that shows the sharpest available source variant and steps down through
-// fallbacks on error (high-res → big → stored medium → placeholder), so a
+// fallbacks on error (high-res -> big -> stored medium -> placeholder), so a
 // missing high-res variant never leaves a broken/blank image.
 export default function ProductImg({ src, alt, className, style, size = 'card', eager = false }) {
   const list = src ? [...imageCandidates(src, size), PLACEHOLDER_IMG] : [PLACEHOLDER_IMG];

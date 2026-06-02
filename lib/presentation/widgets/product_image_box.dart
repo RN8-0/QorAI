@@ -64,7 +64,7 @@ class _ProductImageBoxState extends State<ProductImageBox> {
 
   // epey CDN size variants live as a filename prefix
   // (k_/s_/t_/c_/m_/b_ + no-prefix original). The scraper stored the medium
-  // (m_) variant → blurry when shown large. Expand each source URL into a
+  // (m_) variant, which is blurry when shown large. Expand each source URL into a
   // sharpest-first candidate list and fall back down to the reliable medium,
   // so a missing high-res variant never breaks the image.
   static final _epey = RegExp(
@@ -75,7 +75,7 @@ class _ProductImageBoxState extends State<ProductImageBox> {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+    return ['${path}b_$file', '$path$file', '${path}m_$file'];
   }
 
   void _buildUrlList() {

@@ -569,7 +569,7 @@ class _HeroScoreBadge extends StatelessWidget {
 }
 
 /// Hero product image with a sharpest-first epey variant chain and a graceful
-/// fallback: original → big (b_) → medium (m_) → category emoji. The size
+/// fallback: big (b_) -> no-prefix -> medium (m_) -> category emoji. The size
 /// variant is upgraded in-place and each failure steps down (never blank).
 class _HeroNetworkImage extends StatefulWidget {
   const _HeroNetworkImage({
@@ -591,7 +591,7 @@ class _HeroNetworkImage extends StatefulWidget {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+    return ['${path}b_$file', '$path$file', '${path}m_$file'];
   }
 
   @override
