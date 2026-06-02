@@ -3,7 +3,8 @@
 // (privacy.html, terms.html, email-verify.html, reset-password.html,
 // css/, assets/) are never touched.
 
-import { rmSync } from 'fs';
+import { rmSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,7 +14,37 @@ const wipe = [
   'link-analysis', 'subscriptions', 'quiz', 'profile', 'settings', 'product',
 ];
 
+// product/ holds 100k+ tiny html files. Node's recursive rmSync is flaky on
+// Windows for trees this large — it throws ENOTEMPTY/EBUSY even with retries
+// (antivirus/indexer briefly locks freshly written files). The OS-native
+// remover (`rmdir /s /q` on Windows, `rm -rf` elsewhere) is far more robust,
+// so use that first and fall back to rmSync.
+function nukeDir(dir) {
+  if (!existsSync(dir)) return;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    try {
+      if (process.platform === 'win32') {
+        execSync(`rmdir /s /q "${dir}"`, { stdio: 'ignore', shell: 'cmd.exe' });
+      } else {
+        execSync(`rm -rf "${dir}"`, { stdio: 'ignore' });
+      }
+      if (!existsSync(dir)) return;
+    } catch {
+      // fall through to rmSync / retry
+    }
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+      if (!existsSync(dir)) return;
+    } catch {
+      // keep retrying
+    }
+  }
+  if (existsSync(dir)) {
+    throw new Error(`[prebuild] could not remove ${dir} after multiple attempts`);
+  }
+}
+
 for (const dir of wipe) {
-  rmSync(join(site, dir), { recursive: true, force: true });
+  nukeDir(join(site, dir));
 }
 console.log('[prebuild] cleared previous SPA output');

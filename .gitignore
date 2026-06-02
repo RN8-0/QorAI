@@ -1,3 +1,9 @@
+# Generated SPA SEO output — do NOT commit. seo.mjs no longer prerenders a
+# static file per product (that bloated the repo with 100k+ files); product
+# URLs are served via the 404.html SPA fallback + runtime useSeo() meta, and
+# discovered through the chunked sitemap. This dir must never be tracked again.
+website/product/
+
 # Miscellaneous
 *.class
 *.log

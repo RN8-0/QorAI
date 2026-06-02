@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
 import { useI18n } from '../i18n/index.jsx';
+import { catMeta } from '../lib/format';
 import './Header.css';
 
 const NAV = [
@@ -13,6 +14,21 @@ const NAV = [
   { to: '/subscriptions', key: 'nav.subscriptions' },
 ];
 
+// Grouped category mega-menu (versus-style). Each entry resolves its icon +
+// label through catMeta(); links go to the existing /category?cat=… route.
+const CAT_GROUPS = [
+  { title: { en: 'Mobile Devices', tr: 'Mobil Cihazlar', de: 'Mobilgeräte' },
+    cats: ['smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops'] },
+  { title: { en: 'Computer Components', tr: 'Bilgisayar Parçaları', de: 'PC-Komponenten' },
+    cats: ['gpus', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'coolers'] },
+  { title: { en: 'Audio', tr: 'Ses', de: 'Audio' },
+    cats: ['headphones', 'earbuds', 'speakers', 'soundbars'] },
+  { title: { en: 'Photo & Video', tr: 'Foto & Video', de: 'Foto & Video' },
+    cats: ['cameras', 'action_cameras', 'security_cameras', 'monitors', 'tvs', 'gaming_consoles'] },
+  { title: { en: 'Other', tr: 'Diğer', de: 'Sonstiges' },
+    cats: ['printers', 'powerbanks', 'routers', 'keyboards', 'mice'] },
+];
+
 export default function Header() {
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
@@ -20,6 +36,8 @@ export default function Header() {
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [catMenu, setCatMenu] = useState(false);
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
   const coins = user ? Math.round(Number(user.bonusQCoins) || 0) : 0;
   const isPremium = premiumStatus(user).isPremium;
@@ -35,15 +53,59 @@ export default function Header() {
             <span>Qor AI</span>
           </Link>
 
-          <nav className="hd-nav">
+          <nav className="hd-nav" onMouseLeave={() => setCatMenu(false)}>
+            <button
+              type="button"
+              className={'hd-link hd-cat-trigger' + (catMenu ? ' active' : '')}
+              onClick={() => setCatMenu((o) => !o)}
+              onMouseEnter={() => setCatMenu(true)}
+            >
+              {L('Categories', 'Kategoriler', 'Kategorien')}
+              <svg className="hd-caret" width="13" height="13" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2.6">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to}
                 end={n.end}
+                onMouseEnter={() => setCatMenu(false)}
                 className={({ isActive }) => 'hd-link' + (isActive ? ' active' : '')}>
                 {t(n.key)}
               </NavLink>
             ))}
           </nav>
+
+          {catMenu && (
+            <>
+              <div className="hd-mega-backdrop" onClick={() => setCatMenu(false)} />
+              <div className="hd-mega" onMouseLeave={() => setCatMenu(false)}>
+                <div className="container hd-mega-inner">
+                  {CAT_GROUPS.map((g) => (
+                    <div className="hd-mega-col" key={g.title.en}>
+                      <h6>{g.title[lang] || g.title.en}</h6>
+                      {g.cats.map((c) => {
+                        const m = catMeta(c);
+                        return (
+                          <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
+                            className="hd-mega-link" onClick={() => setCatMenu(false)}>
+                            <span className="hd-mega-ic">{m.icon}</span>
+                            {m.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  <div className="hd-mega-cta">
+                    <Link to="/category" className="btn btn-primary"
+                      onClick={() => setCatMenu(false)}>
+                      {L('See all categories', 'Tüm kategoriler', 'Alle Kategorien')} →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="hd-actions">
             <div className="hd-apps">
@@ -144,6 +206,18 @@ export default function Header() {
                 {t(n.key)}
               </NavLink>
             ))}
+            <div className="hd-drawer-cats">
+              <span className="hd-drawer-h">{L('Categories', 'Kategoriler', 'Kategorien')}</span>
+              {CAT_GROUPS.flatMap((g) => g.cats).map((c) => {
+                const m = catMeta(c);
+                return (
+                  <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
+                    className="hd-drawer-cat" onClick={() => setDrawer(false)}>
+                    <span>{m.icon}</span>{m.label}
+                  </Link>
+                );
+              })}
+            </div>
             {!user && (
               <button className="btn btn-primary btn-block" style={{ marginTop: 8 }}
                 onClick={() => { setDrawer(false); openAuth(); }}>

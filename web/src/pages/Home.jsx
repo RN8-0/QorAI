@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
-import { useT } from '../i18n/index.jsx';
+import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
@@ -47,7 +47,8 @@ function Section({ title, products, loading, seeAllTo, t }) {
 export default function Home() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const t = useT();
+  const { t, lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const searchRef = useRef(null);
 
   const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], categories: [] });
@@ -157,6 +158,13 @@ export default function Home() {
         <div className="container">
           <h1>{t('home.heroTitle')}</h1>
           <p>{t('home.heroSubFallback')}</p>
+          <div className="h-stats">
+            <span><b>100k+</b> {L('products', 'ürün', 'Produkte')}</span>
+            <span className="h-stats-dot" />
+            <span><b>100+</b> {L('categories', 'kategori', 'Kategorien')}</span>
+            <span className="h-stats-dot" />
+            <span><b>AI</b> {L('scored & ranked', 'puanlı & sıralı', 'bewertet')}</span>
+          </div>
           <div className="h-search-wrap" ref={searchRef}>
             <form className="h-search" onSubmit={search}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -219,22 +227,8 @@ export default function Home() {
 
       {!searchMode && (
         <>
-          {/* CATEGORIES — 4×3 grid */}
-          <section className="container h-sec">
-            <div className="h-sec-head"><h2>{t('home.categories')}</h2></div>
-            <div className="h-catgrid">
-              {(categories.length ? categories : Array.from({ length: 12 }).map((_, i) => null))
-                .map((c, i) => c ? (
-                  <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`}
-                    className="h-cat" style={{ '--cat-color': c.meta.color }}>
-                    <span className="h-cat-ic">{c.meta.icon}</span>
-                    <span className="h-cat-label">{c.meta.label}</span>
-                  </Link>
-                ) : (
-                  <div key={i} className="h-cat skel" style={{ height: 96 }} />
-                ))}
-            </div>
-          </section>
+          {/* Categories now live in the header mega-menu — the home page leads
+              straight into curated product sections (versus-style). */}
 
           {/* FOR YOU */}
           <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} />

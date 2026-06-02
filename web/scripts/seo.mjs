@@ -15,7 +15,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { catMeta } from '../src/lib/format.js';
 
 const SITE = 'https://qorai.net';
 const here = dirname(fileURLToPath(import.meta.url));
@@ -134,48 +133,6 @@ async function fetchAllProducts() {
   return out;
 }
 
-// ── Per-product SEO ─────────────────────────────────────────────
-function productSeo(d) {
-  const name = d.name || 'Ürün';
-  const category = d.category ? catMeta(d.category).label : '';
-  const url = `${SITE}/product/${d.id}`;
-  const image = d.imageUrl && /^https?:\/\//.test(d.imageUrl) ? d.imageUrl : DEFAULT_IMG;
-  const score = Number(d.techScore) || 0;
-  const title = category ? `${name} · ${category} — Qor AI` : `${name} — Qor AI`;
-  const description = truncate(
-    `${name}: ${d.brand ? `${d.brand}, ` : ''}${category || 'teknoloji ürünü'}. `
-    + `${score > 0 ? `Qor AI teknik skoru ${score}/100. ` : ''}`
-    + 'Özellikleri incele, karşılaştır ve yapay zekâ ile karar ver.',
-  );
-  const price = Number(d.lowestPriceUSD) || 0;
-  const product = {
-    '@type': 'Product',
-    name,
-    image,
-    description,
-    ...(d.brand ? { brand: { '@type': 'Brand', name: d.brand } } : {}),
-    ...(category ? { category } : {}),
-    ...(price > 0 ? {
-      offers: {
-        '@type': 'Offer', price: price.toFixed(2),
-        priceCurrency: 'USD', url, availability: 'https://schema.org/InStock',
-      },
-    } : {}),
-  };
-  const breadcrumb = {
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
-      ...(category ? [{ '@type': 'ListItem', position: 2, name: category, item: `${SITE}/` }] : []),
-      { '@type': 'ListItem', position: category ? 3 : 2, name, item: url },
-    ],
-  };
-  return {
-    title, description, url, image, type: 'product',
-    jsonLd: { '@context': 'https://schema.org', '@graph': [product, breadcrumb] },
-  };
-}
-
 // ── Static routes ───────────────────────────────────────────────
 const STATIC_ROUTES = [
   {
@@ -273,38 +230,60 @@ async function main() {
     }),
   );
 
-  // 2) product pages
+  // 2) catalogue fetch — for sitemap discovery only.
+  //    We deliberately DO NOT prerender a static HTML file per product.
+  //    Doing so wrote 100k+ tiny files into the repo (every build = a
+  //    100k-file diff) for near-zero gain: Googlebot renders the SPA and
+  //    reads the same per-product <head> from the runtime useSeo() hook,
+  //    and direct deep links fall back through 404.html into the SPA.
+  //    The sitemap below still lists every product so Google discovers them.
   let products = [];
   try {
     products = await fetchAllProducts();
     console.log(`[seo] fetched ${products.length} products from Typesense`);
   } catch (err) {
-    console.warn(`[seo] product fetch failed (${err.message}) — skipping product prerender`);
+    console.warn(`[seo] product fetch failed (${err.message}) — sitemap will list routes only`);
   }
 
-  for (const d of products) {
-    if (!d || !d.id) continue;
-    writeHtml(`product/${d.id}`, renderPage(template, productSeo(d)));
-  }
+  // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
+  //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
+  const CHUNK = 45000;
+  const routeUrls = STATIC_ROUTES.filter((r) => !r.noindex).map((r) => ({
+    loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
+  }));
+  const productUrls = products.filter((d) => d && d.id).map((d) => ({
+    loc: `${SITE}/product/${d.id}`, changefreq: 'weekly', priority: '0.6',
+  }));
+  const allUrls = [...routeUrls, ...productUrls];
 
-  // 3) sitemap.xml
-  const urls = [
-    ...STATIC_ROUTES.filter((r) => !r.noindex).map((r) => ({
-      loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
-    })),
-    ...products.filter((d) => d && d.id).map((d) => ({
-      loc: `${SITE}/product/${d.id}`, changefreq: 'weekly', priority: '0.6',
-    })),
-  ];
-  const sitemap =
+  const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    + urls.map((u) =>
+    + items.map((u) =>
       `  <url><loc>${esc(u.loc)}</loc><lastmod>${NOW}</lastmod>`
       + `<changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`,
     ).join('\n')
     + '\n</urlset>\n';
-  writeTextFile(join(site, 'sitemap.xml'), sitemap, { optional: true });
+
+  const chunks = [];
+  for (let i = 0; i < allUrls.length; i += CHUNK) chunks.push(allUrls.slice(i, i + CHUNK));
+  let sitemapFiles = 1;
+  if (chunks.length <= 1) {
+    writeTextFile(join(site, 'sitemap.xml'), renderUrlset(chunks[0] || []), { optional: true });
+  } else {
+    chunks.forEach((c, i) => {
+      writeTextFile(join(site, `sitemap-${i + 1}.xml`), renderUrlset(c), { optional: true });
+    });
+    const index =
+      '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+      + chunks.map((_, i) =>
+        `  <sitemap><loc>${SITE}/sitemap-${i + 1}.xml</loc><lastmod>${NOW}</lastmod></sitemap>`,
+      ).join('\n')
+      + '\n</sitemapindex>\n';
+    writeTextFile(join(site, 'sitemap.xml'), index, { optional: true });
+    sitemapFiles = chunks.length + 1;
+  }
 
   // 4) robots.txt
   writeTextFile(
@@ -319,7 +298,7 @@ async function main() {
     ].join('\n'),
   );
 
-  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${products.length} product pages, sitemap (${urls.length} urls), robots.txt`);
+  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls (no per-product prerender), robots.txt`);
 }
 
 main().catch((err) => {
