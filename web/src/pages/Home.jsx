@@ -17,23 +17,31 @@ const CATEGORY_ORDER = [
   'headphones', 'monitors', 'gpus', 'cpus', 'motherboards', 'ram', 'powerbanks',
 ];
 
-// One product section — title, optional "see all", responsive card grid.
-function Section({ title, products, loading, seeAllTo, t }) {
-  if (!loading && (!products || products.length === 0)) return null;
+function StatItem({ n, l }) {
   return (
-    <section className="container h-sec">
-      <div className="h-sec-head">
-        <h2>{title}</h2>
-        {seeAllTo && (
-          <Link to={seeAllTo} className="h-sec-all">{t('common.seeAll')} →</Link>
-        )}
+    <div className="stat">
+      <div className="n"><span className="grad">{n}</span></div>
+      <div className="l">{l}</div>
+    </div>
+  );
+}
+
+// A product section — title + optional "see all" + a rail / grid / list layout.
+function Section({ title, products, loading, seeAllTo, t, layout = 'grid' }) {
+  if (!loading && (!products || products.length === 0)) return null;
+  const items = loading
+    ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+    : products.map((p) => <ProductCard key={p.id} product={p} variant={layout === 'list' ? 'list' : 'card'} />);
+  return (
+    <>
+      <div className="sec-head">
+        <h2><span className="bar" /> {title}</h2>
+        {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
       </div>
-      <div className="card-grid">
-        {loading
-          ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-          : products.map((p) => <ProductCard key={p.id} product={p} />)}
+      <div className={layout === 'rail' ? 'rail' : layout === 'list' ? 'h-trend-grid' : 'card-grid'}>
+        {items}
       </div>
-    </section>
+    </>
   );
 }
 
@@ -74,7 +82,6 @@ export default function Home() {
     },
   });
 
-  // Home feed — same sections the mobile app's home screen shows.
   useEffect(() => {
     let live = true;
     getHomeFeed(getRecentCategories())
@@ -84,7 +91,6 @@ export default function Home() {
     return () => { live = false; };
   }, []);
 
-  // Live typeahead search.
   useEffect(() => {
     const term = q.trim();
     let live = true;
@@ -129,7 +135,6 @@ export default function Home() {
     setSearchResults([]);
   }
 
-  // Top categories as a 4×3 grid (mirrors the app's category screen).
   const categories = useMemo(() => {
     return [...(feed.categories || [])]
       .sort((a, b) => {
@@ -138,110 +143,133 @@ export default function Home() {
         if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
         return (b.count || 0) - (a.count || 0);
       })
-      .slice(0, 18)
-      .map((c) => ({ value: c.value, meta: catMeta(c.value) }));
+      .slice(0, 8)
+      .map((c) => ({ value: c.value, count: c.count || 0, meta: catMeta(c.value) }));
   }, [feed.categories]);
 
   const searchMode = submitted.length > 0;
 
   return (
-    <div className="home">
-      {/* SEARCH STRIP */}
-      <section className="h-searchbar">
-        <div className="container">
-          <h1>{t('home.heroTitle')}</h1>
-          <p>{t('home.heroSubFallback')}</p>
-          {feed.total > 0 && (
-            <div className="h-stats">
-              <span><b>{feed.total.toLocaleString(lang)}</b> {L('products', 'ürün', 'Produkte')}</span>
-              <span className="h-stats-dot" />
-              <span><b>{feed.categories.length}</b> {L('categories', 'kategori', 'Kategorien')}</span>
-              <span className="h-stats-dot" />
-              <span><b>AI</b> {L('scored & ranked', 'puanlı & sıralı', 'bewertet')}</span>
+    <div className="page">
+      <div className="container">
+        {/* HERO */}
+        <section className="hero card glow" style={{ padding: 'clamp(26px,5vw,52px)' }}>
+          <div className="hero-glow" />
+          <div style={{ position: 'relative' }}>
+            <span className="kicker">✨ <b>{L('AI-scored tech · instant comparison', 'AI puanlı teknoloji · anında karşılaştırma', 'KI-bewertete Technik · sofortiger Vergleich')}</b></span>
+            <h1 style={{ marginTop: 18 }}>{t('home.heroTitle')}</h1>
+            <p className="sub" style={{ marginTop: 14 }}>{t('home.heroSubFallback')}</p>
+
+            {/* search */}
+            <div className="h-search-wrap" ref={searchRef} style={{ maxWidth: 640, margin: '24px 0 0' }}>
+              <form className="h-search" onSubmit={search}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input value={q}
+                  onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); }}
+                  onFocus={() => setSuggestOpen(true)}
+                  placeholder={t('home.searchPlaceholder')} autoComplete="off" />
+                <button type="submit" className="btn btn-primary">{t('common.search')}</button>
+              </form>
+              {suggestOpen && q.trim().length > 0 && (
+                <div className="h-suggest">
+                  {searching && <div className="h-suggest-state">{t('common.loading')}</div>}
+                  {!searching && searchResults.slice(0, 8).map((p) => (
+                    <button type="button" className="h-suggest-item" key={p.id} onClick={() => openProduct(p)}>
+                      <img src={p.imageUrl || PLACEHOLDER_IMG} alt=""
+                        onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                      <span>
+                        {p.brand && <small>{p.brand}</small>}
+                        <b>{p.name}</b>
+                      </span>
+                      <i className={`score ${scoreClass(p.techScore)}`}>⚡ {scoreLabel(p.techScore)}</i>
+                    </button>
+                  ))}
+                  {!searching && searchResults.length === 0 && (
+                    <div className="h-suggest-state">{t('catalog.emptySearch', { q: q.trim() })}</div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-          <div className="h-search-wrap" ref={searchRef}>
-            <form className="h-search" onSubmit={search}>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input value={q}
-                onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); }}
-                onFocus={() => setSuggestOpen(true)}
-                placeholder={t('home.searchPlaceholder')} autoComplete="off" />
-              <button type="submit" className="btn btn-primary">{t('common.search')}</button>
-            </form>
-            {suggestOpen && q.trim().length > 0 && (
-              <div className="h-suggest">
-                {searching && <div className="h-suggest-state">{t('common.loading')}</div>}
-                {!searching && searchResults.slice(0, 8).map((p) => (
-                  <button type="button" className="h-suggest-item" key={p.id}
-                    onClick={() => openProduct(p)}>
-                    <img src={p.imageUrl || PLACEHOLDER_IMG} alt=""
-                      onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
-                    <span>
-                      {p.brand && <small>{p.brand}</small>}
-                      <b>{p.name}</b>
-                    </span>
-                    <i className={`score ${scoreClass(p.techScore)}`}>⚡ {scoreLabel(p.techScore)}</i>
-                  </button>
-                ))}
-                {!searching && searchResults.length === 0 && (
-                  <div className="h-suggest-state">{t('catalog.emptySearch', { q: q.trim() })}</div>
-                )}
+            {searchMode && (
+              <button className="h-clear" type="button" onClick={clearSearch} style={{ marginTop: 12 }}>
+                {t('catalog.clear')}
+              </button>
+            )}
+
+            {/* stats */}
+            {feed.total > 0 && !searchMode && (
+              <div className="row wrap" style={{ gap: 34, marginTop: 30 }}>
+                <StatItem n={feed.total.toLocaleString(lang)} l={L('products', 'ürün', 'Produkte')} />
+                <StatItem n={`${feed.categories.length}+`} l={L('categories', 'kategori', 'Kategorien')} />
+                <StatItem n="3" l="TR · EN · DE" />
               </div>
             )}
           </div>
-          {searchMode && (
-            <button className="h-clear" type="button" onClick={clearSearch}>
-              {t('catalog.clear')}
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* SEARCH RESULTS */}
-      {searchMode && (
-        <section className="container h-sec h-results">
-          <div className="h-sec-head">
-            <h2>{t('catalog.searchTag', { q: submitted })}</h2>
-          </div>
-          {searching ? (
-            <div className="card-grid">
-              {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-            </div>
-          ) : searchResults.length > 0 ? (
-            <div className="card-grid">
-              {searchResults.map((p) => <ProductCard key={p.id} product={p} />)}
-            </div>
-          ) : (
-            <div className="h-empty">{t('catalog.emptySearch', { q: submitted })}</div>
-          )}
         </section>
-      )}
 
-      {!searchMode && (
-        <>
-          {/* Categories now live in the header mega-menu — the home page leads
-              straight into curated product sections (versus-style). */}
+        {/* SEARCH RESULTS */}
+        {searchMode && (
+          <>
+            <div className="sec-head"><h2><span className="bar" /> {t('catalog.searchTag', { q: submitted })}</h2></div>
+            {searching ? (
+              <div className="card-grid">
+                {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="card-grid">
+                {searchResults.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
+            ) : (
+              <div className="card pad" style={{ textAlign: 'center', color: 'var(--text-2)' }}>
+                {t('catalog.emptySearch', { q: submitted })}
+              </div>
+            )}
+          </>
+        )}
 
-          {/* FOR YOU */}
-          <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} />
+        {!searchMode && (
+          <>
+            {/* CATEGORIES */}
+            {categories.length > 0 && (
+              <>
+                <div className="sec-head">
+                  <h2><span className="bar" /> {L('Categories', 'Kategoriler', 'Kategorien')}</h2>
+                  <Link to="/category" className="see-all">{t('common.seeAll')} →</Link>
+                </div>
+                <div className="cat-grid">
+                  {categories.map((c) => (
+                    <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`} className="cat-tile">
+                      <span className="cat-ic" style={{ background: `linear-gradient(135deg, ${c.meta.color}, ${c.meta.color}cc)`, boxShadow: `0 8px 20px ${c.meta.color}33` }}>
+                        {c.meta.icon}
+                      </span>
+                      <span className="cn">{c.meta.label}</span>
+                      <span className="dim" style={{ fontSize: 11, fontWeight: 600 }}>{c.count.toLocaleString(lang)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
 
-          {/* TRENDING TODAY */}
-          <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} />
+            {/* FOR YOU */}
+            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} seeAllTo="/category" layout="rail" />
 
-          <AdSlot slot={AD_SLOTS.home} />
+            {/* TRENDING */}
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} layout="list" />
 
-          {/* RECENTLY VIEWED */}
-          {recent.length > 0 && (
-            <Section title={t('home.recent')} products={recent} loading={false} t={t} />
-          )}
+            <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 
-          {/* NEW ARRIVALS */}
-          <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} />
-        </>
-      )}
+            {/* RECENTLY VIEWED */}
+            {recent.length > 0 && (
+              <Section title={t('home.recent')} products={recent} loading={false} t={t} layout="rail" />
+            )}
+
+            {/* NEW ARRIVALS */}
+            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

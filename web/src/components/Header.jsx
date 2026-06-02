@@ -57,8 +57,8 @@ export default function Header() {
       <header className="hd">
         <div className="hd-inner container">
           <Link to="/" className="hd-logo" onClick={() => setDrawer(false)}>
-            <img src="/assets/logo.png" alt="Qor AI" />
-            <span>Qor AI</span>
+            <img src="/assets/qor_logo.png" alt="Qor AI" />
+            <span>Qor<b className="grad-text"> AI</b></span>
           </Link>
 
           <nav className="hd-nav">
