@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
@@ -39,6 +39,14 @@ export default function Header() {
   const [catMenu, setCatMenu] = useState(false);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
+  // Mega-menu open/close with a small grace delay so moving the cursor from
+  // the "Categories" trigger down into the panel doesn't close it (the panel
+  // sits below the header, so there's a gap the cursor must cross).
+  const catTimer = useRef(null);
+  const openCat = () => { if (catTimer.current) clearTimeout(catTimer.current); setCatMenu(true); };
+  const closeCatSoon = () => { if (catTimer.current) clearTimeout(catTimer.current); catTimer.current = setTimeout(() => setCatMenu(false), 140); };
+  const closeCatNow = () => { if (catTimer.current) clearTimeout(catTimer.current); setCatMenu(false); };
+
   const coins = user ? Math.round(Number(user.bonusQCoins) || 0) : 0;
   const isPremium = premiumStatus(user).isPremium;
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
@@ -53,12 +61,13 @@ export default function Header() {
             <span>Qor AI</span>
           </Link>
 
-          <nav className="hd-nav" onMouseLeave={() => setCatMenu(false)}>
+          <nav className="hd-nav">
             <button
               type="button"
               className={'hd-link hd-cat-trigger' + (catMenu ? ' active' : '')}
-              onClick={() => setCatMenu((o) => !o)}
-              onMouseEnter={() => setCatMenu(true)}
+              onClick={() => (catMenu ? closeCatNow() : openCat())}
+              onMouseEnter={openCat}
+              onMouseLeave={closeCatSoon}
             >
               {L('Categories', 'Kategoriler', 'Kategorien')}
               <svg className="hd-caret" width="13" height="13" viewBox="0 0 24 24"
@@ -69,7 +78,7 @@ export default function Header() {
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to}
                 end={n.end}
-                onMouseEnter={() => setCatMenu(false)}
+                onMouseEnter={closeCatNow}
                 className={({ isActive }) => 'hd-link' + (isActive ? ' active' : '')}>
                 {t(n.key)}
               </NavLink>
@@ -78,8 +87,8 @@ export default function Header() {
 
           {catMenu && (
             <>
-              <div className="hd-mega-backdrop" onClick={() => setCatMenu(false)} />
-              <div className="hd-mega" onMouseLeave={() => setCatMenu(false)}>
+              <div className="hd-mega-backdrop" onClick={closeCatNow} />
+              <div className="hd-mega" onMouseEnter={openCat} onMouseLeave={closeCatSoon}>
                 <div className="container hd-mega-inner">
                   {CAT_GROUPS.map((g) => (
                     <div className="hd-mega-col" key={g.title.en}>
@@ -88,8 +97,7 @@ export default function Header() {
                         const m = catMeta(c);
                         return (
                           <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
-                            className="hd-mega-link" onClick={() => setCatMenu(false)}>
-                            <span className="hd-mega-ic">{m.icon}</span>
+                            className="hd-mega-link" onClick={closeCatNow}>
                             {m.label}
                           </Link>
                         );
@@ -98,7 +106,7 @@ export default function Header() {
                   ))}
                   <div className="hd-mega-cta">
                     <Link to="/category" className="btn btn-primary"
-                      onClick={() => setCatMenu(false)}>
+                      onClick={closeCatNow}>
                       {L('See all categories', 'Tüm kategoriler', 'Alle Kategorien')} →
                     </Link>
                   </div>
@@ -213,7 +221,7 @@ export default function Header() {
                 return (
                   <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
                     className="hd-drawer-cat" onClick={() => setDrawer(false)}>
-                    <span>{m.icon}</span>{m.label}
+                    {m.label}
                   </Link>
                 );
               })}

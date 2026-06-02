@@ -11,13 +11,6 @@ import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
 import './Home.css';
 
-const TOOLS = [
-  { to: '/compare', emoji: '⚖️', t: 'home.tCompare', d: 'home.tCompareD' },
-  { to: '/link-analysis', emoji: '🔗', t: 'home.tLink', d: 'home.tLinkD' },
-  { to: '/subscriptions', emoji: '📺', t: 'home.tSubs', d: 'home.tSubsD' },
-  { to: '/quiz', emoji: '🎯', t: 'home.tQuiz', d: 'home.tQuizD' },
-];
-
 const CATEGORY_ORDER = [
   'smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops',
   'speakers', 'soundbars', 'action_cameras', 'security_cameras', 'gaming_consoles',
@@ -51,7 +44,7 @@ export default function Home() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const searchRef = useRef(null);
 
-  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], categories: [] });
+  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [recent] = useState(() => getRecentProducts());
 
@@ -158,13 +151,15 @@ export default function Home() {
         <div className="container">
           <h1>{t('home.heroTitle')}</h1>
           <p>{t('home.heroSubFallback')}</p>
-          <div className="h-stats">
-            <span><b>100k+</b> {L('products', 'ürün', 'Produkte')}</span>
-            <span className="h-stats-dot" />
-            <span><b>100+</b> {L('categories', 'kategori', 'Kategorien')}</span>
-            <span className="h-stats-dot" />
-            <span><b>AI</b> {L('scored & ranked', 'puanlı & sıralı', 'bewertet')}</span>
-          </div>
+          {feed.total > 0 && (
+            <div className="h-stats">
+              <span><b>{feed.total.toLocaleString(lang)}</b> {L('products', 'ürün', 'Produkte')}</span>
+              <span className="h-stats-dot" />
+              <span><b>{feed.categories.length}</b> {L('categories', 'kategori', 'Kategorien')}</span>
+              <span className="h-stats-dot" />
+              <span><b>AI</b> {L('scored & ranked', 'puanlı & sıralı', 'bewertet')}</span>
+            </div>
+          )}
           <div className="h-search-wrap" ref={searchRef}>
             <form className="h-search" onSubmit={search}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -245,19 +240,6 @@ export default function Home() {
 
           {/* NEW ARRIVALS */}
           <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} />
-
-          {/* QUICK TOOLS */}
-          <section className="container h-sec">
-            <div className="h-sec-head"><h2>{t('home.tools')}</h2></div>
-            <div className="h-tools">
-              {TOOLS.map((tool) => (
-                <Link key={tool.to} to={tool.to} className="h-tool">
-                  <b>{tool.emoji} {t(tool.t)}</b>
-                  <span>{t(tool.d)}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
         </>
       )}
     </div>

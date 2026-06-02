@@ -113,10 +113,11 @@ export async function getHomeFeed(prefCats = []) {
       trending: docs(trendingRes).map(docToProduct),
       newArrivals: docs(newRes).map(docToProduct),
       categories: categoryFacet ? categoryFacet.counts : [],
+      total: Number(facetRes.found) || 0,
     };
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
-    return { forYou: [], trending: [], newArrivals: [], categories: [] };
+    return { forYou: [], trending: [], newArrivals: [], categories: [], total: 0 };
   }
 }
 

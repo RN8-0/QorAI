@@ -4,7 +4,7 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
@@ -37,17 +37,34 @@ function sectionIcon(name) {
   return '📋';
 }
 
+// Mirrors the mobile app's senior-analyst (PRO) product analysis: a grounded,
+// professional report with a verdict, strengths, weaknesses, community
+// reception and a buyer fit — driven by the product's real catalog data.
 function aiPrompt(p, lang) {
   const productName = localizedProductName(p, lang);
   const ks = p.keySpecs && typeof p.keySpecs === 'object'
-    ? Object.entries(p.keySpecs).slice(0, 14).map(([k, v]) => `${k}: ${v}`).join(', ')
+    ? Object.entries(p.keySpecs).slice(0, 18).map(([k, v]) => `${k}: ${v}`).join(', ')
     : '';
+  const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean).slice(0, 6).join('; ') : '';
+  const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean).slice(0, 6).join('; ') : '';
+  const price = Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
   return (
-    'Analyze this tech product as Qor AI, a product advisor.\n' +
-    `Product: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
-    `Qor AI score: ${p.techScore || '-'}/100\nKey specs: ${ks || '-'}\n\n` +
-    'Give a concise review: a 2-3 sentence verdict, then **Strengths**, **Weaknesses** ' +
-    'and **Who it is for** sections. Use "-" for bullets and **bold** headings. ' +
+    'You are Qor AI, a senior product analyst. Produce a professional, in-depth analysis ' +
+    'of the product below. Treat it as a real, current item in the Qor catalog.\n\n' +
+    '## PRODUCT\n' +
+    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Qor AI Tech Score: ${p.techScore || '-'}/100\nApprox. price: ${price}\n` +
+    `Key specs: ${ks || '-'}\n` +
+    (pros ? `Known strengths: ${pros}\n` : '') +
+    (cons ? `Known weaknesses: ${cons}\n` : '') +
+    '\n## OUTPUT (markdown only, no preamble)\n' +
+    '**Verdict** — 2-3 sentence professional bottom line, honest about value at this price.\n' +
+    '**Strengths** — 3-5 "-" bullets grounded in the specs above.\n' +
+    '**Weaknesses** — 2-4 honest "-" bullets.\n' +
+    '**Community reception** — 2-3 sentences synthesising how reviewers and owners generally regard it.\n' +
+    '**Who it is for** — 1-2 sentences on the ideal buyer, and who should skip it.\n\n' +
+    'Be specific and reference real spec values; do not invent specs not implied above. ' +
+    'Never mention being an AI model or any backend provider. ' +
     `Reply ONLY in the language with ISO code: ${lang}.`
   );
 }
@@ -255,7 +272,10 @@ export default function ProductDetail() {
 
   const meta = catMeta(p.category);
   const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.imageUrl]).filter(Boolean);
-  const subscores = p.techSubscores && typeof p.techSubscores === 'object' ? p.techSubscores : null;
+  // Category key specs with relative bars (same source the cards/app use).
+  // The raw techSubscores (Engine/AnchorKey/Tier/…) are internal scoring-engine
+  // diagnostics and are intentionally NOT shown to users.
+  const chips = keySpecChips(p).slice(0, 6);
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
@@ -305,17 +325,14 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {subscores && (
-              <div className="pd-subscores">
-                {Object.entries(subscores).slice(0, 8).map(([k, v]) => {
-                  const val = Math.max(0, Math.min(100, Number(v) || 0));
-                  return (
-                    <div className="pd-sub" key={k}>
-                      <div className="pd-sub-row"><span>{k}</span><b>{Math.round(val)}</b></div>
-                      <div className="pd-sub-bar"><i style={{ width: `${val}%` }} /></div>
-                    </div>
-                  );
-                })}
+            {chips.length > 0 && (
+              <div className="pd-keybars">
+                {chips.map((c) => (
+                  <div className="pd-keybar" key={c.labelKey}>
+                    <div className="pd-keybar-row"><span>{t(c.labelKey)}</span><b>{c.value}</b></div>
+                    <div className="pd-keybar-track"><i style={{ width: `${c.pct}%` }} /></div>
+                  </div>
+                ))}
               </div>
             )}
 

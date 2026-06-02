@@ -12,7 +12,7 @@
   border-radius: var(--radius-lg); aspect-ratio: 1 / 1;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.pd-main-img img { width: 100%; height: 100%; object-fit: contain; padding: 28px; }
+.pd-main-img img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
 .pd-thumbs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .pd-thumb {
   width: 60px; height: 60px; border-radius: var(--radius-sm);
@@ -48,14 +48,17 @@
 .pd-score-text strong { font-size: 15px; display: block; }
 .pd-score-text span { font-size: 12.5px; color: var(--text2); }
 
-.pd-subscores {
-  margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;
+/* Category key specs with relative bars (app-style). */
+.pd-keybars {
+  margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 13px 24px;
+  padding: 17px 19px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--radius);
 }
-.pd-sub-row { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
-.pd-sub-row span { color: var(--text2); text-transform: capitalize; }
-.pd-sub-row b { color: var(--text); }
-.pd-sub-bar { height: 6px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
-.pd-sub-bar i { display: block; height: 100%; background: var(--brand-grad); border-radius: 999px; }
+.pd-keybar-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; margin-bottom: 6px; }
+.pd-keybar-row span { color: var(--text2); }
+.pd-keybar-row b { color: var(--text); font-weight: 700; white-space: nowrap; }
+.pd-keybar-track { height: 6px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
+.pd-keybar-track i { display: block; height: 100%; background: var(--brand-grad); border-radius: 999px; }
 
 .pd-actions { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
 
@@ -133,7 +136,7 @@
 @media (max-width: 860px) {
   .pd-top { grid-template-columns: 1fr; gap: 22px; }
   .pd-skel-img { width: 100%; }
-  .pd-subscores { grid-template-columns: 1fr; }
+  .pd-keybars { grid-template-columns: 1fr; }
 }
 /* ─── AI Analysis tab ────────────────────────────────────────── */
 .pd-ai-loading {
