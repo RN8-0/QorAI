@@ -827,30 +827,32 @@ class _SpecsCardState extends State<_SpecsCard> {
     if (sections.isEmpty) return const SizedBox.shrink();
 
     return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         border: Border.all(color: context.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _SpecsTableHeader(title: context.l10n?.specs ?? 'Specifications'),
-          for (final section in sections) ...[
-            _SpecSectionLabel(title: section.key),
-            ...section.value.map(
-              (row) => _SpecRow(
-                label: row.label,
-                value: row.value,
-                isOdd: row.isOdd,
+          const SizedBox(height: 12),
+          for (var i = 0; i < sections.length; i++) ...[
+            if (i > 0) const SizedBox(height: 14),
+            _SpecSectionLabel(title: sections[i].key),
+            const SizedBox(height: 8),
+            ...sections[i].value.map(
+              (row) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _SpecRow(
+                  label: row.label,
+                  value: row.value,
+                  isOdd: row.isOdd,
+                ),
               ),
             ),
           ],
@@ -879,27 +881,25 @@ class _SpecsTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.brandBlue.withValues(alpha: 0.12),
-        border: Border(bottom: BorderSide(color: context.dividerColor)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.subject_rounded, size: 16, color: AppTheme.brandCyan),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              color: context.textPrimary,
-              fontSize: 13,
-              height: 1.2,
-              fontWeight: FontWeight.w800,
-            ),
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(
+          Icons.auto_awesome_rounded,
+          size: 16,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: GoogleFonts.plusJakartaSans(
+            color: theme.colorScheme.onSurface,
+            fontSize: 14,
+            height: 1.2,
+            fontWeight: FontWeight.w700,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -911,29 +911,31 @@ class _SpecSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Title is already localized to match the admin modal — render verbatim
-    // (uppercased) without any further translation. Bright cyan is unreadable
-    // on a light background, so light mode uses a deep teal + a soft brand tint.
-    final isDark = context.isDarkMode;
-    final accent = isDark ? AppTheme.brandCyan : const Color(0xFF0E7490);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 6),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.black.withValues(alpha: 0.10)
-            : AppTheme.brandBlue.withValues(alpha: 0.06),
-        border: Border(bottom: BorderSide(color: context.dividerColor)),
-      ),
-      child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.inter(
-          color: accent,
-          fontSize: 10.5,
-          height: 1.2,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.45,
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
+            borderRadius: BorderRadius.circular(99),
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              color: theme.colorScheme.primary,
+              fontSize: 12,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1207,39 +1209,54 @@ class _SpecRow extends StatelessWidget {
       valueWidget = _buildValueText(context, localized);
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final labelWidth = dart_math.max(118.0, constraints.maxWidth * 0.34);
-        return Container(
-          decoration: BoxDecoration(
-            color: isOdd
-                ? Colors.black.withValues(alpha: 0.10)
-                : Colors.white.withValues(alpha: 0.015),
-            border: Border(bottom: BorderSide(color: context.dividerColor)),
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              SharedKeySpecsGrid.iconForSpec(displayLabel),
+              size: 17,
+              color: primary.withValues(alpha: 0.75),
+            ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: labelWidth.clamp(112.0, 148.0),
-                child: Text(
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   displayLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    height: 1.4,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1,
-                    color: context.textSecondary,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    height: 1.25,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: valueWidget),
-            ],
+                const SizedBox(height: 4),
+                valueWidget,
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -1247,18 +1264,39 @@ class _SpecRow extends StatelessWidget {
     final displayText = _capitalizeLeadingLetter(text.trim());
     final isYes = _isYesValue(displayText);
     final isNo = _isNoValue(displayText);
-    final rendered = isYes
-        ? '✓ $displayText'
-        : (isNo ? '✗ $displayText' : displayText);
+    if (isYes || isNo) {
+      final color = isYes ? Theme.of(context).colorScheme.primary : AppTheme.error;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isYes ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              displayText,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+              softWrap: true,
+            ),
+          ),
+        ],
+      );
+    }
     return Text(
-      rendered,
-      style: GoogleFonts.inter(
-        fontSize: 11.5,
-        height: 1.4,
-        fontWeight: FontWeight.w600,
-        color: isYes
-            ? AppTheme.scoreExcellent
-            : (isNo ? AppTheme.error : context.textPrimary),
+      displayText,
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12.5,
+        height: 1.35,
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       textAlign: TextAlign.left,
       softWrap: true,
@@ -1296,11 +1334,11 @@ class _SpecValueList extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _SpecRow._capitalizeLeadingLetter(part),
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
                         height: 1.35,
                         fontWeight: FontWeight.w600,
-                        color: context.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       softWrap: true,
                     ),
