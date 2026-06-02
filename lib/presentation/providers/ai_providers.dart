@@ -85,11 +85,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
           ? 'Şu an Karşılaştırma ekranındasınız: $compareProducts. Farkları netleştirebilirim.'
           : 'You are on the Comparison screen: $compareProducts. I can clarify the differences.';
     }
-    if (route.contains('pc-builder')) {
-      return isTr
-          ? 'Şu an PC Builder ekranındasınız; parça uyumu ve yükseltme önerilerinde yardımcı olabilirim.'
-          : 'You are on the PC Builder screen; I can help with compatibility and upgrades.';
-    }
     return isTr
         ? 'Şu an bu sayfadasınız; ekrandaki ürün ve alışveriş bağlamına göre yardımcı olabilirim.'
         : 'You are on this screen; I can use the current product and shopping context.';

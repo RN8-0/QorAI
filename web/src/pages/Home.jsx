@@ -5,6 +5,7 @@ import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format'
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
@@ -43,7 +44,7 @@ function HeroSpotlight({ p, L, lang }) {
         )}
         <div className="img-tile" style={{ aspectRatio: '4 / 3' }}>
           {p.imageUrl
-            ? <img src={p.imageUrl} alt={p.name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+            ? <ProductImg src={p.imageUrl} alt={p.name} size="full" eager />
             : <div className="ph"><span style={{ fontSize: 44 }}>{meta.icon}</span><span className="lbl">{p.brand || meta.label}</span></div>}
         </div>
       </div>

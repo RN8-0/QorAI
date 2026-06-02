@@ -74,7 +74,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     4,
     (_) => FocusNode(),
   );
-  int _visibleCompareFields = 2; // Start with 2, expandable to 4
+  int _visibleCompareFields = 1; // Unified flow: start with 1, auto-grows on paste (max 4)
   // Compare state now managed by compareAnalysisProvider (survives navigation)
 
   // Legacy multi-link state (kept for backward compat)
@@ -103,6 +103,12 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Unified link flow: when the last visible field receives a link, reveal
+    // the next one so the user can keep adding products to compare (max 4).
+    for (final c in _compareControllers) {
+      c.addListener(_onUnifiedFieldChanged);
+    }
 
     // Only reset if the previous state was idle (don't interrupt ongoing analysis)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -370,7 +376,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     for (final c in _compareControllers) {
       c.clear();
     }
-    _visibleCompareFields = 2;
+    _visibleCompareFields = 1; // unified flow restarts with a single field
     _lastSavedCompareHistoryKey = null;
   }
 
@@ -583,6 +589,49 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   // Legacy _startAnalysis for backward compat
   Future<void> _startAnalysis(String url) async => _startSingleAnalysis();
 
+  // ── Unified link flow ───────────────────────────────────────────────
+  // Reveals the next empty field once the current last one has a link, so the
+  // user can paste 1..4 links in a single screen (no Single/Compare tabs).
+  void _onUnifiedFieldChanged() {
+    if (!mounted) return;
+    final last = _visibleCompareFields - 1;
+    final lastHasText = last >= 0 &&
+        last < _compareControllers.length &&
+        _compareControllers[last].text.trim().isNotEmpty;
+    if (lastHasText && _visibleCompareFields < _compareControllers.length) {
+      setState(() => _visibleCompareFields++);
+    } else {
+      setState(() {}); // keep clear buttons / button label in sync
+    }
+  }
+
+  // Routes by how many links the user supplied: exactly one → the single
+  // analysis (quiz) flow; two or more → the compare flow. Backend untouched.
+  Future<void> _startUnifiedAnalysis() async {
+    final filled = <int>[];
+    for (var i = 0; i < _visibleCompareFields; i++) {
+      if (_compareControllers[i].text.trim().isNotEmpty) filled.add(i);
+    }
+    if (filled.isEmpty) {
+      _showLinkSnackBar(
+        _linkText(
+          context,
+          tr: 'Analiz için bir ürün linki yapıştır.',
+          en: 'Paste a product link to analyze.',
+        ),
+        backgroundColor: Colors.amber.shade800,
+      );
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    if (filled.length == 1) {
+      _singleUrlController.text = _compareControllers[filled.first].text.trim();
+      await _startSingleAnalysis();
+    } else {
+      await _startCompareAnalysis();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final quizState = ref.watch(linkQuizProvider);
@@ -719,15 +768,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     ),
                   const SizedBox(width: 4),
                 ],
-                // Tab bar at the bottom of the app bar (only when idle)
-                bottom:
-                    (quizState.phase == LinkFlowPhase.idle &&
-                        compareState.phase == ComparePhase.idle)
-                    ? PreferredSize(
-                        preferredSize: const Size.fromHeight(56),
-                        child: _buildTabBar(),
-                      )
-                    : null,
+                // Single/Compare tabs removed — the idle body is now one
+                // unified link flow (1 link = analyze, 2+ = analyze & compare).
+                bottom: null,
               ),
             ],
             body: _buildBody(quizState, isWorking),
@@ -737,6 +780,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
   }
 
+  // Retained for reference; the Single/Compare tabs were merged into one flow.
+  // ignore: unused_element
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -935,17 +980,222 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       );
     }
 
-    // Idle state — show tabs
-    return AnimatedBuilder(
-      animation: _tabController,
-      builder: (context, _) => IndexedStack(
-        index: _tabController.index,
-        children: [_buildSingleAnalysisTab(isWorking), _buildCompareTab()],
-      ),
+    // Idle state — unified link flow (no Single/Compare tabs)
+    return _buildUnifiedInput(isWorking);
+  }
+
+  /// Unified idle input: one card with dynamic link fields. The first field is
+  /// shown; pasting a link reveals the next (up to 4). One link runs the single
+  /// analysis (quiz) flow, two or more run the compare flow.
+  Widget _buildUnifiedInput(bool isWorking) {
+    final quizState = ref.watch(linkQuizProvider);
+    final working = isWorking || _singleSubmitInFlight;
+    final filledCount = _compareControllers
+        .take(_visibleCompareFields)
+        .where((c) => c.text.trim().isNotEmpty)
+        .length;
+    final isCompareMode = filledCount >= 2;
+    return LayoutBuilder(
+      builder: (context, _) {
+        final bottomInset =
+            AppTheme.navBarTotalClearance +
+            MediaQuery.of(context).padding.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, bottomInset),
+          child: Column(
+            children: [
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.brandBlue,
+                                AppTheme.brandSkyBlue,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.link_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.l10n?.pasteProductLinkCardTitle ??
+                                    'Paste Product Link',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: context.textPrimary,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              Text(
+                                _linkText(
+                                  context,
+                                  tr: 'Tek link analiz eder · birden fazla link karşılaştırır',
+                                  en: 'One link analyses · add more to compare',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: context.textTertiaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!ref.watch(premiumProvider))
+                          QorAmountBadge(
+                            amount: AppConstants.creditCostForFeature(
+                              isCompareMode ? 'link_compare' : 'link_analysis',
+                            ),
+                            unlimited: false,
+                            color: AppTheme.brandBlue,
+                            fontSize: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ...List.generate(
+                      _visibleCompareFields,
+                      (i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: SizedBox(
+                          height: 48,
+                          child: _buildCompareUrlField(i),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Center(
+                      child: Text(
+                        context.l10n?.allShoppingSitesSupported ??
+                            'Tüm alışveriş siteleri desteklenir',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: context.textTertiaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Opacity(
+                      opacity: working ? 0.7 : 1,
+                      child: GradientButton(
+                        width: double.infinity,
+                        height: 56,
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [
+                            AppTheme.brandBlue,
+                            AppTheme.brandDeepBlue,
+                            AppTheme.brandSkyBlue,
+                          ],
+                        ),
+                        onPressed: working
+                            ? null
+                            : () {
+                                FocusScope.of(context).unfocus();
+                                _startUnifiedAnalysis();
+                              },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (working) ...[
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+                              Icon(
+                                isCompareMode
+                                    ? Icons.compare_arrows_rounded
+                                    : Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ],
+                            const SizedBox(width: 7),
+                            Flexible(
+                              child: Text(
+                                isCompareMode
+                                    ? _linkText(
+                                        context,
+                                        tr: 'Analiz Et & Karşılaştır',
+                                        en: 'Analyze & Compare',
+                                      )
+                                    : (context.l10n?.analyzeWithAi ??
+                                          'Analyze with AI'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (quizState.error != null) ...[
+                _buildError(quizState.error!),
+                const SizedBox(height: 6),
+              ],
+              // Scrollable so the taller "How it works" cards never overflow
+              // when several link fields are open on small screens.
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: _buildInfoCards(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  /// TAB 1: Single Analysis
+  /// TAB 1: Single Analysis (legacy — merged into _buildUnifiedInput)
+  // ignore: unused_element
   Widget _buildSingleAnalysisTab(bool isWorking) {
     final quizState = ref.watch(linkQuizProvider);
     final singleWorking = isWorking || _singleSubmitInFlight;
@@ -1119,12 +1369,19 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 14),
               if (quizState.error != null) ...[
                 _buildError(quizState.error!),
                 const SizedBox(height: 6),
               ],
-              Expanded(child: _buildInfoCards()),
+              // Scrollable so the taller "How it works" cards never overflow
+              // when several link fields are open on small screens.
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: _buildInfoCards(),
+                ),
+              ),
             ],
           ),
         );
@@ -1244,6 +1501,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   /// TAB 2: Compare (2-4 products)
+  // Legacy — merged into _buildUnifiedInput.
+  // ignore: unused_element
   Widget _buildCompareTab() {
     final sub = ref.watch(subscriptionServiceProvider);
     return LayoutBuilder(
@@ -4537,141 +4796,166 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   Widget _buildInfoCards() {
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final steps = [
+    // Same card design as the Subscription Analysis "How it works" section:
+    // numbered cards with a gradient icon pill, bold title and an explanatory
+    // multi-line subtitle.
+    final steps = <(IconData, String, String, List<Color>)>[
       (
         Icons.link_rounded,
         isTr ? 'Bağlantıyı Yapıştır' : 'Paste Link',
-        isTr ? '100+ mağazadan ürün linki' : 'Any product URL — 100+ stores',
-        AppTheme.brandBlue,
+        isTr
+            ? '100+ mağazadan herhangi bir ürün linkini yapıştır — Qor AI ürünü tanır.'
+            : 'Paste any product link from 100+ stores — Qor AI identifies it.',
+        const [AppTheme.brandBlue, AppTheme.brandDeepBlue],
       ),
       (
         Icons.forum_rounded,
         isTr ? 'İnternet Yorumları' : 'Community Voice',
         isTr
-            ? 'Reddit, YouTube & forum yorumları'
-            : 'Reddit, YouTube & forum reviews',
-        AppTheme.brandCyan,
+            ? 'Reddit, YouTube ve forumlardan gerçek kullanıcı görüşlerini toplar.'
+            : 'Real user opinions gathered from Reddit, YouTube and forums.',
+        const [AppTheme.brandCyan, AppTheme.brandBlue],
       ),
       (
         Icons.psychology_rounded,
         isTr ? 'Kişisel Quiz' : 'Personal Quiz',
-        isTr ? 'Birkaç kısa soru' : 'A few quick questions',
-        AppTheme.brandSkyBlue,
+        isTr
+            ? 'Birkaç kısa soru; her yanıt sana özel eşleşmeyi keskinleştirir.'
+            : 'A few quick questions — each answer sharpens your match.',
+        const [AppTheme.brandSkyBlue, AppTheme.brandCyan],
       ),
       (
-        Icons.diamond_rounded,
+        Icons.auto_awesome_rounded,
         isTr ? 'Eşleşme Skoru' : 'Match Score',
-        isTr ? 'Sana özel uyum puanı' : 'Your personal fit score',
-        AppTheme.brandDeepBlue,
+        isTr
+            ? 'Profiline göre kişisel uyum puanı ve detaylı öneri sunar.'
+            : 'A compatibility score and detailed recommendation for your profile.',
+        const [AppTheme.brandCyan, AppTheme.success],
       ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        // Minimal section header
         Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 10),
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Row(
             children: [
-              Text(
-                (isTr ? 'Nasıl çalışır' : 'How it works').toUpperCase(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: context.textTertiaryColor,
-                  letterSpacing: 1.0,
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.brandBlue, AppTheme.brandCyan],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Spacer(),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 11,
-                    color: AppTheme.brandCyan,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isTr ? 'AI + İnternet' : 'AI + Web',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.brandCyan,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 10),
+              Text(
+                context.l10n?.howItWorks ?? 'How It Works',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: context.textPrimary,
+                  letterSpacing: -0.3,
+                ),
               ),
             ],
           ),
         ),
-
-        // Minimal vertical flow — flat tinted icon tiles, no heavy cards
         ...List.generate(steps.length, (i) {
-          final (icon, title, desc, color) = steps[i];
-          final isLast = i == steps.length - 1;
+          final (icon, title, desc, gradient) = steps[i];
           return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: color.withValues(
-                          alpha: context.isDarkMode ? 0.16 : 0.10,
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: gradient.first.withValues(
+                        alpha: context.isDarkMode ? 0.18 : 0.15,
+                      ),
+                      width: 0.8,
+                    ),
+                    boxShadow: context.isDarkMode
+                        ? null
+                        : AppTheme.cardShadowLight,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '0${i + 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: gradient.first.withValues(alpha: 0.4),
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(11),
                       ),
-                      child: Icon(icon, size: 17, color: color),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: context.textPrimary,
-                              letterSpacing: -0.2,
-                            ),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: gradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(height: 1),
-                          Text(
-                            desc,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: context.textTertiaryColor,
-                              height: 1.2,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: gradient.first.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(icon, color: Colors.white, size: 20),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '0${i + 1}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                        color: color.withValues(alpha: 0.35),
-                        letterSpacing: -0.5,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: context.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              desc,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: context.textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )
-              .animate()
-              .fadeIn(delay: (70 * i).ms, duration: 340.ms)
-              .slideY(begin: 0.14, curve: Curves.easeOutCubic);
+              .animate(delay: (i * 100).ms)
+              .fadeIn(duration: 400.ms)
+              .slideX(begin: 0.05);
         }),
       ],
     );

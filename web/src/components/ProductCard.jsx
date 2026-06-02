@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { catMeta, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta } from '../lib/format';
 import { useI18n } from '../i18n/index.jsx';
 import Gauge, { techColor } from './Gauge.jsx';
+import ProductImg from './ProductImg.jsx';
 
 function scoreChipClass(s) {
   const v = Number(s) || 0;
@@ -13,8 +14,7 @@ function ProductImage({ p }) {
   if (p.imageUrl) {
     return (
       <div className="img-tile">
-        <img src={p.imageUrl} alt={p.name} loading="lazy"
-          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+        <ProductImg src={p.imageUrl} alt={p.name} size="card" />
       </div>
     );
   }

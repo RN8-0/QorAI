@@ -155,17 +155,10 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                           itemBuilder: (context, i) {
                             return Hero(
                               tag: 'product_image_${widget.product.id}_$i',
-                              child: CachedNetworkImage(
-                                imageUrl: allImages[i],
-                                fit: BoxFit.contain,
-                                memCacheWidth: heroCacheWidth,
-                                maxWidthDiskCache: heroCacheWidth,
-                                fadeInDuration: const Duration(
-                                  milliseconds: 120,
-                                ),
-                                placeholder: (_, _) =>
-                                    const ColoredBox(color: Colors.white),
-                                errorWidget: (_, _, _) => _CategoryEmoji(
+                              child: _HeroNetworkImage(
+                                url: allImages[i],
+                                cacheWidth: heroCacheWidth,
+                                fallback: _CategoryEmoji(
                                   cat: widget.product.categoryId,
                                 ),
                               ),
@@ -571,6 +564,79 @@ class _HeroScoreBadge extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Hero product image with a sharpest-first epey variant chain and a graceful
+/// fallback: original → big (b_) → medium (m_) → category emoji. The size
+/// variant is upgraded in-place and each failure steps down (never blank).
+class _HeroNetworkImage extends StatefulWidget {
+  const _HeroNetworkImage({
+    required this.url,
+    required this.cacheWidth,
+    required this.fallback,
+  });
+
+  final String url;
+  final int cacheWidth;
+  final Widget fallback;
+
+  static final _epey = RegExp(
+    r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
+  );
+
+  static List<String> _expand(String url) {
+    final m = _epey.firstMatch(url);
+    if (m == null) return [url];
+    final path = m.group(1)!;
+    final file = m.group(3)!;
+    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+  }
+
+  @override
+  State<_HeroNetworkImage> createState() => _HeroNetworkImageState();
+}
+
+class _HeroNetworkImageState extends State<_HeroNetworkImage> {
+  late List<String> _urls;
+  int _idx = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _urls = _HeroNetworkImage._expand(widget.url);
+  }
+
+  @override
+  void didUpdateWidget(_HeroNetworkImage old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) {
+      _urls = _HeroNetworkImage._expand(widget.url);
+      _idx = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_idx >= _urls.length) return Center(child: widget.fallback);
+    final url = _urls[_idx];
+    return CachedNetworkImage(
+      key: ValueKey(url),
+      imageUrl: url,
+      fit: BoxFit.contain,
+      memCacheWidth: widget.cacheWidth,
+      maxWidthDiskCache: widget.cacheWidth,
+      filterQuality: FilterQuality.medium,
+      fadeInDuration: const Duration(milliseconds: 120),
+      placeholder: (_, _) => const ColoredBox(color: Colors.white),
+      errorWidget: (_, failed, _) {
+        CachedNetworkImageProvider(failed).evict();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _idx < _urls.length) setState(() => _idx++);
+        });
+        return const ColoredBox(color: Colors.white);
+      },
     );
   }
 }

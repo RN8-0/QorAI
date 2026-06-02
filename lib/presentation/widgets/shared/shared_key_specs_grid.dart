@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
-import 'package:qor_ai/l10n/app_localizations.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
@@ -452,6 +451,12 @@ class SharedKeySpecsGrid extends StatelessWidget {
 
     final theme = Theme.of(context);
     final rows = (specs.length / 3).ceil();
+    final lc = Localizations.localeOf(context).languageCode.toLowerCase();
+    final title = lc == 'tr'
+        ? 'Ana Özellikler'
+        : lc == 'de'
+        ? 'Wichtige Daten'
+        : 'Key Specs';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -473,7 +478,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                AppLocalizations.of(context)?.specs ?? 'Key Specs',
+                title,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

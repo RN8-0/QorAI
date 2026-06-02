@@ -31,7 +31,7 @@ import 'package:qor_ai/presentation/providers/providers.dart';
 // Stage 1-6 reveal pipeline tamamen yerleşir. Önceki 750ms değeri spec
 // init ile HomeScreen mount'un çakışmasına yol açıyordu (logta görüldü:
 // spec init sırasında Stage 1-3 build ediliyor → 174 frame skip).
-// Spec translations sadece compare/PC builder'da kritik — HomeScreen
+// Spec translations sadece compare ekranında kritik — HomeScreen
 // tamamen yerleştikten sonra başlamak güvenli.
 const _kStartupInitialIdle = Duration(milliseconds: 2500);
 const _kStartupGap = Duration(milliseconds: 600);
@@ -94,7 +94,7 @@ void _preloadGoogleFonts() {
 /// UI thread paint penceresi açılır.
 ///
 /// Sıralama (toplam ~3-4s startup tail; UI bunlardan etkilenmez):
-///   t=750ms  → Spec translations (compare/PC builder ekranları için kritik)
+///   t=750ms  → Spec translations (compare ekranı için kritik)
 ///   t=1350ms → Notifications init (FCM permission + token)
 ///   t=1950ms → ATT request (iOS only, opsiyonel)
 Future<void> _scheduleDeferredStartupTasks() async {

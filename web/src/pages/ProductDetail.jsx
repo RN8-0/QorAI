@@ -6,6 +6,7 @@ import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
+import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
@@ -343,14 +344,13 @@ export default function ProductDetail() {
           <div className="prod-gallery" style={{ position: 'sticky', top: 88 }}>
             <div className="card" style={{ padding: 20 }}>
               <div className="img-tile" style={{ aspectRatio: '1', marginBottom: 14 }}>
-                <img src={images[activeImg] || PLACEHOLDER_IMG} alt={displayName}
-                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
               </div>
               {images.length > 1 && (
                 <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
                   {images.slice(0, 6).map((src, i) => (
                     <button key={i} className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setActiveImg(i)}>
-                      <img src={src} alt="" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                      <ProductImg src={src} alt="" size="card" />
                     </button>
                   ))}
                 </div>

@@ -1974,6 +1974,11 @@ class _SpecsTabContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
+        // Category-aware key specs highlight at the top (translation-safe via
+        // SpecTranslationService). Renders nothing when no specs are available.
+        RepaintBoundary(
+          child: SharedKeySpecsGrid(product: product),
+        ),
         RepaintBoundary(
           child: _SpecsCard(specs: specsSource, cardBg: cardBg, isDark: isDark),
         ),

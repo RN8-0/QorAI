@@ -114,7 +114,6 @@ class _FloatingAiAssistantOverlayState
   }
 
   String _pageDescription(String route) {
-    if (route.contains('pc-builder')) return 'PC Builder screen';
     if (route.contains('compare')) return 'product comparison screen';
     if (route.contains('browse')) return 'category browse screen';
     if (route.contains('product')) return 'product detail screen';

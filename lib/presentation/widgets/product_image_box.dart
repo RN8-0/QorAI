@@ -62,13 +62,34 @@ class _ProductImageBoxState extends State<ProductImageBox> {
     }
   }
 
+  // epey CDN size variants live as a filename prefix
+  // (k_/s_/t_/c_/m_/b_ + no-prefix original). The scraper stored the medium
+  // (m_) variant → blurry when shown large. Expand each source URL into a
+  // sharpest-first candidate list and fall back down to the reliable medium,
+  // so a missing high-res variant never breaks the image.
+  static final _epey = RegExp(
+    r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
+  );
+  static List<String> _expand(String url) {
+    final m = _epey.firstMatch(url);
+    if (m == null) return [url];
+    final path = m.group(1)!;
+    final file = m.group(3)!;
+    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+  }
+
   void _buildUrlList() {
     final seen = <String>{};
-    _urls = [
+    final sources = <String>[
       if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
         widget.imageUrl!,
       ...widget.fallbackUrls.where((u) => u.isNotEmpty),
-    ].where((u) => seen.add(u)).toList();
+    ];
+    _urls = [
+      for (final s in sources)
+        for (final cand in _expand(s))
+          if (seen.add(cand)) cand,
+    ];
   }
 
   void _onError(String failedUrl) {
@@ -105,7 +126,7 @@ class _ProductImageBoxState extends State<ProductImageBox> {
         maxHeightDiskCache: cacheH,
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
-        filterQuality: FilterQuality.low,
+        filterQuality: FilterQuality.medium,
         placeholder: (_, _) => const ColoredBox(color: Color(0xFFF1F5F9)),
         errorWidget: (context, url, error) {
           _onError(url);
