@@ -5,6 +5,7 @@ import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format'
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import Gauge, { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -23,6 +24,38 @@ function StatItem({ n, l }) {
       <div className="n"><span className="grad">{n}</span></div>
       <div className="l">{l}</div>
     </div>
+  );
+}
+
+// Hero spotlight — a mini product-detail teaser (design's right column).
+function HeroSpotlight({ p, L, lang }) {
+  const score = Number(p.techScore) || 0;
+  const meta = catMeta(p.category);
+  const price = Number(p.lowestPriceUSD) || 0;
+  return (
+    <Link to={`/product/${p.id}`} className="card glow" style={{ overflow: 'hidden', display: 'block' }}>
+      <div style={{ padding: 18, position: 'relative' }}>
+        {score > 0 && (
+          <span className="gauge-badge" style={{ position: 'absolute', top: 26, right: 26, zIndex: 2 }}>
+            <Gauge value={score} size={32} stroke={4} color={techColor(score)} fontSize={12} />
+            <b style={{ color: techColor(score) }}>{Math.round(score)}</b>
+          </span>
+        )}
+        <div className="img-tile" style={{ aspectRatio: '4 / 3' }}>
+          {p.imageUrl
+            ? <img src={p.imageUrl} alt={p.name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+            : <div className="ph"><span style={{ fontSize: 44 }}>{meta.icon}</span><span className="lbl">{p.brand || meta.label}</span></div>}
+        </div>
+      </div>
+      <div style={{ padding: '4px 18px 18px' }}>
+        {p.brand && <div className="brand-k" style={{ color: 'var(--accent)' }}>{p.brand}</div>}
+        <div style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.3, margin: '4px 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
+        <div className="row" style={{ gap: 8 }}>
+          {score > 0 && <span className="match-pill">⚡ {L('Tech Score', 'Tech Skoru', 'Tech-Score')} {Math.round(score)}</span>}
+          {price > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>${price.toLocaleString(lang)}</span>}
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -155,63 +188,65 @@ export default function Home() {
       .map((c) => ({ value: c.value, count: c.count || 0, meta: catMeta(c.value) }));
   }, [feed.categories]);
 
+  // Spotlight = the highest tech-scored flagship product from the live feed
+  // (prefer phones/laptops/GPUs etc. so the hero shows a hero-worthy device,
+  // not a random accessory), falling back to the best overall.
+  const spotlight = useMemo(() => {
+    const pool = [...(feed.forYou || []), ...(feed.trending || []), ...(feed.newArrivals || [])];
+    if (!pool.length) return null;
+    const FLAG = ['smartphones', 'laptops', 'tablets', 'gpus', 'headphones', 'smartwatches', 'cpus', 'monitors', 'tvs', 'cameras'];
+    const best = (arr) => arr.reduce((b, p) => ((Number(p.techScore) || 0) > (Number(b.techScore) || 0) ? p : b), arr[0]);
+    const flagship = pool.filter((p) => FLAG.includes(String(p.category || '').toLowerCase()) && (p.imageUrl || '').length > 0);
+    if (flagship.length) return best(flagship);
+    const withImg = pool.filter((p) => (p.imageUrl || '').length > 0);
+    return best(withImg.length ? withImg : pool);
+  }, [feed]);
+
   const searchMode = submitted.length > 0;
 
   return (
     <div className="page">
       <div className="container">
-        {/* HERO */}
-        <section className="hero card glow" style={{ padding: 'clamp(26px,5vw,52px)' }}>
+        {/* HERO — two columns: copy + spotlight (design parity) */}
+        <section className="hero card glow" style={{ padding: 'clamp(28px,5vw,56px)' }}>
           <div className="hero-glow" />
-          <div style={{ position: 'relative' }}>
-            <span className="kicker">✨ <b>{L('AI-scored tech · instant comparison', 'AI puanlı teknoloji · anında karşılaştırma', 'KI-bewertete Technik · sofortiger Vergleich')}</b></span>
-            <h1 style={{ marginTop: 18 }}>{t('home.heroTitle')}</h1>
-            <p className="sub" style={{ marginTop: 14 }}>{t('home.heroSubFallback')}</p>
-
-            {/* search */}
-            <div className="h-search-wrap" ref={searchRef} style={{ maxWidth: 640, margin: '24px 0 0' }}>
-              <form className="h-search" onSubmit={search}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input value={q}
-                  onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); }}
-                  onFocus={() => setSuggestOpen(true)}
-                  placeholder={t('home.searchPlaceholder')} autoComplete="off" />
-                <button type="submit" className="btn btn-primary">{t('common.search')}</button>
-              </form>
-              {suggestOpen && q.trim().length > 0 && (
-                <div className="h-suggest">
-                  {searching && <div className="h-suggest-state">{t('common.loading')}</div>}
-                  {!searching && searchResults.slice(0, 8).map((p) => (
-                    <button type="button" className="h-suggest-item" key={p.id} onClick={() => openProduct(p)}>
-                      <img src={p.imageUrl || PLACEHOLDER_IMG} alt=""
-                        onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
-                      <span>
-                        {p.brand && <small>{p.brand}</small>}
-                        <b>{p.name}</b>
-                      </span>
-                      <i className={`score ${scoreClass(p.techScore)}`}>⚡ {scoreLabel(p.techScore)}</i>
-                    </button>
-                  ))}
-                  {!searching && searchResults.length === 0 && (
-                    <div className="h-suggest-state">{t('catalog.emptySearch', { q: q.trim() })}</div>
-                  )}
+          <div className="between wrap" style={{ position: 'relative', gap: 40, alignItems: 'center' }}>
+            <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+              <span className="kicker">✨ <b>{L('AI shopping assistant', 'AI alışveriş asistanı', 'KI-Einkaufsassistent')}</b></span>
+              <h1 style={{ marginTop: 18 }}>
+                {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
+                <span className="grad">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
+              </h1>
+              <p className="sub" style={{ marginTop: 16 }}>
+                {L(
+                  '106,000+ real products scored by AI. Compare specs side by side, paste any link, and find the product that fits you.',
+                  '106.000+ gerçek ürün AI ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve ihtiyacına en uygun ürünü bul.',
+                  '106.000+ echte Produkte mit KI bewertet. Vergleiche Specs Seite an Seite, füge einen Link ein und finde das passende Produkt.',
+                )}
+              </p>
+              <div className="row wrap" style={{ gap: 12, marginTop: 26 }}>
+                <a className="gp-badge" style={{ padding: '12px 20px 12px 16px' }}
+                  href="https://play.google.com/store/apps/details?id=com.compair.app" target="_blank" rel="noopener">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <path d="M3.6 1.8 13.8 12 3.6 22.2a1 1 0 0 1-.6-.92V2.73a1 1 0 0 1 .6-.93zm11 11 2.3 2.3-10.9 6.3 8.6-8.6zm3.7-3.7 2.4 1.37c.79.46.79 1.6 0 2.05l-2.37 1.37-2.5-2.52 2.47-2.27zM5.86 2.66 16.8 9 14.5 11.3 5.86 2.66z" />
+                  </svg>
+                  <span><small>{L('GET IT ON', 'İNDİR', 'LADE BEI')}</small><span style={{ fontSize: 16, fontWeight: 800, display: 'block' }}>{t('header.googlePlay')}</span></span>
+                </a>
+                <Link to="/compare" className="btn btn-ghost btn-lg">⚖ {t('nav.compare')}</Link>
+              </div>
+              {feed.total > 0 && (
+                <div className="row wrap" style={{ gap: 34, marginTop: 34 }}>
+                  <StatItem n={feed.total.toLocaleString(lang)} l={L('scored products', 'puanlanan ürün', 'bewertete Produkte')} />
+                  <StatItem n={`${feed.categories.length}+`} l={L('categories', 'kategori', 'Kategorien')} />
+                  <StatItem n="3" l={L('languages', 'dil', 'Sprachen')} />
                 </div>
               )}
             </div>
-            {searchMode && (
-              <button className="h-clear" type="button" onClick={clearSearch} style={{ marginTop: 12 }}>
-                {t('catalog.clear')}
-              </button>
-            )}
 
-            {/* stats */}
-            {feed.total > 0 && !searchMode && (
-              <div className="row wrap" style={{ gap: 34, marginTop: 30 }}>
-                <StatItem n={feed.total.toLocaleString(lang)} l={L('products', 'ürün', 'Produkte')} />
-                <StatItem n={`${feed.categories.length}+`} l={L('categories', 'kategori', 'Kategorien')} />
-                <StatItem n="3" l="TR · EN · DE" />
+            {/* spotlight — highest-scored product from the live feed */}
+            {spotlight && (
+              <div style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
+                <HeroSpotlight p={spotlight} L={L} lang={lang} />
               </div>
             )}
           </div>
