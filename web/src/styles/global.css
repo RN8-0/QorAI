@@ -17,6 +17,7 @@
 
   --grad-brand: linear-gradient(135deg, var(--brand-deep), var(--brand-blue), var(--brand-cyan));
   --grad-ai: linear-gradient(90deg, var(--brand-cyan), var(--brand-blue));
+  --grad-violet: linear-gradient(135deg, #7C3AED, #4F46E5);
   --brand-grad: var(--grad-ai); /* legacy alias */
 
   /* semantic */
@@ -279,6 +280,42 @@ input, textarea, select { font-family: inherit; }
 .bar-track { height: 9px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 99px; background: var(--grad-ai); }
 .bar-row .bv { font-size: 13px; font-weight: 800; text-align: right; }
+@media (max-width: 760px) { .bar-row { grid-template-columns: 96px 1fr 40px; gap: 10px; } }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--divider); overflow-x: auto; }
+.tabs button { padding: 13px 18px; font-weight: 700; font-size: 15px; color: var(--text-3); position: relative; white-space: nowrap; }
+.tabs button.on { color: var(--accent); }
+.tabs button.on::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 3px; border-radius: 3px; background: var(--accent); }
+.tabs.violet button.on { color: var(--violet); }
+.tabs.violet button.on::after { background: var(--violet); }
+
+/* advantages / disadvantages */
+.ad-card { border-radius: var(--r-lg); padding: 20px; border: 1px solid; }
+.ad-pos { background: color-mix(in srgb, var(--emerald) 7%, transparent); border-color: color-mix(in srgb, var(--emerald) 22%, transparent); }
+.ad-neg { background: color-mix(in srgb, var(--amber) 7%, transparent); border-color: color-mix(in srgb, var(--amber) 22%, transparent); }
+.ad-card h4 { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.ad-pos h4 { color: var(--emerald); }
+.ad-neg h4 { color: var(--amber); }
+.ad-card ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.ad-card li { display: flex; gap: 9px; align-items: flex-start; padding: 6px 0; font-size: 14px; line-height: 1.45; }
+.ad-pos li { color: var(--emerald); }
+.ad-neg li { color: var(--amber); }
+.ad-card li span { color: var(--text); }
+
+/* price row */
+.price-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); }
+.price-row .store { font-weight: 700; }
+.price-row .amt { font-size: 18px; font-weight: 800; }
+.best { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; color: var(--emerald); background: color-mix(in srgb, var(--emerald) 14%, transparent); padding: 3px 7px; border-radius: 6px; }
+
+/* premium feature row */
+.pfeat { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); transition: 0.18s; }
+.pfeat:hover { border-color: var(--border-strong); }
+.pfeat .pic { width: 48px; height: 48px; border-radius: var(--r-md); display: grid; place-items: center; color: #fff; flex-shrink: 0; }
+.tag-violet { color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, transparent); }
+.btn-buy { background: linear-gradient(135deg, #16A34A, #22C55E); color: #fff; }
+.btn-buy:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(34, 197, 94, 0.35); }
 
 /* how it works step */
 .step { display: flex; gap: 18px; padding: 20px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
@@ -313,6 +350,12 @@ input, textarea, select { font-family: inherit; }
 /* home trending list grid */
 .h-trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 640px) { .h-trend-grid { grid-template-columns: 1fr; } }
+
+/* product detail grid */
+@media (max-width: 860px) {
+  .prod-grid { grid-template-columns: 1fr !important; }
+  .prod-gallery { position: static !important; }
+}
 
 /* google-play badge */
 .gp-badge { display: inline-flex; align-items: center; gap: 9px; padding: 8px 14px 8px 12px; border-radius: var(--r-md); background: var(--text); color: var(--bg); font-weight: 700; font-size: 13px; transition: 0.18s; white-space: nowrap; }

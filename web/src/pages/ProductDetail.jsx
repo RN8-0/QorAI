@@ -4,8 +4,9 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, scoreClass, scoreLabel, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
+import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
@@ -15,6 +16,34 @@ import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
 const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;
+
+// Deterministic "fit" score for the web (there is no per-user profile here): a
+// stable derivation from the tech score so the dual gauge mirrors the app.
+function matchScore(p) {
+  const s = Number(p.techScore) || 0;
+  if (s <= 0) return 0;
+  const id = String(p.id || '');
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 23;
+  return Math.max(45, Math.min(96, Math.round(s * 0.82 + 10 + (h - 11) * 0.6)));
+}
+function bandLabel(s, L) {
+  return s >= 90 ? L('Excellent', 'Mükemmel', 'Exzellent')
+    : s >= 75 ? L('Good', 'İyi', 'Gut')
+    : s >= 55 ? L('Average', 'Orta', 'Durchschnitt')
+    : L('Weak', 'Zayıf', 'Schwach');
+}
+const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
+
+function premiumFeats(L) {
+  return [
+    { emoji: '📈', color: '#10B981', t: L('AI review summary', 'AI yorum özeti', 'KI-Bewertungszusammenfassung'), d: L('Reddit, YouTube & forums distilled', 'Reddit, YouTube ve forumlar özetlenir', 'Reddit, YouTube & Foren destilliert') },
+    { emoji: '🧠', color: '#7C3AED', t: L('Deep AI analysis', 'Derin AI analizi', 'Tiefe KI-Analyse'), d: L('A detailed report tuned to your profile', 'Profiline göre detaylı rapor', 'Detaillierter Bericht für dein Profil') },
+    { emoji: '🔀', color: '#F97316', t: L('Smart alternatives', 'Akıllı alternatifler', 'Smarte Alternativen'), d: L('Better-value picks in the same class', 'Aynı sınıfta daha iyi değerli seçenekler', 'Bessere Optionen derselben Klasse') },
+    { emoji: '🧑‍💼', color: '#2196F3', t: L('AI advisor chat', 'AI danışman sohbeti', 'KI-Berater-Chat'), d: L('Ask anything about this product', 'Bu ürün hakkında her şeyi sor', 'Frag alles zu diesem Produkt') },
+    { emoji: '📉', color: '#10B981', t: L('Price prediction', 'Fiyat tahmini', 'Preisprognose'), d: L('Know the best time to buy', 'En iyi alım zamanını öğren', 'Kenne den besten Kaufzeitpunkt') },
+  ];
+}
 
 function sectionIcon(name) {
   const n = (name || '').toLowerCase();
@@ -191,6 +220,7 @@ function buildProductSeo(p, t) {
 export default function ProductDetail() {
   const { id } = useParams();
   const { t, lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { has, toggle } = useCompare();
 
   const [p, setP] = useState(null);
@@ -281,151 +311,184 @@ export default function ProductDetail() {
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
   const displayName = localizedProductName(p, lang);
 
+  const tech = Number(p.techScore) || 0;
+  const match = matchScore(p);
+  const price = Number(p.lowestPriceUSD) || 0;
+
   return (
-    <div className="pd">
-      <div className="container">
-        <div className="pd-crumb">
-          <Link to="/">{t('nav.home')}</Link> <span>/</span>
-          <span>{meta.label}</span> <span>/</span>
-          <b>{displayName}</b>
+    <div className="page">
+      <div className="container" style={{ maxWidth: 1080 }}>
+        {/* top action row */}
+        <div className="between" style={{ marginBottom: 18 }}>
+          <button className="iconbtn" aria-label="back"
+            onClick={() => (window.history.length > 1 ? window.history.back() : null)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
+          <div className="row" style={{ gap: 8 }}>
+            {has(p.id) ? (
+              <Link to="/compare" className="btn btn-ghost" style={{ padding: '9px 16px' }}>⚖ {t('pd.openCompare')}</Link>
+            ) : (
+              <button className="btn btn-ghost" style={{ padding: '9px 16px' }}
+                onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>⚖ {t('pd.addCompare')}</button>
+            )}
+            <button className="btn btn-ghost"
+              onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
+              💬 {t('pd.askAi')}
+            </button>
+          </div>
         </div>
 
-        {/* HERO */}
-        <div className="pd-top">
-          <div className="pd-gallery">
-            <div className="pd-main-img">
-              <img src={images[activeImg] || PLACEHOLDER_IMG} alt={displayName}
-                onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
-            </div>
-            {images.length > 1 && (
-              <div className="pd-thumbs">
-                {images.slice(0, 6).map((src, i) => (
-                  <button key={i} className={'pd-thumb' + (i === activeImg ? ' active' : '')}
-                    onClick={() => setActiveImg(i)}>
-                    <img src={src} alt="" onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
-                  </button>
-                ))}
+        <div className="prod-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', gap: 28, alignItems: 'start' }}>
+          {/* gallery */}
+          <div className="prod-gallery" style={{ position: 'sticky', top: 88 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <div className="img-tile" style={{ aspectRatio: '1', marginBottom: 14 }}>
+                <img src={images[activeImg] || PLACEHOLDER_IMG} alt={displayName}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
               </div>
-            )}
-          </div>
-
-          <div className="pd-info">
-            <span className="pd-cat">{meta.icon} {meta.label}</span>
-            {p.brand && <div className="pd-brand">{p.brand}</div>}
-            <h1 className="pd-name">{displayName}</h1>
-
-            <div className="pd-score-box">
-              <div className={'pd-score-ring ' + scoreClass(p.techScore)}>
-                <b>{scoreLabel(p.techScore)}</b>
-                <small>/ 100</small>
-              </div>
-              <div className="pd-score-text">
-                <strong>{t('pd.scoreTitle')}</strong>
-                <span>{t('pd.scoreDesc')}</span>
-              </div>
-            </div>
-
-            {chips.length > 0 && (
-              <div className="pd-keybars">
-                {chips.map((c) => (
-                  <div className="pd-keybar" key={c.labelKey}>
-                    <div className="pd-keybar-row"><span>{t(c.labelKey)}</span><b>{c.value}</b></div>
-                    <div className="pd-keybar-track"><i style={{ width: `${c.pct}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="pd-actions">
-              {has(p.id) ? (
-                <>
-                  <Link to="/compare" className="btn btn-primary">{t('pd.openCompare')}</Link>
-                  <button className="btn btn-ghost" onClick={() => toggle(p.id)}>{t('pd.inList')}</button>
-                </>
-              ) : (
-                <button className="btn btn-primary"
-                  onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>
-                  {t('pd.addCompare')}
-                </button>
+              {images.length > 1 && (
+                <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
+                  {images.slice(0, 6).map((src, i) => (
+                    <button key={i} className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setActiveImg(i)}>
+                      <img src={src} alt="" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                    </button>
+                  ))}
+                </div>
               )}
-              <button className="btn btn-ghost"
-                onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
-                detail: t('pd.askAiQuestion', { name: displayName }),
-                }))}>
-                {t('pd.askAi')}
-              </button>
             </div>
           </div>
-        </div>
 
-        {/* TABS */}
-        <div className="pd-tabs">
-          <button className={tab === 'specs' ? 'active' : ''} onClick={() => setTab('specs')}>
-            {t('pd.tabSpecs')}
-          </button>
-          <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
-            {t('pd.tabAi')}
-          </button>
-        </div>
+          {/* info */}
+          <div>
+            <div className="brand-k" style={{ color: 'var(--brand-cyan)', fontSize: 13, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' }}>{p.brand || meta.label}</div>
+            <h1 style={{ fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.12, margin: '6px 0 18px' }}>{displayName}</h1>
 
-        <div className="pd-tab-body">
-          {tab === 'specs' && (
-            <div className="pd-specs fade-up">
-              {p.description && <p className="pd-desc">{p.description}</p>}
-              {(pros.length > 0 || cons.length > 0) && (
-                <div className="pd-pc">
+            {/* dual score */}
+            <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="row" style={{ flex: 1, gap: 14 }}>
+                <Gauge value={tech} size={64} stroke={6} color={techColor(tech)} />
+                <div>
+                  <div style={{ color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>⚙️ {t('pd.scoreTitle')}</div>
+                  <div style={{ color: techColor(tech), fontWeight: 800, fontSize: 19 }}>{bandLabel(tech, L)}</div>
+                </div>
+              </div>
+              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--divider)', margin: '0 6px' }} />
+              <div className="row" style={{ flex: 1, gap: 14 }}>
+                <Gauge value={match} size={64} stroke={6} color="var(--score-average)" />
+                <div>
+                  <div style={{ color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</div>
+                  <div style={{ color: 'var(--score-average)', fontWeight: 800, fontSize: 19 }}>{bandLabel(match, L)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* buy strip */}
+            {price > 0 && (
+              <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>{L('Best price', 'En iyi fiyat', 'Bester Preis')}</div>
+                  <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em' }}>${price.toLocaleString(lang)}</span>
+                </div>
+                <div className="grow" />
+                <button className="btn btn-buy"
+                  onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
+                  🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot finden')}
+                </button>
+              </div>
+            )}
+
+            {/* tabs */}
+            <div className={'tabs' + (tab === 'premium' ? ' violet' : '')} style={{ marginTop: 22 }}>
+              <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
+              <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>{t('pd.tabAi')}</button>
+              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>Premium</button>
+            </div>
+
+            <div style={{ marginTop: 20 }}>
+              {tab === 'specs' && (
+                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                  {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>{p.description}</p>}
+                  {chips.length > 0 && (
+                    <div className="card pad">
+                      <div className="row" style={{ gap: 8, marginBottom: 16, fontWeight: 800, color: 'var(--brand-cyan)' }}>✨ {L('Key specs', 'Ana Özellikler', 'Wichtige Daten')}</div>
+                      <div className="spec-grid">
+                        {chips.map((c) => (
+                          <div className="spec-cell" key={c.labelKey}>
+                            <div style={{ fontSize: 20 }}>{SPEC_EMOJI[c.labelKey] || '•'}</div>
+                            <div className="sv">{c.value}</div>
+                            <div className="sk">{t(c.labelKey)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {bricks.length > 0 ? (
+                    <div className="card pad">
+                      <div className="row" style={{ gap: 8, marginBottom: 6, fontWeight: 800 }}>📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
+                      <div className="pd-bricks">
+                        {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} dictReady={dictReady} />)}
+                      </div>
+                    </div>
+                  ) : (
+                    !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'ai' && (
+                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
+                    <div className="row" style={{ gap: 9, marginBottom: 10 }}>
+                      <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
+                        <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
+                      </div>
+                    </div>
+                    {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
+                    {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
+                  </div>
                   {pros.length > 0 && (
-                    <div className="pd-pc-col pd-pros">
-                      <h4>{t('pd.pros')}</h4>
-                      <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    <div className="ad-card ad-pos">
+                      <h4>✓ {t('pd.pros').toUpperCase()}</h4>
+                      <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
                     </div>
                   )}
                   {cons.length > 0 && (
-                    <div className="pd-pc-col pd-cons">
-                      <h4>{t('pd.cons')}</h4>
-                      <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    <div className="ad-card ad-neg">
+                      <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
+                      <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
                     </div>
                   )}
                 </div>
               )}
-              {bricks.length > 0 ? (
-                <div className="pd-bricks">
-                  {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} dictReady={dictReady} />)}
-                </div>
-              ) : (
-                !p.description && <div className="pd-note">{t('pd.noSpecs')}</div>
-              )}
-            </div>
-          )}
 
-          {tab === 'ai' && (
-            <div className="fade-up">
-              {aiBusy && (
-                <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
-              )}
-              {!aiBusy && aiText && (
-                <div className="pd-ai">
-                  <div className="pd-ai-head">{t('pd.aiHead')}</div>
-                  <div className="pd-ai-body"><AiText text={aiText} /></div>
+              {tab === 'premium' && (
+                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {premiumFeats(L).map((f, i) => (
+                    <div className="pfeat" key={i}>
+                      <span className="pic" style={{ fontSize: 20, background: `linear-gradient(135deg, ${f.color}, ${f.color}bb)` }}>{f.emoji}</span>
+                      <div className="grow">
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{f.t}</div>
+                        <div className="muted" style={{ fontSize: 13.5 }}>{f.d}</div>
+                      </div>
+                      <span className="tag tag-violet">PRO</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* SIMILAR PRODUCTS */}
+        {/* SIMILAR */}
         {similar.length > 0 && (
-          <section className="pd-section">
-            <div className="pd-section-head">
-              <h2>{t('pd.similar')}</h2>
-              <span>{t('pd.similarDesc')}</span>
+          <>
+            <div className="sec-head" style={{ marginTop: 48 }}><h2><span className="bar" /> {t('pd.similar')}</h2></div>
+            <div className="rail">
+              {similar.map((sp) => <ProductCard key={sp.id} product={sp} />)}
             </div>
-            <div className="pd-sim-row">
-              {similar.map((sp) => (
-                <div className="pd-sim-card" key={sp.id}><ProductCard product={sp} /></div>
-              ))}
-            </div>
-          </section>
+          </>
         )}
 
         {/* REVIEWS */}
