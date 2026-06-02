@@ -1,18 +1,20 @@
 import { useState, useRef } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta } from '../lib/format';
+import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 
-const NAV = [
-  { to: '/', key: 'nav.home', end: true },
+// Order: Home, then the Categories mega-menu trigger, then the tools.
+const NAV_REST = [
   { to: '/compare', key: 'nav.compare' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
 ];
+const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 
 const SEG_LANGS = ['tr', 'en', 'de'];
 
@@ -32,14 +34,12 @@ const CAT_GROUPS = [
 ];
 
 export default function Header() {
-  const nav = useNavigate();
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const { t, lang, setLang } = useI18n();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
-  const [hq, setHq] = useState('');
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
   // Mega-menu open/close with a small grace delay so moving the cursor from the
@@ -53,12 +53,6 @@ export default function Header() {
   const isPremium = premiumStatus(user).isPremium;
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
 
-  function submitSearch(e) {
-    e.preventDefault();
-    const term = hq.trim();
-    nav(term ? `/?q=${encodeURIComponent(term)}` : '/');
-  }
-
   return (
     <>
       <header className="appbar">
@@ -69,6 +63,10 @@ export default function Header() {
           </Link>
 
           <nav className="nav" onMouseLeave={closeCatSoon}>
+            <NavLink to="/" end onMouseEnter={closeCatNow}
+              className={({ isActive }) => (isActive ? 'active' : '')}>
+              {t('nav.home')}
+            </NavLink>
             <button
               type="button"
               className={'nav-cat' + (catMenu ? ' active' : '')}
@@ -81,8 +79,8 @@ export default function Header() {
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end}
+            {NAV_REST.map((n) => (
+              <NavLink key={n.to} to={n.to}
                 onMouseEnter={closeCatNow}
                 className={({ isActive }) => (isActive ? 'active' : '')}>
                 {t(n.key)}
@@ -106,24 +104,12 @@ export default function Header() {
                       ))}
                     </div>
                   ))}
-                  <div className="hd-mega-cta">
-                    <Link to="/category" className="btn btn-primary" onClick={closeCatNow}>
-                      {L('See all categories', 'Tüm kategoriler', 'Alle Kategorien')} →
-                    </Link>
-                  </div>
                 </div>
               </div>
             </>
           )}
 
           <div className="grow" />
-
-          <form className="searchbox hide-md" onSubmit={submitSearch}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input value={hq} onChange={(e) => setHq(e.target.value)} placeholder={t('home.searchPlaceholder')} />
-          </form>
 
           <div className="seg" role="group" aria-label="language">
             {SEG_LANGS.map((code) => (
@@ -139,14 +125,8 @@ export default function Header() {
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>}
           </button>
 
-          <a className="gp-badge desk-only"
-            href="https://play.google.com/store/apps/details?id=com.compair.app"
-            target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M3.6 1.8 13.8 12 3.6 22.2a1 1 0 0 1-.6-.92V2.73a1 1 0 0 1 .6-.93zm11 11 2.3 2.3-10.9 6.3 8.6-8.6zm3.7-3.7 2.4 1.37c.79.46.79 1.6 0 2.05l-2.37 1.37-2.5-2.52 2.47-2.27zM5.86 2.66 16.8 9 14.5 11.3 5.86 2.66z" />
-            </svg>
-            <span><small>{L('GET IT ON', 'İNDİR', 'LADE BEI')}</small><span style={{ fontSize: 13, display: 'block' }}>{t('header.googlePlay')}</span></span>
-          </a>
+          <PlayBadge size="sm" className="desk-only"
+            getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
 
           {user ? (
             <div className="hd-user">
@@ -170,7 +150,11 @@ export default function Header() {
               )}
             </div>
           ) : (
-            <button className="btn btn-primary hd-signin" onClick={openAuth}>{t('nav.signIn')}</button>
+            <button className="iconbtn hd-signin-av" onClick={openAuth} title={t('nav.signIn')} aria-label={t('nav.signIn')}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            </button>
           )}
 
           <button className="iconbtn hd-burger" onClick={() => setDrawer((d) => !d)} aria-label={t('header.menu')}>

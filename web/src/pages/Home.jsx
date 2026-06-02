@@ -7,6 +7,7 @@ import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
+import PlayBadge from '../components/PlayBadge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -220,28 +221,26 @@ export default function Home() {
               </h1>
               <p className="sub" style={{ marginTop: 16 }}>
                 {L(
-                  '106,000+ real products scored by AI. Compare specs side by side, paste any link, and find the product that fits you.',
-                  '106.000+ gerçek ürün AI ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve ihtiyacına en uygun ürünü bul.',
-                  '106.000+ echte Produkte mit KI bewertet. Vergleiche Specs Seite an Seite, füge einen Link ein und finde das passende Produkt.',
+                  'Real products scored by AI. Compare specs side by side, paste any link, and find the product that fits you.',
+                  'Gerçek ürünler yapay zekâ ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve ihtiyacına en uygun ürünü bul.',
+                  'Echte Produkte mit KI bewertet. Vergleiche Specs, füge einen Link ein und finde das passende Produkt.',
                 )}
               </p>
-              <div className="row wrap" style={{ gap: 12, marginTop: 26 }}>
-                <a className="gp-badge" style={{ padding: '12px 20px 12px 16px' }}
-                  href="https://play.google.com/store/apps/details?id=com.compair.app" target="_blank" rel="noopener">
-                  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                    <path d="M3.6 1.8 13.8 12 3.6 22.2a1 1 0 0 1-.6-.92V2.73a1 1 0 0 1 .6-.93zm11 11 2.3 2.3-10.9 6.3 8.6-8.6zm3.7-3.7 2.4 1.37c.79.46.79 1.6 0 2.05l-2.37 1.37-2.5-2.52 2.47-2.27zM5.86 2.66 16.8 9 14.5 11.3 5.86 2.66z" />
-                  </svg>
-                  <span><small>{L('GET IT ON', 'İNDİR', 'LADE BEI')}</small><span style={{ fontSize: 16, fontWeight: 800, display: 'block' }}>{t('header.googlePlay')}</span></span>
-                </a>
+
+              {/* product search */}
+              <form className="searchbox hero-search" onSubmit={search}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input value={q} onChange={(e) => setQ(e.target.value)}
+                  placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
+                <button type="submit" className="btn btn-grad">{t('common.search')}</button>
+              </form>
+
+              <div className="row wrap" style={{ gap: 12, marginTop: 16 }}>
+                <PlayBadge getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
                 <Link to="/compare" className="btn btn-ghost btn-lg">⚖ {t('nav.compare')}</Link>
               </div>
-              {feed.total > 0 && (
-                <div className="row wrap" style={{ gap: 34, marginTop: 34 }}>
-                  <StatItem n={feed.total.toLocaleString(lang)} l={L('scored products', 'puanlanan ürün', 'bewertete Produkte')} />
-                  <StatItem n={`${feed.categories.length}+`} l={L('categories', 'kategori', 'Kategorien')} />
-                  <StatItem n="3" l={L('languages', 'dil', 'Sprachen')} />
-                </div>
-              )}
             </div>
 
             {/* spotlight — highest-scored product from the live feed */}
@@ -275,27 +274,6 @@ export default function Home() {
 
         {!searchMode && (
           <>
-            {/* CATEGORIES */}
-            {categories.length > 0 && (
-              <>
-                <div className="sec-head">
-                  <h2><span className="bar" /> {L('Categories', 'Kategoriler', 'Kategorien')}</h2>
-                  <Link to="/category" className="see-all">{t('common.seeAll')} →</Link>
-                </div>
-                <div className="cat-grid">
-                  {categories.map((c) => (
-                    <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`} className="cat-tile">
-                      <span className="cat-ic" style={{ background: `linear-gradient(135deg, ${c.meta.color}, ${c.meta.color}cc)`, boxShadow: `0 8px 20px ${c.meta.color}33` }}>
-                        {c.meta.icon}
-                      </span>
-                      <span className="cn">{c.meta.label}</span>
-                      <span className="dim" style={{ fontSize: 11, fontWeight: 600 }}>{c.count.toLocaleString(lang)}</span>
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-
             {/* FOR YOU */}
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} seeAllTo="/category" layout="rail" />
 
