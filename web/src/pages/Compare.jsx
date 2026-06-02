@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { getProduct, popularProducts, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonHistory } from '../lib/pbHistory';
-import { useT } from '../i18n/index.jsx';
-import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
+import { useI18n } from '../i18n/index.jsx';
+import { catMeta, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
+import ProductImg from '../components/ProductImg.jsx';
+import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import './Compare.css';
@@ -37,6 +39,17 @@ function parseNum(s) {
   return m ? parseFloat(m[0].replace(',', '.')) : null;
 }
 
+// Deterministic "fit" score (no per-user profile on the web) — mirrors the
+// app's dual gauge. Same derivation ProductDetail uses.
+function matchScore(p) {
+  const s = Number(p.techScore) || 0;
+  if (s <= 0) return 0;
+  const id = String(p.id || '');
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 23;
+  return Math.max(45, Math.min(96, Math.round(s * 0.82 + 10 + (h - 11) * 0.6)));
+}
+
 // Returns a boolean per cell — true marks the winning value(s) for the row.
 function rowWinners(key, values) {
   const nums = values.map(parseNum);
@@ -49,7 +62,9 @@ function rowWinners(key, values) {
 }
 
 export default function Compare() {
-  const t = useT();
+  const { t, lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const [tab, setTab] = useState('specs');
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
     description: t('cmp.subtitle', { max: COMPARE_MAX }),
@@ -128,6 +143,17 @@ export default function Compare() {
     setTerm(''); setResults([]); setPicking(false);
   }
 
+  // Hand the comparison off to the floating AI assistant with a ready prompt.
+  function openAiCompare() {
+    const names = products.map((p) => p.name).join(' vs ');
+    const prompt = L(
+      `Compare these products and tell me which is the best choice and why: ${names}`,
+      `Şu ürünleri karşılaştır ve hangisinin neden daha iyi olduğunu söyle: ${names}`,
+      `Vergleiche diese Produkte und sag mir, welches die beste Wahl ist und warum: ${names}`,
+    );
+    window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: prompt }));
+  }
+
   const slots = [...products];
   const canAdd = slots.length < COMPARE_MAX;
 
@@ -162,8 +188,7 @@ export default function Compare() {
               {results.map((r) => (
                 <button key={r.id} className="cmp-result" onClick={() => pick(r)}
                   disabled={ids.includes(r.id)}>
-                  <img src={r.imageUrl || PLACEHOLDER_IMG} alt=""
-                    onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
+                  <ProductImg src={r.imageUrl} alt="" size="thumb" />
                   <span className="cmp-result-name">{r.name}</span>
                   <span className={`score ${scoreClass(r.techScore)}`}>⚡ {scoreLabel(r.techScore)}</span>
                   {ids.includes(r.id) && <span className="cmp-result-in">{t('cmp.added')}</span>}
@@ -195,63 +220,147 @@ export default function Compare() {
             </section>
           </>
         ) : (
-          <div className="cmp-table-wrap">
-            <table className="cmp-table">
-              <thead>
-                <tr>
-                  <th className="cmp-th-spec">{t('cmp.specCol')}</th>
+          <>
+            {/* product header cards with dual rings — app parity */}
+            <div className="cmp-cards">
+              {slots.map((p) => {
+                const m = catMeta(p.category);
+                const tech = Number(p.techScore) || 0;
+                const match = matchScore(p);
+                const isBest = bestScore != null && tech === bestScore;
+                return (
+                  <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
+                    <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
+                    {isBest && products.length > 1 && (
+                      <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
+                    )}
+                    <Link to={`/product/${p.id}`} className="img-tile cmp-card-img">
+                      <ProductImg src={p.imageUrl} alt={p.name} size="card" />
+                    </Link>
+                    {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
+                    <Link to={`/product/${p.id}`} className="cmp-card-name">{p.name}</Link>
+                    <div className="cmp-card-cat">{m.icon} {m.label}</div>
+                    <div className="cmp-rings">
+                      {match > 0 && (
+                        <span className="cmp-ring">
+                          <Gauge value={match} size={46} stroke={4} color="var(--score-average)" fontSize={14} />
+                          <small>{L('Match', 'Uyum', 'Match')}</small>
+                        </span>
+                      )}
+                      {tech > 0 && (
+                        <span className="cmp-ring">
+                          <Gauge value={tech} size={46} stroke={4} color={techColor(tech)} fontSize={14} />
+                          <small>{L('Tech', 'Tech', 'Tech')}</small>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* tabs — Specs · Prices · AI */}
+            <div className="tabs">
+              <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
+                {L('Specs', 'Özellikler', 'Eigenschaften')}
+              </button>
+              <button className={tab === 'prices' ? 'on' : ''} onClick={() => setTab('prices')}>
+                {L('Prices', 'Fiyatlar', 'Preise')}
+              </button>
+              <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>
+                {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
+              </button>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              {tab === 'specs' && (
+                <div className="cmp-table-wrap fade-up">
+                  <table className="cmp-table">
+                    <thead>
+                      <tr>
+                        <th className="cmp-th-spec">{t('cmp.specCol')}</th>
+                        {slots.map((p) => (
+                          <th key={p.id} className="cmp-th-prod cmp-th-compact">
+                            <Link to={`/product/${p.id}`} className="cmp-th-name">{p.name}</Link>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="cmp-row-score">
+                        <td className="cmp-td-spec">{t('cmp.scoreRow')}</td>
+                        {slots.map((p) => {
+                          const isBest = bestScore != null && (Number(p.techScore) || 0) === bestScore;
+                          return (
+                            <td key={p.id} className={isBest ? 'cmp-td-win' : ''}>
+                              <span className={`score ${scoreClass(p.techScore)}`}>{scoreLabel(p.techScore)}</span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                      {specRows.map((row) => (
+                        <tr key={row.key}>
+                          <td className="cmp-td-spec">{row.key}</td>
+                          {row.values.map((v, i) => (
+                            <td key={i}
+                              className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
+                              {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
+                              {v}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      {specRows.length === 0 && (
+                        <tr>
+                          <td className="cmp-td-spec">—</td>
+                          {slots.map((p) => (
+                            <td key={p.id} className="cmp-td-empty">{t('cmp.noSpecData')}</td>
+                          ))}
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {tab === 'prices' && (
+                <div className="cmp-prices fade-up">
                   {slots.map((p) => {
-                    const m = catMeta(p.category);
+                    const price = Number(p.lowestPriceUSD) || 0;
                     return (
-                      <th key={p.id} className="cmp-th-prod">
-                        <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
-                        <Link to={`/product/${p.id}`} className="cmp-th-img">
-                          <img src={p.imageUrl || PLACEHOLDER_IMG} alt={p.name}
-                            onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }} />
-                        </Link>
-                        {p.brand && <div className="cmp-th-brand">{p.brand}</div>}
-                        <Link to={`/product/${p.id}`} className="cmp-th-name">{p.name}</Link>
-                        <div className="cmp-th-cat">{m.icon} {m.label}</div>
-                      </th>
+                      <div className="card pad cmp-price-card" key={p.id}>
+                        <Link to={`/product/${p.id}`} className="cmp-price-name">{p.name}</Link>
+                        {price > 0
+                          ? <div className="cmp-price-amt">${price.toLocaleString(lang)}</div>
+                          : <div className="cmp-price-none">{L('No price yet', 'Henüz fiyat yok', 'Noch kein Preis')}</div>}
+                        <button className="btn btn-buy btn-block"
+                          onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
+                            detail: L(`Find the best offer for ${p.name}`, `${p.name} için en iyi teklifi bul`, `Finde das beste Angebot für ${p.name}`),
+                          }))}>
+                          🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot')}
+                        </button>
+                      </div>
                     );
                   })}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="cmp-row-score">
-                  <td className="cmp-td-spec">{t('cmp.scoreRow')}</td>
-                  {slots.map((p) => {
-                    const isBest = bestScore != null && (Number(p.techScore) || 0) === bestScore;
-                    return (
-                      <td key={p.id} className={isBest ? 'cmp-td-win' : ''}>
-                        <span className={`score ${scoreClass(p.techScore)}`}>{scoreLabel(p.techScore)}</span>
-                      </td>
-                    );
-                  })}
-                </tr>
-                {specRows.map((row) => (
-                  <tr key={row.key}>
-                    <td className="cmp-td-spec">{row.key}</td>
-                    {row.values.map((v, i) => (
-                      <td key={i}
-                        className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
-                        {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
-                        {v}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                {specRows.length === 0 && (
-                  <tr>
-                    <td className="cmp-td-spec">—</td>
-                    {slots.map((p) => (
-                      <td key={p.id} className="cmp-td-empty">{t('cmp.noSpecData')}</td>
-                    ))}
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </div>
+              )}
+
+              {tab === 'ai' && (
+                <div className="card pad-lg cmp-ai fade-up">
+                  <div className="cmp-ai-icon">🤖</div>
+                  <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
+                  <p>{L(
+                    'Let Qor AI weigh these products against each other and recommend the best fit for you.',
+                    'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
+                    'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
+                  )}</p>
+                  <button className="btn btn-grad btn-lg" onClick={openAiCompare}>
+                    ✨ {L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

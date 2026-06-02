@@ -1,174 +1,32 @@
-/* ─── Search strip ───────────────────────────────────────────── */
-.h-searchbar {
-  padding: 42px 0 26px; text-align: center;
-  border-bottom: 1px solid var(--border);
-  background:
-    radial-gradient(ellipse 70% 130% at 50% 0%, rgba(124, 58, 237, 0.09), transparent 70%),
-    linear-gradient(180deg, rgba(124, 58, 237, 0.025), transparent 76%);
-}
-.h-searchbar h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 900; letter-spacing: 0; }
-.h-searchbar > .container > p { color: var(--text2); font-size: 14px; margin-top: 6px; }
-.h-stats {
-  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-  gap: 8px 14px; margin-top: 14px; font-size: 13px; color: var(--text3);
-}
-.h-stats > span { display: inline-flex; align-items: baseline; gap: 5px; }
-.h-stats b { color: var(--accent); font-weight: 800; font-size: 14px; }
-.h-stats-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text3); opacity: 0.5; align-self: center; }
-@media (max-width: 420px) { .h-stats-dot { display: none; } }
-.h-search {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 16px; padding: 8px 8px 8px 15px;
-  transition: border-color 0.14s, box-shadow 0.14s;
-}
-.h-search-wrap { position: relative; max-width: 620px; margin: 18px auto 0; }
-.h-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.h-search svg { color: var(--text3); flex-shrink: 0; }
-.h-search input {
-  flex: 1; min-width: 0; background: none; border: none; outline: none;
-  color: var(--text); font-size: 15px; padding: 8px 4px;
-}
-.h-clear { margin-top: 10px; color: var(--text3); font-size: 12.5px; font-weight: 700; }
-.h-clear:hover { color: var(--accent); }
-.h-suggest {
-  position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 35;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow-lg);
-  padding: 7px; max-height: 430px; overflow-y: auto; text-align: left;
-}
-.h-suggest-item {
-  width: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto;
-  align-items: center; gap: 12px; padding: 8px 10px;
-  border-radius: var(--radius-sm); text-align: left;
-}
-.h-suggest-item:hover { background: var(--bg3); }
-.h-suggest-item img {
-  width: 46px; height: 52px; object-fit: contain; border-radius: 8px;
-  background: #fff; padding: 4px;
-}
-.h-suggest-item span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.h-suggest-item small {
-  color: var(--accent); font-size: 10.5px; font-weight: 800;
-  letter-spacing: 0.06em; text-transform: uppercase;
-}
-.h-suggest-item b {
-  font-size: 13px; line-height: 1.28; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
-}
-.h-suggest-item i { font-style: normal; white-space: nowrap; }
-.h-suggest-state { padding: 16px; color: var(--text2); font-size: 13px; text-align: center; }
+/* Home — product grid + entrance animations.
+   The old .h-* hero / search / category / tools classes were replaced by the
+   shared design-system classes in global.css (.hero, .searchbox, .cat-grid,
+   .sec-head …) and have been removed to kill the dead CSS. Only .card-grid and
+   its entrance animation remain, since the home sections render through it. */
 
-/* ─── Categories — 4×3 grid ──────────────────────────────────── */
-.h-catgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-.h-cat {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; min-height: 112px; padding: 18px 10px; border-radius: 20px;
-  background: var(--bg2); border: 1px solid var(--border);
-  transition: border-color 0.13s, transform 0.13s, background 0.13s, box-shadow 0.13s;
-  text-align: center;
-}
-.h-cat:hover {
-  border-color: color-mix(in srgb, var(--cat-color, var(--accent)) 45%, var(--border));
-  background: color-mix(in srgb, var(--cat-color, var(--accent)) 12%, var(--bg2));
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px color-mix(in srgb, var(--cat-color, var(--accent)) 12%, transparent);
-}
-.h-cat-ic {
-  width: 60px; height: 60px; border-radius: 20px;
-  background: color-mix(in srgb, var(--cat-color, var(--accent)) 22%, transparent);
-  color: var(--cat-color, var(--accent));
-  display: flex; align-items: center; justify-content: center; font-size: 23px;
-}
-.h-cat-label {
-  font-size: 12.5px; font-weight: 700; color: var(--text);
-  line-height: 1.3;
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 14px;
 }
 
-/* ─── Sections ───────────────────────────────────────────────── */
-.h-sec { padding: 38px 0 0; }
-.h-sec:last-child { padding-bottom: 16px; }
-.h-sec-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 16px; gap: 14px;
+@keyframes hPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: none; }
 }
-.h-sec-head h2 {
-  font-size: 19px; font-weight: 800; letter-spacing: -0.02em;
-  display: flex; align-items: center; gap: 10px;
-}
-.h-sec-head h2::before {
-  content: ''; width: 5px; height: 21px; border-radius: 999px; background: var(--brand-grad);
-}
-.h-sec-all { color: var(--accent); font-size: 12.5px; font-weight: 800; white-space: nowrap; }
-.h-sec-all:hover { text-decoration: underline; }
-.h-empty {
-  padding: 28px; border: 1px dashed var(--border); border-radius: var(--radius);
-  color: var(--text2); text-align: center; background: var(--bg2);
-}
-
-.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 14px; }
-
-.h-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.h-tool {
-  display: flex; flex-direction: column; gap: 3px;
-  padding: 16px 18px; border-radius: var(--radius);
-  background: var(--bg2); border: 1px solid var(--border); transition: all 0.14s;
-}
-.h-tool:hover { border-color: var(--accent-ring); transform: translateY(-2px); }
-.h-tool b { font-size: 14px; font-weight: 700; }
-.h-tool span { font-size: 12.5px; color: var(--text2); }
-
-/* ─── Entrance animations ────────────────────────────────────── */
-@keyframes hFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-@keyframes hPop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .h-searchbar { animation: hFadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .h-searchbar h1 { animation: hFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.04s; }
-  .h-search-wrap { animation: hFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.12s; }
-  .home .h-sec { animation: hFadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.06s; }
-
-  .h-catgrid .h-cat { animation: hPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .h-catgrid .h-cat:nth-child(1) { animation-delay: 0.02s; }
-  .h-catgrid .h-cat:nth-child(2) { animation-delay: 0.05s; }
-  .h-catgrid .h-cat:nth-child(3) { animation-delay: 0.08s; }
-  .h-catgrid .h-cat:nth-child(4) { animation-delay: 0.11s; }
-  .h-catgrid .h-cat:nth-child(5) { animation-delay: 0.14s; }
-  .h-catgrid .h-cat:nth-child(6) { animation-delay: 0.17s; }
-  .h-catgrid .h-cat:nth-child(n + 7) { animation-delay: 0.2s; }
-
   .card-grid > * { animation: hPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
   .card-grid > *:nth-child(1) { animation-delay: 0.03s; }
   .card-grid > *:nth-child(2) { animation-delay: 0.07s; }
   .card-grid > *:nth-child(3) { animation-delay: 0.11s; }
   .card-grid > *:nth-child(n + 4) { animation-delay: 0.14s; }
-
-  .h-tools .h-tool { animation: hPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .h-tools .h-tool:nth-child(2) { animation-delay: 0.05s; }
-  .h-tools .h-tool:nth-child(3) { animation-delay: 0.1s; }
-  .h-tools .h-tool:nth-child(4) { animation-delay: 0.15s; }
 }
 
 @media (max-width: 920px) {
-  .h-catgrid {
-    display: flex;
-    gap: 14px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    scroll-snap-type: x proximity;
-  }
-  .h-cat { min-width: 98px; min-height: 92px; scroll-snap-align: start; }
-  .h-cat-ic { width: 58px; height: 58px; }
   .card-grid { grid-template-columns: repeat(2, 1fr); }
-  .h-tools { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
-  .card-grid { grid-template-columns: 1fr; }
-  .h-tools { grid-template-columns: 1fr; }
-  .h-search { flex-wrap: wrap; }
-  .h-search input { width: 100%; }
-  .h-search .btn { width: 100%; }
-  .h-suggest-item { grid-template-columns: 44px minmax(0, 1fr); }
-  .h-suggest-item i { display: none; }
+  /* Two columns on phones, mirroring the app's For-You grid. */
+  .card-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }

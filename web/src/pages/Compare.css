@@ -71,6 +71,68 @@
   display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 14px;
 }
 
+/* ─── Product header cards (dual rings — app parity) ─────────── */
+.cmp-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px; margin-bottom: 20px;
+}
+.cmp-card {
+  position: relative; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 14px 14px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.cmp-card.best {
+  border-color: color-mix(in srgb, var(--score-excellent) 40%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--score-excellent) 22%, transparent),
+    0 14px 32px color-mix(in srgb, var(--score-excellent) 10%, transparent);
+}
+.cmp-best-tag {
+  position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.04em; color: var(--score-excellent);
+  background: color-mix(in srgb, var(--score-excellent) 14%, transparent);
+  padding: 3px 8px; border-radius: 999px;
+}
+.cmp-card-img { width: 100%; max-width: 150px; aspect-ratio: 1; margin-bottom: 6px; }
+.cmp-card-brand {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--accent);
+}
+.cmp-card-name {
+  font-size: 14px; font-weight: 700; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cmp-card-name:hover { color: var(--accent); }
+.cmp-card-cat { font-size: 11.5px; color: var(--text3); margin-bottom: 4px; }
+.cmp-rings { display: flex; gap: 18px; margin-top: auto; padding-top: 10px; }
+.cmp-ring { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cmp-ring small {
+  font-size: 9.5px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* compact spec-table head — the cards above carry the rich product header now */
+.cmp-th-compact { padding-top: 12px; min-width: 150px; text-align: left; }
+
+/* ─── Prices tab ─────────────────────────────────────────────── */
+.cmp-prices {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px;
+}
+.cmp-price-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+.cmp-price-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.cmp-price-name:hover { color: var(--accent); }
+.cmp-price-amt { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.cmp-price-none { font-size: 14px; color: var(--text3); font-weight: 600; padding: 6px 0; }
+
+/* ─── AI tab ─────────────────────────────────────────────────── */
+.cmp-ai { text-align: center; max-width: 540px; margin: 0 auto; align-items: center; gap: 12px; }
+.cmp-ai, .cmp-ai.card { display: flex; flex-direction: column; }
+.cmp-ai-icon {
+  width: 64px; height: 64px; border-radius: 20px; background: var(--grad-violet);
+  display: grid; place-items: center; font-size: 32px;
+}
+.cmp-ai h3 { font-size: 20px; font-weight: 800; }
+.cmp-ai p { color: var(--text2); line-height: 1.55; }
+
 /* ─── Comparison table ───────────────────────────────────────── */
 .cmp-table-wrap { overflow-x: auto; padding-bottom: 30px; }
 .cmp-table {

@@ -95,7 +95,12 @@
 }
 .aib-input button[type='submit']:disabled { opacity: 0.45; }
 
+/* Lift the FAB + panel above the mobile bottom tab bar (≈72px tall). */
+@media (max-width: 860px) {
+  .aib-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .aib-panel { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+}
 @media (max-width: 480px) {
-  .aib-fab { right: 16px; bottom: 16px; }
-  .aib-panel { right: 8px; bottom: 84px; width: calc(100vw - 16px); }
+  .aib-fab { right: 16px; }
+  .aib-panel { right: 8px; width: calc(100vw - 16px); }
 }

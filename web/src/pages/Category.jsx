@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { catMeta } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
-import { useT } from '../i18n/index.jsx';
+import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
@@ -24,6 +24,21 @@ const SCORES = [
 const PER_PAGE = 24;
 const COLLAPSED = 8;
 
+// Grouped category directory shown when no specific category is selected, so
+// /category is a real browse page instead of a dead-end "pick from home" note.
+const ALL_CAT_GROUPS = [
+  { title: { en: 'Mobile Devices', tr: 'Mobil Cihazlar', de: 'Mobilgeräte' },
+    cats: ['smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops'] },
+  { title: { en: 'Computer Components', tr: 'Bilgisayar Parçaları', de: 'PC-Komponenten' },
+    cats: ['gpus', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'coolers'] },
+  { title: { en: 'Audio', tr: 'Ses', de: 'Audio' },
+    cats: ['headphones', 'earbuds', 'speakers', 'soundbars'] },
+  { title: { en: 'Photo & Video', tr: 'Foto & Video', de: 'Foto & Video' },
+    cats: ['cameras', 'action_cameras', 'security_cameras', 'monitors', 'tvs', 'gaming_consoles'] },
+  { title: { en: 'Other', tr: 'Diğer', de: 'Sonstiges' },
+    cats: ['printers', 'powerbanks', 'routers', 'keyboards', 'mice'] },
+];
+
 // filterTokens look like "ram:8_gb" — prefix drives the filter group.
 const TOKEN_GROUPS = {
   ram: 'spec.ram', storage: 'spec.storage', screen: 'spec.screen',
@@ -43,15 +58,22 @@ function facetCounts(facets, field) {
 }
 
 export default function Category() {
-  const t = useT();
+  const { t, lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [params] = useSearchParams();
   const cat = (params.get('cat') || '').toLowerCase();
   const meta = catMeta(cat);
 
   useSeo({
-    title: `${meta.label} — Qor AI`,
-    description: t('category.seo', { cat: meta.label }),
-    path: `/category?cat=${encodeURIComponent(cat)}`,
+    title: cat
+      ? `${meta.label} — Qor AI`
+      : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
+    description: cat
+      ? t('category.seo', { cat: meta.label })
+      : L('Browse every product category on Qor AI.',
+          'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
+          'Durchstöbere alle Produktkategorien auf Qor AI.'),
+    path: cat ? `/category?cat=${encodeURIComponent(cat)}` : '/category',
   });
 
   const [q, setQ] = useState('');
@@ -166,11 +188,36 @@ export default function Category() {
   );
   const visibleBrands = brandsOpen || brandQuery ? filteredBrands : filteredBrands.slice(0, COLLAPSED);
 
+  // No category selected → a full browse directory instead of a dead-end.
   if (!cat) {
     return (
-      <div className="container cat-empty">
-        <div className="cat-empty-icon">🗂️</div>
-        <h3>{t('category.pick')}</h3>
+      <div className="page">
+        <div className="container">
+          <div className="cat-hero" style={{ borderRadius: 'var(--r-2xl)', padding: '34px 0', marginBottom: 8 }}>
+            <div className="container">
+              <h1>🗂️ {L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')}</h1>
+              <p>{L('Pick a category to explore products.', 'Ürünleri keşfetmek için bir kategori seç.', 'Wähle eine Kategorie, um Produkte zu entdecken.')}</p>
+            </div>
+          </div>
+          {ALL_CAT_GROUPS.map((g) => (
+            <div key={g.title.en}>
+              <div className="sec-head">
+                <h2><span className="bar" /> {g.title[lang] || g.title.en}</h2>
+              </div>
+              <div className="cat-grid">
+                {g.cats.map((c) => {
+                  const m = catMeta(c);
+                  return (
+                    <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`} className="cat-tile">
+                      <span className="cat-ic" style={{ background: m.color }}>{m.icon}</span>
+                      <span className="cn">{m.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

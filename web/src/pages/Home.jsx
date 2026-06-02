@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
 import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
+import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
@@ -84,8 +85,17 @@ export default function Home() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const { t, lang } = useI18n();
+  const { user } = useAuth();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const searchRef = useRef(null);
+
+  // Time-of-day greeting for signed-in users (app parity).
+  const hour = new Date().getHours();
+  const greetWord = hour < 6 ? L('Good night', 'İyi geceler', 'Gute Nacht')
+    : hour < 12 ? L('Good morning', 'Günaydın', 'Guten Morgen')
+      : hour < 18 ? L('Good afternoon', 'İyi günler', 'Guten Tag')
+        : L('Good evening', 'İyi akşamlar', 'Guten Abend');
+  const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
   const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
@@ -186,7 +196,7 @@ export default function Home() {
         if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
         return (b.count || 0) - (a.count || 0);
       })
-      .slice(0, 8)
+      .slice(0, 12)
       .map((c) => ({ value: c.value, count: c.count || 0, meta: catMeta(c.value) }));
   }, [feed.categories]);
 
@@ -214,6 +224,11 @@ export default function Home() {
           <div className="hero-glow" />
           <div className="between wrap" style={{ position: 'relative', gap: 40, alignItems: 'center' }}>
             <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+              {user && (
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', marginBottom: 12 }}>
+                  {greetWord}, {displayName} 👋
+                </div>
+              )}
               <span className="kicker">✨ <b>{L('AI shopping assistant', 'AI alışveriş asistanı', 'KI-Einkaufsassistent')}</b></span>
               <h1 style={{ marginTop: 18 }}>
                 {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
@@ -274,6 +289,24 @@ export default function Home() {
 
         {!searchMode && (
           <>
+            {/* CATEGORIES — mirrors the app's prominent category grid */}
+            {categories.length > 0 && (
+              <>
+                <div className="sec-head">
+                  <h2><span className="bar" /> {L('Categories', 'Kategoriler', 'Kategorien')}</h2>
+                  <Link to="/category" className="see-all">{t('common.seeAll')} →</Link>
+                </div>
+                <div className="cat-grid">
+                  {categories.map((c) => (
+                    <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`} className="cat-tile">
+                      <span className="cat-ic" style={{ background: c.meta.color }}>{c.meta.icon}</span>
+                      <span className="cn">{c.meta.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+
             {/* FOR YOU */}
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} seeAllTo="/category" layout="rail" />
 
