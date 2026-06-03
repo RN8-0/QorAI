@@ -34,20 +34,20 @@
   animation: hdMegaIn 0.18s ease;
 }
 @keyframes hdMegaIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-.hd-mega-inner {
+.hd-mega .hd-mega-inner {
   display: block;
-  padding: 14px 24px 18px;
+  padding: 22px 24px 30px;
   max-height: min(68vh, 560px);
   overflow-y: auto;
 }
 .hd-mega-head {
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
-  padding: 0 0 18px;
+  padding: 0 0 22px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 .hd-mega-head strong { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; }
-.hd-mega-head span { display: block; margin-top: 1px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.hd-mega-head span { display: block; margin-top: 5px; font-size: 13px; font-weight: 600; color: var(--text2); }
 .hd-mega-groups {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -66,14 +66,14 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 7px;
-  padding-bottom: 7px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
 .hd-mega-links {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 18px;
+  gap: 5px 20px;
 }
 .hd-mega-links a {
   display: inline-flex;
