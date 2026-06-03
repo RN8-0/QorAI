@@ -520,7 +520,146 @@ function toggleTheme() {
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
 }
 
+function legalLang() {
+  const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+  const hit = langs.map(l => String(l || '').toLowerCase()).find(l => l.startsWith('tr') || l.startsWith('de') || l.startsWith('ge'));
+  if (!hit) return 'en';
+  return hit.startsWith('tr') ? 'tr' : 'de';
+}
+
+function applyPrivacyLanguage() {
+  const lang = legalLang();
+  document.documentElement.lang = lang;
+  if (lang === 'en') return;
+  const copy = {
+    tr: {
+      title: 'Gizlilik Politikası',
+      desc: 'Qor AI Gizlilik Politikası — kişisel verilerinizi nasıl topladığımızı, kullandığımızı ve koruduğumuzu öğrenin.',
+      home: 'Ana Sayfa',
+      badge: 'Gizliliğiniz Önemli',
+      updated: 'Son güncelleme: 21 Nisan 2025',
+      intro: 'Qor AI’da gizliliğiniz sonradan düşünülmüş bir ayrıntı değil, temel bir haktır. Bu politika hangi verileri topladığımızı, bunları nasıl kullandığımızı ve bilgileriniz üzerindeki kontrollerinizi açıklar.',
+      tocLabel: 'Bu sayfada',
+      tocMobile: 'İçindekiler',
+      sectionWord: 'Bölüm',
+      footer: ['© 2025 Qor AI · qorai.net', 'Ana Sayfa', 'SSS', 'Gizlilik Politikası', 'Kullanım Koşulları'],
+      toc: [
+        '1. Topladığımız Bilgiler',
+        '2. Verilerinizi Nasıl Kullanırız',
+        '3. Veri Paylaşımı',
+        '4. Veri Güvenliği',
+        '5. Çerezler ve Yerel Depolama',
+        '6. Haklarınız',
+        '7. Veri Saklama',
+        '8. Çocukların Gizliliği',
+        '9. Politika Değişiklikleri',
+        '10. Bize Ulaşın',
+      ],
+      sections: {
+        s1: ['Topladığımız Bilgiler', `
+          <h3>Hesap Bilgileri</h3>
+          <p>Qor AI hesabı oluşturduğunuzda <strong>e-posta adresinizi</strong> ve <strong>görünen adınızı</strong> toplarız. Google ile giriş yaparsanız Google kimlik doğrulama servisinden adınızı, e-posta adresinizi ve profil fotoğrafınızı alırız. Google kişileriniz, takviminiz veya diğer Google servisleriniz için erişim istemeyiz.</p>
+          <h3>Kullanım Verileri</h3>
+          <p>Uygulamayı nasıl kullandığınıza dair şu bilgileri toplarız:</p>
+          <ul><li>Aradığınız ve karşılaştırdığınız ürünler</li><li>Kullandığınız özellikler: karşılaştırma, link analizi ve AI sohbet</li><li>Belirttiğiniz tercih ve kullanım profili</li><li>Uygulama ayarları ve kişiselleştirmeler</li><li>Etkileşimlerin zamanları ve sıklığı; içerik değil</li></ul>
+          <h3>Cihaz Bilgileri</h3>
+          <p>Teknik destek ve performans iyileştirmesi için cihaz türü, işletim sistemi sürümü, uygulama sürümü ve ülke düzeyinde genel bölge bilgisi toplarız. Açık izniniz olmadan kamera, kişiler, mikrofon veya konumunuza erişmeyiz.</p>
+          <h3>AI Etkileşimleri</h3>
+          <p>AI sohbet asistanına ve link analizi özelliğine yazdığınız metinler yanıt üretmek için AI servis sağlayıcılarımıza iletilir. Bu girdiler hizmeti sunmak için geçici olarak işlenebilir, kalıcı biçimde kimliğinizle ilişkilendirilerek saklanmaz.</p>`],
+        s2: ['Bilgilerinizi Nasıl Kullanırız', `
+          <p>Topladığımız bilgileri yalnızca Qor AI’ı sunmak, sürdürmek ve geliştirmek için kullanırız:</p>
+          <ul><li><strong>Hizmet sunumu</strong> — hesabınızı doğrulamak, karşılaştırmaları işlemek ve AI destekli öneriler sunmak.</li><li><strong>Kişiselleştirme</strong> — uyumluluk skorunuzu hesaplamak ve önerileri tercihlerinize göre düzenlemek.</li><li><strong>AI özellikleri</strong> — sorgularınıza doğru yanıt üretmek için gerekli bağlamı AI modellerine iletmek.</li><li><strong>Uygulama iyileştirme</strong> — anonim ve toplu analizlerle deneyimi geliştirmek.</li><li><strong>Güvenlik</strong> — dolandırıcılık, kötüye kullanım ve yetkisiz erişimi önlemek.</li><li><strong>İletişim</strong> — hesap doğrulama, şifre sıfırlama ve onayınızla ürün güncellemeleri göndermek.</li></ul>
+          <p>Verilerinizi reklam profillemesi için kullanmayız ve davranışlarınıza ilişkin içgörüleri üçüncü taraflara satmayız.</p>`],
+        s3: ['Veri Paylaşımı ve Üçüncü Taraflar', `
+          <p><strong>Kişisel verilerinizi satmayız.</strong> Kişisel bilgilerinizi üçüncü tarafların kendi pazarlama veya reklam amaçları için paylaşmayız.</p>
+          <p>Verileri yalnızca bizim adımıza işleyen sınırlı ve güvenilir servis sağlayıcılarıyla çalışırız:</p>
+          <ul><li><strong>PocketBase</strong> — güvenli kullanıcı hesabı saklama ve API altyapısı.</li><li><strong>Google Gemini / DeepSeek</strong> — ürün sorguları ve sohbet mesajlarından AI yanıtları üretmek için kullanılan servisler.</li><li><strong>Typesense</strong> — ürün arama özelliğini hızlı ve ilgili sonuçlarla destekleyen arama altyapısı.</li></ul>
+          <p>Yasa, mahkeme kararı veya yetkili makam talebi gerektirirse ya da Qor AI’ın, kullanıcıların veya kamunun haklarını ve güvenliğini korumak için gerekli olursa bilgilerinizi açıklayabiliriz.</p>
+          <div class="info-box">💡 Her üçüncü tarafı dikkatle değerlendirir ve yalnızca hizmet sunmaları için gerekli minimum veriyi paylaşırız.</div>`],
+        s4: ['Veri Güvenliği', `
+          <p>Verilerinizin güvenliğini ciddiye alır ve birden fazla koruma katmanı uygularız:</p>
+          <ul><li><strong>Aktarım sırasında şifreleme</strong> — uygulama ile sunucular arasındaki veri TLS 1.2 veya üzeriyle şifrelenir.</li><li><strong>Saklama güvenliği</strong> — parolalar düz metin saklanmaz; sektör standardı hash yöntemleri kullanılır.</li><li><strong>Erişim kontrolleri</strong> — üretim verilerine erişim yetkili kişilerle sınırlıdır.</li><li><strong>Düzenli güvenlik incelemeleri</strong> — tespit edilen açıklar hızlıca giderilir.</li><li><strong>Token tabanlı oturum</strong> — kullanıcı oturumları güvenli ve kısa ömürlü token’larla yönetilir.</li></ul>
+          <p>Hiçbir sistem tamamen risksiz değildir. Kişisel bilgilerinizi etkileyen bir ihlal olursa yürürlükteki hukuka uygun şekilde sizi bilgilendiririz.</p>`],
+        s5: ['Çerezler ve Yerel Depolama', `
+          <p>Qor AI mobil uygulaması tarayıcı çerezi kullanmaz. Deneyimi iyileştirmek için cihazınızda yerel depolama kullanabiliriz:</p>
+          <ul><li><strong>Tema tercihi</strong> — açık/koyu mod seçiminiz cihazınızda saklanır.</li><li><strong>Oturum token’ları</strong> — girişinizi korumak için güvenli biçimde saklanır.</li><li><strong>Uygulama tercihleri</strong> — bildirim, görünüm ve başlangıç ayarları.</li><li><strong>Karşılaştırma önbelleği</strong> — yakın geçmişte görüntülenen sonuçların daha hızlı açılması.</li></ul>
+          <p>qorai.net web sitesi yalnızca tema tercihi ve oturum yönetimi gibi temel amaçlarla yerel depolama kullanır; üçüncü taraf takip çerezleri kullanmayız.</p>`],
+        s6: ['Haklarınız ve Tercihleriniz', `
+          <p>Kişisel verileriniz üzerinde anlamlı haklara sahipsiniz. Bu hakları istediğiniz zaman kullanabilirsiniz:</p>
+          <ul><li><strong>Erişim hakkı</strong> — hakkınızda tuttuğumuz kişisel verilerin kopyasını isteme.</li><li><strong>Düzeltme hakkı</strong> — profilinizdeki eksik veya hatalı bilgileri düzeltme.</li><li><strong>Silme hakkı</strong> — hesabınızın ve ilişkili verilerin kalıcı olarak silinmesini isteme.</li><li><strong>Veri taşınabilirliği</strong> — profil, tercih ve karşılaştırma geçmişinizi dışa aktarma.</li><li><strong>Kısıtlama ve itiraz</strong> — belirli durumlarda işlemeyi kısıtlama veya analiz/öneri amaçlı işlemeye itiraz etme.</li><li><strong>Pazarlama izni</strong> — tanıtım iletişimlerinden her zaman çıkma.</li></ul>
+          <p>Bu haklardan herhangi biri için <a href="mailto:contact@arain.digital">contact@arain.digital</a> adresinden bize ulaşabilirsiniz. Taleplere 30 gün içinde yanıt vermeyi hedefleriz.</p>`],
+        s7: ['Veri Saklama', `
+          <p>Kişisel verilerinizi yalnızca hizmeti sunmak ve bu politikada açıklanan amaçları yerine getirmek için gerekli olduğu sürece saklarız:</p>
+          <ul><li><strong>Aktif hesaplar</strong> — hesabınız aktif olduğu sürece hesap verileri, tercihler ve karşılaştırma geçmişi saklanır.</li><li><strong>Silinen hesaplar</strong> — hesap silindiğinde kişisel veriler aktif sistemlerden 30 gün içinde kaldırılır; anonim toplu veriler istatistiksel amaçlarla kalabilir.</li><li><strong>Yedekler</strong> — şifreli yedeklerdeki veriler silme işleminden sonra en fazla 90 gün tutulabilir.</li><li><strong>AI sohbetleri</strong> — sohbet oturumu verileri kimliğinizle ilişkilendirilmiş şekilde kalıcı saklanmaz.</li><li><strong>Yasal yükümlülükler</strong> — bazı kayıtlar hukuki gereklilik nedeniyle daha uzun tutulabilir.</li></ul>`],
+        s8: ['Çocukların Gizliliği', `
+          <p>Qor AI, <strong>13 yaşın</strong> altındaki çocukların kullanımına yönelik değildir. 13 yaşın altındaki çocuklardan bilerek kişisel bilgi toplamayız.</p>
+          <p>Bir ebeveyn veya vasi olarak çocuğunuzun izniniz olmadan bize kişisel bilgi verdiğini düşünüyorsanız <a href="mailto:contact@arain.digital">contact@arain.digital</a> adresinden bizimle iletişime geçin. Doğrulama sonrası ilgili bilgileri sistemlerimizden sileriz.</p>
+          <p>13-18 yaş arası kullanıcıların bu politikayı bir ebeveyn veya vasiyle birlikte incelemesini öneririz.</p>`],
+        s9: ['Bu Politikadaki Değişiklikler', `
+          <p>Uygulamalarımız, teknoloji, yasal gereklilikler veya başka nedenlerle bu Gizlilik Politikasını zaman zaman güncelleyebiliriz. Önemli değişikliklerde:</p>
+          <ul><li>Sayfanın üstündeki son güncelleme tarihini değiştiririz</li><li>Önemli değişiklikler için kayıtlı e-posta adresinize bildirim gönderebiliriz</li><li>Uygulama içinde yeni politikayı incelemeniz için bildirim gösterebiliriz</li></ul>
+          <p>Değişikliklerin yürürlüğe girmesinden sonra Qor AI’ı kullanmaya devam etmeniz güncellenen politikayı kabul ettiğiniz anlamına gelir.</p>`],
+        s10: ['Bize Ulaşın', `
+          <p>Bu Gizlilik Politikası veya veri uygulamalarımızla ilgili soru, endişe ya da talepleriniz için bize ulaşabilirsiniz:</p>
+          <ul><li><strong>E-posta:</strong> <a href="mailto:contact@arain.digital">contact@arain.digital</a></li><li><strong>Web sitesi:</strong> <a href="https://qorai.net">qorai.net</a></li><li><strong>Yanıt süresi:</strong> Gizlilikle ilgili taleplere 5 iş günü içinde yanıt vermeyi hedefleriz.</li></ul>
+          <p>Veri silme veya dışa aktarma talepleri için e-posta konu satırına <strong>“Veri Talebi”</strong> yazmanız işlemi hızlandırır.</p>
+          <div class="info-box">🛡️ Gizlilik endişelerinizi hızlı ve şeffaf biçimde çözmeye kararlıyız.</div>`],
+      },
+    },
+    de: {
+      title: 'Datenschutzerklärung',
+      desc: 'Qor AI Datenschutzerklärung — erfahren Sie, wie wir personenbezogene Daten erheben, nutzen und schützen.',
+      home: 'Startseite',
+      badge: 'Ihre Privatsphäre zählt',
+      updated: 'Zuletzt aktualisiert: 21. April 2025',
+      intro: 'Bei Qor AI ist Datenschutz ein Grundrecht. Diese Erklärung beschreibt, welche Daten wir erheben, wie wir sie nutzen und welche Kontrolle Sie über Ihre Informationen haben.',
+      tocLabel: 'Auf dieser Seite',
+      tocMobile: 'Inhaltsverzeichnis',
+      sectionWord: 'Abschnitt',
+      footer: ['© 2025 Qor AI · qorai.net', 'Startseite', 'FAQ', 'Datenschutzerklärung', 'Nutzungsbedingungen'],
+      toc: ['1. Erhobene Informationen','2. Nutzung Ihrer Daten','3. Datenweitergabe','4. Datensicherheit','5. Cookies & lokaler Speicher','6. Ihre Rechte','7. Aufbewahrung','8. Datenschutz von Kindern','9. Änderungen','10. Kontakt'],
+      sections: {
+        s1: ['Erhobene Informationen', '<p>Wir erheben Kontoangaben wie E-Mail-Adresse und Anzeigename, Nutzungsdaten zu Suche, Vergleich und AI-Funktionen sowie grundlegende Geräteinformationen für Support und Performance. AI-Eingaben werden zur Antwortgenerierung an unsere Dienstleister übermittelt und nicht dauerhaft identifizierbar gespeichert.</p>'],
+        s2: ['Nutzung Ihrer Informationen', '<p>Wir verwenden Daten zur Bereitstellung des Dienstes, Personalisierung, AI-Funktionen, Sicherheit, Produktverbesserung und transaktionaler Kommunikation. Wir verkaufen keine personenbezogenen Daten und erstellen keine Werbeprofile.</p>'],
+        s3: ['Datenweitergabe und Dritte', '<p>Wir verkaufen keine personenbezogenen Daten. Daten werden nur an vertrauenswürdige Dienstleister wie PocketBase, Google Gemini / DeepSeek und Typesense weitergegeben, soweit dies zur Bereitstellung von Qor AI erforderlich ist.</p>'],
+        s4: ['Datensicherheit', '<p>Wir schützen Daten durch TLS-Verschlüsselung, sichere Passwortspeicherung, Zugriffskontrollen, regelmäßige Prüfungen und tokenbasierte Sitzungen. Bei relevanten Vorfällen informieren wir gemäß geltendem Recht.</p>'],
+        s5: ['Cookies und lokaler Speicher', '<p>Die App nutzt keine Browser-Cookies. Lokal gespeichert werden unter anderem Theme-Auswahl, Sitzungsdaten und App-Einstellungen. Die Website nutzt nur notwendigen lokalen Speicher und keine Tracking-Cookies Dritter.</p>'],
+        s6: ['Ihre Rechte', '<p>Sie können Auskunft, Berichtigung, Löschung, Datenexport, Einschränkung oder Widerspruch verlangen. Kontaktieren Sie uns dafür unter <a href="mailto:contact@arain.digital">contact@arain.digital</a>.</p>'],
+        s7: ['Aufbewahrung', '<p>Wir speichern personenbezogene Daten nur so lange, wie es für den Dienst oder rechtliche Anforderungen nötig ist. Gelöschte Konten werden aus aktiven Systemen innerhalb von 30 Tagen entfernt; Backups können bis zu 90 Tage bestehen.</p>'],
+        s8: ['Datenschutz von Kindern', '<p>Qor AI richtet sich nicht an Kinder unter 13 Jahren. Wenn Sie glauben, dass ein Kind uns ohne Zustimmung Daten übermittelt hat, kontaktieren Sie uns bitte.</p>'],
+        s9: ['Änderungen dieser Erklärung', '<p>Wir können diese Datenschutzerklärung aktualisieren. Wesentliche Änderungen werden durch Datum, E-Mail oder App-Hinweis kenntlich gemacht.</p>'],
+        s10: ['Kontakt', '<p>Fragen oder Datenschutzanfragen senden Sie bitte an <a href="mailto:contact@arain.digital">contact@arain.digital</a>. Wir antworten in der Regel innerhalb weniger Werktage.</p>'],
+      },
+    },
+  }[lang];
+
+  document.title = copy.title + ' — Qor AI';
+  const desc = document.querySelector('meta[name="description"]');
+  if (desc) desc.setAttribute('content', copy.desc);
+  document.querySelector('.header-actions a').textContent = copy.home;
+  document.querySelector('.header-actions a').title = copy.home;
+  document.querySelector('.hero-badge').textContent = '🛡️ ' + copy.badge;
+  document.querySelector('.page-hero h1').textContent = copy.title;
+  document.querySelectorAll('.hero-meta span')[0].textContent = '📅 ' + copy.updated;
+  document.querySelector('.hero-intro').textContent = copy.intro;
+  document.querySelectorAll('.toc-label').forEach(el => { el.textContent = copy.tocLabel; });
+  document.querySelector('.toc-mobile summary').childNodes[0].textContent = '📋 ' + copy.tocMobile + ' ';
+  document.querySelectorAll('.toc-nav').forEach(nav => {
+    nav.querySelectorAll('a').forEach((a, i) => { if (copy.toc[i]) a.textContent = copy.toc[i]; });
+  });
+  Object.entries(copy.sections).forEach(([id, value], idx) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    const [title, body] = value;
+    const n = String(idx + 1).padStart(2, '0');
+    section.querySelector('h2').innerHTML = '<span>' + copy.sectionWord + ' ' + n + '</span>' + title;
+    section.querySelector('.section-body').innerHTML = body;
+  });
+  document.querySelectorAll('.site-footer > *').forEach((el, i) => { if (copy.footer[i]) el.textContent = copy.footer[i]; });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applyPrivacyLanguage();
   const t = document.documentElement.getAttribute('data-theme') || 'dark';
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
 

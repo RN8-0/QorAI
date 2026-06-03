@@ -7,7 +7,7 @@ import './Settings.css';
 
 export default function Settings() {
   const { theme, set: setTheme } = useTheme();
-  const { t, lang, setLang, langs } = useI18n();
+  const { t } = useI18n();
   const { user, openAuth, logout } = useAuth();
   useSeo({ title: `${t('settings.title')} — Qor AI`, noindex: true });
 
@@ -27,20 +27,6 @@ export default function Settings() {
             onClick={() => setTheme('dark')}>
             🌙 {t('settings.themeDark')}
           </button>
-        </div>
-      </section>
-
-      {/* Language */}
-      <section className="st-card fade-up">
-        <h2>{t('settings.language')}</h2>
-        <div className="st-langs">
-          {langs.map((l) => (
-            <button key={l.code}
-              className={'st-lang' + (l.code === lang ? ' on' : '')}
-              onClick={() => setLang(l.code)}>
-              <span className="st-lang-flag">{l.flag}</span> {l.label}
-            </button>
-          ))}
         </div>
       </section>
 
@@ -75,7 +61,7 @@ export default function Settings() {
           <a href="/privacy.html">🔒 {t('footer.privacy')}</a>
           <a href="/terms.html">📄 {t('footer.terms')}</a>
           <a href="/faq.html">❓ {t('settings.faq')}</a>
-          <a href="https://play.google.com/store/apps/details?id=com.compair.app"
+          <a href="https://play.google.com/store/apps/details?id=com.qorai.app"
             target="_blank" rel="noopener">▶️ {t('header.googlePlay')}</a>
         </div>
       </section>

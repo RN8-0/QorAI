@@ -4,7 +4,7 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, keySpecChips, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta, keySpecChips } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -13,6 +13,7 @@ import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
+import { productImageList } from '../lib/imageUrl';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -303,7 +304,7 @@ export default function ProductDetail() {
   }
 
   const meta = catMeta(p.category);
-  const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.imageUrl]).filter(Boolean);
+  const images = productImageList(p, 'full');
   // Category key specs with relative bars (same source the cards/app use).
   // The raw techSubscores (Engine/AnchorKey/Tier/…) are internal scoring-engine
   // diagnostics and are intentionally NOT shown to users.
@@ -342,7 +343,7 @@ export default function ProductDetail() {
 
         <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'start' }}>
           {/* gallery */}
-          <div className="prod-gallery" style={{ position: 'sticky', top: 88 }}>
+          <div className="prod-gallery">
             <div className="card pd-gallery-card">
               <button className="img-tile pd-main-photo" type="button"
                 onClick={() => setLightbox(true)}

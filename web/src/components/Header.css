@@ -42,22 +42,16 @@
 }
 .hd-mega-head {
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
-  padding: 0 0 14px;
+  padding: 0 0 18px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 14px;
+  margin-bottom: 24px;
 }
 .hd-mega-head strong { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; }
 .hd-mega-head span { display: block; margin-top: 1px; font-size: 13px; font-weight: 600; color: var(--text2); }
-.hd-mega-head em {
-  min-width: 34px; height: 34px; border-radius: 999px;
-  display: grid; place-items: center;
-  color: var(--accent); background: var(--accent-soft);
-  font-style: normal; font-size: 13px; font-weight: 900;
-}
 .hd-mega-groups {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px 32px;
+  gap: 24px 32px;
 }
 .hd-mega-group {
   min-width: 0;

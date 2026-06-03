@@ -85,7 +85,6 @@ export default function Header() {
                       <strong>{L('All categories', 'Tüm kategoriler', 'Alle Kategorien')}</strong>
                       <span>{L('Browse every approved Qor AI category.', 'Qor AI’daki tüm onaylı kategorilere göz at.', 'Alle freigegebenen Qor AI Kategorien durchsuchen.')}</span>
                     </div>
-                    <em>{ALL_CATEGORIES.length}</em>
                   </div>
                   <div className="hd-mega-groups">
                     {CANONICAL_CATEGORY_GROUPS.map((group) => (

@@ -4,6 +4,8 @@
 // the Typesense search-only key. PocketBase remains for auth, reviews and AI,
 // but catalog listing/search/detail no longer depends on PB hooks being live.
 
+import { productImageList } from './imageUrl';
+
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
 const COLLECTION = 'products';
@@ -12,8 +14,23 @@ const LIST_FIELDS = [
   'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
   'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
   'keySpecsText', 'filterTokens', 'screenSizeValue', 'batteryCapacityValue',
-  'weightValueKg', '_raw',
+  'weightValueKg', 'scrapedAtTs', 'updatedAtTs', '_raw',
 ].join(',');
+
+const HOME_FEATURE_CATEGORIES = [
+  'smartphones', 'tablets', 'laptops', 'desktops', 'monitors', 'tvs',
+  'smartwatches', 'headphones', 'gaming_consoles', 'graphics_cards', 'cpus',
+];
+
+const HOME_TREND_CATEGORIES = [
+  'smartphones', 'laptops', 'tablets', 'monitors', 'tvs', 'headphones',
+  'smartwatches', 'gaming_consoles', 'graphics_cards', 'cpus', 'mice', 'keyboards',
+];
+
+const HOME_LOW_SIGNAL_CATEGORIES = new Set([
+  'flash_drives', 'chargers', 'powerbanks', 'case_fans', 'cpu_coolers',
+  'laptop_coolers', 'pc_cases', 'ups',
+]);
 
 function lit(v) {
   return `\`${String(v || '').replace(/`/g, '')}\``;
@@ -46,6 +63,39 @@ function docs(result) {
   return ((result && result.hits) || []).map((hit) => hit.document);
 }
 
+function uniqueProducts(items) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items || []) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
+function homeQualityFilter(product, { allowLowSignal = false } = {}) {
+  if (!product?.id || !product?.name) return false;
+  if (!allowLowSignal && HOME_LOW_SIGNAL_CATEGORIES.has(String(product.category || '').toLowerCase())) return false;
+  return true;
+}
+
+async function categoryBalancedProducts(categories, perCategory, sortBy, limit, opts = {}) {
+  const results = await Promise.all(categories.map((category) =>
+    searchDocs({
+      q: '*',
+      query_by: 'name',
+      sort_by: sortBy,
+      filter_by: `category:=${lit(category)}`,
+      per_page: perCategory,
+      include_fields: LIST_FIELDS,
+    }).then((res) => docs(res).map(docToProduct)).catch(() => []),
+  ));
+  return uniqueProducts(results.flat())
+    .filter((product) => homeQualityFilter(product, opts))
+    .slice(0, limit);
+}
+
 function looksLikeLaptopCooler(product) {
   const text = [
     product?.name,
@@ -76,6 +126,12 @@ export function docToProduct(doc) {
   if (doc && doc._raw) {
     try { base = JSON.parse(doc._raw); } catch { base = {}; }
   }
+  const cleanImages = productImageList({
+    imageUrl: base.imageUrl || base.imageURL || doc.imageUrl || '',
+    imageURL: base.imageURL,
+    images: base.images,
+  });
+  const imageUrl = cleanImages[0] || '';
   return {
     ...base,
     id: doc.id,
@@ -83,7 +139,8 @@ export function docToProduct(doc) {
     brand: base.brand || doc.brand || '',
     category: base.category || doc.category || '',
     subcategory: base.subcategory || doc.subcategory || '',
-    imageUrl: base.imageUrl || base.imageURL || doc.imageUrl || '',
+    imageUrl,
+    images: cleanImages,
     techScore: base.techScore != null ? base.techScore : doc.techScore || 0,
     trendScore: base.trendScore != null ? base.trendScore : doc.trendScore || 0,
     price_segment: base.price_segment || doc.price_segment || '',
@@ -100,6 +157,8 @@ export function docToProduct(doc) {
     screenSizeValue: doc.screenSizeValue || 0,
     batteryCapacityValue: doc.batteryCapacityValue || 0,
     weightValueKg: doc.weightValueKg || 0,
+    scrapedAtTs: doc.scrapedAtTs || base.scrapedAtTs || 0,
+    updatedAtTs: doc.updatedAtTs || base.updatedAtTs || 0,
   };
 }
 
@@ -108,21 +167,21 @@ async function searchDocs(params) {
 }
 
 export async function getHomeFeed(prefCats = []) {
-  const cats = (prefCats || []).filter(Boolean).slice(0, 5);
+  const preferred = (prefCats || [])
+    .map((cat) => String(cat || '').toLowerCase())
+    .filter((cat) => cat && !HOME_LOW_SIGNAL_CATEGORIES.has(cat));
+  const forYouCats = [...new Set([...preferred, ...HOME_FEATURE_CATEGORIES])].slice(0, 10);
   try {
-    const [trendingRes, forYouRes, newRes, spotlightRes, facetRes] = await Promise.all([
+    const [trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
+      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 16),
+      categoryBalancedProducts(forYouCats, 3, 'techScore:desc,trendScore:desc', 21),
       searchDocs({
-        q: '*', query_by: 'name', sort_by: 'trendScore:desc',
-        per_page: 16, include_fields: LIST_FIELDS,
-      }),
-      searchDocs({
-        q: '*', query_by: 'name', sort_by: 'techScore:desc',
-        per_page: 21, include_fields: LIST_FIELDS,
-        filter_by: cats.length ? `category:[${cats.map(lit).join(',')}]` : '',
-      }),
-      searchDocs({
-        q: '*', query_by: 'name', sort_by: 'specsCount:desc',
-        per_page: 21, include_fields: LIST_FIELDS,
+        q: '*',
+        query_by: 'name',
+        sort_by: 'updatedAtTs:desc,techScore:desc',
+        filter_by: `category:[${HOME_FEATURE_CATEGORIES.slice(0, 9).map(lit).join(',')}]`,
+        per_page: 28,
+        include_fields: LIST_FIELDS,
       }),
       searchDocs({
         q: '*', query_by: 'name', sort_by: 'techScore:desc',
@@ -137,9 +196,11 @@ export async function getHomeFeed(prefCats = []) {
     const categoryFacet = (facetRes.facet_counts || [])
       .find((facet) => facet.field_name === 'category');
     return {
-      forYou: docs(forYouRes).map(docToProduct),
-      trending: docs(trendingRes).map(docToProduct),
-      newArrivals: docs(newRes).map(docToProduct),
+      forYou,
+      trending,
+      newArrivals: uniqueProducts(docs(newRes).map(docToProduct))
+        .filter((product) => homeQualityFilter(product))
+        .slice(0, 21),
       spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
       categories: categoryFacet ? categoryFacet.counts : [],
       total: Number(facetRes.found) || 0,

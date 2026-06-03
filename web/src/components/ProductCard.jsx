@@ -52,7 +52,7 @@ export default function ProductCard({ product: p, variant = 'card' }) {
       <div className="top">
         {hasScore && (
           <span className="badge gauge-badge">
-            <Gauge value={p.techScore} size={30} stroke={3.5} color={techColor(p.techScore)} fontSize={11} />
+            <Gauge value={p.techScore} size={30} stroke={2.6} color={techColor(p.techScore)} fontSize={11} />
           </span>
         )}
         <ProductImage p={p} />

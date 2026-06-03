@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
 import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
+import { useAuth } from '../lib/auth';
 import AiText from '../components/AiText.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
+const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
 
 function singlePrompt(url, lang) {
   return (
@@ -35,6 +37,8 @@ function comparePrompt(urls, lang) {
 
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
+  const { user, openAuth } = useAuth();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
   const [urls, setUrls] = useState(['']);
   const [result, setResult] = useState('');
@@ -51,11 +55,7 @@ export default function LinkAnalysis() {
     setUrls((u) => u.filter((_, idx) => idx !== i));
   }
 
-  async function analyze(e) {
-    e.preventDefault();
-    const list = urls.map((u) => u.trim()).filter(Boolean);
-    if (!list.length) return;
-    if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
+  async function runAnalysis(list) {
     setErr(''); setBusy(true); setResult('');
     trackEvent('link_analysis', { count: list.length });
     try {
@@ -69,6 +69,36 @@ export default function LinkAnalysis() {
       setBusy(false);
     }
   }
+
+  async function analyze(e) {
+    e.preventDefault();
+    const list = urls.map((u) => u.trim()).filter(Boolean);
+    if (!list.length) return;
+    if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
+    if (!user) {
+      localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, ts: Date.now() }));
+      setErr(L('Sign in to continue. Your links are saved.', 'Devam etmek için giriş yap. Linklerin kaybolmayacak.', 'Melde dich an, um fortzufahren. Deine Links bleiben erhalten.'));
+      openAuth();
+      return;
+    }
+    await runAnalysis(list);
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    const raw = localStorage.getItem(PENDING_LINK_KEY);
+    if (!raw) return;
+    localStorage.removeItem(PENDING_LINK_KEY);
+    try {
+      const pending = JSON.parse(raw);
+      const list = Array.isArray(pending.urls) ? pending.urls.slice(0, MAX_LINKS).filter(Boolean) : [];
+      if (!list.length) return;
+      setUrls(list);
+      runAnalysis(list);
+    } catch {
+      // Ignore stale pending payloads.
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filled = urls.filter((u) => u.trim()).length;
 

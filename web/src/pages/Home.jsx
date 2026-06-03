@@ -33,7 +33,7 @@ function HeroSpotlight({ p, L, lang }) {
       <div style={{ padding: 18, position: 'relative' }}>
         {score > 0 && (
           <span className="gauge-badge" style={{ position: 'absolute', top: 26, right: 26, zIndex: 2 }}>
-            <Gauge value={score} size={32} stroke={4} color={techColor(score)} fontSize={12} />
+            <Gauge value={score} size={32} stroke={3} color={techColor(score)} fontSize={12} />
           </span>
         )}
         <div className="img-tile" style={{ aspectRatio: '4 / 3' }}>
@@ -45,10 +45,11 @@ function HeroSpotlight({ p, L, lang }) {
       <div style={{ padding: '4px 18px 18px' }}>
         {p.brand && <div className="brand-k" style={{ color: 'var(--accent)' }}>{p.brand}</div>}
         <div style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.3, margin: '4px 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
-        <div className="row" style={{ gap: 8 }}>
-          {score > 0 && <span className="match-pill">⚡ {L('Tech Score', 'Tech Skoru', 'Tech-Score')} {Math.round(score)}</span>}
-          {price > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>${price.toLocaleString(lang)}</span>}
-        </div>
+        {price > 0 && (
+          <div className="row" style={{ gap: 8 }}>
+            <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>${price.toLocaleString(lang)}</span>
+          </div>
+        )}
       </div>
     </Link>
   );

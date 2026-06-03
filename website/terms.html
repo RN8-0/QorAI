@@ -398,27 +398,33 @@
         <h2><span>Section 04</span>Subscription Plans</h2>
       </div>
       <div class="section-body">
-        <p>Qor AI offers two tiers of access:</p>
+        <p>Qor AI offers Free, Pro monthly, and Pro yearly access. Prices are shown in USD for the web presentation; the final billing amount is handled by Google Play or the App Store and may vary by country.</p>
         <div class="plan-grid">
           <div class="plan-card free">
-            <div class="plan-name">🆓 Free Plan</div>
+            <div class="plan-name">Free · $0</div>
             <ul class="plan-features">
-              <li>5 comparisons per day</li>
-              <li>15 AI chat messages per day</li>
+              <li>20 welcome Q coins</li>
+              <li>Basic catalog search and product comparison</li>
               <li>3 link analyses per day</li>
-              <li>Access to all categories</li>
-              <li>Standard AI response speed</li>
+              <li>3 subscription analyses per day</li>
             </ul>
           </div>
           <div class="plan-card premium">
-            <div class="plan-name">⭐ Premium Plan</div>
+            <div class="plan-name">Pro · $3.99 / month</div>
             <ul class="plan-features">
-              <li>Unlimited comparisons</li>
-              <li>Unlimited AI chat</li>
-              <li>Unlimited link analyses</li>
-              <li>Priority AI response speed</li>
-              <li>PDF export &amp; sharing</li>
-              <li>Early access to new features</li>
+              <li>3-day free trial</li>
+              <li>Premium AI product analysis</li>
+              <li>Advanced link and subscription analysis</li>
+              <li>90-day price history and smarter alternatives</li>
+            </ul>
+          </div>
+          <div class="plan-card premium">
+            <div class="plan-name">Pro Yearly · $19.99 / year</div>
+            <ul class="plan-features">
+              <li>3-day free trial</li>
+              <li>All Pro monthly features</li>
+              <li>Lower yearly cost for heavy AI use</li>
+              <li>Priority access to new premium tools</li>
             </ul>
           </div>
         </div>
@@ -606,7 +612,99 @@ function toggleTheme() {
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
 }
 
+function legalLang() {
+  const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+  const hit = langs.map(l => String(l || '').toLowerCase()).find(l => l.startsWith('tr') || l.startsWith('de') || l.startsWith('ge'));
+  if (!hit) return 'en';
+  return hit.startsWith('tr') ? 'tr' : 'de';
+}
+
+function applyTermsLanguage() {
+  const lang = legalLang();
+  document.documentElement.lang = lang;
+  if (lang === 'en') return;
+  const copy = {
+    tr: {
+      title: 'Kullanım Koşulları',
+      desc: 'Qor AI Kullanım Koşulları — Qor AI ürün danışmanı uygulaması ve web sitesini kullanma kuralları.',
+      home: 'Ana Sayfa',
+      badge: 'Yasal Koşullar',
+      updated: 'Son güncelleme: 21 Nisan 2025',
+      intro: 'Bu koşullar Qor AI mobil uygulamasını ve web sitesini nasıl kullanabileceğinizi, hesap, abonelik, AI içerikleri ve sorumluluk sınırlarını açıklar.',
+      tocLabel: 'Bu sayfada',
+      tocMobile: 'İçindekiler',
+      sectionWord: 'Bölüm',
+      footer: ['© 2025 Qor AI · qorai.net', 'Ana Sayfa', 'SSS', 'Gizlilik Politikası', 'Kullanım Koşulları', 'Bize Ulaşın'],
+      toc: ['1. Koşulların Kabulü','2. Hizmetin Tanımı','3. Kullanıcı Hesapları','4. Abonelik Planları','5. AI Tarafından Üretilen İçerik','6. Kabul Edilebilir Kullanım','7. Fikri Mülkiyet','8. Sorumluluk Reddi','9. Uygulanacak Hukuk','10. Fesih','11. Bize Ulaşın'],
+      sections: {
+        s1: ['Koşulların Kabulü', '<p>Qor AI mobil uygulamasını veya web sitesini kullanarak en az 13 yaşında olduğunuzu, bu Kullanım Koşullarını okuduğunuzu ve bunlara bağlı olmayı kabul ettiğinizi onaylarsınız. Qor AI’ı bir kurum adına kullanıyorsanız, o kurumu bu koşullara bağlama yetkiniz olduğunu beyan edersiniz.</p>'],
+        s2: ['Hizmetin Tanımı', '<p>Qor AI, teknoloji ürünleri için AI destekli arama, karşılaştırma, link analizi, uyumluluk skoru, akıllı öneriler ve danışman sohbeti sunan bir ürün danışmanı platformudur. Hizmetin herhangi bir bölümünü makul bildirimle değiştirebilir, askıya alabilir veya sonlandırabiliriz.</p>'],
+        s3: ['Kullanıcı Hesapları', '<p>Çoğu özelliğe erişmek için geçerli bilgilerle hesap oluşturmanız gerekir. Hesap güvenliğinizden, güçlü parola kullanmaktan ve yetkisiz erişim şüphesi halinde bize haber vermekten siz sorumlusunuz. Limitleri aşmak için birden fazla hesap oluşturmak yasaktır.</p>'],
+        s4: ['Abonelik Planları', '<p>Qor AI; Free, Pro aylık ve Pro yıllık erişim sunar. Web üzerinde fiyatlar USD olarak gösterilir; nihai ödeme Google Play veya App Store tarafından ülkenize göre işlenebilir.</p><div class="plan-grid"><div class="plan-card free"><div class="plan-name">Free · $0</div><ul class="plan-features"><li>20 hoş geldin Q Coin</li><li>Temel katalog arama ve karşılaştırma</li><li>Günde 3 link analizi</li><li>Günde 3 abonelik analizi</li></ul></div><div class="plan-card premium"><div class="plan-name">Pro · $3.99 / ay</div><ul class="plan-features"><li>3 gün ücretsiz deneme</li><li>Premium AI ürün analizi</li><li>Gelişmiş link ve abonelik analizi</li><li>90 günlük fiyat geçmişi ve akıllı alternatifler</li></ul></div><div class="plan-card premium"><div class="plan-name">Pro Yearly · $19.99 / yıl</div><ul class="plan-features"><li>3 gün ücretsiz deneme</li><li>Aylık Pro’daki tüm özellikler</li><li>Yoğun AI kullanımında daha düşük yıllık maliyet</li><li>Yeni premium araçlara öncelikli erişim</li></ul></div></div><p>Premium abonelikler ilgili uygulama mağazası üzerinden yinelenen şekilde faturalandırılır. Aboneliği mağaza ayarlarınızdan iptal edebilirsiniz; iade koşulları yürürlükteki hukuk ve mağaza kurallarına tabidir.</p>'],
+        s5: ['AI Tarafından Üretilen İçerik', '<p>Qor AI; ürün karşılaştırmaları, öneriler ve sohbet yanıtları oluşturmak için yapay zeka kullanır. AI içerikleri her zaman eksiksiz, güncel veya hatasız olmayabilir. Önemli satın alma kararlarından önce resmi kaynakları ve satıcı bilgilerini ayrıca doğrulamalısınız.</p>'],
+        s6: ['Kabul Edilebilir Kullanım', '<p>Hizmeti yalnızca hukuka uygun amaçlarla kullanabilirsiniz. Yetkisiz kazıma, otomasyon, tersine mühendislik, limitleri aşma girişimi, zararlı içerik paylaşımı, sistemi bozma veya Qor AI çıktılarının izinsiz ticari kullanımı yasaktır.</p>'],
+        s7: ['Fikri Mülkiyet', '<p>Qor AI’ın adı, logosu, tasarımı, kodu, ürün veritabanı, algoritmaları ve Qor AI tarafından üretilen içerikler Qor AI’a veya lisans verenlerine aittir. Kendi sağladığınız verilerin mülkiyeti sizde kalır; bu verileri yalnızca hizmeti sunmak ve geliştirmek için işleriz.</p>'],
+        s8: ['Sorumluluk Reddi ve Sınırlaması', '<p>Hizmet “olduğu gibi” ve “mevcut olduğu şekilde” sunulur. AI içerikleri, ürün bilgileri, fiyatlar ve öneriler için doğruluk veya kesintisiz erişim garantisi vermeyiz. Yürürlükteki hukukun izin verdiği ölçüde dolaylı zararlar ve satın alma kararlarından doğan kayıplardan sorumlu olmayız.</p>'],
+        s9: ['Uygulanacak Hukuk', '<p>Bu Kullanım Koşulları Türkiye Cumhuriyeti hukukuna tabidir. Zorunlu tüketici koruma kuralları bulunan ülkelerde, bu kurallardan doğan vazgeçilemez haklarınız saklıdır.</p>'],
+        s10: ['Fesih', '<p>Hesabınızı uygulama ayarlarından veya iletişim sayfası üzerinden istediğiniz zaman kapatabilirsiniz. Koşulları ihlal etmeniz, kötüye kullanım veya güvenlik riski oluşturmanız halinde hesabınızı askıya alma veya sonlandırma hakkımız saklıdır.</p>'],
+        s11: ['Bize Ulaşın', '<p>Bu Kullanım Koşullarıyla ilgili sorularınız veya hesap güvenliği konuları için <a href="/contact.html">iletişim sayfası</a> üzerinden bize ulaşabilirsiniz. Yasal bildirimler için konu satırına “Legal Notice” yazmanız yanıt sürecini hızlandırır.</p>'],
+      },
+    },
+    de: {
+      title: 'Nutzungsbedingungen',
+      desc: 'Qor AI Nutzungsbedingungen — Regeln für die Nutzung der Qor AI App und Website.',
+      home: 'Startseite',
+      badge: 'Rechtliche Bedingungen',
+      updated: 'Zuletzt aktualisiert: 21. April 2025',
+      intro: 'Diese Bedingungen regeln die Nutzung der Qor AI App und Website, einschließlich Konto, Abonnements, AI-Inhalten und Haftung.',
+      tocLabel: 'Auf dieser Seite',
+      tocMobile: 'Inhaltsverzeichnis',
+      sectionWord: 'Abschnitt',
+      footer: ['© 2025 Qor AI · qorai.net', 'Startseite', 'FAQ', 'Datenschutzerklärung', 'Nutzungsbedingungen', 'Kontakt'],
+      toc: ['1. Annahme der Bedingungen','2. Beschreibung des Dienstes','3. Nutzerkonten','4. Abonnements','5. AI-generierte Inhalte','6. Zulässige Nutzung','7. Geistiges Eigentum','8. Haftungsausschluss','9. Anwendbares Recht','10. Kündigung','11. Kontakt'],
+      sections: {
+        s1: ['Annahme der Bedingungen', '<p>Durch die Nutzung von Qor AI bestätigen Sie, dass Sie mindestens 13 Jahre alt sind und diese Bedingungen akzeptieren.</p>'],
+        s2: ['Beschreibung des Dienstes', '<p>Qor AI ist ein KI-gestützter Produktberater für Suche, Vergleich, Linkanalyse, Empfehlungen und Chat.</p>'],
+        s3: ['Nutzerkonten', '<p>Für viele Funktionen ist ein Konto erforderlich. Sie sind für korrekte Angaben und den Schutz Ihrer Zugangsdaten verantwortlich.</p>'],
+        s4: ['Abonnements', '<p>Qor AI bietet Free, Pro monatlich und Pro jährlich. Web-Preise werden in USD angezeigt; endgültige Abrechnung erfolgt über Google Play oder App Store.</p><div class="plan-grid"><div class="plan-card free"><div class="plan-name">Free · $0</div><ul class="plan-features"><li>20 Willkommens-Q-Coins</li><li>Basis-Suche und Vergleich</li><li>3 Linkanalysen pro Tag</li><li>3 Abo-Analysen pro Tag</li></ul></div><div class="plan-card premium"><div class="plan-name">Pro · $3.99 / Monat</div><ul class="plan-features"><li>3 Tage kostenlos testen</li><li>Premium-KI-Produktanalyse</li><li>Erweiterte Link- und Abo-Analyse</li><li>90 Tage Preisverlauf</li></ul></div><div class="plan-card premium"><div class="plan-name">Pro Yearly · $19.99 / Jahr</div><ul class="plan-features"><li>3 Tage kostenlos testen</li><li>Alle Pro-Funktionen</li><li>Niedrigere Jahreskosten</li><li>Priorität bei neuen Premium-Tools</li></ul></div></div>'],
+        s5: ['AI-generierte Inhalte', '<p>AI-Inhalte können unvollständig, veraltet oder fehlerhaft sein. Prüfen Sie wichtige Informationen vor Kaufentscheidungen unabhängig.</p>'],
+        s6: ['Zulässige Nutzung', '<p>Automatisiertes Scraping, Umgehung von Limits, Reverse Engineering, schädliche Inhalte und unbefugte kommerzielle Nutzung sind untersagt.</p>'],
+        s7: ['Geistiges Eigentum', '<p>Marke, Design, Code, Datenbank und Algorithmen von Qor AI sind geschützt. Ihre eigenen Daten bleiben Ihre Daten.</p>'],
+        s8: ['Haftungsausschluss', '<p>Der Dienst wird ohne Gewähr bereitgestellt. Soweit gesetzlich zulässig, haften wir nicht für indirekte Schäden oder Kaufentscheidungen auf Basis von AI-Inhalten.</p>'],
+        s9: ['Anwendbares Recht', '<p>Diese Bedingungen unterliegen dem Recht der Republik Türkei, vorbehaltlich zwingender Verbraucherrechte.</p>'],
+        s10: ['Kündigung', '<p>Sie können Ihr Konto jederzeit schließen. Bei Verstößen können wir Konten sperren oder kündigen.</p>'],
+        s11: ['Kontakt', '<p>Fragen zu diesen Bedingungen senden Sie bitte über die <a href="/contact.html">Kontaktseite</a>.</p>'],
+      },
+    },
+  }[lang];
+
+  document.title = copy.title + ' — Qor AI';
+  const desc = document.querySelector('meta[name="description"]');
+  if (desc) desc.setAttribute('content', copy.desc);
+  document.querySelector('.header-actions a').textContent = copy.home;
+  document.querySelector('.header-actions a').title = copy.home;
+  document.querySelector('.hero-badge').textContent = '📜 ' + copy.badge;
+  document.querySelector('.page-hero h1').textContent = copy.title;
+  document.querySelectorAll('.hero-meta span')[0].textContent = '📅 ' + copy.updated;
+  document.querySelector('.hero-intro').textContent = copy.intro;
+  document.querySelectorAll('.toc-label').forEach(el => { el.textContent = copy.tocLabel; });
+  document.querySelector('.toc-mobile summary').childNodes[0].textContent = '📋 ' + copy.tocMobile + ' ';
+  document.querySelectorAll('.toc-nav').forEach(nav => {
+    nav.querySelectorAll('a').forEach((a, i) => { if (copy.toc[i]) a.textContent = copy.toc[i]; });
+  });
+  Object.entries(copy.sections).forEach(([id, value], idx) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    const [title, body] = value;
+    const n = String(idx + 1).padStart(2, '0');
+    section.querySelector('h2').innerHTML = '<span>' + copy.sectionWord + ' ' + n + '</span>' + title;
+    section.querySelector('.section-body').innerHTML = body;
+  });
+  document.querySelectorAll('.site-footer > *').forEach((el, i) => { if (copy.footer[i]) el.textContent = copy.footer[i]; });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applyTermsLanguage();
   const t = document.documentElement.getAttribute('data-theme') || 'dark';
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
 
