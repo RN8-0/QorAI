@@ -108,6 +108,11 @@
   letter-spacing: 0;
   line-height: 1.08;
 }
+.pd-offer-price.muted-price {
+  font-size: 18px;
+  color: var(--text-2);
+  font-weight: 750;
+}
 .pd-offer-main small {
   color: var(--text-3);
   font-size: 12px;

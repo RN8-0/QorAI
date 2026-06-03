@@ -1,0 +1,60 @@
+{
+  "feeds": [
+    {
+      "store": "MediaMarkt",
+      "network": "awin",
+      "country": "DE",
+      "currency": "EUR",
+      "file": "feeds/mediamarkt-de.csv",
+      "format": "csv",
+      "fields": {
+        "gtin": ["ean", "gtin", "barcode"],
+        "mpn": ["mpn", "sku", "manufacturer_part_number"],
+        "brand": ["brand", "manufacturer"],
+        "title": ["product_name", "title", "name"],
+        "price": ["price", "search_price", "sale_price"],
+        "shipping": ["shipping", "delivery_cost"],
+        "url": ["product_url", "merchant_url"],
+        "affiliateUrl": ["aw_deep_link", "tracking_url", "deeplink"],
+        "availability": ["availability", "stock_status"],
+        "condition": ["condition"]
+      }
+    },
+    {
+      "store": "Teknosa",
+      "network": "admitad",
+      "country": "TR",
+      "currency": "TRY",
+      "file": "feeds/teknosa-tr.xml",
+      "format": "xml",
+      "fields": {
+        "gtin": ["ean", "barcode"],
+        "mpn": ["model", "sku"],
+        "brand": ["brand"],
+        "title": ["name", "title"],
+        "price": ["price", "sale_price"],
+        "url": ["url", "product_url"],
+        "affiliateUrl": ["deeplink", "tracking_url"],
+        "availability": ["availability", "stock"]
+      }
+    },
+    {
+      "store": "Kelkoo",
+      "network": "kelkoo",
+      "country": "GB",
+      "currency": "GBP",
+      "file": "feeds/kelkoo-gb.tsv",
+      "format": "tsv",
+      "fields": {
+        "gtin": ["ean", "gtin"],
+        "mpn": ["mpn", "merchant_sku"],
+        "brand": ["brand"],
+        "title": ["title"],
+        "price": ["price"],
+        "shipping": ["shipping_cost"],
+        "url": ["offer_url"],
+        "affiliateUrl": ["tracking_url"]
+      }
+    }
+  ]
+}

@@ -9,6 +9,8 @@
  *     AMAZON_TAG            default Amazon Associates store id
  *     AMAZON_TAG_DE / _US…  per-country override (Amazon tags are per-marketplace)
  *     AWIN_PUBLISHER_ID     Awin publisher id (for Awin-brokered shops)
+ *     EBAY_CAMPAIGN_ID      eBay Partner Network campaign id
+ *     EBAY_CUSTOM_ID        optional click sub-id prefix
  */
 'use strict';
 
@@ -50,6 +52,23 @@ function awinUrl(url, opts = {}) {
     `&ued=${encodeURIComponent(url)}`;
 }
 
+function ebayUrl(url, opts = {}) {
+  const campid = ENV[`EBAY_CAMPAIGN_ID_${String(opts.country || '').toUpperCase()}`] || ENV.EBAY_CAMPAIGN_ID || '';
+  if (!campid) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('mkcid', ENV.EBAY_MKCID || '1');
+    if (ENV.EBAY_MKRID) u.searchParams.set('mkrid', ENV.EBAY_MKRID);
+    u.searchParams.set('campid', campid);
+    u.searchParams.set('customid', opts.clickref || ENV.EBAY_CUSTOM_ID || 'qorai');
+    u.searchParams.set('toolid', ENV.EBAY_TOOL_ID || '10001');
+    u.searchParams.set('mkevt', ENV.EBAY_EVENT_ID || '1');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 /**
  * @param {string} network  amazon | awin | direct | geizhals | …
  * @param {string} url      raw retailer URL
@@ -61,6 +80,7 @@ function buildAffiliateUrl(network, url, opts = {}) {
   switch (String(network || '').toLowerCase()) {
     case 'amazon': return amazonUrl(url, opts);
     case 'awin':   return awinUrl(url, opts);
+    case 'ebay':   return ebayUrl(url, opts);
     default:       return url; // direct / geizhals deep links need no wrap
   }
 }
@@ -68,7 +88,8 @@ function buildAffiliateUrl(network, url, opts = {}) {
 /** True when at least one affiliate program is configured. */
 function hasAnyAffiliateConfig() {
   return !!(ENV.AMAZON_TAG || ENV.AWIN_PUBLISHER_ID ||
-    Object.keys(ENV).some(k => k.startsWith('AMAZON_TAG_')));
+    ENV.EBAY_CAMPAIGN_ID ||
+    Object.keys(ENV).some(k => k.startsWith('AMAZON_TAG_') || k.startsWith('EBAY_CAMPAIGN_ID_')));
 }
 
 module.exports = { buildAffiliateUrl, hasAnyAffiliateConfig };

@@ -26,6 +26,10 @@ const NEW_FIELDS = [
   { name: 'lowestPriceCurrency', type: 'text', max: 4 },
   { name: 'lowestPriceUSD',      type: 'number', min: 0 },
   { name: 'offerCount',          type: 'number', min: 0 },
+  { name: 'pricedOfferCount',    type: 'number', min: 0 },
+  { name: 'bestOfferId',         type: 'text', max: 50 },
+  { name: 'bestOfferCheckedAt',  type: 'date' },
+  { name: 'bestOfferExpiresAt',  type: 'date' },
   { name: 'techSubscores',       type: 'json', maxSize: 50000 },
   { name: 'scoreUpdatedAt',      type: 'date' },
 ];

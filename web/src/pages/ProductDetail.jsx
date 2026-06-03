@@ -4,7 +4,8 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, keySpecChips, offerForLang } from '../lib/format';
+import { catMeta, keySpecChips } from '../lib/format';
+import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -79,7 +80,8 @@ function aiPrompt(p, lang) {
     : '';
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean).slice(0, 6).join('; ') : '';
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean).slice(0, 6).join('; ') : '';
-  const price = Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
+  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
+  const price = priceFresh && Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
   return (
     'You are Qor AI, a senior product analyst. Produce a professional, in-depth analysis ' +
     'of the product below. Treat it as a real, current item in the Qor catalog.\n\n' +
@@ -106,19 +108,6 @@ function localizedProductName(product, lang) {
   const translated = product?.nameTranslated?.[code];
   if (translated && String(translated).trim()) return translated;
   return trSpec(product?.name || '', code);
-}
-
-function formatOfferPrice(offer, lang) {
-  if (!offer || !Number(offer.price)) return '';
-  try {
-    return new Intl.NumberFormat(lang, {
-      style: 'currency',
-      currency: offer.currency || 'USD',
-      maximumFractionDigits: 0,
-    }).format(offer.price);
-  } catch {
-    return `${offer.currency || 'USD'} ${Number(offer.price).toLocaleString(lang, { maximumFractionDigits: 0 })}`;
-  }
 }
 
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
@@ -203,7 +192,8 @@ function buildProductSeo(p, t) {
   );
   const image = p.imageUrl || DEFAULT_OG_IMAGE;
   const url = `${SITE_URL}${productPath(p.id)}`;
-  const price = Number(p.lowestPriceUSD) || 0;
+  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
+  const price = priceFresh ? Number(p.lowestPriceUSD) || 0 : 0;
 
   const product = {
     '@type': 'Product',
@@ -247,6 +237,8 @@ export default function ProductDetail() {
   const [activeImg, setActiveImg] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [dictReady, setDictReady] = useState(false);
+  const [offers, setOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(false);
 
   const [aiText, setAiText] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
@@ -260,7 +252,7 @@ export default function ProductDetail() {
     getProduct(id)
       .then((prod) => {
         if (!live) return;
-        setP(prod); setActiveImg(0); setLightbox(false); setTab('specs');
+        setP(prod); setOffers([]); setActiveImg(0); setLightbox(false); setTab('specs');
         if (prod) {
           pushRecent(prod);
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
@@ -270,6 +262,20 @@ export default function ProductDetail() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [id]);
+
+  useEffect(() => {
+    let live = true;
+    if (!p?.id) {
+      setOffers([]);
+      return () => { live = false; };
+    }
+    setOffersLoading(true);
+    fetchProductOffers(p.id)
+      .then((items) => { if (live) setOffers(items); })
+      .catch(() => { if (live) setOffers([]); })
+      .finally(() => { if (live) setOffersLoading(false); });
+    return () => { live = false; };
+  }, [p?.id]);
 
   useEffect(() => {
     let live = true;
@@ -332,10 +338,11 @@ export default function ProductDetail() {
 
   const tech = Number(p.techScore) || 0;
   const match = matchScore(p);
-  const offer = offerForLang(p, lang);
-  const price = Number(offer?.price || p.lowestPriceUSD) || 0;
-  const displayPrice = offer ? formatOfferPrice(offer, lang) : '';
-  const offerUrl = offer?.url || '';
+  const offer = bestOfferForLang(offers, p, lang);
+  const hasExactPrice = Boolean(offer?.hasExactPrice);
+  const price = hasExactPrice ? Number(offer?.price) || 0 : 0;
+  const displayPrice = hasExactPrice ? formatOfferPrice(offer, lang) : '';
+  const offerUrl = offerClickPath(offer);
 
   return (
     <div className="page">
@@ -406,17 +413,32 @@ export default function ProductDetail() {
             </div>
 
             {/* buy strip */}
-            {price > 0 && (
+            {(offer || offersLoading) && (
               <div className="card pad pd-offer-card">
                 <div className="pd-offer-main">
-                  <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>{L('Best price', 'En iyi fiyat', 'Bester Preis')}</div>
-                  <span className="pd-offer-price">{displayPrice || `$${price.toLocaleString(lang)}`}</span>
-                  {offer?.store && <small>{L('From', 'Mağaza', 'Shop')}: {offer.store}</small>}
+                  <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>
+                    {hasExactPrice
+                      ? L('Fresh checked price', 'Güncel kontrol edilmiş fiyat', 'Frisch geprüfter Preis')
+                      : L('Current price at store', 'Güncel fiyat mağazada', 'Aktueller Preis im Shop')}
+                  </div>
+                  <span className={'pd-offer-price' + (!hasExactPrice ? ' muted-price' : '')}>
+                    {offersLoading && !offer
+                      ? L('Checking offers...', 'Teklifler kontrol ediliyor...', 'Angebote werden geprüft...')
+                      : hasExactPrice
+                        ? (displayPrice || `$${price.toLocaleString(lang)}`)
+                        : L('Check before buying', 'Satın almadan önce kontrol et', 'Vor dem Kauf prüfen')}
+                  </span>
+                  {offer?.store && <small>{L('Store', 'Mağaza', 'Shop')}: {offer.store}</small>}
+                  {offer?.lastCheckedAt && hasExactPrice && (
+                    <small>{L('Checked', 'Kontrol', 'Geprüft')}: {new Date(offer.lastCheckedAt).toLocaleString(lang, { dateStyle: 'short', timeStyle: 'short' })}</small>
+                  )}
                 </div>
                 <div className="grow" />
                 {offerUrl ? (
                   <a className="btn btn-buy" href={offerUrl} target="_blank" rel="sponsored noopener">
-                    🛒 {L('Go to store', 'Mağazaya git', 'Zum Shop')}
+                    🛒 {hasExactPrice
+                      ? L('Go to store', 'Mağazaya git', 'Zum Shop')
+                      : L('Check current price', 'Güncel fiyatı kontrol et', 'Aktuellen Preis prüfen')}
                   </a>
                 ) : (
                   <button className="btn btn-buy"

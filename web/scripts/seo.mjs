@@ -200,6 +200,14 @@ const STATIC_ROUTES = [
     },
   },
   {
+    dir: 'go', path: '/go', noindex: true,
+    seo: {
+      title: 'Mağazaya yönlendiriliyor — Qor AI',
+      description: 'Qor AI mağaza yönlendirme sayfası.',
+      noindex: true,
+    },
+  },
+  {
     dir: 'ai-chat', path: '/ai-chat', changefreq: 'monthly', priority: '0.7',
     seo: {
       title: 'Qor AI Sohbet — Yapay Zekâ Danışman',

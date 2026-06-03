@@ -158,6 +158,11 @@ export function safeExternalUrl(url) {
   }
 }
 
+function rollupPriceIsFresh(product) {
+  const expires = Date.parse(product?.bestOfferExpiresAt || '');
+  return Number.isFinite(expires) && expires > Date.now();
+}
+
 export function offerForLang(product, lang = 'en') {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};
@@ -165,11 +170,22 @@ export function offerForLang(product, lang = 'en') {
     ? product.affiliateLinksByCountry
     : {};
   const countries = PRICE_COUNTRIES_BY_LANG[code] || PRICE_COUNTRIES_BY_LANG.en;
+  const priceFresh = rollupPriceIsFresh(product);
   for (const country of countries) {
     const price = Number(prices[country] ?? prices[country.toLowerCase()]);
-    if (!price || price <= 0) continue;
     const stores = links[country] || links[country.toLowerCase()] || {};
     const link = Object.entries(stores).find(([, url]) => String(url || '').trim());
+    if ((!price || price <= 0 || !priceFresh) && link) {
+      return {
+        price: 0,
+        currency: CURRENCY_BY_COUNTRY[country] || 'USD',
+        country,
+        store: link[0] || product?.lowestOfferStore || '',
+        url: safeExternalUrl(link[1] || product?.lowestOfferUrl || ''),
+        stale: !priceFresh,
+      };
+    }
+    if (!price || price <= 0 || !priceFresh) continue;
     return {
       price,
       currency: CURRENCY_BY_COUNTRY[country] || 'USD',
@@ -178,7 +194,7 @@ export function offerForLang(product, lang = 'en') {
       url: safeExternalUrl(link?.[1] || product?.lowestOfferUrl || ''),
     };
   }
-  if (Number(product?.lowestPrice) > 0) {
+  if (priceFresh && Number(product?.lowestPrice) > 0) {
     return {
       price: Number(product.lowestPrice),
       currency: product.lowestPriceCurrency || 'USD',
@@ -187,7 +203,7 @@ export function offerForLang(product, lang = 'en') {
       url: safeExternalUrl(product.lowestOfferUrl || ''),
     };
   }
-  if (Number(product?.lowestPriceUSD) > 0) {
+  if (priceFresh && Number(product?.lowestPriceUSD) > 0) {
     return {
       price: Number(product.lowestPriceUSD),
       currency: 'USD',
@@ -201,7 +217,7 @@ export function offerForLang(product, lang = 'en') {
 
 export function formatLocalizedPrice(product, lang = 'en') {
   const offer = offerForLang(product, lang);
-  if (!offer) return '';
+  if (!offer || !Number(offer.price)) return '';
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',

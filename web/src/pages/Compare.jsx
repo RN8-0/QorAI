@@ -341,7 +341,7 @@ export default function Compare() {
                 <div className="cmp-prices fade-up">
                   {slots.map((p) => {
                     const offer = offerForLang(p, lang);
-                    const price = Number(offer?.price || p.lowestPriceUSD) || 0;
+                    const price = Number(offer?.price) || 0;
                     const offerUrl = offer?.url || '';
                     return (
                       <div className="card pad cmp-price-card" key={p.id}>
