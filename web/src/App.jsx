@@ -25,8 +25,8 @@ export default function App() {
   // Scroll to top + report page view on every route change.
   useEffect(() => {
     window.scrollTo(0, 0);
-    trackPageView(loc.pathname);
-  }, [loc.pathname]);
+    trackPageView(`${loc.pathname}${loc.search}`);
+  }, [loc.pathname, loc.search]);
 
   return (
     <>
@@ -35,6 +35,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/category" element={<Category />} />
+          <Route path="/product" element={<ProductDetail />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/ai-chat" element={<AiChat />} />

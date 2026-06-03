@@ -10,6 +10,7 @@ import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
+import { productPath } from '../lib/routes';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -247,11 +248,11 @@ export default function Compare() {
                     {isBest && products.length > 1 && (
                       <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
                     )}
-                    <Link to={`/product/${p.id}`} className="img-tile cmp-card-img">
+                    <Link to={productPath(p.id)} className="img-tile cmp-card-img">
                       <ProductImg src={p.imageUrl} alt={p.name} size="card" />
                     </Link>
                     {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
-                    <Link to={`/product/${p.id}`} className="cmp-card-name">{p.name}</Link>
+                    <Link to={productPath(p.id)} className="cmp-card-name">{p.name}</Link>
                     <div className="cmp-card-cat">{m.icon} {m.label}</div>
                     <div className="cmp-rings">
                       {match > 0 && (
@@ -294,7 +295,7 @@ export default function Compare() {
                         <th className="cmp-th-spec">{t('cmp.specCol')}</th>
                         {slots.map((p) => (
                           <th key={p.id} className="cmp-th-prod cmp-th-compact">
-                            <Link to={`/product/${p.id}`} className="cmp-th-name">{p.name}</Link>
+                            <Link to={productPath(p.id)} className="cmp-th-name">{p.name}</Link>
                           </th>
                         ))}
                       </tr>
@@ -344,7 +345,7 @@ export default function Compare() {
                     const offerUrl = offer?.url || '';
                     return (
                       <div className="card pad cmp-price-card" key={p.id}>
-                        <Link to={`/product/${p.id}`} className="cmp-price-name">{p.name}</Link>
+                        <Link to={productPath(p.id)} className="cmp-price-name">{p.name}</Link>
                         {price > 0
                           ? <div className="cmp-price-amt">{formatOffer(offer, lang) || `$${price.toLocaleString(lang)}`}</div>
                           : <div className="cmp-price-none">{L('No price yet', 'Henüz fiyat yok', 'Noch kein Preis')}</div>}

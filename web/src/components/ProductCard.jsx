@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { catMeta } from '../lib/format';
+import { productPath } from '../lib/routes';
 import { useI18n } from '../i18n/index.jsx';
 import Gauge, { techColor } from './Gauge.jsx';
 import ProductImg from './ProductImg.jsx';
@@ -34,7 +35,7 @@ export default function ProductCard({ product: p, variant = 'card' }) {
 
   if (variant === 'list') {
     return (
-      <Link to={`/product/${p.id}`} className="lrow">
+      <Link to={productPath(p.id)} className="lrow">
         <ProductImage p={p} />
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="nm" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
@@ -48,7 +49,7 @@ export default function ProductCard({ product: p, variant = 'card' }) {
   }
 
   return (
-    <Link to={`/product/${p.id}`} className="pcard">
+    <Link to={productPath(p.id)} className="pcard">
       <div className="top">
         {hasScore && (
           <span className="badge gauge-badge">

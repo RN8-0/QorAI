@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
@@ -14,6 +14,7 @@ import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
+import { productPath } from '../lib/routes';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -201,7 +202,7 @@ function buildProductSeo(p, t) {
        + 'Özellikleri incele, karşılaştır ve karar ver.',
   );
   const image = p.imageUrl || DEFAULT_OG_IMAGE;
-  const url = `${SITE_URL}/product/${p.id}`;
+  const url = `${SITE_URL}${productPath(p.id)}`;
   const price = Number(p.lowestPriceUSD) || 0;
 
   const product = {
@@ -227,13 +228,15 @@ function buildProductSeo(p, t) {
     ],
   };
   return {
-    title, description, image, type: 'product',
+    title, description, image, path: productPath(p.id), type: 'product',
     jsonLd: { '@context': 'https://schema.org', '@graph': [product, breadcrumb] },
   };
 }
 
 export default function ProductDetail() {
-  const { id } = useParams();
+  const params = useParams();
+  const [searchParams] = useSearchParams();
+  const id = params.id || searchParams.get('id') || '';
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { has, toggle } = useCompare();

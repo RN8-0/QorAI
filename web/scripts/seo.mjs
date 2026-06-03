@@ -5,8 +5,7 @@
 //  non-JS crawlers (Facebook, WhatsApp, X, LinkedIn) only ever see
 //  the raw HTML <head>. This script bakes per-page <title>, meta
 //  description, canonical, Open Graph / Twitter cards and JSON-LD
-//  into a real HTML file for every route and every product, then
-//  emits sitemap.xml + robots.txt.
+//  into a real HTML file for every route, then emits sitemap.xml + robots.txt.
 //
 //  Googlebot still renders the SPA and picks up the same tags from
 //  the runtime useSeo() hook — this guarantees parity for the rest.
@@ -165,6 +164,14 @@ const STATIC_ROUTES = [
     },
   },
   {
+    dir: 'product', path: '/product', noindex: true,
+    seo: {
+      title: 'Ürün — Qor AI',
+      description: 'Qor AI ürün detay sayfası.',
+      noindex: true,
+    },
+  },
+  {
     dir: 'compare', path: '/compare', changefreq: 'weekly', priority: '0.8',
     seo: {
       title: 'Ürün Karşılaştır — Qor AI',
@@ -235,8 +242,8 @@ async function main() {
   //    Doing so wrote 100k+ tiny files into the repo (every build = a
   //    100k-file diff) for near-zero gain: Googlebot renders the SPA and
   //    reads the same per-product <head> from the runtime useSeo() hook,
-  //    and direct deep links fall back through 404.html into the SPA.
-  //    The sitemap below still lists every product so Google discovers them.
+  //    and /product?id=... returns a real route shell with HTTP 200.
+  //    The sitemap below lists every product with that static-safe URL.
   let products = [];
   try {
     products = await fetchAllProducts();
@@ -252,7 +259,7 @@ async function main() {
     loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
   }));
   const productUrls = products.filter((d) => d && d.id).map((d) => ({
-    loc: `${SITE}/product/${d.id}`, changefreq: 'weekly', priority: '0.6',
+    loc: `${SITE}/product?id=${encodeURIComponent(String(d.id))}`, changefreq: 'weekly', priority: '0.6',
   }));
   const allUrls = [...routeUrls, ...productUrls];
 

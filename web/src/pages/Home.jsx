@@ -12,6 +12,7 @@ import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
+import { productPath } from '../lib/routes';
 import './Home.css';
 
 function StatItem({ n, l }) {
@@ -29,7 +30,7 @@ function HeroSpotlight({ p, L, lang }) {
   const meta = catMeta(p.category);
   const price = Number(p.lowestPriceUSD) || 0;
   return (
-    <Link to={`/product/${p.id}`} className="card glow" style={{ overflow: 'hidden', display: 'block' }}>
+    <Link to={productPath(p.id)} className="card glow" style={{ overflow: 'hidden', display: 'block' }}>
       <div style={{ padding: 18, position: 'relative' }}>
         {score > 0 && (
           <span className="gauge-badge" style={{ position: 'absolute', top: 26, right: 26, zIndex: 2 }}>
@@ -212,7 +213,7 @@ export default function Home() {
   function openProduct(product) {
     saveSearchHistory(q.trim(), product.id);
     setSuggestOpen(false);
-    nav(`/product/${product.id}`);
+    nav(productPath(product.id));
   }
 
   function clearSearch() {

@@ -12,6 +12,7 @@ import {
 import { getProduct } from '../lib/typesense';
 import { premiumStatus } from '../lib/premium';
 import { catMeta } from '../lib/format';
+import { productPath } from '../lib/routes';
 import { useT } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import AiText from '../components/AiText.jsx';
@@ -371,7 +372,7 @@ function ReviewsTab({ t }) {
           </div>
           {r.text && <p className="pf-rev-text">{r.text}</p>}
           {r.productId && (
-            <Link to={`/product/${r.productId}`} className="pf-rev-link">
+            <Link to={productPath(r.productId)} className="pf-rev-link">
               {names[r.productId] || t('pf.viewProduct')} →
             </Link>
           )}
@@ -398,7 +399,7 @@ function HistoryTab({ user, t }) {
           <div className="pf-chips">
             {search.slice(0, 30).map((s, i) => (
               s.productId ? (
-                <Link key={i} to={`/product/${s.productId}`} className="pf-chip">{s.query}</Link>
+                <Link key={i} to={productPath(s.productId)} className="pf-chip">{s.query}</Link>
               ) : (
                 <Link key={i} to={`/?q=${encodeURIComponent(s.query || '')}`} className="pf-chip">
                   {s.query}
