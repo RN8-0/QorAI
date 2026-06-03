@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta } from '../lib/format';
+import { CANONICAL_CATEGORY_GROUPS, categoryLabel, catMeta } from '../lib/format';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 
@@ -18,20 +18,9 @@ const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 
 const SEG_LANGS = ['tr', 'en', 'de'];
 
-// Grouped category mega-menu. Each entry resolves its label through catMeta();
-// links go to the existing /category?cat=… route.
-const CAT_GROUPS = [
-  { title: { en: 'Mobile Devices', tr: 'Mobil Cihazlar', de: 'Mobilgeräte' },
-    cats: ['smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops'] },
-  { title: { en: 'Computer Components', tr: 'Bilgisayar Parçaları', de: 'PC-Komponenten' },
-    cats: ['gpus', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'coolers'] },
-  { title: { en: 'Audio', tr: 'Ses', de: 'Audio' },
-    cats: ['headphones', 'earbuds', 'speakers', 'soundbars'] },
-  { title: { en: 'Photo & Video', tr: 'Foto & Video', de: 'Foto & Video' },
-    cats: ['cameras', 'action_cameras', 'security_cameras', 'monitors', 'tvs', 'gaming_consoles'] },
-  { title: { en: 'Other', tr: 'Diğer', de: 'Sonstiges' },
-    cats: ['printers', 'powerbanks', 'routers', 'keyboards', 'mice'] },
-];
+const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
+  group.cats.map((id) => ({ id, group })),
+);
 
 export default function Header() {
   const { user, openAuth, logout } = useAuth();
@@ -93,17 +82,26 @@ export default function Header() {
               <div className="hd-mega-backdrop" onClick={closeCatNow} />
               <div className="hd-mega" onMouseEnter={openCat} onMouseLeave={closeCatSoon}>
                 <div className="container hd-mega-inner">
-                  {CAT_GROUPS.map((g) => (
-                    <div className="hd-mega-col" key={g.title.en}>
-                      <h6>{g.title[lang] || g.title.en}</h6>
-                      {g.cats.map((c) => (
-                        <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
-                          className="hd-mega-link" onClick={closeCatNow}>
-                          {catMeta(c).label}
-                        </Link>
-                      ))}
+                  <div className="hd-mega-head">
+                    <div>
+                      <strong>{L('All categories', 'Tüm kategoriler', 'Alle Kategorien')}</strong>
+                      <span>{L('Browse every approved Qor AI category.', 'Qor AI’daki tüm onaylı kategorilere göz at.', 'Alle freigegebenen Qor AI Kategorien durchsuchen.')}</span>
                     </div>
-                  ))}
+                    <em>{ALL_CATEGORIES.length}</em>
+                  </div>
+                  <div className="hd-mega-grid">
+                    {ALL_CATEGORIES.map(({ id, group }) => {
+                      const meta = catMeta(id);
+                      return (
+                        <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
+                          className="hd-mega-tile" onClick={closeCatNow}>
+                          <span className="hd-mega-ic" style={{ background: meta.color }}>{meta.icon}</span>
+                          <span className="hd-mega-name">{categoryLabel(id, lang)}</span>
+                          <small>{group.title[lang] || group.title.en}</small>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </>
@@ -173,10 +171,11 @@ export default function Header() {
             ))}
             <div className="hd-drawer-cats">
               <span className="hd-drawer-h">{L('Categories', 'Kategoriler', 'Kategorien')}</span>
-              {CAT_GROUPS.flatMap((g) => g.cats).map((c) => (
-                <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`}
+              {ALL_CATEGORIES.map(({ id }) => (
+                <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
                   className="hd-drawer-cat" onClick={() => setDrawer(false)}>
-                  {catMeta(c).label}
+                  <span style={{ color: catMeta(id).color }}>{catMeta(id).icon}</span>
+                  {categoryLabel(id, lang)}
                 </Link>
               ))}
             </div>

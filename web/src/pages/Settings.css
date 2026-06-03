@@ -1,5 +1,5 @@
 .st { padding: 30px 20px 60px; max-width: 720px; }
-.st-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 18px; }
+.st-title { font-size: 26px; font-weight: 800; letter-spacing: 0; margin-bottom: 18px; }
 
 .st-card {
   background: var(--bg2); border: 1px solid var(--border);

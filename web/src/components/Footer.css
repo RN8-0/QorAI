@@ -18,7 +18,7 @@
 
 .ft-brand-row { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ft-brand-row img { width: 30px; height: 30px; border-radius: 8px; }
-.ft-brand-row b { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.ft-brand-row b { font-size: 18px; font-weight: 800; letter-spacing: 0; color: var(--text); }
 .ft-brand p { color: var(--text3); font-size: 13px; line-height: 1.6; max-width: 280px; }
 .ft-store {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 16px;

@@ -87,7 +87,7 @@ async function searchDocs(params) {
 export async function getHomeFeed(prefCats = []) {
   const cats = (prefCats || []).filter(Boolean).slice(0, 5);
   try {
-    const [trendingRes, forYouRes, newRes, facetRes] = await Promise.all([
+    const [trendingRes, forYouRes, newRes, spotlightRes, facetRes] = await Promise.all([
       searchDocs({
         q: '*', query_by: 'name', sort_by: 'trendScore:desc',
         per_page: 16, include_fields: LIST_FIELDS,
@@ -102,6 +102,11 @@ export async function getHomeFeed(prefCats = []) {
         per_page: 16, include_fields: LIST_FIELDS,
       }),
       searchDocs({
+        q: '*', query_by: 'name', sort_by: 'techScore:desc',
+        per_page: 1, include_fields: LIST_FIELDS,
+        filter_by: `category:=${lit('smartphones')}`,
+      }),
+      searchDocs({
         q: '*', query_by: 'name', per_page: 1,
         facet_by: 'category', max_facet_values: 100,
       }),
@@ -112,12 +117,13 @@ export async function getHomeFeed(prefCats = []) {
       forYou: docs(forYouRes).map(docToProduct),
       trending: docs(trendingRes).map(docToProduct),
       newArrivals: docs(newRes).map(docToProduct),
+      spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
       categories: categoryFacet ? categoryFacet.counts : [],
       total: Number(facetRes.found) || 0,
     };
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
-    return { forYou: [], trending: [], newArrivals: [], categories: [], total: 0 };
+    return { forYou: [], trending: [], newArrivals: [], spotlight: null, categories: [], total: 0 };
   }
 }
 

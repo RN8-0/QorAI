@@ -9,7 +9,7 @@
 
 .hd-logo { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
 .hd-logo img { width: 30px; height: 30px; border-radius: 8px; }
-.hd-logo span { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.hd-logo span { font-size: 18px; font-weight: 800; letter-spacing: 0; }
 
 .hd-nav { display: flex; align-items: center; gap: 2px; margin-left: 8px; }
 .hd-link {
@@ -34,29 +34,60 @@
 }
 @keyframes hdMegaIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 .hd-mega-inner {
+  display: block;
+  padding: 12px 24px 18px;
+  max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+}
+.hd-mega-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 0 2px 12px;
+}
+.hd-mega-head strong { display: block; font-size: 18px; font-weight: 900; letter-spacing: 0; }
+.hd-mega-head span { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.hd-mega-head em {
+  min-width: 36px; height: 36px; border-radius: 999px;
+  display: grid; place-items: center;
+  color: var(--accent); background: var(--accent-soft);
+  font-style: normal; font-size: 13px; font-weight: 900;
+}
+.hd-mega-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 22px 34px;
-  padding: 44px 24px 48px;
-  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
 }
-.hd-mega-col { display: flex; flex-direction: column; gap: 4px; }
-.hd-mega-col h6 {
-  font-size: 11px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--accent); margin-bottom: 12px;
-  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+.hd-mega-tile {
+  min-height: 90px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg3) 72%, transparent);
+  text-align: center;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
 }
-.hd-mega-link {
-  display: flex; align-items: center; gap: 9px;
-  padding: 7px 9px; border-radius: var(--radius-sm);
-  font-size: 13.5px; font-weight: 600; color: var(--text2);
-  transition: background 0.12s, color 0.12s;
+.hd-mega-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
 }
-.hd-mega-link:hover { background: var(--accent-soft); color: var(--accent); }
-.hd-mega-ic { font-size: 15px; width: 20px; text-align: center; }
-.hd-mega-cta { grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 8px; }
-.hd-mega-cta .btn { padding: 11px 26px; }
-
+.hd-mega-ic {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center; color: #fff; font-size: 18px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+.hd-mega-name {
+  max-width: 100%;
+  color: var(--text);
+  font-size: 12px; font-weight: 800; line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+.hd-mega-tile small {
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+}
 .hd-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 .hd-apps { display: flex; gap: 4px; padding-right: 4px; border-right: 1px solid var(--border); margin-right: 4px; }
@@ -161,7 +192,7 @@
 
 .hd-drawer-cats {
   margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
 }
 .hd-drawer-h {
   grid-column: 1 / -1; font-size: 10.5px; font-weight: 800;
@@ -175,6 +206,11 @@
 }
 .hd-drawer-cat:hover { background: var(--bg3); color: var(--accent); }
 .hd-drawer { max-height: calc(100vh - var(--header-h)); overflow-y: auto; }
+
+@media (max-width: 760px) {
+  .hd-mega-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hd-mega-head { align-items: flex-start; }
+}
 
 @media (max-width: 940px) {
   .hd-nav { display: none; }

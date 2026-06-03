@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 const KEY = 'qorai-theme';
 
 export function getTheme() {
-  try { return localStorage.getItem(KEY) || 'dark'; } catch { return 'dark'; }
+  return 'light';
 }
 
 export function useTheme() {

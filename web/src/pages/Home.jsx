@@ -1,25 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
-import { catMeta, scoreClass, scoreLabel, PLACEHOLDER_IMG } from '../lib/format';
+import { catMeta } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
-import PlayBadge from '../components/PlayBadge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
 import './Home.css';
-
-const CATEGORY_ORDER = [
-  'smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops',
-  'speakers', 'soundbars', 'action_cameras', 'security_cameras', 'gaming_consoles',
-  'headphones', 'monitors', 'gpus', 'cpus', 'motherboards', 'ram', 'powerbanks',
-];
 
 function StatItem({ n, l }) {
   return (
@@ -62,19 +55,59 @@ function HeroSpotlight({ p, L, lang }) {
   );
 }
 
+function SearchSuggestionList({ products, searching, onOpen, L }) {
+  if (searching) {
+    return (
+      <div className="hero-suggest-panel">
+        <div className="hero-suggest-state">{L('Searching products…', 'Ürünler aranıyor…', 'Produkte werden gesucht…')}</div>
+      </div>
+    );
+  }
+  if (!products.length) {
+    return (
+      <div className="hero-suggest-panel">
+        <div className="hero-suggest-state">{L('No matching products yet.', 'Henüz eşleşen ürün yok.', 'Noch keine passenden Produkte.')}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="hero-suggest-panel">
+      {products.slice(0, 7).map((p) => {
+        const score = Number(p.techScore) || 0;
+        return (
+          <button key={p.id} type="button" className="hero-suggest-row"
+            onMouseDown={(e) => { e.preventDefault(); onOpen(p); }}>
+            <span className="hero-suggest-img">
+              {p.imageUrl
+                ? <ProductImg src={p.imageUrl} alt={p.name} size="thumb" />
+                : <span>{catMeta(p.category).icon}</span>}
+            </span>
+            <span className="hero-suggest-copy">
+              <b>{p.name}</b>
+              <small>{p.brand || catMeta(p.category).label}</small>
+            </span>
+            {score > 0 && <span className="hero-suggest-score" style={{ color: techColor(score) }}>{Math.round(score)}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // A product section — title + optional "see all" + a rail / grid / list layout.
-function Section({ title, products, loading, seeAllTo, t, layout = 'grid' }) {
+function Section({ title, products, loading, seeAllTo, t, layout = 'grid', dense = false }) {
   if (!loading && (!products || products.length === 0)) return null;
   const items = loading
     ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
     : products.map((p) => <ProductCard key={p.id} product={p} variant={layout === 'list' ? 'list' : 'card'} />);
+  const cls = layout === 'rail' ? 'rail' : layout === 'list' ? 'h-trend-grid' : `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
     <>
       <div className="sec-head">
         <h2><span className="bar" /> {title}</h2>
         {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
       </div>
-      <div className={layout === 'rail' ? 'rail' : layout === 'list' ? 'h-trend-grid' : 'card-grid'}>
+      <div className={cls}>
         {items}
       </div>
     </>
@@ -97,7 +130,7 @@ export default function Home() {
         : L('Good evening', 'İyi akşamlar', 'Guten Abend');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
-  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], categories: [], total: 0 });
+  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], spotlight: null, categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [recent] = useState(() => getRecentProducts());
 
@@ -188,22 +221,10 @@ export default function Home() {
     setSearchResults([]);
   }
 
-  const categories = useMemo(() => {
-    return [...(feed.categories || [])]
-      .sort((a, b) => {
-        const ai = CATEGORY_ORDER.indexOf(a.value);
-        const bi = CATEGORY_ORDER.indexOf(b.value);
-        if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-        return (b.count || 0) - (a.count || 0);
-      })
-      .slice(0, 12)
-      .map((c) => ({ value: c.value, count: c.count || 0, meta: catMeta(c.value) }));
-  }, [feed.categories]);
-
-  // Spotlight = the highest tech-scored flagship product from the live feed
-  // (prefer phones/laptops/GPUs etc. so the hero shows a hero-worthy device,
-  // not a random accessory), falling back to the best overall.
+  // Spotlight = the highest tech-scored smartphone from Typesense. If that
+  // query ever fails, fall back to the best image-backed product from the feed.
   const spotlight = useMemo(() => {
+    if (feed.spotlight) return feed.spotlight;
     const pool = [...(feed.forYou || []), ...(feed.trending || []), ...(feed.newArrivals || [])];
     if (!pool.length) return null;
     const FLAG = ['smartphones', 'laptops', 'tablets', 'gpus', 'headphones', 'smartwatches', 'cpus', 'monitors', 'tvs', 'cameras'];
@@ -243,18 +264,25 @@ export default function Home() {
               </p>
 
               {/* product search */}
-              <form className="searchbox hero-search" onSubmit={search}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input value={q} onChange={(e) => setQ(e.target.value)}
-                  placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
-                <button type="submit" className="btn btn-grad">{t('common.search')}</button>
-              </form>
-
-              <div className="row wrap" style={{ gap: 12, marginTop: 16 }}>
-                <PlayBadge getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
-                <Link to="/compare" className="btn btn-ghost btn-lg">⚖ {t('nav.compare')}</Link>
+              <div className="hero-search-wrap" ref={searchRef}>
+                <form className="searchbox hero-search" onSubmit={search}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input value={q}
+                    onFocus={() => { if (q.trim()) setSuggestOpen(true); }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setQ(value);
+                      setSubmitted('');
+                      setSuggestOpen(Boolean(value.trim()));
+                    }}
+                    placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
+                  <button type="submit" className="btn btn-grad">{t('common.search')}</button>
+                </form>
+                {suggestOpen && q.trim() && (
+                  <SearchSuggestionList products={searchResults} searching={searching} onOpen={openProduct} L={L} />
+                )}
               </div>
             </div>
 
@@ -289,26 +317,8 @@ export default function Home() {
 
         {!searchMode && (
           <>
-            {/* CATEGORIES — mirrors the app's prominent category grid */}
-            {categories.length > 0 && (
-              <>
-                <div className="sec-head">
-                  <h2><span className="bar" /> {L('Categories', 'Kategoriler', 'Kategorien')}</h2>
-                  <Link to="/category" className="see-all">{t('common.seeAll')} →</Link>
-                </div>
-                <div className="cat-grid">
-                  {categories.map((c) => (
-                    <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`} className="cat-tile">
-                      <span className="cat-ic" style={{ background: c.meta.color }}>{c.meta.icon}</span>
-                      <span className="cn">{c.meta.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-
             {/* FOR YOU */}
-            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} seeAllTo="/category" layout="rail" />
+            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} layout="rail" />
 
             {/* TRENDING */}
             <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} layout="list" />
@@ -321,7 +331,7 @@ export default function Home() {
             )}
 
             {/* NEW ARRIVALS */}
-            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} />
+            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
           </>
         )}
       </div>

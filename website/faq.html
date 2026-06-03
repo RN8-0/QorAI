@@ -1,663 +1,156 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAQ — Qor AI | AI Product Advisor</title>
-  <meta name="description" content="Frequently asked questions about Qor AI — the AI-powered product comparison and advisor app for iOS and Android.">
+  <title>SSS — Qor AI</title>
+  <meta name="description" content="Qor AI hakkında sık sorulan sorular: ürün puanları, arama, karşılaştırma, hesap ve gizlilik.">
   <link rel="canonical" href="https://qorai.net/faq">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="SSS — Qor AI">
+  <meta property="og:description" content="Qor AI hakkında sık sorulan sorular.">
+  <meta property="og:image" content="https://qorai.net/assets/logo.png">
+  <meta property="og:url" content="https://qorai.net/faq">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260428c">
-  <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <link rel="stylesheet" href="/css/style.css?v=20260603a">
+  <script>try{document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
   <style>
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-
-    /* ── Hero ─────────────────────────────────────────────── */
-    .page-hero {
-      text-align: center;
-      padding: 88px 20px 64px;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero-orb {
-      position: absolute;
-      top: -80px; left: 50%;
-      transform: translateX(-50%);
-      width: 560px; height: 420px;
-      background: radial-gradient(ellipse at center, rgba(99,102,241,0.22) 0%, rgba(167,139,250,0.08) 45%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .hero-badge {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--accent3);
-      color: var(--accent2);
-      border: 1px solid rgba(99,102,241,0.35);
-      border-radius: 99px;
-      padding: 5px 16px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      margin-bottom: 22px;
-    }
-    .page-hero h1 {
-      position: relative;
-      font-size: clamp(34px, 5.5vw, 56px);
-      font-weight: 900;
-      line-height: 1.12;
-      margin-bottom: 18px;
-      background: linear-gradient(135deg, var(--accent2), #a78bfa, #60a5fa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .page-hero p {
-      position: relative;
-      color: var(--text2);
-      font-size: 17px;
-      line-height: 1.7;
-      max-width: 500px;
-      margin: 0 auto 40px;
-    }
-
-    /* ── Search ───────────────────────────────────────────── */
-    .search-wrap {
-      position: relative;
-      max-width: 520px;
-      margin: 0 auto;
-    }
-    .search-icon {
-      position: absolute;
-      left: 16px; top: 50%;
-      transform: translateY(-50%);
-      color: var(--text3);
-      pointer-events: none;
-    }
-    .search-input {
-      width: 100%;
-      padding: 14px 20px 14px 48px;
-      background: var(--bg2);
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      color: var(--text);
-      font-size: 15px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .search-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 4px var(--accent3);
-    }
-    .search-input::placeholder { color: var(--text3); }
-
-    /* ── Content ──────────────────────────────────────────── */
-    .page-wrap {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 20px 80px;
-    }
-
-    /* ── Category ─────────────────────────────────────────── */
-    .faq-category { margin-bottom: 52px; }
-    .category-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .category-icon {
-      width: 42px; height: 42px;
-      border-radius: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
-    }
-    .ci-purple { background: rgba(139,92,246,0.16); }
-    .ci-blue   { background: rgba(59,130,246,0.16); }
-    .ci-green  { background: rgba(16,185,129,0.16); }
-    .ci-yellow { background: rgba(245,158,11,0.16); }
-    .category-title { font-size: 19px; font-weight: 800; color: var(--text); }
-    .category-count {
-      margin-left: auto;
-      font-size: 12px;
-      color: var(--text3);
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 99px;
-      padding: 3px 12px;
-      font-weight: 600;
-    }
-
-    /* ── FAQ Items ────────────────────────────────────────── */
-    .faq-item {
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--bg2);
-      margin-bottom: 10px;
-      overflow: hidden;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .faq-item:hover {
-      border-color: rgba(99,102,241,0.45);
-      box-shadow: 0 4px 20px rgba(99,102,241,0.07);
-    }
-    .faq-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 18px 22px;
-      background: none;
-      border: none;
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 600;
-      text-align: left;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 0.15s;
-    }
-    .faq-btn:hover { background: var(--bg3); }
-    .faq-btn.open { background: var(--bg3); }
-    .faq-btn.open .faq-q { color: var(--accent2); }
-    .faq-q { flex: 1; line-height: 1.45; }
-    .faq-chevron {
-      flex-shrink: 0;
-      width: 20px; height: 20px;
-      color: var(--text3);
-      transition: transform 0.32s ease, color 0.2s;
-    }
-    .faq-btn.open .faq-chevron { transform: rotate(180deg); color: var(--accent2); }
-    .faq-body {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.42s ease;
-    }
-    .faq-body-inner {
-      padding: 16px 22px 22px;
-      border-top: 1px solid var(--border);
-      color: var(--text2);
-      font-size: 14.5px;
-      line-height: 1.82;
-    }
+    body { overflow: auto; height: auto; }
+    .faq-wrap { max-width: 920px; margin: 0 auto; padding: 56px 24px 76px; }
+    .top-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    .lang-switch { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg2); }
+    .lang-switch button { border: 0; background: transparent; color: var(--text3); border-radius: 999px; padding: 7px 12px; font-weight: 800; }
+    .lang-switch button.active { color: #fff; background: var(--brand-blue); }
+    .kicker { display: inline-flex; padding: 7px 13px; border-radius: 999px; background: var(--accent3); color: var(--accent2); font-size: 12px; font-weight: 800; }
+    h1 { margin-top: 18px; font-size: clamp(34px, 6vw, 58px); line-height: 1.04; font-weight: 900; letter-spacing: 0; color: var(--text); }
+    .lead { max-width: 680px; margin-top: 16px; color: var(--text2); font-size: 17px; line-height: 1.75; }
+    .search-input { width: 100%; margin: 24px 0; padding: 14px 18px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg2); color: var(--text); outline: none; font: inherit; }
+    .search-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 4px var(--accent3); }
+    .faq-list { display: grid; gap: 10px; }
+    .faq-item { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--bg2); }
+    .faq-btn { width: 100%; border: 0; background: transparent; color: var(--text); display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 18px 20px; text-align: left; font-size: 15px; font-weight: 900; }
+    .faq-btn span { line-height: 1.4; }
+    .faq-btn svg { flex: 0 0 18px; transition: transform .2s; }
+    .faq-btn.open svg { transform: rotate(180deg); }
+    .faq-body { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+    .faq-body-inner { border-top: 1px solid var(--border); padding: 16px 20px 20px; color: var(--text2); line-height: 1.8; font-size: 14.5px; }
     .faq-body-inner a { color: var(--accent2); text-decoration: underline; }
-    .faq-body-inner strong { color: var(--text); }
-    .faq-body-inner ul {
-      margin-top: 12px;
-      padding-left: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-
-    /* ── Contact Card ─────────────────────────────────────── */
-    .contact-card {
-      background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(139,92,246,0.09), rgba(59,130,246,0.09));
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 18px;
-      padding: 52px 44px;
-      text-align: center;
-      margin-top: 12px;
-      position: relative;
-      overflow: hidden;
-    }
-    .contact-card::before {
-      content: '';
-      position: absolute;
-      top: -60px; right: -60px;
-      width: 240px; height: 240px;
-      background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
-      pointer-events: none;
-    }
-    .contact-card::after {
-      content: '';
-      position: absolute;
-      bottom: -40px; left: -40px;
-      width: 180px; height: 180px;
-      background: radial-gradient(circle, rgba(167,139,250,0.14), transparent 70%);
-      pointer-events: none;
-    }
-    .contact-card h3 {
-      font-size: 26px;
-      font-weight: 900;
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, var(--accent2), #a78bfa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .contact-card p { color: var(--text2); font-size: 16px; margin-bottom: 28px; line-height: 1.65; }
-    .contact-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      padding: 14px 36px;
-      background: linear-gradient(135deg, var(--accent), #7c3aed);
-      color: #fff;
-      border-radius: 99px;
-      font-size: 15px;
-      font-weight: 700;
-      transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 6px 24px rgba(99,102,241,0.45);
-    }
-    .contact-btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 32px rgba(99,102,241,0.55); }
-
-    /* ── No Results ───────────────────────────────────────── */
-    .no-results {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--text3);
-      font-size: 15px;
-      display: none;
-    }
-    .no-results a { color: var(--accent2); }
-
-    /* ── Footer ───────────────────────────────────────────── */
-    .site-footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 20px;
-      text-align: center;
-      color: var(--text3);
-      font-size: 13px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-    }
-    .site-footer a { color: var(--text2); transition: color 0.15s; }
+    .no-results { display: none; margin-top: 12px; color: var(--text3); text-align: center; font-weight: 700; }
+    .site-footer { border-top: 1px solid var(--border); padding: 28px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; }
+    .site-footer a { color: var(--text2); }
     .site-footer a:hover { color: var(--accent2); }
-
-    @media (max-width: 600px) {
-      .contact-card { padding: 36px 22px; }
-      .faq-btn { padding: 15px 16px; font-size: 14px; }
-      .faq-body-inner { padding: 14px 16px 18px; }
-    }
+    [data-panel][hidden] { display: none; }
+    @media (max-width: 720px) { .faq-wrap { padding: 38px 16px 64px; } .faq-btn { padding: 16px; } }
   </style>
-  <script>window.QOR_GA_ID='G-PLACEHOLDER';</script>
 </head>
 <body>
-
 <header class="site-header">
-  <a href="/" class="logo-link">
-    <img src="/assets/logo.png" alt="Qor AI" class="logo-img">
-    <span class="logo-text">Qor AI</span>
-  </a>
+  <a href="/" class="logo-link"><img src="/assets/logo.png" alt="Qor AI" class="logo-img"><span class="logo-text">Qor AI</span></a>
   <div style="flex:1;"></div>
   <div class="header-actions">
-    <button class="icon-btn theme-btn" id="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">🌙</button>
     <a href="/" class="icon-btn" title="Home" style="font-size:13px;width:auto;padding:0 12px;">Home</a>
   </div>
 </header>
 
-<div class="page-hero">
-  <div class="hero-orb"></div>
-  <div class="hero-badge">💬 Help Center</div>
-  <h1>Frequently Asked<br>Questions</h1>
-  <p>Find answers to the most common questions about Qor AI — your AI-powered product advisor.</p>
-  <div class="search-wrap">
-    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="search" class="search-input" placeholder="Search questions…" oninput="filterFAQ(this.value)" aria-label="Search FAQ">
+<main class="faq-wrap">
+  <div class="top-row">
+    <span class="kicker" data-i18n="badge">Yardım merkezi</span>
+    <div class="lang-switch" aria-label="Language">
+      <button type="button" data-lang-btn="tr">TR</button>
+      <button type="button" data-lang-btn="en">EN</button>
+      <button type="button" data-lang-btn="de">DE</button>
+    </div>
   </div>
-</div>
+  <h1 data-i18n="title">Sık sorulan sorular.</h1>
+  <p class="lead" data-i18n="lead">Qor AI’nin ürün puanları, arama, karşılaştırma ve gizlilik yaklaşımı hakkında hızlı yanıtlar.</p>
+  <input class="search-input" type="search" data-i18n-placeholder="search" placeholder="Sorularda ara..." oninput="filterFaq(this.value)">
 
-<main>
-  <div class="page-wrap">
-    <div id="no-results" class="no-results">😕 No results found. Try a different keyword or <a href="mailto:contact@arain.digital">contact us</a>.</div>
+  <section class="faq-list" data-panel="tr">
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Qor AI nedir?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Qor AI, teknoloji ürünlerini aramanı, teknik puanlarına göre değerlendirmeni ve yan yana karşılaştırmanı sağlayan yapay zeka destekli bir ürün danışmanıdır.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Teknik puan nasıl hesaplanır?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Puanlar, ürünün kendi kategorisi içindeki teknik özellik sinyalleri normalize edilerek oluşturulur. Bir telefon kendi kategorisindeki telefonlarla, bir ekran kartı ekran kartlarıyla değerlendirilir.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Arama nasıl çalışır?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Ürün adı, marka veya teknik özellik yazdığında katalogdaki en alakalı ürünler listelenir. Ürün adını seçerek detay sayfasına geçebilirsin.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Qor AI ücretsiz mi?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Temel keşif ve karşılaştırma akışları ücretsiz kullanılabilir. Premium özellikler mobil uygulama içinde sunulur.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Verilerim satılıyor mu?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Hayır. Kişisel veriler reklam profili oluşturmak veya üçüncü taraflara satmak için kullanılmaz. Detaylar için <a href="/privacy.html">Gizlilik Politikası</a> sayfasını okuyabilirsin.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Eksik ürün bildirebilir miyim?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Evet. Eksik ürün, kategori veya marka önerileri için <a href="/contact.html">Bize Ulaşın</a> sayfasını kullanabilirsin.</div></div></article>
+  </section>
 
-    <!-- ── General ────────────────────────────────────────── -->
-    <div class="faq-category" id="cat-general">
-      <div class="category-header">
-        <div class="category-icon ci-purple">🔮</div>
-        <span class="category-title">General</span>
-        <span class="category-count">5 questions</span>
-      </div>
+  <section class="faq-list" data-panel="en" hidden>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>What is Qor AI?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Qor AI is an AI-powered product advisor that helps you search, score and compare technology products side by side.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>How is the technical score calculated?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Scores are built from normalized technical signals inside the product’s own category. Phones are compared with phones, graphics cards with graphics cards.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>How does search work?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Type a product name, brand or spec and Qor AI lists the most relevant products from the catalog.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Is Qor AI free?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Core discovery and comparison flows are free to use. Premium features are available in the mobile app.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Do you sell my data?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">No. Personal data is not sold or used to build advertising profiles. See the <a href="/privacy.html">Privacy Policy</a> for details.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Can I suggest a missing product?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Yes. Use the <a href="/contact.html">Contact</a> page for missing products, categories or brands.</div></div></article>
+  </section>
 
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">What is Qor AI?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI is an AI-powered product advisor and comparison platform available on iOS and Android. It helps you make smarter purchasing decisions by intelligently analyzing and comparing tech products — smartphones, laptops, GPUs, headphones, tablets, and 40+ other categories. Simply tell Qor AI what you're looking for, and it delivers side-by-side comparisons, personalized compatibility scores, and clear recommendations tailored to your needs and budget. Think of it as having a knowledgeable tech expert in your pocket, available 24/7.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">How does Qor AI work?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI uses advanced AI models (Google Gemini and DeepSeek) combined with a curated product database and real-time data to analyze products across hundreds of specifications. The process is simple:
-          <ul>
-            <li><strong>Search &amp; Select</strong> — Search for any product and add it to your comparison list.</li>
-            <li><strong>AI Analysis</strong> — Our AI evaluates specs, benchmark scores, value for money, and compatibility with your profile.</li>
-            <li><strong>Compatibility Score</strong> — Receive a personalized 0–100 score showing how well each product fits your specific needs.</li>
-            <li><strong>Smart Recommendation</strong> — Get a clear winner with transparent reasoning.</li>
-            <li><strong>AI Chat</strong> — Ask follow-up questions and dive deeper through natural conversation.</li>
-          </ul>
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Is Qor AI free to use?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Yes! Qor AI offers a generous free tier with no credit card required. On the free plan you get:
-          <ul>
-            <li>5 product comparisons per day</li>
-            <li>15 AI chat messages per day</li>
-            <li>3 link analyses per day</li>
-            <li>Access to all 40+ product categories</li>
-          </ul>
-          Upgrade to <strong>Premium</strong> to remove all daily limits, unlock priority AI responses, export comparisons as PDF, and get early access to new features. Visit the <a href="/">homepage</a> to view current pricing.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">How do I create an account?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Creating an account takes less than a minute. Download the Qor AI app from the <strong>App Store</strong> (iOS) or <strong>Google Play Store</strong> (Android), then tap <strong>Sign Up</strong>. You can register with your email address or use <strong>Google Sign-In</strong> for quick access. After verifying your email, you're all set — no lengthy onboarding, no unnecessary personal information required. Your preferences are collected gradually as you use the app to build a personalized experience.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Which platforms is Qor AI available on?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI is available as a native mobile app for <strong>iOS</strong> (iPhone &amp; iPad, iOS 14+) and <strong>Android</strong> (Android 8.0+). The app is built with Flutter, ensuring a smooth and consistent experience on both platforms. We currently focus exclusively on mobile — all features live within the app. You can also learn about Qor AI at <a href="https://qorai.net">qorai.net</a>, but the full product advisor experience requires the app.
-        </div></div>
-      </div>
-    </div>
-
-    <!-- ── AI Features ─────────────────────────────────────── -->
-    <div class="faq-category" id="cat-ai">
-      <div class="category-header">
-        <div class="category-icon ci-blue">🤖</div>
-        <span class="category-title">AI Features</span>
-        <span class="category-count">5 questions</span>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">How accurate are the AI comparisons and recommendations?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI's AI is powered by Google Gemini and uses a curated database of verified product specifications and benchmark data. Comparisons are highly accurate for factual specifications. Recommendations are personalized based on your stated preferences, use case, and budget — they are thoughtful suggestions, not absolute certainties. We always recommend cross-checking critical purchasing decisions with official product pages and retailer listings. Please see our <a href="/terms">Terms of Service</a> for our full disclaimer on AI-generated content.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">What is AI Link Analysis?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          AI Link Analysis is one of Qor AI's most powerful features. Paste a product URL from any e-commerce site — Amazon, Best Buy, Newegg, AliExpress, and many more — and Qor AI's AI will:
-          <ul>
-            <li>Automatically extract the product's specifications and details</li>
-            <li>Evaluate the listing price versus current market value</li>
-            <li>Compare it against similar products in our database</li>
-            <li>Calculate a personalized compatibility score just for you</li>
-            <li>Highlight potential concerns, advantages, and alternatives</li>
-          </ul>
-          This is especially useful when shopping online — just share the link and get an instant, unbiased analysis before you buy.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">What can I ask the AI chat assistant?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          The AI chat assistant is your personal tech advisor. You can ask virtually anything about products and purchasing decisions:
-          <ul>
-            <li>"Is the iPhone 16 Pro worth upgrading from my iPhone 13?"</li>
-            <li>"What's the best laptop under $800 for video editing?"</li>
-            <li>"Should I buy a GPU now or wait for the next generation?"</li>
-            <li>"What are the key differences between these two headphones?"</li>
-            <li>"Is this Amazon listing a good deal right now?"</li>
-          </ul>
-          The assistant maintains full context throughout your conversation, so follow-up questions are understood naturally without needing to repeat yourself.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">What is the Compatibility Score?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          The Compatibility Score (0–100) is a personalized metric that measures how well a product fits <em>your specific</em> needs — not just how good the product is in general. It factors in:
-          <ul>
-            <li>Your stated use cases (gaming, creative work, photography, etc.)</li>
-            <li>Your budget range and value-for-money expectations</li>
-            <li>Your existing device ecosystem and software preferences</li>
-            <li>Your performance and feature priorities</li>
-          </ul>
-          A score of <strong>85+</strong> indicates an excellent match. Scores below 50 suggest the product may not align well with your requirements. You can update your preferences anytime in <strong>Settings → My Profile</strong>.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Which AI models does Qor AI use?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI uses a combination of leading AI models to deliver fast, accurate, and insightful results. Our primary AI engine is <strong>Google Gemini</strong>, which powers product comparisons, link analysis, and conversational AI features. We also integrate <strong>DeepSeek</strong> models for specific analytical tasks. Product search is powered by <strong>Algolia</strong> for lightning-fast, typo-tolerant results across our entire product catalog. Our infrastructure is continuously updated to incorporate the latest AI advancements.
-        </div></div>
-      </div>
-    </div>
-
-    <!-- ── Privacy & Security ──────────────────────────────── -->
-    <div class="faq-category" id="cat-privacy">
-      <div class="category-header">
-        <div class="category-icon ci-green">🔒</div>
-        <span class="category-title">Privacy &amp; Security</span>
-        <span class="category-count">4 questions</span>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">What data does Qor AI collect and store?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          We collect only what's necessary to provide a great experience. This includes your account information (email, display name), your product preferences and settings, your comparison history to power personalized recommendations, and basic usage analytics to improve the app. We do <strong>not</strong> sell your personal data to any third parties — ever. Your data is stored securely on our PocketBase-powered servers. For complete details, please read our <a href="/privacy">Privacy Policy</a>.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Is Qor AI GDPR compliant?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Yes. Qor AI is designed with privacy as a core principle and complies with applicable data protection regulations. You have the right to access your personal data, correct inaccuracies, request deletion, and export your data in a portable format. You can exercise these rights directly from the app (<strong>Settings → Privacy</strong>) or by emailing us at <a href="mailto:contact@arain.digital">contact@arain.digital</a>. We respond to all data requests within 30 days. For full details, see our <a href="/privacy">Privacy Policy</a>.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">How do I delete my account and data?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          You can permanently delete your account and all associated data in two ways:
-          <ul>
-            <li><strong>In-app:</strong> Go to <strong>Settings → Account → Delete Account</strong>. This immediately and permanently removes all your data from our servers.</li>
-            <li><strong>Via email:</strong> Send an account deletion request to <a href="mailto:contact@arain.digital">contact@arain.digital</a> with the subject "Account Deletion Request". We'll process it within 30 days.</li>
-          </ul>
-          ⚠️ Deletion is permanent and cannot be undone. We recommend exporting your data first if you want to keep a copy (<strong>Settings → Export My Data</strong>).
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Is my data used to train AI models?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Your personal data is never used to train external AI models. Anonymized, aggregated usage patterns (such as which product categories are popular) may be used to improve Qor AI's internal recommendation algorithms. Your conversations with the AI assistant are processed by our AI providers to generate responses, but are not stored for model training purposes beyond what is covered in the respective providers' data policies. You can review all data practices in our <a href="/privacy">Privacy Policy</a>.
-        </div></div>
-      </div>
-    </div>
-
-    <!-- ── Mobile App ──────────────────────────────────────── -->
-    <div class="faq-category" id="cat-mobile">
-      <div class="category-header">
-        <div class="category-icon ci-yellow">📱</div>
-        <span class="category-title">Mobile App</span>
-        <span class="category-count">4 questions</span>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Where can I download the Qor AI app?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI is available on both major mobile platforms:
-          <ul>
-            <li><strong>iOS:</strong> Download from the <strong>App Store</strong> — compatible with iPhone and iPad running iOS 14 or later.</li>
-            <li><strong>Android:</strong> Download from <strong>Google Play Store</strong> — compatible with Android 8.0 and above.</li>
-          </ul>
-          Simply search for <strong>"Qor AI"</strong> in your app store, or visit <a href="https://qorai.net">qorai.net</a> and tap the download button for your platform.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Does Qor AI work offline?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Qor AI requires an internet connection for most core features, since AI comparisons and real-time product data rely on our servers. However, some data is cached locally for quick access:
-          <ul>
-            <li>Recently viewed product comparisons are cached and viewable offline</li>
-            <li>Your profile preferences and settings are stored locally on your device</li>
-            <li>Product images are cached after first load for fast browsing</li>
-          </ul>
-          New AI comparisons, link analyses, and chat always require an active internet connection.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">Can I export my comparison results?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          Yes! Premium users can export comparison results in multiple formats. Open any comparison result and tap the <strong>Share / Export</strong> button to export as a PDF summary or share a direct link. You can also export your full account data — all comparisons, preferences, and history — from <strong>Settings → Export My Data</strong>. This produces a complete JSON file of everything Qor AI has stored for your account, which you can keep for your own records.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn" onclick="toggleFaq(this)" aria-expanded="false">
-          <span class="faq-q">How do I manage notifications?</span>
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-body"><div class="faq-body-inner">
-          You have full control over notifications. In the app, go to <strong>Settings → Notifications</strong> to customize what alerts you receive. Available notification types include:
-          <ul>
-            <li>Price drop alerts for products you're tracking</li>
-            <li>New product releases in your favorite categories</li>
-            <li>App updates and new feature announcements</li>
-            <li>Subscription renewal reminders</li>
-          </ul>
-          You can also manage all app notifications through your device's system settings at any time.
-        </div></div>
-      </div>
-    </div>
-
-    <!-- ── Contact Card ────────────────────────────────────── -->
-    <div class="contact-card">
-      <h3>Still have questions?</h3>
-      <p>Can't find what you're looking for? Our team is happy to help.<br>We typically respond within 24 hours.</p>
-      <a href="mailto:contact@arain.digital" class="contact-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-        Contact Us
-      </a>
-    </div>
-
-  </div>
+  <section class="faq-list" data-panel="de" hidden>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Was ist Qor AI?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Qor AI ist ein KI-gestützter Produktberater, der Technikprodukte sucht, bewertet und übersichtlich vergleicht.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Wie wird der technische Score berechnet?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Scores basieren auf normalisierten technischen Signalen innerhalb der jeweiligen Kategorie. Smartphones werden mit Smartphones verglichen, Grafikkarten mit Grafikkarten.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Wie funktioniert die Suche?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Gib Produktname, Marke oder technische Daten ein. Qor AI listet passende Produkte aus dem Katalog.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Ist Qor AI kostenlos?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Grundlegende Suche und Vergleiche sind kostenlos. Premium-Funktionen gibt es in der mobilen App.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Verkauft ihr meine Daten?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Nein. Persönliche Daten werden nicht verkauft und nicht für Werbeprofile genutzt. Details stehen in der <a href="/privacy.html">Datenschutzerklärung</a>.</div></div></article>
+    <article class="faq-item"><button class="faq-btn" onclick="toggleFaq(this)"><span>Kann ich ein fehlendes Produkt vorschlagen?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-body"><div class="faq-body-inner">Ja. Nutze die <a href="/contact.html">Kontaktseite</a> für fehlende Produkte, Kategorien oder Marken.</div></div></article>
+  </section>
+  <div class="no-results" id="no-results" data-i18n="empty">Sonuç bulunamadı.</div>
 </main>
 
 <footer class="site-footer">
-  <span>© 2025 Qor AI · qorai.net</span>
+  <span>© <span id="yr"></span> Qor AI</span>
   <a href="/">Home</a>
-  <a href="/faq">FAQ</a>
-  <a href="/privacy">Privacy Policy</a>
-  <a href="/terms">Terms of Service</a>
-  <a href="mailto:contact@arain.digital">contact@arain.digital</a>
+  <a href="/about.html">About</a>
+  <a href="/contact.html">Contact</a>
+  <a href="/privacy.html">Privacy</a>
+  <a href="/terms.html">Terms</a>
 </footer>
 
 <script>
+const ui = {
+  tr: { badge: 'Yardım merkezi', title: 'Sık sorulan sorular.', lead: 'Qor AI’nin ürün puanları, arama, karşılaştırma ve gizlilik yaklaşımı hakkında hızlı yanıtlar.', search: 'Sorularda ara...', empty: 'Sonuç bulunamadı.' },
+  en: { badge: 'Help center', title: 'Frequently asked questions.', lead: 'Quick answers about Qor AI scoring, search, comparison and privacy.', search: 'Search questions...', empty: 'No results found.' },
+  de: { badge: 'Hilfe', title: 'Häufige Fragen.', lead: 'Schnelle Antworten zu Qor AI Scores, Suche, Vergleichen und Datenschutz.', search: 'Fragen suchen...', empty: 'Keine Ergebnisse gefunden.' }
+};
+let activeLang = 'tr';
+function closeAll() {
+  document.querySelectorAll('.faq-btn').forEach((btn) => btn.classList.remove('open'));
+  document.querySelectorAll('.faq-body').forEach((body) => { body.style.maxHeight = ''; });
+}
+function setLang(lang) {
+  activeLang = ui[lang] ? lang : 'tr';
+  document.documentElement.lang = activeLang;
+  try { localStorage.setItem('qorai-lang', activeLang); } catch(e) {}
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = ui[activeLang][el.dataset.i18n]; });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => { el.placeholder = ui[activeLang][el.dataset.i18nPlaceholder]; });
+  document.querySelectorAll('[data-panel]').forEach((el) => { el.hidden = el.dataset.panel !== activeLang; });
+  document.querySelectorAll('[data-lang-btn]').forEach((btn) => { btn.classList.toggle('active', btn.dataset.langBtn === activeLang); });
+  document.querySelector('.search-input').value = '';
+  filterFaq('');
+  closeAll();
+}
 function toggleFaq(btn) {
   const body = btn.nextElementSibling;
-  const isOpen = btn.classList.contains('open');
-  document.querySelectorAll('.faq-btn').forEach(b => {
-    b.classList.remove('open');
-    b.setAttribute('aria-expanded', 'false');
-  });
-  document.querySelectorAll('.faq-body').forEach(b => { b.style.maxHeight = ''; });
-  if (!isOpen) {
+  const open = btn.classList.contains('open');
+  closeAll();
+  if (!open) {
     btn.classList.add('open');
-    btn.setAttribute('aria-expanded', 'true');
     body.style.maxHeight = body.scrollHeight + 'px';
   }
 }
-
-function filterFAQ(query) {
-  const q = query.toLowerCase().trim();
-  let anyVisible = false;
-  document.querySelectorAll('.faq-category').forEach(cat => {
-    let catVisible = false;
-    cat.querySelectorAll('.faq-item').forEach(item => {
-      const match = !q || item.textContent.toLowerCase().includes(q);
-      item.style.display = match ? '' : 'none';
-      if (match) catVisible = true;
-    });
-    cat.style.display = catVisible ? '' : 'none';
-    if (catVisible) anyVisible = true;
+function filterFaq(value) {
+  const term = String(value || '').toLowerCase().trim();
+  const panel = document.querySelector(`[data-panel="${activeLang}"]`);
+  let visible = 0;
+  panel.querySelectorAll('.faq-item').forEach((item) => {
+    const match = !term || item.textContent.toLowerCase().includes(term);
+    item.style.display = match ? '' : 'none';
+    if (match) visible += 1;
   });
-  document.getElementById('no-results').style.display = anyVisible ? 'none' : 'block';
+  document.getElementById('no-results').style.display = visible ? 'none' : 'block';
 }
-
-function toggleTheme() {
-  const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('qorai-theme', t);
-  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const t = document.documentElement.getAttribute('data-theme') || 'dark';
-  document.getElementById('theme-toggle').textContent = t === 'dark' ? '🌙' : '☀️';
-});
+document.getElementById('yr').textContent = new Date().getFullYear();
+document.querySelectorAll('[data-lang-btn]').forEach((btn) => btn.addEventListener('click', () => setLang(btn.dataset.langBtn)));
+let saved = 'tr';
+try { saved = localStorage.getItem('qorai-lang') || 'tr'; } catch(e) {}
+setLang(saved);
 </script>
 </body>
 </html>

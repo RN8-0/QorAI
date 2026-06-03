@@ -10,6 +10,6 @@
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-soft); border-radius: 26px;
 }
-.ph-card h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.ph-card h1 { font-size: 26px; font-weight: 800; letter-spacing: 0; }
 .ph-card p { color: var(--text2); margin: 10px 0 24px; }
 .ph-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

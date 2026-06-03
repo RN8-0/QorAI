@@ -18,28 +18,17 @@ const SIZE_W = { thumb: 140, list: 160, card: 440, full: 820 };
 export function proxify(url, size = 'card') {
   if (!url || typeof url !== 'string') return url;
   if (url.startsWith('data:') || url.startsWith('/') || url.includes('wsrv.nl')) return url;
+  if (!/resim\.epey\.com|(^|\.)epey\.com/i.test(url)) return url;
   const noProto = url.replace(/^https?:\/\//, '');
   const w = SIZE_W[size] || SIZE_W.card;
   return `${PROXY}ssl:${encodeURIComponent(noProto)}&w=${w}&output=webp&we&q=82`;
 }
 
-// epey.com product images come in size variants encoded as a filename prefix:
-//   k_/s_/t_/c_ (small), m_ (medium), b_ (big), or no prefix.
-// The stored imageUrl is usually the m_ (medium) one, which is blurry when
-// shown large. Build an ordered candidate list that prefers a sharper variant
-// and degrades gracefully back to the known-good stored URL — every candidate
-// is routed through the proxy so none of them can be CORP-blocked.
-const EPEY_RE = /^(https?:\/\/resim\.epey\.com\/[^/]+\/)(k_|s_|t_|c_|m_|b_)?(.+)$/;
-
 export function imageCandidates(url, size = 'card') {
   if (!url) return [];
-  const m = url.match(EPEY_RE);
-  if (!m) return [proxify(url, size)];
-  const path = m[1];
-  const file = m[3];
-  const orig = path + file; // no prefix, useful if b_ is missing
-  const big = `${path}b_${file}`; // sharpest reliable browser variant
-  const med = `${path}m_${file}`; // the reliable stored variant
-  const order = [big, orig, med, url];
-  return [...new Set(order)].map((u) => proxify(u, size));
+  // Preserve the exact image URL stored on the product. Earlier builds tried
+  // to swap Epey filename prefixes for a larger variant, but some of those
+  // variants are cropped differently and cut phones in half. The proxy still
+  // makes the remote image embeddable; it no longer changes the source image.
+  return [proxify(url, size)];
 }

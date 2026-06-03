@@ -1,5 +1,5 @@
 .auth-overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: 500;
   background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
@@ -17,7 +17,7 @@
 .auth-close:hover { background: var(--bg3); color: var(--text); }
 .auth-head { text-align: center; margin-bottom: 22px; }
 .auth-head img { width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 13px; }
-.auth-head h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+.auth-head h2 { font-size: 21px; font-weight: 800; letter-spacing: 0; }
 .auth-head p { color: var(--text2); font-size: 13.5px; margin-top: 4px; }
 
 .auth-tabs {

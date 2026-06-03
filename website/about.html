@@ -1,43 +1,45 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>About Qor AI — AI-powered product advisor</title>
-  <meta name="description" content="Qor AI helps you compare 100k+ tech products with AI-scored specs, community reviews and a personalized match score. Learn about our mission, how we work, and our editorial independence.">
+  <title>Qor AI Hakkında</title>
+  <meta name="description" content="Qor AI; teknoloji ürünlerini yapay zeka puanları, net özellik özetleri ve karşılaştırmalarla anlamayı kolaylaştırır.">
   <link rel="canonical" href="https://qorai.net/about">
   <meta name="robots" content="index, follow">
-  <meta property="og:title" content="About Qor AI">
-  <meta property="og:description" content="AI-powered product advisor for tech enthusiasts. Compare 100k+ products with AI-scored specs.">
+  <meta property="og:title" content="Qor AI Hakkında">
+  <meta property="og:description" content="Yapay zeka destekli ürün danışmanı ve karşılaştırma platformu.">
   <meta property="og:image" content="https://qorai.net/assets/logo.png">
   <meta property="og:url" content="https://qorai.net/about">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260428c">
-  <script>try{var t=localStorage.getItem('qorai-theme')||'dark';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <link rel="stylesheet" href="/css/style.css?v=20260603a">
+  <script>try{document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
   <style>
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow:auto; height:auto; }
-    .page-hero { text-align:center; padding:84px 20px 48px; position:relative; overflow:hidden; }
-    .hero-orb { position:absolute; top:-80px; left:50%; transform:translateX(-50%); width:540px; height:380px; background:radial-gradient(ellipse at center, rgba(124,58,237,0.22) 0%, rgba(139,92,246,0.08) 45%, transparent 70%); pointer-events:none; }
-    .hero-badge { position:relative; display:inline-flex; align-items:center; gap:6px; background:var(--accent3); color:var(--accent2); border:1px solid rgba(124,58,237,0.35); border-radius:99px; padding:5px 16px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; margin-bottom:20px; }
-    .page-hero h1 { position:relative; font-size:clamp(32px,5vw,52px); font-weight:900; margin-bottom:14px; background:linear-gradient(135deg,#7c3aed,#a78bfa,#6366f1); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    .hero-intro { position:relative; max-width:640px; margin:0 auto; color:var(--text2); font-size:16px; line-height:1.72; }
-    .doc-narrow { max-width:820px; margin:0 auto; padding:0 24px 80px; }
-    .doc-section { background:var(--bg2); border:1.5px solid var(--border); border-radius:var(--radius); padding:28px 32px; margin-bottom:18px; position:relative; overflow:hidden; }
-    .doc-section::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); border-radius:var(--radius) 0 0 var(--radius); }
-    .doc-section h2 { font-size:19px; font-weight:800; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:10px; }
-    .doc-section p { color:var(--text2); font-size:14.5px; line-height:1.82; margin-bottom:12px; }
-    .doc-section p:last-child { margin-bottom:0; }
-    .doc-section ul { color:var(--text2); font-size:14.5px; line-height:1.82; padding-left:20px; margin:10px 0; display:flex; flex-direction:column; gap:6px; }
-    .doc-section a { color:var(--accent2); text-decoration:underline; }
-    .doc-section strong { color:var(--text); }
-    .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; max-width:820px; margin:0 auto 32px; padding:0 24px; }
-    .stat-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; text-align:center; }
-    .stat-box b { display:block; font-size:26px; font-weight:900; color:var(--accent2); }
-    .stat-box span { font-size:12.5px; color:var(--text3); font-weight:600; }
-    .site-footer { border-top:1px solid var(--border); padding:32px 20px; text-align:center; color:var(--text3); font-size:13px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:18px; }
-    .site-footer a { color:var(--text2); } .site-footer a:hover { color:var(--accent2); }
-    @media (max-width:640px){ .stat-row{ grid-template-columns:1fr; } .doc-section{ padding:22px 20px; } }
+    body { overflow: auto; height: auto; }
+    .info-wrap { max-width: 980px; margin: 0 auto; padding: 56px 24px 76px; }
+    .info-hero { padding: 28px 0 34px; border-bottom: 1px solid var(--border); }
+    .kicker { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 999px; background: var(--accent3); color: var(--accent2); font-size: 12px; font-weight: 800; }
+    h1 { margin-top: 18px; max-width: 760px; font-size: clamp(34px, 6vw, 58px); line-height: 1.04; font-weight: 900; letter-spacing: 0; color: var(--text); }
+    .lead { max-width: 720px; margin-top: 18px; color: var(--text2); font-size: 17px; line-height: 1.75; }
+    .lang-switch { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg2); }
+    .lang-switch button { border: 0; background: transparent; color: var(--text3); border-radius: 999px; padding: 7px 12px; font-weight: 800; }
+    .lang-switch button.active { color: #fff; background: var(--brand-blue); }
+    .top-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0 28px; }
+    .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+    .stat b { display: block; color: var(--accent2); font-size: 26px; font-weight: 900; }
+    .stat span { color: var(--text3); font-size: 12px; font-weight: 700; }
+    .sections { display: grid; gap: 14px; }
+    .doc-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .doc-card h2 { font-size: 20px; margin-bottom: 10px; font-weight: 900; letter-spacing: 0; }
+    .doc-card p, .doc-card li { color: var(--text2); font-size: 14.5px; line-height: 1.8; }
+    .doc-card ul { margin-top: 10px; padding-left: 20px; }
+    .doc-card a { color: var(--accent2); text-decoration: underline; }
+    .site-footer { border-top: 1px solid var(--border); padding: 28px 20px; text-align: center; color: var(--text3); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; }
+    .site-footer a { color: var(--text2); }
+    .site-footer a:hover { color: var(--accent2); }
+    [data-panel][hidden] { display: none; }
+    @media (max-width: 720px) { .info-wrap { padding: 36px 16px 64px; } .stats { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -49,59 +51,113 @@
   </div>
 </header>
 
-<div class="page-hero">
-  <div class="hero-orb"></div>
-  <div class="hero-badge">✨ Our mission</div>
-  <h1>About Qor AI</h1>
-  <p class="hero-intro">Qor AI is an AI-powered product advisor for tech shoppers. We turn 100,000+ noisy spec sheets into clear, AI-scored comparisons and a match score tailored to you — so you can decide in minutes, not hours.</p>
-</div>
+<main class="info-wrap">
+  <div class="top-row">
+    <span class="kicker" data-i18n="badge">Misyonumuz</span>
+    <div class="lang-switch" aria-label="Language">
+      <button type="button" data-lang-btn="tr">TR</button>
+      <button type="button" data-lang-btn="en">EN</button>
+      <button type="button" data-lang-btn="de">DE</button>
+    </div>
+  </div>
 
-<div class="stat-row">
-  <div class="stat-box"><b>100k+</b><span>Products analysed</span></div>
-  <div class="stat-box"><b>100+</b><span>Categories</span></div>
-  <div class="stat-box"><b>AI</b><span>Scored &amp; ranked</span></div>
-</div>
-
-<div class="doc-narrow">
-  <section class="doc-section" id="how">
-    <h2>🔍 How it works</h2>
-    <p>We aggregate technical specifications, prices and real community opinions for every product, then score and rank them with AI so the trade-offs are obvious at a glance.</p>
-    <ul>
-      <li><strong>AI-scored specs</strong> — each product gets a normalized technical score within its category.</li>
-      <li><strong>Community Voice</strong> — we surface real opinions from Reddit, forums, Trustpilot and YouTube.</li>
-      <li><strong>Personal match</strong> — a short quiz tailors a compatibility score to your needs and budget.</li>
-      <li><strong>Side-by-side compare</strong> — line up 2–4 products and see the winner instantly.</li>
-    </ul>
+  <section class="info-hero">
+    <h1 data-i18n="title">Qor AI, teknoloji alışverişini daha anlaşılır hale getirir.</h1>
+    <p class="lead" data-i18n="lead">Dağınık teknik özellikleri, fiyat sinyallerini ve ürün farklarını tek bakışta okunabilir puanlara ve karşılaştırmalara dönüştürüyoruz.</p>
   </section>
 
-  <section class="doc-section">
-    <h2>⚖️ Editorial independence &amp; affiliate disclosure</h2>
-    <p>Our scores and rankings are generated from objective specifications and aggregated reviews — <strong>they are never influenced by commercial relationships</strong>.</p>
-    <p>Qor AI is reader-supported. Some links to retailers are <strong>affiliate links</strong>: if you buy through them we may earn a commission at no extra cost to you. This never changes which products we rank highest or how we score them. The price shown for a retailer always comes from that same retailer's offer.</p>
+  <section class="stats" aria-label="Qor AI stats">
+    <div class="stat"><b>100k+</b><span data-i18n="statProducts">Analiz edilen ürün</span></div>
+    <div class="stat"><b>48</b><span data-i18n="statCategories">Onaylı kategori</span></div>
+    <div class="stat"><b>AI</b><span data-i18n="statAi">Puanlama ve öneri</span></div>
   </section>
 
-  <section class="doc-section">
-    <h2>📇 Imprint / Company</h2>
-    <p>Qor AI is operated by <strong>Arain Digital</strong>.</p>
-    <ul>
-      <li><strong>Contact:</strong> <a href="mailto:contact@arain.digital">contact@arain.digital</a></li>
-      <li><strong>Website:</strong> <a href="https://qorai.net">qorai.net</a></li>
-      <li><strong>Mobile app:</strong> <a href="https://play.google.com/store/apps/details?id=com.compair.app" target="_blank" rel="noopener">Google Play</a></li>
-    </ul>
-    <p>For partnership, press or product-listing enquiries, email us with the subject line that fits your request and we'll get back to you within a few business days.</p>
-  </section>
-</div>
+  <div class="sections" data-panel="tr">
+    <section class="doc-card">
+      <h2>Ne yapıyoruz?</h2>
+      <p>Qor AI; telefon, laptop, ekran kartı, kulaklık ve diğer teknoloji kategorilerinde ürünleri aramayı, teknik puana göre sıralamayı ve yan yana karşılaştırmayı kolaylaştırır.</p>
+    </section>
+    <section class="doc-card">
+      <h2>Nasıl puanlıyoruz?</h2>
+      <ul>
+        <li>Ürünleri kendi kategorisi içinde normalize edilmiş teknik özelliklerle değerlendiririz.</li>
+        <li>Puanlar ticari iş birliklerinden bağımsızdır.</li>
+        <li>Karşılaştırmalarda güçlü ve zayıf yönleri sade bir dille gösteririz.</li>
+      </ul>
+    </section>
+    <section class="doc-card">
+      <h2>Bağımsızlık</h2>
+      <p>Bazı mağaza linkleri affiliate link olabilir. Bu, kullanıcının ödediği fiyatı değiştirmez ve ürün puanlarını etkilemez.</p>
+    </section>
+  </div>
+
+  <div class="sections" data-panel="en" hidden>
+    <section class="doc-card">
+      <h2>What we do</h2>
+      <p>Qor AI helps people search, score and compare phones, laptops, graphics cards, headphones and other technology products with less noise and more clarity.</p>
+    </section>
+    <section class="doc-card">
+      <h2>How scoring works</h2>
+      <ul>
+        <li>Products are evaluated against normalized technical signals within their own category.</li>
+        <li>Scores are independent from commercial partnerships.</li>
+        <li>Comparisons highlight strengths and trade-offs in plain language.</li>
+      </ul>
+    </section>
+    <section class="doc-card">
+      <h2>Independence</h2>
+      <p>Some retailer links may be affiliate links. They do not change the price you pay and they do not influence product scores.</p>
+    </section>
+  </div>
+
+  <div class="sections" data-panel="de" hidden>
+    <section class="doc-card">
+      <h2>Was wir tun</h2>
+      <p>Qor AI hilft dabei, Smartphones, Laptops, Grafikkarten, Kopfhörer und weitere Technikprodukte klarer zu suchen, zu bewerten und zu vergleichen.</p>
+    </section>
+    <section class="doc-card">
+      <h2>Wie die Bewertung funktioniert</h2>
+      <ul>
+        <li>Produkte werden innerhalb ihrer Kategorie anhand normalisierter technischer Signale bewertet.</li>
+        <li>Bewertungen sind unabhängig von kommerziellen Partnerschaften.</li>
+        <li>Vergleiche zeigen Stärken und Kompromisse in verständlicher Sprache.</li>
+      </ul>
+    </section>
+    <section class="doc-card">
+      <h2>Unabhängigkeit</h2>
+      <p>Einige Händlerlinks können Affiliate-Links sein. Sie ändern den Preis nicht und beeinflussen keine Produktbewertungen.</p>
+    </section>
+  </div>
+</main>
 
 <footer class="site-footer">
-  <span>© <span id="yr"></span> Qor AI · qorai.net</span>
+  <span>© <span id="yr"></span> Qor AI</span>
   <a href="/">Home</a>
-  <a href="/about.html">About</a>
+  <a href="/faq.html">FAQ</a>
   <a href="/contact.html">Contact</a>
   <a href="/privacy.html">Privacy</a>
   <a href="/terms.html">Terms</a>
-  <a href="/cookies.html">Cookies</a>
-  <a href="mailto:contact@arain.digital">contact@arain.digital</a>
 </footer>
-<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+
+<script>
+const ui = {
+  tr: { badge: 'Misyonumuz', title: 'Qor AI, teknoloji alışverişini daha anlaşılır hale getirir.', lead: 'Dağınık teknik özellikleri, fiyat sinyallerini ve ürün farklarını tek bakışta okunabilir puanlara ve karşılaştırmalara dönüştürüyoruz.', statProducts: 'Analiz edilen ürün', statCategories: 'Onaylı kategori', statAi: 'Puanlama ve öneri' },
+  en: { badge: 'Our mission', title: 'Qor AI makes tech shopping easier to understand.', lead: 'We turn noisy specifications, price signals and product differences into readable scores and comparisons.', statProducts: 'Products analyzed', statCategories: 'Approved categories', statAi: 'Scoring and advice' },
+  de: { badge: 'Unsere Mission', title: 'Qor AI macht Technik-Käufe verständlicher.', lead: 'Wir verwandeln unübersichtliche Spezifikationen, Preissignale und Produktunterschiede in klare Bewertungen und Vergleiche.', statProducts: 'Analysierte Produkte', statCategories: 'Freigegebene Kategorien', statAi: 'Bewertung und Beratung' }
+};
+function setLang(lang) {
+  const code = ui[lang] ? lang : 'tr';
+  document.documentElement.lang = code;
+  try { localStorage.setItem('qorai-lang', code); } catch(e) {}
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = ui[code][el.dataset.i18n]; });
+  document.querySelectorAll('[data-panel]').forEach((el) => { el.hidden = el.dataset.panel !== code; });
+  document.querySelectorAll('[data-lang-btn]').forEach((btn) => { btn.classList.toggle('active', btn.dataset.langBtn === code); });
+}
+document.getElementById('yr').textContent = new Date().getFullYear();
+document.querySelectorAll('[data-lang-btn]').forEach((btn) => btn.addEventListener('click', () => setLang(btn.dataset.langBtn)));
+let saved = 'tr';
+try { saved = localStorage.getItem('qorai-lang') || 'tr'; } catch(e) {}
+setLang(saved);
+</script>
 </body>
 </html>

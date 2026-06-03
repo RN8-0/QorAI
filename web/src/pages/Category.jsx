@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { catMeta } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
@@ -23,21 +23,6 @@ const SCORES = [
 ];
 const PER_PAGE = 24;
 const COLLAPSED = 8;
-
-// Grouped category directory shown when no specific category is selected, so
-// /category is a real browse page instead of a dead-end "pick from home" note.
-const ALL_CAT_GROUPS = [
-  { title: { en: 'Mobile Devices', tr: 'Mobil Cihazlar', de: 'Mobilgeräte' },
-    cats: ['smartphones', 'tablets', 'smartwatches', 'laptops', 'desktops'] },
-  { title: { en: 'Computer Components', tr: 'Bilgisayar Parçaları', de: 'PC-Komponenten' },
-    cats: ['gpus', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'coolers'] },
-  { title: { en: 'Audio', tr: 'Ses', de: 'Audio' },
-    cats: ['headphones', 'earbuds', 'speakers', 'soundbars'] },
-  { title: { en: 'Photo & Video', tr: 'Foto & Video', de: 'Foto & Video' },
-    cats: ['cameras', 'action_cameras', 'security_cameras', 'monitors', 'tvs', 'gaming_consoles'] },
-  { title: { en: 'Other', tr: 'Diğer', de: 'Sonstiges' },
-    cats: ['printers', 'powerbanks', 'routers', 'keyboards', 'mice'] },
-];
 
 // filterTokens look like "ram:8_gb" — prefix drives the filter group.
 const TOKEN_GROUPS = {
@@ -188,38 +173,8 @@ export default function Category() {
   );
   const visibleBrands = brandsOpen || brandQuery ? filteredBrands : filteredBrands.slice(0, COLLAPSED);
 
-  // No category selected → a full browse directory instead of a dead-end.
   if (!cat) {
-    return (
-      <div className="page">
-        <div className="container">
-          <div className="cat-hero" style={{ borderRadius: 'var(--r-2xl)', padding: '34px 0', marginBottom: 8 }}>
-            <div className="container">
-              <h1>🗂️ {L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')}</h1>
-              <p>{L('Pick a category to explore products.', 'Ürünleri keşfetmek için bir kategori seç.', 'Wähle eine Kategorie, um Produkte zu entdecken.')}</p>
-            </div>
-          </div>
-          {ALL_CAT_GROUPS.map((g) => (
-            <div key={g.title.en}>
-              <div className="sec-head">
-                <h2><span className="bar" /> {g.title[lang] || g.title.en}</h2>
-              </div>
-              <div className="cat-grid">
-                {g.cats.map((c) => {
-                  const m = catMeta(c);
-                  return (
-                    <Link key={c} to={`/category?cat=${encodeURIComponent(c)}`} className="cat-tile">
-                      <span className="cat-ic" style={{ background: m.color }}>{m.icon}</span>
-                      <span className="cn">{m.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const sidebar = (
@@ -340,7 +295,7 @@ export default function Category() {
               ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : items.map((p, i) => (
                   <div key={p.id} className="cat-list-item" style={{ '--row': i }}>
-                    <ProductCard product={p} variant="list" />
+                    <ProductCard product={p} />
                   </div>
                 ))}
           </div>

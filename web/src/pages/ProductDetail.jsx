@@ -360,8 +360,8 @@ export default function ProductDetail() {
 
           {/* info */}
           <div>
-            <div className="brand-k" style={{ color: 'var(--brand-cyan)', fontSize: 13, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' }}>{p.brand || meta.label}</div>
-            <h1 style={{ fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.12, margin: '6px 0 18px' }}>{displayName}</h1>
+            <div className="brand-k" style={{ color: 'var(--brand-cyan)', fontSize: 13, fontWeight: 800, letterSpacing: '0', textTransform: 'uppercase' }}>{p.brand || meta.label}</div>
+            <h1 style={{ fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, letterSpacing: '0', lineHeight: 1.12, margin: '6px 0 18px' }}>{displayName}</h1>
 
             {/* dual score */}
             <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -387,7 +387,7 @@ export default function ProductDetail() {
               <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div>
                   <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>{L('Best price', 'En iyi fiyat', 'Bester Preis')}</div>
-                  <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em' }}>${price.toLocaleString(lang)}</span>
+                  <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0' }}>${price.toLocaleString(lang)}</span>
                 </div>
                 <div className="grow" />
                 <button className="btn btn-buy"
