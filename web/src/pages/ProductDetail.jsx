@@ -4,7 +4,7 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, keySpecChips } from '../lib/format';
+import { catMeta, keySpecChips, offerForLang } from '../lib/format';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -105,6 +105,19 @@ function localizedProductName(product, lang) {
   const translated = product?.nameTranslated?.[code];
   if (translated && String(translated).trim()) return translated;
   return trSpec(product?.name || '', code);
+}
+
+function formatOfferPrice(offer, lang) {
+  if (!offer || !Number(offer.price)) return '';
+  try {
+    return new Intl.NumberFormat(lang, {
+      style: 'currency',
+      currency: offer.currency || 'USD',
+      maximumFractionDigits: 0,
+    }).format(offer.price);
+  } catch {
+    return `${offer.currency || 'USD'} ${Number(offer.price).toLocaleString(lang, { maximumFractionDigits: 0 })}`;
+  }
 }
 
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
@@ -316,7 +329,10 @@ export default function ProductDetail() {
 
   const tech = Number(p.techScore) || 0;
   const match = matchScore(p);
-  const price = Number(p.lowestPriceUSD) || 0;
+  const offer = offerForLang(p, lang);
+  const price = Number(offer?.price || p.lowestPriceUSD) || 0;
+  const displayPrice = offer ? formatOfferPrice(offer, lang) : '';
+  const offerUrl = offer?.url || '';
 
   return (
     <div className="page">
@@ -388,18 +404,33 @@ export default function ProductDetail() {
 
             {/* buy strip */}
             {price > 0 && (
-              <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div>
+              <div className="card pad pd-offer-card">
+                <div className="pd-offer-main">
                   <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>{L('Best price', 'En iyi fiyat', 'Bester Preis')}</div>
-                  <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0' }}>${price.toLocaleString(lang)}</span>
+                  <span className="pd-offer-price">{displayPrice || `$${price.toLocaleString(lang)}`}</span>
+                  {offer?.store && <small>{L('From', 'Mağaza', 'Shop')}: {offer.store}</small>}
                 </div>
                 <div className="grow" />
-                <button className="btn btn-buy"
-                  onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
-                  🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot finden')}
-                </button>
+                {offerUrl ? (
+                  <a className="btn btn-buy" href={offerUrl} target="_blank" rel="sponsored noopener">
+                    🛒 {L('Go to store', 'Mağazaya git', 'Zum Shop')}
+                  </a>
+                ) : (
+                  <button className="btn btn-buy"
+                    onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
+                    🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot finden')}
+                  </button>
+                )}
               </div>
             )}
+            <p className="pd-aff-disclosure pd-aff-disclosure-plain">
+              {L(
+                'Some store links may be affiliate links. This does not change the price you pay and it never affects Qor AI scores.',
+                'Bazı mağaza bağlantıları affiliate link olabilir. Ödeyeceğin fiyat değişmez ve Qor AI puanları bundan etkilenmez.',
+                'Einige Shop-Links können Affiliate-Links sein. Der Preis ändert sich dadurch nicht und Qor AI Bewertungen werden nicht beeinflusst.',
+              )}{' '}
+              <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
+            </p>
 
           </div>
           <div className="pd-detail-pane">

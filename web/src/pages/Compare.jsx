@@ -4,7 +4,7 @@ import { getProduct, popularProducts, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, scoreClass, scoreLabel } from '../lib/format';
+import { catMeta, offerForLang, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -48,6 +48,19 @@ function matchScore(p) {
   let h = 0;
   for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 23;
   return Math.max(45, Math.min(96, Math.round(s * 0.82 + 10 + (h - 11) * 0.6)));
+}
+
+function formatOffer(offer, lang) {
+  if (!offer || !Number(offer.price)) return '';
+  try {
+    return new Intl.NumberFormat(lang, {
+      style: 'currency',
+      currency: offer.currency || 'USD',
+      maximumFractionDigits: 0,
+    }).format(offer.price);
+  } catch {
+    return `${offer.currency || 'USD'} ${Number(offer.price).toLocaleString(lang, { maximumFractionDigits: 0 })}`;
+  }
 }
 
 // Returns a boolean per cell — true marks the winning value(s) for the row.
@@ -326,19 +339,30 @@ export default function Compare() {
               {tab === 'prices' && (
                 <div className="cmp-prices fade-up">
                   {slots.map((p) => {
-                    const price = Number(p.lowestPriceUSD) || 0;
+                    const offer = offerForLang(p, lang);
+                    const price = Number(offer?.price || p.lowestPriceUSD) || 0;
+                    const offerUrl = offer?.url || '';
                     return (
                       <div className="card pad cmp-price-card" key={p.id}>
                         <Link to={`/product/${p.id}`} className="cmp-price-name">{p.name}</Link>
                         {price > 0
-                          ? <div className="cmp-price-amt">${price.toLocaleString(lang)}</div>
+                          ? <div className="cmp-price-amt">{formatOffer(offer, lang) || `$${price.toLocaleString(lang)}`}</div>
                           : <div className="cmp-price-none">{L('No price yet', 'Henüz fiyat yok', 'Noch kein Preis')}</div>}
-                        <button className="btn btn-buy btn-block"
-                          onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
-                            detail: L(`Find the best offer for ${p.name}`, `${p.name} için en iyi teklifi bul`, `Finde das beste Angebot für ${p.name}`),
-                          }))}>
-                          🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot')}
-                        </button>
+                        {offerUrl ? (
+                          <a className="btn btn-buy btn-block" href={offerUrl} target="_blank" rel="sponsored noopener">
+                            🛒 {L('Go to store', 'Mağazaya git', 'Zum Shop')}
+                          </a>
+                        ) : (
+                          <button className="btn btn-buy btn-block"
+                            onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
+                              detail: L(`Find the best offer for ${p.name}`, `${p.name} için en iyi teklifi bul`, `Finde das beste Angebot für ${p.name}`),
+                            }))}>
+                            🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot')}
+                          </button>
+                        )}
+                        <div className="cmp-aff-note">
+                          {L('Store links may be affiliate links.', 'Mağaza linkleri affiliate olabilir.', 'Shop-Links können Affiliate-Links sein.')}
+                        </div>
                       </div>
                     );
                   })}

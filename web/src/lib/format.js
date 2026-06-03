@@ -147,6 +147,17 @@ export const CURRENCY_BY_COUNTRY = {
   CH: 'CHF', PL: 'PLN', MX: 'MXN', BR: 'BRL', TR: 'TRY', RU: 'RUB',
 };
 
+export function safeExternalUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
+  } catch {
+    return '';
+  }
+}
+
 export function offerForLang(product, lang = 'en') {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};
@@ -164,7 +175,7 @@ export function offerForLang(product, lang = 'en') {
       currency: CURRENCY_BY_COUNTRY[country] || 'USD',
       country,
       store: link?.[0] || product?.lowestOfferStore || '',
-      url: link?.[1] || product?.lowestOfferUrl || '',
+      url: safeExternalUrl(link?.[1] || product?.lowestOfferUrl || ''),
     };
   }
   if (Number(product?.lowestPrice) > 0) {
@@ -173,7 +184,7 @@ export function offerForLang(product, lang = 'en') {
       currency: product.lowestPriceCurrency || 'USD',
       country: '',
       store: product.lowestOfferStore || '',
-      url: product.lowestOfferUrl || '',
+      url: safeExternalUrl(product.lowestOfferUrl || ''),
     };
   }
   if (Number(product?.lowestPriceUSD) > 0) {
@@ -182,7 +193,7 @@ export function offerForLang(product, lang = 'en') {
       currency: 'USD',
       country: 'US',
       store: product.lowestOfferStore || '',
-      url: product.lowestOfferUrl || '',
+      url: safeExternalUrl(product.lowestOfferUrl || ''),
     };
   }
   return null;

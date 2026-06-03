@@ -89,6 +89,51 @@
 .pd-detail-pane { grid-column: 1 / -1; margin-top: 4px; min-width: 0; }
 .pd-detail-pane > .tabs { margin-top: 0 !important; }
 
+.pd-offer-card {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pd-offer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+.pd-offer-price {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+.pd-offer-main small {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pd-aff-disclosure {
+  flex-basis: 100%;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.pd-aff-disclosure a {
+  color: var(--accent);
+  font-weight: 800;
+}
+.pd-aff-disclosure-plain {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
 /* ─── Tabs ───────────────────────────────────────────────────── */
 .pd-tabs {
   display: flex; gap: 4px; margin-top: 40px;

@@ -122,6 +122,11 @@
 .cmp-price-name:hover { color: var(--accent); }
 .cmp-price-amt { font-size: 26px; font-weight: 800; letter-spacing: 0; }
 .cmp-price-none { font-size: 14px; color: var(--text3); font-weight: 600; padding: 6px 0; }
+.cmp-aff-note {
+  color: var(--text3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
 
 /* ─── AI tab ─────────────────────────────────────────────────── */
 .cmp-ai { text-align: center; max-width: 540px; margin: 0 auto; align-items: center; gap: 12px; }
