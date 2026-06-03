@@ -53,7 +53,6 @@ export default function ProductCard({ product: p, variant = 'card' }) {
         {hasScore && (
           <span className="badge gauge-badge">
             <Gauge value={p.techScore} size={30} stroke={3.5} color={techColor(p.techScore)} fontSize={11} />
-            <b style={{ color: techColor(p.techScore), fontSize: 13 }}>{Math.round(p.techScore)}</b>
           </span>
         )}
         <ProductImage p={p} />

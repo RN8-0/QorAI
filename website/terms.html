@@ -8,7 +8,7 @@
   <link rel="canonical" href="https://qorai.net/terms">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260603a">
+  <link rel="stylesheet" href="/css/style.css?v=20260603b">
   <script>try{document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
   <style>
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -20,14 +20,7 @@
       position: relative;
       overflow: hidden;
     }
-    .hero-orb {
-      position: absolute;
-      top: -80px; left: 50%;
-      transform: translateX(-50%);
-      width: 500px; height: 380px;
-      background: radial-gradient(ellipse at center, rgba(99,102,241,0.2) 0%, rgba(96,165,250,0.07) 45%, transparent 70%);
-      pointer-events: none;
-    }
+    .hero-orb { display: none; }
     .hero-badge {
       position: relative;
       display: inline-flex;
@@ -35,7 +28,7 @@
       gap: 6px;
       background: var(--accent3);
       color: var(--accent2);
-      border: 1px solid rgba(99,102,241,0.35);
+      border: 1px solid rgba(33,150,243,0.28);
       border-radius: 99px;
       padding: 5px 16px;
       font-size: 11px;
@@ -49,7 +42,7 @@
       font-size: clamp(32px, 5vw, 52px);
       font-weight: 900;
       margin-bottom: 14px;
-      background: linear-gradient(135deg, var(--accent2), #a78bfa, #60a5fa);
+      background: linear-gradient(135deg, var(--brand-deep), var(--brand-blue), var(--brand-cyan));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -157,7 +150,7 @@
       overflow: hidden;
       transition: border-color 0.2s;
     }
-    .doc-section:hover { border-color: rgba(99,102,241,0.3); }
+    .doc-section:hover { border-color: rgba(33,150,243,0.28); }
     .doc-section::before {
       content: '';
       position: absolute;
@@ -218,7 +211,7 @@
     }
     .info-box {
       background: var(--accent3);
-      border: 1px solid rgba(99,102,241,0.25);
+      border: 1px solid rgba(33,150,243,0.25);
       border-radius: 10px;
       padding: 14px 16px;
       font-size: 13.5px;
@@ -240,7 +233,7 @@
       border-radius: 12px;
       padding: 18px 20px;
     }
-    .plan-card.premium { border-color: rgba(99,102,241,0.45); background: var(--accent3); }
+    .plan-card.premium { border-color: rgba(33,150,243,0.35); background: var(--accent3); }
     .plan-name { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
     .plan-card.free .plan-name { color: var(--text2); }
     .plan-card.premium .plan-name { color: var(--accent2); }

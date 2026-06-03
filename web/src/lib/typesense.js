@@ -94,12 +94,12 @@ export async function getHomeFeed(prefCats = []) {
       }),
       searchDocs({
         q: '*', query_by: 'name', sort_by: 'techScore:desc',
-        per_page: 16, include_fields: LIST_FIELDS,
+        per_page: 21, include_fields: LIST_FIELDS,
         filter_by: cats.length ? `category:[${cats.map(lit).join(',')}]` : '',
       }),
       searchDocs({
         q: '*', query_by: 'name', sort_by: 'specsCount:desc',
-        per_page: 16, include_fields: LIST_FIELDS,
+        per_page: 21, include_fields: LIST_FIELDS,
       }),
       searchDocs({
         q: '*', query_by: 'name', sort_by: 'techScore:desc',

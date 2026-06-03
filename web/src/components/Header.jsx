@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
 import { useI18n } from '../i18n/index.jsx';
-import { CANONICAL_CATEGORY_GROUPS, categoryLabel, catMeta } from '../lib/format';
+import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 
@@ -16,8 +16,6 @@ const NAV_REST = [
 ];
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 
-const SEG_LANGS = ['tr', 'en', 'de'];
-
 const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
   group.cats.map((id) => ({ id, group })),
 );
@@ -25,7 +23,7 @@ const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
 export default function Header() {
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -89,18 +87,20 @@ export default function Header() {
                     </div>
                     <em>{ALL_CATEGORIES.length}</em>
                   </div>
-                  <div className="hd-mega-grid">
-                    {ALL_CATEGORIES.map(({ id, group }) => {
-                      const meta = catMeta(id);
-                      return (
-                        <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
-                          className="hd-mega-tile" onClick={closeCatNow}>
-                          <span className="hd-mega-ic" style={{ background: meta.color }}>{meta.icon}</span>
-                          <span className="hd-mega-name">{categoryLabel(id, lang)}</span>
-                          <small>{group.title[lang] || group.title.en}</small>
-                        </Link>
-                      );
-                    })}
+                  <div className="hd-mega-groups">
+                    {CANONICAL_CATEGORY_GROUPS.map((group) => (
+                      <section className="hd-mega-group" key={group.key}>
+                        <h3>{group.title[lang] || group.title.en}</h3>
+                        <div className="hd-mega-links">
+                          {group.cats.map((id) => (
+                            <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
+                              onClick={closeCatNow}>
+                              {categoryLabel(id, lang)}
+                            </Link>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -108,15 +108,6 @@ export default function Header() {
           )}
 
           <div className="grow" />
-
-          <div className="seg" role="group" aria-label="language">
-            {SEG_LANGS.map((code) => (
-              <button key={code} className={lang === code ? 'on' : ''} onClick={() => setLang(code)}>
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
           <button className="iconbtn" onClick={toggle} aria-label={t('header.theme')}>
             {theme === 'dark'
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
@@ -174,7 +165,6 @@ export default function Header() {
               {ALL_CATEGORIES.map(({ id }) => (
                 <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
                   className="hd-drawer-cat" onClick={() => setDrawer(false)}>
-                  <span style={{ color: catMeta(id).color }}>{catMeta(id).icon}</span>
                   {categoryLabel(id, lang)}
                 </Link>
               ))}

@@ -228,6 +228,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('specs');
   const [activeImg, setActiveImg] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const [dictReady, setDictReady] = useState(false);
 
   const [aiText, setAiText] = useState('');
@@ -242,7 +243,7 @@ export default function ProductDetail() {
     getProduct(id)
       .then((prod) => {
         if (!live) return;
-        setP(prod); setActiveImg(0); setTab('specs');
+        setP(prod); setActiveImg(0); setLightbox(false); setTab('specs');
         if (prod) {
           pushRecent(prod);
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
@@ -318,7 +319,7 @@ export default function ProductDetail() {
 
   return (
     <div className="page">
-      <div className="container" style={{ maxWidth: 1080 }}>
+      <div className="container" style={{ maxWidth: 1240 }}>
         {/* top action row */}
         <div className="between" style={{ marginBottom: 18 }}>
           <button className="iconbtn" aria-label="back"
@@ -339,17 +340,19 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        <div className="prod-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', gap: 28, alignItems: 'start' }}>
+        <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'start' }}>
           {/* gallery */}
           <div className="prod-gallery" style={{ position: 'sticky', top: 88 }}>
-            <div className="card" style={{ padding: 20 }}>
-              <div className="img-tile" style={{ aspectRatio: '1', marginBottom: 14 }}>
+            <div className="card pd-gallery-card">
+              <button className="img-tile pd-main-photo" type="button"
+                onClick={() => setLightbox(true)}
+                aria-label={L('Open product image', 'Ürün görselini büyüt', 'Produktbild vergrößern')}>
                 <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
-              </div>
+              </button>
               {images.length > 1 && (
                 <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
                   {images.slice(0, 6).map((src, i) => (
-                    <button key={i} className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setActiveImg(i)}>
+                    <button key={i} type="button" className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setActiveImg(i)}>
                       <ProductImg src={src} alt="" size="card" />
                     </button>
                   ))}
@@ -397,6 +400,8 @@ export default function ProductDetail() {
               </div>
             )}
 
+          </div>
+          <div className="pd-detail-pane">
             {/* tabs */}
             <div className={'tabs' + (tab === 'premium' ? ' violet' : '')} style={{ marginTop: 22 }}>
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
@@ -494,6 +499,18 @@ export default function ProductDetail() {
         {/* REVIEWS */}
         <Reviews productId={p.id} />
       </div>
+      {lightbox && (
+        <div className="pd-lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(false)}>
+          <button className="pd-lightbox-close" type="button"
+            aria-label={L('Close image', 'Görseli kapat', 'Bild schließen')}
+            onClick={() => setLightbox(false)}>
+            x
+          </button>
+          <div className="pd-lightbox-img" onClick={(e) => e.stopPropagation()}>
+            <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

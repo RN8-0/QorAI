@@ -13,17 +13,12 @@ export const LANGS = [
 const AVAILABLE = LANGS.filter((l) => STRINGS[l.code]);
 const CODES = AVAILABLE.map((l) => l.code);
 const RTL = new Set(['ar']);
-const KEY = 'qorai-lang';
-
-// localStorage → browser language → English.
+// Browser language only: tr => Turkish, de/ge => German, everything else => English.
 function detectLang() {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved && CODES.includes(saved)) return saved;
-  } catch { /* noop */ }
   const nav = (navigator.languages || [navigator.language || 'en'])
     .map((l) => String(l).slice(0, 2).toLowerCase());
-  for (const l of nav) if (CODES.includes(l)) return l;
+  if (nav.some((l) => l === 'tr')) return 'tr';
+  if (nav.some((l) => l === 'de' || l === 'ge')) return 'de';
   return 'en';
 }
 
@@ -41,7 +36,6 @@ export function LangProvider({ children }) {
 
   const setLang = useCallback((code) => {
     if (!CODES.includes(code)) return;
-    try { localStorage.setItem(KEY, code); } catch { /* noop */ }
     setLangState(code);
   }, []);
 

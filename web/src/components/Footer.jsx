@@ -53,7 +53,6 @@ export default function Footer() {
 
         <div className="between wrap" style={{ fontSize: 13, color: 'var(--text-3)' }}>
           <span>{t('footer.rights', { year })}</span>
-          <span>TR / EN / DE</span>
         </div>
       </div>
     </footer>

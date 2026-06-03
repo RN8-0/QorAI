@@ -19,6 +19,19 @@
   object-fit: contain; object-position: center;
   padding: 16px; box-sizing: border-box;
 }
+.pd-gallery-card { padding: 18px; }
+.pd-main-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 14px;
+  cursor: zoom-in;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.pd-main-photo:hover {
+  border-color: var(--accent-ring);
+  box-shadow: var(--card-glow);
+  transform: translateY(-1px);
+}
 .pd-thumbs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .pd-thumb {
   width: 60px; height: 60px; border-radius: var(--radius-sm);
@@ -73,6 +86,8 @@
 .pd-keybar-track i { display: block; height: 100%; background: var(--brand-grad); border-radius: 999px; }
 
 .pd-actions { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.pd-detail-pane { grid-column: 1 / -1; margin-top: 4px; min-width: 0; }
+.pd-detail-pane > .tabs { margin-top: 0 !important; }
 
 /* ─── Tabs ───────────────────────────────────────────────────── */
 .pd-tabs {
@@ -100,14 +115,13 @@
 
 /* ─── Spec bricks (admin-panel style) ────────────────────────── */
 /* JS-balanced columns keep long spec groups from leaving a dead side. */
-/* Spec sections flow into 2 balanced columns — the browser equalises
-   the column heights, so no column is left half-empty. */
-.pd-bricks { column-count: 2; column-gap: 16px; }
+/* Spec sections use real grid columns so labels and values stay readable. */
+.pd-bricks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .pd-brick {
   width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 12px; overflow: hidden;
-  break-inside: avoid; margin-bottom: 16px;
+  align-self: start;
 }
 .pd-brick-head {
   padding: 11px 14px; font-size: 12px; font-weight: 800;
@@ -119,8 +133,8 @@
 .pd-brick-head span { font-size: 14px; }
 .pd-brick-body { display: flex; flex-direction: column; }
 .pd-srow {
-  display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 10px;
-  padding: 8px 13px; font-size: 12.5px;
+  display: grid; grid-template-columns: minmax(140px, 42%) minmax(0, 1fr); gap: 14px;
+  padding: 10px 14px; font-size: 13px;
 }
 .pd-srow:nth-child(odd) { background: rgba(255, 255, 255, 0.02); }
 .pd-srow:hover { background: var(--accent-soft); }
@@ -149,6 +163,7 @@
   .pd-top { grid-template-columns: 1fr; gap: 22px; }
   .pd-skel-img { width: 100%; }
   .pd-keybars { grid-template-columns: 1fr; }
+  .pd-bricks { grid-template-columns: 1fr; }
 }
 /* ─── AI Analysis tab ────────────────────────────────────────── */
 .pd-ai-loading {
@@ -181,6 +196,42 @@
   background: var(--brand-grad);
 }
 .pd-section-head span { font-size: 13px; color: var(--text3); }
+
+.pd-lightbox {
+  position: fixed; inset: 0; z-index: 500;
+  display: grid; place-items: center;
+  padding: 30px;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(10px);
+}
+.pd-lightbox-img {
+  position: relative;
+  width: min(92vw, 980px);
+  height: min(86vh, 820px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+}
+.pd-lightbox-img img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 24px;
+}
+.pd-lightbox-close {
+  position: fixed;
+  top: 22px; right: 24px;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+  font-weight: 900;
+}
 
 /* horizontal similar-products carousel */
 .pd-sim-row {
@@ -270,7 +321,7 @@
 .rv-reply-form .btn { padding: 8px 14px; font-size: 12.5px; }
 
 @media (max-width: 720px) {
-  .pd-bricks { column-count: 1; }
+  .pd-bricks { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .pd-pc { grid-template-columns: 1fr; }

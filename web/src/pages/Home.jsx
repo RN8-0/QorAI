@@ -34,7 +34,6 @@ function HeroSpotlight({ p, L, lang }) {
         {score > 0 && (
           <span className="gauge-badge" style={{ position: 'absolute', top: 26, right: 26, zIndex: 2 }}>
             <Gauge value={score} size={32} stroke={4} color={techColor(score)} fontSize={12} />
-            <b style={{ color: techColor(score) }}>{Math.round(score)}</b>
           </span>
         )}
         <div className="img-tile" style={{ aspectRatio: '4 / 3' }}>
@@ -98,7 +97,7 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
 function Section({ title, products, loading, seeAllTo, t, layout = 'grid', dense = false }) {
   if (!loading && (!products || products.length === 0)) return null;
   const items = loading
-    ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+    ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
     : products.map((p) => <ProductCard key={p.id} product={p} variant={layout === 'list' ? 'list' : 'card'} />);
   const cls = layout === 'rail' ? 'rail' : layout === 'list' ? 'h-trend-grid' : `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
@@ -250,8 +249,7 @@ export default function Home() {
                   {greetWord}, {displayName} 👋
                 </div>
               )}
-              <span className="kicker">✨ <b>{L('AI shopping assistant', 'AI alışveriş asistanı', 'KI-Einkaufsassistent')}</b></span>
-              <h1 style={{ marginTop: 18 }}>
+              <h1>
                 {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
                 <span className="grad">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
               </h1>
@@ -318,7 +316,7 @@ export default function Home() {
         {!searchMode && (
           <>
             {/* FOR YOU */}
-            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} layout="rail" />
+            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
             {/* TRENDING */}
             <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} layout="list" />
