@@ -11,6 +11,7 @@
  *     AWIN_PUBLISHER_ID     Awin publisher id (for Awin-brokered shops)
  *     EBAY_CAMPAIGN_ID      eBay Partner Network campaign id
  *     EBAY_CUSTOM_ID        optional click sub-id prefix
+ *     EBAY_MKRID            optional global override; country defaults are used
  */
 'use strict';
 
@@ -52,13 +53,32 @@ function awinUrl(url, opts = {}) {
     `&ued=${encodeURIComponent(url)}`;
 }
 
+const EBAY_ROTATION_IDS = {
+  AT: '5221-53469-19255-0',
+  AU: '705-53470-19255-0',
+  BE: '1553-53471-19255-0',
+  CA: '706-53473-19255-0',
+  CH: '5222-53480-19255-0',
+  DE: '707-53477-19255-0',
+  ES: '1185-53479-19255-0',
+  FR: '709-53476-19255-0',
+  GB: '710-53481-19255-0',
+  UK: '710-53481-19255-0',
+  IE: '5282-53468-19255-0',
+  IT: '724-53478-19255-0',
+  NL: '1346-53482-19255-0',
+  PL: '4908-226936-19255-0',
+  US: '711-53200-19255-0',
+};
+
 function ebayUrl(url, opts = {}) {
-  const campid = ENV[`EBAY_CAMPAIGN_ID_${String(opts.country || '').toUpperCase()}`] || ENV.EBAY_CAMPAIGN_ID || '';
+  const country = String(opts.country || '').toUpperCase();
+  const campid = ENV[`EBAY_CAMPAIGN_ID_${country}`] || ENV.EBAY_CAMPAIGN_ID || '';
   if (!campid) return url;
   try {
     const u = new URL(url);
     u.searchParams.set('mkcid', ENV.EBAY_MKCID || '1');
-    if (ENV.EBAY_MKRID) u.searchParams.set('mkrid', ENV.EBAY_MKRID);
+    u.searchParams.set('mkrid', ENV[`EBAY_MKRID_${country}`] || ENV.EBAY_MKRID || EBAY_ROTATION_IDS[country] || EBAY_ROTATION_IDS.US);
     u.searchParams.set('campid', campid);
     u.searchParams.set('customid', opts.clickref || ENV.EBAY_CUSTOM_ID || 'qorai');
     u.searchParams.set('toolid', ENV.EBAY_TOOL_ID || '10001');

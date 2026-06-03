@@ -8471,16 +8471,107 @@ async function scrapeByUrl() {
 // ═══════════════════════════════════════
 let _offersPollTimer = null;
 
-async function offersStartSync() {
+function _setInputValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value ?? '';
+}
+
+function _renderEbayConfigStatus(config) {
+  const ebay = config?.ebay || config || {};
+  const el = document.getElementById('ebayConfigStatus');
+  if (!el) return;
+  const api = !!ebay.configured;
+  const tracking = !!ebay.trackingConfigured;
+  el.textContent = api
+    ? (tracking ? 'API + affiliate hazır' : 'API hazır · campid eksik')
+    : 'API bilgisi eksik';
+  el.style.color = api && tracking ? '#10b981' : (api ? '#f59e0b' : '#ef4444');
+}
+
+async function offersLoadConfig() {
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/config`, { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) return;
+    const cfg = await r.json();
+    const ebay = cfg.ebay || {};
+    _setInputValue('ebayClientId', ebay.clientId || '');
+    _setInputValue('ebayCampaignId', ebay.campaignId || '');
+    _setInputValue('ebayMarkets', ebay.markets || 'GB,DE');
+    _setInputValue('ebayCustomId', ebay.customId || 'qorai');
+    _setInputValue('ebayToolId', ebay.toolId || '10001');
+    const secret = document.getElementById('ebayClientSecret');
+    if (secret) {
+      secret.value = '';
+      secret.placeholder = ebay.clientSecretSet
+        ? 'Kayıtlı secret var; değiştirmek için yeni secret gir'
+        : 'Production Cert ID / Client Secret';
+    }
+    _renderEbayConfigStatus(ebay);
+  } catch {
+    _renderEbayConfigStatus({ configured: false, trackingConfigured: false });
+  }
+}
+
+async function offersSaveEbayConfig() {
+  if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
+  const payload = {
+    ebay: {
+      clientId: document.getElementById('ebayClientId')?.value || '',
+      clientSecret: document.getElementById('ebayClientSecret')?.value || '',
+      campaignId: document.getElementById('ebayCampaignId')?.value || '',
+      markets: document.getElementById('ebayMarkets')?.value || 'GB,DE',
+      customId: document.getElementById('ebayCustomId')?.value || 'qorai',
+      toolId: document.getElementById('ebayToolId')?.value || '10001',
+    },
+  };
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('eBay ayarı kaydedilemedi: ' + (j.error || r.status), 'e'); return; }
+    document.getElementById('ebayClientSecret') && (document.getElementById('ebayClientSecret').value = '');
+    _renderEbayConfigStatus(j.config?.ebay);
+    toast('eBay ayarları kaydedildi', 's');
+  } catch (e) {
+    toast('Proxy ulaşılamadı: ' + e.message, 'e');
+  }
+}
+
+async function offersTestEbay() {
   if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
   const cat = document.getElementById('offersCategory')?.value || '';
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connector: 'ebay', cat, limit: 1 }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('eBay testi başlatılamadı: ' + (j.error || r.status), 'e'); return; }
+    const log = document.getElementById('offersLog');
+    if (log) log.textContent = 'eBay test koşusu başladı…\n';
+    _renderEbayConfigStatus(j.config?.ebay);
+    _offersStartPolling();
+  } catch (e) {
+    toast('Proxy ulaşılamadı: ' + e.message, 'e');
+  }
+}
+
+async function offersStartSync() {
+  if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
+  const connector = document.getElementById('offersConnector')?.value || 'ebay';
+  const cat = document.getElementById('offersCategory')?.value || '';
   const limit = parseInt(document.getElementById('offersLimit')?.value) || 0;
+  const concurrency = parseInt(document.getElementById('offersConcurrency')?.value) || 1;
   const missingOnly = document.getElementById('offersMissingOnly')?.checked !== false;
   try {
     const r = await fetch(`${PROXY_URL}/offers/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cat, limit, missingOnly }),
+      body: JSON.stringify({ connector, cat, limit, concurrency, missingOnly }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { toast('Başlatılamadı: ' + (j.error || r.status), 'e'); return; }
@@ -8518,6 +8609,7 @@ async function offersRefreshStatus() {
         if (atBottom) log.scrollTop = log.scrollHeight;
       }
     }
+    if (s.config?.ebay) _renderEbayConfigStatus(s.config.ebay);
     if (running && !_offersPollTimer) _offersStartPolling();
     if (!running && _offersPollTimer) { clearInterval(_offersPollTimer); _offersPollTimer = null; }
   } catch { /* proxy down — silent */ }
@@ -8531,6 +8623,9 @@ function _offersStartPolling() {
 window.offersStartSync = offersStartSync;
 window.offersStop = offersStop;
 window.offersRefreshStatus = offersRefreshStatus;
+window.offersLoadConfig = offersLoadConfig;
+window.offersSaveEbayConfig = offersSaveEbayConfig;
+window.offersTestEbay = offersTestEbay;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  LIVE DICTIONARY COUNTERS

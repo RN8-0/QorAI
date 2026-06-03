@@ -493,7 +493,7 @@
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Translate</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
-          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersRefreshStatus()">💰 Affiliate</button>
+          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
         </div>
 
@@ -615,12 +615,55 @@
         <!-- Affiliate offer sync -->
         <div class="scraper-panel" id="offersPanel">
           <div class="card">
-            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · Amazon / ağ connectorları</span></div>
+            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · eBay / feed / ağ connectorları</span></div>
             <p class="text-muted" style="margin-bottom:12px;font-size:13px">
               Ürünlere aktif affiliate connectorlarından link/fiyat verisi çeker. Barkodsuz ürünlerde yanlış aksesuar fiyatı üretmemek için ana fiyat rollup'ına yalnızca güvenilir kaynaklar yazılacak.
             </p>
+            <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--surface-2,#f8fafc)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+                <div>
+                  <div style="font-weight:800;color:var(--text)">eBay Browse API + EPN</div>
+                  <div class="text-muted" style="font-size:12px;margin-top:3px">
+                    Production Client ID ve Secret fiyat API'si için, EPN campaign/campid affiliate takibi için kullanılır.
+                  </div>
+                </div>
+                <span id="ebayConfigStatus" class="text-muted" style="font-size:12px;white-space:nowrap">durum okunmadı</span>
+              </div>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                <div class="form-field">
+                  <label>Production App ID / Client ID</label>
+                  <input class="input" id="ebayClientId" autocomplete="off" placeholder="Harunnge-QorAI-PRD-...">
+                </div>
+                <div class="form-field">
+                  <label>Production Cert ID / Client Secret</label>
+                  <input class="input" id="ebayClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
+                </div>
+                <div class="form-field">
+                  <label>EPN Campaign ID / campid</label>
+                  <input class="input" id="ebayCampaignId" autocomplete="off" placeholder="EPN link generator'daki campid">
+                </div>
+                <div class="form-field">
+                  <label>Marketler</label>
+                  <input class="input" id="ebayMarkets" autocomplete="off" value="GB,DE" placeholder="GB,DE,US">
+                </div>
+                <div class="form-field">
+                  <label>Custom ID prefix</label>
+                  <input class="input" id="ebayCustomId" autocomplete="off" value="qorai" placeholder="qorai">
+                </div>
+                <div class="form-field">
+                  <label>Tool ID</label>
+                  <input class="input" id="ebayToolId" autocomplete="off" value="10001" placeholder="10001">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+                <button class="btn btn-primary btn-sm" onclick="offersSaveEbayConfig()">eBay Ayarlarını Kaydet</button>
+                <button class="btn btn-sm" onclick="offersTestEbay()">eBay Test Et</button>
+                <button class="btn btn-ghost btn-sm" onclick="offersLoadConfig()">Ayarları Oku</button>
+                <span class="text-muted" style="font-size:11px">Secret cevaplarda gösterilmez; yeni secret girmediğinde eskisi korunur.</span>
+              </div>
+            </div>
             <details style="margin-bottom:12px;font-size:12px">
-              <summary class="text-muted" style="cursor:pointer;user-select:none">🌐 Affiliate Programları — Kayıt Linkleri (Amazon, Awin, AliExpress, Admitad…)</summary>
+              <summary class="text-muted" style="cursor:pointer;user-select:none">🌐 Affiliate Programları — başvuru linkleri ve pratik sıra</summary>
               <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
                 <a href="https://affiliate-program.amazon.com/" target="_blank" rel="noopener" class="btn btn-sm" style="text-align:left;padding:8px 10px;background:#ff9900;color:#000;border:none">
                   🇺🇸 <strong>Amazon Associates US</strong><br><span style="font-size:10px;opacity:.85">affiliate-program.amazon.com</span>
@@ -750,13 +793,21 @@
                 </a>
               </div>
               <p class="text-muted" style="margin-top:10px;font-size:11px">
-                ⚡ <strong>ANINDA / OTOMATİK ONAY</strong> (bu hafta başvur):<br>
-                Amazon Associates (her ülke ayrı) · AliExpress Portals · Admitad · Cuelinks · GdeSlon · Daisycon · Effiliation · Belboon · TradeTracker · Adrecord · Banggood · Hotmart · Lomadee · Afilio · FlexOffers · Involve Asia · AccessTrade<br><br>
-                ⏳ <strong>1-2 hafta onay</strong>: Awin · ShareASale · Webgains · TimeOne · Pepperjam · Rakuten · Tradedoubler · Actionpay<br><br>
-                🚫 <strong>Trafik biriktiğinde başvur</strong> (3+ ay sonra): CJ Affiliate · Impact.com · Skimlinks · Sovrn · Partnerize · Trendyol/Hepsiburada (10K takipçi şart)
+                <strong>Önerilen sıra:</strong> 1) eBay EPN + Browse API ile canlı fiyat/link başlat. 2) Mevcut Awin ve Admitad hesaplarında tek tek teknoloji merchantlarına başvur, product feed/API erişimi olanları öncele. 3) Amazon'u link için kullan, PA-API fiyatı için satış şartı açılana kadar ana kaynak yapma. 4) Trafik geldikçe MediaMarkt, Currys, Otto/Saturn gibi merchant onaylarını ve direkt feed anlaşmalarını genişlet.
+                <br><br>
+                <strong>Not:</strong> Network hesabı açık olsa bile fiyat feed'i çoğu zaman merchant onayına bağlıdır; bu yüzden adminde connector ayrı, merchant/feed ayrı yönetilir.
               </p>
             </details>
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-field">
+                <label>Connector</label>
+                <select class="input" id="offersConnector">
+                  <option value="ebay">eBay</option>
+                  <option value="all">Tüm aktif connectorlar</option>
+                  <option value="amazon">Amazon</option>
+                  <option value="awin">Awin</option>
+                </select>
+              </div>
               <div class="form-field">
                 <label>Kategori</label>
                 <select class="input" id="offersCategory"></select>
@@ -764,6 +815,10 @@
               <div class="form-field">
                 <label>Ürün limiti (0 = kotanın izin verdiği kadar)</label>
                 <input class="input" type="number" id="offersLimit" value="0" min="0">
+              </div>
+              <div class="form-field">
+                <label>Paralel istek</label>
+                <input class="input" type="number" id="offersConcurrency" value="1" min="1" max="12">
               </div>
               <div class="form-field" style="grid-column:span 2">
                 <label style="display:flex;align-items:center;gap:8px">

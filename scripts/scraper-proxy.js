@@ -68,6 +68,95 @@ function readDotEnv(filePath) {
   }
 }
 
+const MIGRATION_ENV_PATH = path.join(rootDir, 'migration', '.env');
+
+function writeDotEnvPatch(filePath, patch) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  let lines = [];
+  try { lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/); } catch {}
+
+  const used = new Set();
+  lines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) return line;
+    const key = trimmed.slice(0, trimmed.indexOf('=')).trim();
+    if (!Object.prototype.hasOwnProperty.call(patch, key)) return line;
+    used.add(key);
+    return `${key}=${String(patch[key] ?? '').replace(/\r?\n/g, ' ').trim()}`;
+  });
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (!used.has(key)) lines.push(`${key}=${String(value ?? '').replace(/\r?\n/g, ' ').trim()}`);
+  }
+
+  const out = lines.join('\n').replace(/\n*$/, '\n');
+  fs.writeFileSync(filePath, out, 'utf8');
+}
+
+function maskConfigValue(value) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  if (v.length <= 10) return `${v.slice(0, 2)}...${v.slice(-2)}`;
+  return `${v.slice(0, 6)}...${v.slice(-4)}`;
+}
+
+function readJsonBody(req, maxBytes = 128 * 1024) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', c => {
+      body += c;
+      if (body.length > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      try { resolve(body ? JSON.parse(body) : {}); }
+      catch (e) { reject(new Error('Invalid JSON body')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function normalizeEbayMarkets(raw) {
+  const allowed = new Set(['US', 'GB', 'UK', 'DE', 'FR', 'IT', 'ES', 'AU']);
+  const out = String(raw || 'GB,DE')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .map(s => (s === 'UK' ? 'GB' : s))
+    .filter(s => allowed.has(s));
+  return Array.from(new Set(out)).join(',') || 'GB,DE';
+}
+
+function getOffersConfig() {
+  const env = { ...process.env, ...readDotEnv(MIGRATION_ENV_PATH) };
+  const campaignId = env.EBAY_CAMPAIGN_ID || '';
+  const perMarketCampaigns = {
+    GB: env.EBAY_CAMPAIGN_ID_GB || '',
+    DE: env.EBAY_CAMPAIGN_ID_DE || '',
+    US: env.EBAY_CAMPAIGN_ID_US || '',
+  };
+  return {
+    ebay: {
+      configured: Boolean(env.EBAY_CLIENT_ID && env.EBAY_CLIENT_SECRET),
+      trackingConfigured: Boolean(campaignId || perMarketCampaigns.GB || perMarketCampaigns.DE || perMarketCampaigns.US),
+      clientId: env.EBAY_CLIENT_ID || '',
+      clientIdMasked: maskConfigValue(env.EBAY_CLIENT_ID),
+      clientSecretSet: Boolean(env.EBAY_CLIENT_SECRET),
+      campaignId,
+      campaignIdGB: perMarketCampaigns.GB,
+      campaignIdDE: perMarketCampaigns.DE,
+      campaignIdUS: perMarketCampaigns.US,
+      customId: env.EBAY_CUSTOM_ID || 'qorai',
+      markets: normalizeEbayMarkets(env.EBAY_MARKETS || 'GB,DE'),
+      mkcid: env.EBAY_MKCID || '1',
+      mkrid: env.EBAY_MKRID || '',
+      toolId: env.EBAY_TOOL_ID || '10001',
+      eventId: env.EBAY_EVENT_ID || '1',
+    },
+  };
+}
+
 function deepSeekApiKey() {
   if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
   const rootEnv = readDotEnv(path.join(rootDir, '.env'));
@@ -1634,9 +1723,102 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Affiliate offer sync ───────────────────────────────────────────────
-  // POST /offers/sync  body: {cat, missingOnly, limit}  → spawns sync_offers.js
-  // GET  /offers/status -> {running, logTail}
+  // GET  /offers/config -> safe connector config status
+  // POST /offers/config body: {ebay:{...}} -> writes migration/.env
+  // POST /offers/test  body: {connector, cat, limit} -> spawns a tiny test run
+  // POST /offers/sync  body: {connector, cat, missingOnly, limit} -> sync_offers.js
+  // GET  /offers/status -> {running, logTail, config}
   // POST /offers/stop
+  if (req.url === '/offers/config' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(getOffersConfig()));
+    return;
+  }
+
+  if (req.url === '/offers/config' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const ebay = body.ebay || {};
+      const patch = {};
+      if (Object.prototype.hasOwnProperty.call(ebay, 'clientId')) {
+        patch.EBAY_CLIENT_ID = String(ebay.clientId || '').trim();
+      }
+      const secret = String(ebay.clientSecret || '').trim();
+      if (secret) patch.EBAY_CLIENT_SECRET = secret;
+      if (Object.prototype.hasOwnProperty.call(ebay, 'markets')) {
+        patch.EBAY_MARKETS = normalizeEbayMarkets(ebay.markets);
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignId')) {
+        patch.EBAY_CAMPAIGN_ID = String(ebay.campaignId || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdGB')) {
+        patch.EBAY_CAMPAIGN_ID_GB = String(ebay.campaignIdGB || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdDE')) {
+        patch.EBAY_CAMPAIGN_ID_DE = String(ebay.campaignIdDE || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdUS')) {
+        patch.EBAY_CAMPAIGN_ID_US = String(ebay.campaignIdUS || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'customId')) {
+        patch.EBAY_CUSTOM_ID = String(ebay.customId || 'qorai').trim() || 'qorai';
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'mkcid')) {
+        patch.EBAY_MKCID = String(ebay.mkcid || '1').trim() || '1';
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'mkrid')) {
+        patch.EBAY_MKRID = String(ebay.mkrid || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'toolId')) {
+        patch.EBAY_TOOL_ID = String(ebay.toolId || '10001').trim() || '10001';
+      }
+      if (Object.prototype.hasOwnProperty.call(ebay, 'eventId')) {
+        patch.EBAY_EVENT_ID = String(ebay.eventId || '1').trim() || '1';
+      }
+      if (!Object.keys(patch).length) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No config fields provided' }));
+        return;
+      }
+      writeDotEnvPatch(MIGRATION_ENV_PATH, patch);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, config: getOffersConfig() }));
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  if (req.url === '/offers/test' && req.method === 'POST') {
+    try {
+      if (isOffersRunning()) {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Offer sync already running' }));
+        return;
+      }
+      const opts = await readJsonBody(req);
+      const connector = String(opts.connector || 'ebay').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'ebay';
+      const cat = String(opts.cat || '').replace(/[^a-z0-9_-]/gi, '');
+      const limit = Math.max(1, Math.min(10, parseInt(opts.limit, 10) || 1));
+      const args = ['scripts/sync_offers.js', `--connector=${connector}`, `--limit=${limit}`, '--concurrency=1'];
+      if (cat) args.push(`--cat=${cat}`);
+      const { spawn } = require('child_process');
+      offersLog = `[offers] test run: ${args.join(' ')}\n`;
+      offersProc = spawn('node', args, { cwd: rootDir, env: process.env });
+      offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+      offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+      offersProc.on('exit', code => { offersLog += `\n[offers] exited with code ${code}\n`; });
+      console.log(`  💰 /offers/test args=${args.join(' ')}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, pid: offersProc.pid, args, config: getOffersConfig() }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   if (req.url === '/offers/sync' && req.method === 'POST') {
     let body = '';
     req.on('data', c => body += c);
@@ -1649,11 +1831,15 @@ const server = http.createServer(async (req, res) => {
         }
         const opts = body ? JSON.parse(body) : {};
         const args = ['scripts/sync_offers.js', '--auto'];
+        const connector = String(opts.connector || '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+        if (connector && connector !== 'all') args.push(`--connector=${connector}`);
         if (opts.missingOnly !== false) args.push('--missing-only');
         const cat = String(opts.cat || '').replace(/[^a-z0-9_-]/gi, '');
         if (cat) args.push(`--cat=${cat}`);
         const limit = parseInt(opts.limit, 10);
         if (limit > 0) args.push(`--limit=${limit}`);
+        const concurrency = parseInt(opts.concurrency, 10);
+        if (concurrency > 0) args.push(`--concurrency=${Math.min(12, Math.max(1, concurrency))}`);
         const { spawn } = require('child_process');
         offersLog = '';
         offersProc = spawn('node', args, { cwd: rootDir, env: process.env });
@@ -1672,7 +1858,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.url === '/offers/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ running: isOffersRunning(), logTail: offersLog.slice(-6000) }));
+    res.end(JSON.stringify({ running: isOffersRunning(), logTail: offersLog.slice(-6000), config: getOffersConfig() }));
     return;
   }
   if (req.url === '/offers/stop' && req.method === 'POST') {

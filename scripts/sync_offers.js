@@ -8,6 +8,7 @@
  *   node scripts/sync_offers.js                    all primary products
  *   node scripts/sync_offers.js --cat=laptops      one category
  *   node scripts/sync_offers.js --limit=200        cap product count
+ *   node scripts/sync_offers.js --connector=ebay   run one connector only
  *   node scripts/sync_offers.js --all-variants     include non-primary SKUs
  *   node scripts/sync_offers.js --missing-only     only products with no
  *                                                  offers yet (incremental —
@@ -37,6 +38,10 @@ const ALL_VARIANTS = argv.includes('--all-variants');
 // Use this after every scrape batch — it skips the thousands of products
 // already covered, so a daily/automated run stays cheap as the catalog grows.
 const MISSING_ONLY = argv.includes('--missing-only') || argv.includes('--new');
+const CONNECTOR_FILTER = ((argv.find(a => a.startsWith('--connector=')) ||
+  argv.find(a => a.startsWith('--only=')) || '').split('=')[1] || '')
+  .trim()
+  .toLowerCase();
 // --auto is kept as a harmless compatibility flag for the admin UI/proxy.
 // It used to size runs around an external marketplace quota; no quota-limited
 // offer source is currently active.
@@ -142,11 +147,23 @@ async function fetchProducts() {
 
 async function main() {
   log('\n  Offer sync\n');
-  const active = CONNECTORS.filter(c => c.isConfigured());
+  const selected = CONNECTOR_FILTER
+    ? CONNECTORS.filter(c => c.id === CONNECTOR_FILTER)
+    : CONNECTORS;
+  if (CONNECTOR_FILTER && !selected.length) {
+    log(`  Unknown connector: ${CONNECTOR_FILTER}`);
+    log(`  Available connectors: ${CONNECTORS.map(c => c.id).join(', ')}`);
+    log('');
+    process.exitCode = 1;
+    return;
+  }
+  const active = selected.filter(c => c.isConfigured());
   if (!active.length) {
-    log('  No affiliate connector is configured.');
+    log(CONNECTOR_FILTER
+      ? `  ${CONNECTOR_FILTER} connector is not configured.`
+      : '  No affiliate connector is configured.');
     log('  Add credentials to migration/.env — see scripts/connectors/*.js headers:');
-    CONNECTORS.forEach(c => log(`    • ${c.id}`));
+    selected.forEach(c => log(`    • ${c.id}`));
     log('');
     return;
   }
