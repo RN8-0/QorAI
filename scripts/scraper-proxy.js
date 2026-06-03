@@ -680,6 +680,48 @@ function extractListingLinksWithPrefixFallback(html, maxLinks = 1000, requirePre
   return [];
 }
 
+// ── Geizhals listing link extraction (server-side, regex) ────────────────────
+// Geizhals product URLs are single-segment and end in `-a<id>.html` (article)
+// or `-v<id>.html` (variant), e.g. `apple-iphone-17-pro-max-2tb-a3340592.html`.
+// The Epey extractor above hardcodes the epey.com host and requires a TWO-segment
+// `/cat/slug.html` shape, so it returned 0 links for every Geizhals listing —
+// which forced the admin into a slow double-fetch fallback that hammered
+// Cloudflare. This dedicated extractor lets `/category-links` serve Geizhals as
+// a first-class fast path, mirroring admin/js/scraper-geizhals.js.
+function extractGeizhalsLinksFromHtml(html, maxLinks = 1000) {
+  let scope = String(html || '');
+  // Narrow to the main product listing container when we can find it, so
+  // sidebar / "popular" / related-product links don't leak in. Falls back to
+  // the whole document if no recognizable container marker is present.
+  const startMatch = scope.match(
+    /<(?:div|ul|section|table)[^>]*(?:id|class)=["'][^"']*(?:productlist|offerlist|listview|cat__list|gh_listing)[^"']*["'][^>]*>/i
+  );
+  if (startMatch) scope = scope.slice(startMatch.index);
+  const seen = new Set();
+  const links = [];
+  const re = /href\s*=\s*["']([^"']+?-[av]\d+\.html)(?:[?#][^"']*)?["']/gi;
+  let m;
+  while ((m = re.exec(scope)) !== null && links.length < maxLinks) {
+    let href = m[1].trim();
+    if (/^https?:/i.test(href)) { try { href = new URL(href).pathname; } catch { continue; } }
+    if (!href.startsWith('/')) href = '/' + href;
+    if (/^\/(?:en|about|contact|impressum|datenschutz)\b/i.test(href)) continue;
+    const full = 'https://geizhals.eu' + href;
+    if (seen.has(full)) continue;
+    seen.add(full);
+    links.push(full);
+  }
+  return links;
+}
+
+function isGeizhalsUrl(url) {
+  // Match on the parsed hostname — a naïve /(^|\.)geizhals…/ against the full
+  // URL never matches `https://geizhals.eu/…` because "geizhals" sits right
+  // after the `//`, not after a dot.
+  try { return /(^|\.)geizhals\.(eu|at|de|com)$/i.test(new URL(url).hostname); }
+  catch { return /geizhals\.(eu|at|de|com)(?:[/?#]|$)/i.test(String(url || '').toLowerCase()); }
+}
+
 function productPrefixFromLinks(links, fallbackPrefix = '') {
   const prefixes = new Set();
   for (const link of links || []) {
@@ -1011,7 +1053,10 @@ async function fetchWithPuppeteer(url, opts = {}) {
   // TR locale; pretending to be a German visitor (de-DE + geizhals.de
   // referer) lifts the block in most cases.
   const lowerUrl = String(url || '').toLowerCase();
-  const isGeizhals = /(^|\.)geizhals\.(eu|at|de|com)\//.test(lowerUrl);
+  // Was /(^|\.)geizhals…/ against the full URL, which never matched
+  // `https://geizhals.eu/…` — so the de-DE locale headers below were dead and
+  // Geizhals saw TR-locale requests it likes to Cloudflare-block.
+  const isGeizhals = isGeizhalsUrl(url);
   const perSiteHeaders = isGeizhals ? {
     'Accept-Language': 'de-DE,de;q=0.9,en;q=0.7',
     'Referer': referer || 'https://geizhals.de/',
@@ -1745,6 +1790,20 @@ const server = http.createServer(async (req, res) => {
             if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
             return r.html;
           });
+        }
+        // Geizhals listings use a different URL shape and host than Epey, so the
+        // Epey extractor (and the ajax/filter/brand machinery below) never apply.
+        // Serve them server-side here so the admin doesn't fall back to a slow,
+        // CF-heavy second fetch per page.
+        if (isGeizhalsUrl(targetUrl)) {
+          const ghLinks = extractGeizhalsLinksFromHtml(html, maxLinks);
+          console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s · geizhals/${fetchEngine}): ${ghLinks.length} product links`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            count: ghLinks.length, links: ghLinks, pages: [],
+            ajax: null, filter: null, filtersTopK: [], brandFilter: null,
+          }));
+          return;
         }
         let catPath = '';
         try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}

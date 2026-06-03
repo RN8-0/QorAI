@@ -10,7 +10,7 @@ const PROXY = 'https://wsrv.nl/?url=';
 // Pixel widths per layout slot (a little above display size for retina).
 const SIZE_W = { thumb: 260, list: 360, card: 900, full: 1600 };
 const EPEY_RE = /resim\.epey\.com|(^|\.)epey\.com/i;
-const BAD_IMAGE_RE = /(^|[/?&=_-])(reklam|advert|ads?|banner|kampanya|sponsor|promosyon|tema|site-logo|logo)([/?&=_-]|$)/i;
+const BAD_IMAGE_RE = /(^|[/?&=_-])(reklam|advert|ads?|banner|kampanya|sponsor|promosyon|tema|site-logo|logo|favicon|yildiz|profil|yukleniyor|loading|placeholder)([/?&=_-]|$)/i;
 
 function uniq(items) {
   return [...new Set(items.filter(Boolean))];
@@ -29,13 +29,19 @@ function epeyVariants(url, size) {
   if (!EPEY_RE.test(clean)) return [clean];
 
   const variants = [];
+  // Upgrade any small stored tier to the big one for large slots.
   const high = clean
     .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
     .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
     .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2');
+  // Stored URLs are now the original master (no size prefix). Derive a medium
+  // fallback so a missing master (404) still renders instead of breaking.
+  const medium = clean.replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) =>
+    /^[a-z]_/i.test(file) ? m : `${folder}m_${file}`);
 
   if (size === 'card' || size === 'full') variants.push(high);
   variants.push(clean);
+  if (medium !== clean) variants.push(medium);
   return uniq(variants);
 }
 

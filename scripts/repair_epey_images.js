@@ -1,11 +1,19 @@
 'use strict';
 
 /**
- * Top up existing epey.com products to 8 product-owned images.
+ * Repair epey.com product images in PocketBase.
  *
- * Usage:
- *   node scripts/repair_epey_images.js --dry
- *   node scripts/repair_epey_images.js --limit=200 --concurrency=8
+ *  Default (top-up) mode — needs the scraper proxy running. Fetches each
+ *  product page and tops the image list up to 8 product-owned photos.
+ *    node scripts/repair_epey_images.js --dry
+ *    node scripts/repair_epey_images.js --limit=200 --concurrency=8
+ *
+ *  --clean / --quality mode — NO network, runs over the whole catalog fast.
+ *  Rewrites every stored image URL to the ORIGINAL master resolution (strips
+ *  the m_/s_/t_/c_/k_ size prefix → sharp, not blurry) and drops ad / banner /
+ *  logo / placeholder junk that pollutes the carousel. URLs are the baseline.
+ *    node scripts/repair_epey_images.js --clean --dry
+ *    node scripts/repair_epey_images.js --clean
  */
 
 const { req } = require('../migration/pb');
@@ -20,8 +28,16 @@ const args = Object.fromEntries(
   }),
 );
 const DRY = !!args.dry;
+// Network-free pass: just clean junk + upgrade resolution on existing URLs.
+const CLEAN = !!(args.clean || args.quality);
 const LIMIT = Math.max(0, parseInt(args.limit || '0', 10) || 0);
 const CONCURRENCY = Math.max(1, Math.min(16, parseInt(args.concurrency || '8', 10) || 8));
+
+// Strip the size-tier prefix so the URL points at the original master image:
+// …/934802/m_huawei-…-18.png → …/934802/huawei-…-18.png
+function toOriginal(url) {
+  return String(url || '').replace(/(\/\d+\/)[a-z]_([^/]+)$/i, '$1$2');
+}
 
 function escFilter(v) {
   return String(v || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -62,8 +78,9 @@ function normalizeImageUrl(url) {
   if (!/resim\.epey\.com/i.test(u)) return '';
   if (/\/(?:tema|marka|kategori|logo|site|grup)\//i.test(u)) return '';
   if (/(favicon|yildiz|profil|yukleniyor|loading|placeholder)/i.test(u)) return '';
+  if (/(reklam|advert|\bads?\b|banner|kampanya|sponsor|promosyon|site-logo)/i.test(u)) return '';
   if (!/\.(?:jpe?g|png|webp|avif)$/i.test(u)) return '';
-  return u;
+  return toOriginal(u);
 }
 
 function imageKey(url) {
@@ -142,7 +159,11 @@ async function getCandidates() {
     for (const p of items) {
       const sourceUrl = normalizeEpeyProductUrl(p.sourceUrl || '');
       const current = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
-      if (sourceUrl && (args.force || current.length < MAX_IMAGES)) out.push({ ...p, sourceUrl, current });
+      // CLEAN mode rewrites every record (junk + resolution) so it can't gate on
+      // image count; top-up mode only touches records below the cap.
+      if ((CLEAN || sourceUrl) && (CLEAN || args.force || current.length < MAX_IMAGES)) {
+        out.push({ ...p, sourceUrl, current });
+      }
       if (LIMIT && out.length >= LIMIT) return out;
     }
     if (page >= (r.body.totalPages || 1)) break;
@@ -154,35 +175,40 @@ async function processProduct(p) {
   const slug = slugFromUrl(p.sourceUrl);
   const current = p.current || [];
   const byKey = new Map();
-  if (!args.force) {
+  // Seed from the existing images, normalized: junk dropped, upgraded to the
+  // original master resolution. (Skipped only on a forced full re-extract.)
+  if (CLEAN || !args.force) {
     for (const img of current) {
       const u = normalizeImageUrl(img);
       if (u) byKey.set(imageKey(u), u);
     }
   }
 
-  const detailHtml = await proxyHtml(p.sourceUrl);
-  for (const img of extractImages(detailHtml, slug)) {
-    if (byKey.size >= MAX_IMAGES) break;
-    byKey.set(imageKey(img), img);
-  }
-  if (byKey.size < MAX_IMAGES) {
-    const g = galleryUrl(p.sourceUrl);
-    if (g) {
-      const galleryHtml = await proxyHtml(g, p.sourceUrl);
-      for (const img of extractImages(galleryHtml, slug)) {
-        if (byKey.size >= MAX_IMAGES) break;
-        byKey.set(imageKey(img), img);
+  // CLEAN/quality mode is network-free — the normalized seed above IS the result.
+  if (!CLEAN) {
+    const detailHtml = await proxyHtml(p.sourceUrl);
+    for (const img of extractImages(detailHtml, slug)) {
+      if (byKey.size >= MAX_IMAGES) break;
+      byKey.set(imageKey(img), img);
+    }
+    if (byKey.size < MAX_IMAGES) {
+      const g = galleryUrl(p.sourceUrl);
+      if (g) {
+        const galleryHtml = await proxyHtml(g, p.sourceUrl);
+        for (const img of extractImages(galleryHtml, slug)) {
+          if (byKey.size >= MAX_IMAGES) break;
+          byKey.set(imageKey(img), img);
+        }
       }
     }
   }
 
   const images = [...byKey.values()].slice(0, MAX_IMAGES);
-  const currentKey = current.map(imageKey).join('|');
-  const nextKey = images.map(imageKey).join('|');
-  if (images.length <= current.length && currentKey === nextKey) return { status: 'same', id: p.id, count: current.length };
+  // Compare the ACTUAL URL strings (not imageKey, which ignores the size tier)
+  // so a resolution upgrade (m_ → original) or junk removal is detected.
+  if (current.join('|') === images.join('|')) return { status: 'same', id: p.id, count: current.length };
   if (!DRY) {
-    const body = { images, imageUrl: images[0] || p.imageUrl || '' };
+    const body = { images, imageUrl: images[0] || toOriginal(p.imageUrl || '') || '' };
     const r = await req('PATCH', `/api/collections/products/records/${p.id}`, body);
     if (r.status >= 300) throw new Error(`PB patch ${p.id} failed: ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
   }

@@ -20,8 +20,9 @@ class ProductImageBox extends StatefulWidget {
     this.width,
     this.height,
     this.borderRadius,
-    this.fit = BoxFit.contain,
+    this.fit = BoxFit.scaleDown,
     this.padding = const EdgeInsets.all(8),
+    this.imageScale = 0.86,
   });
 
   final String? imageUrl;
@@ -35,6 +36,10 @@ class ProductImageBox extends StatefulWidget {
   final BorderRadius? borderRadius;
   final BoxFit fit;
   final EdgeInsetsGeometry padding;
+
+  /// Scales the photo inside its white slot so product cutouts do not look
+  /// oversized in compact cards. Keep between 0 and 1.
+  final double imageScale;
 
   @override
   State<ProductImageBox> createState() => _ProductImageBoxState();
@@ -63,10 +68,10 @@ class _ProductImageBoxState extends State<ProductImageBox> {
   }
 
   // epey CDN size variants live as a filename prefix
-  // (k_/s_/t_/c_/m_/b_ + no-prefix original). The scraper stored the medium
-  // (m_) variant, which is blurry when shown large. Expand each source URL into a
-  // sharpest-first candidate list and fall back down to the reliable medium,
-  // so a missing high-res variant never breaks the image.
+  // (k_/s_/t_/c_/m_/b_ + no-prefix original). The scraper now stores the
+  // original (no-prefix) master, so we try it first for maximum sharpness and
+  // fall back down to b_ then the reliable m_ medium, so a missing tier never
+  // breaks the image.
   static final _epey = RegExp(
     r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
   );
@@ -75,20 +80,29 @@ class _ProductImageBoxState extends State<ProductImageBox> {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['${path}b_$file', '$path$file', '${path}m_$file'];
+    // Original (max) → big → medium fallback.
+    return ['$path$file', '${path}b_$file', '${path}m_$file'];
   }
+
+  // Ad / banner / sponsor / placeholder junk that occasionally leaks into a
+  // product's image list. We never display these — they are not product photos.
+  static final _bad = RegExp(
+    r'(reklam|advert|\bads?\b|banner|kampanya|sponsor|promosyon|site-logo|favicon|yukleniyor|loading|placeholder)',
+    caseSensitive: false,
+  );
+  static bool _isBad(String url) => url.isEmpty || _bad.hasMatch(url);
 
   void _buildUrlList() {
     final seen = <String>{};
     final sources = <String>[
-      if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+      if (widget.imageUrl != null && !_isBad(widget.imageUrl!))
         widget.imageUrl!,
-      ...widget.fallbackUrls.where((u) => u.isNotEmpty),
+      ...widget.fallbackUrls.where((u) => !_isBad(u)),
     ];
     _urls = [
       for (final s in sources)
         for (final cand in _expand(s))
-          if (seen.add(cand)) cand,
+          if (seen.add(cand.toLowerCase())) cand,
     ];
   }
 
@@ -151,7 +165,16 @@ class _ProductImageBoxState extends State<ProductImageBox> {
         width: widget.width,
         height: widget.height,
         decoration: const BoxDecoration(color: Colors.white),
-        child: Padding(padding: widget.padding, child: imageWidget),
+        child: Padding(
+          padding: widget.padding,
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: widget.imageScale.clamp(0.1, 1.0),
+              heightFactor: widget.imageScale.clamp(0.1, 1.0),
+              child: imageWidget,
+            ),
+          ),
+        ),
       ),
     );
   }

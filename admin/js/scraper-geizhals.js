@@ -125,6 +125,16 @@ function normalizeCategoryToken(value) {
     .replace(/^-|-$/g, '');
 }
 
+// The Geizhals ?cat= code lives in the category's `LegacySlug` field. It used
+// to be `geizhalsSlug`, but the 2026 Epey/EU refactor (commit "Replace Geizhals
+// scraper with Epey") renamed it WITHOUT updating this scraper — so every
+// category lookup here read `undefined` and bulk category scraping silently
+// collected 0 URLs. Read LegacySlug, keep geizhalsSlug as a fallback for any
+// custom category still carrying the old field name.
+function geizhalsCatSlug(cat) {
+  return (cat && (cat.LegacySlug || cat.geizhalsSlug)) || '';
+}
+
 function findCategoryByGeizhalsUrl(url) {
   if (!url) return null;
   try {
@@ -133,7 +143,7 @@ function findCategoryByGeizhalsUrl(url) {
     const catParam = u.searchParams.get('cat');
     if (catParam && typeof QorAiCategories !== 'undefined') {
       const all = QorAiCategories.getAll();
-      const found = all.find(c => c.geizhalsSlug === catParam);
+      const found = all.find(c => geizhalsCatSlug(c) === catParam);
       if (found) return found;
     }
     // Old path format: https://geizhals.eu/<cat-slug>
@@ -141,7 +151,7 @@ function findCategoryByGeizhalsUrl(url) {
     const catSlug = parts[0] || '';
     if (typeof QorAiCategories !== 'undefined') {
       const all = QorAiCategories.getAll();
-      const found = all.find(c => c.id === catSlug || (c.geizhalsSlug && c.geizhalsSlug === catSlug));
+      const found = all.find(c => c.id === catSlug || geizhalsCatSlug(c) === catSlug);
       if (found) return found;
     }
     return null;
@@ -151,7 +161,7 @@ function findCategoryByGeizhalsUrl(url) {
 function findCategoryByGeizhalsSlug(slug) {
   const token = String(slug || '').trim();
   if (!token || typeof QorAiCategories === 'undefined') return null;
-  return QorAiCategories.getAll().find(c => c.geizhalsSlug === token || c.id === token) || null;
+  return QorAiCategories.getAll().find(c => geizhalsCatSlug(c) === token || c.id === token) || null;
 }
 
 function detectCategoryFromDoc(doc, fallbackCategory = '') {
@@ -207,9 +217,9 @@ function productUrlMatchesCategory(url, categoryId) {
   if (!url || !categoryId) return false;
   const slug = categorySlugFromUrl(url);
   const catDef = (typeof QorAiCategories !== 'undefined')
-    ? QorAiCategories.getAll().find(c => c.id === categoryId || c.geizhalsSlug === categoryId)
+    ? QorAiCategories.getAll().find(c => c.id === categoryId || geizhalsCatSlug(c) === categoryId)
     : null;
-  const expected = catDef?.geizhalsSlug || categoryId;
+  const expected = geizhalsCatSlug(catDef) || categoryId;
   return slug === expected;
 }
 
@@ -3213,15 +3223,15 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
     ? QorAiCategories.getById(categoryPath)
     : null;
   if (!catDef && typeof QorAiCategories !== 'undefined') {
-    catDef = QorAiCategories.getAll().find(c => c.geizhalsSlug === categoryPath);
+    catDef = QorAiCategories.getAll().find(c => geizhalsCatSlug(c) === categoryPath);
   }
 
-  if (!catDef || !catDef.geizhalsSlug) {
-    slog(`No real ?cat= ID found for category: ${categoryPath}`, 'error');
+  const catParam = geizhalsCatSlug(catDef);
+  if (!catDef || !catParam) {
+    slog(`No real ?cat= ID found for category: ${categoryPath} (kategorinin LegacySlug değeri yok)`, 'error');
     return [];
   }
 
-  const catParam = catDef.geizhalsSlug;
   const categoryId = catDef.id;
   slog(`Collecting from category listing: ?cat=${catParam} (${catDef.name})`);
 
@@ -3719,33 +3729,51 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       const clean = prepareProductPayload(product);
+
+      // Cross-source dedup probe runs BEFORE the costly translation. Epey is the
+      // BASELINE source: if this model already exists from Epey we skip it
+      // entirely — no merge, no overwrite, no wasted translation calls — so the
+      // Epey record (Turkish names + specs the app is tuned for) stays untouched.
+      let existingRec = null;
+      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+        try {
+          existingRec = await window._findExistingByVariantGroup(clean.variantGroup);
+          if (existingRec && /epey/i.test(existingRec.source || '')) {
+            results.skipped++;
+            errorStreak = 0;
+            challengeStreak = 0;
+            recent.push('ok');
+            slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
+            return;
+          }
+        } catch (e) {
+          slog(`  ⚠ dedup probe failed: ${e.message}`, 'warn');
+        }
+      }
+
       // Inline translation — shares the dictionary with the Epey scraper.
       await _translateProductInline(clean);
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
-      // Cross-source dedup: if an Epey TR record already exists for this
-      // model (same variantGroup) we MERGE specs into it instead of
-      // creating a duplicate. Catalog stays one-row-per-model.
+      // A NON-Epey record (e.g. another Geizhals variant) already owning this
+      // model gets MERGED instead of duplicated. Catalog stays one-row-per-model.
       let mergedExisting = null;
-      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+      if (existingRec && existingRec.source && existingRec.source !== clean.source) {
         try {
-          const existing = await window._findExistingByVariantGroup(clean.variantGroup);
-          if (existing && existing.source && existing.source !== clean.source) {
-            mergedExisting = await window._mergeIntoExistingRecord(existing.id, clean);
-            if (mergedExisting) {
-              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: mergedExisting } }));
-              results.updated++;
-              errorStreak = 0;
-              recent.push('ok');
-              slog(`  ↻ Cross-source merge → existing ${existing.id} (${existing.source}): ${product.name}`, 'info');
-              if ((results.added + results.updated) % 25 === 0) {
-                _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
-              }
-              return;
+          mergedExisting = await window._mergeIntoExistingRecord(existingRec.id, clean);
+          if (mergedExisting) {
+            window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existingRec.id, product: mergedExisting } }));
+            results.updated++;
+            errorStreak = 0;
+            recent.push('ok');
+            slog(`  ↻ Cross-source merge → existing ${existingRec.id} (${existingRec.source}): ${product.name}`, 'info');
+            if ((results.added + results.updated) % 25 === 0) {
+              _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
             }
+            return;
           }
         } catch (e) {
-          slog(`  ⚠ dedup probe failed: ${e.message}`, 'warn');
+          slog(`  ⚠ cross-source merge failed: ${e.message}`, 'warn');
         }
       }
 
@@ -3994,6 +4022,12 @@ async function scrapeByUrl() {
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || product.sourceUrl || '');
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         const existing = await window._findExistingByVariantGroup(clean.variantGroup);
+        // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
+        if (existing && /epey/i.test(existing.source || '')) {
+          slog(`↩ Epey baz alındı, Geizhals atlandı: ${clean.name} (mevcut ${existing.id})`, 'info');
+          if (typeof loadProducts === 'function') await loadProducts();
+          return;
+        }
         if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {
           const merged = await window._mergeIntoExistingRecord(existing.id, clean);
           if (merged) {

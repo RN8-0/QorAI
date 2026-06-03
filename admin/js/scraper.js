@@ -6846,8 +6846,22 @@ function normalizeEpeyImageUrl(url) {
   if (!/resim\.epey\.com/i.test(u)) return '';
   if (/\/(?:tema|marka|kategori|logo|site|grup)\//i.test(u)) return '';
   if (/(favicon|yildiz|profil|yukleniyor|loading|placeholder)/i.test(u)) return '';
+  // Reject ad / banner / sponsor junk that Epey occasionally mixes into the
+  // gallery DOM — these are NOT product photos and were polluting PB and the
+  // image carousel. Mirrors web/src/lib/imageUrl.js BAD_IMAGE_RE.
+  if (/(reklam|advert|\bads?\b|banner|kampanya|sponsor|promosyon|site-logo)/i.test(u)) return '';
   if (!/\.(?:jpe?g|png|webp|avif)$/i.test(u)) return '';
-  return u;
+  // Persist the ORIGINAL full-resolution master, not a downscaled tier
+  // (m_/s_/t_/c_/k_…). The app + website still derive smaller tiers on demand
+  // and fall back to m_ if the master 404s, but the canonical stored URL is now
+  // max quality — fixing the "blurry image" reports. URLs are the baseline.
+  return _epeyOriginalUrl(u);
+}
+
+// Strip the size-tier prefix from an Epey CDN filename so the URL points at the
+// original master image: …/934802/m_huawei-…-18.png → …/934802/huawei-…-18.png
+function _epeyOriginalUrl(url) {
+  return String(url || '').replace(/(\/\d+\/)[a-z]_([^/]+)$/i, '$1$2');
 }
 
 function isEpeyProductUrl(url) {
