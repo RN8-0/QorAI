@@ -46,6 +46,29 @@ function docs(result) {
   return ((result && result.hits) || []).map((hit) => hit.document);
 }
 
+function looksLikeLaptopCooler(product) {
+  const text = [
+    product?.name,
+    product?.slug,
+    product?.sourceUrl,
+    product?.keySpecsText,
+    product?._raw,
+  ].filter(Boolean).join(' ').toLowerCase();
+  return /laptop[\s-]*(soğutucu|sogutucu|cooler|cooling|stand|pad)/i.test(text)
+    || /(soğutucu|sogutucu|cooler|cooling\s*pad|cooling\s*stand)[\s-]*laptop/i.test(text)
+    || /\/laptop-sogutucu\//i.test(text);
+}
+
+function productMatchesRequestedCategory(product, category) {
+  const cat = String(category || '').toLowerCase();
+  if (cat === 'laptops') return !looksLikeLaptopCooler(product);
+  if (cat === 'laptop_coolers') {
+    return String(product?.category || '').toLowerCase() === 'laptop_coolers'
+      || looksLikeLaptopCooler(product);
+  }
+  return true;
+}
+
 // A Typesense doc carries the full PocketBase record as `_raw` only when the
 // document endpoint is used. Search/list endpoints return lightweight fields.
 export function docToProduct(doc) {
@@ -183,10 +206,13 @@ export async function getCategoryPage(opts = {}) {
       facet_by: opts.facets ? 'brand,price_segment,filterTokens' : '',
       max_facet_values: opts.facets ? 200 : '',
     });
+    const hits = docs(data)
+      .map(docToProduct)
+      .filter((p) => productMatchesRequestedCategory(p, opts.category));
     return {
       found: data.found || 0,
       page,
-      hits: docs(data).map(docToProduct),
+      hits,
       facets: data.facet_counts || [],
     };
   } catch (err) {
@@ -218,9 +244,10 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
       include_fields: LIST_FIELDS,
     });
     return docs(data)
-      .filter((doc) => doc.id !== excludeId)
+      .map(docToProduct)
+      .filter((p) => p.id !== excludeId)
+      .filter((p) => productMatchesRequestedCategory(p, category))
       .slice(0, limit)
-      .map(docToProduct);
   } catch (err) {
     console.warn('[catalog] similar failed', err);
     return [];

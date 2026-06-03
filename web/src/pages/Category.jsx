@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
-import { catMeta } from '../lib/format';
+import { catMeta, categoryLabel } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -48,13 +48,14 @@ export default function Category() {
   const [params] = useSearchParams();
   const cat = (params.get('cat') || '').toLowerCase();
   const meta = catMeta(cat);
+  const catTitle = categoryLabel(cat, lang);
 
   useSeo({
     title: cat
-      ? `${meta.label} — Qor AI`
+      ? `${catTitle} — Qor AI`
       : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
     description: cat
-      ? t('category.seo', { cat: meta.label })
+      ? t('category.seo', { cat: catTitle })
       : L('Browse every product category on Qor AI.',
           'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
           'Durchstöbere alle Produktkategorien auf Qor AI.'),
@@ -266,7 +267,7 @@ export default function Category() {
     <div className="catalog">
       <div className="cat-hero">
         <div className="container">
-          <h1><span style={{ '--cat-color': meta.color }}>{meta.icon}</span> {meta.label}</h1>
+          <h1 style={{ '--cat-color': meta.color }}>{catTitle}</h1>
           <p>{t('catalog.subtitle')}</p>
         </div>
       </div>
