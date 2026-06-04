@@ -8,7 +8,7 @@
  *   node scripts/sync_offers.js                    all primary products
  *   node scripts/sync_offers.js --cat=laptops      one category
  *   node scripts/sync_offers.js --limit=200        cap product count
- *   node scripts/sync_offers.js --connector=ebay   run one connector only
+ *   node scripts/sync_offers.js --connector=awin   run one connector only
  *   node scripts/sync_offers.js --all-variants     include non-primary SKUs
  *   node scripts/sync_offers.js --missing-only     only products with no
  *                                                  offers yet (incremental —
@@ -27,7 +27,6 @@ const { upsertOffer, deleteOffersForProductNetwork, refreshProductRollup } = req
 const CONNECTORS = [
   require('./connectors/amazon'),
   require('./connectors/awin'),
-  require('./connectors/ebay'),
   require('./connectors/admitad'),
 ];
 

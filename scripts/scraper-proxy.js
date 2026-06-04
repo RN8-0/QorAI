@@ -118,16 +118,6 @@ function readJsonBody(req, maxBytes = 128 * 1024) {
   });
 }
 
-function normalizeEbayMarkets(raw) {
-  const allowed = new Set(['US', 'GB', 'UK', 'DE', 'FR', 'IT', 'ES', 'AU']);
-  const out = String(raw || 'GB,DE')
-    .split(',')
-    .map(s => s.trim().toUpperCase())
-    .map(s => (s === 'UK' ? 'GB' : s))
-    .filter(s => allowed.has(s));
-  return Array.from(new Set(out)).join(',') || 'GB,DE';
-}
-
 function normalizeMarketCsv(raw, fallback, allowedList = null) {
   const allowed = allowedList ? new Set(allowedList) : null;
   const out = String(raw || fallback || '')
@@ -147,30 +137,7 @@ function envKeysWithPrefix(env, prefix) {
 
 function getOffersConfig() {
   const env = { ...process.env, ...readDotEnv(MIGRATION_ENV_PATH) };
-  const campaignId = env.EBAY_CAMPAIGN_ID || '';
-  const perMarketCampaigns = {
-    GB: env.EBAY_CAMPAIGN_ID_GB || '',
-    DE: env.EBAY_CAMPAIGN_ID_DE || '',
-    US: env.EBAY_CAMPAIGN_ID_US || '',
-  };
   return {
-    ebay: {
-      configured: Boolean(env.EBAY_CLIENT_ID && env.EBAY_CLIENT_SECRET),
-      trackingConfigured: Boolean(campaignId || perMarketCampaigns.GB || perMarketCampaigns.DE || perMarketCampaigns.US),
-      clientId: env.EBAY_CLIENT_ID || '',
-      clientIdMasked: maskConfigValue(env.EBAY_CLIENT_ID),
-      clientSecretSet: Boolean(env.EBAY_CLIENT_SECRET),
-      campaignId,
-      campaignIdGB: perMarketCampaigns.GB,
-      campaignIdDE: perMarketCampaigns.DE,
-      campaignIdUS: perMarketCampaigns.US,
-      customId: env.EBAY_CUSTOM_ID || 'qorai',
-      markets: normalizeEbayMarkets(env.EBAY_MARKETS || 'GB,DE'),
-      mkcid: env.EBAY_MKCID || '1',
-      mkrid: env.EBAY_MKRID || '',
-      toolId: env.EBAY_TOOL_ID || '10001',
-      eventId: env.EBAY_EVENT_ID || '1',
-    },
     admitad: {
       configured: Boolean(env.ADMITAD_CLIENT_ID && env.ADMITAD_CLIENT_SECRET),
       trackingConfigured: Boolean(env.ADMITAD_WEBSITE_ID && env.ADMITAD_CAMPAIGNS),
@@ -1767,7 +1734,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Affiliate offer sync ───────────────────────────────────────────────
   // GET  /offers/config -> safe connector config status
-  // POST /offers/config body: {ebay:{...}} -> writes migration/.env
+  // POST /offers/config body: {admitad|awin|amazon:{...}} -> writes migration/.env
   // POST /offers/test  body: {connector, cat, limit} -> spawns a tiny test run
   // POST /offers/sync  body: {connector, cat, missingOnly, limit} -> sync_offers.js
   // GET  /offers/status -> {running, logTail, config}
@@ -1781,43 +1748,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/offers/config' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req);
-      const ebay = body.ebay || {};
       const patch = {};
-      if (Object.prototype.hasOwnProperty.call(ebay, 'clientId')) {
-        patch.EBAY_CLIENT_ID = String(ebay.clientId || '').trim();
-      }
-      const secret = String(ebay.clientSecret || '').trim();
-      if (secret) patch.EBAY_CLIENT_SECRET = secret;
-      if (Object.prototype.hasOwnProperty.call(ebay, 'markets')) {
-        patch.EBAY_MARKETS = normalizeEbayMarkets(ebay.markets);
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignId')) {
-        patch.EBAY_CAMPAIGN_ID = String(ebay.campaignId || '').trim();
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdGB')) {
-        patch.EBAY_CAMPAIGN_ID_GB = String(ebay.campaignIdGB || '').trim();
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdDE')) {
-        patch.EBAY_CAMPAIGN_ID_DE = String(ebay.campaignIdDE || '').trim();
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'campaignIdUS')) {
-        patch.EBAY_CAMPAIGN_ID_US = String(ebay.campaignIdUS || '').trim();
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'customId')) {
-        patch.EBAY_CUSTOM_ID = String(ebay.customId || 'qorai').trim() || 'qorai';
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'mkcid')) {
-        patch.EBAY_MKCID = String(ebay.mkcid || '1').trim() || '1';
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'mkrid')) {
-        patch.EBAY_MKRID = String(ebay.mkrid || '').trim();
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'toolId')) {
-        patch.EBAY_TOOL_ID = String(ebay.toolId || '10001').trim() || '10001';
-      }
-      if (Object.prototype.hasOwnProperty.call(ebay, 'eventId')) {
-        patch.EBAY_EVENT_ID = String(ebay.eventId || '1').trim() || '1';
-      }
 
       const admitad = body.admitad || {};
       if (Object.prototype.hasOwnProperty.call(admitad, 'clientId')) {
@@ -1884,7 +1815,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const opts = await readJsonBody(req);
-      const connector = String(opts.connector || 'ebay').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'ebay';
+      const connector = String(opts.connector || 'admitad').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'admitad';
       const cat = String(opts.cat || '').replace(/[^a-z0-9_-]/gi, '');
       const limit = Math.max(1, Math.min(10, parseInt(opts.limit, 10) || 1));
       const args = ['scripts/sync_offers.js', `--limit=${limit}`, '--concurrency=1'];

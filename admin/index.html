@@ -615,7 +615,7 @@
         <!-- Affiliate offer sync -->
         <div class="scraper-panel" id="offersPanel">
           <div class="card">
-            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · eBay / feed / ağ connectorları</span></div>
+            <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · feed / ağ connectorları</span></div>
             <p class="text-muted" style="margin-bottom:12px;font-size:13px">
               Ürünlere aktif affiliate connectorlarından link/fiyat verisi çeker. Barkodsuz ürünlerde yanlış aksesuar fiyatı üretmemek için ana fiyat rollup'ına yalnızca güvenilir kaynaklar yazılacak.
             </p>
@@ -624,7 +624,6 @@
                 <div>
                   <label class="affiliate-provider-label">Sağlayıcı</label>
                   <select class="input" id="offersConnector" onchange="offersRenderProvider()">
-                    <option value="ebay">eBay</option>
                     <option value="admitad">Admitad</option>
                     <option value="awin">Awin</option>
                     <option value="amazon">Amazon</option>
@@ -632,42 +631,14 @@
                   </select>
                 </div>
                 <div class="affiliate-provider-summary">
-                  <div id="offersProviderTitle">eBay Browse API + EPN</div>
+                  <div id="offersProviderTitle">Admitad API + Deeplink</div>
                   <span id="offersProviderStatus" class="text-muted">durum okunmadı</span>
                 </div>
               </div>
               <p id="offersProviderHint" class="text-muted affiliate-provider-hint">
-                Production Client ID ve Secret fiyat API'si için, EPN campaign/campid affiliate takibi için kullanılır.
+                Admitad Client ID/Secret, Website ID ve onaylı merchant campaign satırları gerekir.
               </p>
-              <div class="offer-provider-panel" data-provider="ebay">
-                <div class="form-grid" style="grid-template-columns:1fr 1fr">
-                  <div class="form-field">
-                    <label>Production App ID / Client ID</label>
-                    <input class="input" id="ebayClientId" autocomplete="off" placeholder="Harunnge-QorAI-PRD-...">
-                  </div>
-                  <div class="form-field">
-                    <label>Production Cert ID / Client Secret</label>
-                    <input class="input" id="ebayClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
-                  </div>
-                  <div class="form-field">
-                    <label>EPN Campaign ID / campid</label>
-                    <input class="input" id="ebayCampaignId" autocomplete="off" placeholder="EPN link generator'daki campid">
-                  </div>
-                  <div class="form-field">
-                    <label>Marketler</label>
-                    <input class="input" id="ebayMarkets" autocomplete="off" value="GB,DE" placeholder="GB,DE,US">
-                  </div>
-                  <div class="form-field">
-                    <label>Custom ID prefix</label>
-                    <input class="input" id="ebayCustomId" autocomplete="off" value="qorai" placeholder="qorai">
-                  </div>
-                  <div class="form-field">
-                    <label>Tool ID</label>
-                    <input class="input" id="ebayToolId" autocomplete="off" value="10001" placeholder="10001">
-                  </div>
-                </div>
-              </div>
-              <div class="offer-provider-panel" data-provider="admitad" style="display:none">
+              <div class="offer-provider-panel" data-provider="admitad">
                 <div class="form-grid" style="grid-template-columns:1fr 1fr">
                   <div class="form-field">
                     <label>Client ID</label>
@@ -729,7 +700,7 @@
               </div>
               <div class="offer-provider-panel" data-provider="all" style="display:none">
                 <div class="affiliate-provider-note">
-                  Tüm aktif connectorlar çalışır. Ayarları düzenlemek için üstte eBay, Admitad, Awin veya Amazon seç.
+                  Tüm aktif connectorlar çalışır. Ayarları düzenlemek için üstte Admitad, Awin veya Amazon seç.
                 </div>
               </div>
               <div class="affiliate-provider-actions">
@@ -870,7 +841,7 @@
                 </a>
               </div>
               <p class="text-muted" style="margin-top:10px;font-size:11px">
-                <strong>Önerilen sıra:</strong> 1) eBay EPN + Browse API ile canlı fiyat/link başlat. 2) Mevcut Awin ve Admitad hesaplarında tek tek teknoloji merchantlarına başvur, product feed/API erişimi olanları öncele. 3) Amazon'u link için kullan, PA-API fiyatı için satış şartı açılana kadar ana kaynak yapma. 4) Trafik geldikçe MediaMarkt, Currys, Otto/Saturn gibi merchant onaylarını ve direkt feed anlaşmalarını genişlet.
+                <strong>Önerilen sıra:</strong> 1) Mevcut Awin ve Admitad hesaplarında tek tek teknoloji merchantlarına başvur, product feed/API erişimi olanları öncele. 2) Amazon'u link için kullan, PA-API fiyatı için satış şartı açılana kadar ana kaynak yapma. 3) Trafik geldikçe MediaMarkt, Currys, Otto/Saturn gibi merchant onaylarını ve direkt feed anlaşmalarını genişlet.
                 <br><br>
                 <strong>Not:</strong> Network hesabı açık olsa bile fiyat feed'i çoğu zaman merchant onayına bağlıdır; bu yüzden adminde connector ayrı, merchant/feed ayrı yönetilir.
               </p>
