@@ -8526,10 +8526,6 @@ function _renderProviderStatus(provider = _currentOffersProvider(), config = _pr
   el.style.color = api && tracking ? '#10b981' : (api ? '#f59e0b' : '#ef4444');
 }
 
-function _renderEbayConfigStatus(config) {
-  _renderProviderStatus('admitad', _providerConfig('admitad'));
-}
-
 function offersRenderProvider() {
   const provider = _currentOffersProvider();
   const meta = OFFERS_PROVIDER_META[provider] || OFFERS_PROVIDER_META.admitad;
