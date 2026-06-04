@@ -1,26 +1,99 @@
 import { Link } from 'react-router-dom';
-import { catMeta } from '../lib/format';
+import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { productPath } from '../lib/routes';
 import { useI18n } from '../i18n/index.jsx';
 import Gauge, { techColor } from './Gauge.jsx';
 import ProductImg from './ProductImg.jsx';
+import './ProductCard.css';
 
-function scoreChipClass(s) {
-  const v = Number(s) || 0;
-  return v >= 95 ? 's-ex' : v >= 80 ? 's-gd' : v > 0 ? 's-av' : 's-na';
+function clampPct(n) {
+  return Math.max(8, Math.min(100, Math.round(Number(n) || 0)));
+}
+
+function inferredPct(label, value, index, product) {
+  const text = `${label || ''} ${value || ''}`.toLowerCase();
+  const num = parseFloat(String(value || '').replace(',', '.').match(/\d+(?:[.,]\d+)?/)?.[0] || '');
+  if (Number.isFinite(num)) {
+    if (/mah|batarya|battery|akku/.test(text)) return clampPct((num / 7000) * 100);
+    if (/\btb\b/.test(text)) return clampPct((num * 1024 / 2048) * 100);
+    if (/\bgb\b/.test(text) && /ram|memory|bellek/.test(text)) return clampPct((num / 32) * 100);
+    if (/\bgb\b/.test(text)) return clampPct((num / 2048) * 100);
+    if (/inch|inç|display|screen|ekran|"/.test(text)) return clampPct((num / 7) * 100);
+    if (/\bhz\b/.test(text)) return clampPct((num / 240) * 100);
+    if (/\bw\b|watt|güç|power/.test(text)) return clampPct((num / 1200) * 100);
+  }
+  const score = Number(product?.techScore) || 70;
+  return clampPct(score - index * 10);
+}
+
+function pushSpec(out, seen, label, value, pct, product) {
+  const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanLabel || !cleanValue || out.length >= 4) return;
+  const key = `${cleanLabel.toLowerCase()}=${cleanValue.toLowerCase()}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  out.push({
+    label: cleanLabel,
+    value: cleanValue,
+    pct: clampPct(pct || inferredPct(cleanLabel, cleanValue, out.length, product)),
+  });
+}
+
+function productSpecs(product, t, lang) {
+  const out = [];
+  const seen = new Set();
+
+  for (const chip of keySpecChips(product)) {
+    pushSpec(out, seen, t(chip.labelKey), chip.value, chip.pct, product);
+  }
+
+  const keySpecs = product?.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {};
+  for (const [label, value] of Object.entries(keySpecs)) {
+    pushSpec(out, seen, label, value, null, product);
+  }
+
+  const specs = product?.specs && typeof product.specs === 'object' ? product.specs : {};
+  for (const [label, value] of Object.entries(specs)) {
+    if (/^(marka|brand|model|ürün|product|renk|color)$/i.test(String(label || '').trim())) continue;
+    pushSpec(out, seen, label, value, null, product);
+  }
+
+  const textParts = String(product?.keySpecsText || '')
+    .split(/[|•;\n]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  for (const part of textParts) {
+    const pieces = part.split(/:|=/);
+    if (pieces.length >= 2) pushSpec(out, seen, pieces[0], pieces.slice(1).join(':'), null, product);
+    else pushSpec(out, seen, categoryLabel(product?.category, lang), part, null, product);
+  }
+
+  if (out.length < 4 && product?.category) {
+    const label = lang === 'tr' ? 'Kategori' : lang === 'de' ? 'Kategorie' : 'Category';
+    pushSpec(out, seen, label, categoryLabel(product.category, lang), 72, product);
+  }
+  if (out.length < 4 && product?.brand) {
+    pushSpec(out, seen, t('catalog.brand') || 'Brand', product.brand, 66, product);
+  }
+  if (out.length < 4 && Number(product?.techScore) > 0) {
+    pushSpec(out, seen, 'Qor AI', `${Math.round(Number(product.techScore))}/100`, product.techScore, product);
+  }
+
+  return out.slice(0, 4);
 }
 
 function ProductImage({ p }) {
   const meta = catMeta(p.category);
   if (p.imageUrl) {
     return (
-      <div className="img-tile">
+      <div className="pcard-img">
         <ProductImg src={p.imageUrl} alt={p.name} size="card" />
       </div>
     );
   }
   return (
-    <div className="img-tile">
+    <div className="pcard-img">
       <div className="ph">
         <span style={{ fontSize: 30 }}>{meta.icon}</span>
         <span className="lbl">{p.brand || meta.label}</span>
@@ -30,38 +103,37 @@ function ProductImage({ p }) {
 }
 
 export default function ProductCard({ product: p, variant = 'card' }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const hasScore = Number(p.techScore) > 0;
-
-  if (variant === 'list') {
-    return (
-      <Link to={productPath(p.id)} className="lrow">
-        <ProductImage p={p} />
-        <div className="grow" style={{ minWidth: 0 }}>
-          <div className="nm" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
-          <div className="row" style={{ gap: 8, marginTop: 4 }}>
-            {p.brand && <span className="mk">{p.brand}</span>}
-            {hasScore && <span className={`score-chip ${scoreChipClass(p.techScore)}`}>⚡ {Math.round(p.techScore)}</span>}
-          </div>
-        </div>
-      </Link>
-    );
-  }
+  const specs = productSpecs(p, t, lang);
 
   return (
-    <Link to={productPath(p.id)} className="pcard">
-      <div className="top">
+    <Link to={productPath(p.id)} className={`pcard${variant === 'list' ? ' pcard-list' : ''}`} aria-label={p.name}>
+      <div className="pcard-media">
         {hasScore && (
-          <span className="badge gauge-badge">
-            <Gauge value={p.techScore} size={30} stroke={2.6} color={techColor(p.techScore)} fontSize={11} />
+          <span className="pcard-score gauge-badge" title={`Qor AI ${Math.round(p.techScore)}`}>
+            <Gauge value={p.techScore} size={28} stroke={2.1} color={techColor(p.techScore)} fontSize={10} />
           </span>
         )}
         <ProductImage p={p} />
       </div>
-      <div className="body">
-        {p.brand && <span className="brand-k">{p.brand}</span>}
-        <span className="name">{p.name}</span>
-        <span className="btn btn-primary btn-block cta">{t('card.review')}</span>
+      <div className="pcard-body">
+        <div className="pcard-head">
+          {p.brand && <span className="pcard-brand">{p.brand}</span>}
+          {!p.brand && <span className="pcard-brand">{categoryLabel(p.category, lang)}</span>}
+        </div>
+        <span className="pcard-name">{p.name}</span>
+        <div className="pcard-specs">
+          {specs.map((spec, index) => (
+            <span className="pcard-spec" key={`${spec.label}-${index}`}>
+              <span className="pcard-spec-row">
+                <span className="pcard-spec-label">{spec.label}</span>
+                <b className="pcard-spec-val">{spec.value}</b>
+              </span>
+              <span className="pcard-spec-bar"><i style={{ width: `${spec.pct}%` }} /></span>
+            </span>
+          ))}
+        </div>
       </div>
     </Link>
   );
@@ -70,11 +142,13 @@ export default function ProductCard({ product: p, variant = 'card' }) {
 export function ProductCardSkeleton() {
   return (
     <div className="pcard">
-      <div className="top"><div className="img-tile" style={{ aspectRatio: 1 }}><div className="skel" style={{ width: '100%', height: '100%' }} /></div></div>
-      <div className="body">
+      <div className="pcard-media"><div className="pcard-img"><div className="skel" style={{ width: '100%', height: '100%' }} /></div></div>
+      <div className="pcard-body">
         <div className="skel" style={{ height: 11, width: '35%' }} />
         <div className="skel" style={{ height: 15, width: '85%', marginTop: 8 }} />
-        <div className="skel" style={{ height: 40, width: '100%', marginTop: 10 }} />
+        <div className="skel" style={{ height: 8, width: '95%', marginTop: 12 }} />
+        <div className="skel" style={{ height: 8, width: '80%', marginTop: 8 }} />
+        <div className="skel" style={{ height: 8, width: '90%', marginTop: 8 }} />
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ export default function Header() {
       <header className="appbar">
         <div className="container appbar-inner">
           <Link to="/" className="brand" onClick={() => setDrawer(false)}>
-            <img src="/assets/qor_logo.png" alt="Qor AI" />
+            <img src="/assets/qor_logo_512.png" alt="Qor AI" />
             <span className="wm">Qor<b className="grad-text"> AI</b></span>
           </Link>
 

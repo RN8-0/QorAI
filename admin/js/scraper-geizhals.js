@@ -4031,7 +4031,11 @@ async function scrapeByUrl() {
         if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {
           const merged = await window._mergeIntoExistingRecord(existing.id, clean);
           if (merged) {
-            window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+            if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
+              window.qoraiDispatchSingleProductSaved(existing.id, merged);
+            } else {
+              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+            }
             slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
             if (typeof loadProducts === 'function') await loadProducts();
             return;
@@ -4039,7 +4043,11 @@ async function scrapeByUrl() {
         }
       }
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
-      window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
+      if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
+        window.qoraiDispatchSingleProductSaved(saved?.id || clean.slug, clean);
+      } else {
+        window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
+      }
       const langCount = Object.keys(clean.multiLangSpecs || {}).length;
       slog(`💾 Saved: ${clean.name} (${clean.specsCount || 0} specs, ${langCount} dilde çeviri)`, 'success');
       if (typeof loadProducts === 'function') await loadProducts();

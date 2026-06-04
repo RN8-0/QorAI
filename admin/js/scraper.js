@@ -240,6 +240,31 @@ function xlog(msg, type = 'info') {
 }
 if (typeof window !== 'undefined') window.xlog = xlog;
 
+function _dispatchSingleProductSaved(id, product) {
+  if (typeof window === 'undefined') return;
+  const productId = id || product?.id || product?.slug || product?.sourceUrl || '';
+  const prevSuppressed = window.qoraiAutoScoreSuppressed;
+  const prevScrapeActive = window.qoraiScrapeActive;
+  window.qoraiAutoScoreSuppressed = false;
+  window.qoraiScrapeActive = false;
+  try {
+    window.dispatchEvent(new CustomEvent('qorai:product-saved', {
+      detail: { id: productId, product },
+    }));
+    if (product?.category && typeof window.qoraiQueueScoreUpdate === 'function') {
+      window.qoraiQueueScoreUpdate(product.category);
+      slog(`⚡ Tekli scrape skor kuyruğu: ${product.category}`, 'info');
+    } else if (product?.category) {
+      slog(`⚠ Score Engine henüz yüklenmedi; kategori sonra manuel çalıştırılmalı: ${product.category}`, 'warn');
+    }
+  } finally {
+    window.qoraiAutoScoreSuppressed = prevSuppressed;
+    window.qoraiScrapeActive = prevScrapeActive;
+  }
+}
+
+if (typeof window !== 'undefined') window.qoraiDispatchSingleProductSaved = _dispatchSingleProductSaved;
+
 function updateProgress(current, total, label) {
   const pg = document.getElementById('scraperProgress');
   if (!pg) return;
@@ -8439,14 +8464,16 @@ async function scrapeByUrl() {
       toast('Bu kategori katalogdan kaldırıldı; ürün kaydedilmedi', 'w');
       return;
     }
-    // Single-URL path mirrors bulk scrape: raw source save first. Use the
-    // Translate tab afterwards to materialize EN/DE for the saved product.
+    slog(`🌐 Tekli ürün çevirisi başlıyor: ${clean.name}`, 'info');
+    await _translateProductInline(clean);
+    try { _assertCleanEnglishPayload(clean, clean.name || clean.slug || url); } catch (_) {}
+
     if (clean.variantGroup) {
       const existing = await _findExistingByVariantGroup(clean.variantGroup);
       if (existing && existing.source && existing.source !== clean.source) {
         const merged = await _mergeIntoExistingRecord(existing.id, clean);
         if (merged) {
-          window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+          _dispatchSingleProductSaved(existing.id, merged);
           slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
           if (typeof loadProducts === 'function') await loadProducts();
           return;
@@ -8454,8 +8481,9 @@ async function scrapeByUrl() {
       }
     }
     const saved = await _saveProductWithRetry(clean, clean.name || clean.slug || url);
-    window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
-    slog(`Saved raw: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images)`, 'success');
+    _dispatchSingleProductSaved(saved?.id || clean.slug, clean);
+    const langCount = Object.keys(clean.multiLangSpecs || {}).length;
+    slog(`Saved: ${clean.name} (${clean.specsCount} specs, ${clean.images?.length || 0} images, ${langCount} dil)`, 'success');
     if (typeof loadProducts === 'function') await loadProducts();
   } catch (e) {
     slog(`Error: ${e.message}`, 'error');

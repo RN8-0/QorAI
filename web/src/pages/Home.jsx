@@ -7,7 +7,7 @@ import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
-import Gauge, { techColor } from '../components/Gauge.jsx';
+import { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -24,36 +24,8 @@ function StatItem({ n, l }) {
   );
 }
 
-// Hero spotlight — a mini product-detail teaser (design's right column).
-function HeroSpotlight({ p, L, lang }) {
-  const score = Number(p.techScore) || 0;
-  const meta = catMeta(p.category);
-  const price = Number(p.lowestPriceUSD) || 0;
-  return (
-    <Link to={productPath(p.id)} className="card glow" style={{ overflow: 'hidden', display: 'block' }}>
-      <div style={{ padding: 18, position: 'relative' }}>
-        {score > 0 && (
-          <span className="gauge-badge" style={{ position: 'absolute', top: 26, right: 26, zIndex: 2 }}>
-            <Gauge value={score} size={32} stroke={3} color={techColor(score)} fontSize={12} />
-          </span>
-        )}
-        <div className="img-tile" style={{ aspectRatio: '4 / 3' }}>
-          {p.imageUrl
-            ? <ProductImg src={p.imageUrl} alt={p.name} size="full" eager />
-            : <div className="ph"><span style={{ fontSize: 44 }}>{meta.icon}</span><span className="lbl">{p.brand || meta.label}</span></div>}
-        </div>
-      </div>
-      <div style={{ padding: '4px 18px 18px' }}>
-        {p.brand && <div className="brand-k" style={{ color: 'var(--accent)' }}>{p.brand}</div>}
-        <div style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.3, margin: '4px 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
-        {price > 0 && (
-          <div className="row" style={{ gap: 8 }}>
-            <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>${price.toLocaleString(lang)}</span>
-          </div>
-        )}
-      </div>
-    </Link>
-  );
+function HeroSpotlight({ p }) {
+  return <ProductCard product={p} />;
 }
 
 function SearchSuggestionList({ products, searching, onOpen, L }) {
@@ -96,12 +68,12 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
 }
 
 // A product section — title + optional "see all" + a rail / grid / list layout.
-function Section({ title, products, loading, seeAllTo, t, layout = 'grid', dense = false }) {
+function Section({ title, products, loading, seeAllTo, t, dense = false }) {
   if (!loading && (!products || products.length === 0)) return null;
   const items = loading
     ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-    : products.map((p) => <ProductCard key={p.id} product={p} variant={layout === 'list' ? 'list' : 'card'} />);
-  const cls = layout === 'rail' ? 'rail' : layout === 'list' ? 'h-trend-grid' : `card-grid${dense ? ' card-grid-compact' : ''}`;
+    : products.map((p) => <ProductCard key={p.id} product={p} />);
+  const cls = `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
     <>
       <div className="sec-head">
@@ -289,7 +261,7 @@ export default function Home() {
             {/* spotlight — highest-scored product from the live feed */}
             {spotlight && (
               <div style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
-                <HeroSpotlight p={spotlight} L={L} lang={lang} />
+                <HeroSpotlight p={spotlight} />
               </div>
             )}
           </div>
@@ -321,13 +293,13 @@ export default function Home() {
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
             {/* TRENDING */}
-            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} layout="list" />
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} />
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 
             {/* RECENTLY VIEWED */}
             {recent.length > 0 && (
-              <Section title={t('home.recent')} products={recent} loading={false} t={t} layout="rail" />
+              <Section title={t('home.recent')} products={recent} loading={false} t={t} />
             )}
 
             {/* NEW ARRIVALS */}
