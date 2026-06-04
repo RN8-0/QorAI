@@ -108,10 +108,10 @@
 /* product grid */
 .cat-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
 }
-.cat-list-item .pcard { height: 100%; }
+.cat-list-item .q-product-card { height: 100%; }
 
 .cat-empty { text-align: center; padding: 70px 20px; }
 .cat-empty-icon { font-size: 44px; margin-bottom: 10px; }

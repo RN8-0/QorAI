@@ -1,130 +1,195 @@
-.pcard {
+.q-product-card {
+  position: relative;
   display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  align-items: stretch;
-  gap: 14px;
-  min-height: 158px;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 128px;
+  padding: 9px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 6px;
   color: var(--text);
-  box-shadow: var(--card-glow);
+  box-shadow: 0 1px 0 color-mix(in srgb, #020617 8%, transparent);
   overflow: hidden;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-.pcard:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-2px);
-  box-shadow: 0 16px 34px color-mix(in srgb, #020617 15%, transparent);
+  transition: border-color .14s ease, transform .14s ease, box-shadow .14s ease;
 }
 
-.pcard-media {
+.q-product-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, #020617 12%, transparent);
+}
+
+.q-product-card-media {
   position: relative;
   min-width: 0;
+  align-self: stretch;
 }
-.pcard-img {
-  width: 100%;
-  height: 100%;
-  min-height: 136px;
-  background: #ffffff;
+
+.q-product-card-img {
+  width: 88px;
+  height: 110px;
+  background: #fff;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
-.pcard-img img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
-.pcard-img .ph {
+
+.q-product-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.q-product-card-img .ph {
   display: grid;
   place-items: center;
-  gap: 6px;
+  gap: 5px;
   color: #64748b;
   text-align: center;
 }
-.pcard-img .ph .lbl {
-  font-size: 10px;
+
+.q-product-card-img .ph .lbl {
+  font-size: 9px;
   font-weight: 800;
   line-height: 1.15;
-  padding: 0 8px;
-}
-.pcard-score {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  z-index: 2;
-  padding: 3px;
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  backdrop-filter: blur(8px);
+  padding: 0 6px;
 }
 
-.pcard-body { min-width: 0; display: flex; flex-direction: column; padding: 2px 0 0; }
-.pcard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.pcard-brand {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--accent);
+.q-product-card-score {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  padding: 2px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.pcard-name {
-  font-size: 14px; font-weight: 800; line-height: 1.28; margin-top: 4px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+
+.q-product-card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 0;
+}
+
+.q-product-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-product-card-brand {
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.q-product-card-name {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.24;
+  margin-top: 3px;
+  min-height: 32px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* 4 headline specs as labelled mini bars beside the image */
-.pcard-specs {
+.q-product-card-specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  margin-top: 11px;
+  gap: 6px 12px;
+  margin-top: 8px;
 }
-.pcard-spec {
+
+.q-product-card-spec {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
-.pcard-spec-row {
+
+.q-product-card-spec-row {
   min-width: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
-.pcard-spec-label {
+
+.q-product-card-spec-label {
   min-width: 0;
-  font-size: 10px;
+  max-width: 58%;
+  font-size: 9.5px;
+  font-weight: 650;
   color: var(--text3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.pcard-spec-val {
-  max-width: 58%;
-  font-size: 11px;
+
+.q-product-card-spec-val {
+  max-width: 52%;
+  font-size: 10.5px;
   font-weight: 800;
   color: var(--text);
-  text-align: right; white-space: nowrap;
+  text-align: right;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.pcard-spec-bar {
-  height: 4px; background: var(--surface-3); border-radius: 999px; overflow: hidden;
-}
-.pcard-spec-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f4d06f, #d7b85a); border-radius: 999px; }
 
-@media (max-width: 480px) {
-  .pcard {
-    grid-template-columns: 92px minmax(0, 1fr);
+.q-product-card-spec-bar {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.q-product-card-spec-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #e6c35b, #c9aa48);
+  border-radius: 999px;
+}
+
+@media (max-width: 520px) {
+  .q-product-card {
+    grid-template-columns: 74px minmax(0, 1fr);
     gap: 10px;
-    min-height: 132px;
+    min-height: 112px;
     padding: 8px;
   }
-  .pcard-img { min-height: 116px; }
-  .pcard-name { font-size: 13px; }
-  .pcard-specs { grid-template-columns: 1fr; gap: 6px; margin-top: 8px; }
-  .pcard-spec:nth-child(n + 3) { display: none; }
-}
 
-@media (max-width: 1100px) {
-  .pcard { grid-template-columns: 108px minmax(0, 1fr); }
+  .q-product-card-img {
+    width: 74px;
+    height: 94px;
+  }
+
+  .q-product-card-name {
+    font-size: 12.5px;
+    min-height: 30px;
+  }
+
+  .q-product-card-specs {
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 8px;
+  }
+
+  .q-product-card-spec-label,
+  .q-product-card-spec-val {
+    font-size: 9px;
+  }
 }

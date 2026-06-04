@@ -57,7 +57,7 @@ export default function AiBubble() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Qor AI"
       >
-        {open ? '✕' : <img src="/assets/logo.png" alt="" />}
+        {open ? '✕' : <img src="/assets/qor_logo_512.png" alt="" />}
         {!open && <span className="aib-fab-pulse" />}
       </button>
 
@@ -65,7 +65,7 @@ export default function AiBubble() {
         <div className="aib-panel fade-up">
           <div className="aib-head">
             <div className="aib-head-id">
-              <img src="/assets/logo.png" alt="Qor AI" />
+              <img src="/assets/qor_logo_512.png" alt="Qor AI" />
               <div>
                 <strong>Qor AI</strong>
                 <span>{t('ai.subtitle')}</span>

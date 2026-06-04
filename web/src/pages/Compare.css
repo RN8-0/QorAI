@@ -68,7 +68,7 @@
 }
 .cmp-picks-head span { color: var(--text3); font-size: 13px; font-weight: 700; }
 .cmp-picks .card-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 14px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
 }
 
 /* ─── Product header cards (dual rings — app parity) ─────────── */
