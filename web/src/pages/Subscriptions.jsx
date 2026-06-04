@@ -15,53 +15,56 @@ const PRESETS = [
 ];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
-const PROMPT = (subs, lang) =>
-  `Compare these digital subscriptions: ${subs.join(', ')}.\n\n` +
-  'Give a clear, simple comparison. For each: approximate monthly price, what it does, ' +
-  'pros and cons. End with a **Qor AI Recommendation** heading saying who should pick which. ' +
-  `Make headings **bold**, use "-" for bullet points. Reply ONLY in the language with ISO code: ${lang}.`;
-
-function pricingPlans(L) {
+function quizQuestions(L) {
   return [
     {
-      name: 'Free',
-      price: '$0',
-      cadence: L('forever', 'sürekli', 'dauerhaft'),
-      cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
-      features: [
-        L('20 welcome Q coins', '20 hoş geldin Q Coin', '20 Willkommens-Q-Coins'),
-        L('3 product link analyses per day', 'Günde 3 ürün link analizi', '3 Produktlink-Analysen pro Tag'),
-        L('3 subscription analyses per day', 'Günde 3 abonelik analizi', '3 Abo-Analysen pro Tag'),
-        L('Basic catalog search and comparison', 'Temel katalog arama ve karşılaştırma', 'Basis-Suche und Vergleich'),
+      q: L('What do you use these subscriptions for most?', 'Bu abonelikleri en çok ne için kullanıyorsun?', 'Wofür nutzt du diese Abos am meisten?'),
+      options: [
+        L('Movies and series', 'Film ve dizi', 'Filme und Serien'),
+        L('Music and podcasts', 'Müzik ve podcast', 'Musik und Podcasts'),
+        L('Work and productivity', 'İş ve üretkenlik', 'Arbeit und Produktivität'),
+        L('Mixed family use', 'Karışık aile kullanımı', 'Gemischte Familiennutzung'),
       ],
     },
     {
-      name: 'Pro',
-      price: '$3.99',
-      cadence: L('per month', 'aylık', 'pro Monat'),
-      cta: L('Get Pro', 'Pro’ya geç', 'Pro aktivieren'),
-      highlight: true,
-      features: [
-        L('3-day free trial', '3 gün ücretsiz deneme', '3 Tage kostenlos testen'),
-        L('Unlimited premium AI product analysis', 'Sınırsız premium AI ürün analizi', 'Unbegrenzte Premium-KI-Produktanalyse'),
-        L('Advanced link and subscription analysis', 'Gelişmiş link ve abonelik analizi', 'Erweiterte Link- und Abo-Analyse'),
-        L('90-day price history and smarter alternatives', '90 günlük fiyat geçmişi ve akıllı alternatifler', '90 Tage Preisverlauf und smarte Alternativen'),
+      q: L('How sensitive are you to monthly cost?', 'Aylık maliyete ne kadar hassassın?', 'Wie wichtig sind dir monatliche Kosten?'),
+      options: [
+        L('Keep only essentials', 'Sadece gerekli olanlar kalsın', 'Nur das Nötigste behalten'),
+        L('Value matters more than lowest price', 'En ucuzdan çok değer önemli', 'Wert ist wichtiger als der niedrigste Preis'),
+        L('I can pay for quality', 'Kalite için ödeyebilirim', 'Für Qualität zahle ich mehr'),
       ],
     },
     {
-      name: 'Pro Yearly',
-      price: '$19.99',
-      cadence: L('per year', 'yıllık', 'pro Jahr'),
-      cta: L('Save with yearly', 'Yıllık al', 'Jährlich sparen'),
-      badge: L('Best value', 'En avantajlı', 'Bester Wert'),
-      features: [
-        L('3-day free trial', '3 gün ücretsiz deneme', '3 Tage kostenlos testen'),
-        L('Everything in Pro monthly', 'Aylık Pro’daki her şey', 'Alles aus Pro monatlich'),
-        L('Lowest yearly cost for heavy AI use', 'Yoğun AI kullanımında en düşük yıllık maliyet', 'Niedrigste Jahreskosten für intensive KI-Nutzung'),
-        L('Priority access to new premium tools', 'Yeni premium araçlara öncelikli erişim', 'Priorität bei neuen Premium-Tools'),
+      q: L('How often do you actually use them?', 'Gerçekte ne sıklıkla kullanıyorsun?', 'Wie oft nutzt du sie wirklich?'),
+      options: [
+        L('Every day', 'Her gün', 'Jeden Tag'),
+        L('A few times a week', 'Haftada birkaç kez', 'Mehrmals pro Woche'),
+        L('Rarely, only for specific content', 'Nadiren, sadece belirli içerikler için', 'Selten, nur für bestimmte Inhalte'),
+      ],
+    },
+    {
+      q: L('What should Qor AI optimize for?', 'Qor AI neyi optimize etsin?', 'Worauf soll Qor AI optimieren?'),
+      options: [
+        L('Cancel waste and keep value', 'Boşa gidenleri kapat, değerli olanı tut', 'Unnötiges kündigen, Wert behalten'),
+        L('Best entertainment mix', 'En iyi eğlence karışımı', 'Beste Entertainment-Mischung'),
+        L('Best productivity stack', 'En iyi üretkenlik paketi', 'Bestes Produktivitäts-Setup'),
       ],
     },
   ];
+}
+
+function buildPrompt(subs, questions, answers, lang) {
+  const quiz = questions
+    .map((q, i) => `${i + 1}. ${q.q}\nAnswer: ${q.options[answers[i]] || 'Not answered'}`)
+    .join('\n\n');
+  return (
+    "You are Qor AI's subscription intelligence analyst.\n" +
+    `Subscriptions selected: ${subs.join(', ')}.\n\n` +
+    `User quiz:\n${quiz}\n\n` +
+    'Compare the selected subscriptions using the quiz answers. Do not invent exact live prices; if pricing is mentioned, keep it approximate and tell the user to verify current regional pricing. ' +
+    'Analyze each service individually, call out overlap/waste, give keep/cancel/rotate recommendations, and finish with a clear **Qor AI Recommendation**. ' +
+    'Use **bold** section headings and "-" bullets. Reply ONLY in the language with ISO code: ' + lang + '.'
+  );
 }
 
 export default function Subscriptions() {
@@ -73,24 +76,38 @@ export default function Subscriptions() {
   const [custom, setCustom] = useState('');
   const [result, setResult] = useState('');
   const [busy, setBusy] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [answers, setAnswers] = useState({});
+  const [err, setErr] = useState('');
+  const questions = quizQuestions(L);
+
+  function resetAnalysis() {
+    setResult('');
+    setErr('');
+  }
 
   function toggle(name) {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
+    resetAnalysis();
   }
+
   function addCustom(e) {
     e.preventDefault();
     const v = custom.trim();
     if (v && !selected.includes(v)) setSelected((s) => [...s, v]);
     setCustom('');
+    resetAnalysis();
   }
 
-  async function runCompare(items) {
-    setBusy(true); setResult('');
+  async function runCompare(items, answerMap = answers) {
+    setBusy(true);
+    setResult('');
+    setErr('');
     trackEvent('subscription_compare', { count: items.length });
     try {
-      const text = await askQorAi([{ role: 'user', text: PROMPT(items, lang) }]);
+      const text = await askQorAi([{ role: 'user', text: buildPrompt(items, questions, answerMap, lang) }]);
       setResult(text);
-      saveSubscriptionHistory({ services: items, analysis: text });
+      saveSubscriptionHistory({ services: items, quiz: answerMap, analysis: text });
     } catch {
       setResult(t('la.errFail'));
     } finally {
@@ -100,20 +117,21 @@ export default function Subscriptions() {
 
   async function compare() {
     if (selected.length < 2) return;
+    setErr('');
+    if (!quizStarted) {
+      setQuizStarted(true);
+      return;
+    }
+    if (questions.some((_, i) => answers[i] == null)) {
+      setErr(t('subs.quizRequired'));
+      return;
+    }
     if (!user) {
-      localStorage.setItem(PENDING_SUBS_KEY, JSON.stringify({ selected, custom, ts: Date.now() }));
+      localStorage.setItem(PENDING_SUBS_KEY, JSON.stringify({ selected, custom, answers, quizStarted: true, ts: Date.now() }));
       openAuth();
       return;
     }
     await runCompare(selected);
-  }
-
-  function choosePlan() {
-    if (!user) {
-      openAuth();
-      return;
-    }
-    window.location.href = 'https://play.google.com/store/apps/details?id=com.compair.app';
   }
 
   useEffect(() => {
@@ -124,10 +142,13 @@ export default function Subscriptions() {
     try {
       const pending = JSON.parse(raw);
       const items = Array.isArray(pending.selected) ? pending.selected.filter(Boolean) : [];
+      const pendingAnswers = pending.answers && typeof pending.answers === 'object' ? pending.answers : {};
       if (items.length < 2) return;
       setSelected(items);
       setCustom(pending.custom || '');
-      runCompare(items);
+      setAnswers(pendingAnswers);
+      setQuizStarted(true);
+      runCompare(items, pendingAnswers);
     } catch {
       // Ignore stale pending payloads.
     }
@@ -136,7 +157,7 @@ export default function Subscriptions() {
   return (
     <div className="container subs">
       <div className="subs-head">
-        <div className="subs-icon">📺</div>
+        <div className="subs-icon">TV</div>
         <h1>{t('subs.title')}</h1>
         <p>{t('subs.subtitle')}</p>
       </div>
@@ -161,40 +182,49 @@ export default function Subscriptions() {
         <div className="subs-selected">
           {selected.map((s) => (
             <span key={s} className="subs-chip">
-              {s}<button onClick={() => toggle(s)} aria-label="✕">✕</button>
+              {s}<button onClick={() => toggle(s)} aria-label="Remove">×</button>
             </span>
           ))}
         </div>
       )}
 
+      {selected.length >= 2 && (
+        <section className="subs-quiz">
+          <div className="subs-quiz-head">
+            <span>{t('subs.quizTitle')}</span>
+            <p>{t('subs.quizDesc')}</p>
+          </div>
+          {quizStarted && (
+            <div className="subs-quiz-list">
+              {questions.map((q, i) => (
+                <div className="subs-q" key={q.q}>
+                  <h3>{i + 1}. {q.q}</h3>
+                  <div className="subs-options">
+                    {q.options.map((option, idx) => (
+                      <button type="button" key={option}
+                        className={'subs-option' + (answers[i] === idx ? ' selected' : '')}
+                        onClick={() => {
+                          setAnswers((a) => ({ ...a, [i]: idx }));
+                          setErr('');
+                        }}>
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {err && <div className="subs-err">{err}</div>}
+
       <button className="btn btn-primary btn-lg subs-go"
         onClick={compare} disabled={busy || selected.length < 2}>
         {busy ? t('subs.analyzing') : selected.length < 2
-          ? t('subs.goMin') : t('subs.go', { n: selected.length })}
+          ? t('subs.goMin') : !quizStarted ? t('subs.startQuiz') : t('subs.go', { n: selected.length })}
       </button>
-
-      <section className="subs-pricing" id="premium">
-        <div className="subs-pricing-head">
-          <span>Premium</span>
-          <h2>{L('Plans for deeper AI analysis', 'Daha derin AI analizi için planlar', 'Pläne für tiefere KI-Analysen')}</h2>
-        </div>
-        <div className="subs-plan-grid">
-          {pricingPlans(L).map((plan) => (
-            <article key={plan.name} className={'subs-plan' + (plan.highlight ? ' featured' : '')}>
-              {plan.badge && <div className="subs-plan-badge">{plan.badge}</div>}
-              <h3>{plan.name}</h3>
-              <div className="subs-price"><b>{plan.price}</b><span>{plan.cadence}</span></div>
-              <ul>
-                {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
-              </ul>
-              <button className={'btn btn-block ' + (plan.highlight ? 'btn-primary' : 'btn-ghost')}
-                onClick={choosePlan}>
-                {plan.cta}
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
 
       {busy && (
         <div className="subs-loading"><div className="spinner" /><span>{t('subs.loading')}</span></div>

@@ -193,6 +193,13 @@ const STATIC_ROUTES = [
     },
   },
   {
+    dir: 'premium', path: '/premium', changefreq: 'weekly', priority: '0.8',
+    seo: {
+      title: 'Premium — Qor AI',
+      description: 'Qor AI Premium planlarını karşılaştır: ücretsiz kullanım, Pro aylık ve Pro yıllık AI analiz özellikleri.',
+    },
+  },
+  {
     dir: 'quiz', path: '/quiz', changefreq: 'monthly', priority: '0.7',
     seo: {
       title: 'Kişisel Quiz — Qor AI',

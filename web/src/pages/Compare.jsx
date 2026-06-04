@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getProduct, popularProducts, searchProducts } from '../lib/typesense';
+import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, offerForLang, scoreClass, scoreLabel } from '../lib/format';
+import { catMeta, categoryLabel, offerForLang, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -92,25 +92,39 @@ export default function Compare() {
   const [picking, setPicking] = useState(false);
   const [popular, setPopular] = useState([]);
   const [popularLoading, setPopularLoading] = useState(true);
+  const [popularLimit, setPopularLimit] = useState(18);
+  const [pickError, setPickError] = useState('');
   const boxRef = useRef(null);
+  const compareCategory = products[0]?.category || '';
 
   useEffect(() => {
     let live = true;
     setLoading(true);
     Promise.all(ids.map((id) => getProduct(id).catch(() => null)))
-      .then((list) => { if (live) setProducts(list.filter(Boolean)); })
+      .then((list) => {
+        if (!live) return;
+        const clean = list.filter(Boolean);
+        const baseCategory = clean[0]?.category || '';
+        const valid = baseCategory
+          ? clean.filter((p) => String(p.category || '') === String(baseCategory)
+            && productMatchesRequestedCategory(p, baseCategory))
+          : clean;
+        clean.filter((p) => !valid.some((v) => v.id === p.id)).forEach((p) => remove(p.id));
+        setProducts(valid);
+      })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [ids.join(',')]); // eslint-disable-line
 
   useEffect(() => {
     let live = true;
-    popularProducts(12)
+    setPopularLoading(true);
+    popularProducts(popularLimit, { category: compareCategory })
       .then((list) => { if (live) setPopular(list); })
       .catch(() => {})
       .finally(() => { if (live) setPopularLoading(false); });
     return () => { live = false; };
-  }, []);
+  }, [popularLimit, compareCategory]);
 
   useEffect(() => {
     if (products.length < 2) return;
@@ -122,10 +136,16 @@ export default function Compare() {
     const q = term.trim();
     if (!q) { setResults([]); return; }
     const tm = setTimeout(async () => {
-      try { setResults(await searchProducts(q, 8)); } catch { setResults([]); }
+      try {
+        const found = await searchProducts(q, 12);
+        setResults(compareCategory
+          ? found.filter((p) => String(p.category || '') === String(compareCategory)
+            && productMatchesRequestedCategory(p, compareCategory)).slice(0, 8)
+          : found.slice(0, 8));
+      } catch { setResults([]); }
     }, 250);
     return () => clearTimeout(tm);
-  }, [term]);
+  }, [term, compareCategory]);
 
   useEffect(() => {
     const onClick = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setPicking(false); };
@@ -153,6 +173,13 @@ export default function Compare() {
   }, [products]);
 
   function pick(p) {
+    setPickError('');
+    if (compareCategory && (String(p.category || '') !== String(compareCategory)
+      || !productMatchesRequestedCategory(p, compareCategory))) {
+      setPickError(t('cmp.sameCategoryOnly', { cat: categoryLabel(compareCategory, lang) }));
+      setPicking(false);
+      return;
+    }
     if (!add(p.id)) alert(t('pd.maxAlert', { max: COMPARE_MAX }));
     setTerm(''); setResults([]); setPicking(false);
   }
@@ -210,6 +237,7 @@ export default function Compare() {
               ))}
             </div>
           )}
+          {pickError && <div className="cmp-pick-error">{pickError}</div>}
         </div>
 
         {loading && ids.length > 0 ? (
@@ -229,8 +257,16 @@ export default function Compare() {
               <div className="card-grid">
                 {popularLoading
                   ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-                  : popular.map((p) => <ProductCard key={p.id} product={p} />)}
+                  : popular.map((p) => (
+                    <ProductCard key={p.id} product={p}
+                      onClick={(e) => { e.preventDefault(); pick(p); }} />
+                  ))}
               </div>
+              {!popularLoading && popular.length >= popularLimit && (
+                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 18)}>
+                  {t('cmp.loadMore')}
+                </button>
+              )}
             </section>
           </>
         ) : (
@@ -385,6 +421,27 @@ export default function Compare() {
                 </div>
               )}
             </div>
+            <section className="cmp-picks cmp-picks-after">
+              <div className="cmp-picks-head">
+                <h2>{t('cmp.popularTitle')}</h2>
+                <span>{compareCategory
+                  ? t('cmp.sameCategoryHint', { cat: categoryLabel(compareCategory, lang) })
+                  : t('cmp.popularDesc')}</span>
+              </div>
+              <div className="card-grid">
+                {popularLoading
+                  ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+                  : popular.filter((p) => !ids.includes(p.id)).map((p) => (
+                    <ProductCard key={p.id} product={p}
+                      onClick={(e) => { e.preventDefault(); pick(p); }} />
+                  ))}
+              </div>
+              {!popularLoading && popular.length >= popularLimit && (
+                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 18)}>
+                  {t('cmp.loadMore')}
+                </button>
+              )}
+            </section>
           </>
         )}
       </div>

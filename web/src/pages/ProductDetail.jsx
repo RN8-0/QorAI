@@ -327,6 +327,11 @@ export default function ProductDetail() {
 
   const meta = catMeta(p.category);
   const images = productImageList(p, 'full');
+  const setImageIndex = (index) => {
+    if (!images.length) return;
+    setActiveImg((index + images.length) % images.length);
+  };
+  const stepImage = (delta) => setImageIndex(activeImg + delta);
   // Category key specs with relative bars (same source the cards/app use).
   // The raw techSubscores (Engine/AnchorKey/Tier/…) are internal scoring-engine
   // diagnostics and are intentionally NOT shown to users.
@@ -379,7 +384,7 @@ export default function ProductDetail() {
               {images.length > 1 && (
                 <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
                   {images.slice(0, 6).map((src, i) => (
-                    <button key={i} type="button" className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setActiveImg(i)}>
+                    <button key={i} type="button" className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setImageIndex(i)}>
                       <ProductImg src={src} alt="" size="card" />
                     </button>
                   ))}
@@ -471,8 +476,8 @@ export default function ProductDetail() {
                 <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>{p.description}</p>}
                   {chips.length > 0 && (
-                    <div className="card pad">
-                      <div className="row" style={{ gap: 8, marginBottom: 16, fontWeight: 800, color: 'var(--brand-cyan)' }}>✨ {L('Key specs', 'Ana Özellikler', 'Wichtige Daten')}</div>
+                    <div className="card pad pd-spec-overview">
+                      <div className="pd-section-title">✨ {L('Key specs', 'Ana Özellikler', 'Wichtige Daten')}</div>
                       <div className="spec-grid">
                         {chips.map((c) => (
                           <div className="spec-cell" key={c.labelKey}>
@@ -485,8 +490,8 @@ export default function ProductDetail() {
                     </div>
                   )}
                   {bricks.length > 0 ? (
-                    <div className="card pad">
-                      <div className="row" style={{ gap: 8, marginBottom: 6, fontWeight: 800 }}>📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
+                    <div className="card pad pd-spec-sheet">
+                      <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
                       <div className="pd-bricks">
                         {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} dictReady={dictReady} />)}
                       </div>
@@ -558,14 +563,49 @@ export default function ProductDetail() {
       </div>
       {lightbox && (
         <div className="pd-lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(false)}>
-          <button className="pd-lightbox-close" type="button"
-            aria-label={L('Close image', 'Görseli kapat', 'Bild schließen')}
-            onClick={() => setLightbox(false)}>
-            x
-          </button>
-          <div className="pd-lightbox-img" onClick={(e) => e.stopPropagation()}>
-            <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
-          </div>
+          <section className="pd-lightbox-panel" onClick={(e) => e.stopPropagation()}>
+            <header className="pd-lightbox-head">
+              <div>
+                <strong>{displayName}</strong>
+                <span>{L('Product images', 'Ürün görselleri', 'Produktbilder')} · {activeImg + 1}/{images.length}</span>
+              </div>
+              <button className="pd-lightbox-close" type="button"
+                aria-label={L('Close image', 'Görseli kapat', 'Bild schließen')}
+                onClick={() => setLightbox(false)}>
+                ×
+              </button>
+            </header>
+            <div className="pd-lightbox-body">
+              {images.length > 1 && (
+                <button className="pd-lightbox-nav pd-lightbox-prev" type="button"
+                  aria-label={L('Previous image', 'Önceki görsel', 'Vorheriges Bild')}
+                  onClick={() => stepImage(-1)}>
+                  ‹
+                </button>
+              )}
+              <div className="pd-lightbox-img">
+                <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
+              </div>
+              {images.length > 1 && (
+                <button className="pd-lightbox-nav pd-lightbox-next" type="button"
+                  aria-label={L('Next image', 'Sonraki görsel', 'Nächstes Bild')}
+                  onClick={() => stepImage(1)}>
+                  ›
+                </button>
+              )}
+              {images.length > 1 && (
+                <aside className="pd-lightbox-thumbs">
+                  {images.map((src, index) => (
+                    <button key={`${src}-${index}`} type="button"
+                      className={index === activeImg ? 'on' : ''}
+                      onClick={() => setImageIndex(index)}>
+                      <ProductImg src={src} alt="" size="thumb" />
+                    </button>
+                  ))}
+                </aside>
+              )}
+            </div>
+          </section>
         </div>
       )}
     </div>

@@ -40,6 +40,16 @@
 .cmp-result img { width: 38px; height: 44px; object-fit: contain; flex-shrink: 0; }
 .cmp-result-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; }
 .cmp-result-in { font-size: 11px; font-weight: 700; color: var(--accent); }
+.cmp-pick-error {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: var(--score-average);
+  font-size: 13px;
+  font-weight: 800;
+}
 
 /* ─── States ─────────────────────────────────────────────────── */
 .cmp-loading {
@@ -69,6 +79,16 @@
 .cmp-picks-head span { color: var(--text3); font-size: 13px; font-weight: 700; }
 .cmp-picks .card-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+}
+.cmp-picks-after {
+  margin-top: 34px;
+  padding-bottom: 48px;
+}
+.cmp-more {
+  display: block;
+  width: fit-content;
+  margin: 18px auto 0;
+  padding-inline: 22px;
 }
 
 /* ─── Product header cards (dual rings — app parity) ─────────── */

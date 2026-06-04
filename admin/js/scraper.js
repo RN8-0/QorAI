@@ -44,7 +44,8 @@ const EPEY_PB_SAVE_RETRIES = 4;
 const EPEY_PB_FINAL_SAVE_RETRIES = 6;
 const EPEY_PB_WRITE_TIMEOUT_MS = 45000;
 // Raw-save workers drain parsed products to PocketBase while scrape workers
-// keep fetching. Translation workers are only used from the Translate tab.
+// keep fetching. Bulk translation runs from the Translate tab; single URL
+// scrape translates inline before save and then queues the category score pass.
 const EPEY_TRANSLATE_CONCURRENCY = 4;
 const EPEY_TRANSLATE_PRODUCT_BATCH_SIZE = 20;
 const EPEY_TRANSLATE_SAVE_RETRIES = 3;
@@ -63,8 +64,9 @@ let _proxyPollTimer = null;
 // Global flag (`window.qoraiScrapeActive`) is checked by Score Engine and the
 // products-list event listener to pause expensive work during a scrape.
 if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
-// Technical scores are run from the dedicated Score Engine tab. Product saves
-// from scraper/import flows must not enqueue an automatic score run.
+// Bulk product saves keep the auto scorer suppressed so long scrapes do not
+// fight the score engine. Single URL saves temporarily unsuppress this in
+// _dispatchSingleProductSaved so the saved product's category is re-scored.
 if (typeof window !== 'undefined') window.qoraiAutoScoreSuppressed = true;
 
 function getEpeyDetailConcurrency() {

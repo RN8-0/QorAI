@@ -13,6 +13,7 @@ const NAV_REST = [
   { to: '/compare', key: 'nav.compare' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
+  { to: '/premium', key: 'nav.premium' },
 ];
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 

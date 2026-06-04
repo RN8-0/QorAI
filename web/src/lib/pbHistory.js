@@ -115,7 +115,7 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single' 
   }
 }
 
-export async function saveSubscriptionHistory({ services, analysis }) {
+export async function saveSubscriptionHistory({ services, analysis, quiz = {} }) {
   const user = currentUser();
   const list = (services || []).map((s) => String(s || '').trim()).filter(Boolean);
   if (!user || list.length < 2 || !analysis) return;
@@ -128,6 +128,7 @@ export async function saveSubscriptionHistory({ services, analysis }) {
       analysisData: {
         type: 'subscription',
         services: list,
+        quiz,
         analysisResult: analysis,
         timestamp: now,
       },

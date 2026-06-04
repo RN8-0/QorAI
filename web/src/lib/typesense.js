@@ -109,7 +109,7 @@ function looksLikeLaptopCooler(product) {
     || /\/laptop-sogutucu\//i.test(text);
 }
 
-function productMatchesRequestedCategory(product, category) {
+export function productMatchesRequestedCategory(product, category) {
   const cat = String(category || '').toLowerCase();
   if (cat === 'laptops') return !looksLikeLaptopCooler(product);
   if (cat === 'laptop_coolers') {
@@ -315,8 +315,39 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
   }
 }
 
-export async function popularProducts(limit = 12) {
+export async function popularProducts(limit = 12, opts = {}) {
   try {
+    const category = String(opts.category || '').toLowerCase();
+    if (category) {
+      const data = await searchDocs({
+        q: '*',
+        query_by: 'name',
+        sort_by: 'trendScore:desc,techScore:desc,updatedAtTs:desc',
+        filter_by: `category:=${lit(category)}`,
+        per_page: Math.min(Math.max(limit + 8, 16), 40),
+        include_fields: LIST_FIELDS,
+      });
+      return docs(data)
+        .map(docToProduct)
+        .filter((p) => productMatchesRequestedCategory(p, category))
+        .slice(0, limit);
+    }
+
+    const preferredCategories = [...new Set([...HOME_FEATURE_CATEGORIES, ...HOME_TREND_CATEGORIES])]
+      .filter((cat) => !HOME_LOW_SIGNAL_CATEGORIES.has(cat));
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      sort_by: 'trendScore:desc,techScore:desc,updatedAtTs:desc',
+      filter_by: `category:[${preferredCategories.map(lit).join(',')}]`,
+      per_page: Math.min(Math.max(limit + 8, 18), 40),
+      include_fields: LIST_FIELDS,
+    });
+    const ranked = uniqueProducts(docs(data).map(docToProduct))
+      .filter((product) => homeQualityFilter(product))
+      .slice(0, limit);
+    if (ranked.length) return ranked;
+
     const feed = await getHomeFeed();
     const pool = feed.forYou.length ? feed.forYou : feed.trending;
     return pool.slice(0, limit);

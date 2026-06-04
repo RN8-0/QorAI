@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const site = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'website');
 const wipe = [
   'spa', 'catalog', 'compare', 'ai-chat', 'pc-builder',
-  'link-analysis', 'subscriptions', 'quiz', 'profile', 'settings', 'product',
+  'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'settings', 'product',
 ];
 
 // product/ holds 100k+ tiny html files. Node's recursive rmSync is flaky on

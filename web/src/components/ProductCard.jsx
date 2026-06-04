@@ -26,12 +26,30 @@ function inferredPct(label, value, index, product) {
   return clampPct(score - index * 10);
 }
 
+const REJECT_LABEL_RE = /^(marka|brand|model|ürün|urun|product|category|kategori|kategorie|renk|color|colour|slug|url|link|source|site|name|ad|title|başlık|baslik)$/i;
+const REJECT_INTERNAL_RE = /(qor|score|puan|anchor|engine|tier|rank|trend|internal|weight|ağırlık|agirlik|seed)/i;
+const REJECT_VALUE_RE = /^(yes|no|true|false|var|yok|evet|hayır|hayir|ja|nein|n\/a|na|-|sponsorlu|sponsored|advert|ad)$/i;
+
+function looksUsefulSpec(label, value, product) {
+  const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanLabel || !cleanValue) return false;
+  if (REJECT_LABEL_RE.test(cleanLabel) || REJECT_INTERNAL_RE.test(cleanLabel)) return false;
+  if (REJECT_VALUE_RE.test(cleanValue) || REJECT_INTERNAL_RE.test(cleanValue)) return false;
+  if (cleanLabel.length > 38 || cleanValue.length > 42) return false;
+  const brand = String(product?.brand || '').trim().toLowerCase();
+  const category = String(product?.category || '').replace(/[_-]+/g, ' ').trim().toLowerCase();
+  const valueLower = cleanValue.toLowerCase();
+  if (brand && valueLower === brand) return false;
+  if (category && valueLower === category) return false;
+  return true;
+}
+
 function pushSpec(out, seen, label, value, pct, product) {
   const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
   const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
   if (!cleanLabel || !cleanValue || out.length >= 4) return;
-  if (/^(yes|no|true|false|var|yok|n\/a|na|-|sponsorlu)$/i.test(cleanValue)) return;
-  if (/sponsor|advert/i.test(cleanLabel) || /sponsor|advert/i.test(cleanValue)) return;
+  if (!looksUsefulSpec(cleanLabel, cleanValue, product)) return;
   const key = `${cleanLabel.toLowerCase()}=${cleanValue.toLowerCase()}`;
   if (seen.has(key)) return;
   seen.add(key);
@@ -57,7 +75,6 @@ function productSpecs(product, t, lang) {
 
   const specs = product?.specs && typeof product.specs === 'object' ? product.specs : {};
   for (const [label, value] of Object.entries(specs)) {
-    if (/^(marka|brand|model|ürün|product|renk|color)$/i.test(String(label || '').trim())) continue;
     pushSpec(out, seen, label, value, null, product);
   }
 
@@ -68,16 +85,8 @@ function productSpecs(product, t, lang) {
   for (const part of textParts) {
     const pieces = part.split(/:|=/);
     if (pieces.length >= 2) pushSpec(out, seen, pieces[0], pieces.slice(1).join(':'), null, product);
-    else pushSpec(out, seen, categoryLabel(product?.category, lang), part, null, product);
   }
 
-  if (out.length < 4 && product?.category) {
-    const label = lang === 'tr' ? 'Kategori' : lang === 'de' ? 'Kategorie' : 'Category';
-    pushSpec(out, seen, label, categoryLabel(product.category, lang), 72, product);
-  }
-  if (out.length < 4 && product?.brand) {
-    pushSpec(out, seen, t('catalog.brand') || 'Brand', product.brand, 66, product);
-  }
   return out.slice(0, 4);
 }
 
@@ -100,13 +109,14 @@ function ProductImage({ p }) {
   );
 }
 
-export default function ProductCard({ product: p, variant = 'card' }) {
+export default function ProductCard({ product: p, variant = 'card', onClick }) {
   const { t, lang } = useI18n();
   const hasScore = Number(p.techScore) > 0;
   const specs = productSpecs(p, t, lang);
 
   return (
-    <Link to={productPath(p.id)} className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={p.name}>
+    <Link to={productPath(p.id)} onClick={onClick}
+      className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={p.name}>
       <div className="q-product-card-media">
         {hasScore && (
           <span className="q-product-card-score gauge-badge" title={`Qor AI ${Math.round(p.techScore)}`}>

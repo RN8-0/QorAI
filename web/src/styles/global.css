@@ -396,9 +396,10 @@ input, textarea, select { font-family: inherit; }
 .hr { height: 1px; background: var(--divider); border: none; margin: 22px 0; }
 
 /* rails + skeleton + spinner */
-.rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(178px, 200px); gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+.rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(340px, 390px); gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
 .rail > * { scroll-snap-align: start; }
 .rail::-webkit-scrollbar { height: 6px; }
+@media (max-width: 560px) { .rail { grid-auto-columns: minmax(280px, 88vw); } }
 .skel { background: linear-gradient(100deg, var(--surface-2) 30%, var(--surface-3) 50%, var(--surface-2) 70%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; border-radius: var(--r-sm); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }

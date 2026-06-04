@@ -9,9 +9,50 @@
 .la-head h1 { font-size: clamp(24px, 4vw, 32px); font-weight: 800; letter-spacing: 0; }
 .la-head p { color: var(--text2); margin-top: 8px; }
 
+.la-mode {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 16px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+}
+.la-mode button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 800;
+}
+.la-mode button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .la-form {
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px;
+  border-radius: var(--radius); padding: 18px;
+}
+.la-form-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  flex-wrap: wrap;
+}
+.la-form-head strong {
+  font-size: 15px;
+  font-weight: 850;
+}
+.la-form-head span {
+  color: var(--text3);
+  font-size: 12.5px;
+  font-weight: 700;
 }
 .la-rows { display: flex; flex-direction: column; gap: 9px; }
 .la-row {

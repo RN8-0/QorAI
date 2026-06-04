@@ -14,6 +14,7 @@ import Compare from './pages/Compare.jsx';
 import LinkAnalysis from './pages/LinkAnalysis.jsx';
 import AiChat from './pages/AiChat.jsx';
 import Subscriptions from './pages/Subscriptions.jsx';
+import Premium from './pages/Premium.jsx';
 import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/ai-chat" element={<AiChat />} />
           <Route path="/link-analysis" element={<LinkAnalysis />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/premium" element={<Premium />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/go" element={<Go />} />
           <Route path="/profile" element={<Profile />} />
