@@ -17,7 +17,7 @@ class AppConstants {
   static const String appDescription = 'Personal Decision Engine';
   static const String domain = 'qorai.net';
   static const String appVersion = '2.0.3';
-  static const String playStorePackageId = 'com.qorai.app';
+  static const String playStorePackageId = 'com.compair.app';
 
   // DeepSeek API (admin panel text tasks only)
   static const String deepSeekBaseUrl = 'https://api.deepseek.com/v1';
