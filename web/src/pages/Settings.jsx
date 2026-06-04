@@ -61,7 +61,7 @@ export default function Settings() {
           <a href="/privacy.html">🔒 {t('footer.privacy')}</a>
           <a href="/terms.html">📄 {t('footer.terms')}</a>
           <a href="/faq.html">❓ {t('settings.faq')}</a>
-          <a href="https://play.google.com/store/apps/details?id=com.qorai.app"
+          <a href="https://play.google.com/store/apps/details?id=com.compair.app"
             target="_blank" rel="noopener">▶️ {t('header.googlePlay')}</a>
         </div>
       </section>

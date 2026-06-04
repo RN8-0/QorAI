@@ -1,6 +1,6 @@
 // Polished Google Play download badge — the official 4-colour triangle on a
 // refined dark pill (not a flat black box). Reused in the header, hero, footer.
-const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.qorai.app';
+const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.compair.app';
 
 function PlayGlyph({ size = 22 }) {
   return (

@@ -113,7 +113,7 @@ export default function Subscriptions() {
       openAuth();
       return;
     }
-    window.location.href = 'https://play.google.com/store/apps/details?id=com.qorai.app';
+    window.location.href = 'https://play.google.com/store/apps/details?id=com.compair.app';
   }
 
   useEffect(() => {
