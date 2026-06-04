@@ -619,47 +619,124 @@
             <p class="text-muted" style="margin-bottom:12px;font-size:13px">
               Ürünlere aktif affiliate connectorlarından link/fiyat verisi çeker. Barkodsuz ürünlerde yanlış aksesuar fiyatı üretmemek için ana fiyat rollup'ına yalnızca güvenilir kaynaklar yazılacak.
             </p>
-            <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--surface-2,#f8fafc)">
-              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+            <div class="affiliate-provider-card">
+              <div class="affiliate-provider-head">
                 <div>
-                  <div style="font-weight:800;color:var(--text)">eBay Browse API + EPN</div>
-                  <div class="text-muted" style="font-size:12px;margin-top:3px">
-                    Production Client ID ve Secret fiyat API'si için, EPN campaign/campid affiliate takibi için kullanılır.
+                  <label class="affiliate-provider-label">Sağlayıcı</label>
+                  <select class="input" id="offersConnector" onchange="offersRenderProvider()">
+                    <option value="ebay">eBay</option>
+                    <option value="admitad">Admitad</option>
+                    <option value="awin">Awin</option>
+                    <option value="amazon">Amazon</option>
+                    <option value="all">Tüm aktif connectorlar</option>
+                  </select>
+                </div>
+                <div class="affiliate-provider-summary">
+                  <div id="offersProviderTitle">eBay Browse API + EPN</div>
+                  <span id="offersProviderStatus" class="text-muted">durum okunmadı</span>
+                </div>
+              </div>
+              <p id="offersProviderHint" class="text-muted affiliate-provider-hint">
+                Production Client ID ve Secret fiyat API'si için, EPN campaign/campid affiliate takibi için kullanılır.
+              </p>
+              <div class="offer-provider-panel" data-provider="ebay">
+                <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="form-field">
+                    <label>Production App ID / Client ID</label>
+                    <input class="input" id="ebayClientId" autocomplete="off" placeholder="Harunnge-QorAI-PRD-...">
+                  </div>
+                  <div class="form-field">
+                    <label>Production Cert ID / Client Secret</label>
+                    <input class="input" id="ebayClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
+                  </div>
+                  <div class="form-field">
+                    <label>EPN Campaign ID / campid</label>
+                    <input class="input" id="ebayCampaignId" autocomplete="off" placeholder="EPN link generator'daki campid">
+                  </div>
+                  <div class="form-field">
+                    <label>Marketler</label>
+                    <input class="input" id="ebayMarkets" autocomplete="off" value="GB,DE" placeholder="GB,DE,US">
+                  </div>
+                  <div class="form-field">
+                    <label>Custom ID prefix</label>
+                    <input class="input" id="ebayCustomId" autocomplete="off" value="qorai" placeholder="qorai">
+                  </div>
+                  <div class="form-field">
+                    <label>Tool ID</label>
+                    <input class="input" id="ebayToolId" autocomplete="off" value="10001" placeholder="10001">
                   </div>
                 </div>
-                <span id="ebayConfigStatus" class="text-muted" style="font-size:12px;white-space:nowrap">durum okunmadı</span>
               </div>
-              <div class="form-grid" style="grid-template-columns:1fr 1fr">
-                <div class="form-field">
-                  <label>Production App ID / Client ID</label>
-                  <input class="input" id="ebayClientId" autocomplete="off" placeholder="Harunnge-QorAI-PRD-...">
-                </div>
-                <div class="form-field">
-                  <label>Production Cert ID / Client Secret</label>
-                  <input class="input" id="ebayClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
-                </div>
-                <div class="form-field">
-                  <label>EPN Campaign ID / campid</label>
-                  <input class="input" id="ebayCampaignId" autocomplete="off" placeholder="EPN link generator'daki campid">
-                </div>
-                <div class="form-field">
-                  <label>Marketler</label>
-                  <input class="input" id="ebayMarkets" autocomplete="off" value="GB,DE" placeholder="GB,DE,US">
-                </div>
-                <div class="form-field">
-                  <label>Custom ID prefix</label>
-                  <input class="input" id="ebayCustomId" autocomplete="off" value="qorai" placeholder="qorai">
-                </div>
-                <div class="form-field">
-                  <label>Tool ID</label>
-                  <input class="input" id="ebayToolId" autocomplete="off" value="10001" placeholder="10001">
+              <div class="offer-provider-panel" data-provider="admitad" style="display:none">
+                <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="form-field">
+                    <label>Client ID</label>
+                    <input class="input" id="admitadClientId" autocomplete="off" placeholder="Admitad API client_id">
+                  </div>
+                  <div class="form-field">
+                    <label>Client Secret</label>
+                    <input class="input" id="admitadClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
+                  </div>
+                  <div class="form-field">
+                    <label>Website ID / w_id</label>
+                    <input class="input" id="admitadWebsiteId" autocomplete="off" placeholder="Örn. 123456">
+                  </div>
+                  <div class="form-field">
+                    <label>Marketler</label>
+                    <input class="input" id="admitadMarkets" autocomplete="off" value="TR,DE,GB" placeholder="TR,DE,GB">
+                  </div>
+                  <div class="form-field" style="grid-column:span 2">
+                    <label>Merchant campaign satırları</label>
+                    <textarea class="input" id="admitadCampaigns" rows="5" placeholder="KEY|Store|Country|Currency|CampaignID|Search URL&#10;TRENDYOL_TR|Trendyol|TR|TRY|12345|https://www.trendyol.com/sr?q={q}"></textarea>
+                  </div>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
-                <button class="btn btn-primary btn-sm" onclick="offersSaveEbayConfig()">eBay Ayarlarını Kaydet</button>
-                <button class="btn btn-sm" onclick="offersTestEbay()">eBay Test Et</button>
+              <div class="offer-provider-panel" data-provider="awin" style="display:none">
+                <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="form-field">
+                    <label>Publisher ID / awinaffid</label>
+                    <input class="input" id="awinPublisherId" autocomplete="off" placeholder="Awin publisher id">
+                  </div>
+                  <div class="form-field">
+                    <label>Marketler</label>
+                    <input class="input" id="awinMarkets" autocomplete="off" value="DE,GB" placeholder="DE,GB">
+                  </div>
+                  <div class="form-field" style="grid-column:span 2">
+                    <label>Merchant ID satırları</label>
+                    <textarea class="input" id="awinMerchantIds" rows="5" placeholder="AWIN_MID_MEDIAMARKT_DE=...&#10;AWIN_MID_CURRYS_GB=..."></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="offer-provider-panel" data-provider="amazon" style="display:none">
+                <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="form-field">
+                    <label>Default Associates Tag</label>
+                    <input class="input" id="amazonTag" autocomplete="off" placeholder="qorai-20">
+                  </div>
+                  <div class="form-field">
+                    <label>Marketplaces</label>
+                    <input class="input" id="amazonMarketplaces" autocomplete="off" value="GB,DE,US" placeholder="GB,DE,US">
+                  </div>
+                  <div class="form-field">
+                    <label>Amazon UK Tag</label>
+                    <input class="input" id="amazonTagGB" autocomplete="off" placeholder="qorai-21">
+                  </div>
+                  <div class="form-field">
+                    <label>Amazon DE Tag</label>
+                    <input class="input" id="amazonTagDE" autocomplete="off" placeholder="qorai-21">
+                  </div>
+                </div>
+              </div>
+              <div class="offer-provider-panel" data-provider="all" style="display:none">
+                <div class="affiliate-provider-note">
+                  Tüm aktif connectorlar çalışır. Ayarları düzenlemek için üstte eBay, Admitad, Awin veya Amazon seç.
+                </div>
+              </div>
+              <div class="affiliate-provider-actions">
+                <button class="btn btn-primary btn-sm" onclick="offersSaveProviderConfig()">Ayarları Kaydet</button>
+                <button class="btn btn-sm" onclick="offersTestProvider()">Seçili Sağlayıcıyı Test Et</button>
                 <button class="btn btn-ghost btn-sm" onclick="offersLoadConfig()">Ayarları Oku</button>
-                <span class="text-muted" style="font-size:11px">Secret cevaplarda gösterilmez; yeni secret girmediğinde eskisi korunur.</span>
+                <span class="text-muted" style="font-size:11px">Secret cevaplarda gösterilmez; boş bırakıldığında mevcut değer korunur.</span>
               </div>
             </div>
             <details style="margin-bottom:12px;font-size:12px">
@@ -799,15 +876,6 @@
               </p>
             </details>
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
-              <div class="form-field">
-                <label>Connector</label>
-                <select class="input" id="offersConnector">
-                  <option value="ebay">eBay</option>
-                  <option value="all">Tüm aktif connectorlar</option>
-                  <option value="amazon">Amazon</option>
-                  <option value="awin">Awin</option>
-                </select>
-              </div>
               <div class="form-field">
                 <label>Kategori</label>
                 <select class="input" id="offersCategory"></select>

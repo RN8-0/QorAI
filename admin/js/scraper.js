@@ -8476,16 +8476,96 @@ function _setInputValue(id, value) {
   if (el) el.value = value ?? '';
 }
 
-function _renderEbayConfigStatus(config) {
-  const ebay = config?.ebay || config || {};
-  const el = document.getElementById('ebayConfigStatus');
+const OFFERS_PROVIDER_META = {
+  ebay: {
+    title: 'eBay Browse API + EPN',
+    hint: "Production Client ID/Secret canlı fiyat API'si için, EPN campid affiliate takibi için kullanılır.",
+    testLabel: 'eBay test koşusu başladı…',
+  },
+  admitad: {
+    title: 'Admitad API + Deeplink',
+    hint: 'Admitad Client ID/Secret, Website ID ve onaylı merchant campaign satırları gerekir. Campaign satırı: KEY|Store|Country|Currency|CampaignID|Search URL.',
+    testLabel: 'Admitad test koşusu başladı…',
+  },
+  awin: {
+    title: 'Awin Publisher + Merchant IDs',
+    hint: 'Awin Publisher ID ve onaylı merchant awinmid değerleri gerekir. Awin şimdilik search-link modunda çalışır; fiyat feedleri ayrıca import edilir.',
+    testLabel: 'Awin test koşusu başladı…',
+  },
+  amazon: {
+    title: 'Amazon Associates Search Links',
+    hint: 'Amazon tagleri marketplace bazlıdır. API fiyat erişimi açılana kadar search-link modunda fiyat yazmadan link üretir.',
+    testLabel: 'Amazon test koşusu başladı…',
+  },
+  all: {
+    title: 'Tüm aktif connectorlar',
+    hint: 'Ayarı tamamlanmış tüm connectorlar aynı sync içinde çalışır.',
+    testLabel: 'Tüm aktif connectorlar için test koşusu başladı…',
+  },
+};
+
+let _offersConfigCache = {};
+
+function _currentOffersProvider() {
+  return document.getElementById('offersConnector')?.value || 'ebay';
+}
+
+function _providerConfig(provider) {
+  return _offersConfigCache?.[provider] || {};
+}
+
+function _renderProviderStatus(provider = _currentOffersProvider(), config = _providerConfig(provider)) {
+  const el = document.getElementById('offersProviderStatus');
   if (!el) return;
-  const api = !!ebay.configured;
-  const tracking = !!ebay.trackingConfigured;
+  const api = !!config.configured;
+  const tracking = !!config.trackingConfigured;
   el.textContent = api
-    ? (tracking ? 'API + affiliate hazır' : 'API hazır · campid eksik')
+    ? (tracking ? 'API + tracking hazır' : 'API hazır · tracking eksik')
     : 'API bilgisi eksik';
+  if (provider === 'all') {
+    const active = ['ebay', 'admitad', 'awin', 'amazon'].filter(p => _providerConfig(p).configured);
+    el.textContent = active.length ? `${active.join(', ')} aktif` : 'aktif connector yok';
+    el.style.color = active.length ? '#10b981' : '#ef4444';
+    return;
+  }
   el.style.color = api && tracking ? '#10b981' : (api ? '#f59e0b' : '#ef4444');
+}
+
+function _renderEbayConfigStatus(config) {
+  _renderProviderStatus('ebay', config?.ebay || config || {});
+}
+
+function offersRenderProvider() {
+  const provider = _currentOffersProvider();
+  const meta = OFFERS_PROVIDER_META[provider] || OFFERS_PROVIDER_META.ebay;
+  const title = document.getElementById('offersProviderTitle');
+  const hint = document.getElementById('offersProviderHint');
+  if (title) title.textContent = meta.title;
+  if (hint) hint.textContent = meta.hint;
+  document.querySelectorAll('.offer-provider-panel').forEach(panel => {
+    panel.style.display = panel.dataset.provider === provider ? '' : 'none';
+  });
+  _renderProviderStatus(provider);
+}
+
+function _objectToKvLines(obj = {}, prefix = '') {
+  return Object.entries(obj)
+    .filter(([, v]) => String(v || '').trim())
+    .map(([k, v]) => `${prefix}${k}=${v}`)
+    .join('\n');
+}
+
+function _kvLinesToObject(text = '') {
+  const out = {};
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    const i = line.indexOf('=');
+    const key = line.slice(0, i).trim();
+    const value = line.slice(i + 1).trim();
+    if (key && value) out[key] = value;
+  }
+  return out;
 }
 
 async function offersLoadConfig() {
@@ -8493,6 +8573,8 @@ async function offersLoadConfig() {
     const r = await fetch(`${PROXY_URL}/offers/config`, { signal: AbortSignal.timeout(3000) });
     if (!r.ok) return;
     const cfg = await r.json();
+    _offersConfigCache = cfg || {};
+
     const ebay = cfg.ebay || {};
     _setInputValue('ebayClientId', ebay.clientId || '');
     _setInputValue('ebayCampaignId', ebay.campaignId || '');
@@ -8506,24 +8588,89 @@ async function offersLoadConfig() {
         ? 'Kayıtlı secret var; değiştirmek için yeni secret gir'
         : 'Production Cert ID / Client Secret';
     }
-    _renderEbayConfigStatus(ebay);
+
+    const admitad = cfg.admitad || {};
+    _setInputValue('admitadClientId', admitad.clientId || '');
+    _setInputValue('admitadWebsiteId', admitad.websiteId || '');
+    _setInputValue('admitadMarkets', admitad.markets || 'TR,DE,GB');
+    _setInputValue('admitadCampaigns', admitad.campaignsText || '');
+    const admitadSecret = document.getElementById('admitadClientSecret');
+    if (admitadSecret) {
+      admitadSecret.value = '';
+      admitadSecret.placeholder = admitad.clientSecretSet
+        ? 'Kayıtlı secret var; değiştirmek için yeni secret gir'
+        : 'Admitad Client Secret';
+    }
+
+    const awin = cfg.awin || {};
+    _setInputValue('awinPublisherId', awin.publisherId || '');
+    _setInputValue('awinMarkets', awin.markets || 'DE,GB');
+    _setInputValue('awinMerchantIds', _objectToKvLines(awin.merchantIds || {}));
+
+    const amazon = cfg.amazon || {};
+    _setInputValue('amazonTag', amazon.tag || '');
+    _setInputValue('amazonMarketplaces', amazon.marketplaces || 'GB,DE,US');
+    _setInputValue('amazonTagGB', amazon.tagGB || '');
+    _setInputValue('amazonTagDE', amazon.tagDE || '');
+
+    offersRenderProvider();
   } catch {
-    _renderEbayConfigStatus({ configured: false, trackingConfigured: false });
+    _offersConfigCache = {};
+    offersRenderProvider();
   }
 }
 
-async function offersSaveEbayConfig() {
+function _selectedProviderPayload(provider = _currentOffersProvider()) {
+  if (provider === 'ebay') {
+    return {
+      ebay: {
+        clientId: document.getElementById('ebayClientId')?.value || '',
+        clientSecret: document.getElementById('ebayClientSecret')?.value || '',
+        campaignId: document.getElementById('ebayCampaignId')?.value || '',
+        markets: document.getElementById('ebayMarkets')?.value || 'GB,DE',
+        customId: document.getElementById('ebayCustomId')?.value || 'qorai',
+        toolId: document.getElementById('ebayToolId')?.value || '10001',
+      },
+    };
+  }
+  if (provider === 'admitad') {
+    return {
+      admitad: {
+        clientId: document.getElementById('admitadClientId')?.value || '',
+        clientSecret: document.getElementById('admitadClientSecret')?.value || '',
+        websiteId: document.getElementById('admitadWebsiteId')?.value || '',
+        markets: document.getElementById('admitadMarkets')?.value || 'TR,DE,GB',
+        campaignsText: document.getElementById('admitadCampaigns')?.value || '',
+      },
+    };
+  }
+  if (provider === 'awin') {
+    return {
+      awin: {
+        publisherId: document.getElementById('awinPublisherId')?.value || '',
+        markets: document.getElementById('awinMarkets')?.value || 'DE,GB',
+        merchantIds: _kvLinesToObject(document.getElementById('awinMerchantIds')?.value || ''),
+      },
+    };
+  }
+  if (provider === 'amazon') {
+    return {
+      amazon: {
+        tag: document.getElementById('amazonTag')?.value || '',
+        marketplaces: document.getElementById('amazonMarketplaces')?.value || 'GB,DE,US',
+        tagGB: document.getElementById('amazonTagGB')?.value || '',
+        tagDE: document.getElementById('amazonTagDE')?.value || '',
+      },
+    };
+  }
+  return {};
+}
+
+async function offersSaveProviderConfig() {
   if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
-  const payload = {
-    ebay: {
-      clientId: document.getElementById('ebayClientId')?.value || '',
-      clientSecret: document.getElementById('ebayClientSecret')?.value || '',
-      campaignId: document.getElementById('ebayCampaignId')?.value || '',
-      markets: document.getElementById('ebayMarkets')?.value || 'GB,DE',
-      customId: document.getElementById('ebayCustomId')?.value || 'qorai',
-      toolId: document.getElementById('ebayToolId')?.value || '10001',
-    },
-  };
+  const provider = _currentOffersProvider();
+  if (provider === 'all') { toast('Ayar kaydetmek için tek sağlayıcı seç', 'w'); return; }
+  const payload = _selectedProviderPayload(provider);
   try {
     const r = await fetch(`${PROXY_URL}/offers/config`, {
       method: 'POST',
@@ -8531,29 +8678,33 @@ async function offersSaveEbayConfig() {
       body: JSON.stringify(payload),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { toast('eBay ayarı kaydedilemedi: ' + (j.error || r.status), 'e'); return; }
+    if (!r.ok) { toast('Ayar kaydedilemedi: ' + (j.error || r.status), 'e'); return; }
     document.getElementById('ebayClientSecret') && (document.getElementById('ebayClientSecret').value = '');
-    _renderEbayConfigStatus(j.config?.ebay);
-    toast('eBay ayarları kaydedildi', 's');
+    document.getElementById('admitadClientSecret') && (document.getElementById('admitadClientSecret').value = '');
+    _offersConfigCache = j.config || _offersConfigCache;
+    offersRenderProvider();
+    toast(`${OFFERS_PROVIDER_META[provider]?.title || provider} ayarları kaydedildi`, 's');
   } catch (e) {
     toast('Proxy ulaşılamadı: ' + e.message, 'e');
   }
 }
 
-async function offersTestEbay() {
+async function offersTestProvider() {
   if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
+  const provider = _currentOffersProvider();
   const cat = document.getElementById('offersCategory')?.value || '';
   try {
     const r = await fetch(`${PROXY_URL}/offers/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connector: 'ebay', cat, limit: 1 }),
+      body: JSON.stringify({ connector: provider, cat, limit: 1 }),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { toast('eBay testi başlatılamadı: ' + (j.error || r.status), 'e'); return; }
+    if (!r.ok) { toast('Test başlatılamadı: ' + (j.error || r.status), 'e'); return; }
     const log = document.getElementById('offersLog');
-    if (log) log.textContent = 'eBay test koşusu başladı…\n';
-    _renderEbayConfigStatus(j.config?.ebay);
+    if (log) log.textContent = `${OFFERS_PROVIDER_META[provider]?.testLabel || 'Test koşusu başladı…'}\n`;
+    _offersConfigCache = j.config || _offersConfigCache;
+    offersRenderProvider();
     _offersStartPolling();
   } catch (e) {
     toast('Proxy ulaşılamadı: ' + e.message, 'e');
@@ -8609,7 +8760,7 @@ async function offersRefreshStatus() {
         if (atBottom) log.scrollTop = log.scrollHeight;
       }
     }
-    if (s.config?.ebay) _renderEbayConfigStatus(s.config.ebay);
+    if (s.config) { _offersConfigCache = s.config; offersRenderProvider(); }
     if (running && !_offersPollTimer) _offersStartPolling();
     if (!running && _offersPollTimer) { clearInterval(_offersPollTimer); _offersPollTimer = null; }
   } catch { /* proxy down — silent */ }
@@ -8624,8 +8775,11 @@ window.offersStartSync = offersStartSync;
 window.offersStop = offersStop;
 window.offersRefreshStatus = offersRefreshStatus;
 window.offersLoadConfig = offersLoadConfig;
-window.offersSaveEbayConfig = offersSaveEbayConfig;
-window.offersTestEbay = offersTestEbay;
+window.offersRenderProvider = offersRenderProvider;
+window.offersSaveProviderConfig = offersSaveProviderConfig;
+window.offersTestProvider = offersTestProvider;
+window.offersSaveEbayConfig = offersSaveProviderConfig;
+window.offersTestEbay = offersTestProvider;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  LIVE DICTIONARY COUNTERS

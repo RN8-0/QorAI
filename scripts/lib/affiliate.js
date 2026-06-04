@@ -108,6 +108,7 @@ function buildAffiliateUrl(network, url, opts = {}) {
 /** True when at least one affiliate program is configured. */
 function hasAnyAffiliateConfig() {
   return !!(ENV.AMAZON_TAG || ENV.AWIN_PUBLISHER_ID ||
+    ENV.ADMITAD_CLIENT_ID ||
     ENV.EBAY_CAMPAIGN_ID ||
     Object.keys(ENV).some(k => k.startsWith('AMAZON_TAG_') || k.startsWith('EBAY_CAMPAIGN_ID_')));
 }

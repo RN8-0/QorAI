@@ -128,6 +128,23 @@ function normalizeEbayMarkets(raw) {
   return Array.from(new Set(out)).join(',') || 'GB,DE';
 }
 
+function normalizeMarketCsv(raw, fallback, allowedList = null) {
+  const allowed = allowedList ? new Set(allowedList) : null;
+  const out = String(raw || fallback || '')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(s => s && (!allowed || allowed.has(s)));
+  return Array.from(new Set(out)).join(',') || fallback;
+}
+
+function envKeysWithPrefix(env, prefix) {
+  const out = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (key.startsWith(prefix) && String(value || '').trim()) out[key] = value;
+  }
+  return out;
+}
+
 function getOffersConfig() {
   const env = { ...process.env, ...readDotEnv(MIGRATION_ENV_PATH) };
   const campaignId = env.EBAY_CAMPAIGN_ID || '';
@@ -153,6 +170,32 @@ function getOffersConfig() {
       mkrid: env.EBAY_MKRID || '',
       toolId: env.EBAY_TOOL_ID || '10001',
       eventId: env.EBAY_EVENT_ID || '1',
+    },
+    admitad: {
+      configured: Boolean(env.ADMITAD_CLIENT_ID && env.ADMITAD_CLIENT_SECRET),
+      trackingConfigured: Boolean(env.ADMITAD_WEBSITE_ID && env.ADMITAD_CAMPAIGNS),
+      clientId: env.ADMITAD_CLIENT_ID || '',
+      clientIdMasked: maskConfigValue(env.ADMITAD_CLIENT_ID),
+      clientSecretSet: Boolean(env.ADMITAD_CLIENT_SECRET),
+      websiteId: env.ADMITAD_WEBSITE_ID || '',
+      markets: normalizeMarketCsv(env.ADMITAD_MARKETS, 'TR,DE,GB'),
+      campaignsText: env.ADMITAD_CAMPAIGNS || '',
+    },
+    awin: {
+      configured: Boolean(env.AWIN_PUBLISHER_ID),
+      trackingConfigured: Object.keys(envKeysWithPrefix(env, 'AWIN_MID_')).length > 0,
+      publisherId: env.AWIN_PUBLISHER_ID || '',
+      publisherIdMasked: maskConfigValue(env.AWIN_PUBLISHER_ID),
+      markets: normalizeMarketCsv(env.AWIN_MARKETS, 'DE,GB'),
+      merchantIds: envKeysWithPrefix(env, 'AWIN_MID_'),
+    },
+    amazon: {
+      configured: Boolean(env.AMAZON_TAG || env.AMAZON_TAG_GB || env.AMAZON_TAG_DE || env.AMAZON_TAG_US),
+      trackingConfigured: Boolean(env.AMAZON_TAG || env.AMAZON_TAG_GB || env.AMAZON_TAG_DE || env.AMAZON_TAG_US),
+      tag: env.AMAZON_TAG || '',
+      tagGB: env.AMAZON_TAG_GB || env.AMAZON_TAG_UK || '',
+      tagDE: env.AMAZON_TAG_DE || '',
+      marketplaces: normalizeMarketCsv(env.AMAZON_MARKETPLACES, 'GB,DE,US'),
     },
   };
 }
@@ -1775,6 +1818,49 @@ const server = http.createServer(async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(ebay, 'eventId')) {
         patch.EBAY_EVENT_ID = String(ebay.eventId || '1').trim() || '1';
       }
+
+      const admitad = body.admitad || {};
+      if (Object.prototype.hasOwnProperty.call(admitad, 'clientId')) {
+        patch.ADMITAD_CLIENT_ID = String(admitad.clientId || '').trim();
+      }
+      const admitadSecret = String(admitad.clientSecret || '').trim();
+      if (admitadSecret) patch.ADMITAD_CLIENT_SECRET = admitadSecret;
+      if (Object.prototype.hasOwnProperty.call(admitad, 'websiteId')) {
+        patch.ADMITAD_WEBSITE_ID = String(admitad.websiteId || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(admitad, 'markets')) {
+        patch.ADMITAD_MARKETS = normalizeMarketCsv(admitad.markets, 'TR,DE,GB');
+      }
+      if (Object.prototype.hasOwnProperty.call(admitad, 'campaignsText')) {
+        patch.ADMITAD_CAMPAIGNS = String(admitad.campaignsText || '').replace(/\r?\n/g, ';').trim();
+      }
+
+      const awin = body.awin || {};
+      if (Object.prototype.hasOwnProperty.call(awin, 'publisherId')) {
+        patch.AWIN_PUBLISHER_ID = String(awin.publisherId || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(awin, 'markets')) {
+        patch.AWIN_MARKETS = normalizeMarketCsv(awin.markets, 'DE,GB');
+      }
+      if (awin.merchantIds && typeof awin.merchantIds === 'object') {
+        for (const [key, value] of Object.entries(awin.merchantIds)) {
+          if (/^AWIN_MID_[A-Z0-9_]+$/.test(key)) patch[key] = String(value || '').trim();
+        }
+      }
+
+      const amazon = body.amazon || {};
+      if (Object.prototype.hasOwnProperty.call(amazon, 'tag')) {
+        patch.AMAZON_TAG = String(amazon.tag || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(amazon, 'marketplaces')) {
+        patch.AMAZON_MARKETPLACES = normalizeMarketCsv(amazon.marketplaces, 'GB,DE,US');
+      }
+      if (Object.prototype.hasOwnProperty.call(amazon, 'tagGB')) {
+        patch.AMAZON_TAG_GB = String(amazon.tagGB || '').trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(amazon, 'tagDE')) {
+        patch.AMAZON_TAG_DE = String(amazon.tagDE || '').trim();
+      }
       if (!Object.keys(patch).length) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'No config fields provided' }));
@@ -1801,7 +1887,8 @@ const server = http.createServer(async (req, res) => {
       const connector = String(opts.connector || 'ebay').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'ebay';
       const cat = String(opts.cat || '').replace(/[^a-z0-9_-]/gi, '');
       const limit = Math.max(1, Math.min(10, parseInt(opts.limit, 10) || 1));
-      const args = ['scripts/sync_offers.js', `--connector=${connector}`, `--limit=${limit}`, '--concurrency=1'];
+      const args = ['scripts/sync_offers.js', `--limit=${limit}`, '--concurrency=1'];
+      if (connector && connector !== 'all') args.push(`--connector=${connector}`);
       if (cat) args.push(`--cat=${cat}`);
       const { spawn } = require('child_process');
       offersLog = `[offers] test run: ${args.join(' ')}\n`;

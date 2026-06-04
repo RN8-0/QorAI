@@ -306,6 +306,16 @@ textarea.input{resize:vertical}
 .scraper-tab{flex:1;padding:10px 16px;border:none;border-radius:8px;background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
 .scraper-tab:hover{color:var(--text1);background:var(--bg2)}
 .scraper-tab.active{background:var(--primary);color:#fff}
+.affiliate-provider-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--bg3);box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
+.affiliate-provider-head{display:grid;grid-template-columns:minmax(220px,340px) 1fr;align-items:end;gap:14px;margin-bottom:10px}
+.affiliate-provider-label{display:block;font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.affiliate-provider-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2)}
+.affiliate-provider-summary>div{font-size:13px;font-weight:800;color:var(--text);letter-spacing:.01em}
+.affiliate-provider-summary span{font-size:12px;white-space:nowrap}
+.affiliate-provider-hint{margin:0 0 12px;font-size:12px}
+.affiliate-provider-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.affiliate-provider-note{border:1px dashed var(--border);border-radius:8px;background:var(--bg2);color:var(--text2);padding:12px;font-size:12px;line-height:1.5}
+.offer-provider-panel textarea.input{min-height:112px;line-height:1.55;resize:vertical}
 .scraper-panel{display:none}
 .scraper-panel.active{display:block}
 .scraper-log{max-height:400px;overflow-y:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:11.5px;line-height:1.7;background:var(--bg);border-radius:8px;padding:8px 12px;border:1px solid var(--border)}
