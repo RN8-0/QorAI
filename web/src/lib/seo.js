@@ -8,7 +8,7 @@
 import { useEffect } from 'react';
 
 export const SITE_URL = 'https://qorai.net';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/assets/logo.png`;
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/assets/qor_logo_512.png?v=20260605a`;
 
 export function truncate(text, max = 158) {
   const s = String(text || '').replace(/\s+/g, ' ').trim();

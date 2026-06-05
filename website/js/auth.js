@@ -80,7 +80,7 @@ function createAuthModal() {
     <div class="auth-modal" role="dialog" aria-modal="true" aria-label="Sign In">
       <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close">✕</button>
       <div class="auth-modal-header">
-        <div class="auth-modal-logo"><img src="/assets/logo.png" alt="Qor AI"></div>
+        <div class="auth-modal-logo"><img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI"></div>
         <h2>Welcome to Qor AI</h2>
         <p>Sign in to personalize your experience</p>
       </div>

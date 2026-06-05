@@ -25,7 +25,7 @@ const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
 const TS_COLLECTION = 'products';
 
-const DEFAULT_IMG = `${SITE}/assets/logo.png`;
+const DEFAULT_IMG = `${SITE}/assets/qor_logo_512.png?v=20260605a`;
 const NOW = new Date().toISOString().slice(0, 10);
 
 // ── helpers ─────────────────────────────────────────────────────
