@@ -528,6 +528,11 @@ function prepareProductPayload(product) {
   }
   const primary = images[0] || product.imageUrl || '';
 
+  const rawTechScore = Number(product.techScore);
+  const techScore = Number.isFinite(rawTechScore) && rawTechScore >= 10 && rawTechScore <= 100
+    ? Math.round(rawTechScore)
+    : undefined;
+
   const payload = {
     slug: String(product.slug || product.id || productDedupKey(product) || '').trim().slice(0, 200),
     name: String(product.name || '').trim().slice(0, 500),
@@ -544,7 +549,7 @@ function prepareProductPayload(product) {
     keySpecs: canonical.keySpecs && typeof canonical.keySpecs === 'object'
       ? canonical.keySpecs
       : (product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {}),
-    techScore: Number.isFinite(Number(product.techScore)) ? Number(product.techScore) : undefined,
+    techScore,
     specsCount: Object.keys(canonical.specs || sanitized.specs).length,
     variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),

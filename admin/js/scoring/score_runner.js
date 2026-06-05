@@ -569,14 +569,12 @@
     }
     const queued = [..._autoQueue.entries()].filter(([cat]) => cat);
     _autoQueue.clear();
-    for (const [cat, productIds] of queued) {
+    for (const [cat] of queued) {
       if (_abort) break;
-      const targetIds = [...(productIds || new Set())].filter(Boolean);
       await startScoreEngine(cat, {
         overwrite: true,
         concurrency: 6,
         auto: true,
-        ...(targetIds.length ? { onlyProductIds: targetIds } : {}),
       });
       await _sleep(250);
     }

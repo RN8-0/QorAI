@@ -990,6 +990,11 @@ function prepareProductPayload(product) {
     productDedupKey({ ...sourceProduct, name: cleanName }) ||
     ''
   ).trim().slice(0, 200);
+  const rawTechScore = Number(sourceProduct.techScore);
+  const techScore = Number.isFinite(rawTechScore) && rawTechScore >= 10 && rawTechScore <= 100
+    ? Math.round(rawTechScore)
+    : undefined;
+
   const payload = {
     slug: String(sourceProduct.slug || sourceProduct.id || productDedupKey(sourceProduct) || '').trim().slice(0, 200),
     name: cleanName.slice(0, 500),
@@ -1009,7 +1014,7 @@ function prepareProductPayload(product) {
           .map(([k, v]) => [cleanCountryCodes(k), cleanCountryCodes(v)])
           .filter(([k, v]) => k && v && !isBlockedSpec(k, v)))
       : {},
-    techScore: Number.isFinite(Number(sourceProduct.techScore)) ? Number(sourceProduct.techScore) : undefined,
+    techScore,
     specsCount: Object.keys(canonical.specs || sanitized.specs).length,
     variantGroup,
     configKey: String(sourceProduct.configKey || configKeyFromProduct(sourceProduct, variantGroup) || '').trim().slice(0, 255),
