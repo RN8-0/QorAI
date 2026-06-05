@@ -3824,7 +3824,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       let existingRec = null;
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         try {
-          existingRec = await window._findExistingByVariantGroup(clean.variantGroup);
+          existingRec = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
           if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
             existingRec = await window._findExistingEpeyByModelFamily(clean);
           }
@@ -4132,7 +4132,7 @@ async function scrapeByUrl() {
       const clean = prepareProductPayload(product);
       let existing = null;
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
-        existing = await window._findExistingByVariantGroup(clean.variantGroup);
+        existing = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
         if (!existing && typeof window._findExistingEpeyByModelFamily === 'function') {
           existing = await window._findExistingEpeyByModelFamily(clean);
         }

@@ -8172,7 +8172,7 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 // { id, source, name } or null. Used by both scrapers for cross-source dedup
 // (without preloading a per-category VG map, which would be expensive on
 // brand-search runs that touch many categories).
-async function _findExistingByVariantGroup(variantGroup) {
+async function _findExistingByVariantGroup(variantGroup, productName = '') {
   const vg = String(variantGroup || '').trim();
   if (!vg) return null;
   try {
@@ -8182,7 +8182,19 @@ async function _findExistingByVariantGroup(variantGroup) {
       sort: '-updated',
       $autoCancel: false,
     });
-    const items = r?.items || [];
+    let items = r?.items || [];
+    // Variant-aware: the variantGroup groups ALL capacities of a model. If the
+    // incoming product names an explicit storage and NONE of the stored records
+    // share it, this is a NEW capacity (e.g. 1 TB) → not a duplicate.
+    const targetStorage = _storageVariantToken(productName);
+    if (targetStorage && items.length) {
+      const sameOrUnsized = items.filter((it) => {
+        const s = _storageVariantToken(it.name);
+        return !s || s === targetStorage;
+      });
+      if (!sameOrUnsized.length) return null;
+      items = sameOrUnsized;
+    }
     const item = items.find(_isEpeyRecord) || items[0];
     if (!item) return null;
     return {
@@ -8228,46 +8240,57 @@ function _productIdentityKeys(product = {}) {
   return keys;
 }
 
-const _epeyModelFamilyCache = new Map();
+// Storage variant token from a name ("…256GB…" → "256gb", "…1 TB…" → "1tb").
+// Used so different capacities of the same model count as DIFFERENT products.
+function _storageVariantToken(value) {
+  const m = String(value || '').match(/(\d+)\s*(tb|gb)\b/i);
+  return m ? `${m[1]}${m[2].toLowerCase()}` : '';
+}
 
+// Find an existing record for the same MODEL+VARIANT. Replaces the old version
+// that loaded EVERY product in the category (a 60s-timeout query on the
+// RAM-constrained host that silently failed → duplicates). This runs a FAST,
+// indexed PocketBase search on the brand + model-family tokens, then matches
+// the small candidate set by identity key. It is variant-aware: same model but
+// a different storage size (1 TB vs 256 GB) is treated as a new product, so it
+// still gets scraped — while an existing 256 GB is skipped.
 async function _findExistingEpeyByModelFamily(product = {}) {
   const targetKeys = _productIdentityKeys(product);
   if (!targetKeys.size) return null;
-  const category = String(product.category || '').trim();
-  const cacheKey = category || '*';
+  const targetStorage = _storageVariantToken(product.name);
+  const famSlug = _identitySlug(modelFamilyKey({ name: product.name, brand: product.brand, category: product.category }))
+    || _identitySlug(product.name);
+  const tokens = famSlug.split('-').filter((t) => t && t.length >= 2).slice(0, 5);
+  if (!tokens.length) return null;
   try {
-    if (!_epeyModelFamilyCache.has(cacheKey)) {
-      const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-      const parts = ['(source = "epey.com" || source = "epey" || sourceUrl ~ "epey.com")'];
-      if (category) parts.unshift(`category = "${esc(category)}"`);
-      const docs = await _pbGetAllPaged('products', {
-        filter: parts.join(' && '),
-        fields: 'id,name,brand,category,source,sourceUrl,variantGroup',
-        sort: 'id',
-      }, 500, 60000);
-      _epeyModelFamilyCache.set(cacheKey, docs.map(d => (typeof d.data === 'function' ? d.data() : (d.data || d))));
-    }
-    const targetBrand = normalizeProductDedupText(product.brand);
-    const candidates = _epeyModelFamilyCache.get(cacheKey) || [];
+    const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const parts = ['(source ~ "epey" || sourceUrl ~ "epey.com")'];
+    const category = String(product.category || '').trim();
+    if (category) parts.push(`category = "${esc(category)}"`);
+    if (product.brand) parts.push(`brand ~ "${esc(product.brand)}"`);
+    tokens.forEach((t) => parts.push(`name ~ "${esc(t)}"`));
+    const r = await pb.collection('products').getList(1, 50, {
+      filter: parts.join(' && '),
+      fields: 'id,name,brand,category,source,sourceUrl,variantGroup',
+      $autoCancel: false,
+    });
+    const candidates = r?.items || [];
     for (const item of candidates) {
-      if (targetBrand) {
-        const itemBrand = normalizeProductDedupText(item.brand);
-        if (itemBrand && itemBrand !== targetBrand) continue;
-      }
       const itemKeys = _productIdentityKeys(item);
-      for (const key of itemKeys) {
-        if (targetKeys.has(key)) {
-          return {
-            id: item.id,
-            source: item.source || '',
-            sourceUrl: item.sourceUrl || '',
-            name: item.name || '',
-            brand: item.brand || '',
-            category: item.category || '',
-            variantGroup: item.variantGroup || '',
-          };
-        }
-      }
+      const familyMatch = [...itemKeys].some((k) => targetKeys.has(k));
+      if (!familyMatch) continue;
+      // Both carry an explicit, different capacity → different variant → allow.
+      const itemStorage = _storageVariantToken(item.name);
+      if (targetStorage && itemStorage && targetStorage !== itemStorage) continue;
+      return {
+        id: item.id,
+        source: item.source || '',
+        sourceUrl: item.sourceUrl || '',
+        name: item.name || '',
+        brand: item.brand || '',
+        category: item.category || '',
+        variantGroup: item.variantGroup || '',
+      };
     }
   } catch (e) {
     slog(`  ⚠ Epey model dedup lookup failed: ${e.message}`, 'warn');
@@ -8714,7 +8737,7 @@ async function scrapeByUrl() {
     try { _assertCleanEnglishPayload(clean, clean.name || clean.slug || url); } catch (_) {}
 
     if (clean.variantGroup) {
-      const existing = await _findExistingByVariantGroup(clean.variantGroup);
+      const existing = await _findExistingByVariantGroup(clean.variantGroup, clean.name);
       if (existing && existing.source && existing.source !== clean.source) {
         const merged = await _mergeIntoExistingRecord(existing.id, clean);
         if (merged) {
