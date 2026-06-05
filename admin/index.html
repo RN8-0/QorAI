@@ -895,6 +895,20 @@
             </div>
             <button class="btn btn-primary" onclick="scrapeByUrl()" style="margin-top:8px">Scrape & Add</button>
           </div>
+
+          <div class="card" style="margin-top:12px">
+            <div class="card-title">🖼️ Görsel Backfill (Epey)</div>
+            <p class="text-muted" style="margin-bottom:10px;font-size:12px">
+              Eski scrape'ler en fazla 8 görsel saklıyordu. Bu, eksik görselli Epey ürünleri için
+              tüm galeri foto URL'lerini (indirmeden) çeker ve tamamlar. Proxy açık olmalı.
+              Durdurmak için "Durdur"a bas — kaldığı yerden devam eder.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost" onclick="backfillEpeyImages({ dryRun: true })">Önizle (dry run)</button>
+              <button class="btn btn-primary" onclick="backfillEpeyImages()">Görselleri Tamamla</button>
+              <button class="btn btn-danger" onclick="stopImageBackfill()">Durdur</button>
+            </div>
+          </div>
         </div>
 
         <!-- Score Update panel removed (replaced by Score Engine v4) -->

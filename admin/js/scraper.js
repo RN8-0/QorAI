@@ -980,7 +980,7 @@ function prepareProductPayload(product) {
       seenImg.add(key);
       images.push(mid);
     }
-    if (images.length >= 8) break;
+    if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
   }
   const primary = images[0] || sourceProduct.imageUrl || '';
 
@@ -1336,8 +1336,12 @@ function extractListingTechScore(cardEl) {
 //  10. IMAGE EXTRACTION
 // ═══════════════════════════════════════
 
-// Max images per product (user requirement: first 4 product-only images)
-const MAX_IMAGES_PER_PRODUCT = 8;
+// Max images per product. Epey ships the full colour/angle photo set on the
+// "-resimleri.html" gallery page (often 20-30 shots); we keep them ALL because
+// they are stored as plain CDN URLs (resim.epey.com/…) — nothing is downloaded,
+// so a longer array costs only a few KB of JSON. The gallery modal on the app +
+// website renders whatever is stored, so a high cap = the complete photo set.
+const MAX_IMAGES_PER_PRODUCT = 40;
 
 // Legacy CDN exposes the same image in multiple sizes via prefix:
 //   /-n.webp = original (~1280px, 80-120 KB)
@@ -7095,6 +7099,83 @@ async function fetchGalleryImages(productUrl) {
   } catch { return []; }
 }
 
+// ── Image backfill for already-saved Epey products ───────────────────────────
+// Old scrapes capped the photo set at 8. This re-fetches the full Epey gallery
+// (URLs only — nothing is downloaded) and tops up the stored `images` array up
+// to MAX_IMAGES_PER_PRODUCT. It only touches products that still look capped
+// (≤ minStored images), so it is resumable: re-running skips ones already
+// filled. Run from the admin console (proxy must be up):
+//     backfillEpeyImages()              // process everything still capped
+//     backfillEpeyImages({ dryRun:true })  // report only, no writes
+//     window._backfillStop = true       // stop after the current product
+let _backfillRunning = false;
+async function backfillEpeyImages({ minStored = 9, throttleMs = 200, pageSize = 200, dryRun = false } = {}) {
+  if (_backfillRunning) { slog('Backfill zaten çalışıyor', 'warn'); return; }
+  if (!(await checkProxy())) { toast('Önce local proxy\'yi başlat', 'e'); return; }
+  _backfillRunning = true;
+  window._backfillStop = false;
+  const pb = getPb();
+  let page = 1, scanned = 0, updated = 0, addedTotal = 0, errors = 0;
+  slog(`🖼️ Görsel backfill başladı (eksik ≤${minStored - 1} görselli Epey ürünleri${dryRun ? ', DRY RUN' : ''})`, 'info');
+  try {
+    // Walk by page. Because we only update capped records (and they leave the
+    // ≤minStored set once filled) we always read page 1 to avoid skipping rows
+    // that shift as earlier ones drop out — but in dryRun we page normally.
+    for (;;) {
+      if (window._backfillStop) { slog('⏹ Backfill durduruldu', 'warn'); break; }
+      const res = await pb.collection('products').getList(dryRun ? page : 1, pageSize, {
+        $autoCancel: false,
+        filter: 'source ~ "epey"',
+        fields: 'id,sourceUrl,source,images,name',
+        sort: 'created',
+      });
+      const capped = res.items.filter(p => (Array.isArray(p.images) ? p.images.length : 0) < minStored && p.sourceUrl);
+      if (capped.length === 0) {
+        if (dryRun && page < res.totalPages) { page++; continue; }
+        break;
+      }
+      for (const p of capped) {
+        if (window._backfillStop) break;
+        scanned++;
+        try {
+          const gallery = await fetchGalleryImages(p.sourceUrl);
+          if (!gallery.length) { await _sleepMs(throttleMs); continue; }
+          const existing = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+          const seen = new Set(existing.map(_epeyImageKey));
+          const merged = [...existing];
+          for (const img of gallery) {
+            const k = _epeyImageKey(img);
+            if (!seen.has(k)) { seen.add(k); merged.push(img); }
+            if (merged.length >= MAX_IMAGES_PER_PRODUCT) break;
+          }
+          if (merged.length > existing.length) {
+            addedTotal += merged.length - existing.length;
+            if (!dryRun) {
+              await pb.collection('products').update(p.id, { images: merged }, { $autoCancel: false });
+            }
+            updated++;
+            slog(`  ✓ ${p.name}: ${existing.length} → ${merged.length} görsel`, 'success');
+          }
+        } catch (e) {
+          errors++;
+          slog(`  ⚠ ${p.name || p.id}: ${e.message}`, 'warn');
+        }
+        await _sleepMs(throttleMs);
+      }
+      if (dryRun) { if (page >= res.totalPages) break; page++; }
+    }
+  } finally {
+    _backfillRunning = false;
+  }
+  slog(`🖼️ Backfill bitti: ${updated} ürün güncellendi (+${addedTotal} görsel), ${scanned} tarandı, ${errors} hata`, 'success');
+  if (typeof loadProducts === 'function' && updated > 0 && !dryRun) await loadProducts();
+}
+function _sleepMs(ms) { return new Promise(r => setTimeout(r, ms)); }
+if (typeof window !== 'undefined') {
+  window.backfillEpeyImages = backfillEpeyImages;
+  window.stopImageBackfill = () => { window._backfillStop = true; };
+}
+
 function parseSpecs(doc) {
   const specs = {};
   const specSections = {};
@@ -8059,7 +8140,7 @@ async function _findExistingByVariantGroup(variantGroup) {
 //   • Keep the existing record's source, sourceUrl, gtin/mpn,
 //     affiliateLinks, techScore — incoming wins ONLY for keys it
 //     newly provides (never overwrites a populated value with empty)
-//   • Bump images: union, capped at 8
+//   • Bump images: union, capped at MAX_IMAGES_PER_PRODUCT
 //   • PATCH back to PB; return merged payload for the saved event
 async function _mergeIntoExistingRecord(existingId, incoming) {
   if (!existingId || !incoming) return null;
@@ -8114,7 +8195,7 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
     const seenImg = new Set(existingImages);
     for (const url of (incoming.images || [])) {
       if (url && !seenImg.has(url)) { existingImages.push(url); seenImg.add(url); }
-      if (existingImages.length >= 8) break;
+      if (existingImages.length >= MAX_IMAGES_PER_PRODUCT) break;
     }
 
     // Track every source that contributed to this record so the catalog can
@@ -8133,7 +8214,7 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
       multiLangSpecs,
       multiLangSections,
       nameTranslated,
-      images: existingImages.slice(0, 8),
+      images: existingImages.slice(0, MAX_IMAGES_PER_PRODUCT),
       specsCount: Object.keys(specs).length,
       // Affiliate / identity fields: only fill if missing on the existing record.
       ...(oldData.gtin || !incoming.gtin ? {} : { gtin: incoming.gtin }),

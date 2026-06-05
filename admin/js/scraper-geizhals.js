@@ -850,8 +850,9 @@ function extractListingTechScore(cardEl) {
 //  10. IMAGE EXTRACTION
 // ═══════════════════════════════════════
 
-// Max images per product (user requirement: first 4 product-only images)
-const MAX_IMAGES_PER_PRODUCT = 4;
+// Max images per product. Stored as plain CDN URLs (nothing downloaded), so we
+// keep the whole gallery — the app/website image modal renders all of them.
+const MAX_IMAGES_PER_PRODUCT = 20;
 
 // Geizhals CDN exposes the same image in multiple sizes via prefix:
 //   /-n.webp = original (~1280px, 80-120 KB)
