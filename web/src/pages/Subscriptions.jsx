@@ -144,7 +144,13 @@ export default function Subscriptions() {
   return (
     <div className="container subs">
       <div className="subs-head">
-        <div className="subs-icon">TV</div>
+        <div className="subs-icon" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="13" rx="2" />
+            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
         <h1>{t('subs.title')}</h1>
         <p>{t('subs.subtitle')}</p>
       </div>

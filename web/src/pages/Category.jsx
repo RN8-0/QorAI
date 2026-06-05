@@ -10,11 +10,10 @@ import { AD_SLOTS } from '../lib/ads';
 import { useSeo } from '../lib/seo';
 import './Category.css';
 
+// Price sorts are intentionally gone — the site does not surface prices.
 const SORTS = [
   { id: 'score', key: 'catalog.sortScore' },
   { id: 'trend', key: 'catalog.sortTrend' },
-  { id: 'priceUp', key: 'catalog.sortPriceUp' },
-  { id: 'priceDown', key: 'catalog.sortPriceDown' },
 ];
 const SCORES = [
   { id: 'high', key: 'catalog.scoreHigh' },
@@ -24,12 +23,40 @@ const SCORES = [
 const PER_PAGE = 24;
 const COLLAPSED = 8;
 
-// filterTokens look like "ram:8_gb" — prefix drives the filter group.
-const TOKEN_GROUPS = {
-  ram: 'spec.ram', storage: 'spec.storage', screen: 'spec.screen',
-  battery: 'spec.battery', refresh: 'filter.refresh', os: 'filter.os',
+// filterTokens look like "ram:8_gb" — the prefix drives the filter group.
+// Multi-value groups render as checkbox lists in this order; only groups that
+// actually have values in the category are shown, so each category surfaces its
+// own relevant filters (epey-style) with no price filter.
+const TOKEN_GROUPS = [
+  { prefix: 'ram', label: ['RAM', 'RAM', 'RAM'] },
+  { prefix: 'storage', label: ['Storage', 'Depolama', 'Speicher'] },
+  { prefix: 'screen_tech', label: ['Panel type', 'Panel tipi', 'Panel'] },
+  { prefix: 'refresh_rate', label: ['Refresh rate', 'Yenileme hızı', 'Bildrate'] },
+  { prefix: 'os', label: ['Operating system', 'İşletim sistemi', 'Betriebssystem'] },
+  { prefix: 'processor_brand', label: ['Processor', 'İşlemci', 'Prozessor'] },
+  { prefix: 'gpu_type', label: ['Graphics', 'Ekran kartı', 'Grafik'] },
+  { prefix: 'socket', label: ['Socket', 'Soket', 'Sockel'] },
+  { prefix: 'connectivity', label: ['Connectivity', 'Bağlantı', 'Konnektivität'] },
+];
+const FEATURE_TOKENS = [
+  { token: 'five_g:true', label: ['5G', '5G', '5G'] },
+  { token: 'nfc:true', label: ['NFC', 'NFC', 'NFC'] },
+  { token: 'wireless_charging:true', label: ['Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'] },
+  { token: 'fast_charging:true', label: ['Fast charging', 'Hızlı şarj', 'Schnellladen'] },
+  { token: 'fingerprint:true', label: ['Fingerprint', 'Parmak izi', 'Fingerabdruck'] },
+  { token: 'water_resistance:true', label: ['Water resistant', 'Suya dayanıklı', 'Wasserfest'] },
+];
+const TOKEN_VALUE_LABEL = {
+  amoled: 'AMOLED', super_amoled: 'Super AMOLED', dynamic_amoled: 'Dynamic AMOLED', oled: 'OLED', ltpo: 'LTPO', ips: 'IPS', lcd: 'LCD', va: 'VA', tn: 'TN',
+  windows: 'Windows', macos: 'macOS', ios: 'iOS', ipados: 'iPadOS', android: 'Android', chromeos: 'ChromeOS', linux: 'Linux',
+  intel: 'Intel', amd: 'AMD', apple: 'Apple', qualcomm: 'Qualcomm', mediatek: 'MediaTek', exynos: 'Exynos',
+  dedicated: ['Dedicated', 'Harici', 'Dediziert'], integrated: ['Integrated', 'Dahili', 'Integriert'],
+  'wi-fi': 'Wi-Fi', '5g': '5G', '4g': '4G',
 };
-function prettyTokenValue(v) {
+function prettyTokenValue(v, lang) {
+  const key = String(v || '').toLowerCase();
+  const mapped = TOKEN_VALUE_LABEL[key];
+  if (mapped) return Array.isArray(mapped) ? (lang === 'tr' ? mapped[1] : lang === 'de' ? mapped[2] : mapped[0]) : mapped;
   return String(v || '')
     .replace(/_/g, ' ')
     .replace(/\bgb\b/i, 'GB').replace(/\btb\b/i, 'TB').replace(/\bmah\b/i, 'mAh')
@@ -149,18 +176,19 @@ export default function Category() {
     () => facetCounts(universe, 'price_segment').map((c) => c.value),
     [universe],
   );
-  // filterTokens grouped by prefix → { ram: [...], storage: [...] }
+  const lbl = (arr) => (lang === 'tr' ? arr[1] : lang === 'de' ? arr[2] : arr[0]);
+  // filterTokens grouped by prefix → { ram: [...], storage: [...], five_g: [...] }
   const tokenGroups = useMemo(() => {
     const groups = {};
     facetCounts(universe, 'filterTokens').forEach((c) => {
       const i = String(c.value).indexOf(':');
       if (i < 1) return;
       const prefix = c.value.slice(0, i);
-      if (!TOKEN_GROUPS[prefix]) return;
       (groups[prefix] = groups[prefix] || []).push(c.value);
     });
     return groups;
   }, [universe]);
+  const availableFeatures = FEATURE_TOKENS.filter((f) => (tokenGroups[f.token.split(':')[0]] || []).includes(f.token));
 
   const hasFilters = q.trim() || brands.length || segments.length || tokens.length || score !== 'all';
   function clearFilters() {
@@ -207,33 +235,36 @@ export default function Category() {
         ))}
       </div>
 
-      {segmentList.length > 1 && (
+      {TOKEN_GROUPS.filter((g) => (tokenGroups[g.prefix] || []).length > 0).map((g) => (
+        <div className="cat-fgroup" key={g.prefix}>
+          <h4>{lbl(g.label)}</h4>
+          {tokenGroups[g.prefix]
+            .slice()
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+            .map((tk) => (
+              <label key={tk} className={'cat-check' + (tokens.includes(tk) ? ' on' : '')}>
+                <input type="checkbox" checked={tokens.includes(tk)}
+                  onChange={() => toggle(tokens, setTokens, tk)} />
+                <span>{prettyTokenValue(tk.slice(g.prefix.length + 1), lang)}</span>
+                {tokenCounts[tk] != null && <em>{tokenCounts[tk]}</em>}
+              </label>
+            ))}
+        </div>
+      ))}
+
+      {availableFeatures.length > 0 && (
         <div className="cat-fgroup">
-          <h4>{t('catalog.priceSegment')}</h4>
-          {segmentList.map((s) => (
-            <label key={s} className={'cat-check' + (segments.includes(s) ? ' on' : '')}>
-              <input type="checkbox" checked={segments.includes(s)}
-                onChange={() => toggle(segments, setSegments, s)} />
-              <span>{prettyTokenValue(s)}</span>
-              {segCounts[s] != null && <em>{segCounts[s]}</em>}
+          <h4>{L('Features', 'Özellikler', 'Funktionen')}</h4>
+          {availableFeatures.map((f) => (
+            <label key={f.token} className={'cat-check' + (tokens.includes(f.token) ? ' on' : '')}>
+              <input type="checkbox" checked={tokens.includes(f.token)}
+                onChange={() => toggle(tokens, setTokens, f.token)} />
+              <span>{lbl(f.label)}</span>
+              {tokenCounts[f.token] != null && <em>{tokenCounts[f.token]}</em>}
             </label>
           ))}
         </div>
       )}
-
-      {Object.keys(tokenGroups).map((prefix) => (
-        <div className="cat-fgroup" key={prefix}>
-          <h4>{t(TOKEN_GROUPS[prefix])}</h4>
-          {tokenGroups[prefix].map((tk) => (
-            <label key={tk} className={'cat-check' + (tokens.includes(tk) ? ' on' : '')}>
-              <input type="checkbox" checked={tokens.includes(tk)}
-                onChange={() => toggle(tokens, setTokens, tk)} />
-              <span>{prettyTokenValue(tk.slice(prefix.length + 1))}</span>
-              {tokenCounts[tk] != null && <em>{tokenCounts[tk]}</em>}
-            </label>
-          ))}
-        </div>
-      ))}
 
       {brandList.length > 1 && (
         <div className="cat-fgroup">

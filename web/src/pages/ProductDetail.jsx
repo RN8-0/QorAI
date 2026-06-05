@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
@@ -566,9 +566,9 @@ export default function ProductDetail() {
         {similar.length > 0 && (
           <>
             <div className="sec-head" style={{ marginTop: 48 }}><h2><span className="bar" /> {t('pd.similar')}</h2></div>
-            <div className="rail">
+            <ScrollRail>
               {similar.map((sp) => <ProductCard key={sp.id} product={sp} />)}
-            </div>
+            </ScrollRail>
           </>
         )}
 
@@ -623,6 +623,34 @@ export default function ProductDetail() {
         </div>,
         document.body,
       )}
+    </div>
+  );
+}
+
+// Horizontally scrollable rail with prev/next arrows (desktop affordance for
+// the otherwise touch-only swipe). Arrows hide when there's nothing to scroll.
+function ScrollRail({ children }) {
+  const ref = useRef(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const update = () => {
+    const el = ref.current;
+    if (!el) return;
+    setEdges({ left: el.scrollLeft > 8, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 8 });
+  };
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    if (!el) return undefined;
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => { el.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
+  }, [children]); // eslint-disable-line
+  const scroll = (dir) => ref.current?.scrollBy({ left: dir * Math.max(320, ref.current.clientWidth * 0.85), behavior: 'smooth' });
+  return (
+    <div className="pd-rail-wrap">
+      {edges.left && <button type="button" className="pd-rail-arr pd-rail-prev" aria-label="‹" onClick={() => scroll(-1)}>‹</button>}
+      <div className="rail" ref={ref}>{children}</div>
+      {edges.right && <button type="button" className="pd-rail-arr pd-rail-next" aria-label="›" onClick={() => scroll(1)}>›</button>}
     </div>
   );
 }

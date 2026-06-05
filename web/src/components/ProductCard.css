@@ -118,33 +118,33 @@
 
 .q-product-card-spec {
   min-width: 0;
-  display: grid;
-  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
-/* epey-style: the value is the hero — big and readable, no extra label text. */
+/* Clean, professional: value reads first (medium weight, not heavy), with a
+   small muted label underneath. No relative bars — a per-product heuristic bar
+   can't honestly represent a value, so we just show the real number. */
 .q-product-card-spec-val {
   min-width: 0;
-  font-size: 14.5px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.q-product-card-spec-bar {
-  height: 6px;
-  background: var(--surface-3);
-  border-radius: 999px;
+.q-product-card-spec-lbl {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  white-space: nowrap;
   overflow: hidden;
-}
-
-.q-product-card-spec-bar i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--brand-cyan), var(--brand-blue));
-  border-radius: 999px;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 520px) {

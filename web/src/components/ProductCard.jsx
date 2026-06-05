@@ -140,7 +140,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
           {specs.map((spec, index) => (
             <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${spec.label}: ${spec.value}`}>
               <b className="q-product-card-spec-val">{spec.value}</b>
-              <span className="q-product-card-spec-bar"><i style={{ width: `${spec.pct}%` }} /></span>
+              <small className="q-product-card-spec-lbl">{spec.label}</small>
             </span>
           ))}
         </div>

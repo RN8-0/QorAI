@@ -242,7 +242,16 @@ export async function getCategoryPage(opts = {}) {
     }
     if (opts.segment) filters.push(`price_segment:=${lit(opts.segment)}`);
     if (opts.tokens && opts.tokens.length) {
-      filters.push(`filterTokens:[${opts.tokens.slice(0, 16).map(lit).join(',')}]`);
+      // Group tokens by prefix so it's OR within a group (RAM 8 or 16) and AND
+      // across groups (RAM 8 AND Storage 256) — the expected filter behaviour.
+      const byPrefix = {};
+      opts.tokens.slice(0, 24).forEach((tk) => {
+        const p = String(tk).split(':')[0];
+        (byPrefix[p] = byPrefix[p] || []).push(tk);
+      });
+      Object.values(byPrefix).forEach((group) => {
+        filters.push(`filterTokens:[${group.map(lit).join(',')}]`);
+      });
     }
     if (opts.score === 'high') filters.push('techScore:>=80');
     else if (opts.score === 'mid') filters.push('techScore:[60..79]');

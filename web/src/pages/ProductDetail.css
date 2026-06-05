@@ -199,12 +199,15 @@
   font-weight: 850;
   line-height: 1.35;
 }
-.pd-bricks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+/* Masonry columns so a short brick (e.g. EKRAN) never leaves a tall gap next to
+   a long one (e.g. BAĞLANTILAR) — bricks flow and fill the space. */
+.pd-bricks { column-count: 2; column-gap: 18px; }
 .pd-brick {
   width: 100%;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: 12px; overflow: hidden;
-  align-self: start;
+  break-inside: avoid;
+  margin-bottom: 18px;
 }
 .pd-brick-head {
   padding: 13px 16px; font-size: 12.5px; font-weight: 850;
@@ -247,7 +250,7 @@
   .pd-skel-img { width: 100%; }
   .pd-keybars { grid-template-columns: 1fr; }
   .pd-spec-overview .spec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pd-bricks { grid-template-columns: 1fr; }
+  .pd-bricks { column-count: 1; }
 }
 /* ─── AI Analysis tab ────────────────────────────────────────── */
 .pd-ai-loading {
@@ -495,7 +498,7 @@
 .rv-reply-form .btn { padding: 8px 14px; font-size: 12.5px; }
 
 @media (max-width: 720px) {
-  .pd-bricks { grid-template-columns: 1fr; }
+  .pd-bricks { column-count: 1; }
   .pd-lightbox { padding: 10px; }
   .pd-lightbox-body {
     grid-template-columns: 1fr;
@@ -537,8 +540,8 @@
 }
 .pd-crumb-back:hover { border-color: var(--border-strong); }
 
-/* sticky gallery so the photo stays put while reading the long spec sheet */
-.pd-product-hero .prod-gallery { position: sticky; top: 78px; align-self: start; }
+/* gallery scrolls away with the page (no sticky — it was leaving a gap). */
+.pd-product-hero .prod-gallery { align-self: start; }
 .pd-gallery-card { padding: 16px; }
 .pd-photo {
   position: relative; width: 100%; aspect-ratio: 1 / 1; margin-bottom: 14px;
@@ -630,3 +633,17 @@
   .pd-score2-sep { width: auto; height: 1px; margin: 0; }
   .pd-crumbs b { max-width: 60vw; }
 }
+
+/* similar-products rail with arrows */
+.pd-rail-wrap { position: relative; }
+.pd-rail-arr {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 42px; height: 42px; display: grid; place-items: center;
+  border-radius: 999px; font-size: 26px; font-weight: 700; line-height: 1;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); box-shadow: 0 8px 22px color-mix(in srgb, #020617 16%, transparent);
+}
+.pd-rail-arr:hover { border-color: var(--brand-cyan); color: var(--accent); }
+.pd-rail-prev { left: -8px; }
+.pd-rail-next { right: -8px; }
+@media (max-width: 560px) { .pd-rail-arr { display: none; } }

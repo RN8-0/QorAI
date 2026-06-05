@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
+import { useAuth } from '../lib/auth';
 import { useT } from '../i18n/index.jsx';
 import './AiBubble.css';
 
 export default function AiBubble() {
   const t = useT();
+  const { user, openAuth } = useAuth();
   const [open, setOpen] = useState(false);
   const greetingRef = useRef(null);
   if (!greetingRef.current) greetingRef.current = { role: 'model', text: t('ai.greeting') };
@@ -14,6 +16,8 @@ export default function AiBubble() {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const sendRef = useRef(null);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const suggestions = [t('ai.s1'), t('ai.s2'), t('ai.s3')];
 
@@ -23,15 +27,17 @@ export default function AiBubble() {
 
   useEffect(() => {
     const onOpen = (e) => {
+      if (!userRef.current) { openAuth(); return; }
       setOpen(true);
       const q = e.detail;
       if (q && typeof q === 'string') setTimeout(() => sendRef.current?.(q), 120);
     };
     window.addEventListener('qor-open-ai', onOpen);
     return () => window.removeEventListener('qor-open-ai', onOpen);
-  }, []);
+  }, [openAuth]);
 
   async function send(text) {
+    if (!userRef.current) { setOpen(false); openAuth(); return; }
     const q = (text ?? input).trim();
     if (!q || busy) return;
     setInput('');
@@ -54,7 +60,7 @@ export default function AiBubble() {
     <>
       <button
         className={'aib-fab' + (open ? ' open' : '')}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { if (!open && !user) { openAuth(); return; } setOpen((o) => !o); }}
         aria-label="Qor AI"
       >
         {open ? '✕' : <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />}
