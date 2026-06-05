@@ -16,6 +16,27 @@ function uniq(items) {
   return [...new Set(items.filter(Boolean))];
 }
 
+function imageIdentityKey(url) {
+  let key = String(url || '').trim().toLowerCase();
+  if (!key) return '';
+  key = key.split(/[?#]/)[0].replace(/^https?:\/\//, '');
+  key = key.replace(/(resim\.epey\.com\/[^/]+\/)[a-z]_/i, '$1');
+  key = key.replace(/-(?:k|s|m|t|c|l|n)\.(webp|jpe?g|png)$/i, '.$1');
+  return key;
+}
+
+function uniqImages(items) {
+  const out = [];
+  const seen = new Set();
+  for (const item of items.filter(Boolean)) {
+    const key = imageIdentityKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 export function isBadProductImage(url) {
   if (!url || typeof url !== 'string') return true;
   const clean = url.trim();
@@ -71,6 +92,6 @@ export function productImageList(product, size = 'card') {
     product?.imageURL,
     ...(Array.isArray(product?.images) ? product.images : []),
   ];
-  return uniq(raw.filter((src) => !isBadProductImage(src)))
+  return uniqImages(raw.filter((src) => !isBadProductImage(src)))
     .filter((src) => imageCandidates(src, size).length > 0);
 }

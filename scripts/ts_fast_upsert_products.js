@@ -223,6 +223,125 @@ function extractSocketTokens(pb) {
   return Array.from(tokens);
 }
 
+function flattenBrowseSpecs(pb) {
+  const flat = {};
+  const add = (value) => {
+    if (!value || typeof value !== 'object') return;
+    Object.entries(value).forEach(([key, item]) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        add(item);
+      } else if (item !== null && item !== undefined) {
+        flat[String(key)] = String(item);
+      }
+    });
+  };
+  add(pb?.specs || {});
+  add(pb?.keySpecs || {});
+  add(pb?.specSections || {});
+  return flat;
+}
+
+function normScreenKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isScreenSizeSpecKey(key) {
+  const normalized = normScreenKey(key);
+  if (!normalized) return false;
+  if (/(width|height|genis|en\b|boy\b|area|alani|cm2|cm 2|m2|m 2|ratio|oran|displayport|usb|thunderbolt)/.test(normalized)) return false;
+  const aliases = [
+    'screen size',
+    'display size',
+    'display diagonal',
+    'screen diagonal',
+    'diagonal',
+    'ekran boyutu',
+    'display boyutu',
+    'bildschirmgrosse',
+    'bildschirmgroesse',
+    'bildschirmdiagonale',
+  ];
+  if (aliases.includes(normalized)) return true;
+  return aliases.some((alias) =>
+    normalized.startsWith(`${alias} `) &&
+    /\b(in|inc|inch|zoll|cm|diagonal|diagonale)\b/.test(normalized.slice(alias.length + 1))
+  );
+}
+
+function numberFromText(value) {
+  const match = String(value || '').match(/(\d+(?:[.,]\d+)?)/);
+  return match ? parseFloat(match[1].replace(',', '.')) : null;
+}
+
+function screenSizeNumber(value, allowUnitless = false) {
+  const raw = String(value || '').trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return null;
+  if (/(cm²|cm2|m²|m2|mm\b|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd\/m|display\s*port|usb|thunderbolt|%|x\s*\d)/i.test(lower)) return null;
+  const number = numberFromText(raw);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (/(inch|inç|zoll|"|″|\d+(?:[.,]\d+)?\s*in\b)/i.test(raw)) {
+    return number >= 1 && number <= 120 ? number : null;
+  }
+  if (/\bcm\b/i.test(raw)) {
+    const inches = number / 2.54;
+    return inches >= 1 && inches <= 120 ? Math.round(inches * 10) / 10 : null;
+  }
+  return allowUnitless && number >= 1 && number <= 120 ? number : null;
+}
+
+function firstExactSpecValue(flat, aliases) {
+  const normalizedAliases = aliases.map(normScreenKey);
+  for (const [key, value] of Object.entries(flat || {})) {
+    if (normalizedAliases.includes(normScreenKey(key))) return value;
+  }
+  return '';
+}
+
+function weightKg(value) {
+  const number = numberFromText(value);
+  if (!Number.isFinite(number)) return undefined;
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('kg')) return number;
+  if (/\bg\b/.test(normalized)) return number / 1000;
+  return number;
+}
+
+function extractBrowseNumericFields(pb) {
+  const flat = flattenBrowseSpecs(pb);
+  let screenSizeValue;
+  for (const [key, value] of Object.entries(flat)) {
+    if (!isScreenSizeSpecKey(key)) continue;
+    const parsed = screenSizeNumber(value, true);
+    if (parsed !== null) { screenSizeValue = parsed; break; }
+  }
+  const battery = numberFromText(firstExactSpecValue(flat, [
+    'Battery Capacity',
+    'battery capacity',
+    'Battery Capacity (Typical)',
+    'Batarya Kapasitesi',
+    'Batarya Kapasitesi (Tipik)',
+    'Pil Kapasitesi',
+  ]));
+  const weightValueKg = weightKg(firstExactSpecValue(flat, ['Weight', 'Ağırlık', 'Agirlik']));
+  return {
+    ...(screenSizeValue != null ? { screenSizeValue } : {}),
+    ...(battery != null ? { batteryCapacityValue: Math.round(battery) } : {}),
+    ...(weightValueKg != null ? { weightValueKg } : {}),
+  };
+}
+
 function toDoc(pb) {
   const raw = {
     ...pb,
@@ -234,6 +353,7 @@ function toDoc(pb) {
     affiliateLinks: pb.affiliateLinks || {},
     affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
   };
+  const browseNumericFields = extractBrowseNumericFields(pb);
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -254,13 +374,25 @@ function toDoc(pb) {
     keySpecsText: flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
     filterTokens: extractSocketTokens(pb),
+    ...browseNumericFields,
     _raw: JSON.stringify(raw),
   };
 }
 
-async function pbPage(page) {
-  return withRetry(`PB page ${page}`, async () => {
-    return pbGet(`/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=${page}&sort=id`, `PB page ${page}`);
+// Seek pagination (sort=id + `id > lastId`) with skipTotal=1. The single
+// RAM-constrained host returns a 400 "Something went wrong" when asked for a
+// heavy page *and* a full COUNT(*) over ~95k rows while it's already saturated
+// by the scraper. Seeking on the primary-key index with no count keeps every
+// request light, so the backfill survives an overloaded host.
+async function pbSeek(lastId) {
+  const filterPart = lastId
+    ? `&filter=${encodeURIComponent(`id > "${lastId}"`)}`
+    : '';
+  return withRetry(`PB seek after ${lastId || 'start'}`, async () => {
+    return pbGet(
+      `/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=1&sort=id&skipTotal=1${filterPart}`,
+      `PB seek ${lastId || 'start'}`,
+    );
   });
 }
 
@@ -293,33 +425,32 @@ async function withRetry(label, fn, attempts = 6) {
 
 async function main() {
   await ensureCollection();
-  const first = await pbPage(1);
-  const totalPages = first.totalPages || 1;
-  const totalItems = first.totalItems || 0;
-  console.log(`[fast-ts] PB ${totalItems} products, ${totalPages} pages, pageSize=${PB_PAGE_SIZE}, startPage=${START_PAGE}, concurrency=${CONCURRENCY}, timeout=${REQUEST_TIMEOUT_MS}ms`);
-  let nextPage = START_PAGE;
-  let donePages = 0;
+  console.log(`[fast-ts] seek backfill · pageSize=${PB_PAGE_SIZE} · timeout=${REQUEST_TIMEOUT_MS}ms`);
+  let lastId = '';
+  let pages = 0;
+  let seen = 0;
   let okTotal = 0;
   let failTotal = 0;
   const started = Date.now();
 
-  async function worker(id) {
-    while (nextPage <= totalPages) {
-      const page = nextPage++;
-      const body = page === 1 ? first : await pbPage(page);
-      const r = await importDocs(body.items || []);
-      okTotal += r.ok;
-      failTotal += r.fail;
-      donePages++;
-      if (donePages % 1 === 0 || donePages === totalPages) {
-        const rate = Math.round(okTotal / ((Date.now() - started) / 1000 || 1));
-        console.log(`[fast-ts] page ${page}/${totalPages} · done=${donePages} · ok=${okTotal} fail=${failTotal} · ${rate}/s`);
-      }
-    }
+  // Seek by id until a short page signals the end. Sequential by nature, which
+  // also keeps the load on the shared host gentle while it heals the index.
+  while (true) {
+    const body = await pbSeek(lastId);
+    const items = body.items || [];
+    if (!items.length) break;
+    const r = await importDocs(items);
+    okTotal += r.ok;
+    failTotal += r.fail;
+    seen += items.length;
+    pages++;
+    lastId = items[items.length - 1].id;
+    const rate = Math.round(okTotal / ((Date.now() - started) / 1000 || 1));
+    console.log(`[fast-ts] batch ${pages} (after ${lastId}) · seen=${seen} ok=${okTotal} fail=${failTotal} · ${rate}/s`);
+    if (items.length < PB_PAGE_SIZE) break;
   }
 
-  await Promise.all(Array.from({ length: Math.max(1, CONCURRENCY) }, (_, i) => worker(i + 1)));
-  console.log(`[fast-ts] DONE ok=${okTotal} fail=${failTotal} seconds=${((Date.now() - started) / 1000).toFixed(1)}`);
+  console.log(`[fast-ts] DONE seen=${seen} ok=${okTotal} fail=${failTotal} seconds=${((Date.now() - started) / 1000).toFixed(1)}`);
 }
 
 main().catch(e => {

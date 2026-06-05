@@ -242,8 +242,9 @@ export function keySpecChips(p) {
   };
   const chips = [];
 
-  if (p.screenSizeValue > 0) {
-    chips.push({ labelKey: 'spec.screen', value: `${p.screenSizeValue}"`, pct: clamp((p.screenSizeValue / 7) * 100) });
+  const screenSize = Number(p.screenSizeValue) || 0;
+  if (screenSize > 0 && screenSize <= 120) {
+    chips.push({ labelKey: 'spec.screen', value: `${screenSize}"`, pct: clamp((screenSize / 7) * 100) });
   }
 
   const ram = tokenVal('ram:'); // e.g. "8_gb"

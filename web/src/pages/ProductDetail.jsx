@@ -41,6 +41,58 @@ function bandLabel(s, L) {
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
 
+function normHeroSpecText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .trim();
+}
+
+function looksLikeScreenSize(value) {
+  const raw = String(value || '');
+  const text = normHeroSpecText(raw);
+  if (!/\d/.test(text)) return false;
+  if (/\d+\s*[x×]\s*\d+/.test(text)) return false;
+  if (/(mp|mah|hz|khz|mhz|ghz|nits?|ppi|dpi|pixel|piksel|displayport|thunderbolt|usb|hdmi|gb|tb)/i.test(text)) {
+    return false;
+  }
+  if (/(cm²|cm2|cm\^2|m²|m2|m\^2|mm)/i.test(raw)) return false;
+  const n = Number((raw.match(/\d+(?:[.,]\d+)?/) || ['0'])[0].replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return false;
+  if (/\b(cm|centimeter|zentimeter)\b/i.test(text)) {
+    const inches = n / 2.54;
+    return inches >= 0.5 && inches <= 120;
+  }
+  return n >= 0.5 && n <= 120;
+}
+
+function heroSpecConcept(label, value) {
+  const key = normHeroSpecText(label);
+  const val = normHeroSpecText(value);
+  const both = `${key} ${val}`;
+  if (/(camera|kamera|megapixel|selfie|rear|front|arka kamera|on kamera)/.test(both)) return 'camera';
+  const screenish = /(screen|display|ekran|bildschirm)/.test(key);
+  const sizeish = /(size|boyut|groesse|grosse|größe|diagonal|inch|inc|inç|zoll|["″]|cm)/i.test(`${label} ${value}`);
+  if (screenish && sizeish) return looksLikeScreenSize(value) ? 'screen' : '';
+  if (/\bram\b|bellek|memory|arbeitsspeicher/.test(key)) return 'ram';
+  if (/(storage|depolama|dahili depolama|speicher|ssd|hdd|kapasite)/.test(key) && !/(battery|batarya|pil|akku)/.test(key)) return 'storage';
+  if (/(battery|batarya|pil|akku|power)/.test(key)) return 'battery';
+  if (/(processor|prozessor|islemci|işlemci|\bcpu\b|chipset|\bsoc\b)/.test(key)) return 'cpu';
+  if (/(\bgpu\b|graphics|grafik)/.test(key)) return 'gpu';
+  if (/(operating system|isletim sistemi|işletim sistemi|\bos\b|software|yazilim|yazılım)/.test(key)) return 'os';
+  if (/(5g|4g|lte|wi-?fi|wlan|bluetooth|nfc|network|baglanti|bağlantı|connect)/.test(both)) return 'network';
+  if (/(resolution|cozunurluk|çözünürlük|auflosung|auflösung|pixel|piksel)/.test(key)) return 'resolution';
+  if (/(weight|agirlik|ağırlık|gewicht)/.test(key)) return 'weight';
+  return `misc:${key.replace(/[^a-z0-9]+/g, '_')}`;
+}
+
 function premiumFeats(L) {
   return [
     { emoji: '📈', color: '#10B981', t: L('AI review summary', 'AI yorum özeti', 'KI-Bewertungszusammenfassung'), d: L('Reddit, YouTube & forums distilled', 'Reddit, YouTube ve forumlar özetlenir', 'Reddit, YouTube & Foren destilliert') },
@@ -352,9 +404,12 @@ export default function ProductDetail() {
     const out = [];
     const seen = new Set();
     const push = (s) => {
-      const k = String(s.label || '').toLowerCase();
-      if (!k || seen.has(k) || !s.value) return;
-      seen.add(k); out.push(s);
+      const label = String(s.label || '').trim();
+      const value = String(s.value || '').trim();
+      if (!label || !value) return;
+      const concept = heroSpecConcept(label, value);
+      if (!concept || seen.has(concept)) return;
+      seen.add(concept); out.push({ ...s, label, value });
     };
     chips.forEach((c) => push({ key: c.labelKey, icon: SPEC_EMOJI[c.labelKey] || '•', value: c.value, label: t(c.labelKey) }));
     bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {

@@ -118,6 +118,126 @@ function _extractSocketTokens(pb) {
   return Array.from(tokens);
 }
 
+function _flattenBrowseSpecs(pb) {
+  const flat = {};
+  const add = (value) => {
+    if (!value || typeof value !== 'object') return;
+    Object.entries(value).forEach(([key, item]) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        add(item);
+      } else if (item !== null && item !== undefined) {
+        flat[String(key)] = String(item);
+      }
+    });
+  };
+  add(pb?.specs || {});
+  add(pb?.keySpecs || {});
+  add(pb?.specSections || {});
+  return flat;
+}
+
+function _normScreenKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _isScreenSizeSpecKey(key) {
+  const normalized = _normScreenKey(key);
+  if (!normalized) return false;
+  if (/(width|height|genis|en\b|boy\b|area|alani|cm2|cm 2|m2|m 2|ratio|oran|displayport|usb|thunderbolt)/.test(normalized)) return false;
+  const aliases = [
+    'screen size',
+    'display size',
+    'display diagonal',
+    'screen diagonal',
+    'diagonal',
+    'ekran boyutu',
+    'display boyutu',
+    'bildschirmgrosse',
+    'bildschirmgroesse',
+    'bildschirmdiagonale',
+  ];
+  if (aliases.includes(normalized)) return true;
+  return aliases.some((alias) =>
+    normalized.startsWith(`${alias} `) &&
+    /\b(in|inc|inch|zoll|cm|diagonal|diagonale)\b/.test(normalized.slice(alias.length + 1))
+  );
+}
+
+function _numberFromText(value) {
+  const match = String(value || '').match(/(\d+(?:[.,]\d+)?)/);
+  return match ? parseFloat(match[1].replace(',', '.')) : null;
+}
+
+function _screenSizeNumber(value, allowUnitless = false) {
+  const raw = String(value || '').trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return null;
+  if (/(cm²|cm2|m²|m2|mm\b|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd\/m|display\s*port|usb|thunderbolt|%|x\s*\d)/i.test(lower)) return null;
+  const number = _numberFromText(raw);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (/(inch|inç|zoll|"|″|\d+(?:[.,]\d+)?\s*in\b)/i.test(raw)) {
+    return number >= 1 && number <= 120 ? number : null;
+  }
+  if (/\bcm\b/i.test(raw)) {
+    const inches = number / 2.54;
+    return inches >= 1 && inches <= 120 ? Math.round(inches * 10) / 10 : null;
+  }
+  return allowUnitless && number >= 1 && number <= 120 ? number : null;
+}
+
+function _firstSpecValue(flat, aliases) {
+  const normalizedAliases = aliases.map(_normScreenKey);
+  for (const [key, value] of Object.entries(flat || {})) {
+    const normalizedKey = _normScreenKey(key);
+    if (normalizedAliases.includes(normalizedKey)) return value;
+  }
+  return '';
+}
+
+function _weightKg(value) {
+  const number = _numberFromText(value);
+  if (!Number.isFinite(number)) return undefined;
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('kg')) return number;
+  if (/\bg\b/.test(normalized)) return number / 1000;
+  return number;
+}
+
+function _extractBrowseNumericFields(pb) {
+  const flat = _flattenBrowseSpecs(pb);
+  let screenSizeValue;
+  for (const [key, value] of Object.entries(flat)) {
+    if (!_isScreenSizeSpecKey(key)) continue;
+    const parsed = _screenSizeNumber(value, true);
+    if (parsed !== null) { screenSizeValue = parsed; break; }
+  }
+  const battery = _numberFromText(_firstSpecValue(flat, [
+    'Battery Capacity',
+    'battery capacity',
+    'Battery Capacity (Typical)',
+    'Batarya Kapasitesi',
+    'Batarya Kapasitesi (Tipik)',
+    'Pil Kapasitesi',
+  ]));
+  const weightValueKg = _weightKg(_firstSpecValue(flat, ['Weight', 'Ağırlık', 'Agirlik']));
+  return {
+    ...(screenSizeValue != null ? { screenSizeValue } : {}),
+    ...(battery != null ? { batteryCapacityValue: Math.round(battery) } : {}),
+    ...(weightValueKg != null ? { weightValueKg } : {}),
+  };
+}
+
 function tsBuildDoc(pb) {
   const tsDate = (value) => {
     const t = value ? new Date(value).getTime() : 0;
@@ -133,6 +253,7 @@ function tsBuildDoc(pb) {
     affiliateLinks: pb.affiliateLinks || {},
     affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
   };
+  const browseNumericFields = _extractBrowseNumericFields(pb);
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -153,6 +274,7 @@ function tsBuildDoc(pb) {
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
     filterTokens: _extractSocketTokens(pb),
+    ...browseNumericFields,
     _raw: JSON.stringify(raw),
   };
 }

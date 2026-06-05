@@ -57,6 +57,68 @@ function _findBrowseSpecValues(keys, flat) {
   return out;
 }
 function _num(v) { const m = String(v || '').match(/(\d+(?:[.,]\d+)?)/); return m ? parseFloat(m[1].replace(',', '.')) : null; }
+function _normScreenKey(v) {
+  return String(v || '')
+    .toLowerCase()
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function _isScreenSizeSpecKey(key) {
+  const n = _normScreenKey(key);
+  if (!n) return false;
+  if (/(width|height|genis|en\b|boy\b|area|alani|cm2|cm 2|m2|m 2|ratio|oran|displayport|usb|thunderbolt)/.test(n)) return false;
+  const aliases = [
+    'screen size',
+    'display size',
+    'display diagonal',
+    'screen diagonal',
+    'diagonal',
+    'ekran boyutu',
+    'display boyutu',
+    'bildschirmgrosse',
+    'bildschirmgroesse',
+    'bildschirmdiagonale',
+  ];
+  if (aliases.includes(n)) return true;
+  return aliases.some((alias) =>
+    n.startsWith(`${alias} `) &&
+    /\b(in|inc|inch|zoll|cm|diagonal|diagonale)\b/.test(n.slice(alias.length + 1))
+  );
+}
+function _screenSizeNumber(value, allowUnitless = false) {
+  const raw = String(value || '').trim();
+  const v = raw.toLowerCase();
+  if (!v) return null;
+  if (/(cm²|cm2|m²|m2|mm\b|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd\/m|display\s*port|usb|thunderbolt|%|x\s*\d)/i.test(v)) return null;
+  const m = raw.match(/(\d+(?:[.,]\d+)?)/);
+  if (!m) return null;
+  const num = parseFloat(m[1].replace(',', '.'));
+  if (!Number.isFinite(num) || num <= 0) return null;
+  if (/(inch|inç|zoll|"|″|\d+(?:[.,]\d+)?\s*in\b)/i.test(raw)) {
+    return num >= 1 && num <= 120 ? num : null;
+  }
+  if (/\bcm\b/i.test(raw)) {
+    const inches = num / 2.54;
+    return inches >= 1 && inches <= 120 ? Math.round(inches * 10) / 10 : null;
+  }
+  return allowUnitless && num >= 1 && num <= 120 ? num : null;
+}
+function _screenSizeFromFlat(flat) {
+  for (const [key, value] of Object.entries(flat || {})) {
+    if (!_isScreenSizeSpecKey(key)) continue;
+    const parsed = _screenSizeNumber(value, true);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
 function _bool(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['no', 'false', 'hayir', 'yok', 'n a', '-'].includes(n)) return false; return true; }
 function _storageToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('2 tb') || n.includes('2tb')) return '2_tb'; if (n.includes('1 tb') || n.includes('1tb')) return '1_tb'; const x = _num(v); return x === null ? null : Math.round(x) + '_gb'; }
 function _osToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('chrome os') || n.includes('chromeos')) return 'chromeos'; if (n.includes('ipad os') || n.includes('ipados')) return 'ipados'; if (n.includes('mac os') || n.includes('macos') || n.includes('os x')) return 'macos'; if (n.includes('windows')) return 'windows'; if (n.includes('android')) return 'android'; if (n.includes('linux')) return 'linux'; if (n.includes('ios') || n.includes('iphone os')) return 'ios'; return null; }
@@ -88,7 +150,7 @@ function extractBrowse(pb) {
   _connTokens(first(['Connectivity', 'Connection Type', '4G', '5G', 'Wi-Fi', 'Bağlantı'])).forEach((tk) => addT('connectivity:' + tk));
   [['five_g', ['5G', '5G Desteği']], ['nfc', ['NFC']], ['wireless_charging', ['Wireless Charging', 'Kablosuz Şarj']], ['fast_charging', ['Fast Charging', 'Hızlı Şarj']], ['fingerprint', ['Fingerprint Reader', 'fingerprint', 'Parmak İzi']], ['water_resistance', ['Water Resistance', 'Suya Dayanıklılık']]].forEach(([tok, keys]) => { if (_bool(first(keys)) === true) addT(tok + ':true'); });
 
-  const screen = _num(first(['Screen Size', 'screen size'])) || _num(first(['Display Size', 'Ekran Boyutu']));
+  const screen = _screenSizeFromFlat(flat);
   const battery = _num(first(['Battery Capacity', 'Battery Capacity (Typical)', 'Batarya Kapasitesi', 'Batarya Kapasitesi (Tipik)']));
   return {
     tokens,
@@ -107,7 +169,7 @@ async function* listProducts() {
   for (const cat of cats) {
     let page = 1;
     for (;;) {
-      const url = `${TS_URL}/collections/products/documents/search?q=*&query_by=name&filter_by=${encodeURIComponent('category:=`' + cat + '`')}&include_fields=id,_raw&per_page=250&page=${page}`;
+      const url = `${TS_URL}/collections/products/documents/search?q=*&query_by=name&filter_by=${encodeURIComponent('category:=`' + cat + '`')}&include_fields=id,_raw,screenSizeValue,batteryCapacityValue,weightValueKg,filterTokens&per_page=250&page=${page}`;
       let data; try { const r = await fetch(url, { headers: HDR, signal: AbortSignal.timeout(30000) }); if (!r.ok) break; data = await r.json(); } catch { break; }
       const hits = data?.hits || [];
       for (const h of hits) yield h.document;
@@ -131,19 +193,34 @@ async function proc(doc) {
   stats.scanned++;
   try {
     const b = extractBrowse(raw);
-    const prev = Array.isArray(raw.filterTokens) ? raw.filterTokens : [];
-    // Only write when we actually produced more/different tokens.
-    if (b.tokens.length <= prev.length && b.tokens.every((t) => prev.includes(t))) return;
+    const prev = Array.isArray(doc.filterTokens)
+      ? doc.filterTokens
+      : (Array.isArray(raw.filterTokens) ? raw.filterTokens : []);
+    const tokensChanged = b.tokens.length !== prev.length || b.tokens.some((t) => !prev.includes(t));
+    const prevScreen = Number(doc.screenSizeValue);
+    const nextScreen = b.screenSizeValue != null
+      ? b.screenSizeValue
+      : (Number.isFinite(prevScreen) && prevScreen > 120 ? 0 : undefined);
+    const screenChanged = nextScreen !== undefined &&
+      (!Number.isFinite(prevScreen) || Math.abs(prevScreen - nextScreen) > 0.05);
+    const prevBattery = Number(doc.batteryCapacityValue);
+    const batteryChanged = b.batteryCapacityValue != null &&
+      (!Number.isFinite(prevBattery) || Math.round(prevBattery) !== b.batteryCapacityValue);
+    const prevWeight = Number(doc.weightValueKg);
+    const weightChanged = b.weightValueKg != null &&
+      (!Number.isFinite(prevWeight) || Math.abs(prevWeight - b.weightValueKg) > 0.001);
+    if (!tokensChanged && !screenChanged && !batteryChanged && !weightChanged) return;
     stats.tokensAdded += Math.max(0, b.tokens.length - prev.length);
     if (!DRY) {
       raw.filterTokens = b.tokens;
-      await tsUpdate(doc.id, {
-        filterTokens: b.tokens,
-        ...(b.screenSizeValue != null ? { screenSizeValue: b.screenSizeValue } : {}),
+      const fields = {
+        ...(tokensChanged ? { filterTokens: b.tokens } : {}),
+        ...(nextScreen !== undefined ? { screenSizeValue: nextScreen } : {}),
         ...(b.batteryCapacityValue != null ? { batteryCapacityValue: b.batteryCapacityValue } : {}),
         ...(b.weightValueKg != null ? { weightValueKg: b.weightValueKg } : {}),
         _raw: JSON.stringify(raw),
-      });
+      };
+      await tsUpdate(doc.id, fields);
     }
     stats.updated++;
     if (stats.updated % 200 === 0) console.log(`  … updated ${stats.updated} (scanned ${stats.scanned}, +${stats.tokensAdded} tokens)`);

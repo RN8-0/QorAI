@@ -95,16 +95,13 @@ class ProductEntity extends Equatable {
   /// The primary card image must stay first; otherwise detail pages can open on
   /// a marketing/gallery image instead of the clean product cutout.
   List<String> get allImages {
-    final source = <String>[
-      if (imageURL.isNotEmpty) imageURL,
-      ...images,
-    ];
+    final source = <String>[if (imageURL.isNotEmpty) imageURL, ...images];
     final seen = <String>{};
     final out = <String>[];
     for (final raw in source) {
       final cleaned = _cleanProductImage(raw);
       if (cleaned.isEmpty) continue;
-      if (!seen.add(cleaned.toLowerCase())) continue;
+      if (!seen.add(_imageIdentityKey(cleaned))) continue;
       out.add(cleaned);
     }
     return out;
@@ -126,6 +123,13 @@ class ProductEntity extends Equatable {
       RegExp(r'(resim\.epey\.com/[^/]+/)[stc]_'),
       r'$1b_',
     );
+  }
+
+  static String _imageIdentityKey(String raw) {
+    var key = raw.trim().toLowerCase().split(RegExp(r'[?#]')).first;
+    key = key.replaceFirst(RegExp(r'(resim\.epey\.com/[^/]+/)[a-z]_'), r'$1');
+    key = key.replaceFirst(RegExp(r'-(?:k|s|m|t|c|l|n)\.webp$'), '.webp');
+    return key;
   }
 
   String nameForLanguage(String languageCode) {

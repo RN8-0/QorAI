@@ -74,13 +74,23 @@ function imgSlug(url) {
   const m = String(url || '').match(/resim\.epey\.com\/\d+\/(?:[a-z]_)?(.+?)\.(?:jpe?g|png|webp|avif)$/i);
   return m ? m[1].toLowerCase().replace(/-(?:\d+|buyuk|big|on|arka|yan|alt|ust)$/i, '') : '';
 }
+function imgFolder(url) {
+  const m = String(url || '').match(/resim\.epey\.com\/(\d+)\//i);
+  return m ? m[1] : '';
+}
 function productSlugOf(sourceUrl, heroUrl) {
   const m = String(sourceUrl || '').match(/\/([^/]+?)(?:-resimleri)?\.html$/i);
   if (m && m[1]) return m[1].toLowerCase().replace(/-\d+$/i, '');
   return imgSlug(heroUrl || '');
 }
-function belongsToProduct(imgUrl, prodSlug) {
+function productFolderOf(heroUrl, existing = []) {
+  return imgFolder(heroUrl || '') || existing.map(imgFolder).find(Boolean) || '';
+}
+function belongsToProduct(imgUrl, prodSlug, prodFolder = '') {
   if (!/resim\.epey\.com/i.test(imgUrl)) return true;
+  if (prodFolder && imgFolder(imgUrl) && imgFolder(imgUrl) !== prodFolder) {
+    return false;
+  }
   const s = imgSlug(imgUrl);
   if (!s || !prodSlug) return false;
   const short = s.length <= prodSlug.length ? s : prodSlug;
@@ -228,10 +238,11 @@ async function processDoc(doc) {
   stats.scanned++;
   try {
     const prodSlug = productSlugOf(sourceUrl, raw.imageUrl || raw.imageURL);
-    const gallery = (await galleryImagesFor(sourceUrl)).filter((u) => belongsToProduct(u, prodSlug));
+    const prodFolder = productFolderOf(raw.imageUrl || raw.imageURL, existing);
+    const gallery = (await galleryImagesFor(sourceUrl)).filter((u) => belongsToProduct(u, prodSlug, prodFolder));
     if (!gallery.length) return;
     // Also drop any stray cross-product images already in the existing set.
-    const cleanExisting = existing.filter((u) => belongsToProduct(u, prodSlug));
+    const cleanExisting = existing.filter((u) => belongsToProduct(u, prodSlug, prodFolder));
     const seen = new Set(cleanExisting.map(epeyImageKey));
     const merged = [...cleanExisting];
     for (const img of gallery) { const k = epeyImageKey(img); if (!seen.has(k)) { seen.add(k); merged.push(img); } if (merged.length >= MAX_IMAGES) break; }

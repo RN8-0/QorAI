@@ -46,11 +46,20 @@ function imgSlug(url) {
   if (!m) return '';
   return m[1].toLowerCase().replace(/-(?:\d+|buyuk|big|on|arka|yan|alt|ust)$/i, '');
 }
+function imgFolder(url) {
+  const m = String(url || '').match(/resim\.epey\.com\/(\d+)\//i);
+  return m ? m[1] : '';
+}
 function productSlug(raw) {
   const su = String(raw.sourceUrl || '');
   const m = su.match(/\/([^/]+?)(?:-resimleri)?\.html$/i);
   if (m && m[1]) return m[1].toLowerCase().replace(/-(?:\d+)$/i, '');
   return imgSlug(raw.imageUrl || raw.imageURL || '');
+}
+function productFolder(raw, imgs) {
+  return imgFolder(raw.imageUrl || raw.imageURL || '') ||
+    (imgs || []).map(imgFolder).find(Boolean) ||
+    '';
 }
 function sharePrefix(a, b) {
   if (!a || !b) return false;
@@ -61,12 +70,30 @@ function sharePrefix(a, b) {
   return short.length >= 5 && long.startsWith(short);
 }
 function isEpey(u) { return /resim\.epey\.com/i.test(String(u || '')); }
+function imageKey(url) {
+  return String(url || '').toLowerCase()
+    .replace(/\/[a-z]_([^/]+)$/i, '/$1')
+    .replace(/\.(jpe?g|png|webp|avif)$/i, '');
+}
 
 function cleanImages(raw) {
   const slug = productSlug(raw);
   const imgs = (Array.isArray(raw.images) ? raw.images : []).filter(Boolean);
   if (!slug) return imgs; // can't tell → leave alone
-  const kept = imgs.filter((u) => (isEpey(u) ? sharePrefix(imgSlug(u), slug) : true));
+  const folder = productFolder(raw, imgs);
+  const kept = [];
+  const seen = new Set();
+  for (const u of imgs) {
+    if (isEpey(u)) {
+      const f = imgFolder(u);
+      if (folder && f && f !== folder) continue;
+      if (!folder && !sharePrefix(imgSlug(u), slug)) continue;
+    }
+    const key = imageKey(u);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    kept.push(u);
+  }
   // Safety net: never strip a product down to nothing — if the filter killed
   // everything (bad slug), keep the original hero image at least.
   if (kept.length === 0) {

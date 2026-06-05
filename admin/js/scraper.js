@@ -7058,6 +7058,9 @@ function _epeyImageTier(u) {
   const m = String(u).match(/\/([a-z])_[^/]+\.(?:jpe?g|png|webp|avif)$/i);
   return m ? m[1].toLowerCase() : 'z';
 }
+function _epeyImageFolder(u) {
+  return (String(u || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';
+}
 
 function extractImages(doc, productSlug = '') {
   if (typeof doc === 'string') doc = parseHTML(doc);
@@ -7065,15 +7068,19 @@ function extractImages(doc, productSlug = '') {
   // A Map preserves first-seen order, so the og:image / first gallery thumb
   // stays the hero image.
   const byKey = new Map(); // key -> { url, rank }
-  const consider = (raw) => {
+  let primaryFolder = '';
+  const consider = (raw, { strictFolder = false } = {}) => {
     const u = normalizeEpeyImageUrl(raw);
     if (!u) return;
+    const folder = _epeyImageFolder(u);
+    if (strictFolder && primaryFolder && folder && folder !== primaryFolder) return;
     const key = _epeyImageKey(u);
     const rank = _EPEY_TIER_RANK[_epeyImageTier(u)] ?? 9;
     const prev = byKey.get(key);
     if (!prev || rank < prev.rank) {
       // Keep the original insertion slot when upgrading the tier.
       byKey.set(key, { url: u, rank });
+      if (!primaryFolder && folder) primaryFolder = folder;
     }
   };
 
@@ -7083,14 +7090,14 @@ function extractImages(doc, productSlug = '') {
   doc.querySelectorAll('#resimBuyuk img, #resimBuyuk a, #resimk img, #resimk a, .galerim img, .galerik img, .bresim, [id^="rtab"] img, [id^="modal-galeri"] img, a[href*="-resimleri.html"]').forEach(el => {
     for (const attr of ['data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-big', 'data-full', 'data-image', 'data-url', 'src', 'href']) {
       const val = el.getAttribute(attr);
-      if (val && /resim\.epey\.com/i.test(val)) consider(val);
+      if (val && /resim\.epey\.com/i.test(val)) consider(val, { strictFolder: true });
     }
     const style = el.getAttribute('style') || '';
     const sm = style.match(/url\((['"]?)([^'")]+resim\.epey\.com[^'")]+)\1\)/i);
-    if (sm) consider(sm[2]);
+    if (sm) consider(sm[2], { strictFolder: true });
     const onclick = el.getAttribute('onclick') || '';
     const om = onclick.match(/['"]([^'"]*resim\.epey\.com[^'"]*)['"]/i);
-    if (om) consider(om[1]);
+    if (om) consider(om[1], { strictFolder: true });
   });
 
   // Some Epey gallery pages keep the extra product photos in inline JS or
@@ -7111,7 +7118,6 @@ function extractImages(doc, productSlug = '') {
       const hits = slugTokens.filter(t => lower.includes(t)).length;
       return hits >= Math.min(2, slugTokens.length);
     };
-    const imageFolder = (url) => (String(url || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';
     const re = /https?:\/\/resim\.epey\.com\/[^,"'()<>\s\\]+/gi;
     const matches = [];
     let m;
@@ -7120,14 +7126,13 @@ function extractImages(doc, productSlug = '') {
     }
     for (const url of matches) {
       if (byKey.size >= MAX_IMAGES_PER_PRODUCT) break;
-      if (exactSlug && String(url).toLowerCase().includes(exactSlug)) consider(url);
+      if (exactSlug && String(url).toLowerCase().includes(exactSlug)) {
+        consider(url, { strictFolder: true });
+      }
     }
-    const allowedFolders = new Set([...byKey.values()].map(v => imageFolder(v.url)).filter(Boolean));
     for (const url of matches) {
       if (byKey.size >= MAX_IMAGES_PER_PRODUCT) break;
-      const folder = imageFolder(url);
-      if (allowedFolders.size && !allowedFolders.has(folder)) continue;
-      if (isLikelyOwnImage(url)) consider(url);
+      if (isLikelyOwnImage(url)) consider(url, { strictFolder: true });
     }
   }
 

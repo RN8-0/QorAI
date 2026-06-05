@@ -176,6 +176,76 @@ function extractFirstBrowseNumber(value) {
   return parseFloat(match[1].replace(',', '.'));
 }
 
+function normalizeScreenSizeKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isScreenSizeSpecKey(key) {
+  const normalized = normalizeScreenSizeKey(key);
+  if (!normalized) return false;
+  if (/(width|height|genis|en\b|boy\b|area|alani|cm2|cm 2|m2|m 2|ratio|oran|displayport|usb|thunderbolt)/.test(normalized)) {
+    return false;
+  }
+  const aliases = [
+    'screen size',
+    'display size',
+    'display diagonal',
+    'screen diagonal',
+    'diagonal',
+    'ekran boyutu',
+    'display boyutu',
+    'bildschirmgrosse',
+    'bildschirmgroesse',
+    'bildschirmdiagonale',
+  ];
+  if (aliases.includes(normalized)) return true;
+  return aliases.some((alias) =>
+    normalized.startsWith(`${alias} `) &&
+    /\b(in|inc|inch|zoll|cm|diagonal|diagonale)\b/.test(normalized.slice(alias.length + 1))
+  );
+}
+
+function extractScreenSizeNumber(value, allowUnitless = false) {
+  const raw = String(value || '').trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return null;
+  if (/(cm²|cm2|m²|m2|mm\b|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd\/m|display\s*port|usb|thunderbolt|%|x\s*\d)/i.test(lower)) {
+    return null;
+  }
+  const match = raw.match(/(\d+(?:[.,]\d+)?)/);
+  if (!match) return null;
+  const number = parseFloat(match[1].replace(',', '.'));
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (/(inch|inç|zoll|"|″|\d+(?:[.,]\d+)?\s*in\b)/i.test(raw)) {
+    return number >= 1 && number <= 120 ? number : null;
+  }
+  if (/\bcm\b/i.test(raw)) {
+    const inches = number / 2.54;
+    return inches >= 1 && inches <= 120 ? Math.round(inches * 10) / 10 : null;
+  }
+  return allowUnitless && number >= 1 && number <= 120 ? number : null;
+}
+
+function extractScreenSizeFromFlat(flatSpecs) {
+  for (const [key, value] of Object.entries(flatSpecs || {})) {
+    if (!isScreenSizeSpecKey(key)) continue;
+    const parsed = extractScreenSizeNumber(value, true);
+    if (parsed !== null) return parsed;
+  }
+  return undefined;
+}
+
 function extractBooleanBrowseValue(value) {
   const normalized = normalizeBrowseText(value);
   if (!normalized) return null;
@@ -512,8 +582,6 @@ function extractBrowseFilters(pb) {
     }
   });
 
-  const screenSizeValue = firstValue(['Screen Size', 'screen size']);
-  const displaySizeValue = firstValue(['Display Size', 'display size']);
   const batteryValue = firstValue([
     'Battery Capacity',
     'battery capacity',
@@ -523,9 +591,7 @@ function extractBrowseFilters(pb) {
 
   return {
     tokens,
-    screenSizeValue:
-      extractFirstBrowseNumber(screenSizeValue) ??
-      extractFirstBrowseNumber(displaySizeValue),
+    screenSizeValue: extractScreenSizeFromFlat(flat),
     batteryCapacityValue: (() => {
       const number = extractFirstBrowseNumber(batteryValue);
       return number === null ? undefined : Math.round(number);

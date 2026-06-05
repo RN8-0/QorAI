@@ -4,7 +4,7 @@
  * Repair epey.com product images in PocketBase.
  *
  *  Default (top-up) mode — needs the scraper proxy running. Fetches each
- *  product page and tops the image list up to 8 product-owned photos.
+ *  product page and tops the image list up to the product-owned gallery.
  *    node scripts/repair_epey_images.js --dry
  *    node scripts/repair_epey_images.js --limit=200 --concurrency=8
  *
@@ -19,7 +19,7 @@
 const { req } = require('../migration/pb');
 
 const PROXY_URL = process.env.SCRAPER_PROXY_URL || 'http://localhost:3456';
-const MAX_IMAGES = 8;
+const MAX_IMAGES = 40;
 
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
@@ -88,6 +88,9 @@ function imageKey(url) {
     .replace(/\/[a-z]_([^/]+)$/i, '/$1')
     .replace(/\.(jpe?g|png|webp|avif)$/i, '');
 }
+function imageFolder(url) {
+  return (String(url || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';
+}
 
 function ownImagePredicate(slug) {
   const tokens = String(slug || '')
@@ -108,7 +111,7 @@ function extractImages(html, slug) {
   const own = ownImagePredicate(slug);
   const seen = new Set();
   const images = [];
-  const imageFolder = (url) => (String(url || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';
+  let primaryFolder = '';
   const re = /https?:\/\/resim\.epey\.com\/[^,"'()<>\s\\]+/gi;
   const matches = [];
   let m;
@@ -118,20 +121,20 @@ function extractImages(html, slug) {
   }
   const exactSlug = String(slug || '').toLowerCase();
   const push = (url) => {
+    const folder = imageFolder(url);
+    if (primaryFolder && folder && folder !== primaryFolder) return;
     const key = imageKey(url);
     if (seen.has(key)) return;
     seen.add(key);
     images.push(url);
+    if (!primaryFolder && folder) primaryFolder = folder;
   };
   for (const url of matches) {
     if (images.length >= MAX_IMAGES) break;
     if (exactSlug && url.toLowerCase().includes(exactSlug)) push(url);
   }
-  const allowedFolders = new Set(images.map(imageFolder).filter(Boolean));
   for (const url of matches) {
     if (images.length >= MAX_IMAGES) break;
-    const folder = imageFolder(url);
-    if (allowedFolders.size && !allowedFolders.has(folder)) continue;
     if (own(url)) push(url);
   }
   return images;
@@ -175,11 +178,15 @@ async function processProduct(p) {
   const slug = slugFromUrl(p.sourceUrl);
   const current = p.current || [];
   const byKey = new Map();
+  const primaryFolder = imageFolder(p.imageUrl || p.imageURL || '') ||
+    current.map(imageFolder).find(Boolean) ||
+    '';
   // Seed from the existing images, normalized: junk dropped, upgraded to the
   // original master resolution. (Skipped only on a forced full re-extract.)
   if (CLEAN || !args.force) {
     for (const img of current) {
       const u = normalizeImageUrl(img);
+      if (primaryFolder && imageFolder(u) && imageFolder(u) !== primaryFolder) continue;
       if (u) byKey.set(imageKey(u), u);
     }
   }
@@ -189,6 +196,7 @@ async function processProduct(p) {
     const detailHtml = await proxyHtml(p.sourceUrl);
     for (const img of extractImages(detailHtml, slug)) {
       if (byKey.size >= MAX_IMAGES) break;
+      if (primaryFolder && imageFolder(img) && imageFolder(img) !== primaryFolder) continue;
       byKey.set(imageKey(img), img);
     }
     if (byKey.size < MAX_IMAGES) {
@@ -197,6 +205,7 @@ async function processProduct(p) {
         const galleryHtml = await proxyHtml(g, p.sourceUrl);
         for (const img of extractImages(galleryHtml, slug)) {
           if (byKey.size >= MAX_IMAGES) break;
+          if (primaryFolder && imageFolder(img) && imageFolder(img) !== primaryFolder) continue;
           byKey.set(imageKey(img), img);
         }
       }

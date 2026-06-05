@@ -954,11 +954,15 @@ function extractImages(doc /*, productSlug */) {
   );
   const imgScopes = galleryScopes.length ? Array.from(galleryScopes) : [doc];
   for (const scope of imgScopes) {
-    scope.querySelectorAll('img').forEach(img => {
-      for (const attr of ['src', 'data-src', 'data-lazy', 'data-original']) {
+    scope.querySelectorAll('img, source').forEach(img => {
+      for (const attr of ['src', 'srcset', 'data-srcset', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-full']) {
         const val = img.getAttribute(attr);
         if (val && val.includes('gzhls.at/pix')) {
-          addImg(val);
+          if (/srcset/i.test(attr)) {
+            val.split(',').forEach(part => addImg(part.trim().split(/\s+/)[0]));
+          } else {
+            addImg(val);
+          }
           break;
         }
       }
@@ -970,6 +974,16 @@ function extractImages(doc /*, productSlug */) {
     const href = a.getAttribute('href');
     if (href) addImg(href);
   });
+
+  const html = String(doc.documentElement?.innerHTML || '')
+    .replace(/\\\//g, '/')
+    .replace(/&amp;/g, '&');
+  const re = /https?:\/\/gzhls\.at\/pix\/[^,"'()<>\s\\]+/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    addImg(m[0]);
+    if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
+  }
 
   return images.slice(0, MAX_IMAGES_PER_PRODUCT);
 }

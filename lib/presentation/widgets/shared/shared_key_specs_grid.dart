@@ -5,7 +5,7 @@ import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/services/spec_translation_service.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
-/// Shows category-aware key specifications in a 3-column grid (6 or 9 cells).
+/// Shows category-aware key specifications in a compact grid.
 class SharedKeySpecsGrid extends StatelessWidget {
   final ProductEntity product;
   const SharedKeySpecsGrid({super.key, required this.product});
@@ -23,6 +23,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['OS', 'Operating System', 'İşletim Sistemi'],
       ['5G', 'Network', 'Ağ', '4.5G', 'Cellular'],
       ['Weight', 'Ağırlık'],
+      ['Resolution', 'Çözünürlük', 'Screen Resolution'],
     ],
     'tablets': [
       ['Screen Size', 'Display Size', 'Display Boyutu', 'Ekran Boyutu'],
@@ -31,6 +32,8 @@ class SharedKeySpecsGrid extends StatelessWidget {
       ['Battery', 'Battery Capacity', 'Pil'],
       ['Processor', 'Chipset', 'İşlemci', 'Processor Model'],
       ['OS', 'Operating System', 'İşletim Sistemi'],
+      ['Camera', 'Main Camera', 'Kamera', 'Camera Çözünürlük'],
+      ['Resolution', 'Çözünürlük', 'Screen Resolution'],
       ['5G', 'Network', 'Ağ', 'Cellular'],
       ['Display Technology', 'Panel', 'Ekran Teknolojisi'],
       ['Weight', 'Ağırlık'],
@@ -277,10 +280,77 @@ class SharedKeySpecsGrid extends StatelessWidget {
     return pool;
   }
 
+  static String _norm(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c');
+  }
+
+  static String _conceptForKey(String key) {
+    final k = _norm(key);
+    if (k.contains('screen size') ||
+        k.contains('display size') ||
+        k.contains('display boyutu') ||
+        k.contains('ekran boyutu')) {
+      return 'display_size';
+    }
+    if (k.contains('ram') || k.contains('memory') || k.contains('bellek')) {
+      return 'ram';
+    }
+    if (k.contains('storage') ||
+        k.contains('depolama') ||
+        k == 'rom' ||
+        k.contains('ssd')) {
+      return 'storage';
+    }
+    if (k.contains('battery') || k.contains('pil') || k.contains('batarya')) {
+      return 'battery';
+    }
+    if (k.contains('camera') || k.contains('kamera') || k.contains('mp')) {
+      return 'camera';
+    }
+    if (k.contains('processor') ||
+        k.contains('chipset') ||
+        k.contains('islemci') ||
+        k.contains('cpu')) {
+      return 'processor';
+    }
+    if (k.contains('operating') || k.contains('isletim') || k == 'os') {
+      return 'os';
+    }
+    if (k.contains('5g') ||
+        k.contains('4g') ||
+        k.contains('network') ||
+        k.contains('cellular') ||
+        k.contains('baglanti') ||
+        k.contains('ag')) {
+      return 'network';
+    }
+    if (k.contains('display technology') ||
+        k.contains('ekran teknolojisi') ||
+        k.contains('panel')) {
+      return 'display_tech';
+    }
+    if (k.contains('resolution') || k.contains('cozunurluk')) {
+      return 'resolution';
+    }
+    if (k.contains('weight') || k.contains('agirlik')) {
+      return 'weight';
+    }
+    return k.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  }
+
   MapEntry<String, String>? _findSpec(
     Map<String, String> pool,
     List<String> aliases,
     Set<String> used,
+    Set<String> usedConcepts,
   ) {
     final isScreenSizeSlot = aliases.any((alias) {
       final a = alias.toLowerCase();
@@ -293,6 +363,8 @@ class SharedKeySpecsGrid extends StatelessWidget {
       final aLower = alias.toLowerCase();
       for (final e in pool.entries) {
         if (used.contains(e.key)) continue;
+        final concept = _conceptForKey(e.key);
+        if (usedConcepts.contains(concept)) continue;
         final eLower = e.key.toLowerCase();
         if (eLower == aLower || eLower.contains(aLower)) {
           if (isScreenSizeSlot && !_looksLikeScreenSizeValue(e.value)) {
@@ -308,64 +380,86 @@ class SharedKeySpecsGrid extends StatelessWidget {
   static bool _looksLikeScreenSizeValue(String value) {
     final v = value.toLowerCase().trim();
     if (v.isEmpty) return false;
+    if (RegExp(
+      r'(cm²|cm2|m²|m2|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd/m|display\s*port|usb|thunderbolt|%|x\s*\d)',
+      caseSensitive: false,
+    ).hasMatch(v)) {
+      return false;
+    }
     final hasNumber = RegExp(r'\d').hasMatch(v);
     if (!hasNumber) return false;
-    return v.contains('inch') ||
+    final m = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(v);
+    final number = m == null
+        ? null
+        : double.tryParse(m.group(1)!.replaceAll(',', '.'));
+    if (number == null || number <= 0) return false;
+    if (v.contains('inch') ||
         v.contains('inç') ||
         v.contains('"') ||
-        v.contains('cm') ||
-        RegExp(r'\d+([.,]\d+)?\s*(in|″)').hasMatch(v);
+        RegExp(r'\d+([.,]\d+)?\s*(in|″)').hasMatch(v)) {
+      return number >= 1.0 && number <= 120.0;
+    }
+    if (v.contains('cm')) {
+      final inches = number / 2.54;
+      return inches >= 1.0 && inches <= 120.0;
+    }
+    return false;
   }
 
-  /// Collect specs: always returns a multiple of 3 (6 or 9).
+  /// Collect specs: up to 10 clean, category-aware entries.
   List<MapEntry<String, String>> collectKeySpecs() {
     final pool = _buildSpecPool();
     if (pool.isEmpty) return [];
 
     final result = <MapEntry<String, String>>[];
     final used = <String>{};
+    final usedConcepts = <String>{};
+
+    void addEntry(MapEntry<String, String> entry) {
+      result.add(entry);
+      used.add(entry.key);
+      usedConcepts.add(_conceptForKey(entry.key));
+    }
 
     final cat = _resolveCategory();
     final prioritySlots = _categoryKeys[cat];
 
     if (prioritySlots != null) {
       for (final slotAliases in prioritySlots) {
-        final found = _findSpec(pool, slotAliases, used);
+        final found = _findSpec(pool, slotAliases, used, usedConcepts);
         if (found != null) {
-          result.add(found);
-          used.add(found.key);
+          addEntry(found);
         }
-        if (result.length >= 9) break;
+        if (result.length >= 10) break;
       }
     }
 
-    if (result.length < 6) {
+    if (result.length < 10) {
       for (final e in pool.entries) {
         if (used.contains(e.key)) continue;
-        result.add(e);
-        used.add(e.key);
-        if (result.length >= 6) break;
+        final concept = _conceptForKey(e.key);
+        if (usedConcepts.contains(concept)) continue;
+        if (concept == 'display_size' && !_looksLikeScreenSizeValue(e.value)) {
+          continue;
+        }
+        addEntry(e);
+        if (result.length >= 10) break;
       }
     }
 
-    if (result.length > 6 && result.length < 9) {
+    if (result.length < 10) {
       for (final e in pool.entries) {
         if (used.contains(e.key)) continue;
-        result.add(e);
-        used.add(e.key);
-        if (result.length >= 9) break;
+        if (_conceptForKey(e.key) == 'display_size' &&
+            !_looksLikeScreenSizeValue(e.value)) {
+          continue;
+        }
+        addEntry(e);
+        if (result.length >= 10) break;
       }
     }
 
-    final target = result.length >= 7 ? 9 : (result.length >= 4 ? 6 : 3);
-    if (result.length > target) {
-      return result.sublist(0, target);
-    }
-    final remainder = result.length % 3;
-    if (remainder != 0 && result.length > 3) {
-      return result.sublist(0, result.length - remainder);
-    }
-    return result;
+    return result.take(10).toList(growable: false);
   }
 
   static void _showSpecDetail(BuildContext context, String key, String value) {
@@ -470,7 +564,8 @@ class SharedKeySpecsGrid extends StatelessWidget {
     if (specs.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final rows = (specs.length / 3).ceil();
+    const columns = 2;
+    final rows = (specs.length / columns).ceil();
     final lc = Localizations.localeOf(context).languageCode.toLowerCase();
     final title = lc == 'tr'
         ? 'Ana Özellikler'
@@ -514,11 +609,11 @@ class SharedKeySpecsGrid extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (int col = 0; col < 3; col++) ...[
+                  for (int col = 0; col < columns; col++) ...[
                     if (col > 0) const SizedBox(width: 8),
                     Expanded(
                       child: () {
-                        final idx = row * 3 + col;
+                        final idx = row * columns + col;
                         if (idx >= specs.length) return const SizedBox.shrink();
                         final entry = specs[idx];
                         return GestureDetector(
