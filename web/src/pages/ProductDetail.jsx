@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
@@ -453,14 +454,18 @@ export default function ProductDetail() {
                 )}
               </div>
             )}
-            <p className="pd-aff-disclosure pd-aff-disclosure-plain">
-              {L(
-                'Some store links may be affiliate links. This does not change the price you pay and it never affects Qor AI scores.',
-                'Bazı mağaza bağlantıları affiliate link olabilir. Ödeyeceğin fiyat değişmez ve Qor AI puanları bundan etkilenmez.',
-                'Einige Shop-Links können Affiliate-Links sein. Der Preis ändert sich dadurch nicht und Qor AI Bewertungen werden nicht beeinflusst.',
-              )}{' '}
-              <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
-            </p>
+            {/* Affiliate disclosure only belongs next to a real store link —
+                hide it when the product has no offer at all. */}
+            {(offer || offersLoading) && (
+              <p className="pd-aff-disclosure pd-aff-disclosure-plain">
+                {L(
+                  'Some store links may be affiliate links. This does not change the price you pay and it never affects Qor AI scores.',
+                  'Bazı mağaza bağlantıları affiliate link olabilir. Ödeyeceğin fiyat değişmez ve Qor AI puanları bundan etkilenmez.',
+                  'Einige Shop-Links können Affiliate-Links sein. Der Preis ändert sich dadurch nicht und Qor AI Bewertungen werden nicht beeinflusst.',
+                )}{' '}
+                <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
+              </p>
+            )}
 
           </div>
           <div className="pd-detail-pane">
@@ -561,7 +566,7 @@ export default function ProductDetail() {
         {/* REVIEWS */}
         <Reviews productId={p.id} />
       </div>
-      {lightbox && (
+      {lightbox && createPortal(
         <div className="pd-lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(false)}>
           <section className="pd-lightbox-panel" onClick={(e) => e.stopPropagation()}>
             <header className="pd-lightbox-head">
@@ -606,7 +611,8 @@ export default function ProductDetail() {
               )}
             </div>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
