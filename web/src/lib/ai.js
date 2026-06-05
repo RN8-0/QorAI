@@ -47,3 +47,44 @@ export async function askQorAi(history) {
   if (!text) throw new Error('AI boş yanıt döndü');
   return text.trim();
 }
+
+// Low-level call with a custom system instruction — used by the quiz / link /
+// subscription engines that need their own prompt and a JSON reply (mirrors the
+// app's DeepSeek _jsonRequest, but over the same Gemini proxy the web chat uses).
+export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temperature = 0.7 }) {
+  const body = {
+    model: MODEL,
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text: user }] }],
+    generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
+  };
+  const res = await fetch(AI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`AI ${res.status}`);
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('AI boş yanıt döndü');
+  return text.trim();
+}
+
+// Tolerant JSON extraction — Gemini sometimes wraps JSON in ```json fences or
+// adds a sentence before/after. Pull the first balanced object out.
+export function parseJsonLoose(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  try { return JSON.parse(t); } catch { /* fall through */ }
+  const start = t.indexOf('{');
+  const end = t.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(t.slice(start, end + 1)); } catch { /* fall through */ }
+  }
+  throw new Error('AI JSON parse failed');
+}
+
+export async function askQorAiJson({ system, user, maxOutputTokens = 4096 }) {
+  const text = await askQorAiRaw({ system, user, maxOutputTokens, temperature: 0.6 });
+  return parseJsonLoose(text);
+}

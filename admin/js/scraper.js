@@ -8467,7 +8467,19 @@ async function scrapeByUrl() {
       return;
     }
     slog(`🌐 Tekli ürün çevirisi başlıyor: ${clean.name}`, 'info');
-    await _translateProductInline(clean);
+    // Hard cap the inline translation so a dead GPU worker (8797) or a stalled
+    // DeepSeek connection can never hang a single scrape forever. On timeout we
+    // save the raw Turkish payload — the Translate tab can materialize EN/DE
+    // later — instead of leaving the product unsaved and the UI spinning.
+    try {
+      await Promise.race([
+        _translateProductInline(clean),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('inline-translate-timeout (120s)')), 120000)),
+      ]);
+    } catch (e) {
+      slog(`⚠ Tekli çeviri tamamlanamadı (${e.message}); ham TR kaydediliyor, Translate sekmesinden tamamlanabilir`, 'warn');
+    }
     try { _assertCleanEnglishPayload(clean, clean.name || clean.slug || url); } catch (_) {}
 
     if (clean.variantGroup) {

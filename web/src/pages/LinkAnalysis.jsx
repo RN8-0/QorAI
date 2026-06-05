@@ -1,30 +1,21 @@
 import { useEffect, useState } from 'react';
 import { askQorAi } from '../lib/ai';
+import { analyzeLink, generateQuiz, enhancedAnalysis } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
 import AiText from '../components/AiText.jsx';
+import QuizFlow from '../components/QuizFlow.jsx';
+import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
 const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
 
-function singlePrompt(url, lang) {
-  return (
-    "You are Qor AI's web link analysis engine.\n" +
-    `Analyze this product URL exactly: ${url}\n\n` +
-    'Rules:\n' +
-    '- Identify the exact product from the URL/domain/slug. Do not replace it with a similar product.\n' +
-    '- If the URL cannot be opened or the exact model is uncertain, state the uncertainty clearly.\n' +
-    '- Do not invent live prices. Mention that prices can change by region/store.\n' +
-    '- Explain strengths, weaknesses, who it suits, and whether the user should buy, wait or skip.\n\n' +
-    'Output with these **bold** headings: Product, Qor AI summary, Strengths, Weaknesses, Best for, Verdict. ' +
-    `Use "-" bullets. Reply ONLY in the language with ISO code: ${lang}.`
-  );
-}
-
+// Compare mode keeps the app's "identify the exact product, never substitute"
+// rule but runs as a single combined verdict (no per-link quiz).
 function comparePrompt(urls, lang) {
   return (
     "You are Qor AI's product comparison engine.\n" +
@@ -40,26 +31,124 @@ function comparePrompt(urls, lang) {
   );
 }
 
+function bandLabel(s, L) {
+  return s >= 85 ? L('Excellent match', 'Mükemmel uyum', 'Exzellent')
+    : s >= 70 ? L('Strong match', 'Güçlü uyum', 'Starke Übereinstimmung')
+      : s >= 50 ? L('Fair match', 'Orta uyum', 'Mäßig')
+        : L('Weak match', 'Zayıf uyum', 'Schwach');
+}
+
+function FactorBars({ factors }) {
+  if (!factors.length) return null;
+  return (
+    <div className="la-factors">
+      {factors.map((f) => (
+        <div className="la-factor" key={f.label}>
+          <div className="la-factor-top">
+            <span>{f.emoji} {f.label}</span>
+            <b style={{ color: techColor(f.score) }}>{Math.round(f.score)}</b>
+          </div>
+          <div className="la-factor-bar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EnhancedResult({ data, L }) {
+  const score = Math.round(data.enhancedScore || 0);
+  return (
+    <div className="la-result fade-up">
+      <div className="la-result-head">
+        <span>{L('Qor AI Analysis', 'Qor AI Analizi', 'Qor AI Analyse')}</span>
+        <span className="la-result-title">{data.base.title}</span>
+      </div>
+      <div className="la-result-body">
+        <div className="la-score-row">
+          <Gauge value={score} size={92} stroke={8} color={techColor(score)} fontSize={26} />
+          <div>
+            <div className="la-score-band" style={{ color: techColor(score) }}>{bandLabel(score, L)}</div>
+            <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
+            {data.base.siteName && <div className="la-score-site">{data.base.siteName}</div>}
+          </div>
+        </div>
+
+        <FactorBars factors={data.factors} />
+
+        {data.verdict && (
+          <section className="la-sec">
+            <h4>📋 {L('Verdict', 'Değerlendirme', 'Fazit')}</h4>
+            <div className="la-prose"><AiText text={data.verdict} /></div>
+          </section>
+        )}
+
+        {(data.prosForUser.length > 0 || data.consForUser.length > 0) && (
+          <div className="la-poncons">
+            {data.prosForUser.length > 0 && (
+              <div className="la-pc la-pc-pro">
+                <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
+                <ul>{data.prosForUser.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              </div>
+            )}
+            {data.consForUser.length > 0 && (
+              <div className="la-pc la-pc-con">
+                <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
+                <ul>{data.consForUser.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {data.alternatives.length > 0 && (
+          <section className="la-sec">
+            <h4>🔀 {L('Alternatives', 'Alternatifler', 'Alternativen')}</h4>
+            <div className="la-alts">{data.alternatives.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
+          </section>
+        )}
+
+        {data.personaAnalysis && (
+          <section className="la-sec">
+            <h4>👤 {L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}{data.personaScore ? ` · ${Math.round(data.personaScore)}` : ''}</h4>
+            <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
+          </section>
+        )}
+
+        {data.communityAnalysis && (
+          <section className="la-sec">
+            <h4>🌐 {L('Community reception', 'Topluluk yorumu', 'Community-Echo')}{data.communityScore ? ` · ${Math.round(data.communityScore)}` : ''}</h4>
+            <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
+          </section>
+        )}
+
+        {data.overallVerdict && (
+          <section className="la-sec la-sec-final">
+            <h4>🏁 {L('Final verdict', 'Son karar', 'Endgültiges Fazit')}</h4>
+            <div className="la-prose"><AiText text={data.overallVerdict} /></div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
+
   const [urls, setUrls] = useState(['']);
   const [mode, setMode] = useState('single');
-  const [result, setResult] = useState('');
-  const [busy, setBusy] = useState(false);
+  // phase: input | identifying | quiz | analyzing | result
+  const [phase, setPhase] = useState('input');
+  const [base, setBase] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [enhanced, setEnhanced] = useState(null);
+  const [compareText, setCompareText] = useState('');
   const [err, setErr] = useState('');
 
-  function setUrl(i, val) {
-    setUrls((u) => u.map((x, idx) => (idx === i ? val : x)));
-  }
-
-  function addUrl() {
-    setMode('compare');
-    setUrls((u) => (u.length < MAX_LINKS ? [...u, ''] : u));
-  }
-
+  function setUrl(i, val) { setUrls((u) => u.map((x, idx) => (idx === i ? val : x))); }
+  function addUrl() { setMode('compare'); setUrls((u) => (u.length < MAX_LINKS ? [...u, ''] : u)); }
   function removeUrl(i) {
     setUrls((u) => {
       const next = u.filter((_, idx) => idx !== i);
@@ -68,24 +157,60 @@ export default function LinkAnalysis() {
     });
   }
 
-  async function runAnalysis(list) {
-    setErr('');
-    setBusy(true);
-    setResult('');
-    trackEvent('link_analysis', { count: list.length });
+  function resetFlow() {
+    setPhase('input'); setBase(null); setQuestions([]); setEnhanced(null); setCompareText(''); setErr('');
+  }
+
+  // ── Single-link flow: identify → quiz → enhanced analysis ────────
+  async function startSingle(url) {
+    setErr(''); setEnhanced(null); setCompareText('');
+    setPhase('identifying');
+    trackEvent('link_analysis', { count: 1 });
     try {
-      const prompt = list.length > 1 ? comparePrompt(list, lang) : singlePrompt(list[0], lang);
-      const text = await askQorAi([{ role: 'user', text: prompt }]);
-      setResult(text);
-      saveLinkAnalysisHistory({ urls: list, analysis: text, type: list.length > 1 ? 'compare' : 'single' });
+      const result = await analyzeLink(url, lang);
+      setBase(result);
+      if (result.isProduct === false && !result.title) {
+        setErr(t('la.errFail')); setPhase('input'); return;
+      }
+      let qs = [];
+      try {
+        qs = await generateQuiz({ category: result.category, productTitle: result.title, url, language: lang });
+      } catch { qs = []; }
+      if (qs.length) { setQuestions(qs); setPhase('quiz'); }
+      else { await runEnhanced(result, []); } // no quiz available → analyze directly
     } catch {
-      setErr(t('la.errFail'));
-    } finally {
-      setBusy(false);
+      setErr(t('la.errFail')); setPhase('input');
     }
   }
 
-  async function analyze(e) {
+  async function runEnhanced(baseResult, answers) {
+    setPhase('analyzing');
+    try {
+      const data = await enhancedAnalysis({ base: baseResult, answers, language: lang });
+      setEnhanced(data);
+      setPhase('result');
+      saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single' });
+    } catch {
+      setErr(t('la.errFail')); setPhase('quiz');
+    }
+  }
+
+  // ── Compare flow: combined verdict, no quiz ──────────────────────
+  async function runCompare(list) {
+    setErr(''); setEnhanced(null); setCompareText('');
+    setPhase('analyzing');
+    trackEvent('link_analysis', { count: list.length });
+    try {
+      const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang) }]);
+      setCompareText(text);
+      setPhase('result');
+      saveLinkAnalysisHistory({ urls: list, analysis: text, type: 'compare' });
+    } catch {
+      setErr(t('la.errFail')); setPhase('input');
+    }
+  }
+
+  function analyze(e) {
     e.preventDefault();
     const list = urls.map((u) => u.trim()).filter(Boolean).slice(0, MAX_LINKS);
     if (!list.length) return;
@@ -96,7 +221,8 @@ export default function LinkAnalysis() {
       openAuth();
       return;
     }
-    await runAnalysis(list);
+    if (list.length > 1) runCompare(list);
+    else startSingle(list[0]);
   }
 
   useEffect(() => {
@@ -110,13 +236,12 @@ export default function LinkAnalysis() {
       if (!list.length) return;
       setUrls(list);
       setMode(list.length > 1 ? 'compare' : 'single');
-      runAnalysis(list);
-    } catch {
-      // Ignore stale pending payloads.
-    }
+      if (list.length > 1) runCompare(list); else startSingle(list[0]);
+    } catch { /* ignore stale pending payloads */ }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filled = urls.filter((u) => u.trim()).length;
+  const showForm = phase === 'input';
 
   return (
     <div className="container la">
@@ -126,62 +251,97 @@ export default function LinkAnalysis() {
         <p>{t('la.subtitle')}</p>
       </div>
 
-      <div className="la-mode" role="tablist" aria-label="Link mode">
-        <button type="button" className={mode === 'single' ? 'active' : ''}
-          onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
-          {L('Single product', 'Tek ürün', 'Ein Produkt')}
-        </button>
-        <button type="button" className={mode === 'compare' ? 'active' : ''}
-          onClick={() => { setMode('compare'); setUrls((u) => (u.length > 1 ? u : [...u, ''])); }}>
-          {L('Compare links', 'Linkleri karşılaştır', 'Links vergleichen')}
-        </button>
-      </div>
+      {showForm && (
+        <>
+          <div className="la-mode" role="tablist" aria-label="Link mode">
+            <button type="button" className={mode === 'single' ? 'active' : ''}
+              onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
+              {L('Single product', 'Tek ürün', 'Ein Produkt')}
+            </button>
+            <button type="button" className={mode === 'compare' ? 'active' : ''}
+              onClick={() => { setMode('compare'); setUrls((u) => (u.length > 1 ? u : [...u, ''])); }}>
+              {L('Compare links', 'Linkleri karşılaştır', 'Links vergleichen')}
+            </button>
+          </div>
 
-      <form className="la-form" onSubmit={analyze}>
-        <div className="la-form-head">
-          <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
-          <span>{mode === 'compare' ? t('la.hintMulti') : L('Qor AI will identify the exact product before reviewing it.', 'Qor AI yorumlamadan önce ürünü kesin olarak tanımlar.', 'Qor AI erkennt zuerst das exakte Produkt.')}</span>
-        </div>
-        <div className="la-rows">
-          {urls.map((url, i) => (
-            <div className="la-row" key={i}>
-              <span className="la-row-no">{i + 1}</span>
-              <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
-                placeholder={t('la.placeholder')} />
-              {urls.length > 1 && (
-                <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
-              )}
+          <form className="la-form" onSubmit={analyze}>
+            <div className="la-form-head">
+              <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
+              <span>{mode === 'compare' ? t('la.hintMulti') : L('Qor AI identifies the exact product, then a short quiz tunes the analysis to you.', 'Qor AI ürünü kesin tanır, ardından kısa bir quiz analizi sana göre ayarlar.', 'Qor AI erkennt das exakte Produkt, dann personalisiert ein kurzes Quiz die Analyse.')}</span>
             </div>
-          ))}
-        </div>
+            <div className="la-rows">
+              {urls.map((url, i) => (
+                <div className="la-row" key={i}>
+                  <span className="la-row-no">{i + 1}</span>
+                  <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
+                    placeholder={t('la.placeholder')} />
+                  {urls.length > 1 && (
+                    <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
+                  )}
+                </div>
+              ))}
+            </div>
 
-        <div className="la-actions">
-          {mode === 'compare' && urls.length < MAX_LINKS && (
-            <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
-          )}
-          {mode === 'single' && (
-            <button type="button" className="la-add" onClick={addUrl}>{L('Switch to compare', 'Karşılaştırmaya geç', 'Zum Vergleich wechseln')}</button>
-          )}
-          <button type="submit" className="btn btn-primary la-go" disabled={busy}>
-            {busy ? t('la.analyzing')
-              : filled > 1 ? t('la.analyzeMany', { n: filled }) : t('la.analyzeOne')}
-          </button>
-        </div>
-      </form>
+            <div className="la-actions">
+              {mode === 'compare' && urls.length < MAX_LINKS && (
+                <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
+              )}
+              {mode === 'single' && (
+                <button type="button" className="la-add" onClick={addUrl}>{L('Switch to compare', 'Karşılaştırmaya geç', 'Zum Vergleich wechseln')}</button>
+              )}
+              <button type="submit" className="btn btn-primary la-go">
+                {filled > 1 ? t('la.analyzeMany', { n: filled }) : t('la.analyzeOne')}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
 
       {err && <div className="la-err">{err}</div>}
 
-      {busy && (
+      {(phase === 'identifying' || phase === 'analyzing') && (
         <div className="la-loading">
           <div className="spinner" />
-          <span>{t('la.loading')}</span>
+          <span>{phase === 'identifying'
+            ? L('Identifying the product…', 'Ürün tanımlanıyor…', 'Produkt wird erkannt…')
+            : t('la.loading')}</span>
         </div>
       )}
 
-      {result && (
+      {phase === 'quiz' && base && (
+        <>
+          <div className="la-identified">
+            <span className="la-identified-tag">{L('Product', 'Ürün', 'Produkt')}</span>
+            <strong>{base.title}</strong>
+            {base.category && <span className="la-identified-cat">{base.category}</span>}
+          </div>
+          <QuizFlow
+            questions={questions}
+            busy={false}
+            title={L('Tune the analysis', 'Analizi kişiselleştir', 'Analyse anpassen')}
+            subtitle={L('Tell Qor AI how you would use it for a match score made for you.',
+              'Qor AI’ya nasıl kullanacağını söyle, sana özel uyum skoru çıksın.',
+              'Sag Qor AI, wie du es nutzt — für einen Score, der zu dir passt.')}
+            onSubmit={(answers) => runEnhanced(base, answers)}
+            onSkip={() => runEnhanced(base, [])}
+          />
+        </>
+      )}
+
+      {phase === 'result' && enhanced && <EnhancedResult data={enhanced} L={L} />}
+
+      {phase === 'result' && compareText && (
         <div className="la-result fade-up">
-          <div className="la-result-head">{t('la.resultHead')}</div>
-          <div className="la-result-body"><AiText text={result} /></div>
+          <div className="la-result-head"><span>{t('la.resultHead')}</span></div>
+          <div className="la-result-body"><AiText text={compareText} /></div>
+        </div>
+      )}
+
+      {phase === 'result' && (
+        <div className="la-again">
+          <button type="button" className="btn btn-ghost" onClick={resetFlow}>
+            {L('Analyze another link', 'Başka bir link analiz et', 'Weiteren Link analysieren')}
+          </button>
         </div>
       )}
     </div>
