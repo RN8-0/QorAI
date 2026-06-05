@@ -5,7 +5,7 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, keySpecChips } from '../lib/format';
+import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
@@ -342,6 +342,20 @@ export default function ProductDetail() {
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
   const displayName = localizedProductName(p, lang);
 
+  // Hero key-spec chips: prefer the structured screen/RAM/storage/battery chips;
+  // when a product has none (PC parts, accessories…), fall back to the first
+  // rows of its key-spec sheet so the hero is never empty.
+  const heroSpecs = chips.length
+    ? chips.map((c) => ({ key: c.labelKey, icon: SPEC_EMOJI[c.labelKey] || '•', value: c.value, label: t(c.labelKey) }))
+    : bricks.flatMap((br) => br.rows || [])
+        .map(([k, v]) => ({ key: k, icon: sectionIcon(k), value: trSpec(String(v).split(/\r?\n/)[0].trim(), lang), label: trSpec(k, lang).replace(/\s*:\s*$/, '') }))
+        // Headline chips should read like epey's: measurable values only. Drop
+        // booleans (Var/Yok), sponsored/ad rows and anything without a number.
+        .filter((s) => s.value && s.label && /\d/.test(s.value) && s.value.length <= 24
+          && !/sponsor|reklam|advert/i.test(`${s.label} ${s.value}`))
+        .filter((s, i, a) => a.findIndex((x) => x.label.toLowerCase() === s.label.toLowerCase()) === i)
+        .slice(0, 6);
+
   const tech = Number(p.techScore) || 0;
   const match = matchScore(p);
   const offer = bestOfferForLang(offers, p, lang);
@@ -353,118 +367,113 @@ export default function ProductDetail() {
   return (
     <div className="page">
       <div className="container" style={{ maxWidth: 1240 }}>
-        {/* top action row */}
-        <div className="between" style={{ marginBottom: 18 }}>
-          <button className="iconbtn" aria-label="back"
-            onClick={() => (window.history.length > 1 ? window.history.back() : null)}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
-          </button>
-          <div className="row" style={{ gap: 8 }}>
-            {has(p.id) ? (
-              <Link to="/compare" className="btn btn-ghost" style={{ padding: '9px 16px' }}>⚖ {t('pd.openCompare')}</Link>
-            ) : (
-              <button className="btn btn-ghost" style={{ padding: '9px 16px' }}
-                onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>⚖ {t('pd.addCompare')}</button>
-            )}
-            <button className="btn btn-ghost"
-              onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
-              💬 {t('pd.askAi')}
-            </button>
-          </div>
-        </div>
+        {/* breadcrumb */}
+        <nav className="pd-crumbs">
+          <button className="pd-crumb-back" aria-label="back"
+            onClick={() => (window.history.length > 1 ? window.history.back() : null)}>‹</button>
+          <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
+          <span aria-hidden="true">›</span>
+          <Link to={`/category?cat=${encodeURIComponent(p.category || '')}`}>{categoryLabel(p.category, lang)}</Link>
+          <span aria-hidden="true">›</span>
+          <b title={displayName}>{displayName}</b>
+        </nav>
 
         <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'start' }}>
           {/* gallery */}
           <div className="prod-gallery">
             <div className="card pd-gallery-card">
-              <button className="img-tile pd-main-photo" type="button"
+              <button className="pd-photo" type="button"
                 onClick={() => setLightbox(true)}
                 aria-label={L('Open product image', 'Ürün görselini büyüt', 'Produktbild vergrößern')}>
                 <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
+                <span className="pd-photo-zoom" aria-hidden="true">⤢</span>
               </button>
               {images.length > 1 && (
-                <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
+                <div className="pd-thumbs2">
                   {images.slice(0, 6).map((src, i) => (
-                    <button key={i} type="button" className="img-tile" style={{ width: 60, height: 60, padding: 0, borderColor: i === activeImg ? 'var(--brand-cyan)' : 'var(--border)', boxShadow: i === activeImg ? '0 0 0 3px color-mix(in srgb, var(--brand-cyan) 22%, transparent)' : 'none' }} onClick={() => setImageIndex(i)}>
+                    <button key={i} type="button"
+                      className={'pd-thumb2' + (i === activeImg ? ' on' : '')}
+                      onClick={() => setImageIndex(i)} onMouseEnter={() => setImageIndex(i)}
+                      aria-label={`${i + 1}`}>
                       <ProductImg src={src} alt="" size="card" />
                     </button>
                   ))}
+                  {images.length > 6 && (
+                    <button type="button" className="pd-thumb2 pd-thumb-more"
+                      onClick={() => setLightbox(true)}>+{images.length - 6}</button>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
           {/* info */}
-          <div>
-            <div className="brand-k" style={{ color: 'var(--brand-cyan)', fontSize: 13, fontWeight: 800, letterSpacing: '0', textTransform: 'uppercase' }}>{p.brand || meta.label}</div>
-            <h1 style={{ fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, letterSpacing: '0', lineHeight: 1.12, margin: '6px 0 18px' }}>{displayName}</h1>
+          <div className="pd-info2">
+            <div className="pd-brand2">{p.brand || meta.label}</div>
+            <h1 className="pd-name2">{displayName}</h1>
 
-            {/* dual score */}
-            <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="row" style={{ flex: 1, gap: 14 }}>
-                <Gauge value={tech} size={64} stroke={6} color={techColor(tech)} />
-                <div>
-                  <div style={{ color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>⚙️ {t('pd.scoreTitle')}</div>
-                  <div style={{ color: techColor(tech), fontWeight: 800, fontSize: 19 }}>{bandLabel(tech, L)}</div>
-                </div>
+            <div className="pd-scores2">
+              <div className="pd-score2">
+                <Gauge value={tech} size={56} stroke={6} color={techColor(tech)} fontSize={17} />
+                <span className="pd-score2-t">
+                  <small>⚙️ {t('pd.scoreTitle')}</small>
+                  <b style={{ color: techColor(tech) }}>{bandLabel(tech, L)}</b>
+                </span>
               </div>
-              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--divider)', margin: '0 6px' }} />
-              <div className="row" style={{ flex: 1, gap: 14 }}>
-                <Gauge value={match} size={64} stroke={6} color="var(--score-average)" />
-                <div>
-                  <div style={{ color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</div>
-                  <div style={{ color: 'var(--score-average)', fontWeight: 800, fontSize: 19 }}>{bandLabel(match, L)}</div>
-                </div>
+              <span className="pd-score2-sep" />
+              <div className="pd-score2">
+                <Gauge value={match} size={56} stroke={6} color="var(--score-average)" fontSize={17} />
+                <span className="pd-score2-t">
+                  <small>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</small>
+                  <b style={{ color: 'var(--score-average)' }}>{bandLabel(match, L)}</b>
+                </span>
               </div>
             </div>
 
-            {/* buy strip */}
-            {(offer || offersLoading) && (
-              <div className="card pad pd-offer-card">
-                <div className="pd-offer-main">
-                  <div className="dim" style={{ fontSize: 12, fontWeight: 700 }}>
-                    {hasExactPrice
-                      ? L('Fresh checked price', 'Güncel kontrol edilmiş fiyat', 'Frisch geprüfter Preis')
-                      : L('Current price at store', 'Güncel fiyat mağazada', 'Aktueller Preis im Shop')}
+            {heroSpecs.length > 0 && (
+              <div className="pd-keyspecs2">
+                {heroSpecs.map((c, i) => (
+                  <div className="pd-keyspec2" key={`${c.key}-${i}`}>
+                    <span className="pd-keyspec2-ic">{c.icon}</span>
+                    <span className="pd-keyspec2-t">
+                      <b title={c.value}>{c.value}</b>
+                      <small>{c.label}</small>
+                    </span>
                   </div>
-                  <span className={'pd-offer-price' + (!hasExactPrice ? ' muted-price' : '')}>
-                    {offersLoading && !offer
-                      ? L('Checking offers...', 'Teklifler kontrol ediliyor...', 'Angebote werden geprüft...')
-                      : hasExactPrice
-                        ? (displayPrice || `$${price.toLocaleString(lang)}`)
-                        : L('Check before buying', 'Satın almadan önce kontrol et', 'Vor dem Kauf prüfen')}
-                  </span>
-                  {offer?.store && <small>{L('Store', 'Mağaza', 'Shop')}: {offer.store}</small>}
-                  {offer?.lastCheckedAt && hasExactPrice && (
-                    <small>{L('Checked', 'Kontrol', 'Geprüft')}: {new Date(offer.lastCheckedAt).toLocaleString(lang, { dateStyle: 'short', timeStyle: 'short' })}</small>
-                  )}
-                </div>
-                <div className="grow" />
-                {offerUrl ? (
-                  <a className="btn btn-buy" href={offerUrl} target="_blank" rel="sponsored noopener">
-                    🛒 {hasExactPrice
-                      ? L('Go to store', 'Mağazaya git', 'Zum Shop')
-                      : L('Check current price', 'Güncel fiyatı kontrol et', 'Aktuellen Preis prüfen')}
-                  </a>
-                ) : (
-                  <button className="btn btn-buy"
-                    onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
-                    🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot finden')}
-                  </button>
-                )}
+                ))}
               </div>
             )}
-            {/* Affiliate disclosure only belongs next to a real store link —
-                hide it when the product has no offer at all. */}
-            {(offer || offersLoading) && (
-              <p className="pd-aff-disclosure pd-aff-disclosure-plain">
-                {L(
-                  'Some store links may be affiliate links. This does not change the price you pay and it never affects Qor AI scores.',
-                  'Bazı mağaza bağlantıları affiliate link olabilir. Ödeyeceğin fiyat değişmez ve Qor AI puanları bundan etkilenmez.',
-                  'Einige Shop-Links können Affiliate-Links sein. Der Preis ändert sich dadurch nicht und Qor AI Bewertungen werden nicht beeinflusst.',
-                )}{' '}
-                <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
-              </p>
+
+            <div className="pd-actions2">
+              {has(p.id) ? (
+                <Link to="/compare" className="btn btn-primary pd-act-main">⚖ {t('pd.openCompare')}</Link>
+              ) : (
+                <button className="btn btn-primary pd-act-main"
+                  onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>⚖ {t('pd.addCompare')}</button>
+              )}
+              <button className="btn btn-ghost pd-act-ai"
+                onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
+                💬 {t('pd.askAi')}
+              </button>
+            </div>
+
+            {/* Affiliate store link — prices are intentionally not shown; the
+                affiliate link itself stays so users can still jump to the store. */}
+            {offerUrl && (
+              <>
+                <a className="btn btn-buy pd-store2" href={offerUrl} target="_blank" rel="sponsored noopener">
+                  🛒 {L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
+                  {offer?.store ? <span className="pd-store2-name">· {offer.store}</span> : null}
+                </a>
+                <p className="pd-aff2">
+                  {L(
+                    'Some links may be affiliate links — this never changes your price or affects Qor AI scores.',
+                    'Bazı bağlantılar affiliate olabilir — ödeyeceğin fiyatı değiştirmez, Qor AI puanlarını etkilemez.',
+                    'Einige Links können Affiliate-Links sein — ohne Einfluss auf Preis oder Qor AI Bewertung.',
+                  )}{' '}
+                  <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
+                </p>
+              </>
             )}
 
           </div>

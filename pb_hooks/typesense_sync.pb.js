@@ -121,6 +121,11 @@ function buildTsDoc(record) {
     source:        record.get('source')       || '',
     imageUrl:      record.get('imageUrl') || record.get('imageURL') || '',
     imageURL:      record.get('imageURL') || record.get('imageUrl') || '',
+    // The product gallery array MUST be carried into _raw — the app + website
+    // read product.images for the photo modal. Omitting it here meant every
+    // PocketBase update silently stripped the gallery down to the single hero
+    // image in Typesense.
+    images:        (function () { var v = _parseJson(record.get('images')); return Array.isArray(v) ? v : []; })(),
     techScore:     techScore,
     trendScore:    trendScore,
     price_segment: record.get('price_segment') || '',

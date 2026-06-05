@@ -3921,65 +3921,78 @@ async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
 
-  const mode = document.getElementById('scrapeMode')?.value || 'brand';
+  // The bulk-scrape UI is the shared category checklist (same one Epey uses) —
+  // there is no longer a brand/mode field, so Geizhals reads the checked
+  // categories that actually map to a Geizhals listing. A free-text
+  // #scrapeSearchTerm (if some build still renders one) still drives brand mode.
+  const checkedIds = (typeof document !== 'undefined')
+    ? [...document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]:checked')]
+        .map(cb => String(cb.value || '').trim()).filter(Boolean)
+    : [];
+  const checkedCats = [];
+  const skippedCats = [];
+  for (const id of checkedIds) {
+    const cat = (typeof QorAiCategories !== 'undefined') ? QorAiCategories.getById?.(id) : null;
+    if (cat && geizhalsCatSlug(cat)) checkedCats.push(cat);
+    else skippedCats.push(id);
+  }
   const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
-  const catSelect = document.getElementById('scrapeCategory');
-  const catValue = catSelect ? catSelect.value : '';
-  if (mode === 'brand' && !searchTerm) { toast('Enter a brand or search term', 'w'); return; }
-  if (mode === 'category' && !catValue) { toast('Select a category', 'w'); return; }
 
-  const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
-  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
+  if (!checkedCats.length && !searchTerm) {
+    toast(skippedCats.length
+      ? 'Seçili kategorilerin Geizhals karşılığı yok'
+      : 'En az bir kategori seç', 'w');
+    return;
+  }
+
+  const limits = (typeof getScrapeLimitSettings === 'function') ? getScrapeLimitSettings() : null;
+  const collectAll = limits ? !!limits.collectAllSelected : false;
+  const maxProducts = collectAll
+    ? 100000
+    : (limits?.productLimit || parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200);
+  const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 800;
   const concurrency = parseInt(document.getElementById('scrapeConcurrency')?.value, 10) || 4;
 
   scraperRunning = true; scraperAbort = false;
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
   document.getElementById('btnBulkScrape').style.display = 'none';
   document.getElementById('btnStopScrape').style.display = '';
-
   clearScraperLog();
   slog(`Scraper build: ${SCRAPER_BUILD}`, 'info');
-  slog(`Bulk scrape: ${mode === 'brand' ? `"${searchTerm}"` : catValue}, max ${maxProducts}`, 'info');
+  if (skippedCats.length) {
+    slog(`ℹ️ Geizhals karşılığı olmayan ${skippedCats.length} kategori atlandı: ${skippedCats.join(', ')}`, 'info');
+  }
+
+  // Run one category's collect + scrape. Returns its result tally.
+  async function runCategory(label, urlSource) {
+    let urlItems = [];
+    try { urlItems = await urlSource(); }
+    catch (e) { slog(`  ❌ ${label}: ${e.message}`, 'error'); return { added: 0, skipped: 0, errors: 1 }; }
+    if (scraperAbort && !urlItems.length) return { added: 0, skipped: 0, errors: 0 };
+    if (!urlItems.length) { slog(`  ⚠️ ${label}: 0 URL`, 'warn'); return { added: 0, skipped: 0, errors: 0 }; }
+    const toScrape = urlItems.slice(0, maxProducts);
+    slog(`  ${label}: ${toScrape.length} ürün çekiliyor`, 'info');
+    const r = await sequentialScrape(toScrape, label, delay, concurrency);
+    return { added: r.added || 0, skipped: r.skipped || 0, errors: r.errors || 0 };
+  }
 
   try {
-    // Phase 1: Collect product URLs from brand search or category listing
-    slog('── Phase 1: Collecting product URLs ──', 'info');
-    const urlItems = mode === 'brand'
-      ? await collectSearchProductUrls(searchTerm, maxProducts)
-      : await collectProductUrls(catValue, maxProducts);
-    slog(`Found ${urlItems.length} product URLs`, urlItems.length > 0 ? 'success' : 'warn');
-
-    if (scraperAbort) {
-      // Don't throw away the URLs. If we already have a meaningful batch,
-      // keep scraping the products that ARE in hand instead of silently
-      // returning. Otherwise an interrupted Phase-1 (e.g. stop button or
-      // 3-consec CF fails) wastes the 200-500 URLs that were already
-      // collected. The user can still hard-stop after Phase 2 starts.
-      if (urlItems.length > 0) {
-        slog(`Phase 1 interrupted with ${urlItems.length} URLs collected. Proceeding to Phase 2 with what we have…`, 'warn');
-        scraperAbort = false; // re-enable the loop for Phase 2
-      } else {
-        slog(`Scraping stopped by user. 0 URLs were collected.`, 'warn');
-        finishScraping();
-        return;
+    const totals = { added: 0, skipped: 0, errors: 0 };
+    if (checkedCats.length) {
+      slog(`Geizhals import: ${checkedCats.length} kategori · ${collectAll ? 'ne varsa' : maxProducts + '/kategori'}`, 'info');
+      for (let i = 0; i < checkedCats.length && !scraperAbort; i++) {
+        const cat = checkedCats[i];
+        slog(`\n[${i + 1}/${checkedCats.length}] ── ${cat.name || cat.id} ──`, 'info');
+        const r = await runCategory(cat.id, () => collectProductUrls(cat.id, maxProducts));
+        totals.added += r.added; totals.skipped += r.skipped; totals.errors += r.errors;
       }
+    } else {
+      slog(`Bulk scrape (brand): "${searchTerm}", max ${maxProducts}`, 'info');
+      const r = await runCategory(`"${searchTerm}"`, () => collectSearchProductUrls(searchTerm, maxProducts));
+      totals.added += r.added; totals.skipped += r.skipped; totals.errors += r.errors;
     }
-
-    if (!urlItems.length) {
-      slog('No product URLs found. Try a different category or check proxy.', 'error');
-      finishScraping();
-      return;
-    }
-
-    // Limit to maxProducts
-    const toScrape = urlItems.slice(0, maxProducts);
-    slog(`── Phase 2: Scraping ${toScrape.length} products ──`, 'info');
-
-    // Phase 2: Scrape product details with parallel workers; each saved product
-    // is translated inline before the PocketBase write.
-    const results = await sequentialScrape(toScrape, mode === 'brand' ? '' : catValue, delay, concurrency);
-
-    slog(`\n═══ Done: ${results.added} added | ${results.skipped} skipped | ${results.errors} errors ═══`, 'success');
-    if (results.added > 0 && typeof loadProducts === 'function') {
+    slog(`\n═══ Done: ${totals.added} added | ${totals.skipped} skipped | ${totals.errors} errors ═══`, 'success');
+    if (totals.added > 0 && typeof loadProducts === 'function') {
       await loadProducts();
       slog('Products view refreshed.', 'success');
     }
@@ -3987,6 +4000,7 @@ async function startBulkScrape() {
     slog(`Fatal error: ${e.message}`, 'error');
   }
 
+  if (typeof window !== 'undefined') window.qoraiScrapeActive = false;
   finishScraping();
 }
 
