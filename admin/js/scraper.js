@@ -664,12 +664,34 @@ function normalizeProductDedupText(value) {
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
     .replace(/\b\d+\s*\/\s*\d+\b/g, '')
     .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|titanium|starlight|midnight|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
     .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 140);
+}
+
+function _phoneFamilyFromProbe(familyProbe, brand) {
+  const b = String(brand || '').toLowerCase().trim();
+  const probe = String(familyProbe || '');
+  const withBrand = (fam) => {
+    const clean = normalizeProductDedupText(fam);
+    return clean ? [b, clean].filter(Boolean).join('-').slice(0, 180) : '';
+  };
+  if (b === 'oppo') {
+    const m = probe.match(/\b(find\s+[a-z]?\d+[a-z]*(?:\s+(?:pro\s+plus|pro|max|plus|ultra|lite|neo|5g))*|reno\s*\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  if (b === 'xiaomi') {
+    const m = probe.match(/\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|\d{1,2}[a-z]?\s*t?\s*(?:pro\s+plus|pro|plus|ultra|lite)?(?:\s+5g)?)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  if (b === 'samsung') {
+    const m = probe.match(/\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  return '';
 }
 
 const COUNTRY_CODE_TOKENS = [
@@ -739,6 +761,7 @@ function modelFamilyKey({ name, brand, category }) {
   }
 
   const familyProbe = s
+    .replace(/\+/g, ' plus ')
     .replace(/[()[\],"'’]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -798,8 +821,10 @@ function modelFamilyKey({ name, brand, category }) {
       if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
     }
   }
+  const phoneFam = _phoneFamilyFromProbe(familyProbe, b);
+  if (phoneFam) return phoneFam;
   if (b === 'oppo') {
-    const m = familyProbe.match(/\b((?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
+    const m = familyProbe.match(/\b(reno\s*\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
     if (m && m[1]) {
       const fam = normalizeProductDedupText(`oppo ${m[1]}`);
       if (fam) return fam.slice(0, 180);
@@ -811,6 +836,7 @@ function modelFamilyKey({ name, brand, category }) {
     const fam = normalizeProductDedupText(`${mac[1]} ${chip ? chip[1] : ''}`);
     if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
   }
+  s = s.replace(/\b(?:cph|sm|rmx|mzb|mzl|v)\d{3,}[a-z0-9-]*\b/gi, ' ');
   s = s
     .replace(/\[([^\]]*)\]/g, ' $1 ')
     .replace(/\((?:intel|amd|qualcomm|apple)\)/gi, ' ')
@@ -8145,17 +8171,103 @@ async function _findExistingByVariantGroup(variantGroup) {
   const vg = String(variantGroup || '').trim();
   if (!vg) return null;
   try {
-    const r = await pb.collection('products').getList(1, 1, {
+    const r = await pb.collection('products').getList(1, 25, {
       filter: `variantGroup = "${vg.replace(/"/g, '\\"')}"`,
-      fields: 'id,source,name',
+      fields: 'id,source,sourceUrl,name,brand,category,variantGroup',
+      sort: '-updated',
       $autoCancel: false,
     });
-    const item = (r?.items || [])[0];
+    const items = r?.items || [];
+    const item = items.find(_isEpeyRecord) || items[0];
     if (!item) return null;
-    return { id: item.id, source: item.source || '', name: item.name || '' };
+    return {
+      id: item.id,
+      source: item.source || '',
+      sourceUrl: item.sourceUrl || '',
+      name: item.name || '',
+      brand: item.brand || '',
+      category: item.category || '',
+      variantGroup: item.variantGroup || '',
+    };
   } catch {
     return null;
   }
+}
+
+function _isEpeyRecord(record = {}) {
+  return /epey/i.test(String(record.source || record.sourceUrl || ''));
+}
+
+function _stripModelCodesForIdentity(value) {
+  return String(value || '')
+    .replace(/\b(?:cph|sm|rmx|mzb|mzl|v)\d{3,}[a-z0-9-]*\b/gi, ' ')
+    .replace(/\b[a-z]{1,4}-?\d{3,}[a-z0-9-]*\b/gi, ' ');
+}
+
+function _identitySlug(value) {
+  const slug = normalizeProductDedupText(_stripModelCodesForIdentity(value));
+  if (!slug || slug.length < 7) return '';
+  if (slug.split('-').filter(Boolean).length < 2) return '';
+  return slug;
+}
+
+function _productIdentityKeys(product = {}) {
+  const keys = new Set();
+  const add = (value) => {
+    const k = _identitySlug(value);
+    if (k) keys.add(k);
+  };
+  add(product.variantGroup);
+  add(modelFamilyKey({ name: product.name, brand: product.brand, category: product.category }));
+  add(product.name);
+  return keys;
+}
+
+const _epeyModelFamilyCache = new Map();
+
+async function _findExistingEpeyByModelFamily(product = {}) {
+  const targetKeys = _productIdentityKeys(product);
+  if (!targetKeys.size) return null;
+  const category = String(product.category || '').trim();
+  const cacheKey = category || '*';
+  try {
+    if (!_epeyModelFamilyCache.has(cacheKey)) {
+      const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      const parts = ['(source = "epey.com" || source = "epey" || sourceUrl ~ "epey.com")'];
+      if (category) parts.unshift(`category = "${esc(category)}"`);
+      const docs = await _pbGetAllPaged('products', {
+        filter: parts.join(' && '),
+        fields: 'id,name,brand,category,source,sourceUrl,variantGroup',
+        sort: 'id',
+      }, 500, 60000);
+      _epeyModelFamilyCache.set(cacheKey, docs.map(d => (typeof d.data === 'function' ? d.data() : (d.data || d))));
+    }
+    const targetBrand = normalizeProductDedupText(product.brand);
+    const candidates = _epeyModelFamilyCache.get(cacheKey) || [];
+    for (const item of candidates) {
+      if (targetBrand) {
+        const itemBrand = normalizeProductDedupText(item.brand);
+        if (itemBrand && itemBrand !== targetBrand) continue;
+      }
+      const itemKeys = _productIdentityKeys(item);
+      for (const key of itemKeys) {
+        if (targetKeys.has(key)) {
+          return {
+            id: item.id,
+            source: item.source || '',
+            sourceUrl: item.sourceUrl || '',
+            name: item.name || '',
+            brand: item.brand || '',
+            category: item.category || '',
+            variantGroup: item.variantGroup || '',
+          };
+        }
+      }
+    }
+  } catch (e) {
+    slog(`  ⚠ Epey model dedup lookup failed: ${e.message}`, 'warn');
+  }
+  return null;
 }
 
 // Merge incoming `clean` payload into an existing PB product record.
@@ -8265,6 +8377,7 @@ async function _mergeIntoExistingRecord(existingId, incoming) {
 
 if (typeof window !== 'undefined') {
   window._findExistingByVariantGroup = _findExistingByVariantGroup;
+  window._findExistingEpeyByModelFamily = _findExistingEpeyByModelFamily;
   window._mergeIntoExistingRecord = _mergeIntoExistingRecord;
 }
 
@@ -8309,8 +8422,14 @@ async function _loadExistingSourceUrls(categoryId) {
       if (isScraped && savedSlug) slugs.add(savedSlug);
       const vg = String(data?.variantGroup || '').trim();
       if (vg && d.id) {
-        const rec = { id: d.id, source: String(data?.source || ''), name: String(data?.name || '') };
-        if (!byVariantGroup.has(vg)) byVariantGroup.set(vg, rec);
+        const rec = {
+          id: d.id,
+          source: String(data?.source || ''),
+          sourceUrl: String(data?.sourceUrl || ''),
+          name: String(data?.name || ''),
+        };
+        const prev = byVariantGroup.get(vg);
+        if (!prev || (_isEpeyRecord(rec) && !_isEpeyRecord(prev))) byVariantGroup.set(vg, rec);
       }
     }
     slog(`  preload OK: ${docs.length} kayıt, ${urls.size} URL key, ${slugs.size} slug key`, 'success');

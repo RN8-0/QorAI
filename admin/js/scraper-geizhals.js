@@ -381,11 +381,34 @@ function normalizeProductDedupText(value) {
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
     .replace(/\b\d+\s*\/\s*\d+\b/g, '')
     .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|pink|red|green|gray|grey|titanium|starlight|midnight|schwarz|weiß|weiss|silber|blau|grün|gruen)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
+    .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 140);
+}
+
+function _phoneFamilyFromProbe(familyProbe, brand) {
+  const b = String(brand || '').toLowerCase().trim();
+  const probe = String(familyProbe || '');
+  const withBrand = (fam) => {
+    const clean = normalizeProductDedupText(fam);
+    return clean ? [b, clean].filter(Boolean).join('-').slice(0, 180) : '';
+  };
+  if (b === 'oppo') {
+    const m = probe.match(/\b(find\s+[a-z]?\d+[a-z]*(?:\s+(?:pro\s+plus|pro|max|plus|ultra|lite|neo|5g))*|reno\s*\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  if (b === 'xiaomi') {
+    const m = probe.match(/\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*|\d{1,2}[a-z]?\s*t?\s*(?:pro\s+plus|pro|plus|ultra|lite)?(?:\s+5g)?)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  if (b === 'samsung') {
+    const m = probe.match(/\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)\b/i);
+    if (m && m[1]) return withBrand(m[1]);
+  }
+  return '';
 }
 
 function modelFamilyKey({ name, brand, category }) {
@@ -393,6 +416,7 @@ function modelFamilyKey({ name, brand, category }) {
   const b = String(brand || '').toLowerCase().trim();
   if (b) s = s.replace(new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '');
   const familyProbe = s
+    .replace(/\+/g, ' plus ')
     .replace(/[()[\],"'’]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -407,6 +431,12 @@ function modelFamilyKey({ name, brand, category }) {
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
     /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+    /\b(oppo\s+find\s+[a-z]?\d+[a-z]*(?:\s+(?:pro\s+plus|pro|max|plus|ultra|lite|neo|5g))*)/i,
+    /\b(oppo\s+(?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
+    /\b(oppo\s+a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
     /\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b/i,
   ];
   for (const re of familyPatterns) {
@@ -416,12 +446,15 @@ function modelFamilyKey({ name, brand, category }) {
       if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
     }
   }
+  const phoneFam = _phoneFamilyFromProbe(familyProbe, b);
+  if (phoneFam) return phoneFam;
   const mac = familyProbe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
   if (mac) {
     const chip = familyProbe.match(/\b(m\d+(?:\s*(?:pro|max|ultra))?)\b/i);
     const fam = normalizeProductDedupText(`${mac[1]} ${chip ? chip[1] : ''}`);
     if (fam) return [b, fam].filter(Boolean).join('-').slice(0, 180);
   }
+  s = s.replace(/\b(?:cph|sm|rmx|mzb|mzl|v)\d{3,}[a-z0-9-]*\b/gi, ' ');
   s = s
     .replace(/\[([^\]]*)\]/g, ' $1 ')
     .replace(/\((?:intel|amd|qualcomm|apple)\)/gi, ' ')
@@ -438,7 +471,7 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
     .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
     .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -551,7 +584,12 @@ function prepareProductPayload(product) {
       : (product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {}),
     techScore,
     specsCount: Object.keys(canonical.specs || sanitized.specs).length,
-    variantGroup: String(product.variantGroup || productDedupKey(product) || '').trim().slice(0, 200),
+    variantGroup: String(
+      modelFamilyKey({ name: product.name, brand: product.brand, category }) ||
+      product.variantGroup ||
+      productDedupKey(product) ||
+      ''
+    ).trim().slice(0, 200),
     scrapedAt: product.scrapedAt || new Date().toISOString(),
   };
 
@@ -3771,12 +3809,23 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         try {
           existingRec = await window._findExistingByVariantGroup(clean.variantGroup);
-          if (existingRec && /epey/i.test(existingRec.source || '')) {
+          if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
+            existingRec = await window._findExistingEpeyByModelFamily(clean);
+          }
+          if (existingRec && /epey/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
             results.skipped++;
             errorStreak = 0;
             challengeStreak = 0;
             recent.push('ok');
             slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
+            return;
+          }
+          if (existingRec && /geizhals/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
+            results.skipped++;
+            errorStreak = 0;
+            challengeStreak = 0;
+            recent.push('ok');
+            slog(`  ⏭ Geizhals model zaten var, tekrar kayıt açılmadı: ${product.name} (mevcut ${existingRec.id})`, 'info');
             return;
           }
         } catch (e) {
@@ -3788,10 +3837,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       await _translateProductInline(clean);
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
-      // A NON-Epey record (e.g. another Geizhals variant) already owning this
-      // model gets MERGED instead of duplicated. Catalog stays one-row-per-model.
+      // A NON-Epey record already owning this model gets MERGED instead of
+      // duplicated. Catalog stays one-row-per-model.
       let mergedExisting = null;
-      if (existingRec && existingRec.source && existingRec.source !== clean.source) {
+      if (existingRec && existingRec.source) {
         try {
           mergedExisting = await window._mergeIntoExistingRecord(existingRec.id, clean);
           if (mergedExisting) {
@@ -4064,6 +4113,24 @@ async function scrapeByUrl() {
     const cat = document.getElementById('singleUrlCategory')?.value || 'smartphones';
     const saveSingleProduct = async (product) => {
       const clean = prepareProductPayload(product);
+      let existing = null;
+      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+        existing = await window._findExistingByVariantGroup(clean.variantGroup);
+        if (!existing && typeof window._findExistingEpeyByModelFamily === 'function') {
+          existing = await window._findExistingEpeyByModelFamily(clean);
+        }
+        // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
+        if (existing && /epey/i.test(String(existing.source || existing.sourceUrl || ''))) {
+          slog(`↩ Epey baz alındı, Geizhals atlandı: ${clean.name} (mevcut ${existing.id})`, 'info');
+          if (typeof loadProducts === 'function') await loadProducts();
+          return;
+        }
+        if (existing && /geizhals/i.test(String(existing.source || existing.sourceUrl || ''))) {
+          slog(`↩ Geizhals model zaten var, tekrar kayıt açılmadı: ${clean.name} (mevcut ${existing.id})`, 'info');
+          if (typeof loadProducts === 'function') await loadProducts();
+          return;
+        }
+      }
       // Single URL must behave like bulk: translate before PB write.
       try {
         await _translateSingleProductRequired(clean, clean.name || clean.slug || product.sourceUrl || '');
@@ -4073,26 +4140,17 @@ async function scrapeByUrl() {
         return;
       }
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || product.sourceUrl || '');
-      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
-        const existing = await window._findExistingByVariantGroup(clean.variantGroup);
-        // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
-        if (existing && /epey/i.test(existing.source || '')) {
-          slog(`↩ Epey baz alındı, Geizhals atlandı: ${clean.name} (mevcut ${existing.id})`, 'info');
+      if (existing && existing.source && typeof window._mergeIntoExistingRecord === 'function') {
+        const merged = await window._mergeIntoExistingRecord(existing.id, clean);
+        if (merged) {
+          if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
+            window.qoraiDispatchSingleProductSaved(existing.id, merged);
+          } else {
+            window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
+          }
+          slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
           if (typeof loadProducts === 'function') await loadProducts();
           return;
-        }
-        if (existing && existing.source && existing.source !== clean.source && typeof window._mergeIntoExistingRecord === 'function') {
-          const merged = await window._mergeIntoExistingRecord(existing.id, clean);
-          if (merged) {
-            if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
-              window.qoraiDispatchSingleProductSaved(existing.id, merged);
-            } else {
-              window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
-            }
-            slog(`↻ Cross-source merge into ${existing.id} (${existing.source})`, 'info');
-            if (typeof loadProducts === 'function') await loadProducts();
-            return;
-          }
         }
       }
       const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);

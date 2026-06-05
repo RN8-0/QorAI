@@ -70,6 +70,7 @@ const FAMILY_PATTERNS = [
   /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
   /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
   /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
+  /\b(oppo\s+find\s+[a-z]?\d+[a-z]*(?:\s+(?:pro\s+plus|pro|max|plus|ultra|lite|neo|5g))*)/i,
   /\b(oppo\s+(?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
   /\b(oppo\s+a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)/i,
   /\b(honor\s+\d+[a-z]*(?:\s+(?:pro|lite|x|5g|max|plus))*)/i,
@@ -131,7 +132,7 @@ const STRIP = [
   // languages / colours / regions
   /\b(?:spanish|german|french|italian|english|turkish|dutch|polish|portuguese|swedish|arabic|japanese|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,
   /\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi,
-  /\b(?:orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory)\b/gi,
+  /\b(?:orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight)\b/gi,
   /\b(?:de|uk|us|eu|pl|fr|it|es|gb|nl|be|at|ch)\b/gi,
   /\b\d+(?:[.,]\d+)?\s*w\b/gi,
   /\bcopilot\+?\s*pc\b/gi,
@@ -182,8 +183,12 @@ function modelFamilyKey({ name, brand, category }) {
     }
   }
   if (b === 'oppo') {
-    const m = probe.match(/\b((?:reno\s*)?\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
+    const m = probe.match(/\b(find\s+[a-z]?\d+[a-z]*(?:\s+(?:pro\s+plus|pro|max|plus|ultra|lite|neo|5g))*|reno\s*\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*|a\d+[a-z]*(?:\s+(?:pro|se|plus|lite|5g))*)\b/i);
     if (m && m[1]) return slugify(`oppo ${m[1]}`).slice(0, 180);
+  }
+  if (b === 'xiaomi') {
+    const m = probe.match(/\b(\d{1,2}[a-z]?\s*t?\s*(?:pro\s+plus|pro|plus|ultra|lite)?(?:\s+5g)?)\b/i);
+    if (m && m[1]) return slugify(`xiaomi ${m[1]}`).slice(0, 180);
   }
   // MacBook needs the chip kept (Air/Pro M1…M4 are distinct models).
   const mac = probe.match(/\b(macbook\s+(?:air|pro)(?:\s+\d+(?:[.,]\d+)?)?)/i);
