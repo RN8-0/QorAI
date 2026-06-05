@@ -26,17 +26,22 @@ function inferredPct(label, value, index, product) {
   return clampPct(score - index * 10);
 }
 
-const REJECT_LABEL_RE = /^(marka|brand|model|ürün|urun|product|category|kategori|kategorie|renk|color|colour|slug|url|link|source|site|name|ad|title|başlık|baslik)$/i;
+const REJECT_LABEL_RE = /^(marka|brand|model|ürün|urun|product|category|kategori|kategorie|renk|color|colour|slug|url|link|source|site|name|ad|title|başlık|baslik|kullanım amacı|kullanim amaci|usage|use case|series|seri)$/i;
 const REJECT_INTERNAL_RE = /(qor|score|puan|anchor|engine|tier|rank|trend|internal|weight|ağırlık|agirlik|seed)/i;
-const REJECT_VALUE_RE = /^(yes|no|true|false|var|yok|evet|hayır|hayir|ja|nein|n\/a|na|-|sponsorlu|sponsored|advert|ad)$/i;
+const REJECT_VALUE_RE = /^(yes|no|true|false|var|yok|evet|hayır|hayir|ja|nein|n\/a|na|-|sponsorlu|sponsored|advert|ad|oyun|ofis|gaming|office|home|ev)$/i;
 
+// Card headline specs follow epey: the value is the hero and must read like a
+// real, comparable spec — so it has to carry a number (8 GB, 240 Hz, 1000 W…).
+// Pure-text values (Oyun, Ofis, brand names, category names) are dropped here
+// so cards never show the "Kategori / Marka" junk that used to leak through.
 function looksUsefulSpec(label, value, product) {
   const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
   const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
   if (!cleanLabel || !cleanValue) return false;
   if (REJECT_LABEL_RE.test(cleanLabel) || REJECT_INTERNAL_RE.test(cleanLabel)) return false;
   if (REJECT_VALUE_RE.test(cleanValue) || REJECT_INTERNAL_RE.test(cleanValue)) return false;
-  if (cleanLabel.length > 38 || cleanValue.length > 42) return false;
+  if (cleanLabel.length > 38 || cleanValue.length > 28) return false;
+  if (!/\d/.test(cleanValue)) return false; // must be a measurable, epey-style spec
   const brand = String(product?.brand || '').trim().toLowerCase();
   const category = String(product?.category || '').replace(/[_-]+/g, ' ').trim().toLowerCase();
   const valueLower = cleanValue.toLowerCase();
@@ -133,11 +138,8 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
         <span className="q-product-card-name">{p.name}</span>
         <div className="q-product-card-specs">
           {specs.map((spec, index) => (
-            <span className="q-product-card-spec" key={`${spec.label}-${index}`}>
-              <span className="q-product-card-spec-row">
-                <span className="q-product-card-spec-label">{spec.label}</span>
-                <b className="q-product-card-spec-val">{spec.value}</b>
-              </span>
+            <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${spec.label}: ${spec.value}`}>
+              <b className="q-product-card-spec-val">{spec.value}</b>
               <span className="q-product-card-spec-bar"><i style={{ width: `${spec.pct}%` }} /></span>
             </span>
           ))}
