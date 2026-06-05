@@ -478,14 +478,14 @@
         <div class="card" id="proxyInfoCard" style="border-left:3px solid var(--amber)">
           <div class="card-title">⚡ Local Proxy Required</div>
           <p class="text-muted" style="margin-bottom:8px">The proxy runs on this device, so scrape requests use this device IP address.</p>
-          <code class="code-block" id="proxyCommandBlock">npm run scraper:proxy</code>
+          <code class="code-block" id="proxyCommandBlock">npm run scraper:stack</code>
           <div class="proxy-helper-actions">
             <button class="btn btn-primary btn-sm" onclick="copyProxyCommand()">Copy Start Command</button>
             <button class="btn btn-success btn-sm" onclick="startProxyFromBrowser()">▶ Start Proxy</button>
-            <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Windows Launcher</a>
+            <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Proxy + Translate Launcher</a>
             <button class="btn btn-sm" onclick="openLocalProxyHealth()">Open Local Health</button>
           </div>
-          <p class="text-muted" style="margin-top:8px;font-size:11px">The proxy runs on <b>localhost:3456</b>. Browsers cannot start the Node process directly, so the Windows launcher is provided. Requests use this device IP address.</p>
+          <p class="text-muted" style="margin-top:8px;font-size:11px">The launcher checks dependencies, starts the translate worker on <b>localhost:8797</b>, then starts the scraper proxy on <b>localhost:3456</b>. Requests use this device IP address.</p>
         </div>
 
         <!-- Scraper Tabs -->

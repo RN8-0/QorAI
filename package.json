@@ -14,6 +14,7 @@
     "scraper:repair-products-schema": "node scripts/repair_products_schema.js",
     "scraper:test-pb": "node scripts/test_scraper_pb.js 10",
     "scraper:proxy": "node scripts/scraper-proxy.js",
+    "scraper:stack": "node scripts/start-scraper-stack.js",
     "translate:worker": "scripts\\translate-venv\\Scripts\\python.exe scripts\\nllb-translate-worker.py",
     "translate:worker:argos": "scripts\\translate-venv\\Scripts\\python.exe scripts\\argos-translate-worker.py",
     "translate:worker:js-nllb": "node scripts/local-translate-worker.mjs",

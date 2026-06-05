@@ -14,7 +14,7 @@
 
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
-const PROXY_START_COMMAND = 'npm run scraper:proxy';
+const PROXY_START_COMMAND = 'npm run scraper:stack';
 const SCRAPER_BUILD = '20260526-geizhals-source-fields';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
 const DEEPSEEK_URL = '/api/ai/deepseek';
@@ -2981,6 +2981,33 @@ async function _translateProductInline(product) {
   return product;
 }
 
+function _singleTranslationReady(product, targetLangs = TARGET_LANGS) {
+  if (!product || !product.multiLangSpecs || typeof product.multiLangSpecs !== 'object') return false;
+  const sourceSpecsCount = Object.keys(product.specs || product.sourceSpecs || {}).length;
+  return targetLangs.every(lang => {
+    if (!Object.prototype.hasOwnProperty.call(product.multiLangSpecs, lang)) return false;
+    const map = product.multiLangSpecs[lang];
+    if (!map || typeof map !== 'object') return false;
+    return sourceSpecsCount === 0 || Object.keys(map).length > 0;
+  });
+}
+
+async function _translateSingleProductRequired(product, label = '', timeoutMs = 300000) {
+  const tag = String(label || product?.name || product?.slug || 'single product').slice(0, 80);
+  await Promise.race([
+    _translateProductInline(product),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`single-inline-translate-timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs)),
+  ]);
+  if (!_singleTranslationReady(product, TARGET_LANGS)) {
+    throw new Error(`translation payload missing for ${TARGET_LANGS.join(', ')}`);
+  }
+  if (typeof window !== 'undefined' && typeof window.xlog === 'function') {
+    window.xlog(`[DE] ✓ ${tag} — tekli ürün çeviri doğrulandı (${TARGET_LANGS.join(', ')})`, 'success');
+  }
+  return product;
+}
+
 // IIFE-internal — NOT exposed (Epey scraper owns window.QorAiBulkTranslate).
 const _GeizhalsBulkTranslate = {
   // Pre-load dictionary
@@ -3255,7 +3282,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       let reason = '';
       try {
         const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
-          signal: AbortSignal.timeout(90000)
+          signal: AbortSignal.timeout(180000)
         });
         const contentType = res.headers.get('content-type') || '';
         const isJson = contentType.includes('application/json');
@@ -3442,7 +3469,7 @@ async function collectSearchProductUrls(searchTerm, maxProducts = 200) {
     let reason = '';
     try {
       const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
-        signal: AbortSignal.timeout(90000)
+        signal: AbortSignal.timeout(180000)
       });
       const contentType = res.headers.get('content-type') || '';
       if (res.ok && contentType.includes('application/json')) {
@@ -4033,7 +4060,13 @@ async function scrapeByUrl() {
     const saveSingleProduct = async (product) => {
       const clean = prepareProductPayload(product);
       // Single URL must behave like bulk: translate before PB write.
-      await _translateProductInline(clean);
+      try {
+        await _translateSingleProductRequired(clean, clean.name || clean.slug || product.sourceUrl || '');
+      } catch (e) {
+        slog(`❌ Tekli Geizhals çevirisi tamamlanmadı; ürün kaydedilmedi (${e.message})`, 'error');
+        if (typeof toast === 'function') toast('Tekli ürün çevirisi tamamlanmadı; kayıt yapılmadı', 'e');
+        return;
+      }
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || product.sourceUrl || '');
       if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         const existing = await window._findExistingByVariantGroup(clean.variantGroup);

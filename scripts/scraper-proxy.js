@@ -245,6 +245,7 @@ let flaresolverrSession = null;       // session id we reuse for cookie persiste
 let flaresolverrAvailable = false;    // toggled by health probe
 let flaresolverrFailureCount = 0;     // consecutive failures → temp disable
 const ADMIN_DIR = path.join(rootDir, 'admin');
+const CHROME_PROFILE_DIR = path.join(rootDir, 'scripts', '.chrome-profile');
 const MIME = {
   '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8',
   '.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png',
@@ -343,11 +344,12 @@ async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
   const chromePath = findChromePath();
   if (!chromePath) throw new Error('Chrome or Edge was not found. Please install Chrome or Edge.');
+  fs.mkdirSync(CHROME_PROFILE_DIR, { recursive: true });
 
   const launchArgs = [
     '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
     '--window-size=1366,768','--disable-blink-features=AutomationControlled',
-    '--disable-infobars','--disable-notifications','--lang=tr-TR,tr',
+    '--disable-infobars','--disable-notifications','--lang=de-DE,de',
     '--ignore-gpu-blocklist','--enable-gpu-rasterization',
     // Suppress automation-only banners and side-channel signals.
     '--no-default-browser-check','--no-first-run',
@@ -367,7 +369,7 @@ async function getBrowser() {
         // requirement.
         turnstile: true,
         // Provide our Chrome path so the package doesn't pull a separate one.
-        customConfig: { chromePath },
+        customConfig: { chromePath, userDataDir: CHROME_PROFILE_DIR },
         connectOption: { defaultViewport: null },
         args: launchArgs,
         // Linux-only flag; safe to pass on Windows (ignored).
@@ -396,6 +398,7 @@ async function getBrowser() {
     headless: false,
     ignoreDefaultArgs: ['--enable-automation'],
     args: launchArgs,
+    userDataDir: CHROME_PROFILE_DIR,
     defaultViewport: { width: 1366, height: 768 },
     ignoreHTTPSErrors: true,
   });
@@ -452,7 +455,7 @@ async function getPage() {
     // navigator.webdriver = false (stealth handles this but redundancy is cheap)
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     // Plausible plugin / mimeType counts (empty arrays look bot-like)
-    Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr', 'en-US', 'en'] });
+    Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de', 'en-US', 'en'] });
   });
   // FIX: Do NOT call setRequestInterception here — it leaks when the page is
   // reused across requests and causes "Request is already handled" errors.
@@ -504,8 +507,18 @@ function _isChallengeContent(html) {
     html.includes('__cf_chl') ||
     html.includes('jschl-answer') ||
     html.includes('Checking if the site connection is secure') ||
-    html.includes('Überprüfung ob die Verbindung')
+    html.includes('Überprüfung ob die Verbindung') ||
+    /Nur einen Moment|Sichere Verbindung wird überprüft|Just a moment|Checking your browser|Attention Required|Access denied|DDoS-Guard/i.test(html)
   );
+}
+
+function _htmlTitle(html) {
+  const m = String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+}
+
+function _isChallengeHtml(html) {
+  return _isChallengeContent(html) || _isChallengeTitle(_htmlTitle(html));
 }
 
 async function _resetActivePage() {
@@ -572,7 +585,7 @@ async function fetchWithFlareSolverr(url) {
   const status = sol.status || 200;
   // FlareSolverr returns the post-CF page; if status === 200 it's clean.
   // Still run our challenge detector as a safety net.
-  const isChallenge = _isChallengeContent(html) || _isChallengeTitle(sol.title || '');
+  const isChallenge = _isChallengeHtml(html) || _isChallengeTitle(sol.title || '');
   // Mirror cf_clearance + UA into sessionCookies / currentUA so the plain
   // HTTPS fast path (`/?url=` and `/category-links?light=1`) can inherit
   // them. Without this sync, light-mode is effectively disabled whenever
@@ -641,10 +654,10 @@ function plainFetch(url, redirects = 4, referer = '') {
       headers: {
         'User-Agent': currentUA || _randomUA(),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Language': isGeizhalsUrl(url) ? 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7' : 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
         'Upgrade-Insecure-Requests': '1',
-        ...(referer ? { 'Referer': referer } : {}),
+        ...(referer ? { 'Referer': referer } : (isGeizhalsUrl(url) ? { 'Referer': 'https://geizhals.de/' } : {})),
         ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
       },
     };
@@ -1189,7 +1202,7 @@ async function fetchWithPuppeteer(url, opts = {}) {
 
     let title = await page.title().catch(() => '');
     const rawHtml = await page.content().catch(() => '');
-    let isChallenge = _isChallengeTitle(title) || _isChallengeContent(rawHtml);
+    let isChallenge = _isChallengeTitle(title) || _isChallengeHtml(rawHtml);
 
     if (isChallenge && waitChallenge) {
       // puppeteer-real-browser auto-resolves the Turnstile JS challenge in
@@ -1197,14 +1210,17 @@ async function fetchWithPuppeteer(url, opts = {}) {
       // the page. No manual click required.
       console.log(`  ⏳ Cloudflare challenge — turnstile auto-solver working… ("${title.substring(0, 50)}")`);
       const POLL_INTERVAL = 2500;
-      const MAX_WAIT = 45000; // give the auto-solver up to 45s before giving up
+      const MAX_WAIT = isGeizhals ? 120000 : 45000;
+      if (isGeizhals) {
+        console.log('  ℹ️  Geizhals challenge: keep the opened Chrome window visible; manual solve is accepted if Cloudflare asks.');
+      }
       let waited = 0;
       while (waited < MAX_WAIT) {
         await _humanDelay(POLL_INTERVAL, POLL_INTERVAL);
         waited += POLL_INTERVAL;
         title = await page.title().catch(() => '');
         const html2 = await page.content().catch(() => '');
-        isChallenge = _isChallengeTitle(title) || _isChallengeContent(html2);
+        isChallenge = _isChallengeTitle(title) || _isChallengeHtml(html2);
         if (!isChallenge) {
           console.log(`  ✅ Challenge auto-solved after ${(waited / 1000).toFixed(0)}s: "${title.substring(0, 50)}"`);
           break;
@@ -1321,7 +1337,7 @@ async function fetchWithBrowserFetch(url) {
     return {
       html,
       status: result?.status || 0,
-      isChallenge: _isChallengeContent(html),
+      isChallenge: _isChallengeHtml(html),
     };
   });
 }
@@ -1927,7 +1943,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       ok: true,
       status: 'ok',
-      version: '4.3.7-brand-filter-batch',
+      version: '4.3.8-cf-stack',
       pid: process.pid,
       port: PORT,
       startedAt: SERVER_STARTED_AT.toISOString(),
@@ -1982,7 +1998,7 @@ const server = http.createServer(async (req, res) => {
         if (wantLight && Array.isArray(sessionCookies) && sessionCookies.length) {
           try {
             const lightRes = await plainFetch(targetUrl);
-            if (lightRes.html && lightRes.status >= 200 && lightRes.status < 400 && !_isChallengeContent(lightRes.html)) {
+            if (lightRes.html && lightRes.status >= 200 && lightRes.status < 400 && !_isChallengeHtml(lightRes.html)) {
               html = lightRes.html;
               fetchEngine = 'plain';
             }
@@ -1994,6 +2010,19 @@ const server = http.createServer(async (req, res) => {
             if (!r.html) { const e = new Error('Failed to load category page'); e.status = r.status; throw e; }
             return r.html;
           });
+        }
+        if (_isChallengeHtml(html)) {
+          const title = _htmlTitle(html);
+          console.log(`  🛡️ category-links blocked by Cloudflare (${fetchEngine}): ${title || 'challenge page'}`);
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'cloudflare_challenge',
+            message: 'Cloudflare challenge is still active; retry after proxy reset/cooldown.',
+            title,
+            engine: fetchEngine,
+            flaresolverr: { available: flaresolverrAvailable, failures: flaresolverrFailureCount },
+          }));
+          return;
         }
         // Geizhals listings use a different URL shape and host than Epey, so the
         // Epey extractor (and the ajax/filter/brand machinery below) never apply.
@@ -2240,7 +2269,7 @@ const server = http.createServer(async (req, res) => {
         });
         const settled = await Promise.all(tasks);
         const allOk = settled.every(s =>
-          s && s.html && s.status >= 200 && s.status < 400 && !_isChallengeContent(s.html)
+          s && s.html && s.status >= 200 && s.status < 400 && !_isChallengeHtml(s.html)
         );
         if (allOk) {
           htmls = settled.map(s => s.html);
@@ -2681,7 +2710,7 @@ const server = http.createServer(async (req, res) => {
     // the admin can fetch many product detail pages in parallel. If Epey ever
     // returns a real challenge/403/empty body, we fall back to Puppeteer below.
     let fast = await plainFetch(targetUrl, 4, referer);
-    if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeContent(fast.html)) {
+    if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeHtml(fast.html)) {
       requestCount++;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('X-Status-Code', String(fast.status || 200));
@@ -2700,7 +2729,7 @@ const server = http.createServer(async (req, res) => {
       for (let attempt = 0; attempt < 2; attempt++) {
         await Promise.race([_slowPathBeacon(), new Promise((r) => setTimeout(r, 4000))]);
         fast = await plainFetch(targetUrl, 4, referer);
-        if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeContent(fast.html)) {
+        if (fast.html && fast.status >= 200 && fast.status < 400 && !_isChallengeHtml(fast.html)) {
           requestCount++;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.setHeader('X-Status-Code', String(fast.status || 200));
@@ -2767,7 +2796,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.5 — http://localhost:${PORT}`);
+  console.log(`\n  ⚡ Qor AI Scraper Proxy v4.3.8-cf-stack — http://localhost:${PORT}`);
   console.log(`  🖥️  Admin Panel: http://localhost:${PORT}/`);
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);

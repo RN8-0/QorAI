@@ -10,7 +10,7 @@ const PROXY_URL = 'http://localhost:3456';
 const EPEY_BASE = 'https://www.epey.com';
 const LEGACY_BASE = EPEY_BASE;
 const LEGACY_LISTING_EXTRA = '';
-const PROXY_START_COMMAND = 'npm run scraper:proxy';
+const PROXY_START_COMMAND = 'npm run scraper:stack';
 const SCRAPER_BUILD = '20260530-fast-create-save';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
@@ -254,8 +254,8 @@ function _dispatchSingleProductSaved(id, product) {
       detail: { id: productId, product },
     }));
     if (product?.category && typeof window.qoraiQueueScoreUpdate === 'function') {
-      window.qoraiQueueScoreUpdate(product.category);
-      slog(`⚡ Tekli scrape skor kuyruğu: ${product.category}`, 'info');
+      window.qoraiQueueScoreUpdate(product.category, { productId, immediate: true });
+      slog(`⚡ Tekli scrape hedefli skor kuyruğu: ${product.category} / ${productId || 'new product'}`, 'info');
     } else if (product?.category) {
       slog(`⚠ Score Engine henüz yüklenmedi; kategori sonra manuel çalıştırılmalı: ${product.category}`, 'warn');
     }
@@ -4864,6 +4864,31 @@ async function _translateProductInline(product) {
   return product;
 }
 
+function _singleTranslationReady(product, targetLangs = TARGET_LANGS) {
+  if (!product || !product.multiLangSpecs || typeof product.multiLangSpecs !== 'object') return false;
+  const sourceSpecsCount = Object.keys(product.specs || product.sourceSpecs || {}).length;
+  return targetLangs.every(lang => {
+    if (!Object.prototype.hasOwnProperty.call(product.multiLangSpecs, lang)) return false;
+    const map = product.multiLangSpecs[lang];
+    if (!map || typeof map !== 'object') return false;
+    return sourceSpecsCount === 0 || Object.keys(map).length > 0;
+  });
+}
+
+async function _translateSingleProductRequired(product, label = '', timeoutMs = 300000) {
+  const tag = String(label || product?.name || product?.slug || 'single product').slice(0, 80);
+  await Promise.race([
+    _translateProductInline(product),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`single-inline-translate-timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs)),
+  ]);
+  if (!_singleTranslationReady(product, TARGET_LANGS)) {
+    throw new Error(`translation payload missing for ${TARGET_LANGS.join(', ')}`);
+  }
+  xlog(`✓ ${tag} — tekli ürün çeviri doğrulandı (${TARGET_LANGS.join(', ')})`, 'success');
+  return product;
+}
+
 async function _translateProductsInlineBatch(jobs) {
   const batch = (jobs || []).filter(j => j && j.clean);
   if (!batch.length) return batch;
@@ -8548,18 +8573,14 @@ async function scrapeByUrl() {
       return;
     }
     slog(`🌐 Tekli ürün çevirisi başlıyor: ${clean.name}`, 'info');
-    // Hard cap the inline translation so a dead GPU worker (8797) or a stalled
-    // DeepSeek connection can never hang a single scrape forever. On timeout we
-    // save the raw Turkish payload — the Translate tab can materialize EN/DE
-    // later — instead of leaving the product unsaved and the UI spinning.
+    // Single URL imports are intentionally stricter than bulk imports: the
+    // product is saved only after EN/DE translation payloads exist.
     try {
-      await Promise.race([
-        _translateProductInline(clean),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('inline-translate-timeout (120s)')), 120000)),
-      ]);
+      await _translateSingleProductRequired(clean, clean.name || clean.slug || url);
     } catch (e) {
-      slog(`⚠ Tekli çeviri tamamlanamadı (${e.message}); ham TR kaydediliyor, Translate sekmesinden tamamlanabilir`, 'warn');
+      slog(`❌ Tekli çeviri tamamlanmadı; ürün kaydedilmedi (${e.message})`, 'error');
+      toast('Tekli ürün çevirisi tamamlanmadı; kayıt yapılmadı', 'e');
+      return;
     }
     try { _assertCleanEnglishPayload(clean, clean.name || clean.slug || url); } catch (_) {}
 

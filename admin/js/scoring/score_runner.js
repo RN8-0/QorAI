@@ -343,13 +343,23 @@
     const requestedConcurrency = Number(opts.concurrency || 10);
     const concurrency = Math.max(1, Math.min(16, Number.isFinite(requestedConcurrency) ? requestedConcurrency : 10));
     const auto = !!opts.auto;
+    const onlyProductIds = new Set(
+      []
+        .concat(opts.onlyProductIds || [])
+        .concat(opts.onlyProductId ? [opts.onlyProductId] : [])
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    );
 
     _running = true; _abort = false; _startTime = Date.now();
     _lastProgressPaint = 0;
     _hideSummary();
     _acquireWakeLock();
     if (!auto && typeof clearScraperLog === 'function') clearScraperLog();
-    _slog(`🚀 Score Engine v7 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}`);
+    _slog(
+      `🚀 Score Engine v7 started${category ? ' — category: ' + category : ' — all categories'}${auto ? ' · auto' : ''}` +
+      (onlyProductIds.size ? ` · target ${onlyProductIds.size} product` : '')
+    );
     _slog('⚙️ Heavy scoring now runs in a browser worker so the admin panel stays responsive.');
 
     // ── PHASE 1: LOAD ───────────────────────────────────────
@@ -422,14 +432,17 @@
 
     // Filter: only what actually changes (unless overwrite=true → force write all)
     const byId = new Map(products.map(p => [p.id, p]));
-    const toUpdate = allComputed.filter(s => {
+    const computedForTarget = onlyProductIds.size
+      ? allComputed.filter(s => onlyProductIds.has(String(s.id || '')))
+      : allComputed;
+    const toUpdate = computedForTarget.filter(s => {
       const existing = byId.get(s.id);
       if (!existing) return false;
       if (overwrite) return true; // force re-persist every score
       if (existing.techScore != null && existing.techScore !== 0) return false;
       return existing.techScore !== s.score;
     });
-    const unchanged = allComputed.length - toUpdate.length;
+    const unchanged = computedForTarget.length - toUpdate.length;
 
     // Top-3 winners log
     const top3 = _topN(allComputed, 3);
@@ -439,11 +452,15 @@
         _slog(`    ${i + 1}. ${t.name || t.id} — ${t.score} (${t.tier || '?'}, ${t.category})`);
       });
     }
-    _slog(`📊 Calculation done: ${allComputed.length} products scored, ${toUpdate.length} changed, ${unchanged} unchanged`);
+    _slog(
+      `📊 Calculation done: ${allComputed.length} products scored` +
+      (onlyProductIds.size ? `, ${computedForTarget.length}/${onlyProductIds.size} target matched` : '') +
+      `, ${toUpdate.length} changed, ${unchanged} unchanged`
+    );
 
     if (!toUpdate.length) {
       _setProgress('Done', 1, 1);
-      _showSummary(`<div><strong>✅ All scores are already current</strong> — ${allComputed.length} products checked · <strong>⏱️ ${((Date.now()-_startTime)/1000).toFixed(1)}s</strong></div>`);
+      _showSummary(`<div><strong>✅ All scores are already current</strong> — ${computedForTarget.length || allComputed.length} products checked · <strong>⏱️ ${((Date.now()-_startTime)/1000).toFixed(1)}s</strong></div>`);
       _running = false; _releaseWakeLock(); return;
     }
 
@@ -531,7 +548,7 @@
   global.stopScoreEngine = stopScoreEngine;
   global.startScoreEngine = startScoreEngine;
 
-  const _autoQueue = new Set();
+  const _autoQueue = new Map();
   let _autoTimer = null;
   // Turned ON 2026-05-31 per user request: every scraped/saved product fires
   // `qorai:product-saved`, the touched category goes into _autoQueue, and the
@@ -550,29 +567,39 @@
       _autoTimer = setTimeout(_flushAutoScoreQueue, 15000);
       return;
     }
-    const cats = [..._autoQueue].filter(Boolean);
+    const queued = [..._autoQueue.entries()].filter(([cat]) => cat);
     _autoQueue.clear();
-    for (const cat of cats) {
+    for (const [cat, productIds] of queued) {
       if (_abort) break;
-      await startScoreEngine(cat, { overwrite: true, concurrency: 6, auto: true });
+      const targetIds = [...(productIds || new Set())].filter(Boolean);
+      await startScoreEngine(cat, {
+        overwrite: true,
+        concurrency: 6,
+        auto: true,
+        ...(targetIds.length ? { onlyProductIds: targetIds } : {}),
+      });
       await _sleep(250);
     }
   }
-  global.qoraiQueueScoreUpdate = function (category) {
+  global.qoraiQueueScoreUpdate = function (category, opts) {
     if (!category) return;
     if (!AUTO_SCORE_FROM_PRODUCT_SAVE) return;
     if (global.qoraiAutoScoreSuppressed) return;
-    _autoQueue.add(String(category));
+    const cat = String(category);
+    const productId = String(opts?.productId || '').trim();
+    if (!_autoQueue.has(cat)) _autoQueue.set(cat, new Set());
+    if (productId) _autoQueue.get(cat).add(productId);
     clearTimeout(_autoTimer);
     // Use a longer debounce while a scrape is active so we don't burn CPU
     // re-arming the timer for every saved product. 30s is plenty: the final
     // flush will catch the whole batch once the scrape finishes.
-    const debounce = global.qoraiScrapeActive ? 30000 : 15000;
+    const debounce = opts?.immediate ? 750 : (global.qoraiScrapeActive ? 30000 : 15000);
     _autoTimer = setTimeout(_flushAutoScoreQueue, debounce);
   };
   global.addEventListener?.('qorai:product-saved', ev => {
     const cat = ev?.detail?.product?.category || '';
-    global.qoraiQueueScoreUpdate(cat);
+    const productId = ev?.detail?.id || ev?.detail?.product?.id || '';
+    global.qoraiQueueScoreUpdate(cat, { productId });
   });
   global.qoraiCancelQueuedScoreUpdates = function () {
     _autoQueue.clear();
