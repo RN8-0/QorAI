@@ -9092,6 +9092,7 @@ window.showDictCounterPopup = function () {
 // Stash the Epey entry points BEFORE we reassign the globals.
 const _epeyStartBulkScrape = startBulkScrape;
 const _epeyScrapeByUrl = scrapeByUrl;
+const _epeyStopScraping = stopScraping;
 
 function _resolveScrapeSource() {
   return document.getElementById('scrapeSource')?.value || 'epey';
@@ -9138,6 +9139,14 @@ window.scrapeByUrl = async function () {
     return window.QorAiGeizhals.scrapeByUrl();
   }
   return _epeyScrapeByUrl();
+};
+
+// The Stop button calls one global, but EITHER source could be the live run —
+// the old global only aborted Epey, so Stop did nothing during a Geizhals
+// scrape. Abort BOTH scrapers (a no-op flag flip on the idle one).
+window.stopScraping = function () {
+  try { _epeyStopScraping(); } catch (_) {}
+  try { window.QorAiGeizhals?.stopScraping?.(); } catch (_) {}
 };
 
 // Source-aware speed defaults. Epey detail fetches are fast, but product

@@ -547,7 +547,8 @@ function prepareProductPayload(product) {
     ? window.QorAiCategories.canonicalId(product.category || '')
     : String(product.category || '').trim();
 
-  // Enforce hard cap of 4 product images, dedup, all in -l.webp tier
+  // Keep the WHOLE gallery (URLs only — nothing downloaded), deduped, all in the
+  // -l.webp tier. The app/website/admin image modal renders every stored URL.
   const rawImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
   const seenImg = new Set();
   const images = [];
@@ -558,7 +559,7 @@ function prepareProductPayload(product) {
       seenImg.add(key);
       images.push(mid);
     }
-    if (images.length >= 4) break;
+    if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
   }
   const primary = images[0] || product.imageUrl || '';
 
@@ -4042,10 +4043,11 @@ async function startBulkScrape() {
   }
 
   const limits = (typeof getScrapeLimitSettings === 'function') ? getScrapeLimitSettings() : null;
-  const collectAll = limits ? !!limits.collectAllSelected : false;
-  const maxProducts = collectAll
-    ? 100000
-    : (limits?.productLimit || parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200);
+  // The entered ÜRÜN LİMİTİ is a HARD cap per category — it is always honoured,
+  // so "limit 10" collects 10 and stops, regardless of the "ne varsa çek"
+  // toggle. Leave the field at its large preset to effectively scrape the lot.
+  const maxProducts = limits?.productLimit || parseInt(document.getElementById('scrapeMaxProducts')?.value) || 200;
+  const collectAll = (limits ? !!limits.collectAllSelected : false) && maxProducts >= 100000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 800;
   const concurrency = parseInt(document.getElementById('scrapeConcurrency')?.value, 10) || 4;
 

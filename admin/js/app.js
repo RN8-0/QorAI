@@ -2381,9 +2381,23 @@ async function _fetchDictionaryProducts(categoryId){
     totalPages = Math.max(1, Math.ceil(totalItems / perPage));
   } catch (_) { /* best-effort, only drives the progress label */ }
 
+  // Only NEW / untranslated products are eligible — products whose
+  // multiLangSpecs are already filled for every target language are skipped
+  // entirely, so re-running Translate never re-touches old products.
+  const xlateTargets = (window.QorAiBulkTranslate?.targetLangs?.() || ['en', 'de'])
+    .filter((l) => l && l !== 'tr');
+  let alreadyTranslated = 0;
+  const _needsTranslation = (p) => {
+    const ml = p?.multiLangSpecs && typeof p.multiLangSpecs === 'object' ? p.multiLangSpecs : {};
+    return xlateTargets.some((lang) => {
+      const m = ml[lang];
+      return !m || typeof m !== 'object' || Object.keys(m).length === 0;
+    });
+  };
+
   let lastLog = Date.now();
   const heartbeat = setInterval(() => {
-    _xlateLog(`… still fetching products · page ${pageNo}/${totalPages || '?'} · raw ${rawSeen} · eligible ${products.length}`, 'warn');
+    _xlateLog(`… still fetching products · page ${pageNo}/${totalPages || '?'} · raw ${rawSeen} · eligible ${products.length} · skipped(translated) ${alreadyTranslated}`, 'warn');
     _xlateProgress(0, 0, 'Fetching products…', {
       detail: `PocketBase page ${pageNo}/${totalPages || '?'} · eligible Epey products ${products.length}`,
     });
@@ -2410,6 +2424,7 @@ async function _fetchDictionaryProducts(categoryId){
           : /epey/i.test(String(p?.source || p?.sourceUrl || ''));
         const sourceSpecs = p?.sourceSpecs && typeof p.sourceSpecs === 'object' ? p.sourceSpecs : p?.specs;
         if (!isEpey || !sourceSpecs || !Object.keys(sourceSpecs).length) continue;
+        if (!_needsTranslation(p)) { alreadyTranslated++; continue; }
         products.push(p);
       }
       lastId = items[items.length - 1].id;
@@ -2426,8 +2441,8 @@ async function _fetchDictionaryProducts(categoryId){
   } finally {
     clearInterval(heartbeat);
   }
-  _xlateLog(`✓ fetch complete: ${pageNo} pages · raw ${rawSeen} · eligible ${products.length}`, 'success');
-  return { products, rawSeen };
+  _xlateLog(`✓ fetch complete: ${pageNo} pages · raw ${rawSeen} · YENİ (çevrilecek) ${products.length} · zaten çevrili ${alreadyTranslated} (atlandı)`, 'success');
+  return { products, rawSeen, alreadyTranslated };
 }
 
 async function startCategoryTranslation(){
@@ -2469,11 +2484,14 @@ async function startCategoryTranslation(){
     const fetched = await _fetchDictionaryProducts(categoryId);
     products = fetched.products;
     if (!products.length) {
-      _xlateLog(`No products with specs found in this category (raw docs: ${fetched.rawSeen || 0}).`, 'warn');
-      toast('Bu kategoride çevrilecek ürün yok', 'w');
+      const allDone = fetched.alreadyTranslated || 0;
+      _xlateLog(allDone
+        ? `Çevrilecek YENİ ürün yok — ${allDone} ürün zaten çevrili, dokunulmadı.`
+        : `No products with specs found in this category (raw docs: ${fetched.rawSeen || 0}).`, 'warn');
+      toast(allDone ? `Hepsi zaten çevrili (${allDone}) — yeni ürün yok` : 'Bu kategoride çevrilecek ürün yok', 'w');
       return;
     }
-    _xlateLog(`Found ${products.length} products with specs.`);
+    _xlateLog(`Found ${products.length} YENİ (untranslated) products with specs.`);
 
     _xlateProgress(0, 0, 'Collecting atoms…');
     const targets = window.QorAiBulkTranslate.targetLangs();
