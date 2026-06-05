@@ -227,9 +227,92 @@ function productUrlMatchesCategory(url, categoryId) {
 function normalizeGeizhalsProductUrl(url) {
   try {
     const u = new URL(url, GEIZHALS_BASE);
-    return `${GEIZHALS_BASE}${u.pathname}`;
+    return `${GEIZHALS_BASE}${u.pathname}`.replace(/\/+$/g, '');
   } catch {
     return '';
+  }
+}
+
+function escapePbFilterValue(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function geizhalsProductKeysFromUrl(url) {
+  const raw = String(url || '').trim();
+  const normalized = normalizeGeizhalsProductUrl(raw);
+  const slug = slugFromUrl(raw || normalized);
+  const idLike = slug ? generateProductId(slug) : '';
+  return { raw, normalized, slug, idLike };
+}
+
+function isScrapedSourceRecord(record = {}) {
+  const source = String(record.source || '').toLowerCase();
+  const sourceUrl = String(record.sourceUrl || '').toLowerCase();
+  return /(epey|geizhals)/.test(source) || /(epey\.com|geizhals\.eu)/.test(sourceUrl);
+}
+
+function storageVariantToken(value) {
+  const m = String(value || '').match(/(\d+)\s*(tb|gb)\b/i);
+  return m ? `${m[1]}${m[2].toLowerCase()}` : '';
+}
+
+function recordSummary(record = {}) {
+  return {
+    id: record.id || '',
+    source: record.source || '',
+    sourceUrl: record.sourceUrl || '',
+    name: record.name || '',
+    brand: record.brand || '',
+    category: record.category || '',
+    variantGroup: record.variantGroup || '',
+  };
+}
+
+async function findExistingGeizhalsProduct(clean = {}) {
+  const keys = geizhalsProductKeysFromUrl(clean.sourceUrl || clean.slug || '');
+  const orParts = [];
+  const add = (field, value) => {
+    const raw = String(value || '').trim();
+    if (raw) orParts.push(`${field}="${escapePbFilterValue(raw)}"`);
+  };
+  add('sourceUrl', keys.raw);
+  if (keys.normalized !== keys.raw) add('sourceUrl', keys.normalized);
+  add('slug', clean.slug || keys.slug);
+  if (keys.idLike && keys.idLike !== (clean.slug || keys.slug)) add('id', keys.idLike);
+  if (clean.variantGroup) {
+    const vg = `variantGroup="${escapePbFilterValue(clean.variantGroup)}"`;
+    const cat = String(clean.category || '').trim();
+    orParts.push(cat ? `(${vg} && category="${escapePbFilterValue(cat)}")` : vg);
+  }
+  if (!orParts.length) return null;
+
+  try {
+    const res = await pbGetList('products', 1, 50, {
+      filter: orParts.join(' || '),
+      fields: 'id,source,sourceUrl,slug,name,brand,category,variantGroup',
+      sort: '-updated',
+    });
+    let items = (res.items || []).filter(isScrapedSourceRecord);
+    const targetStorage = storageVariantToken(clean.name);
+    if (targetStorage && items.length) {
+      const sameOrUnsized = items.filter((it) => {
+        const savedStorage = storageVariantToken(it.name);
+        return !savedStorage || savedStorage === targetStorage;
+      });
+      if (!sameOrUnsized.length) return null;
+      items = sameOrUnsized;
+    }
+    const byExactSlug = items.find((it) => String(it.slug || it.id || '') === String(clean.slug || keys.slug || ''));
+    const byExactUrl = items.find((it) => {
+      const saved = geizhalsProductKeysFromUrl(it.sourceUrl || '');
+      return (keys.normalized && saved.normalized === keys.normalized) || (keys.raw && saved.raw === keys.raw);
+    });
+    const byEpey = items.find((it) => /epey/i.test(String(it.source || it.sourceUrl || '')));
+    const hit = byExactSlug || byExactUrl || byEpey || items[0];
+    return hit ? recordSummary(hit) : null;
+  } catch (e) {
+    slog(`  ⚠ Geizhals duplicate lookup failed: ${e.message}`, 'warn');
+    return null;
   }
 }
 
@@ -3680,26 +3763,41 @@ function updateResumeUI() {
 }
 // updateResumeUI exposed via the namespace at the bottom of this file.
 
-// ── Skip-existing: pull every product URL already stored in PB for this
-// category and drop them from the scrape list. This makes resume "free":
-// even after a PC restart, the next run skips everything already saved
-// and continues with brand-new URLs.
-async function _loadExistingSourceUrls(categoryId) {
-  if (!categoryId) return new Set();
+// ── Skip-existing: pull durable product identities already stored in PB and
+// drop them from the scrape list before any Cloudflare-prone detail fetch.
+async function _loadExistingGeizhalsProducts(categoryId) {
+  const out = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
   try {
+    const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
+    const sourceFilter = `(source = "geizhals.eu" || source = "geizhals" || sourceUrl ~ "geizhals.eu")`;
     const docs = await pbGetAll('products', {
-      filter: `category="${String(categoryId).replace(/"/g, '\\"')}"`,
+      filter: safeCategory ? `category="${safeCategory}"` : sourceFilter,
       sort: '-created',
+      fields: 'id,source,sourceUrl,slug,name,variantGroup',
     });
-    const set = new Set();
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      if (data?.sourceUrl) set.add(String(data.sourceUrl).trim());
+      const recId = d.id || data.id || '';
+      if (!isScrapedSourceRecord(data)) continue;
+      const keys = geizhalsProductKeysFromUrl(data.sourceUrl || '');
+      if (keys.raw) out.urls.add(keys.raw);
+      if (keys.normalized) out.urls.add(keys.normalized);
+      if (keys.slug) out.slugs.add(keys.slug);
+      if (keys.idLike) out.slugs.add(keys.idLike);
+      if (recId) out.slugs.add(String(recId));
+      if (data.slug) out.slugs.add(String(data.slug));
+      const vg = String(data.variantGroup || '').trim();
+      if (vg && recId) {
+        const rec = recordSummary({ id: recId, ...data });
+        const prev = out.byVariantGroup.get(vg);
+        if (!prev || /epey/i.test(String(rec.source || rec.sourceUrl || ''))) out.byVariantGroup.set(vg, rec);
+      }
     }
-    return set;
+    slog(`  preload OK: ${docs.length} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key`, 'success');
+    return out;
   } catch (e) {
     slog(`  (existing-URL preload failed: ${e.message})`, 'warn');
-    return new Set();
+    return out;
   }
 }
 
@@ -3730,9 +3828,18 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const existingUrls = await _loadExistingSourceUrls(categoryId);
+  const existing = await _loadExistingGeizhalsProducts(categoryId);
   const beforeCount = urlItems.length;
-  urlItems = urlItems.filter(it => !existingUrls.has(it.url));
+  const seenBatchKeys = new Set();
+  urlItems = urlItems.filter((it) => {
+    const keys = geizhalsProductKeysFromUrl(it.url);
+    const candidates = [keys.normalized, keys.raw, keys.slug, keys.idLike].filter(Boolean);
+    if (candidates.some((key) => existing.urls.has(key) || existing.slugs.has(key) || seenBatchKeys.has(key))) {
+      return false;
+    }
+    candidates.forEach((key) => seenBatchKeys.add(key));
+    return true;
+  });
   const skippedCount = beforeCount - urlItems.length;
   if (skippedCount > 0) {
     slog(`⏭  Skipped ${skippedCount} already-saved products → ${urlItems.length} new to scrape`, 'success');
@@ -3822,31 +3929,36 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // entirely — no merge, no overwrite, no wasted translation calls — so the
       // Epey record (Turkish names + specs the app is tuned for) stays untouched.
       let existingRec = null;
-      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+      try {
+        existingRec = await findExistingGeizhalsProduct(clean);
+      } catch (e) {
+        slog(`  ⚠ Geizhals duplicate probe failed: ${e.message}`, 'warn');
+      }
+      if (!existingRec && clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         try {
           existingRec = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
           if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
             existingRec = await window._findExistingEpeyByModelFamily(clean);
           }
-          if (existingRec && /epey/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
-            results.skipped++;
-            errorStreak = 0;
-            challengeStreak = 0;
-            recent.push('ok');
-            slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
-            return;
-          }
-          if (existingRec && /geizhals/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
-            results.skipped++;
-            errorStreak = 0;
-            challengeStreak = 0;
-            recent.push('ok');
-            slog(`  ⏭ Geizhals model zaten var, tekrar kayıt açılmadı: ${product.name} (mevcut ${existingRec.id})`, 'info');
-            return;
-          }
         } catch (e) {
           slog(`  ⚠ dedup probe failed: ${e.message}`, 'warn');
         }
+      }
+      if (existingRec && /epey/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
+        results.skipped++;
+        errorStreak = 0;
+        challengeStreak = 0;
+        recent.push('ok');
+        slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
+        return;
+      }
+      if (existingRec && /geizhals/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
+        results.skipped++;
+        errorStreak = 0;
+        challengeStreak = 0;
+        recent.push('ok');
+        slog(`  ⏭ Geizhals model zaten var, tekrar kayıt açılmadı: ${product.name} (mevcut ${existingRec.id})`, 'info');
+        return;
       }
 
       // Inline translation — shares the dictionary with the Epey scraper.
@@ -4131,22 +4243,23 @@ async function scrapeByUrl() {
     const saveSingleProduct = async (product) => {
       const clean = prepareProductPayload(product);
       let existing = null;
-      if (clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
+      existing = await findExistingGeizhalsProduct(clean);
+      if (!existing && clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         existing = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
-        if (!existing && typeof window._findExistingEpeyByModelFamily === 'function') {
-          existing = await window._findExistingEpeyByModelFamily(clean);
-        }
-        // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
-        if (existing && /epey/i.test(String(existing.source || existing.sourceUrl || ''))) {
-          slog(`↩ Epey baz alındı, Geizhals atlandı: ${clean.name} (mevcut ${existing.id})`, 'info');
-          if (typeof loadProducts === 'function') await loadProducts();
-          return;
-        }
-        if (existing && /geizhals/i.test(String(existing.source || existing.sourceUrl || ''))) {
-          slog(`↩ Geizhals model zaten var, tekrar kayıt açılmadı: ${clean.name} (mevcut ${existing.id})`, 'info');
-          if (typeof loadProducts === 'function') await loadProducts();
-          return;
-        }
+      }
+      if (!existing && typeof window._findExistingEpeyByModelFamily === 'function') {
+        existing = await window._findExistingEpeyByModelFamily(clean);
+      }
+      // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
+      if (existing && /epey/i.test(String(existing.source || existing.sourceUrl || ''))) {
+        slog(`↩ Epey baz alındı, Geizhals atlandı: ${clean.name} (mevcut ${existing.id})`, 'info');
+        if (typeof loadProducts === 'function') await loadProducts();
+        return;
+      }
+      if (existing && /geizhals/i.test(String(existing.source || existing.sourceUrl || ''))) {
+        slog(`↩ Geizhals model zaten var, tekrar kayıt açılmadı: ${clean.name} (mevcut ${existing.id})`, 'info');
+        if (typeof loadProducts === 'function') await loadProducts();
+        return;
       }
       // Single URL must behave like bulk: translate before PB write.
       try {

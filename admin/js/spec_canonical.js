@@ -3,7 +3,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.QorAiSpecCanonical = api;
 })(typeof window !== 'undefined' ? window : globalThis, function() {
-  const VERSION = '20260522-spec-canonical-v1';
+  const VERSION = '20260605-spec-canonical-geizhals-v2';
 
   function norm(text) {
     return String(text || '')
@@ -11,6 +11,7 @@
       .replace(/ı/g, 'i').replace(/İ/g, 'i')
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ö/g, 'o')
       .replace(/ş/g, 's').replace(/ü/g, 'u')
+      .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss')
       .replace(/[()]/g, ' ')
       .replace(/[^a-z0-9]+/g, ' ')
       .replace(/\s+/g, ' ')
@@ -18,54 +19,54 @@
   }
 
   const SECTION_RULES = [
-    ['Display', ['display', 'screen', 'ekran', 'monitor']],
-    ['Battery', ['battery', 'batarya', 'pil', 'charging', 'charge', 'sarj']],
-    ['Camera', ['camera', 'kamera', 'photo', 'video']],
-    ['Performance', ['processor', 'cpu', 'islemci', 'chipset', 'yonga', 'gpu', 'graphics', 'grafik', 'performance', 'donanim']],
-    ['Memory and storage', ['memory', 'ram', 'bellek', 'storage', 'depolama', 'ssd', 'hdd', 'disk']],
-    ['Connectivity', ['wi fi', 'wifi', 'wlan', 'bluetooth', 'network', 'ag', 'baglanti', 'connectivity', 'usb', 'nfc', 'sim', '5g', '4g']],
-    ['Design', ['design', 'tasarim', 'body', 'dimensions', 'dimension', 'boyut', 'weight', 'agirlik', 'thickness', 'kalinlik']],
-    ['Audio', ['audio', 'sound', 'speaker', 'ses', 'hoparlor']],
-    ['Software', ['software', 'operating system', 'isletim', 'os', 'windows', 'android', 'ios', 'macos']],
-    ['Sensors', ['sensor', 'sensorler', 'fingerprint', 'parmak izi', 'gps', 'gyro', 'gyroscope']],
-    ['General', ['general', 'genel', 'basic', 'temel', 'highlights', 'one cikan']],
+    ['Display', ['display', 'screen', 'ekran', 'monitor', 'anzeige', 'bildschirm', 'diagonale', 'auflosung']],
+    ['Battery', ['battery', 'batarya', 'pil', 'akku', 'akkulaufzeit', 'akkukapazitat', 'charging', 'charge', 'laden', 'schnellladen', 'sarj']],
+    ['Camera', ['camera', 'kamera', 'photo', 'foto', 'video', 'kamera hinten', 'kamera vorne', 'hauptkamera', 'frontkamera']],
+    ['Performance', ['processor', 'cpu', 'prozessor', 'islemci', 'chipset', 'yonga', 'gpu', 'graphics', 'grafik', 'leistung', 'performance', 'donanim']],
+    ['Memory and storage', ['memory', 'ram', 'arbeitsspeicher', 'bellek', 'storage', 'speicher', 'speicherplatz', 'depolama', 'ssd', 'hdd', 'disk']],
+    ['Connectivity', ['wi fi', 'wifi', 'wlan', 'bluetooth', 'network', 'netzwerk', 'anschluss', 'anschlusse', 'ag', 'baglanti', 'connectivity', 'usb', 'nfc', 'sim', '5g', '4g']],
+    ['Design', ['design', 'tasarim', 'body', 'gehaeuse', 'gehause', 'dimensions', 'dimension', 'abmessungen', 'masse', 'maße', 'boyut', 'weight', 'gewicht', 'agirlik', 'thickness', 'dicke', 'kalinlik']],
+    ['Audio', ['audio', 'sound', 'speaker', 'lautsprecher', 'ses', 'hoparlor']],
+    ['Software', ['software', 'operating system', 'betriebssystem', 'isletim', 'os', 'windows', 'android', 'ios', 'macos']],
+    ['Sensors', ['sensor', 'sensoren', 'sensorler', 'fingerprint', 'fingerabdruck', 'parmak izi', 'gps', 'gyro', 'gyroscope']],
+    ['General', ['general', 'allgemein', 'genel', 'basic', 'temel', 'highlights', 'one cikan']],
   ];
 
   const KEY_RULES = [
-    ['Battery capacity', ['battery capacity', 'battery capacity typical', 'battery capacity mah', 'capacity mah', 'batarya kapasitesi', 'pil kapasitesi']],
-    ['Battery cycle life', ['battery endurance in cycles', 'battery cycle count', 'battery cycles', 'sarj dongusu']],
-    ['Charging port', ['charging port', 'charge connector', 'usb connection type', 'usb connector type', 'usb type', 'usb baglanti tipi']],
-    ['Fast charging', ['fast charging', 'fast charge', 'hizli sarj', 'quick charge']],
-    ['Fast charging features', ['fast charging features', 'fast charge features', 'hizli sarj ozellikleri']],
-    ['Fast charging power', ['fast charging power max', 'fast charging power', 'charging power', 'hizli sarj gucu']],
-    ['Wireless charging', ['wireless charging', 'kablosuz sarj']],
-    ['Removable battery', ['removable battery', 'degisir batarya', 'removeable battery']],
-    ['Video playback', ['video playback', 'video oynatma']],
+    ['Battery capacity', ['battery capacity', 'battery capacity typical', 'battery capacity mah', 'capacity mah', 'batarya kapasitesi', 'pil kapasitesi', 'akkukapazitat', 'akku kapazitat', 'batteriekapazitat']],
+    ['Battery cycle life', ['battery endurance in cycles', 'battery cycle count', 'battery cycles', 'ladezyklen', 'akkuzyklen', 'sarj dongusu']],
+    ['Charging port', ['charging port', 'charge connector', 'usb connection type', 'usb connector type', 'usb type', 'ladeanschluss', 'anschluss laden', 'usb baglanti tipi']],
+    ['Fast charging', ['fast charging', 'fast charge', 'schnellladen', 'schnellladung', 'hizli sarj', 'quick charge']],
+    ['Fast charging features', ['fast charging features', 'fast charge features', 'schnellladefunktionen', 'hizli sarj ozellikleri']],
+    ['Fast charging power', ['fast charging power max', 'fast charging power', 'charging power', 'ladeleistung', 'max ladeleistung', 'hizli sarj gucu']],
+    ['Wireless charging', ['wireless charging', 'kabelloses laden', 'induktives laden', 'kablosuz sarj']],
+    ['Removable battery', ['removable battery', 'wechselbarer akku', 'austauschbarer akku', 'degisir batarya', 'removeable battery']],
+    ['Video playback', ['video playback', 'videowiedergabe', 'video oynatma']],
 
-    ['Screen size', ['screen size', 'display size', 'display diagonal', 'ekran boyutu', 'ekran boyutu inc', 'screen diagonal']],
-    ['Resolution', ['resolution', 'display resolution', 'screen resolution', 'ekran cozunurlugu', 'cozunurluk']],
-    ['Panel type', ['panel type', 'display type', 'screen technology', 'display technology', 'ekran teknolojisi', 'ekran tipi']],
-    ['Refresh rate', ['refresh rate', 'screen refresh rate', 'display refresh rate', 'yenileme hizi']],
-    ['Pixel density', ['pixel density', 'ppi', 'piksel yogunlugu']],
-    ['Brightness', ['brightness', 'screen brightness', 'parlaklik']],
+    ['Screen size', ['screen size', 'display size', 'display diagonal', 'screen diagonal', 'bildschirmgroesse', 'bildschirmgrosse', 'bildschirmdiagonale', 'displaygroesse', 'displaygrosse', 'diagonale', 'zoll', 'ekran boyutu', 'ekran boyutu inc']],
+    ['Resolution', ['resolution', 'display resolution', 'screen resolution', 'auflosung', 'bildschirmauflosung', 'displayauflosung', 'ekran cozunurlugu', 'cozunurluk']],
+    ['Panel type', ['panel type', 'display type', 'screen technology', 'display technology', 'paneltyp', 'display typ', 'bildschirmtechnologie', 'ekran teknolojisi', 'ekran tipi']],
+    ['Refresh rate', ['refresh rate', 'screen refresh rate', 'display refresh rate', 'bildwiederholrate', 'bildwiederholfrequenz', 'aktualisierungsrate', 'yenileme hizi']],
+    ['Pixel density', ['pixel density', 'pixeldichte', 'ppi', 'piksel yogunlugu']],
+    ['Brightness', ['brightness', 'screen brightness', 'helligkeit', 'bildschirmhelligkeit', 'displayhelligkeit', 'parlaklik']],
     ['HDR', ['hdr', 'hdr support', 'hdr destegi']],
 
-    ['Processor', ['processor', 'processor model', 'cpu', 'cpu model', 'islemci', 'islemci modeli', 'ana islemci']],
-    ['Processor family', ['processor family', 'cpu family', 'islemci ailesi']],
-    ['CPU cores', ['processor cores', 'cpu cores', 'core count', 'number of cores', 'cekirdek sayisi', 'cpu cekirdegi']],
-    ['CPU frequency', ['processor frequency', 'cpu frequency', 'base frequency', 'islemci frekansi']],
+    ['Processor', ['processor', 'processor model', 'cpu', 'cpu model', 'prozessor', 'prozessormodell', 'islemci', 'islemci modeli', 'ana islemci']],
+    ['Processor family', ['processor family', 'cpu family', 'prozessorfamilie', 'cpu familie', 'islemci ailesi']],
+    ['CPU cores', ['processor cores', 'cpu cores', 'core count', 'number of cores', 'kerne', 'cpu kerne', 'anzahl kerne', 'cekirdek sayisi', 'cpu cekirdegi']],
+    ['CPU frequency', ['processor frequency', 'cpu frequency', 'base frequency', 'taktfrequenz', 'prozessortakt', 'cpu takt', 'islemci frekansi']],
     ['Chipset', ['chipset', 'soc', 'yonga seti']],
     ['GPU', ['gpu', 'graphics processor', 'graphics card', 'gpu model', 'grafik islemcisi gpu', 'ekran karti']],
 
-    ['RAM', ['ram', 'memory ram', 'internal memory', 'bellek ram', 'memory capacity']],
-    ['RAM type', ['ram type', 'memory type', 'internal memory type', 'bellek tipi']],
-    ['Storage', ['storage', 'internal storage', 'total storage capacity', 'ssd', 'ssd size', 'sabit disk ssd boyutu', 'dahili hafiza', 'depolama']],
-    ['Storage type', ['storage media', 'storage type', 'disk type', 'depolama tipi']],
+    ['RAM', ['ram', 'memory ram', 'internal memory', 'arbeitsspeicher', 'hauptspeicher', 'bellek ram', 'memory capacity']],
+    ['RAM type', ['ram type', 'memory type', 'internal memory type', 'speichertyp ram', 'bellek tipi']],
+    ['Storage', ['storage', 'internal storage', 'total storage capacity', 'interner speicher', 'speicherplatz', 'gesamtspeicher', 'flash speicher', 'ssd', 'ssd size', 'sabit disk ssd boyutu', 'dahili hafiza', 'depolama']],
+    ['Storage type', ['storage media', 'storage type', 'disk type', 'speicherart', 'depolama tipi']],
 
-    ['Main camera', ['main camera', 'main camera resolution', 'rear camera', 'camera resolution', 'arka kamera', 'ana kamera']],
-    ['Front camera', ['front camera', 'front camera resolution', 'selfie camera', 'on kamera']],
-    ['Camera aperture', ['aperture', 'main camera aperture', 'diyafram acikligi']],
-    ['Video recording', ['video recording', 'video resolution', 'video kayit']],
+    ['Main camera', ['main camera', 'main camera resolution', 'rear camera', 'camera resolution', 'kamera hinten', 'ruckkamera', 'rueckkamera', 'hauptkamera', 'arka kamera', 'ana kamera']],
+    ['Front camera', ['front camera', 'front camera resolution', 'selfie camera', 'kamera vorne', 'frontkamera', 'selfie kamera', 'on kamera']],
+    ['Camera aperture', ['aperture', 'main camera aperture', 'blende', 'diyafram acikligi']],
+    ['Video recording', ['video recording', 'video resolution', 'videoaufnahme', 'videoaufzeichnung', 'video kayit']],
 
     ['Wi-Fi', ['wi fi', 'wi fi standards', 'wifi', 'wireless', 'wlan', 'kablosuz baglanti']],
     ['Bluetooth', ['bluetooth', 'bluetooth version']],
@@ -75,16 +76,16 @@
     ['SIM', ['sim', 'sim type', 'sim card type', 'line count', 'hat sayisi']],
     ['USB', ['usb', 'usb version', 'usb versiyonu']],
 
-    ['Operating system', ['operating system', 'os', 'isletim sistemi', 'software']],
-    ['Weight', ['weight', 'agirlik']],
-    ['Dimensions', ['dimensions', 'dimension', 'boyutlar', 'olculer']],
-    ['Thickness', ['thickness', 'kalinlik']],
-    ['Width', ['width', 'en']],
-    ['Height', ['height', 'boy', 'length']],
-    ['Water resistance', ['water resistance', 'waterproof', 'suya dayaniklilik']],
-    ['Color', ['color', 'color options', 'renk', 'renk secenekleri']],
-    ['Sensors', ['sensors', 'sensorler']],
-    ['Speakers', ['speakers', 'speaker features', 'hoparlor', 'hoparlor ozellikleri']],
+    ['Operating system', ['operating system', 'os', 'betriebssystem', 'isletim sistemi', 'software']],
+    ['Weight', ['weight', 'gewicht', 'agirlik']],
+    ['Dimensions', ['dimensions', 'dimension', 'abmessungen', 'masse', 'maße', 'boyutlar', 'olculer']],
+    ['Thickness', ['thickness', 'dicke', 'tiefe', 'kalinlik']],
+    ['Width', ['width', 'breite', 'en']],
+    ['Height', ['height', 'hohe', 'höhe', 'boy', 'length']],
+    ['Water resistance', ['water resistance', 'waterproof', 'wasserdicht', 'schutzart', 'ip zertifizierung', 'suya dayaniklilik']],
+    ['Color', ['color', 'colour', 'farbe', 'color options', 'renk', 'renk secenekleri']],
+    ['Sensors', ['sensors', 'sensoren', 'sensorler']],
+    ['Speakers', ['speakers', 'speaker features', 'lautsprecher', 'hoparlor', 'hoparlor ozellikleri']],
     ['Microphone', ['microphone', 'mikrofon']],
   ];
 

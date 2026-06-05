@@ -1998,7 +1998,47 @@ function handleCardClick(e,id){if(e.target.type==='checkbox')return;if(selectedI
 function toggleSel(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);renderProductsPage();const bar=document.getElementById('selectionBar');if(selectedIds.size>0){bar.style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}else bar.style.display='none'}
 function selectAll(){displayProducts.forEach(p=>selectedIds.add(p.id));renderProductsPage();document.getElementById('selectionBar').style.display='flex';document.getElementById('selectionCount').textContent=selectedIds.size+' selected'}
 function deselectAll(){selectedIds.clear();renderProductsPage();document.getElementById('selectionBar').style.display='none'}
-async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;try{await Promise.all([...selectedIds].map(id=>pbDeleteDoc('products',id)));logActivity('product_delete',`${selectedIds.size} products bulk deleted`);allProducts=allProducts.filter(p=>!selectedIds.has(p.id));totalProductCount-=selectedIds.size;selectedIds.clear();_productUiPages=new Map();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
+function isNotFoundError(error){
+  return !!(error && (error.status === 404 || /404|not found|resource wasn't found|resource not found/i.test(error.message || '')));
+}
+function waitMs(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function deleteTypesenseProductNow(id, attempts=3){
+  if(!id)return true;
+  if(!window.TsClient?.request){
+    console.warn('[delete] Typesense client not loaded; PB delete queue will retry if available:',id);
+    return false;
+  }
+  for(let i=0;i<attempts;i++){
+    try{
+      await window.TsClient.request('DELETE',`/collections/${window.TsClient.COLLECTION}/documents/${encodeURIComponent(id)}`);
+      return true;
+    }catch(e){
+      if(isNotFoundError(e))return true;
+      if(i===attempts-1){
+        console.warn('[delete] Typesense delete failed:',id,e.message||e);
+        return false;
+      }
+      await waitMs(350*Math.pow(2,i));
+    }
+  }
+  return false;
+}
+async function deleteProductEverywhere(id){
+  const out={id,pb:false,typesense:false};
+  try{
+    await pbDeleteDoc('products',id);
+    out.pb=true;
+  }catch(e){
+    if(isNotFoundError(e)){
+      out.pb=true;
+    }else{
+      throw e;
+    }
+  }
+  out.typesense=await deleteTypesenseProductNow(id);
+  return out;
+}
+async function deleteSelected(){if(!selectedIds.size||!confirm(`Delete ${selectedIds.size} selected products?`))return;const ids=[...selectedIds];try{const settled=await Promise.allSettled(ids.map(id=>deleteProductEverywhere(id)));const failed=settled.filter(r=>r.status==='rejected');if(failed.length)throw new Error(`${failed.length} products could not be deleted (${failed[0].reason?.message||'unknown'})`);const tsPending=settled.filter(r=>r.status==='fulfilled'&&!r.value.typesense).length;logActivity('product_delete',`${ids.length} products bulk deleted`,{typesensePending:tsPending});const del=new Set(ids);allProducts=allProducts.filter(p=>!del.has(p.id));totalProductCount=Math.max(0,totalProductCount-ids.length);selectedIds.clear();_productUiPages=new Map();loadPage();toast(tsPending?`Deleted from PB; ${tsPending} Typesense delete retries pending`:'Deleted from PB + Typesense',tsPending?'w':'s')}catch(e){toast('Error: '+e.message,'e')}document.getElementById('selectionBar').style.display='none'}
 function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=document.getElementById('productGrid');g.classList.toggle('list-view',viewMode==='list');renderProductsPage()}
 
 // ─── DICTIONARY MANAGEMENT (Scraper → 📚 Dictionary tab) ──────────────────
@@ -4055,7 +4095,7 @@ async function rescrapeProduct(id) {
   } catch (e) { toast('Scrape error: ' + e.message, 'e'); }
 }
 
-async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await pbDeleteDoc('products',id);logActivity('product_delete',`Product deleted: ${id}`);allProducts=allProducts.filter(p=>p.id!==id);totalProductCount--;_productUiPages=new Map();loadPage();toast('Deleted','s')}catch(e){toast('Error: '+e.message,'e')}}
+async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{const res=await deleteProductEverywhere(id);logActivity('product_delete',`Product deleted: ${id}`,{typesense:res.typesense});allProducts=allProducts.filter(p=>p.id!==id);totalProductCount=Math.max(0,totalProductCount-1);selectedIds.delete(id);_productUiPages=new Map();loadPage();toast(res.typesense?'Deleted from PB + Typesense':'Deleted from PB; Typesense delete retry pending',res.typesense?'s':'w')}catch(e){toast('Error: '+e.message,'e')}}
 
 // ═══════════════════════════════════════
 //  USERS

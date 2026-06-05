@@ -175,6 +175,43 @@ export async function saveProductAnalysisHistory({ product, analysis }) {
   }
 }
 
+export async function saveComparisonAnalysisHistory({ products = [], analysis }) {
+  const user = currentUser();
+  const list = Array.isArray(products) ? products.filter((p) => p?.id) : [];
+  if (!user || list.length < 2 || !analysis) return;
+  const now = new Date().toISOString();
+  const productIds = uniq(list.map((p) => p.id));
+  const title = list.map((p) => p.name).slice(0, 4).join(' vs ') || 'Comparison analysis';
+  appendAnalyzedProduct({
+    productIds,
+    title,
+    category: list[0]?.category || 'comparison',
+    mode: 'compare_ai',
+    score: Math.round(list.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / list.length),
+    verdict: String(analysis).slice(0, 200),
+  });
+  try {
+    await pb.collection('saved_analyses').create({
+      userId: user.id,
+      title,
+      category: 'comparison_history',
+      analysisData: {
+        type: 'comparison',
+        productIds,
+        productNames: list.map((p) => p.name || ''),
+        category: list[0]?.category || '',
+        analysis,
+        timestamp: now,
+      },
+      aiScore: Math.round(list.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / list.length),
+      aiSummary: String(analysis).slice(0, 5000),
+      savedAt: now,
+    });
+  } catch {
+    // Best effort shared history.
+  }
+}
+
 export async function saveSubscriptionHistory({ services, analysis, quiz = {}, scores = {} }) {
   const user = currentUser();
   const list = (services || []).map((s) => String(s || '').trim()).filter(Boolean);
@@ -248,7 +285,7 @@ export async function getSavedAnalyses(limit = 40) {
       sort: '-created',
     });
     return res.items
-      .filter((a) => ['link_history', 'subscription_history', 'product_history'].includes(a.category))
+      .filter((a) => ['link_history', 'subscription_history', 'product_history', 'comparison_history'].includes(a.category))
       .map((a) => {
         const d = a.analysisData && typeof a.analysisData === 'object' ? a.analysisData : {};
         return {
@@ -256,12 +293,15 @@ export async function getSavedAnalyses(limit = 40) {
           title: a.title || d.url || '',
           kind: a.category === 'subscription_history'
             ? 'subscription'
+            : a.category === 'comparison_history'
+              ? 'comparison'
             : a.category === 'product_history'
               ? 'product'
               : 'link',
           analysis: d.analysis || d.analysisResult || a.aiSummary || '',
           urls: Array.isArray(d.urls) ? d.urls : [],
           services: Array.isArray(d.services) ? d.services : [],
+          productIds: Array.isArray(d.productIds) ? d.productIds : [],
           productId: d.productId || '',
           at: a.savedAt || d.timestamp || a.created,
         };

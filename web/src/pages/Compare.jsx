@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
-import { saveComparisonHistory } from '../lib/pbHistory';
+import { saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, offerForLang, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -11,6 +11,12 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import { productPath } from '../lib/routes';
+import { askQorAi } from '../lib/ai';
+import { useAuth } from '../lib/auth';
+import { aiUserProfile } from '../lib/qorCoins';
+import { useAiAccess } from '../lib/useAiAccess';
+import { searchYoutubeReviews } from '../lib/youtube';
+import Reviews from '../components/Reviews.jsx';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -64,6 +70,42 @@ function formatOffer(offer, lang) {
   }
 }
 
+function splitSpecValue(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw === '—') return [];
+  let lines = raw
+    .split(/\r?\n|[•·]\s*|;\s*/g)
+    .map((x) => x.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  if (lines.length <= 1 && raw.length > 100 && /(camera|kamera|lens|zoom|ois|hdr|video|mp|optical|digital|telephoto|wide|f\/|f\d)/i.test(raw)) {
+    lines = raw
+      .replace(/\s+(?=(?:Yes|No|OIS|HDR|LED|Laser|Video|Optical|Digital|Automatic|Hybrid|Phase|Telephoto|Periscope|Ultra Wide|Extra Wide|Wide Angle|Zoom|f\/\d|F\d|[0-9]+(?:\.[0-9]+)?\s*MP)\b)/g, '\n')
+      .split(/\r?\n/g)
+      .map((x) => x.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  }
+  return lines.length ? lines : [raw];
+}
+
+function SpecValue({ value }) {
+  const lines = splitSpecValue(value);
+  if (!lines.length) return <span>—</span>;
+  if (lines.length === 1) return <span>{lines[0]}</span>;
+  return (
+    <ul className="cmp-spec-list">
+      {lines.map((line, i) => <li key={`${line}-${i}`}>{line}</li>)}
+    </ul>
+  );
+}
+
+function PlainAiText({ text }) {
+  return String(text || '')
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, i) => <p key={i}>{part}</p>);
+}
+
 // Returns a boolean per cell — true marks the winning value(s) for the row.
 function rowWinners(key, values) {
   const nums = values.map(parseNum);
@@ -79,6 +121,8 @@ export default function Compare() {
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [tab, setTab] = useState('specs');
+  const { user } = useAuth();
+  const guardAiAccess = useAiAccess(lang);
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
     description: t('cmp.subtitle', { max: COMPARE_MAX }),
@@ -94,6 +138,11 @@ export default function Compare() {
   const [popularLoading, setPopularLoading] = useState(true);
   const [popularLimit, setPopularLimit] = useState(18);
   const [pickError, setPickError] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
+  const [youtubeByProduct, setYoutubeByProduct] = useState({});
+  const [youtubeLoading, setYoutubeLoading] = useState(false);
   const boxRef = useRef(null);
   const compareCategory = products[0]?.category || '';
 
@@ -153,6 +202,22 @@ export default function Compare() {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  useEffect(() => {
+    if (tab !== 'ai' || products.length < 1) return undefined;
+    let live = true;
+    setYoutubeLoading(true);
+    Promise.all(products.map(async (p) => {
+      const videos = await searchYoutubeReviews(p.name, 2).catch(() => []);
+      return [p.id, videos];
+    }))
+      .then((entries) => {
+        if (!live) return;
+        setYoutubeByProduct(Object.fromEntries(entries));
+      })
+      .finally(() => { if (live) setYoutubeLoading(false); });
+    return () => { live = false; };
+  }, [tab, products.map((p) => p.id).join('|')]); // eslint-disable-line
+
   const specRows = useMemo(() => {
     if (products.length < 1) return [];
     const flats = products.map(flatSpecs);
@@ -161,7 +226,7 @@ export default function Compare() {
     flats.forEach((f) => Object.keys(f).forEach((k) => {
       if (!seen.has(k)) { seen.add(k); keys.push(k); }
     }));
-    return keys.slice(0, 60).map((k) => {
+    return keys.map((k) => {
       const values = flats.map((f) => f[k] || '—');
       return { key: k, values, win: rowWinners(k, values) };
     });
@@ -184,15 +249,42 @@ export default function Compare() {
     setTerm(''); setResults([]); setPicking(false);
   }
 
-  // Hand the comparison off to the floating AI assistant with a ready prompt.
-  function openAiCompare() {
+  function buildAiComparePrompt() {
     const names = products.map((p) => p.name).join(' vs ');
-    const prompt = L(
-      `Compare these products and tell me which is the best choice and why: ${names}`,
-      `Şu ürünleri karşılaştır ve hangisinin neden daha iyi olduğunu söyle: ${names}`,
-      `Vergleiche diese Produkte und sag mir, welches die beste Wahl ist und warum: ${names}`,
+    const profile = JSON.stringify(aiUserProfile(user), null, 2);
+    const productSummary = products.map((p) => (
+      `${p.name}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\nQor AI score: ${scoreLabel(p.techScore)}`
+    )).join('\n\n');
+    const specTable = specRows.slice(0, 140)
+      .map((row) => `${row.key}: ${row.values.map((v, i) => `${products[i]?.name || `Product ${i + 1}`}=${v}`).join(' | ')}`)
+      .join('\n');
+    return L(
+      `Compare these products for the signed-in user's profile. Products: ${names}\n\nUser profile:\n${profile}\n\nProducts:\n${productSummary}\n\nSpecs:\n${specTable}\n\nGive a clear verdict, best-for scenarios, strengths, weaknesses and final recommendation. Use only the provided catalog data when citing specs.`,
+      `Bu ürünleri giriş yapan kullanıcının profiline göre karşılaştır. Ürünler: ${names}\n\nKullanıcı profili:\n${profile}\n\nÜrünler:\n${productSummary}\n\nTeknik özellikler:\n${specTable}\n\nNet karar, kime uygun olduğu, güçlü/zayıf yönler ve final öneri ver. Özellik söylerken sadece verilen katalog verisine dayan.`,
+      `Vergleiche diese Produkte anhand des eingeloggten Nutzerprofils. Produkte: ${names}\n\nNutzerprofil:\n${profile}\n\nProdukte:\n${productSummary}\n\nSpecs:\n${specTable}\n\nGib Urteil, passende Szenarien, Stärken, Schwächen und finale Empfehlung. Nutze nur die angegebenen Katalogdaten für Specs.`,
     );
-    window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: prompt }));
+  }
+
+  async function runAiCompare() {
+    setAiNotice('');
+    if (products.length < 2) {
+      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
+      return;
+    }
+    const access = await guardAiAccess('compare_ai', {
+      onMessage: (message) => setAiNotice(message),
+    });
+    if (!access.ok) return;
+    setAiBusy(true);
+    try {
+      const text = await askQorAi([{ role: 'user', text: buildAiComparePrompt() }]);
+      setAiText(text);
+      await saveComparisonAnalysisHistory({ products, analysis: text });
+    } catch (e) {
+      setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   const slots = [...products];
@@ -320,6 +412,9 @@ export default function Compare() {
               <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>
                 {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
               </button>
+              <button className={tab === 'reviews' ? 'on' : ''} onClick={() => setTab('reviews')}>
+                {L('Reviews', 'Yorumlar', 'Bewertungen')}
+              </button>
             </div>
 
             <div style={{ marginTop: 18 }}>
@@ -355,7 +450,7 @@ export default function Compare() {
                             <td key={i}
                               className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
                               {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
-                              {v}
+                              <SpecValue value={v} />
                             </td>
                           ))}
                         </tr>
@@ -407,17 +502,52 @@ export default function Compare() {
               )}
 
               {tab === 'ai' && (
-                <div className="card pad-lg cmp-ai fade-up">
-                  <div className="cmp-ai-icon">🤖</div>
-                  <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
-                  <p>{L(
-                    'Let Qor AI weigh these products against each other and recommend the best fit for you.',
-                    'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
-                    'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
-                  )}</p>
-                  <button className="btn btn-grad btn-lg" onClick={openAiCompare}>
-                    ✨ {L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}
-                  </button>
+                <div className="cmp-ai-layout fade-up">
+                  <div className="card pad-lg cmp-ai">
+                    <div className="cmp-ai-icon">🤖</div>
+                    <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
+                    <p>{L(
+                      'Let Qor AI weigh these products against each other and recommend the best fit for you.',
+                      'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
+                      'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
+                    )}</p>
+                    <button className="btn btn-grad btn-lg" onClick={runAiCompare} disabled={aiBusy}>
+                      {aiBusy ? L('Analyzing...', 'Analiz ediliyor...', 'Analyse läuft...') : `✨ ${L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}`}
+                    </button>
+                    {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
+                    {aiText && <div className="cmp-ai-result"><PlainAiText text={aiText} /></div>}
+                  </div>
+                  {(youtubeLoading || Object.values(youtubeByProduct).some((items) => items?.length)) && (
+                    <div className="card pad cmp-youtube">
+                      <h3>{L('YouTube reviews', 'YouTube incelemeleri', 'YouTube-Reviews')}</h3>
+                      {youtubeLoading ? <div className="muted">{L('Loading...', 'Yükleniyor...', 'Wird geladen...')}</div> : (
+                        <div className="cmp-youtube-grid">
+                          {slots.map((p) => (
+                            <div key={p.id} className="cmp-youtube-product">
+                              <h4>{p.name}</h4>
+                              {(youtubeByProduct[p.id] || []).map((v) => (
+                                <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer" className="cmp-video">
+                                  {v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" />}
+                                  <span><b>{v.title}</b><small>{v.channel}</small></span>
+                                </a>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'reviews' && (
+                <div className="cmp-reviews-grid fade-up">
+                  {slots.map((p) => (
+                    <div className="card pad cmp-review-card" key={p.id}>
+                      <Link to={productPath(p.id)} className="cmp-review-title">{p.name}</Link>
+                      <Reviews productId={p.id} />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
