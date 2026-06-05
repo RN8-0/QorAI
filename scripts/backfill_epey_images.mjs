@@ -67,6 +67,26 @@ function normalizeEpeyImageUrl(url) {
 function epeyImageKey(u) {
   return String(u).toLowerCase().replace(/\/[a-z]_([^/]+)$/i, '/$1').replace(/\.(jpe?g|png|webp|avif)$/i, '');
 }
+// Epey names every photo after the product slug, so the gallery page's
+// "related products" widgets (other products' images) can be filtered out by
+// keeping only images whose filename matches THIS product's slug.
+function imgSlug(url) {
+  const m = String(url || '').match(/resim\.epey\.com\/\d+\/(?:[a-z]_)?(.+?)\.(?:jpe?g|png|webp|avif)$/i);
+  return m ? m[1].toLowerCase().replace(/-(?:\d+|buyuk|big|on|arka|yan|alt|ust)$/i, '') : '';
+}
+function productSlugOf(sourceUrl, heroUrl) {
+  const m = String(sourceUrl || '').match(/\/([^/]+?)(?:-resimleri)?\.html$/i);
+  if (m && m[1]) return m[1].toLowerCase().replace(/-\d+$/i, '');
+  return imgSlug(heroUrl || '');
+}
+function belongsToProduct(imgUrl, prodSlug) {
+  if (!/resim\.epey\.com/i.test(imgUrl)) return true;
+  const s = imgSlug(imgUrl);
+  if (!s || !prodSlug) return false;
+  const short = s.length <= prodSlug.length ? s : prodSlug;
+  const long = s.length <= prodSlug.length ? prodSlug : s;
+  return short.length >= 5 && long.startsWith(short);
+}
 function extractEpeyImages(html) {
   const $ = cheerio.load(html);
   const out = [];
@@ -207,13 +227,17 @@ async function processDoc(doc) {
 
   stats.scanned++;
   try {
-    const gallery = await galleryImagesFor(sourceUrl);
+    const prodSlug = productSlugOf(sourceUrl, raw.imageUrl || raw.imageURL);
+    const gallery = (await galleryImagesFor(sourceUrl)).filter((u) => belongsToProduct(u, prodSlug));
     if (!gallery.length) return;
-    const seen = new Set(existing.map(epeyImageKey));
-    const merged = [...existing];
+    // Also drop any stray cross-product images already in the existing set.
+    const cleanExisting = existing.filter((u) => belongsToProduct(u, prodSlug));
+    const seen = new Set(cleanExisting.map(epeyImageKey));
+    const merged = [...cleanExisting];
     for (const img of gallery) { const k = epeyImageKey(img); if (!seen.has(k)) { seen.add(k); merged.push(img); } if (merged.length >= MAX_IMAGES) break; }
-    if (merged.length > existing.length) {
-      stats.added += merged.length - existing.length;
+    const changed = merged.length !== existing.length || merged.some((u, i) => u !== existing[i]);
+    if (changed) {
+      stats.added += Math.max(0, merged.length - existing.length);
       if (!DRY) {
         raw.images = merged;
         await pbPatchImages(doc.id, merged);   // PB after-update hook (now images-aware) re-syncs TS…

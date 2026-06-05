@@ -4,6 +4,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
+import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
@@ -231,6 +232,7 @@ export default function ProductDetail() {
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { has, toggle } = useCompare();
+  const { user } = useAuth();
 
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -342,19 +344,28 @@ export default function ProductDetail() {
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
   const displayName = localizedProductName(p, lang);
 
-  // Hero key-spec chips: prefer the structured screen/RAM/storage/battery chips;
-  // when a product has none (PC parts, accessories…), fall back to the first
-  // rows of its key-spec sheet so the hero is never empty.
-  const heroSpecs = chips.length
-    ? chips.map((c) => ({ key: c.labelKey, icon: SPEC_EMOJI[c.labelKey] || '•', value: c.value, label: t(c.labelKey) }))
-    : bricks.flatMap((br) => br.rows || [])
-        .map(([k, v]) => ({ key: k, icon: sectionIcon(k), value: trSpec(String(v).split(/\r?\n/)[0].trim(), lang), label: trSpec(k, lang).replace(/\s*:\s*$/, '') }))
-        // Headline chips should read like epey's: measurable values only. Drop
-        // booleans (Var/Yok), sponsored/ad rows and anything without a number.
-        .filter((s) => s.value && s.label && /\d/.test(s.value) && s.value.length <= 24
-          && !/sponsor|reklam|advert/i.test(`${s.label} ${s.value}`))
-        .filter((s, i, a) => a.findIndex((x) => x.label.toLowerCase() === s.label.toLowerCase()) === i)
-        .slice(0, 6);
+  // Hero key specs: the structured screen/RAM/storage/battery chips first, then
+  // topped up with measurable rows from the spec sheet to at least ~10 so the
+  // column fills the height beside the photo (no empty space). Booleans
+  // (Var/Yok), sponsored/ad rows and label-less values are skipped.
+  const heroSpecs = (() => {
+    const out = [];
+    const seen = new Set();
+    const push = (s) => {
+      const k = String(s.label || '').toLowerCase();
+      if (!k || seen.has(k) || !s.value) return;
+      seen.add(k); out.push(s);
+    };
+    chips.forEach((c) => push({ key: c.labelKey, icon: SPEC_EMOJI[c.labelKey] || '•', value: c.value, label: t(c.labelKey) }));
+    bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {
+      const value = trSpec(String(v).split(/\r?\n/)[0].trim(), lang);
+      const label = trSpec(k, lang).replace(/\s*:\s*$/, '');
+      if (/\d/.test(value) && value.length <= 24 && !/sponsor|reklam|advert/i.test(`${label} ${value}`)) {
+        push({ key: k, icon: sectionIcon(k), value, label });
+      }
+    });
+    return out.slice(0, 10);
+  })();
 
   const tech = Number(p.techScore) || 0;
   const match = matchScore(p);
@@ -420,14 +431,20 @@ export default function ProductDetail() {
                   <b style={{ color: techColor(tech) }}>{bandLabel(tech, L)}</b>
                 </span>
               </div>
-              <span className="pd-score2-sep" />
-              <div className="pd-score2">
-                <Gauge value={match} size={56} stroke={6} color="var(--score-average)" fontSize={17} />
-                <span className="pd-score2-t">
-                  <small>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</small>
-                  <b style={{ color: 'var(--score-average)' }}>{bandLabel(match, L)}</b>
-                </span>
-              </div>
+              {/* The personal match score only shows for signed-in users who
+                  have a profile from the quiz — hidden otherwise. */}
+              {user && match > 0 && (
+                <>
+                  <span className="pd-score2-sep" />
+                  <div className="pd-score2">
+                    <Gauge value={match} size={56} stroke={6} color="var(--score-average)" fontSize={17} />
+                    <span className="pd-score2-t">
+                      <small>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</small>
+                      <b style={{ color: 'var(--score-average)' }}>{bandLabel(match, L)}</b>
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {heroSpecs.length > 0 && (
@@ -489,20 +506,8 @@ export default function ProductDetail() {
               {tab === 'specs' && (
                 <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>{p.description}</p>}
-                  {chips.length > 0 && (
-                    <div className="card pad pd-spec-overview">
-                      <div className="pd-section-title">✨ {L('Key specs', 'Ana Özellikler', 'Wichtige Daten')}</div>
-                      <div className="spec-grid">
-                        {chips.map((c) => (
-                          <div className="spec-cell" key={c.labelKey}>
-                            <div style={{ fontSize: 20 }}>{SPEC_EMOJI[c.labelKey] || '•'}</div>
-                            <div className="sv">{c.value}</div>
-                            <div className="sk">{t(c.labelKey)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Key-spec overview removed here — it duplicated the hero key
+                      specs; the full sectioned sheet below is the single source. */}
                   {bricks.length > 0 ? (
                     <div className="card pad pd-spec-sheet">
                       <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
