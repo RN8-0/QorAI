@@ -83,7 +83,7 @@ export function titleFromUrl(url) {
   }
 }
 
-export async function analyzeLink(url, language) {
+export async function analyzeLink(url, language, userProfile = {}) {
   const fallbackTitle = titleFromUrl(url);
   let siteName = '';
   try { siteName = new URL(url).hostname.replace(/^www\./, ''); } catch { /* ignore */ }
@@ -92,6 +92,7 @@ export async function analyzeLink(url, language) {
     user: JSON.stringify({
       url,
       productMetadata: fallbackTitle ? { title: fallbackTitle, siteName } : { siteName },
+      userProfile,
     }),
     maxOutputTokens: 1536,
   });
@@ -133,10 +134,10 @@ Return valid JSON:
 }`;
 }
 
-export async function generateQuiz({ category, productTitle, url, language }) {
+export async function generateQuiz({ category, productTitle, url, language, userProfile = {} }) {
   const res = await askQorAiJson({
     system: quizGenerationPrompt(language),
-    user: JSON.stringify({ category, productTitle, url }),
+    user: JSON.stringify({ category, productTitle, url, userProfile }),
     maxOutputTokens: 1536,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
@@ -177,11 +178,11 @@ Return valid JSON:
 }`;
 }
 
-export async function generateSubscriptionQuiz({ subscriptionNames, language }) {
+export async function generateSubscriptionQuiz({ subscriptionNames, language, userProfile = {} }) {
   const isCompare = subscriptionNames.length > 1;
   const res = await askQorAiJson({
     system: subscriptionQuizPrompt(subscriptionNames.join(', '), isCompare, language),
-    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single' }),
+    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
     maxOutputTokens: 1536,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
@@ -258,7 +259,7 @@ function num(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-export async function enhancedAnalysis({ base, answers, language }) {
+export async function enhancedAnalysis({ base, answers, language, userProfile = {} }) {
   const qaPairs = answers
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
@@ -273,9 +274,7 @@ export async function enhancedAnalysis({ base, answers, language }) {
         initialAnalysis: base.analysis,
       },
       quizAnswers: qaPairs,
-      // The web has no rich per-user profile; the report is driven by quiz
-      // answers (the prompt forbids naming user attributes anyway).
-      userProfile: {},
+      userProfile,
     }),
     maxOutputTokens: 4096,
   });
@@ -386,7 +385,7 @@ Return ONLY valid JSON matching this exact schema:
 ${schema}`;
 }
 
-export async function subscriptionAnalysis({ subscriptionNames, answers, language }) {
+export async function subscriptionAnalysis({ subscriptionNames, answers, language, userProfile = {} }) {
   const isCompare = subscriptionNames.length > 1;
   const names = subscriptionNames.join(', ');
   const qaPairs = (answers || [])
@@ -394,7 +393,7 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
     .map((a) => ({ question: a.question, answer: a.answer }));
   const res = await askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
-    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single' }),
+    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
     maxOutputTokens: 4096,
   });
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};

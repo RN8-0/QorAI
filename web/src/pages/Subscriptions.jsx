@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { generateSubscriptionQuiz, subscriptionAnalysis, subscriptionsMixCategories } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveSubscriptionHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
+import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -57,6 +60,8 @@ function ServiceCard({ s, isWinner, L }) {
 export default function Subscriptions() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
+  const nav = useNavigate();
+  const requireAiAccess = useAiAccess(lang);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
 
@@ -81,6 +86,10 @@ export default function Subscriptions() {
     resetAnalysis();
   }
 
+  function savePending(items) {
+    localStorage.setItem(PENDING_SUBS_KEY, JSON.stringify({ selected: items, custom, ts: Date.now() }));
+  }
+
   // Step 1: validate + generate the AI quiz (same engine as the app).
   async function startQuiz(items = selected) {
     setErr('');
@@ -92,14 +101,24 @@ export default function Subscriptions() {
       return;
     }
     if (!user) {
-      localStorage.setItem(PENDING_SUBS_KEY, JSON.stringify({ selected: items, custom, ts: Date.now() }));
+      savePending(items);
       openAuth();
+      return;
+    }
+    if (!hasCompletedQuiz(user)) {
+      savePending(items);
+      setErr(L('Complete the profile quiz first. Your subscriptions are saved.',
+        'Önce profil quizini tamamla. Abonelik seçimlerin kaydedildi.',
+        'Schließe zuerst das Profil-Quiz ab. Deine Auswahl bleibt gespeichert.'));
+      nav(`/quiz?required=1&next=${encodeURIComponent('/subscriptions')}`);
       return;
     }
     setPhase('quizLoading');
     trackEvent('subscription_quiz', { count: items.length });
     try {
-      const qs = await generateSubscriptionQuiz({ subscriptionNames: items, language: lang });
+      const access = await requireAiAccess('subscription_analysis', { onMessage: setErr });
+      if (!access.ok) { setPhase('select'); return; }
+      const qs = await generateSubscriptionQuiz({ subscriptionNames: items, language: lang, userProfile: aiUserProfile(user) });
       if (qs.length) { setQuestions(qs); setPhase('quiz'); }
       else { await runAnalysis(items, []); }
     } catch {
@@ -113,7 +132,7 @@ export default function Subscriptions() {
     setPhase('analyzing');
     trackEvent('subscription_compare', { count: items.length });
     try {
-      const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang });
+      const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: aiUserProfile(user) });
       setResult(data);
       setPhase('result');
       saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores });
@@ -124,7 +143,7 @@ export default function Subscriptions() {
   }
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !hasCompletedQuiz(user)) return;
     const raw = localStorage.getItem(PENDING_SUBS_KEY);
     if (!raw) return;
     localStorage.removeItem(PENDING_SUBS_KEY);

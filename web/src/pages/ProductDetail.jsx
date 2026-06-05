@@ -5,6 +5,9 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useAuth } from '../lib/auth';
+import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { useAiAccess } from '../lib/useAiAccess';
+import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
@@ -127,7 +130,7 @@ function sectionIcon(name) {
 // Mirrors the mobile app's senior-analyst (PRO) product analysis: a grounded,
 // professional report with a verdict, strengths, weaknesses, community
 // reception and a buyer fit — driven by the product's real catalog data.
-function aiPrompt(p, lang) {
+function aiPrompt(p, lang, userProfile = {}) {
   const productName = localizedProductName(p, lang);
   const ks = p.keySpecs && typeof p.keySpecs === 'object'
     ? Object.entries(p.keySpecs).slice(0, 18).map(([k, v]) => `${k}: ${v}`).join(', ')
@@ -136,6 +139,11 @@ function aiPrompt(p, lang) {
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean).slice(0, 6).join('; ') : '';
   const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
   const price = priceFresh && Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
+  const profile = Object.entries(userProfile)
+    .filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`)
+    .slice(0, 14)
+    .join('\n');
   return (
     'You are Qor AI, a senior product analyst. Produce a professional, in-depth analysis ' +
     'of the product below. Treat it as a real, current item in the Qor catalog.\n\n' +
@@ -145,6 +153,7 @@ function aiPrompt(p, lang) {
     `Key specs: ${ks || '-'}\n` +
     (pros ? `Known strengths: ${pros}\n` : '') +
     (cons ? `Known weaknesses: ${cons}\n` : '') +
+    (profile ? `\n## USER PROFILE\n${profile}\n` : '') +
     '\n## OUTPUT (markdown only, no preamble)\n' +
     '**Verdict** — 2-3 sentence professional bottom line, honest about value at this price.\n' +
     '**Strengths** — 3-5 "-" bullets grounded in the specs above.\n' +
@@ -285,6 +294,7 @@ export default function ProductDetail() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { has, toggle } = useCompare();
   const { user } = useAuth();
+  const requireAiAccess = useAiAccess(lang);
 
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -296,14 +306,23 @@ export default function ProductDetail() {
   const [offersLoading, setOffersLoading] = useState(false);
 
   const [aiText, setAiText] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const aiRunRef = useRef('');
+  const aiUserKeyRef = useRef('');
 
   const [similar, setSimilar] = useState([]);
 
   useEffect(() => {
+    const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
+    if (aiUserKeyRef.current && aiUserKeyRef.current !== key) aiRunRef.current = '';
+    aiUserKeyRef.current = key;
+  }, [user?.id, user?.quizCompleted]);
+
+  useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiText(''); setSimilar([]);
+    setAiText(''); setAiNotice(''); setSimilar([]); aiRunRef.current = '';
     getProduct(id)
       .then((prod) => {
         if (!live) return;
@@ -345,12 +364,30 @@ export default function ProductDetail() {
   // Generate the AI analysis the first time the tab is opened.
   useEffect(() => {
     if (tab !== 'ai' || !p || aiText || aiBusy) return;
-    setAiBusy(true);
-    askQorAi([{ role: 'user', text: aiPrompt(p, lang) }])
-      .then((txt) => setAiText(txt))
-      .catch(() => setAiText(t('pd.aiError')))
-      .finally(() => setAiBusy(false));
-  }, [tab, p]); // eslint-disable-line
+    const runKey = `${p.id}|${lang}`;
+    if (aiRunRef.current === runKey) return;
+    aiRunRef.current = runKey;
+    (async () => {
+      setAiNotice('');
+      setAiBusy(true);
+      const access = await requireAiAccess('detail_ai', {
+        onMessage: (message) => setAiNotice(message),
+      });
+      if (!access.ok) {
+        setAiBusy(false);
+        return;
+      }
+      try {
+        const txt = await askQorAi([{ role: 'user', text: aiPrompt(p, lang, aiUserProfile(user)) }]);
+        setAiText(txt);
+        saveProductAnalysisHistory({ product: p, analysis: txt });
+      } catch {
+        setAiNotice(t('pd.aiError'));
+      } finally {
+        setAiBusy(false);
+      }
+    })();
+  }, [tab, p, aiText, aiBusy, lang, requireAiAccess, t, user]);
 
   useSeo(buildProductSeo(p, t));
 
@@ -488,7 +525,7 @@ export default function ProductDetail() {
               </div>
               {/* The personal match score only shows for signed-in users who
                   have a profile from the quiz — hidden otherwise. */}
-              {user && match > 0 && (
+              {hasCompletedQuiz(user) && match > 0 && (
                 <>
                   <span className="pd-score2-sep" />
                   <div className="pd-score2">
@@ -587,6 +624,7 @@ export default function ProductDetail() {
                       </div>
                     </div>
                     {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
+                    {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
                     {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
                   </div>
                   {pros.length > 0 && (

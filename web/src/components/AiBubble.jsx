@@ -2,12 +2,15 @@ import { useState, useRef, useEffect } from 'react';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../lib/auth';
-import { useT } from '../i18n/index.jsx';
+import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { useAiAccess } from '../lib/useAiAccess';
+import { useI18n } from '../i18n/index.jsx';
 import './AiBubble.css';
 
 export default function AiBubble() {
-  const t = useT();
+  const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
+  const requireAiAccess = useAiAccess(lang);
   const [open, setOpen] = useState(false);
   const greetingRef = useRef(null);
   if (!greetingRef.current) greetingRef.current = { role: 'model', text: t('ai.greeting') };
@@ -46,7 +49,21 @@ export default function AiBubble() {
     setBusy(true);
     trackEvent('ai_chat_message');
     try {
-      const reply = await askQorAi(next.filter((m, i) => !(i === 0 && m === greetingRef.current)));
+      const access = await requireAiAccess('ai_chat', {
+        onMessage: (message) => setMsgs((m) => [...m, { role: 'model', text: message }]),
+      });
+      if (!access.ok) return;
+      const profile = aiUserProfile(userRef.current);
+      const profileContext = hasCompletedQuiz(userRef.current)
+        ? [{
+          role: 'user',
+          text: `Use this Qor AI profile context silently when advising, without listing it back:\n${JSON.stringify(profile)}`,
+        }]
+        : [];
+      const reply = await askQorAi([
+        ...profileContext,
+        ...next.filter((m, i) => !(i === 0 && m === greetingRef.current)),
+      ]);
       setMsgs((m) => [...m, { role: 'model', text: reply }]);
     } catch {
       setMsgs((m) => [...m, { role: 'model', text: t('ai.errReply') }]);

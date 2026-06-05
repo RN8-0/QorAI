@@ -1,106 +1,427 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { askQorAi } from '../lib/ai';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { updateProfile } from '../lib/pocketbase';
 import { trackEvent } from '../lib/analytics';
-import { saveQuizHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import AiText from '../components/AiText.jsx';
 import { useSeo } from '../lib/seo';
 import './Quiz.css';
 
-const QUESTIONS = [
-  { field: 'product type', q: 'quiz.q1', opts: ['quiz.q1a', 'quiz.q1b', 'quiz.q1c', 'quiz.q1d', 'quiz.q1e'] },
-  { field: 'budget', q: 'quiz.q2', opts: ['quiz.q2a', 'quiz.q2b', 'quiz.q2c'] },
-  { field: 'priority', q: 'quiz.q3', opts: ['quiz.q3a', 'quiz.q3b', 'quiz.q3c', 'quiz.q3d', 'quiz.q3e'] },
-  { field: 'usage', q: 'quiz.q4', opts: ['quiz.q4a', 'quiz.q4b', 'quiz.q4c', 'quiz.q4d'] },
-  { field: 'brand', q: 'quiz.q5', opts: ['quiz.q5a', 'quiz.q5b', 'quiz.q5c', 'quiz.q5d'] },
+const STEPS = [
+  {
+    field: 'interestCategories',
+    multiple: true,
+    min: 3,
+    title: { en: 'Which areas should Qor AI optimize for?', tr: 'Qor AI hangi alanlara göre optimize etsin?', de: 'Für welche Bereiche soll Qor AI optimieren?' },
+    subtitle: { en: 'Pick at least 3 categories.', tr: 'En az 3 kategori seç.', de: 'Wähle mindestens 3 Kategorien.' },
+    options: [
+      ['smartphones', 'Smartphones', 'Telefonlar', 'Smartphones'],
+      ['laptops', 'Laptops', 'Laptoplar', 'Laptops'],
+      ['tablets', 'Tablets', 'Tabletler', 'Tablets'],
+      ['headphones', 'Headphones', 'Kulaklıklar', 'Kopfhörer'],
+      ['monitors', 'Monitors', 'Monitörler', 'Monitore'],
+      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
+      ['smartwatches', 'Wearables', 'Giyilebilirler', 'Wearables'],
+      ['cameras', 'Cameras', 'Kameralar', 'Kameras'],
+      ['tv', 'TV & media', 'TV ve medya', 'TV & Medien'],
+      ['subscription', 'Subscriptions', 'Abonelikler', 'Abos'],
+    ],
+  },
+  {
+    field: 'ecosystem',
+    title: { en: 'Which ecosystem do you use most?', tr: 'En çok hangi ekosistemi kullanıyorsun?', de: 'Welches Ökosystem nutzt du am meisten?' },
+    options: [
+      ['apple', 'Apple', 'Apple', 'Apple'],
+      ['android', 'Android', 'Android', 'Android'],
+      ['samsung', 'Samsung', 'Samsung', 'Samsung'],
+      ['google', 'Google', 'Google', 'Google'],
+      ['xiaomi', 'Xiaomi', 'Xiaomi', 'Xiaomi'],
+      ['windows', 'Windows / PC', 'Windows / PC', 'Windows / PC'],
+      ['mixed', 'Mixed / no lock-in', 'Karışık / fark etmez', 'Gemischt / egal'],
+    ],
+  },
+  {
+    field: 'budgetRange',
+    title: { en: 'What is your usual budget style?', tr: 'Genelde bütçe yaklaşımın ne?', de: 'Wie ist dein typischer Budget-Stil?' },
+    options: [
+      ['budget', 'Budget-friendly', 'Uygun fiyat', 'Budgetfreundlich'],
+      ['mid', 'Mid-range value', 'Orta segment / değer', 'Mittelklasse / Wert'],
+      ['premium', 'Premium', 'Premium', 'Premium'],
+      ['luxury', 'Best possible', 'En iyisi olsun', 'Bestmöglich'],
+    ],
+  },
+  {
+    field: 'priorities',
+    multiple: true,
+    min: 2,
+    title: { en: 'What matters most in decisions?', tr: 'Karar verirken en önemli şeyler ne?', de: 'Was ist dir bei Entscheidungen am wichtigsten?' },
+    subtitle: { en: 'Pick at least 2 priorities.', tr: 'En az 2 öncelik seç.', de: 'Wähle mindestens 2 Prioritäten.' },
+    options: [
+      ['performance', 'Performance', 'Performans', 'Leistung'],
+      ['battery', 'Battery life', 'Pil ömrü', 'Akkulaufzeit'],
+      ['camera', 'Camera', 'Kamera', 'Kamera'],
+      ['display', 'Display quality', 'Ekran kalitesi', 'Displayqualität'],
+      ['value', 'Value for money', 'Fiyat/performans', 'Preis/Leistung'],
+      ['portability', 'Portability', 'Taşınabilirlik', 'Mobilität'],
+      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
+      ['creator', 'Creator work', 'İçerik üretimi', 'Creator-Arbeit'],
+      ['productivity', 'Productivity', 'Üretkenlik', 'Produktivität'],
+      ['ecosystem', 'Ecosystem fit', 'Ekosistem uyumu', 'Ökosystem-Fit'],
+      ['durability', 'Durability', 'Dayanıklılık', 'Haltbarkeit'],
+    ],
+  },
+  {
+    field: 'currentDevices',
+    multiple: true,
+    min: 1,
+    title: { en: 'Which devices do you actively use?', tr: 'Aktif olarak hangi cihazları kullanıyorsun?', de: 'Welche Geräte nutzt du aktiv?' },
+    options: [
+      ['smartphones', 'Smartphone', 'Telefon', 'Smartphone'],
+      ['laptops', 'Laptop', 'Laptop', 'Laptop'],
+      ['tablets', 'Tablet', 'Tablet', 'Tablet'],
+      ['headphones', 'Headphones', 'Kulaklık', 'Kopfhörer'],
+      ['smartwatches', 'Smartwatch', 'Akıllı saat', 'Smartwatch'],
+      ['consoles', 'Console', 'Konsol', 'Konsole'],
+      ['cameras', 'Camera', 'Kamera', 'Kamera'],
+      ['tv', 'TV', 'TV', 'TV'],
+      ['none', 'None / starting fresh', 'Yok / yeni başlıyorum', 'Keine / Neustart'],
+    ],
+  },
+  {
+    field: 'usageIntent',
+    title: { en: 'What is your main usage mode?', tr: 'Ana kullanım modun ne?', de: 'Was ist dein Hauptnutzungsmodus?' },
+    options: [
+      ['all', 'Balanced everyday use', 'Dengeli günlük kullanım', 'Ausgewogener Alltag'],
+      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
+      ['work', 'Work / productivity', 'İş / üretkenlik', 'Arbeit / Produktivität'],
+      ['content', 'Content creation', 'İçerik üretimi', 'Content-Erstellung'],
+      ['travel', 'Travel / portability', 'Seyahat / taşınabilirlik', 'Reisen / Mobilität'],
+      ['study', 'Study', 'Eğitim', 'Studium'],
+      ['family', 'Family use', 'Aile kullanımı', 'Familiennutzung'],
+    ],
+  },
+  {
+    field: 'ageRange',
+    title: { en: 'Which age range fits you?', tr: 'Hangi yaş aralığındasın?', de: 'Welche Altersgruppe passt zu dir?' },
+    options: [
+      ['13-17', '13-17', '13-17', '13-17'],
+      ['18-24', '18-24', '18-24', '18-24'],
+      ['25-34', '25-34', '25-34', '25-34'],
+      ['35-44', '35-44', '35-44', '35-44'],
+      ['45-54', '45-54', '45-54', '45-54'],
+      ['55+', '55+', '55+', '55+'],
+    ],
+  },
+  {
+    field: 'profession',
+    title: { en: 'Which profile is closest to you?', tr: 'Hangi profil sana daha yakın?', de: 'Welches Profil passt am besten?' },
+    options: [
+      ['student', 'Student', 'Öğrenci', 'Student/in'],
+      ['engineer', 'Engineer / developer', 'Mühendis / geliştirici', 'Ingenieur/in / Entwickler/in'],
+      ['designer', 'Designer / creative', 'Tasarımcı / kreatif', 'Designer/in / kreativ'],
+      ['manager', 'Manager / business', 'Yönetici / iş', 'Management / Business'],
+      ['healthcare', 'Healthcare', 'Sağlık', 'Gesundheit'],
+      ['teacher', 'Teacher', 'Öğretmen', 'Lehrkraft'],
+      ['finance', 'Finance', 'Finans', 'Finanzen'],
+      ['gamer', 'Gamer', 'Oyuncu', 'Gamer/in'],
+      ['creator', 'Creator', 'İçerik üretici', 'Creator'],
+      ['other', 'Other', 'Diğer', 'Andere'],
+    ],
+  },
+  {
+    field: 'subscriptions',
+    multiple: true,
+    min: 1,
+    title: { en: 'Which subscriptions are part of your life?', tr: 'Hangi abonelikler hayatında var?', de: 'Welche Abos nutzt du?' },
+    subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "yok" seç.', de: 'Wähle "keine", wenn du keine nutzt.' },
+    options: [
+      ['none', 'None', 'Yok', 'Keine'],
+      ['netflix', 'Netflix', 'Netflix', 'Netflix'],
+      ['spotify', 'Spotify', 'Spotify', 'Spotify'],
+      ['youtube_premium', 'YouTube Premium', 'YouTube Premium', 'YouTube Premium'],
+      ['apple_music', 'Apple Music', 'Apple Music', 'Apple Music'],
+      ['icloud', 'iCloud+', 'iCloud+', 'iCloud+'],
+      ['google_one', 'Google One', 'Google One', 'Google One'],
+      ['microsoft_365', 'Microsoft 365', 'Microsoft 365', 'Microsoft 365'],
+      ['chatgpt_plus', 'ChatGPT Plus', 'ChatGPT Plus', 'ChatGPT Plus'],
+      ['xbox_game_pass', 'Xbox Game Pass', 'Xbox Game Pass', 'Xbox Game Pass'],
+    ],
+  },
 ];
 
-const PROMPT = (answers, lang) =>
-  'A user completed a product preference quiz. Their answers:\n' +
-  Object.entries(answers).map(([k, v]) => `- ${k}: ${v}`).join('\n') +
-  '\n\nBased on this profile write a friendly recommendation: which product type to go for, ' +
-  'what to watch out for, and 2-3 models/segments that suit them. Use **bold** headings, ' +
-  `"-" for bullets. Be short and clear. Reply ONLY in the language with ISO code: ${lang}.`;
+function tx(lang, value) {
+  if (!value) return '';
+  return value[lang] || value.en || '';
+}
+
+function optionLabel(step, value, lang) {
+  const match = step.options.find((o) => o[0] === value);
+  if (!match) return String(value).replace(/[_-]+/g, ' ');
+  return lang === 'tr' ? match[2] : lang === 'de' ? match[3] : match[1];
+}
+
+function emptyAnswers(user) {
+  const fromArray = (v) => (Array.isArray(v) && v.length ? v : []);
+  return {
+    interestCategories: fromArray(user?.interestCategories),
+    ecosystem: user?.ecosystem || '',
+    budgetRange: user?.budgetRange || '',
+    priorities: fromArray(user?.priorities),
+    currentDevices: fromArray(user?.currentDevices),
+    usageIntent: user?.usageIntent || '',
+    ageRange: user?.ageRange || '',
+    profession: user?.profession || '',
+    subscriptions: fromArray(user?.subscriptions).length ? fromArray(user?.subscriptions) : ['none'],
+  };
+}
+
+function buildVector(answers, primaryCategory) {
+  const vector = {
+    budget_score: answers.budgetRange === 'budget' ? 0.2
+      : answers.budgetRange === 'mid' ? 0.5
+        : answers.budgetRange === 'premium' ? 0.8
+          : answers.budgetRange === 'luxury' ? 1.0
+            : 0.5,
+    apple_affinity: answers.ecosystem === 'apple' ? 1 : 0,
+    android_affinity: ['android', 'samsung', 'google', 'xiaomi'].includes(answers.ecosystem) ? 1 : 0,
+    windows_affinity: answers.ecosystem === 'windows' ? 1 : 0,
+    google_affinity: answers.ecosystem === 'google' ? 1 : 0,
+    [`primary_${primaryCategory}`]: 1,
+  };
+  answers.interestCategories.forEach((c) => { vector[`category_${c}`] = c === primaryCategory ? 1 : 0.75; });
+  answers.priorities.forEach((p) => { vector[`priority_${p}`] = 1; });
+  answers.currentDevices.filter((d) => d !== 'none').forEach((d) => { vector[`device_${d}`] = 1; });
+  answers.subscriptions.filter((s) => s !== 'none').forEach((s) => { vector[`subscription_${s}`] = 1; });
+  if (answers.usageIntent) vector[`usage_${answers.usageIntent}`] = 1;
+  if (answers.profession) vector[`profession_${answers.profession}`] = 1;
+  if (answers.ageRange) vector[`age_${answers.ageRange}`] = 1;
+  return vector;
+}
 
 export default function Quiz() {
   const { t, lang } = useI18n();
+  const { user, openAuth } = useAuth();
+  const nav = useNavigate();
+  const [params] = useSearchParams();
+  const nextPath = params.get('next') || '/';
+  const required = params.get('required') === '1';
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+
   useSeo({ title: `${t('quiz.title')} — Qor AI`, description: t('quiz.subtitle'), path: '/quiz' });
+
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [result, setResult] = useState('');
+  const [answers, setAnswers] = useState(() => emptyAnswers(user));
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState('');
+  const [summary, setSummary] = useState('');
 
-  const total = QUESTIONS.length;
-  const done = step >= total;
+  useEffect(() => {
+    if (!user) openAuth();
+    else setAnswers(emptyAnswers(user));
+  }, [openAuth, user]);
 
-  async function pick(optKey) {
-    const cur = QUESTIONS[step];
-    const next = { ...answers, [cur.field]: t(optKey) };
-    setAnswers(next);
-    if (step + 1 < total) {
-      setStep(step + 1);
-    } else {
-      setStep(total);
-      setBusy(true);
-      trackEvent('quiz_complete');
-      try {
-        const text = await askQorAi([{ role: 'user', text: PROMPT(next, lang) }]);
-        setResult(text);
-        saveQuizHistory({ answers: next, result: text });
-      } catch {
-        setResult(t('la.errFail'));
-      } finally {
-        setBusy(false);
+  const current = STEPS[step];
+  const total = STEPS.length;
+  const selected = answers[current.field];
+
+  const canContinue = useMemo(() => {
+    const value = answers[current.field];
+    if (current.multiple) return Array.isArray(value) && value.length >= (current.min || 1);
+    return Boolean(value);
+  }, [answers, current]);
+
+  if (!user) {
+    return (
+      <div className="container quiz">
+        <div className="quiz-head">
+          <div className="quiz-icon">🎯</div>
+          <h1>{t('quiz.title')}</h1>
+          <p>{L('Sign in to create your Qor AI profile.', 'Qor AI profilini oluşturmak için giriş yap.', 'Melde dich an, um dein Qor AI Profil zu erstellen.')}</p>
+        </div>
+        <button className="btn btn-primary btn-block" onClick={openAuth}>{t('nav.signIn')}</button>
+      </div>
+    );
+  }
+
+  function pick(value) {
+    setErr('');
+    if (!current.multiple) {
+      setAnswers((a) => ({ ...a, [current.field]: value }));
+      return;
+    }
+    setAnswers((a) => {
+      const prev = Array.isArray(a[current.field]) ? a[current.field] : [];
+      let next;
+      if (value === 'none') next = prev.includes('none') ? [] : ['none'];
+      else {
+        const clean = prev.filter((x) => x !== 'none');
+        next = clean.includes(value) ? clean.filter((x) => x !== value) : [...clean, value];
       }
+      return { ...a, [current.field]: next };
+    });
+  }
+
+  function next() {
+    if (!canContinue) {
+      setErr(current.subtitle ? tx(lang, current.subtitle) : L('Complete this step to continue.', 'Devam etmek için bu adımı tamamla.', 'Schließe diesen Schritt ab.'));
+      return;
+    }
+    if (step + 1 >= total) submit();
+    else setStep((s) => s + 1);
+  }
+
+  function snapshot() {
+    return STEPS.map((s) => {
+      const raw = answers[s.field];
+      const answer = Array.isArray(raw)
+        ? raw.map((v) => optionLabel(s, v, lang)).join(', ')
+        : optionLabel(s, raw, lang);
+      return { field: s.field, question: tx(lang, s.title), answer };
+    }).filter((x) => x.answer);
+  }
+
+  function grouped(answersList) {
+    const groups = {
+      interestCategories: 'interests',
+      ecosystem: 'profile',
+      budgetRange: 'profile',
+      usageIntent: 'profile',
+      ageRange: 'profile',
+      profession: 'profile',
+      priorities: 'preferences',
+      currentDevices: 'devices',
+      subscriptions: 'subscriptions',
+    };
+    return answersList.reduce((acc, item) => {
+      const key = groups[item.field] || 'other';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+  }
+
+  async function submit() {
+    if (busy) return;
+    setBusy(true);
+    setErr('');
+    const primaryCategory = answers.interestCategories[0] || 'smartphones';
+    const submittedAt = new Date().toISOString();
+    const answersList = snapshot();
+    const recommendation = L(
+      'Your profile is saved. Qor AI will now use your ecosystem, budget, priorities, devices and subscriptions across product AI, link analysis and subscription analysis.',
+      'Profilin kaydedildi. Qor AI artık ürün AI analizi, link analizi ve abonelik analizinde ekosistemini, bütçeni, önceliklerini, cihazlarını ve aboneliklerini kullanacak.',
+      'Dein Profil ist gespeichert. Qor AI nutzt jetzt Ökosystem, Budget, Prioritäten, Geräte und Abos für Produkt-KI, Link-Analyse und Abo-Analyse.',
+    );
+    const entry = {
+      type: 'onboarding',
+      mode: 'onboarding',
+      category: primaryCategory,
+      score: 100,
+      timestamp: submittedAt,
+      questionCount: answersList.length,
+      answers: answersList,
+      groupedAnswers: grouped(answersList),
+      result: recommendation,
+      recommendation,
+    };
+    const country = user.country || (lang === 'tr' ? 'TR' : lang === 'de' ? 'DE' : 'GB');
+    const currency = user.currency || (lang === 'tr' ? 'TRY' : lang === 'de' ? 'EUR' : 'GBP');
+    try {
+      await updateProfile({
+        ageRange: answers.ageRange,
+        ecosystem: answers.ecosystem,
+        budgetRange: answers.budgetRange,
+        priorities: answers.priorities,
+        currentDevices: answers.currentDevices.filter((x) => x !== 'none'),
+        subscriptions: answers.subscriptions.includes('none') ? [] : answers.subscriptions,
+        country,
+        language: lang,
+        currency,
+        interestCategories: answers.interestCategories,
+        usageIntent: answers.usageIntent || 'all',
+        profession: answers.profession,
+        primaryCategory,
+        profileVector: buildVector(answers, primaryCategory),
+        quizCompleted: true,
+        quizHistory: [entry, ...(Array.isArray(user.quizHistory) ? user.quizHistory : [])].slice(0, 30),
+      });
+      trackEvent('quiz_complete');
+      setSummary(recommendation);
+      setDone(true);
+    } catch {
+      setErr(L('Profile could not be saved. Try again.', 'Profil kaydedilemedi. Tekrar dene.', 'Profil konnte nicht gespeichert werden.'));
+    } finally {
+      setBusy(false);
     }
   }
 
-  function restart() { setStep(0); setAnswers({}); setResult(''); }
+  if (done) {
+    return (
+      <div className="container quiz">
+        <div className="quiz-result fade-up">
+          <div className="quiz-result-head">{required ? L('Profile required', 'Profil gerekli', 'Profil erforderlich') : t('quiz.resultHead')}</div>
+          <div className="quiz-result-body">
+            <p>{summary}</p>
+            <div className="quiz-summary-list">
+              <span>{optionLabel(STEPS[1], answers.ecosystem, lang)}</span>
+              <span>{optionLabel(STEPS[2], answers.budgetRange, lang)}</span>
+              <span>{answers.interestCategories.slice(0, 3).map((v) => optionLabel(STEPS[0], v, lang)).join(', ')}</span>
+            </div>
+          </div>
+          <div className="quiz-result-actions">
+            <button className="btn btn-ghost" onClick={() => { setDone(false); setStep(0); }}>{t('quiz.restart')}</button>
+            <button className="btn btn-primary" onClick={() => nav(nextPath, { replace: true })}>
+              {L('Continue', 'Devam et', 'Weiter')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container quiz">
       <div className="quiz-head">
         <div className="quiz-icon">🎯</div>
         <h1>{t('quiz.title')}</h1>
-        <p>{t('quiz.subtitle')}</p>
+        <p>{required
+          ? L('Complete this once to unlock AI features on the website.', 'Web sitesindeki AI özelliklerini açmak için bunu bir kez tamamla.', 'Schließe dies einmal ab, um KI-Funktionen freizuschalten.')
+          : t('quiz.subtitle')}</p>
       </div>
 
-      {!done && (
-        <div className="quiz-card fade-up">
-          <div className="quiz-progress">
-            <div className="quiz-progress-bar" style={{ width: `${(step / total) * 100}%` }} />
-          </div>
-          <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
-          <h2 className="quiz-q">{t(QUESTIONS[step].q)}</h2>
-          <div className="quiz-opts">
-            {QUESTIONS[step].opts.map((o) => (
-              <button key={o} className="quiz-opt" onClick={() => pick(o)}>{t(o)}</button>
-            ))}
-          </div>
+      <div className="quiz-card fade-up">
+        <div className="quiz-progress">
+          <div className="quiz-progress-bar" style={{ width: `${(step / total) * 100}%` }} />
+        </div>
+        <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
+        <h2 className="quiz-q">{tx(lang, current.title)}</h2>
+        {current.subtitle && <p className="quiz-sub">{tx(lang, current.subtitle)}</p>}
+        <div className="quiz-opts">
+          {current.options.map((o) => {
+            const value = o[0];
+            const on = current.multiple
+              ? Array.isArray(selected) && selected.includes(value)
+              : selected === value;
+            return (
+              <button key={value} className={'quiz-opt' + (on ? ' on' : '')} onClick={() => pick(value)}>
+                {lang === 'tr' ? o[2] : lang === 'de' ? o[3] : o[1]}
+              </button>
+            );
+          })}
+        </div>
+        {err && <div className="quiz-err">{err}</div>}
+        <div className="quiz-actions">
           {step > 0 && (
-            <button className="quiz-back" onClick={() => setStep(step - 1)}>{t('quiz.back')}</button>
+            <button className="btn btn-ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={busy}>
+              {t('quiz.back')}
+            </button>
           )}
+          <button className="btn btn-primary" onClick={next} disabled={busy}>
+            {busy ? t('common.loading') : step + 1 >= total ? L('Save profile', 'Profili kaydet', 'Profil speichern') : L('Next', 'İleri', 'Weiter')}
+          </button>
         </div>
-      )}
-
-      {done && busy && (
-        <div className="quiz-loading">
-          <div className="spinner" />
-          <span>{t('quiz.loading')}</span>
-        </div>
-      )}
-
-      {done && !busy && result && (
-        <div className="quiz-result fade-up">
-          <div className="quiz-result-head">{t('quiz.resultHead')}</div>
-          <div className="quiz-result-body"><AiText text={result} /></div>
-          <div className="quiz-result-actions">
-            <button className="btn btn-ghost" onClick={restart}>{t('quiz.restart')}</button>
-            <Link to="/" className="btn btn-primary">{t('quiz.browseCatalog')}</Link>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

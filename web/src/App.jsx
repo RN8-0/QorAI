@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
+import { useAuth } from './lib/auth.jsx';
 
 import Home from './pages/Home.jsx';
 import Category from './pages/Category.jsx';
@@ -23,12 +24,22 @@ import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
   const loc = useLocation();
+  const nav = useNavigate();
+  const { user } = useAuth();
 
   // Scroll to top + report page view on every route change.
   useEffect(() => {
     window.scrollTo(0, 0);
     trackPageView(`${loc.pathname}${loc.search}`);
   }, [loc.pathname, loc.search]);
+
+  // Same onboarding rule as the mobile app: after login/registration, a user
+  // with no completed profile quiz is sent to the quiz before AI features.
+  useEffect(() => {
+    if (!user || user.quizCompleted === true || loc.pathname === '/quiz') return;
+    const next = `${loc.pathname}${loc.search}${loc.hash}`;
+    nav(`/quiz?required=1&next=${encodeURIComponent(next)}`, { replace: true });
+  }, [loc.hash, loc.pathname, loc.search, nav, user]);
 
   return (
     <>

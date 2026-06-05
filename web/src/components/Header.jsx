@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
+import { formatQorCoins } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
 import PlayBadge from './PlayBadge.jsx';
@@ -37,7 +38,7 @@ export default function Header() {
   const closeCatSoon = () => { if (catTimer.current) clearTimeout(catTimer.current); catTimer.current = setTimeout(() => setCatMenu(false), 140); };
   const closeCatNow = () => { if (catTimer.current) clearTimeout(catTimer.current); setCatMenu(false); };
 
-  const coins = user ? Math.round(Number(user.bonusQCoins) || 0) : 0;
+  const coins = user ? formatQorCoins(user.bonusQCoins, lang) : '0';
   const isPremium = premiumStatus(user).isPremium;
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
 

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { askQorAi } from '../lib/ai';
 import { analyzeLink, generateQuiz, enhancedAnalysis } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
+import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -16,7 +19,10 @@ const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
 
 // Compare mode keeps the app's "identify the exact product, never substitute"
 // rule but runs as a single combined verdict (no per-link quiz).
-function comparePrompt(urls, lang) {
+function comparePrompt(urls, lang, userProfile = {}) {
+  const profile = Object.keys(userProfile || {}).length
+    ? `\n\nUser profile context:\n${JSON.stringify(userProfile)}`
+    : '';
   return (
     "You are Qor AI's product comparison engine.\n" +
     'Analyze these product URLs exactly:\n' +
@@ -25,7 +31,9 @@ function comparePrompt(urls, lang) {
     '- Identify each exact product from its URL/domain/slug. Do not substitute nearby models.\n' +
     '- If any product is uncertain, keep it in the comparison and mark it uncertain.\n' +
     '- Compare only what can be reasonably inferred; do not invent live prices.\n' +
-    '- End with a clear recommendation for different user types.\n\n' +
+    '- End with a clear recommendation for different user types.\n' +
+    profile +
+    '\n\n' +
     'Output with **bold** headings: Products identified, Head-to-head, Strengths and weaknesses, Qor AI verdict. ' +
     `Use "-" bullets. Reply ONLY in the language with ISO code: ${lang}.`
   );
@@ -134,6 +142,8 @@ function EnhancedResult({ data, L }) {
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
+  const nav = useNavigate();
+  const requireAiAccess = useAiAccess(lang);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
 
@@ -161,20 +171,37 @@ export default function LinkAnalysis() {
     setPhase('input'); setBase(null); setQuestions([]); setEnhanced(null); setCompareText(''); setErr('');
   }
 
+  function savePending(list) {
+    localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, mode, ts: Date.now() }));
+  }
+
+  function needsQuiz(list) {
+    if (hasCompletedQuiz(user)) return false;
+    savePending(list);
+    setErr(L('Complete the profile quiz first. Your links are saved.',
+      'Önce profil quizini tamamla. Linklerin kaydedildi.',
+      'Schließe zuerst das Profil-Quiz ab. Deine Links bleiben gespeichert.'));
+    nav(`/quiz?required=1&next=${encodeURIComponent('/link-analysis')}`);
+    return true;
+  }
+
   // ── Single-link flow: identify → quiz → enhanced analysis ────────
   async function startSingle(url) {
     setErr(''); setEnhanced(null); setCompareText('');
     setPhase('identifying');
     trackEvent('link_analysis', { count: 1 });
     try {
-      const result = await analyzeLink(url, lang);
+      const access = await requireAiAccess('link_analysis', { onMessage: setErr });
+      if (!access.ok) { setPhase('input'); return; }
+      const profile = aiUserProfile(user);
+      const result = await analyzeLink(url, lang, profile);
       setBase(result);
       if (result.isProduct === false && !result.title) {
         setErr(t('la.errFail')); setPhase('input'); return;
       }
       let qs = [];
       try {
-        qs = await generateQuiz({ category: result.category, productTitle: result.title, url, language: lang });
+        qs = await generateQuiz({ category: result.category, productTitle: result.title, url, language: lang, userProfile: profile });
       } catch { qs = []; }
       if (qs.length) { setQuestions(qs); setPhase('quiz'); }
       else { await runEnhanced(result, []); } // no quiz available → analyze directly
@@ -186,7 +213,7 @@ export default function LinkAnalysis() {
   async function runEnhanced(baseResult, answers) {
     setPhase('analyzing');
     try {
-      const data = await enhancedAnalysis({ base: baseResult, answers, language: lang });
+      const data = await enhancedAnalysis({ base: baseResult, answers, language: lang, userProfile: aiUserProfile(user) });
       setEnhanced(data);
       setPhase('result');
       saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single' });
@@ -201,7 +228,9 @@ export default function LinkAnalysis() {
     setPhase('analyzing');
     trackEvent('link_analysis', { count: list.length });
     try {
-      const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang) }]);
+      const access = await requireAiAccess('link_compare', { onMessage: setErr });
+      if (!access.ok) { setPhase('input'); return; }
+      const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang, aiUserProfile(user)) }]);
       setCompareText(text);
       setPhase('result');
       saveLinkAnalysisHistory({ urls: list, analysis: text, type: 'compare' });
@@ -216,17 +245,18 @@ export default function LinkAnalysis() {
     if (!list.length) return;
     if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
     if (!user) {
-      localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, mode, ts: Date.now() }));
+      savePending(list);
       setErr(L('Sign in to continue. Your links are saved.', 'Devam etmek için giriş yap. Linklerin kaybolmayacak.', 'Melde dich an, um fortzufahren. Deine Links bleiben erhalten.'));
       openAuth();
       return;
     }
+    if (needsQuiz(list)) return;
     if (list.length > 1) runCompare(list);
     else startSingle(list[0]);
   }
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !hasCompletedQuiz(user)) return;
     const raw = localStorage.getItem(PENDING_LINK_KEY);
     if (!raw) return;
     localStorage.removeItem(PENDING_LINK_KEY);

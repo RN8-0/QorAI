@@ -32,6 +32,8 @@ export async function register({ email, password, name, birthDate, gender }) {
     password,
     passwordConfirm: password,
     name: name || email.split('@')[0],
+    bonusQCoins: 20,
+    dailyAiCreditsUsed: 0,
   };
   if (birthDate) body.birthDate = birthDate;
   if (gender) body.gender = gender;

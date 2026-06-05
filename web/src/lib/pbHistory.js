@@ -8,6 +8,23 @@ function comparisonKey(ids) {
   return uniq(ids).sort().join('|');
 }
 
+async function appendAnalyzedProduct(entry) {
+  const user = currentUser();
+  if (!user || !entry) return;
+  try {
+    const latest = await pb.collection('users').getOne(user.id);
+    const history = Array.isArray(latest.analyzedProducts) ? latest.analyzedProducts : [];
+    await pb.collection('users').update(user.id, {
+      analyzedProducts: [
+        { timestamp: new Date().toISOString(), ...entry },
+        ...history,
+      ].slice(0, 200),
+    });
+  } catch {
+    // Best effort shared analytics/history mirror.
+  }
+}
+
 export async function saveSearchHistory(query, productId = '') {
   const user = currentUser();
   const term = String(query || '').trim();
@@ -110,15 +127,58 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single' 
       aiSummary: String(analysis).slice(0, 5000),
       savedAt: now,
     });
+    appendAnalyzedProduct({
+      title: list.length > 1 ? list.join(' vs ') : list[0],
+      category: 'link',
+      mode: type,
+      url: list[0] || '',
+      urls: list,
+      score: 0,
+      verdict: String(analysis).slice(0, 200),
+    });
   } catch {
     // Best effort shared history.
   }
 }
 
-export async function saveSubscriptionHistory({ services, analysis, quiz = {} }) {
+export async function saveProductAnalysisHistory({ product, analysis }) {
+  const user = currentUser();
+  if (!user || !product?.id || !analysis) return;
+  const now = new Date().toISOString();
+  appendAnalyzedProduct({
+    productId: product.id,
+    title: product.name || 'Product analysis',
+    category: product.category || 'product',
+    mode: 'detail_ai',
+    score: Number(product.techScore) || 0,
+    verdict: String(analysis).slice(0, 200),
+  });
+  try {
+    await pb.collection('saved_analyses').create({
+      userId: user.id,
+      title: product.name || 'Product analysis',
+      category: 'product_history',
+      analysisData: {
+        type: 'product',
+        productId: product.id,
+        productName: product.name || '',
+        category: product.category || '',
+        analysis,
+        timestamp: now,
+      },
+      aiScore: Number(product.techScore) || 0,
+      aiSummary: String(analysis).slice(0, 5000),
+      savedAt: now,
+    });
+  } catch {
+    // Best effort shared history.
+  }
+}
+
+export async function saveSubscriptionHistory({ services, analysis, quiz = {}, scores = {} }) {
   const user = currentUser();
   const list = (services || []).map((s) => String(s || '').trim()).filter(Boolean);
-  if (!user || list.length < 2 || !analysis) return;
+  if (!user || list.length < 1 || !analysis) return;
   const now = new Date().toISOString();
   try {
     await pb.collection('saved_analyses').create({
@@ -129,12 +189,22 @@ export async function saveSubscriptionHistory({ services, analysis, quiz = {} })
         type: 'subscription',
         services: list,
         quiz,
+        scores,
         analysisResult: analysis,
         timestamp: now,
       },
       aiScore: 0,
       aiSummary: String(analysis).slice(0, 5000),
       savedAt: now,
+    });
+    list.forEach((service) => {
+      appendAnalyzedProduct({
+        title: service,
+        category: 'subscription',
+        mode: 'subscription',
+        score: Number(scores?.[service]) || 0,
+        verdict: String(analysis).slice(0, 200),
+      });
     });
   } catch {
     // Best effort shared history.
@@ -178,16 +248,21 @@ export async function getSavedAnalyses(limit = 40) {
       sort: '-created',
     });
     return res.items
-      .filter((a) => ['link_history', 'subscription_history'].includes(a.category))
+      .filter((a) => ['link_history', 'subscription_history', 'product_history'].includes(a.category))
       .map((a) => {
         const d = a.analysisData && typeof a.analysisData === 'object' ? a.analysisData : {};
         return {
           id: a.id,
           title: a.title || d.url || '',
-          kind: a.category === 'subscription_history' ? 'subscription' : 'link',
+          kind: a.category === 'subscription_history'
+            ? 'subscription'
+            : a.category === 'product_history'
+              ? 'product'
+              : 'link',
           analysis: d.analysis || d.analysisResult || a.aiSummary || '',
           urls: Array.isArray(d.urls) ? d.urls : [],
           services: Array.isArray(d.services) ? d.services : [],
+          productId: d.productId || '',
           at: a.savedAt || d.timestamp || a.created,
         };
       });

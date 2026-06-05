@@ -5,6 +5,7 @@ import { useCompare, setCompareList } from '../lib/compare';
 import {
   refreshUser, updateProfile, requestVerification, requestAccountDeletion,
 } from '../lib/pocketbase';
+import { formatQorCoins } from '../lib/qorCoins';
 import {
   getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview,
   readSearchHistory, readQuizHistory,
@@ -162,7 +163,7 @@ function Identity({ user, name, logout, t }) {
 
 /* ─── Overview tab ───────────────────────────────────────────────── */
 function Overview({ user, ids, t }) {
-  const coins = Math.round(Number(user.bonusQCoins) || 0);
+  const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   const prem = premiumStatus(user);
   const premUntil = prem.expiresAt
     ? new Date(prem.expiresAt).toLocaleDateString()
@@ -308,11 +309,15 @@ function AnalysesTab({ t }) {
         return (
           <div key={a.id} className={'pf-acard' + (isOpen ? ' open' : '')}>
             <button className="pf-row" onClick={() => setExpanded(isOpen ? null : a.id)}>
-              <span className="pf-row-ic">{a.kind === 'subscription' ? '📺' : '🔗'}</span>
+              <span className="pf-row-ic">{a.kind === 'subscription' ? '📺' : a.kind === 'product' ? '📦' : '🔗'}</span>
               <span className="pf-row-main">
                 <b>{a.title || t('pf.untitledAnalysis')}</b>
                 <small>
-                  {t(a.kind === 'subscription' ? 'pf.kindSubscription' : 'pf.kindLink')}
+                  {t(a.kind === 'subscription'
+                    ? 'pf.kindSubscription'
+                    : a.kind === 'product'
+                      ? 'pf.kindProduct'
+                      : 'pf.kindLink')}
                   {fmtDate(a.at) && ` · ${fmtDate(a.at)}`}
                 </small>
               </span>
