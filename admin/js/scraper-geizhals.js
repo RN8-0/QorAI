@@ -17,6 +17,7 @@ const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:stack';
 const SCRAPER_BUILD = '20260526-geizhals-source-fields';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
+const GEIZHALS_PROXY_FETCH_TIMEOUT_MS = 210000;
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
@@ -311,8 +312,8 @@ async function proxyFetch(url, retries = 3) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`, {
-        // 120s: covers proxy 45s nav + 15s challenge wait + one internal fresh-page retry
-        signal: AbortSignal.timeout(120000)
+        // Proxy may spend 45s navigating plus up to 120s on Geizhals CF solving.
+        signal: AbortSignal.timeout(GEIZHALS_PROXY_FETCH_TIMEOUT_MS)
       });
       if (res.status === 429) {
         const delay = Math.min(15000 * Math.pow(2, attempt), 120000) + Math.random() * 5000;
@@ -3339,7 +3340,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       let reason = '';
       try {
         const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
-          signal: AbortSignal.timeout(180000)
+          signal: AbortSignal.timeout(GEIZHALS_PROXY_FETCH_TIMEOUT_MS)
         });
         const contentType = res.headers.get('content-type') || '';
         const isJson = contentType.includes('application/json');
