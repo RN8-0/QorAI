@@ -17,6 +17,8 @@ import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { searchYoutubeReviews } from '../lib/youtube';
 import Reviews from '../components/Reviews.jsx';
+import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
+import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -24,7 +26,7 @@ function flatSpecs(p) {
   const put = (obj) => {
     if (obj && typeof obj === 'object') {
       Object.entries(obj).forEach(([k, v]) => {
-        if (v != null && String(v).trim() !== '') flat[k] = String(v);
+        if (v != null && String(v).trim() !== '' && isDisplayableSpec(k, v)) flat[k] = String(v);
       });
     }
   };
@@ -44,17 +46,6 @@ function parseNum(s) {
   if (s == null) return null;
   const m = String(s).match(/-?\d+(?:[.,]\d+)?/);
   return m ? parseFloat(m[0].replace(',', '.')) : null;
-}
-
-// Deterministic "fit" score (no per-user profile on the web) — mirrors the
-// app's dual gauge. Same derivation ProductDetail uses.
-function matchScore(p) {
-  const s = Number(p.techScore) || 0;
-  if (s <= 0) return 0;
-  const id = String(p.id || '');
-  let h = 0;
-  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 23;
-  return Math.max(45, Math.min(96, Math.round(s * 0.82 + 10 + (h - 11) * 0.6)));
 }
 
 function formatOffer(offer, lang) {
@@ -77,9 +68,9 @@ function splitSpecValue(value) {
     .split(/\r?\n|[•·]\s*|;\s*/g)
     .map((x) => x.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
-  if (lines.length <= 1 && raw.length > 100 && /(camera|kamera|lens|zoom|ois|hdr|video|mp|optical|digital|telephoto|wide|f\/|f\d)/i.test(raw)) {
+  if (lines.length <= 1 && raw.length > 100 && /(camera|kamera|lens|zoom|ois|hdr|video|mp|optical|optik|digital|dijital|telephoto|telefoto|wide|geniş|f\/|f\d)/i.test(raw)) {
     lines = raw
-      .replace(/\s+(?=(?:Yes|No|OIS|HDR|LED|Laser|Video|Optical|Digital|Automatic|Hybrid|Phase|Telephoto|Periscope|Ultra Wide|Extra Wide|Wide Angle|Zoom|f\/\d|F\d|[0-9]+(?:\.[0-9]+)?\s*MP)\b)/g, '\n')
+      .replace(/\s+(?=(?:Yes|No|Var|Yok|OIS|HDR|LED|Laser|Lazer|Video|Optical|Optik|Digital|Dijital|Automatic|Otomatik|Hybrid|Hibrit|Phase|Faz|Telephoto|Telefoto|Periscope|Periskop|Ultra Wide|Ultra Geniş|Extra Wide|Ekstra Geniş|Wide Angle|Geniş Açı|Zoom|f\/\d|F\d|[0-9]+(?:\.[0-9]+)?\s*MP)\b)/g, '\n')
       .split(/\r?\n/g)
       .map((x) => x.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
@@ -87,8 +78,8 @@ function splitSpecValue(value) {
   return lines.length ? lines : [raw];
 }
 
-function SpecValue({ value }) {
-  const lines = splitSpecValue(value);
+function SpecValue({ value, lang }) {
+  const lines = splitSpecValue(localizedSpecValue(value, lang));
   if (!lines.length) return <span>—</span>;
   if (lines.length === 1) return <span>{lines[0]}</span>;
   return (
@@ -145,6 +136,7 @@ export default function Compare() {
   const [youtubeLoading, setYoutubeLoading] = useState(false);
   const boxRef = useRef(null);
   const compareCategory = products[0]?.category || '';
+  const showMatchScore = hasProfileMatch(user);
 
   useEffect(() => {
     let live = true;
@@ -232,6 +224,11 @@ export default function Compare() {
     });
   }, [products]);
 
+  const matchScores = useMemo(() => {
+    if (!showMatchScore) return {};
+    return Object.fromEntries(products.map((p) => [p.id, calculateProfileMatchScore(user, p)]));
+  }, [products, showMatchScore, user]);
+
   const bestScore = useMemo(() => {
     if (products.length < 2) return null;
     return Math.max(...products.map((p) => Number(p.techScore) || 0));
@@ -256,7 +253,7 @@ export default function Compare() {
       `${p.name}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\nQor AI score: ${scoreLabel(p.techScore)}`
     )).join('\n\n');
     const specTable = specRows.slice(0, 140)
-      .map((row) => `${row.key}: ${row.values.map((v, i) => `${products[i]?.name || `Product ${i + 1}`}=${v}`).join(' | ')}`)
+      .map((row) => `${localizedSpecLabel(row.key, lang)}: ${row.values.map((v, i) => `${products[i]?.name || `Product ${i + 1}`}=${localizedSpecValue(v, lang)}`).join(' | ')}`)
       .join('\n');
     return L(
       `Compare these products for the signed-in user's profile. Products: ${names}\n\nUser profile:\n${profile}\n\nProducts:\n${productSummary}\n\nSpecs:\n${specTable}\n\nGive a clear verdict, best-for scenarios, strengths, weaknesses and final recommendation. Use only the provided catalog data when citing specs.`,
@@ -368,7 +365,7 @@ export default function Compare() {
               {slots.map((p) => {
                 const m = catMeta(p.category);
                 const tech = Number(p.techScore) || 0;
-                const match = matchScore(p);
+                const match = matchScores[p.id] || 0;
                 const isBest = bestScore != null && tech === bestScore;
                 return (
                   <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
@@ -383,7 +380,7 @@ export default function Compare() {
                     <Link to={productPath(p.id)} className="cmp-card-name">{p.name}</Link>
                     <div className="cmp-card-cat">{m.icon} {m.label}</div>
                     <div className="cmp-rings">
-                      {match > 0 && (
+                      {showMatchScore && match > 0 && (
                         <span className="cmp-ring">
                           <Gauge value={match} size={46} stroke={4} color="var(--score-average)" fontSize={14} />
                           <small>{L('Match', 'Uyum', 'Match')}</small>
@@ -445,12 +442,12 @@ export default function Compare() {
                       </tr>
                       {specRows.map((row) => (
                         <tr key={row.key}>
-                          <td className="cmp-td-spec">{row.key}</td>
+                          <td className="cmp-td-spec">{localizedSpecLabel(row.key, lang)}</td>
                           {row.values.map((v, i) => (
                             <td key={i}
                               className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
                               {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
-                              <SpecValue value={v} />
+                              <SpecValue value={v} lang={lang} />
                             </td>
                           ))}
                         </tr>

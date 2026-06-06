@@ -55,12 +55,17 @@ function epeyVariants(url, size) {
     .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
     .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
     .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2');
+  // Epey often exposes the master asset without the size prefix as well. When
+  // older records stored m_/s_/k_ URLs, try that original candidate before the
+  // medium fallback so the gallery is not locked to a low-res copy.
+  const original = clean.replace(/\/[bmsk]_([^/?#]+)([?#].*)?$/i, '/$1$2');
   // Stored URLs are now the original master (no size prefix). Derive a medium
   // fallback so a missing master (404) still renders instead of breaking.
   const medium = clean.replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) =>
     /^[a-z]_/i.test(file) ? m : `${folder}m_${file}`);
 
   if (size === 'card' || size === 'full') variants.push(high);
+  if (original !== clean) variants.push(original);
   variants.push(clean);
   if (medium !== clean) variants.push(medium);
   return uniq(variants);

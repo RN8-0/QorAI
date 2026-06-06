@@ -5,7 +5,7 @@ import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare } from '../lib/compare';
 import { useAuth } from '../lib/auth';
-import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
@@ -21,21 +21,12 @@ import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
 import { productPath } from '../lib/routes';
+import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
 const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;
 
-// Deterministic "fit" score for the web (there is no per-user profile here): a
-// stable derivation from the tech score so the dual gauge mirrors the app.
-function matchScore(p) {
-  const s = Number(p.techScore) || 0;
-  if (s <= 0) return 0;
-  const id = String(p.id || '');
-  let h = 0;
-  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 23;
-  return Math.max(45, Math.min(96, Math.round(s * 0.82 + 10 + (h - 11) * 0.6)));
-}
 function bandLabel(s, L) {
   return s >= 90 ? L('Excellent', 'Mükemmel', 'Exzellent')
     : s >= 75 ? L('Good', 'İyi', 'Gut')
@@ -460,7 +451,8 @@ export default function ProductDetail() {
   })();
 
   const tech = Number(p.techScore) || 0;
-  const match = matchScore(p);
+  const showMatchScore = hasProfileMatch(user);
+  const match = showMatchScore ? calculateProfileMatchScore(user, p) : 0;
   const offer = bestOfferForLang(offers, p, lang);
   const hasExactPrice = Boolean(offer?.hasExactPrice);
   const price = hasExactPrice ? Number(offer?.price) || 0 : 0;
@@ -525,7 +517,7 @@ export default function ProductDetail() {
               </div>
               {/* The personal match score only shows for signed-in users who
                   have a profile from the quiz — hidden otherwise. */}
-              {hasCompletedQuiz(user) && match > 0 && (
+              {showMatchScore && match > 0 && (
                 <>
                   <span className="pd-score2-sep" />
                   <div className="pd-score2">
