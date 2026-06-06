@@ -355,15 +355,33 @@ function _extractBooleanBrowseValue(value) {
 function _extractStorageToken(value) {
   var normalized = _normalizeBrowseText(value);
   if (!normalized) return null;
-  if (normalized.indexOf('2 tb') !== -1 || normalized.indexOf('2tb') !== -1) {
-    return '2_tb';
+  // Generalized TB (1/2/4/8 … TB) so "4 tb" no longer collapses to "4_gb".
+  var tbMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*tb\b/);
+  if (tbMatch) {
+    var tb = Math.round(parseFloat(tbMatch[1].replace(',', '.')));
+    return tb > 0 && tb <= 256 ? tb + '_tb' : null;
   }
-  if (normalized.indexOf('1 tb') !== -1 || normalized.indexOf('1tb') !== -1) {
-    return '1_tb';
-  }
+  // Real storage always carries a GB unit. Without it the number belongs to a
+  // different spec (battery mAh, PSU watt, lens mm, router Mbps, sensor count …)
+  // that leaked in through a fuzzy key match — reject it instead of mislabeling
+  // it as "N GB". This is what produced "174 GB" smartwatches, "1000 GB" PSUs,
+  // "30000 GB" powerbanks and "88 GB" camera lenses.
+  if (!/\d\s*gb\b/.test(normalized)) return null;
   var number = _extractFirstBrowseNumber(value);
-  if (number === null) return null;
+  if (number === null || number <= 0 || number > 262144) return null;
   return Math.round(number) + '_gb';
+}
+
+function _extractRamGb(value) {
+  var normalized = _normalizeBrowseText(value);
+  if (!normalized) return null;
+  // RAM is reported in GB. No GB unit (or a TB/other unit) means the value is
+  // really storage / VRAM-bus-width / memory-speed / a "programmable" count that
+  // leaked through the 3-letter "ram" substring match — drop it.
+  if (!/\d\s*gb\b/.test(normalized) || /\d\s*tb\b/.test(normalized)) return null;
+  var number = _extractFirstBrowseNumber(value);
+  if (number === null || number <= 0 || number > 256) return null;
+  return Math.round(number);
 }
 
 function _extractOsToken(value) {
@@ -518,8 +536,8 @@ function _extractBrowseFilters(pbData) {
   }
 
   var ramValue = firstValue(['Memory (RAM)', 'RAM', 'memory ram']);
-  var ramNumber = _extractFirstBrowseNumber(ramValue);
-  if (ramNumber !== null) addToken('ram:' + Math.round(ramNumber) + '_gb');
+  var ramGb = _extractRamGb(ramValue);
+  if (ramGb !== null) addToken('ram:' + ramGb + '_gb');
 
   var storageValue = firstValue([
     'Hard Disk (SSD) Size',
@@ -530,7 +548,6 @@ function _extractBrowseFilters(pbData) {
     'Storage Capacity',
     'storage',
     'Storage',
-    'Capacity',
   ]);
   var storageToken = _extractStorageToken(storageValue);
   if (storageToken !== null) addToken('storage:' + storageToken);
@@ -658,8 +675,12 @@ function _extractBrowseFilters(pbData) {
     tokens: tokens,
     screenSizeValue: _extractScreenSizeFromFlat(flat),
     batteryCapacityValue: (function() {
+      // Require a mAh unit so the bogus upstream "Battery capacity" that holds an
+      // SSD's "4 TB" or a lens's "88 mm" can't surface as "4 mAh" / "88 mAh".
+      var normalized = _normalizeBrowseText(batteryValue);
+      if (!/\d\s*mah\b/.test(normalized)) return undefined;
       var number = _extractFirstBrowseNumber(batteryValue);
-      return number === null ? undefined : Math.round(number);
+      return (number === null || number <= 0 || number > 200000) ? undefined : Math.round(number);
     })(),
     weightValueKg: _extractWeightKg(weightValue),
   };

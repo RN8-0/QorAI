@@ -120,7 +120,32 @@ function _screenSizeFromFlat(flat) {
   return null;
 }
 function _bool(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['no', 'false', 'hayir', 'yok', 'n a', '-'].includes(n)) return false; return true; }
-function _storageToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('2 tb') || n.includes('2tb')) return '2_tb'; if (n.includes('1 tb') || n.includes('1tb')) return '1_tb'; const x = _num(v); return x === null ? null : Math.round(x) + '_gb'; }
+function _storageToken(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  const tb = n.match(/(\d+(?:[.,]\d+)?)\s*tb\b/);
+  if (tb) { const t = Math.round(parseFloat(tb[1].replace(',', '.'))); return t > 0 && t <= 256 ? t + '_tb' : null; }
+  // Real storage always carries a GB unit; without it the number belongs to a
+  // different spec (battery mAh, PSU watt, lens mm, router Mbps…) that leaked in.
+  if (!/\d\s*gb\b/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x <= 0 || x > 262144) return null;
+  return Math.round(x) + '_gb';
+}
+function _ramGb(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n || !/\d\s*gb\b/.test(n) || /\d\s*tb\b/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x <= 0 || x > 256) return null;
+  return Math.round(x);
+}
+function _batteryMah(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n || !/\d\s*mah\b/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x <= 0 || x > 200000) return null;
+  return Math.round(x);
+}
 function _osToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('chrome os') || n.includes('chromeos')) return 'chromeos'; if (n.includes('ipad os') || n.includes('ipados')) return 'ipados'; if (n.includes('mac os') || n.includes('macos') || n.includes('os x')) return 'macos'; if (n.includes('windows')) return 'windows'; if (n.includes('android')) return 'android'; if (n.includes('linux')) return 'linux'; if (n.includes('ios') || n.includes('iphone os')) return 'ios'; return null; }
 function _cpuBrand(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('intel')) return 'intel'; if (n.includes('amd')) return 'amd'; if (n.includes('apple')) return 'apple'; if (n.includes('qualcomm') || n.includes('snapdragon')) return 'qualcomm'; if (n.includes('mediatek')) return 'mediatek'; if (n.includes('exynos')) return 'exynos'; return null; }
 function _gpuType(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['rtx', 'gtx', 'geforce', 'radeon', 'arc', 'dedicated', 'discrete'].some((x) => n.includes(x))) return 'dedicated'; if (['integrated', 'shared', 'iris', 'uhd', 'intel hd', 'apple gpu'].some((x) => n.includes(x))) return 'integrated'; return null; }
@@ -137,8 +162,8 @@ function extractBrowse(pb) {
   const addT = (t) => { if (t && !seen[t]) { seen[t] = true; tokens.push(t); } };
   const first = (keys) => { const v = _findBrowseSpecValues(keys, flat); return v.length ? String(v[0]) : ''; };
 
-  const ram = _num(first(['Memory (RAM)', 'RAM', 'memory ram', 'Bellek (RAM)', 'Bellek'])); if (ram !== null) addT('ram:' + Math.round(ram) + '_gb');
-  const st = _storageToken(first(['Hard Disk (SSD) Size', 'SSD Size', 'Internal Storage', 'internal storage', 'Storage Size', 'Storage Capacity', 'storage', 'Storage', 'Capacity', 'Dahili Depolama', 'Depolama'])); if (st) addT('storage:' + st);
+  const ram = _ramGb(first(['Memory (RAM)', 'RAM', 'memory ram', 'Bellek (RAM)', 'Bellek'])); if (ram !== null) addT('ram:' + ram + '_gb');
+  const st = _storageToken(first(['Hard Disk (SSD) Size', 'SSD Size', 'Internal Storage', 'internal storage', 'Storage Size', 'Storage Capacity', 'storage', 'Storage', 'Dahili Depolama', 'Depolama'])); if (st) addT('storage:' + st);
   const os = _osToken(first(['Operating System', 'OS', 'Platform', 'İşletim Sistemi', 'Isletim Sistemi'])); if (os) addT('os:' + os);
   const cpu = _cpuBrand(first(['Processor Brand', 'Processor', 'CPU', 'Chip', 'Chipset', 'İşlemci', 'İşlemci Markası', 'Yonga Seti'])); if (cpu) addT('processor_brand:' + cpu);
   const socketTexts = [pb.name, first(['Socket', 'CPU Socket', 'Processor Socket', 'Soket']), first(['Compatible Sockets', 'Socket Support'])];
@@ -151,11 +176,11 @@ function extractBrowse(pb) {
   [['five_g', ['5G', '5G Desteği']], ['nfc', ['NFC']], ['wireless_charging', ['Wireless Charging', 'Kablosuz Şarj']], ['fast_charging', ['Fast Charging', 'Hızlı Şarj']], ['fingerprint', ['Fingerprint Reader', 'fingerprint', 'Parmak İzi']], ['water_resistance', ['Water Resistance', 'Suya Dayanıklılık']]].forEach(([tok, keys]) => { if (_bool(first(keys)) === true) addT(tok + ':true'); });
 
   const screen = _screenSizeFromFlat(flat);
-  const battery = _num(first(['Battery Capacity', 'Battery Capacity (Typical)', 'Batarya Kapasitesi', 'Batarya Kapasitesi (Tipik)']));
+  const battery = _batteryMah(first(['Battery Capacity', 'Battery Capacity (Typical)', 'Batarya Kapasitesi', 'Batarya Kapasitesi (Tipik)', 'Pil Kapasitesi']));
   return {
     tokens,
     screenSizeValue: screen || undefined,
-    batteryCapacityValue: battery === null ? undefined : Math.round(battery),
+    batteryCapacityValue: battery === null ? undefined : battery,
     weightValueKg: _weightKg(first(['Weight', 'Ağırlık'])) || undefined,
   };
 }
@@ -204,8 +229,11 @@ async function proc(doc) {
     const screenChanged = nextScreen !== undefined &&
       (!Number.isFinite(prevScreen) || Math.abs(prevScreen - nextScreen) > 0.05);
     const prevBattery = Number(doc.batteryCapacityValue);
-    const batteryChanged = b.batteryCapacityValue != null &&
-      (!Number.isFinite(prevBattery) || Math.round(prevBattery) !== b.batteryCapacityValue);
+    const nextBattery = b.batteryCapacityValue != null
+      ? b.batteryCapacityValue
+      : (Number.isFinite(prevBattery) && prevBattery > 0 ? 0 : undefined);
+    const batteryChanged = nextBattery !== undefined &&
+      (!Number.isFinite(prevBattery) || Math.round(prevBattery) !== nextBattery);
     const prevWeight = Number(doc.weightValueKg);
     const weightChanged = b.weightValueKg != null &&
       (!Number.isFinite(prevWeight) || Math.abs(prevWeight - b.weightValueKg) > 0.001);
@@ -216,7 +244,7 @@ async function proc(doc) {
       const fields = {
         ...(tokensChanged ? { filterTokens: b.tokens } : {}),
         ...(nextScreen !== undefined ? { screenSizeValue: nextScreen } : {}),
-        ...(b.batteryCapacityValue != null ? { batteryCapacityValue: b.batteryCapacityValue } : {}),
+        ...(nextBattery !== undefined ? { batteryCapacityValue: nextBattery } : {}),
         ...(b.weightValueKg != null ? { weightValueKg: b.weightValueKg } : {}),
         _raw: JSON.stringify(raw),
       };
