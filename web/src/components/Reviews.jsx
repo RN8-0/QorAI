@@ -104,13 +104,19 @@ function Replies({ reviewId }) {
           </div>
         );
       })}
-      <form className="rv-reply-form" onSubmit={submit}>
-        <input value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={t('rv.replyPlaceholder')} maxLength={500} />
-        <button type="submit" className="btn btn-ghost" disabled={busy || !text.trim()}>
-          {t('rv.reply')}
+      {user ? (
+        <form className="rv-reply-form" onSubmit={submit}>
+          <input value={text} onChange={(e) => setText(e.target.value)}
+            placeholder={t('rv.replyPlaceholder')} maxLength={500} />
+          <button type="submit" className="btn btn-ghost" disabled={busy || !text.trim()}>
+            {t('rv.reply')}
+          </button>
+        </form>
+      ) : (
+        <button type="button" className="btn btn-ghost rv-reply-login" onClick={openAuth}>
+          {t('pd.revSignIn')}
         </button>
-      </form>
+      )}
     </div>
   );
 }
@@ -175,14 +181,22 @@ export default function Reviews({ productId }) {
       </div>
 
       <form className="pd-rev-form" onSubmit={submit}>
-        <div className="pd-rev-form-top">
-          <span className="pd-rev-label">{t('pd.revYour')}</span>
-          <StarPicker value={rating} onChange={setRating} />
-        </div>
-        <textarea value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={t('pd.revPlaceholder')} rows={3} maxLength={1000} />
-        {msg === 'ok' && <div className="pd-rev-ok">{t('pd.revThanks')}</div>}
-        {msg === 'err' && <div className="pd-rev-er">{t('pd.revErr')}</div>}
+        {user ? (
+          <>
+            <div className="pd-rev-form-top">
+              <span className="pd-rev-label">{t('pd.revYour')}</span>
+              <StarPicker value={rating} onChange={setRating} />
+            </div>
+            <textarea value={text} onChange={(e) => setText(e.target.value)}
+              placeholder={t('pd.revPlaceholder')} rows={3} maxLength={1000} />
+            {msg === 'ok' && <div className="pd-rev-ok">{t('pd.revThanks')}</div>}
+            {msg === 'err' && <div className="pd-rev-er">{t('pd.revErr')}</div>}
+          </>
+        ) : (
+          <div className="pd-rev-login">
+            <span>{t('pd.revSignIn')}</span>
+          </div>
+        )}
         {user ? (
           <button type="submit" className="btn btn-primary"
             disabled={busy || !rating || !text.trim()}>

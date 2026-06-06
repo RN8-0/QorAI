@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { productPath } from '../lib/routes';
 import { useI18n } from '../i18n/index.jsx';
+import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import Gauge, { techColor } from './Gauge.jsx';
 import ProductImg from './ProductImg.jsx';
 import './ProductCard.css';
@@ -190,6 +191,15 @@ function ProductImage({ p }) {
   );
 }
 
+function polishCardSpecLabel(label, lang) {
+  if (String(lang || '').slice(0, 2).toLowerCase() !== 'de') return label;
+  return String(label || '')
+    .replace(/Düşük Takt \(Bass\)/g, 'Niedriger Takt (Bass)')
+    .replace(/Düşük Takt \(Bas\)/g, 'Niedriger Takt (Bass)')
+    .replace(/En Düşük Takt/g, 'Niedrigster Takt')
+    .replace(/En Yüksek Takt/g, 'Höchster Takt');
+}
+
 export default function ProductCard({ product: p, variant = 'card', onClick }) {
   const { t, lang } = useI18n();
   const hasScore = Number(p.techScore) > 0;
@@ -213,12 +223,16 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
         </div>
         <span className="q-product-card-name">{p.name}</span>
         <div className="q-product-card-specs">
-          {specs.map((spec, index) => (
-            <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${spec.label}: ${spec.value}`}>
-              <b className="q-product-card-spec-val">{spec.value}</b>
-              <small className="q-product-card-spec-lbl">{spec.label}</small>
-            </span>
-          ))}
+          {specs.map((spec, index) => {
+            const label = polishCardSpecLabel(localizedSpecLabel(spec.label, lang), lang);
+            const value = localizedSpecValue(spec.value, lang);
+            return (
+              <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${label}: ${value}`}>
+                <b className="q-product-card-spec-val">{value}</b>
+                <small className="q-product-card-spec-lbl">{label}</small>
+              </span>
+            );
+          })}
         </div>
       </div>
     </Link>

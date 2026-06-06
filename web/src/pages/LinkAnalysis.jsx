@@ -32,9 +32,11 @@ function comparePrompt(urls, lang, userProfile = {}) {
     '- If any product is uncertain, keep it in the comparison and mark it uncertain.\n' +
     '- Compare only what can be reasonably inferred; do not invent live prices.\n' +
     '- End with a clear recommendation for different user types.\n' +
+    '- Write a long-form report, not a short summary. Cover exact product identification, category fit, technical/practical differences, ownership risks, durability, community sentiment, value and final decision.\n' +
     profile +
     '\n\n' +
-    'Output with **bold** headings: Products identified, Head-to-head, Strengths and weaknesses, Qor AI verdict. ' +
+    'Output with **bold** headings: Products identified, Head-to-head, Strengths and weaknesses, Community/reviewer signal, Best fit scenarios, Qor AI verdict. ' +
+    'Use several paragraphs under each heading and specific bullets where useful. ' +
     `Use "-" bullets. Reply ONLY in the language with ISO code: ${lang}.`
   );
 }
@@ -149,7 +151,7 @@ export default function LinkAnalysis() {
 
   const [urls, setUrls] = useState(['']);
   const [mode, setMode] = useState('single');
-  // phase: input | identifying | quiz | analyzing | result
+  // phase: input | identifying | quizLoading | quiz | analyzing | result
   const [phase, setPhase] = useState('input');
   const [base, setBase] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -200,6 +202,7 @@ export default function LinkAnalysis() {
         setErr(t('la.errFail')); setPhase('input'); return;
       }
       let qs = [];
+      setPhase('quizLoading');
       try {
         qs = await generateQuiz({ category: result.category, productTitle: result.title, url, language: lang, userProfile: profile });
       } catch { qs = []; }
@@ -334,11 +337,13 @@ export default function LinkAnalysis() {
 
       {err && <div className="la-err">{err}</div>}
 
-      {(phase === 'identifying' || phase === 'analyzing') && (
+      {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
         <div className="la-loading">
           <div className="spinner" />
           <span>{phase === 'identifying'
             ? L('Identifying the product…', 'Ürün tanımlanıyor…', 'Produkt wird erkannt…')
+            : phase === 'quizLoading'
+              ? L('Preparing your quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')
             : t('la.loading')}</span>
         </div>
       )}

@@ -44,7 +44,6 @@ export default function Footer() {
               <h5>{t('footer.legal')}</h5>
               <a href="/privacy.html">{t('footer.privacy')}</a>
               <a href="/terms.html">{t('footer.terms')}</a>
-              <a href="/affiliate-disclosure.html">{L('Affiliate Disclosure', 'Affiliate Açıklaması', 'Affiliate-Hinweis')}</a>
               <a href="/cookies.html">{L('Cookies', 'Çerezler', 'Cookies')}</a>
             </div>
           </div>

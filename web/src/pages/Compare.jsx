@@ -378,7 +378,7 @@ export default function Compare() {
                     </Link>
                     {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
                     <Link to={productPath(p.id)} className="cmp-card-name">{p.name}</Link>
-                    <div className="cmp-card-cat">{m.icon} {m.label}</div>
+                    <div className="cmp-card-cat">{m.icon} {categoryLabel(p.category, lang)}</div>
                     <div className="cmp-rings">
                       {showMatchScore && match > 0 && (
                         <span className="cmp-ring">

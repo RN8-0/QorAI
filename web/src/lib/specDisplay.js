@@ -61,20 +61,155 @@ const LABELS = {
     'Wireless charging': 'Kablosuz şarj',
   },
   de: {
+    '5G': '5G',
+    '4G': '4G',
+    '3G': '3G',
+    '2G': '2G',
+    'Audio Output': 'Audioausgang',
+    'Audio Output Gücü (RMS)': 'Audioausgangsleistung (RMS)',
+    'Ses çıkışı': 'Audioausgang',
+    'Announcement Date': 'Ankündigungsdatum',
+    'Duyuru tarihi': 'Ankündigungsdatum',
     'Battery capacity': 'Akkukapazität',
+    'Pil kapasitesi': 'Akkukapazität',
+    'Pil Kapasitesi': 'Akkukapazität',
+    'Batarya': 'Akku',
+    'Battery cycle life': 'Akkuladezyklen',
+    'Pil şarj döngüsü': 'Akkuladezyklen',
+    'Battery Specifications': 'Akkudaten',
+    'Pil özellikleri': 'Akkudaten',
+    'Battery Technology': 'Akkutechnologie',
+    'Pil teknolojisi': 'Akkutechnologie',
+    'Bluetooth': 'Bluetooth',
+    'Brightness': 'Helligkeit',
+    'Parlaklık': 'Helligkeit',
+    'Camera aperture': 'Kamera-Blende',
+    'Kamera diyaframı': 'Kamera-Blende',
+    'Charging port': 'Ladeanschluss',
+    'Şarj portu': 'Ladeanschluss',
+    'Chipset': 'Chipsatz',
+    'Yonga seti': 'Chipsatz',
+    'Color': 'Farbe',
+    'Renk': 'Farbe',
     'CPU cores': 'CPU-Kerne',
+    'CPU çekirdeği': 'CPU-Kerne',
     'CPU frequency': 'CPU-Takt',
+    'CPU frekansı': 'CPU-Takt',
+    'Dimensions': 'Abmessungen',
+    'Boyutlar': 'Abmessungen',
     'Display / Body Ratio': 'Display/Gehäuse-Verhältnis',
+    'Ekran/gövde oranı': 'Display/Gehäuse-Verhältnis',
     'Display Size': 'Displaygröße',
+    'Display Boyutu': 'Displaygröße',
+    'Ekran': 'Display',
+    'Ekran boyutu': 'Displaygröße',
+    'Ekran Boyutu': 'Displaygröße',
+    'Ekran Kartı Modeli': 'Grafikkartenmodell',
+    'Display Kartı Modeli': 'Grafikkartenmodell',
+    'Ekran Çözünürlüğü': 'Displayauflösung',
+    'Ekran çözünürlüğü': 'Displayauflösung',
     'Fast charging': 'Schnellladen',
+    'Hızlı şarj': 'Schnellladen',
+    'Fast charging features': 'Schnellladefunktionen',
+    'Hızlı şarj özellikleri': 'Schnellladefunktionen',
+    'Fast charging power': 'Schnellladeleistung',
+    'Hızlı şarj gücü': 'Schnellladeleistung',
+    'Şarj süresi': 'Ladedauer',
+    'Şarj Süresi': 'Ladedauer',
     'Front camera': 'Frontkamera',
+    'Ön kamera': 'Frontkamera',
+    'GPU': 'GPU',
+    'Height': 'Höhe',
+    'Yükseklik': 'Höhe',
     'Main camera': 'Hauptkamera',
+    'Ana kamera': 'Hauptkamera',
+    'NFC': 'NFC',
     'Operating system': 'Betriebssystem',
+    'İşletim sistemi': 'Betriebssystem',
+    'Optical Image Stabilization (OIS)': 'Optische Bildstabilisierung (OIS)',
+    'Optical Image Stabilizer (OIS)': 'Optischer Bildstabilisator (OIS)',
+    'Optik görüntü sabitleme (OIS)': 'Optische Bildstabilisierung (OIS)',
+    'Panel type': 'Paneltyp',
+    'Panel türü': 'Paneltyp',
+    'Pixel density': 'Pixeldichte',
+    'Piksel yoğunluğu': 'Pixeldichte',
+    'Processor': 'Prozessor',
+    'İşlemci': 'Prozessor',
+    'Processor family': 'Prozessorfamilie',
+    'İşlemci ailesi': 'Prozessorfamilie',
+    'RAM': 'RAM',
+    'RAM type': 'RAM-Typ',
+    'RAM türü': 'RAM-Typ',
+    'Refresh rate': 'Bildwiederholrate',
+    'Yenileme hızı': 'Bildwiederholrate',
+    'Removable battery': 'Wechselbarer Akku',
+    'Çıkarılabilir pil': 'Wechselbarer Akku',
     'Resolution': 'Auflösung',
+    'Çözünürlük': 'Auflösung',
+    'SAR Value 10g (Head)': 'SAR-Wert 10g (Kopf)',
     'Screen size': 'Displaygröße',
+    'Sensors': 'Sensoren',
+    'Sensörler': 'Sensoren',
+    'SIM': 'SIM',
+    'SIM Count': 'SIM-Anzahl',
+    'SIM sayısı': 'SIM-Anzahl',
+    'Speakers': 'Lautsprecher',
+    'Hoparlörler': 'Lautsprecher',
     'Storage': 'Speicher',
+    'Depolama': 'Speicher',
+    'Storage type': 'Speichertyp',
+    'Depolama türü': 'Speichertyp',
+    'Thickness': 'Dicke',
+    'Kalınlık': 'Dicke',
+    'USB': 'USB',
+    'USB-C charging': 'USB-C-Laden',
+    'USB-C şarj': 'USB-C-Laden',
+    'Video playback': 'Videowiedergabe',
+    'Video oynatma': 'Videowiedergabe',
+    'Video recording': 'Videoaufnahme',
+    'Video kaydı': 'Videoaufnahme',
     'Water resistance': 'Wasserbeständigkeit',
+    'Suya dayanıklılık': 'Wasserbeständigkeit',
+    'Weight': 'Gewicht',
+    'Ağırlık': 'Gewicht',
+    'Wi-Fi': 'WLAN',
+    'Wi-Fi Frekansı': 'WLAN-Frequenz',
+    'Wi Fi Frekansı': 'WLAN-Frequenz',
+    'WLAN Frekansı': 'WLAN-Frequenz',
+    'Width': 'Breite',
+    'Genişlik': 'Breite',
     'Wireless charging': 'Kabelloses Laden',
+    'Kablosuz şarj': 'Kabelloses Laden',
+    'Dönüş Hızı': 'Drehzahl',
+    'Dönüş hızı': 'Drehzahl',
+    'Rastgele Okuma': 'Zufälliges Lesen',
+    'Rastgele Yazma': 'Zufälliges Schreiben',
+    'Sıralı Okuma': 'Sequenzielles Lesen',
+    'Sıralı Yazma': 'Sequenzielles Schreiben',
+    'Bağlantı': 'Anschluss',
+    'Bağlantı Arayüzü': 'Schnittstelle',
+    'Arabirim': 'Schnittstelle',
+    'Güç tüketimi': 'Stromverbrauch',
+    'Gürültü seviyesi': 'Geräuschpegel',
+    'Lamba ömrü': 'Lampenlebensdauer',
+    'Dinamik Kontrast': 'Dynamischer Kontrast',
+    'Renk Sayısı': 'Farbenanzahl',
+    'HDMI Sayısı': 'HDMI-Anzahl',
+    'HDMI Versiyonu': 'HDMI-Version',
+    'Görüntü Standardı': 'Bildstandard',
+    'Dijital Zoom Oranı': 'Digitalzoom',
+    'Düşük Frekans (Bas)': 'Niedrige Frequenz (Bass)',
+    'Düşük frekans (bas)': 'Niedrige Frequenz (Bass)',
+    'Düşük Takt (Bas)': 'Niedriger Takt (Bass)',
+    'Düşük takt (bas)': 'Niedriger Takt (Bass)',
+    'Düşük Takt (Bass)': 'Niedriger Takt (Bass)',
+    'En Düşük Takt': 'Niedrigster Takt',
+    'En Yüksek Takt': 'Höchster Takt',
+    'Hassasiyet': 'Empfindlichkeit',
+    'Bellek Hızı (OC)': 'Speichertakt (OC)',
+    'Bellek Kapasitesi': 'Speicherkapazität',
+    'Bellek Teknolojisi': 'Speichertechnologie',
+    'Output Yılı': 'Erscheinungsjahr',
   },
 };
 
@@ -100,20 +235,139 @@ const TR_WORDS = [
   [/\bannouncement date\b/gi, 'duyuru tarihi'],
 ];
 
+const DE_WORDS = [
+  [/çözünürlük/gi, 'Auflösung'],
+  [/charging\s+süresi/gi, 'Ladedauer'],
+  [/charging\s+suresi/gi, 'Ladedauer'],
+  [/düşük takt/gi, 'Niedriger Takt'],
+  [/dusuk takt/gi, 'Niedriger Takt'],
+  [/düşük frekans/gi, 'Niedrige Frequenz'],
+  [/İnç/gi, 'Zoll'],
+  [/Inç/gi, 'Zoll'],
+  [/inç/gi, 'Zoll'],
+  [/\bekran kartı modeli\b/gi, 'Grafikkartenmodell'],
+  [/\bdisplay kartı modeli\b/gi, 'Grafikkartenmodell'],
+  [/\bdisplay boyutu\b/gi, 'Displaygröße'],
+  [/\bekran çözünürlüğü\b/gi, 'Displayauflösung'],
+  [/\bçözünürlük\b/gi, 'Auflösung'],
+  [/wi[\s-]*fi\s*frekans[ıi]/gi, 'WLAN-Frequenz'],
+  [/wlan\s*frekans[ıi]/gi, 'WLAN-Frequenz'],
+  [/\bfrekansı\b/gi, 'Frequenz'],
+  [/\bfrekansları\b/gi, 'Frequenzen'],
+  [/\bbellek hızı\b/gi, 'Speichertakt'],
+  [/\bbellek hizi\b/gi, 'Speichertakt'],
+  [/\bbellek kapasitesi\b/gi, 'Speicherkapazität'],
+  [/\bbellek teknolojisi\b/gi, 'Speichertechnologie'],
+  [/\bbellek\b/gi, 'Speicher'],
+  [/\bgücü\b/gi, 'Leistung'],
+  [/\bgucu\b/gi, 'Leistung'],
+  [/\boutput yılı\b/gi, 'Erscheinungsjahr'],
+  [/\byılı\b/gi, 'Jahr'],
+  [/\byili\b/gi, 'Jahr'],
+  [/\btakt\b/gi, 'Takt'],
+  [/\bdepolama\b/gi, 'Speicher'],
+  [/\bbatarya\b/gi, 'Akku'],
+  [/\bpil\b/gi, 'Akku'],
+  [/\bekran\b/gi, 'Display'],
+  [/\bağırlık\b/gi, 'Gewicht'],
+  [/\bagirlik\b/gi, 'Gewicht'],
+  [/\bboyutlar\b/gi, 'Abmessungen'],
+  [/\bparlaklık\b/gi, 'Helligkeit'],
+  [/\bşarj süresi\b/gi, 'Ladedauer'],
+  [/\bsarj suresi\b/gi, 'Ladedauer'],
+  [/\bsüresi\b/gi, 'Dauer'],
+  [/\bsuresi\b/gi, 'Dauer'],
+  [/\bdüşük frekans\b/gi, 'Niedrige Frequenz'],
+  [/\bdusuk frekans\b/gi, 'Niedrige Frequenz'],
+  [/\bbas\b/gi, 'Bass'],
+  [/\bhassasiyet\b/gi, 'Empfindlichkeit'],
+  [/\bgürültü seviyesi\b/gi, 'Geräuschpegel'],
+  [/\bguc tüketimi\b/gi, 'Stromverbrauch'],
+  [/\bgüç tüketimi\b/gi, 'Stromverbrauch'],
+  [/\bdönüş hızı\b/gi, 'Drehzahl'],
+  [/\brastgele okuma\b/gi, 'Zufälliges Lesen'],
+  [/\brastgele yazma\b/gi, 'Zufälliges Schreiben'],
+  [/\bsıralı okuma\b/gi, 'Sequenzielles Lesen'],
+  [/\bsıralı yazma\b/gi, 'Sequenzielles Schreiben'],
+  [/\bbağlantı arayüzü\b/gi, 'Schnittstelle'],
+  [/\bbağlantı\b/gi, 'Anschluss'],
+  [/\barabirim\b/gi, 'Schnittstelle'],
+  [/\brenk sayısı\b/gi, 'Farbenanzahl'],
+  [/\bdinamik kontrast\b/gi, 'Dynamischer Kontrast'],
+  [/\blamba ömrü\b/gi, 'Lampenlebensdauer'],
+  [/\bhdmi sayısı\b/gi, 'HDMI-Anzahl'],
+  [/\bhdmi versiyonu\b/gi, 'HDMI-Version'],
+  [/\bgörüntü standardı\b/gi, 'Bildstandard'],
+  [/\bdijital zoom oranı\b/gi, 'Digitalzoom'],
+  [/\bbattery\b/gi, 'Akku'],
+  [/\bcapacity\b/gi, 'Kapazität'],
+  [/\bcamera\b/gi, 'Kamera'],
+  [/\bcharging\b/gi, 'Laden'],
+  [/\bdisplay\b/gi, 'Display'],
+  [/\bscreen\b/gi, 'Display'],
+  [/\bfrequency\b/gi, 'Takt'],
+  [/\bprocessor\b/gi, 'Prozessor'],
+  [/\bstorage\b/gi, 'Speicher'],
+  [/\bweight\b/gi, 'Gewicht'],
+  [/\bwidth\b/gi, 'Breite'],
+  [/\bheight\b/gi, 'Höhe'],
+  [/\btype\b/gi, 'Typ'],
+  [/\bcount\b/gi, 'Anzahl'],
+  [/\bfeatures?\b/gi, 'Funktionen'],
+  [/\btechnology\b/gi, 'Technologie'],
+  [/\bspecifications?\b/gi, 'Daten'],
+  [/\boperating system\b/gi, 'Betriebssystem'],
+  [/\bannouncement date\b/gi, 'Ankündigungsdatum'],
+  [/\bmain\b/gi, 'Haupt'],
+  [/\bfront\b/gi, 'Front'],
+  [/\bpanel\b/gi, 'Panel'],
+  [/\bbrightness\b/gi, 'Helligkeit'],
+  [/\bresolution\b/gi, 'Auflösung'],
+  [/\brefresh rate\b/gi, 'Bildwiederholrate'],
+  [/\bdimensions?\b/gi, 'Abmessungen'],
+];
+
 function cleanupLabel(label) {
-  return String(label || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(label || '').normalize('NFC').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function titleCase(text) {
   return cleanupLabel(text).replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
+function labelCase(text, locale = 'en-US') {
+  return cleanupLabel(text)
+    .split(' ')
+    .map((word) => {
+      if (!word) return word;
+      if (/^[A-Z0-9][A-Z0-9+.-]*$/.test(word)) return word;
+      return word.charAt(0).toLocaleUpperCase(locale) + word.slice(1);
+    })
+    .join(' ');
+}
+
 export function localizedSpecLabel(label, lang = 'en') {
-  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
+  const code = rawCode === 'tr' || rawCode === 'de' ? rawCode : 'en';
   const clean = cleanupLabel(label);
   if (!clean) return '';
   const exact = LABELS[code]?.[clean] || LABELS[code]?.[titleCase(clean)];
   if (exact) return exact;
+  if (code === 'de') {
+    let out = clean;
+    for (const [re, replacement] of DE_WORDS) out = out.replace(re, replacement);
+    out = out
+      .replace(/\bCPU\b/gi, 'CPU')
+      .replace(/\bGPU\b/gi, 'GPU')
+      .replace(/\bRAM\b/gi, 'RAM')
+      .replace(/\bSIM\b/gi, 'SIM')
+      .replace(/\bUSB\b/gi, 'USB')
+      .replace(/\bWi Fi\b/gi, 'WLAN')
+      .replace(/\s*\/\s*/g, '/')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return labelCase(out, 'de-DE');
+  }
   if (code !== 'tr') return titleCase(clean);
   let out = clean;
   for (const [re, replacement] of TR_WORDS) out = out.replace(re, replacement);
@@ -131,7 +385,8 @@ export function localizedSpecLabel(label, lang = 'en') {
 }
 
 function cleanupValueLine(line, lang) {
-  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
+  const code = rawCode === 'tr' || rawCode === 'de' ? rawCode : 'en';
   let out = String(line || '').replace(/\s+/g, ' ').trim();
   if (!out) return '';
 
@@ -181,8 +436,33 @@ function cleanupValueLine(line, lang) {
 
   if (code === 'de') {
     const lower = out.toLowerCase();
-    if (lower === 'yes' || lower === 'true') return 'Ja';
-    if (lower === 'no' || lower === 'false') return 'Nein';
+    if (lower === 'yes' || lower === 'true' || lower === 'var' || lower === 'evet') return 'Ja';
+    if (lower === 'no' || lower === 'false' || lower === 'yok' || lower === 'hayır' || lower === 'hayir') return 'Nein';
+    out = out
+      .replace(/\bVar\b/g, 'Ja')
+      .replace(/\bYok\b/g, 'Nein')
+      .replace(/\bEvet\b/g, 'Ja')
+      .replace(/\bHayır\b/g, 'Nein')
+      .replace(/\bHayir\b/g, 'Nein')
+      .replace(/İnç/gi, 'Zoll')
+      .replace(/Inç/gi, 'Zoll')
+      .replace(/inç/gi, 'Zoll')
+      .replace(/\badet\b/gi, 'Stück')
+      .replace(/\bsaat\b/gi, 'Stunden')
+      .replace(/\bgün\b/gi, 'Tage')
+      .replace(/\bçekirdek\b/gi, 'Kerne')
+      .replace(/\bpiksel\b/gi, 'Pixel')
+      .replace(/\bHızlı şarj\b/gi, 'Schnellladen')
+      .replace(/\bOptik görüntü sabitleme\b/gi, 'Optische Bildstabilisierung')
+      .replace(/\bOptik zoom\b/gi, 'Optischer Zoom')
+      .replace(/\bDijital zoom\b/gi, 'Digitalzoom')
+      .replace(/\bOtomatik odaklama\b/gi, 'Autofokus')
+      .replace(/\bFaz algılamalı\b/gi, 'Phasenerkennung')
+      .replace(/\bÇift piksel\b/gi, 'Dual Pixel')
+      .replace(/\bUltra geniş açı\b/gi, 'Ultraweitwinkel')
+      .replace(/\bGeniş açı\b/gi, 'Weitwinkel')
+      .replace(/\bLazer AF\b/gi, 'Laser-AF')
+      .replace(/\bLityum iyon\b/gi, 'Lithium-Ionen');
   }
   return out;
 }

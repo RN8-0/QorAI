@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
-import { useCompare } from '../lib/compare';
+import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
@@ -17,6 +17,7 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
+import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
@@ -87,16 +88,6 @@ function heroSpecConcept(label, value) {
   return `misc:${key.replace(/[^a-z0-9]+/g, '_')}`;
 }
 
-function premiumFeats(L) {
-  return [
-    { emoji: '📈', color: '#10B981', t: L('AI review summary', 'AI yorum özeti', 'KI-Bewertungszusammenfassung'), d: L('Reddit, YouTube & forums distilled', 'Reddit, YouTube ve forumlar özetlenir', 'Reddit, YouTube & Foren destilliert') },
-    { emoji: '🧠', color: '#7C3AED', t: L('Deep AI analysis', 'Derin AI analizi', 'Tiefe KI-Analyse'), d: L('A detailed report tuned to your profile', 'Profiline göre detaylı rapor', 'Detaillierter Bericht für dein Profil') },
-    { emoji: '🔀', color: '#F97316', t: L('Smart alternatives', 'Akıllı alternatifler', 'Smarte Alternativen'), d: L('Better-value picks in the same class', 'Aynı sınıfta daha iyi değerli seçenekler', 'Bessere Optionen derselben Klasse') },
-    { emoji: '🧑‍💼', color: '#2196F3', t: L('AI advisor chat', 'AI danışman sohbeti', 'KI-Berater-Chat'), d: L('Ask anything about this product', 'Bu ürün hakkında her şeyi sor', 'Frag alles zu diesem Produkt') },
-    { emoji: '📉', color: '#10B981', t: L('Price prediction', 'Fiyat tahmini', 'Preisprognose'), d: L('Know the best time to buy', 'En iyi alım zamanını öğren', 'Kenne den besten Kaufzeitpunkt') },
-  ];
-}
-
 function sectionIcon(name) {
   const n = (name || '').toLowerCase();
   const has = (...k) => k.some((x) => n.includes(x));
@@ -146,11 +137,12 @@ function aiPrompt(p, lang, userProfile = {}) {
     (cons ? `Known weaknesses: ${cons}\n` : '') +
     (profile ? `\n## USER PROFILE\n${profile}\n` : '') +
     '\n## OUTPUT (markdown only, no preamble)\n' +
-    '**Verdict** — 2-3 sentence professional bottom line, honest about value at this price.\n' +
-    '**Strengths** — 3-5 "-" bullets grounded in the specs above.\n' +
-    '**Weaknesses** — 2-4 honest "-" bullets.\n' +
-    '**Community reception** — 2-3 sentences synthesising how reviewers and owners generally regard it.\n' +
-    '**Who it is for** — 1-2 sentences on the ideal buyer, and who should skip it.\n\n' +
+    '**Verdict** — 4-6 rich paragraphs with the product story, category context, value, durability and long-term ownership outlook.\n' +
+    '**Strengths** — 5-7 detailed "-" bullets grounded in the specs above; each bullet should explain the real-world impact.\n' +
+    '**Weaknesses** — 4-6 honest "-" bullets with severity and who should care.\n' +
+    '**Community reception** — 3-4 paragraphs synthesising how reviewers and owners generally regard it, including praise, recurring criticisms and long-term reports.\n' +
+    '**Who it is for** — 2-3 paragraphs on the ideal buyer, edge cases, and who should skip it.\n' +
+    '**Final recommendation** — 2-3 paragraphs with buy/consider/skip guidance and concrete alternatives if it is not ideal.\n\n' +
     'Be specific and reference real spec values; do not invent specs not implied above. ' +
     'Never mention being an AI model or any backend provider. ' +
     `Reply ONLY in the language with ISO code: ${lang}.`
@@ -283,7 +275,7 @@ export default function ProductDetail() {
   const id = params.id || searchParams.get('id') || '';
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
-  const { has, toggle } = useCompare();
+  const { ids, has, add, remove } = useCompare();
   const { user } = useAuth();
   const requireAiAccess = useAiAccess(lang);
 
@@ -295,6 +287,8 @@ export default function ProductDetail() {
   const [dictReady, setDictReady] = useState(false);
   const [offers, setOffers] = useState([]);
   const [offersLoading, setOffersLoading] = useState(false);
+  const [compareBase, setCompareBase] = useState(null);
+  const [compareMsg, setCompareMsg] = useState('');
 
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
@@ -354,7 +348,7 @@ export default function ProductDetail() {
 
   // Generate the AI analysis the first time the tab is opened.
   useEffect(() => {
-    if (tab !== 'ai' || !p || aiText || aiBusy) return;
+    if (tab !== 'premium' || !p || aiText || aiBusy) return;
     const runKey = `${p.id}|${lang}`;
     if (aiRunRef.current === runKey) return;
     aiRunRef.current = runKey;
@@ -365,6 +359,7 @@ export default function ProductDetail() {
         onMessage: (message) => setAiNotice(message),
       });
       if (!access.ok) {
+        aiRunRef.current = '';
         setAiBusy(false);
         return;
       }
@@ -373,12 +368,27 @@ export default function ProductDetail() {
         setAiText(txt);
         saveProductAnalysisHistory({ product: p, analysis: txt });
       } catch {
+        aiRunRef.current = '';
         setAiNotice(t('pd.aiError'));
       } finally {
         setAiBusy(false);
       }
     })();
   }, [tab, p, aiText, aiBusy, lang, requireAiAccess, t, user]);
+
+  useEffect(() => {
+    let live = true;
+    setCompareMsg('');
+    const baseId = ids.find((x) => x !== p?.id) || ids[0] || '';
+    if (!baseId) {
+      setCompareBase(null);
+      return () => { live = false; };
+    }
+    getProduct(baseId)
+      .then((prod) => { if (live) setCompareBase(prod || null); })
+      .catch(() => { if (live) setCompareBase(null); });
+    return () => { live = false; };
+  }, [ids.join(','), p?.id]);
 
   useSeo(buildProductSeo(p, t));
 
@@ -439,10 +449,15 @@ export default function ProductDetail() {
       if (!concept || seen.has(concept)) return;
       seen.add(concept); out.push({ ...s, label, value });
     };
-    chips.forEach((c) => push({ key: c.labelKey, icon: SPEC_EMOJI[c.labelKey] || '•', value: c.value, label: t(c.labelKey) }));
+    chips.forEach((c) => push({
+      key: c.labelKey,
+      icon: SPEC_EMOJI[c.labelKey] || '•',
+      value: localizedSpecValue(c.value, lang),
+      label: localizedSpecLabel(t(c.labelKey), lang),
+    }));
     bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {
-      const value = trSpec(String(v).split(/\r?\n/)[0].trim(), lang);
-      const label = trSpec(k, lang).replace(/\s*:\s*$/, '');
+      const value = localizedSpecValue(trSpec(String(v).split(/\r?\n/)[0].trim(), lang), lang);
+      const label = localizedSpecLabel(trSpec(k, lang), lang).replace(/\s*:\s*$/, '');
       if (/\d/.test(value) && value.length <= 24 && !/sponsor|reklam|advert/i.test(`${label} ${value}`)) {
         push({ key: k, icon: sectionIcon(k), value, label });
       }
@@ -458,6 +473,22 @@ export default function ProductDetail() {
   const price = hasExactPrice ? Number(offer?.price) || 0 : 0;
   const displayPrice = hasExactPrice ? formatOfferPrice(offer, lang) : '';
   const offerUrl = offerClickPath(offer);
+  const inCompare = has(p.id);
+  const compareCount = ids.length;
+  const compareCategory = compareBase?.category || (inCompare ? p.category : '');
+  const canOpenCompare = compareCount >= 2;
+  function toggleComparePool() {
+    setCompareMsg('');
+    if (inCompare) {
+      remove(p.id);
+      return;
+    }
+    if (compareCategory && String(compareCategory) !== String(p.category || '')) {
+      setCompareMsg(t('cmp.sameCategoryOnly', { cat: categoryLabel(compareCategory, lang) }));
+      return;
+    }
+    if (!add(p.id)) alert(t('pd.maxAlert', { max: COMPARE_MAX }));
+  }
 
   return (
     <div className="page">
@@ -545,17 +576,29 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <div className="pd-actions2">
-              {has(p.id) ? (
-                <Link to="/compare" className="btn btn-primary pd-act-main">⚖ {t('pd.openCompare')}</Link>
-              ) : (
-                <button className="btn btn-primary pd-act-main"
-                  onClick={() => { if (!toggle(p.id)) alert(t('pd.maxAlert', { max: 4 })); }}>⚖ {t('pd.addCompare')}</button>
-              )}
-              <button className="btn btn-ghost pd-act-ai"
-                onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: t('pd.askAiQuestion', { name: displayName }) }))}>
-                💬 {t('pd.askAi')}
+            <div className="pd-compare2">
+              <button type="button"
+                className={'pd-compare-plus' + (inCompare ? ' on' : '')}
+                onClick={toggleComparePool}
+                aria-label={inCompare ? t('pd.inList') : t('pd.addCompare')}
+                title={inCompare ? t('pd.inList') : t('pd.addCompare')}>
+                {inCompare ? '✓' : '+'}
               </button>
+              <div className="pd-compare-copy">
+                <b>{L('Compare pool', 'Karşılaştırma havuzu', 'Vergleichspool')}</b>
+                <span>
+                  {compareCount}/{COMPARE_MAX} · {compareCategory
+                    ? t('cmp.sameCategoryHint', { cat: categoryLabel(compareCategory, lang) })
+                    : L('Same category products only', 'Sadece aynı kategorideki ürünler', 'Nur Produkte derselben Kategorie')}
+                </span>
+                {compareMsg && <small>{compareMsg}</small>}
+              </div>
+              <Link to="/compare"
+                className={'pd-compare-open' + (canOpenCompare ? '' : ' disabled')}
+                onClick={(e) => { if (!canOpenCompare) e.preventDefault(); }}
+                aria-disabled={!canOpenCompare}>
+                {L('Compare', 'Karşılaştır', 'Vergleichen')}
+              </Link>
             </div>
 
             {/* Affiliate store link — prices are intentionally not shown; the
@@ -582,8 +625,8 @@ export default function ProductDetail() {
             {/* tabs */}
             <div className={'tabs' + (tab === 'premium' ? ' violet' : '')} style={{ marginTop: 22 }}>
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
-              <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>{t('pd.tabAi')}</button>
-              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>Premium</button>
+              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>{t('pd.tabAi')}</button>
+              <button className={tab === 'reviews' ? 'on' : ''} onClick={() => setTab('reviews')}>{t('pd.tabReviews')}</button>
             </div>
 
             <div style={{ marginTop: 20 }}>
@@ -605,7 +648,7 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {tab === 'ai' && (
+              {tab === 'premium' && (
                 <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
                     <div className="row" style={{ gap: 9, marginBottom: 10 }}>
@@ -634,20 +677,7 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {tab === 'premium' && (
-                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {premiumFeats(L).map((f, i) => (
-                    <div className="pfeat" key={i}>
-                      <span className="pic" style={{ fontSize: 20, background: `linear-gradient(135deg, ${f.color}, ${f.color}bb)` }}>{f.emoji}</span>
-                      <div className="grow">
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>{f.t}</div>
-                        <div className="muted" style={{ fontSize: 13.5 }}>{f.d}</div>
-                      </div>
-                      <span className="tag tag-violet">PRO</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {tab === 'reviews' && <Reviews productId={p.id} />}
             </div>
           </div>
         </div>
@@ -661,9 +691,6 @@ export default function ProductDetail() {
             </ScrollRail>
           </>
         )}
-
-        {/* REVIEWS */}
-        <Reviews productId={p.id} />
       </div>
       {lightbox && createPortal(
         <div className="pd-lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(false)}>
@@ -750,11 +777,11 @@ function SpecBrick({ brick, lang }) {
   if (!rows.length) return null;
   return (
     <div className="pd-brick">
-      <div className="pd-brick-head"><span>{brick.icon}</span> {trSpec(brick.title, lang)}</div>
+      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(trSpec(brick.title, lang), lang)}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
-          const s = trSpec(String(v).trim(), lang);
-          const label = trSpec(k, lang);
+          const s = localizedSpecValue(trSpec(String(v).trim(), lang), lang);
+          const label = localizedSpecLabel(trSpec(k, lang), lang);
           const yes = YES_RE.test(s);
           const no = NO_RE.test(s);
           const lines = s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);

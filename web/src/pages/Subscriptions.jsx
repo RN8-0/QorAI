@@ -14,9 +14,10 @@ import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
 const PRESETS = [
-  'Netflix', 'Spotify', 'YouTube Premium', 'Disney+', 'Amazon Prime',
-  'Adobe Creative Cloud', 'iCloud+', 'Microsoft 365', 'ChatGPT Plus', 'Claude Pro',
-  'Xbox Game Pass', 'Apple Music',
+  'Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max',
+  'BluTV', 'Exxen', 'Gain', 'MUBI', 'YouTube Premium',
+  'Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer',
+  'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Microsoft 365',
 ];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
@@ -206,7 +207,7 @@ export default function Subscriptions() {
 
           <button className="btn btn-primary btn-lg subs-go"
             onClick={() => startQuiz()} disabled={selected.length < 1}>
-            {selected.length < 1 ? t('subs.goMin') : t('subs.startQuiz')}
+            {selected.length < 1 ? t('subs.goMin') : t('la.analyze')}
           </button>
         </>
       )}
@@ -214,7 +215,7 @@ export default function Subscriptions() {
       {(phase === 'quizLoading' || phase === 'analyzing') && (
         <div className="subs-loading"><div className="spinner" /><span>
           {phase === 'quizLoading'
-            ? L('Building your quiz…', 'Quizin hazırlanıyor…', 'Quiz wird erstellt…')
+            ? L('Preparing your quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')
             : t('subs.loading')}
         </span></div>
       )}

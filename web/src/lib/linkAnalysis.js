@@ -315,11 +315,11 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
     "<service_name>": {
       "category": "string - shared subscription category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score",
-      "pros": ["string", "string", "string", "string", "string"],
-      "cons": ["string", "string", "string"],
-      "community_sentiment": "string - 2-3 sentence Reddit/forum summary",
-      "best_for": "string - ideal user type",
+      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to quiz answers",
+      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
+      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
+      "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -332,12 +332,12 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
   "winner": {
     "best_content": "string - service name",
     "overall": "string - service name",
-    "recommendation": "string - 3-4 sentence personalized recommendation explaining WHY"
+    "recommendation": "string - 5-7 paragraph personalized recommendation explaining WHY, trade-offs, best use cases and final decision"
   },
   "detailed_comparison": {
-    "service_fit_summary": "string - 2-3 sentences comparing overall fit",
-    "feature_comparison": "string - 2-3 sentences about feature differences",
-    "user_experience": "string - 2-3 sentences about UX differences"
+    "service_fit_summary": "string - 3-4 paragraphs comparing overall fit",
+    "feature_comparison": "string - 3-4 paragraphs about feature differences",
+    "user_experience": "string - 3-4 paragraphs about UX differences"
   }
 }`
     : `{
@@ -345,11 +345,11 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
     "${names}": {
       "category": "string - service category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score",
-      "pros": ["string", "string", "string", "string", "string"],
-      "cons": ["string", "string", "string"],
-      "community_sentiment": "string - 2-3 sentence Reddit/forum summary",
-      "best_for": "string - ideal user type",
+      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to quiz answers",
+      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
+      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
+      "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -359,7 +359,7 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
       }
     }
   },
-  "recommendation": "string - 3-4 sentence personalized recommendation"
+  "recommendation": "string - 5-7 paragraph personalized recommendation explaining fit, trade-offs, usage scenarios and final decision"
 }`;
   const quizText = qaPairs.length
     ? qaPairs.map((q) => `- ${q.question}: ${q.answer}`).join('\n')
@@ -375,11 +375,12 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 12 words)
+- pros must have exactly 5 items, cons exactly 4 items — each item must be specific and explain real user impact
 - factors are 0-100 integers
 - Be specific and personalized, not generic
+- Write long-form analysis like the mobile app: cover usage fit, content/library fit, workflow impact, ecosystem lock-in, limitations, long-term value and who should skip it
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
-- community_sentiment should be max 2 sentences, compatibility_explanation max 2 sentences
+- community_sentiment, compatibility_explanation, recommendation and detailed_comparison must be substantial, not short summaries
 
 Return ONLY valid JSON matching this exact schema:
 ${schema}`;
@@ -394,7 +395,7 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
   const res = await askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
-    maxOutputTokens: 4096,
+    maxOutputTokens: 8192,
   });
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
   const services = Object.entries(subsRaw).map(([name, d]) => ({

@@ -68,7 +68,7 @@ export default function QuizFlow({ questions, onSubmit, onSkip, busy = false, ti
           {busy
             ? L('Analyzing…', 'Analiz ediliyor…', 'Wird analysiert…')
             : allAnswered
-              ? L('Get my analysis', 'Analizimi getir', 'Analyse anzeigen')
+              ? L('Analyze', 'Analiz Et', 'Analysieren')
               : L(`Answer all ${questions.length} questions`, `${questions.length} sorunun hepsini yanıtla`, `Beantworte alle ${questions.length} Fragen`)}
         </button>
       </div>

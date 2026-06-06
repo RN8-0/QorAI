@@ -103,11 +103,18 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
 }
 
 // A product section — title + optional "see all" + a rail / grid / list layout.
+function fullRows(products, columns = 3) {
+  const list = Array.isArray(products) ? products.filter(Boolean) : [];
+  const keep = Math.floor(list.length / columns) * columns;
+  return keep >= columns ? list.slice(0, keep) : [];
+}
+
 function Section({ title, products, loading, seeAllTo, t, dense = false }) {
-  if (!loading && (!products || products.length === 0)) return null;
+  const visibleProducts = fullRows(products);
+  if (!loading && visibleProducts.length === 0) return null;
   const items = loading
     ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-    : products.map((p) => <ProductCard key={p.id} product={p} />);
+    : visibleProducts.map((p) => <ProductCard key={p.id} product={p} />);
   const cls = `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
     <>
