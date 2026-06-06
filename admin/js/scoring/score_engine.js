@@ -610,6 +610,13 @@
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
   const SCORE_MIN = 10;
   const SCORE_MAX = 100;
+  const DISABLE_FORCED_100_CATEGORIES = new Set([
+    // Storage categories are broad (SSD, HDD, USB, memory cards) and many rows
+    // only expose capacity/interface. Forcing one product to 100 multiplies a
+    // huge tied cluster into fake 100s, then sparse rows fall off a cliff. Let
+    // the absolute storage refs + evidence caps decide naturally instead.
+    'ssd',
+  ]);
 
   // Year-based hard ceiling (epey/versus parity): a 2018 phone with 32 GB RAM
   // can never reach 2026 flagship territory regardless of spec inflation.
@@ -1795,12 +1802,17 @@
       // typical confidence is 0.55–0.85; cap only HARSHLY low coverage so we
       // don't reward products that have almost no spec data — but a typical
       // ~70% covered flagship reaches 100 unhindered.
-      const evidenceCap =
-        confidence < 0.15 ? 60 :
-        confidence < 0.25 ? 75 :
-        confidence < 0.40 ? 88 :
-        confidence < 0.55 ? 95 :
-        SCORE_MAX;
+      const evidenceCap = cat === 'ssd'
+        ? (confidence < 0.15 ? 55 :
+          confidence < 0.25 ? 70 :
+          confidence < 0.40 ? 82 :
+          confidence < 0.55 ? 88 :
+          SCORE_MAX)
+        : (confidence < 0.15 ? 60 :
+          confidence < 0.25 ? 75 :
+          confidence < 0.40 ? 88 :
+          confidence < 0.55 ? 95 :
+          SCORE_MAX);
       const yearCap = _yearCeiling(c.row.year, cat);
       const final = Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.min(c.tierCap, evidenceCap, yearCap, rawFinal)));
       const subscores = _makeSubscores(c.finalBreakdown);
@@ -1863,7 +1875,15 @@
       // We allow ties (multiple products at the exact same top score), so e.g.
       // every RTX 5090 SKU reaches 100, not just the first one.
       const stretchAnchorIds = new Set(pick.filter(r => r.score === stretchAnchor).map(r => r.id));
-      if (stretchAnchor > 0 && stretchAnchor < SCORE_MAX) {
+      if (DISABLE_FORCED_100_CATEGORIES.has(cat)) {
+        for (const r of results) {
+          const noAnchorCeil = r.anchorKey ? SCORE_MAX : noAnchorCategoryCap;
+          r.preCategoryStretchScore = r.score;
+          r.categoryFinalStretch = 1;
+          r.forced100Disabled = true;
+          r.score = Math.max(SCORE_MIN, Math.min(SCORE_MAX, noAnchorCeil, r.score));
+        }
+      } else if (stretchAnchor > 0 && stretchAnchor < SCORE_MAX) {
         const finalStretch = SCORE_MAX / stretchAnchor;
         for (const r of results) {
           r.preCategoryStretchScore = r.score;

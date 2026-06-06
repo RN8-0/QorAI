@@ -22,6 +22,19 @@ import Settings from './pages/Settings.jsx';
 import Go from './pages/Go.jsx';
 import NotFound from './pages/NotFound.jsx';
 
+const PRE_QUIZ_BROWSE_PATHS = new Set([
+  '/',
+  '/category',
+  '/compare',
+  '/link-analysis',
+  '/subscriptions',
+  '/premium',
+]);
+
+function canBrowseBeforeQuiz(pathname) {
+  return PRE_QUIZ_BROWSE_PATHS.has(pathname) || pathname === '/product' || pathname.startsWith('/product/');
+}
+
 export default function App() {
   const loc = useLocation();
   const nav = useNavigate();
@@ -37,6 +50,7 @@ export default function App() {
   // with no completed profile quiz is sent to the quiz before AI features.
   useEffect(() => {
     if (!user || user.quizCompleted === true || loc.pathname === '/quiz') return;
+    if (canBrowseBeforeQuiz(loc.pathname)) return;
     const next = `${loc.pathname}${loc.search}${loc.hash}`;
     nav(`/quiz?required=1&next=${encodeURIComponent(next)}`, { replace: true });
   }, [loc.hash, loc.pathname, loc.search, nav, user]);

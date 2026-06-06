@@ -1,6 +1,13 @@
-.la { padding: 36px 20px 64px; max-width: 760px; }
+.la { padding: 38px 20px 68px; max-width: 1040px; }
 
-.la-head { text-align: center; margin-bottom: 24px; }
+.la-head {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 28px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-cyan) 13%, var(--surface)), var(--surface));
+}
 .la-icon {
   width: 68px; height: 68px; margin: 0 auto 16px; border-radius: 19px;
   background: var(--brand-grad); color: #fff;
@@ -35,8 +42,11 @@
 }
 
 .la-form {
+  max-width: 840px;
+  margin-inline: auto;
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 18px;
+  border-radius: var(--radius-lg); padding: 20px;
+  box-shadow: 0 18px 44px color-mix(in srgb, #020617 9%, transparent);
 }
 .la-form-head {
   display: flex;
@@ -59,7 +69,7 @@
 .la-row {
   display: flex; align-items: center; gap: 9px;
   background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 4px 6px 4px 4px;
+  border-radius: 12px; padding: 6px 8px 6px 6px;
 }
 .la-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .la-row-no {
@@ -70,7 +80,7 @@
 }
 .la-row input {
   flex: 1; min-width: 0; background: none; border: none; outline: none;
-  color: var(--text); font-size: 14px; padding: 8px 2px;
+  color: var(--text); font-size: 14px; padding: 10px 2px;
 }
 .la-row-x {
   width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px;
@@ -105,7 +115,8 @@
 .la-result {
   margin-top: 24px;
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden;
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: 0 18px 44px color-mix(in srgb, #020617 9%, transparent);
 }
 .la-result-head {
   display: flex; flex-direction: column; gap: 2px;
@@ -118,11 +129,12 @@
 
 /* identified-product banner shown above the quiz */
 .la-identified {
-  margin-top: 20px;
+  max-width: 840px;
+  margin: 20px auto 0;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 13px 16px;
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 .la-identified-tag {
   padding: 3px 9px; border-radius: 999px;
@@ -185,6 +197,7 @@
 
 @media (max-width: 560px) {
   .la-factors, .la-poncons { grid-template-columns: 1fr; }
+  .la-head { padding: 22px 14px; }
 }
 
 @media (max-width: 520px) {

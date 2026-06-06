@@ -14,6 +14,7 @@ import './Category.css';
 const SORTS = [
   { id: 'score', key: 'catalog.sortScore' },
   { id: 'trend', key: 'catalog.sortTrend' },
+  { id: 'new', key: 'catalog.sortNew' },
 ];
 const SCORES = [
   { id: 'high', key: 'catalog.scoreHigh' },
@@ -90,7 +91,8 @@ export default function Category() {
   });
 
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState('score');
+  const paramSort = params.get('sort') || '';
+  const [sort, setSort] = useState(() => (SORTS.some((s) => s.id === paramSort) ? paramSort : 'score'));
   const [score, setScore] = useState('all');
   const [brands, setBrands] = useState([]);
   const [segments, setSegments] = useState([]);
@@ -120,6 +122,11 @@ export default function Category() {
       .catch(() => {});
     return () => { live = false; };
   }, [cat]);
+
+  useEffect(() => {
+    const next = params.get('sort') || '';
+    if (SORTS.some((s) => s.id === next)) setSort(next);
+  }, [params]);
 
   // Query the first page on any filter change.
   useEffect(() => {

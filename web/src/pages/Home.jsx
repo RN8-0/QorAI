@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
-import { catMeta } from '../lib/format';
+import { catMeta, categoryLabel } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
@@ -24,8 +24,43 @@ function StatItem({ n, l }) {
   );
 }
 
-function HeroSpotlight({ p }) {
-  return <ProductCard product={p} />;
+function HeroSpotlight({ products, lang, L }) {
+  const safe = (products || []).filter(Boolean).slice(0, 10);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (safe.length <= 1) return undefined;
+    const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4200);
+    return () => clearInterval(id);
+  }, [safe.length]);
+
+  if (!safe.length) return null;
+  const active = index % safe.length;
+  return (
+    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi', 'Top-Kategorie-Auswahl')}>
+      <div className="hero-carousel-head">
+        <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
+        <b>{categoryLabel(safe[active]?.category, lang)}</b>
+      </div>
+      <div className="hero-carousel-viewport">
+        <div className="hero-carousel-track" style={{ transform: `translateX(-${active * 100}%)` }}>
+          {safe.map((p) => (
+            <div className="hero-carousel-slide" key={p.id}>
+              <ProductCard product={p} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {safe.length > 1 && (
+        <div className="hero-carousel-dots" aria-hidden="true">
+          {safe.map((p, i) => (
+            <button key={p.id} type="button" className={i === active ? 'on' : ''}
+              onClick={() => setIndex(i)} tabIndex={-1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SearchSuggestionList({ products, searching, onOpen, L }) {
@@ -103,9 +138,9 @@ export default function Home() {
         : L('Good evening', 'İyi akşamlar', 'Guten Abend');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
-  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], spotlight: null, categories: [], total: 0 });
+  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
-  const [recent] = useState(() => getRecentProducts());
+  const [recent, setRecent] = useState(() => getRecentProducts());
 
   const [q, setQ] = useState(() => params.get('q') || '');
   const [searchResults, setSearchResults] = useState([]);
@@ -140,6 +175,18 @@ export default function Home() {
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    const refreshRecent = () => setRecent(getRecentProducts());
+    window.addEventListener('focus', refreshRecent);
+    window.addEventListener('storage', refreshRecent);
+    document.addEventListener('visibilitychange', refreshRecent);
+    return () => {
+      window.removeEventListener('focus', refreshRecent);
+      window.removeEventListener('storage', refreshRecent);
+      document.removeEventListener('visibilitychange', refreshRecent);
+    };
   }, []);
 
   useEffect(() => {
@@ -209,6 +256,11 @@ export default function Home() {
   }, [feed]);
 
   const searchMode = submitted.length > 0;
+  const heroProducts = feed.heroPicks?.length
+    ? feed.heroPicks
+    : spotlight
+      ? [spotlight]
+      : [];
 
   return (
     <div className="page">
@@ -259,9 +311,9 @@ export default function Home() {
             </div>
 
             {/* spotlight — highest-scored product from the live feed */}
-            {spotlight && (
+            {heroProducts.length > 0 && (
               <div style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
-                <HeroSpotlight p={spotlight} />
+                <HeroSpotlight products={heroProducts} lang={lang} L={L} />
               </div>
             )}
           </div>
@@ -293,7 +345,7 @@ export default function Home() {
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
             {/* TRENDING */}
-            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} />
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} seeAllTo="/category?cat=smartphones&sort=trend" />
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 

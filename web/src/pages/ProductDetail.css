@@ -559,9 +559,14 @@
   border: 1px solid var(--border); color: var(--text2);
   backdrop-filter: blur(6px);
 }
-.pd-thumbs2 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.pd-thumbs2 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 .pd-thumb2 {
-  position: relative; aspect-ratio: 1 / 1; border-radius: 9px;
+  position: relative; flex: 0 0 56px; width: 56px; height: 56px; border-radius: 9px;
   background: #fff; border: 1px solid var(--border); overflow: hidden; padding: 4px;
   transition: border-color .12s ease, box-shadow .12s ease;
 }
@@ -625,7 +630,6 @@
 @media (max-width: 860px) {
   .pd-product-hero { grid-template-columns: 1fr !important; }
   .pd-product-hero .prod-gallery { position: static; }
-  .pd-thumbs2 { grid-template-columns: repeat(6, 1fr); }
 }
 @media (max-width: 520px) {
   .pd-keyspecs2 { grid-template-columns: 1fr; }

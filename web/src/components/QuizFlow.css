@@ -1,9 +1,10 @@
 .quiz {
   margin-top: 22px;
-  background: var(--bg2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--bg2)), var(--bg2) 42%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
+  box-shadow: 0 18px 42px color-mix(in srgb, #020617 10%, transparent);
 }
 .quiz-head {
   display: flex;
@@ -12,8 +13,8 @@
   gap: 14px;
   margin-bottom: 12px;
 }
-.quiz-head-text strong { display: block; font-size: 16px; font-weight: 850; }
-.quiz-head-text span { display: block; margin-top: 3px; color: var(--text2); font-size: 13px; }
+.quiz-head-text strong { display: block; font-size: 18px; font-weight: 850; letter-spacing: 0; }
+.quiz-head-text span { display: block; margin-top: 5px; color: var(--text2); font-size: 13.5px; line-height: 1.55; }
 .quiz-progress-pill {
   flex-shrink: 0;
   padding: 5px 11px;
@@ -37,7 +38,13 @@
   background: var(--brand-grad);
   transition: width .25s ease;
 }
-.quiz-list { display: flex; flex-direction: column; gap: 18px; }
+.quiz-list { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.quiz-q {
+  padding: 14px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid var(--border);
+}
 .quiz-q h3 {
   display: flex;
   align-items: flex-start;
@@ -59,7 +66,7 @@
 .quiz-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 9px;
+  gap: 10px;
   padding-left: 33px;
 }
 .quiz-option {
@@ -67,7 +74,8 @@
   align-items: center;
   gap: 10px;
   text-align: left;
-  padding: 12px 13px;
+  min-height: 62px;
+  padding: 13px 14px;
   border-radius: var(--radius-sm);
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -75,9 +83,9 @@
   font-size: 13.5px;
   font-weight: 650;
   line-height: 1.35;
-  transition: border-color .13s ease, background .13s ease;
+  transition: border-color .13s ease, background .13s ease, transform .13s ease;
 }
-.quiz-option:hover { border-color: var(--accent-ring); }
+.quiz-option:hover { border-color: var(--accent-ring); transform: translateY(-1px); }
 .quiz-option-tick {
   flex-shrink: 0;
   width: 18px; height: 18px;
@@ -109,6 +117,7 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+  padding-top: 2px;
 }
 .quiz-submit { min-width: 200px; }
 

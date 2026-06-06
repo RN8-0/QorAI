@@ -105,9 +105,21 @@
 }
 .auth-form select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .auth-form select.auth-select-empty { color: var(--text3); }
-.auth-form input[type="date"] { color-scheme: dark light; }
+.auth-date-picker {
+  display: grid;
+  grid-template-columns: 0.82fr 1.35fr 1fr;
+  gap: 8px;
+}
+.auth-date-picker select {
+  min-width: 0;
+  padding-inline: 10px;
+}
 .auth-foot {
   margin-top: 16px; text-align: center;
   font-size: 12px; color: var(--text3);
 }
 .auth-foot b { color: var(--accent); }
+
+@media (max-width: 420px) {
+  .auth-date-picker { grid-template-columns: 1fr; }
+}

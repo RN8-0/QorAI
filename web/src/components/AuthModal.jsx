@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import {
   signIn, register, signInWithGoogle, requestPasswordReset, authErrorKey,
 } from '../lib/pocketbase';
 import { trackEvent } from '../lib/analytics';
-import { useT } from '../i18n/index.jsx';
+import { useI18n } from '../i18n/index.jsx';
 import './AuthModal.css';
 
 const MIN_PASSWORD = 8;
@@ -27,8 +27,18 @@ function ageFrom(dateStr) {
   return age;
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function daysInMonth(year, month) {
+  const y = Number(year) || 2000;
+  const m = Number(month) || 1;
+  return new Date(y, m, 0).getDate();
+}
+
 export default function AuthModal() {
-  const t = useT();
+  const { t, lang } = useI18n();
   const { modalOpen, closeAuth } = useAuth();
   const [mode, setMode] = useState('signin'); // signin | register | reset
   const [email, setEmail] = useState('');
@@ -36,6 +46,9 @@ export default function AuthModal() {
   const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
   const [gender, setGender] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState('');
@@ -52,6 +65,17 @@ export default function AuthModal() {
     return () => document.removeEventListener('keydown', onKey);
   }, [modalOpen, closeAuth]);
 
+  const currentYear = new Date().getFullYear();
+  const monthNames = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1),
+    label: new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { month: 'long' }).format(new Date(2020, i, 1)),
+  })), [lang]);
+  const yearOptions = useMemo(() => Array.from({ length: 88 }, (_, i) => String(currentYear - 13 - i)), [currentYear]);
+  const dayOptions = useMemo(
+    () => Array.from({ length: daysInMonth(birthYear, birthMonth) }, (_, i) => String(i + 1)),
+    [birthMonth, birthYear],
+  );
+
   if (!modalOpen) return null;
 
   function switchMode(next) {
@@ -59,6 +83,20 @@ export default function AuthModal() {
     setErr('');
     setNotice('');
     setShowPw(false);
+  }
+
+  function updateBirthPart(part, value) {
+    let day = part === 'day' ? value : birthDay;
+    let month = part === 'month' ? value : birthMonth;
+    let year = part === 'year' ? value : birthYear;
+    if (day && month && year) {
+      const maxDay = daysInMonth(year, month);
+      if (Number(day) > maxDay) day = String(maxDay);
+    }
+    setBirthDay(day);
+    setBirthMonth(month);
+    setBirthYear(year);
+    setBirthDate(day && month && year ? `${year}-${pad2(month)}-${pad2(day)}` : '');
   }
 
   async function google() {
@@ -139,7 +177,6 @@ export default function AuthModal() {
 
   const headTitle = mode === 'reset' ? t('auth.resetTitle') : t('auth.welcome');
   const headSub = mode === 'reset' ? t('auth.resetSubtitle') : t('auth.subtitle');
-  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="auth-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeAuth()}>
@@ -205,8 +242,23 @@ export default function AuthModal() {
                 value={confirm} onChange={(e) => setConfirm(e.target.value)}
                 autoComplete="new-password" required />
               <label className="auth-field-label">{t('auth.birthDate')}</label>
-              <input type="date" value={birthDate} max={todayStr}
-                onChange={(e) => setBirthDate(e.target.value)} required />
+              <div className="auth-date-picker">
+                <select value={birthDay} onChange={(e) => updateBirthPart('day', e.target.value)}
+                  className={birthDay ? '' : 'auth-select-empty'} required>
+                  <option value="" disabled>{lang === 'tr' ? 'Gün' : lang === 'de' ? 'Tag' : 'Day'}</option>
+                  {dayOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select value={birthMonth} onChange={(e) => updateBirthPart('month', e.target.value)}
+                  className={birthMonth ? '' : 'auth-select-empty'} required>
+                  <option value="" disabled>{lang === 'tr' ? 'Ay' : lang === 'de' ? 'Monat' : 'Month'}</option>
+                  {monthNames.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <select value={birthYear} onChange={(e) => updateBirthPart('year', e.target.value)}
+                  className={birthYear ? '' : 'auth-select-empty'} required>
+                  <option value="" disabled>{lang === 'tr' ? 'Yıl' : lang === 'de' ? 'Jahr' : 'Year'}</option>
+                  {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
               <select value={gender} onChange={(e) => setGender(e.target.value)}
                 className={gender ? '' : 'auth-select-empty'} required>
                 <option value="" disabled>{t('auth.gender')}</option>

@@ -65,6 +65,59 @@ function pushSpec(out, seen, label, value, pct, product) {
   });
 }
 
+function pushMetaSpec(out, seen, label, value, product) {
+  const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanLabel || !cleanValue || out.length >= 4) return;
+  if (REJECT_INTERNAL_RE.test(cleanLabel) || REJECT_INTERNAL_RE.test(cleanValue)) return;
+  if (cleanLabel.length > 38 || cleanValue.length > 30) return;
+  const key = `${cleanLabel.toLowerCase()}=${cleanValue.toLowerCase()}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  out.push({
+    label: cleanLabel,
+    value: cleanValue,
+    pct: clampPct(inferredPct(cleanLabel, cleanValue, out.length, product)),
+  });
+}
+
+function walkSpecSurface(value, cb, depth = 0) {
+  if (!value || depth > 4) return;
+  if (Array.isArray(value)) {
+    for (const item of value) walkSpecSurface(item, cb, depth + 1);
+    return;
+  }
+  if (typeof value !== 'object') return;
+  for (const [key, raw] of Object.entries(value)) {
+    if (raw == null) continue;
+    if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+      cb(key, raw);
+      continue;
+    }
+    const label = raw.label || raw.key || raw.name || raw.title || raw.spec || raw.k;
+    const val = raw.value || raw.val || raw.text || raw.v;
+    if (label && (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean')) {
+      cb(label, val);
+    }
+    walkSpecSurface(raw, cb, depth + 1);
+  }
+}
+
+function formatTs(ts, lang) {
+  const n = Number(ts) || 0;
+  if (!n) return '';
+  const ms = n > 1e12 ? n : n * 1000;
+  try {
+    return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    }).format(new Date(ms));
+  } catch {
+    return '';
+  }
+}
+
 function productSpecs(product, t, lang) {
   const out = [];
   const seen = new Set();
@@ -90,6 +143,29 @@ function productSpecs(product, t, lang) {
   for (const part of textParts) {
     const pieces = part.split(/:|=/);
     if (pieces.length >= 2) pushSpec(out, seen, pieces[0], pieces.slice(1).join(':'), null, product);
+  }
+
+  if (out.length < 4) {
+    walkSpecSurface(product?.specSections, (label, value) => pushSpec(out, seen, label, value, null, product));
+    walkSpecSurface(product?.sourceSpecSections, (label, value) => pushSpec(out, seen, label, value, null, product));
+    walkSpecSurface(product?.multiLangSpecs?.[lang], (label, value) => pushSpec(out, seen, label, value, null, product));
+    walkSpecSurface(product?.multiLangSpecs, (label, value) => pushSpec(out, seen, label, value, null, product));
+  }
+
+  if (out.length < 4) {
+    const metaLabels = lang === 'tr'
+      ? { score: 'Qor AI', specs: 'Özellik', category: 'Kategori', updated: 'Güncel' }
+      : lang === 'de'
+        ? { score: 'Qor AI', specs: 'Specs', category: 'Kategorie', updated: 'Aktuell' }
+        : { score: 'Qor AI', specs: 'Specs', category: 'Category', updated: 'Updated' };
+    const updated = formatTs(product?.updatedAtTs || product?.scrapedAtTs, lang);
+    const fallbacks = [
+      product?.techScore ? [metaLabels.score, String(Math.round(product.techScore))] : null,
+      product?.specsCount ? [metaLabels.specs, String(product.specsCount)] : null,
+      product?.category ? [metaLabels.category, categoryLabel(product.category, lang)] : null,
+      updated ? [metaLabels.updated, updated] : null,
+    ].filter(Boolean);
+    for (const [label, value] of fallbacks) pushMetaSpec(out, seen, label, value, product);
   }
 
   return out.slice(0, 4);

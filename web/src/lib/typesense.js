@@ -80,6 +80,15 @@ function homeQualityFilter(product, { allowLowSignal = false } = {}) {
   return true;
 }
 
+function topFacetCategories(counts, limit = 10) {
+  return (counts || [])
+    .map((c) => ({ value: String(c.value || '').toLowerCase(), count: Number(c.count) || 0 }))
+    .filter((c) => c.value && !HOME_LOW_SIGNAL_CATEGORIES.has(c.value))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((c) => c.value);
+}
+
 async function categoryBalancedProducts(categories, perCategory, sortBy, limit, opts = {}) {
   const results = await Promise.all(categories.map((category) =>
     searchDocs({
@@ -93,6 +102,22 @@ async function categoryBalancedProducts(categories, perCategory, sortBy, limit, 
   ));
   return uniqueProducts(results.flat())
     .filter((product) => homeQualityFilter(product, opts))
+    .slice(0, limit);
+}
+
+async function topCategoryPicks(categoryCounts, limit = 10) {
+  const cats = topFacetCategories(categoryCounts, limit * 2);
+  const results = await Promise.all(cats.map((category) =>
+    categoryBalancedProducts(
+      [category],
+      1,
+      'techScore:desc,trendScore:desc,updatedAtTs:desc',
+      1,
+      { allowLowSignal: false },
+    ).catch(() => []),
+  ));
+  return uniqueProducts(results.flat())
+    .filter((product) => homeQualityFilter(product))
     .slice(0, limit);
 }
 
@@ -178,9 +203,8 @@ export async function getHomeFeed(prefCats = []) {
       searchDocs({
         q: '*',
         query_by: 'name',
-        sort_by: 'updatedAtTs:desc,techScore:desc',
-        filter_by: `category:[${HOME_FEATURE_CATEGORIES.slice(0, 9).map(lit).join(',')}]`,
-        per_page: 28,
+        sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
+        per_page: 40,
         include_fields: LIST_FIELDS,
       }),
       searchDocs({
@@ -195,6 +219,8 @@ export async function getHomeFeed(prefCats = []) {
     ]);
     const categoryFacet = (facetRes.facet_counts || [])
       .find((facet) => facet.field_name === 'category');
+    const categories = categoryFacet ? categoryFacet.counts : [];
+    const heroPicks = await topCategoryPicks(categories, 10);
     return {
       forYou,
       trending,
@@ -202,12 +228,13 @@ export async function getHomeFeed(prefCats = []) {
         .filter((product) => homeQualityFilter(product))
         .slice(0, 21),
       spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
-      categories: categoryFacet ? categoryFacet.counts : [],
+      heroPicks,
+      categories,
       total: Number(facetRes.found) || 0,
     };
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
-    return { forYou: [], trending: [], newArrivals: [], spotlight: null, categories: [], total: 0 };
+    return { forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
   }
 }
 
@@ -217,13 +244,18 @@ export async function searchProducts(query, limit = 40) {
   try {
     const data = await searchDocs({
       q,
-      query_by: 'name,brand,keySpecsText,category',
-      query_by_weights: '5,3,1,2',
-      sort_by: '_text_match:desc,techScore:desc',
-      per_page: Math.min(limit, 40),
+      query_by: 'name,brand,keySpecsText,category,filterTokens',
+      query_by_weights: '8,4,2,2,1',
+      sort_by: '_text_match:desc,trendScore:desc,techScore:desc',
+      per_page: Math.min(limit, 60),
       include_fields: LIST_FIELDS,
+      prefix: 'true',
+      num_typos: '2,1,1,0,0',
+      drop_tokens_threshold: 1,
+      typo_tokens_threshold: 1,
+      prioritize_exact_match: 'true',
     });
-    return docs(data).map(docToProduct);
+    return uniqueProducts(docs(data).map(docToProduct));
   } catch (err) {
     console.warn('[catalog] search failed', err);
     return [];
@@ -262,12 +294,13 @@ export async function getCategoryPage(opts = {}) {
       trend: 'trendScore:desc',
       priceUp: 'lowestPriceUSD:asc',
       priceDown: 'lowestPriceUSD:desc',
+      new: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
     };
     const sort = sortMap[opts.sort] || sortMap.score;
     const data = await searchDocs({
       q: isSearch ? opts.q.trim() : '*',
-      query_by: isSearch ? 'name,brand,keySpecsText,category' : 'name',
-      query_by_weights: isSearch ? '5,3,1,2' : '',
+      query_by: isSearch ? 'name,brand,keySpecsText,category,filterTokens' : 'name',
+      query_by_weights: isSearch ? '8,4,2,2,1' : '',
       sort_by: isSearch ? `_text_match:desc,${sort}` : sort,
       filter_by: filters.join(' && '),
       page,
@@ -275,6 +308,11 @@ export async function getCategoryPage(opts = {}) {
       include_fields: LIST_FIELDS,
       facet_by: opts.facets ? 'brand,price_segment,filterTokens' : '',
       max_facet_values: opts.facets ? 200 : '',
+      prefix: isSearch ? 'true' : '',
+      num_typos: isSearch ? '2,1,1,0,0' : '',
+      drop_tokens_threshold: isSearch ? 1 : '',
+      typo_tokens_threshold: isSearch ? 1 : '',
+      prioritize_exact_match: isSearch ? 'true' : '',
     });
     const hits = docs(data)
       .map(docToProduct)
