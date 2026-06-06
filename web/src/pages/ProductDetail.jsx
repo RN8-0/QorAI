@@ -156,7 +156,45 @@ function localizedProductName(product, lang) {
   return trSpec(product?.name || '', code);
 }
 
+// Per-product spec translator. The product carries a COMPLETE Turkish→target
+// term map in multiLangSpecs[lang] / multiLangSections[lang] (built offline for
+// exactly this product's terms), so prefer it — that guarantees no untranslated
+// word leaks for de/en. Only fall back to the shared runtime dictionary (trSpec,
+// which has gaps and depends on a PocketBase fetch that can fail on cold start)
+// when a term is missing from the per-product map.
+function buildSpecTranslator(product, lang) {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const norm = (s) => String(s ?? '')
+    .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
+  const lookup = new Map();
+  if (code !== 'tr') {
+    for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
+      if (src && typeof src === 'object' && !Array.isArray(src)) {
+        for (const [k, v] of Object.entries(src)) {
+          const nk = norm(k);
+          if (nk && v != null && String(v).trim()) lookup.set(nk, String(v));
+        }
+      }
+    }
+  }
+  return (term) => {
+    const raw = String(term ?? '');
+    if (code === 'tr' || !raw.trim()) return code === 'tr' ? raw : trSpec(raw, code);
+    if (raw.includes('\n')) {
+      return raw.split(/\r?\n/).map((line) => {
+        const t = line.trim();
+        if (!t) return line;
+        const hit = lookup.get(norm(t));
+        return hit != null ? line.replace(t, hit) : trSpec(line, code);
+      }).join('\n');
+    }
+    const hit = lookup.get(norm(raw));
+    return hit != null ? hit : trSpec(raw, code);
+  };
+}
+
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
+  const tr = buildSpecTranslator(product, lang);
   const bricks = [];
   const seen = new Set();
   const addRows = (title, icon, entries) => {
@@ -199,7 +237,7 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   if (sections) {
     for (const [section, specs] of Object.entries(sections)) {
       if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
-        addRows(trSpec(section, lang), sectionIcon(section), Object.entries(specs));
+        addRows(tr(section), sectionIcon(section), Object.entries(specs));
       }
     }
   }
@@ -212,7 +250,7 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),
     );
-    if (missing.length) addRows(trSpec(allSpecsTitle, lang), '📋', missing);
+    if (missing.length) addRows(allSpecsTitle, '📋', missing);
   }
   return bricks;
 }
@@ -432,6 +470,7 @@ export default function ProductDetail() {
   const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
   const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
+  const specTr = buildSpecTranslator(p, lang);
   const displayName = localizedProductName(p, lang);
 
   // Hero key specs: the structured screen/RAM/storage/battery chips first, then
@@ -456,8 +495,8 @@ export default function ProductDetail() {
       label: localizedSpecLabel(t(c.labelKey), lang),
     }));
     bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {
-      const value = localizedSpecValue(trSpec(String(v).split(/\r?\n/)[0].trim(), lang), lang);
-      const label = localizedSpecLabel(trSpec(k, lang), lang).replace(/\s*:\s*$/, '');
+      const value = localizedSpecValue(specTr(String(v).split(/\r?\n/)[0].trim()), lang);
+      const label = localizedSpecLabel(specTr(k), lang).replace(/\s*:\s*$/, '');
       if (/\d/.test(value) && value.length <= 24 && !/sponsor|reklam|advert/i.test(`${label} ${value}`)) {
         push({ key: k, icon: sectionIcon(k), value, label });
       }
@@ -639,7 +678,7 @@ export default function ProductDetail() {
                     <div className="card pad pd-spec-sheet">
                       <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
                       <div className="pd-bricks">
-                        {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} dictReady={dictReady} />)}
+                        {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
                       </div>
                     </div>
                   ) : (
@@ -772,16 +811,16 @@ function ScrollRail({ children }) {
   );
 }
 
-function SpecBrick({ brick, lang }) {
+function SpecBrick({ brick, lang, tr }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
   if (!rows.length) return null;
   return (
     <div className="pd-brick">
-      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(trSpec(brick.title, lang), lang)}</div>
+      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
-          const s = localizedSpecValue(trSpec(String(v).trim(), lang), lang);
-          const label = localizedSpecLabel(trSpec(k, lang), lang);
+          const s = localizedSpecValue(tr(String(v).trim()), lang);
+          const label = localizedSpecLabel(tr(k), lang);
           const yes = YES_RE.test(s);
           const no = NO_RE.test(s);
           const lines = s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
