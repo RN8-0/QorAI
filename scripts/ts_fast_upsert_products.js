@@ -9,6 +9,9 @@ const PB_PAGE_SIZE = Number(process.env.TS_FAST_PAGE_SIZE || 500);
 const CONCURRENCY = Number(process.env.TS_FAST_CONCURRENCY || 6);
 const START_PAGE = Math.max(1, Number(process.env.TS_FAST_START_PAGE || 1));
 const REQUEST_TIMEOUT_MS = Number(process.env.TS_FAST_TIMEOUT_MS || 90000);
+// Targeted mode: only re-index these comma-separated record ids (used to repair
+// specific products) instead of seeking the whole catalog.
+const ONLY_IDS = (process.env.TS_FAST_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 const envFile = fs.readFileSync(path.join(__dirname, '..', 'migration', '.env'), 'utf8');
 const env = Object.fromEntries(
@@ -326,14 +329,19 @@ function extractBrowseNumericFields(pb) {
     const parsed = screenSizeNumber(value, true);
     if (parsed !== null) { screenSizeValue = parsed; break; }
   }
-  const battery = numberFromText(firstExactSpecValue(flat, [
+  const batteryRaw = firstExactSpecValue(flat, [
     'Battery Capacity',
     'battery capacity',
     'Battery Capacity (Typical)',
     'Batarya Kapasitesi',
     'Batarya Kapasitesi (Tipik)',
     'Pil Kapasitesi',
-  ]));
+  ]);
+  // Require a mAh unit — the upstream "Battery capacity" field sometimes holds a
+  // non-battery value (SSD "4 TB", lens "88 mm") that must not become "4 mAh".
+  const batteryNum = /\d\s*mah\b/.test(String(batteryRaw || '').toLowerCase())
+    ? numberFromText(batteryRaw) : null;
+  const battery = (batteryNum != null && batteryNum > 0 && batteryNum <= 200000) ? batteryNum : null;
   const weightValueKg = weightKg(firstExactSpecValue(flat, ['Weight', 'Ağırlık', 'Agirlik']));
   return {
     ...(screenSizeValue != null ? { screenSizeValue } : {}),
@@ -425,6 +433,17 @@ async function withRetry(label, fn, attempts = 6) {
 
 async function main() {
   await ensureCollection();
+  if (ONLY_IDS.length) {
+    const filter = encodeURIComponent(ONLY_IDS.map(id => `id="${id}"`).join(' || '));
+    const body = await pbGet(
+      `/api/collections/products/records?perPage=${ONLY_IDS.length}&page=1&skipTotal=1&filter=${filter}`,
+      'PB by-ids',
+    );
+    const items = body.items || [];
+    const r = await importDocs(items);
+    console.log(`[fast-ts] targeted ${items.length}/${ONLY_IDS.length} ids · ok=${r.ok} fail=${r.fail}`);
+    return;
+  }
   console.log(`[fast-ts] seek backfill · pageSize=${PB_PAGE_SIZE} · timeout=${REQUEST_TIMEOUT_MS}ms`);
   let lastId = '';
   let pages = 0;
