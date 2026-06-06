@@ -19,7 +19,9 @@ const String kPbBaseUrl = _defaultPbUrl;
 /// Typesense public-search API key (read-only, arama endpointlerinde kullanılır)
 const kTypesenseApiKey = String.fromEnvironment(
   'TS_API_KEY',
-  defaultValue: '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT',
+  // Search-only scoped key (documents:search,get on `products`). Must never be
+  // the Typesense bootstrap/admin key, which allows writes/deletes/key mgmt.
+  defaultValue: 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb',
 );
 
 const kTypesenseUrl = String.fromEnvironment(

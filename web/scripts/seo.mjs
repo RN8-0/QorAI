@@ -22,7 +22,7 @@ const templatePath = join(site, 'index.html');
 
 // ── Typesense (read-only search key — same as web/src/lib/typesense.js) ──
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const TS_COLLECTION = 'products';
 
 const DEFAULT_IMG = `${SITE}/assets/qor_logo_512.png?v=20260605a`;

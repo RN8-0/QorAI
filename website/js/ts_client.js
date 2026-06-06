@@ -8,7 +8,7 @@
 // Search-only API key — read-only, safe to ship in client JS.
 // Mirrors kTypesenseApiKey / kTypesenseUrl in the Flutter app.
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const TS_COLLECTION = 'products';
 
 // Light field set for grid cards — keeps payloads small so products

@@ -7,7 +7,10 @@
 import { productImageList } from './imageUrl';
 
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+// Search-only scoped key (actions: documents:search,get on `products` only).
+// NEVER embed the Typesense bootstrap/admin key in client code — it allows
+// writes, deletes and key management. This key can only run searches.
+const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const COLLECTION = 'products';
 const SEARCH_PATH = `/collections/${COLLECTION}/documents/search`;
 const LIST_FIELDS = [
