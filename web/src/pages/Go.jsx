@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
 import { pb } from '../lib/pocketbase';
 import { isFreshPricedOffer, normalizeOffer } from '../lib/offers';
-import { safeExternalUrl } from '../lib/format';
+import { localizeAmazonUrl, safeExternalUrl } from '../lib/format';
 import { productPath } from '../lib/routes';
 import { useSeo } from '../lib/seo';
 import './Placeholder.css';
@@ -42,7 +42,9 @@ export default function Go() {
         });
         if (!live) return;
         const offer = normalizeOffer(rec);
-        const target = safeExternalUrl(offer.url);
+        const target = offer.network === 'amazon'
+          ? localizeAmazonUrl(offer.url, lang)
+          : safeExternalUrl(offer.url);
         if (!target) {
           setState({ status: 'error', offer, message: L('Store link is unavailable.', 'Mağaza bağlantısı kullanılamıyor.', 'Shop-Link ist nicht verfügbar.') });
           return;
@@ -69,7 +71,11 @@ export default function Go() {
     };
   }, [offerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const target = useMemo(() => safeExternalUrl(state.offer?.url || ''), [state.offer]);
+  const target = useMemo(() => (
+    state.offer?.network === 'amazon'
+      ? localizeAmazonUrl(state.offer?.url || '', lang)
+      : safeExternalUrl(state.offer?.url || '')
+  ), [state.offer, lang]);
   const back = productId || state.offer?.productId ? productPath(productId || state.offer.productId) : '/';
 
   if (state.status === 'redirecting') {

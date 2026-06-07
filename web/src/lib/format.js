@@ -158,6 +158,36 @@ export function safeExternalUrl(url) {
   }
 }
 
+// Amazon OneLink: a single store ID (qorai-20) earns across the US, GB, DE, FR,
+// IT, ES and CA storefronts. The connector writes every Amazon offer as an
+// amazon.com search link; at click time we swap the domain to the visitor's
+// preferred OneLink storefront. The ?tag= is preserved — single store ID means
+// the same tag tracks on every domain. Languages outside OneLink's coverage
+// (tr, ru, pt) fall back to the nearest in-coverage storefront that ships
+// internationally, since amazon.com.tr is not part of OneLink.
+const AMAZON_ONELINK_DOMAIN = {
+  US: 'www.amazon.com', GB: 'www.amazon.co.uk', DE: 'www.amazon.de',
+  FR: 'www.amazon.fr', IT: 'www.amazon.it', ES: 'www.amazon.es', CA: 'www.amazon.ca',
+};
+const AMAZON_MARKET_BY_LANG = {
+  tr: 'DE', en: 'US', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
+};
+
+export function localizeAmazonUrl(url, lang = 'en') {
+  const raw = safeExternalUrl(url);
+  if (!raw) return raw;
+  try {
+    const u = new URL(raw);
+    if (!/(^|\.)amazon\./i.test(u.hostname)) return raw;
+    const code = String(lang || 'en').slice(0, 2).toLowerCase();
+    const host = AMAZON_ONELINK_DOMAIN[AMAZON_MARKET_BY_LANG[code] || 'US'];
+    if (host) u.hostname = host;
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 function rollupPriceIsFresh(product) {
   const expires = Date.parse(product?.bestOfferExpiresAt || '');
   return Number.isFinite(expires) && expires > Date.now();
