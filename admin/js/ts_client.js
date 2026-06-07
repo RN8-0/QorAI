@@ -239,6 +239,169 @@ function _extractBrowseNumericFields(pb) {
   };
 }
 
+// Full browse-filter extraction (filterTokens + screenSizeValue +
+// batteryCapacityValue + weightValueKg). Ported VERBATIM from
+// scripts/reindex_filter_tokens.mjs (which itself ports
+// pb_hooks/typesense_sync.pb.js) and wrapped in an IIFE so its helpers can't
+// collide with the admin's other spec helpers.
+//
+// Before this, tsBuildDoc emitted ONLY the `socket:` token, so every product
+// the admin touched (edit, image delete, re-scrape) was re-indexed without its
+// ram/storage/os/screen_tech/… tokens and silently dropped out of the website +
+// app browse filters until the next reindex job. Using the same rich extraction
+// the reindex job uses keeps admin edits non-destructive.
+const _fbExtractBrowse = (() => {
+  function _normalizeBrowseText(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function _flattenBrowseSpecs(pb) {
+    const flat = {};
+    const add = (o) => o && Object.keys(o).forEach((k) => { const v = o[k]; if (v != null) flat[String(k)] = String(v); });
+    add(pb.specs); add(pb.keySpecs);
+    const sec = pb.specSections || {};
+    Object.keys(sec).forEach((s) => { if (sec[s] && typeof sec[s] === 'object') add(sec[s]); });
+    return flat;
+  }
+  function _findBrowseSpecValues(keys, flat) {
+    const out = [], seen = {};
+    keys.forEach((key) => {
+      if (flat[key] && !seen[flat[key]]) { seen[flat[key]] = true; out.push(flat[key]); }
+      const nk = _normalizeBrowseText(key), ck = nk.replace(/\s+/g, '');
+      Object.keys(flat).forEach((sk) => {
+        const nsk = _normalizeBrowseText(sk), csk = nsk.replace(/\s+/g, '');
+        if (nsk === nk || nsk.indexOf(nk) !== -1 || nk.indexOf(nsk) !== -1 || csk === ck || csk.indexOf(ck) !== -1 || ck.indexOf(csk) !== -1) {
+          const v = flat[sk]; if (v && !seen[v]) { seen[v] = true; out.push(v); }
+        }
+      });
+    });
+    return out;
+  }
+  function _num(v) { const m = String(v || '').match(/(\d+(?:[.,]\d+)?)/); return m ? parseFloat(m[1].replace(',', '.')) : null; }
+  function _normScreenKey(v) {
+    return String(v || '')
+      .toLowerCase()
+      .replace(/[ıİ]/g, 'i')
+      .replace(/[ğĞ]/g, 'g')
+      .replace(/[üÜ]/g, 'u')
+      .replace(/[şŞ]/g, 's')
+      .replace(/[öÖ]/g, 'o')
+      .replace(/[çÇ]/g, 'c')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function _isScreenSizeSpecKey(key) {
+    const n = _normScreenKey(key);
+    if (!n) return false;
+    if (/(width|height|genis|en\b|boy\b|area|alani|cm2|cm 2|m2|m 2|ratio|oran|displayport|usb|thunderbolt)/.test(n)) return false;
+    const aliases = [
+      'screen size',
+      'display size',
+      'display diagonal',
+      'screen diagonal',
+      'diagonal',
+      'ekran boyutu',
+      'display boyutu',
+      'bildschirmgrosse',
+      'bildschirmgroesse',
+      'bildschirmdiagonale',
+    ];
+    if (aliases.includes(n)) return true;
+    return aliases.some((alias) =>
+      n.startsWith(`${alias} `) &&
+      /\b(in|inc|inch|zoll|cm|diagonal|diagonale)\b/.test(n.slice(alias.length + 1))
+    );
+  }
+  function _screenSizeNumber(value, allowUnitless = false) {
+    const raw = String(value || '').trim();
+    const v = raw.toLowerCase();
+    if (!v) return null;
+    if (/(cm²|cm2|m²|m2|mm\b|piksel|pixel|px|mp\b|mah|hz|nit|ppi|cd\/m|display\s*port|usb|thunderbolt|%|x\s*\d)/i.test(v)) return null;
+    const m = raw.match(/(\d+(?:[.,]\d+)?)/);
+    if (!m) return null;
+    const num = parseFloat(m[1].replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) return null;
+    if (/(inch|inç|zoll|"|″|\d+(?:[.,]\d+)?\s*in\b)/i.test(raw)) {
+      return num >= 1 && num <= 120 ? num : null;
+    }
+    if (/\bcm\b/i.test(raw)) {
+      const inches = num / 2.54;
+      return inches >= 1 && inches <= 120 ? Math.round(inches * 10) / 10 : null;
+    }
+    return allowUnitless && num >= 1 && num <= 120 ? num : null;
+  }
+  function _screenSizeFromFlat(flat) {
+    for (const [key, value] of Object.entries(flat || {})) {
+      if (!_isScreenSizeSpecKey(key)) continue;
+      const parsed = _screenSizeNumber(value, true);
+      if (parsed !== null) return parsed;
+    }
+    return null;
+  }
+  function _bool(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['no', 'false', 'hayir', 'yok', 'n a', '-'].includes(n)) return false; return true; }
+  function _storageToken(v) {
+    const n = _normalizeBrowseText(v);
+    if (!n) return null;
+    const tb = n.match(/(\d+(?:[.,]\d+)?)\s*tb\b/);
+    if (tb) { const t = Math.round(parseFloat(tb[1].replace(',', '.'))); return t > 0 && t <= 256 ? t + '_tb' : null; }
+    if (!/\d\s*gb\b/.test(n)) return null;
+    const x = _num(v);
+    if (x === null || x <= 0 || x > 262144) return null;
+    return Math.round(x) + '_gb';
+  }
+  function _ramGb(v) {
+    const n = _normalizeBrowseText(v);
+    if (!n || !/\d\s*gb\b/.test(n) || /\d\s*tb\b/.test(n)) return null;
+    const x = _num(v);
+    if (x === null || x <= 0 || x > 256) return null;
+    return Math.round(x);
+  }
+  function _batteryMah(v) {
+    const n = _normalizeBrowseText(v);
+    if (!n || !/\d\s*mah\b/.test(n)) return null;
+    const x = _num(v);
+    if (x === null || x <= 0 || x > 200000) return null;
+    return Math.round(x);
+  }
+  function _osToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('chrome os') || n.includes('chromeos')) return 'chromeos'; if (n.includes('ipad os') || n.includes('ipados')) return 'ipados'; if (n.includes('mac os') || n.includes('macos') || n.includes('os x')) return 'macos'; if (n.includes('windows')) return 'windows'; if (n.includes('android')) return 'android'; if (n.includes('linux')) return 'linux'; if (n.includes('ios') || n.includes('iphone os')) return 'ios'; return null; }
+  function _cpuBrand(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('intel')) return 'intel'; if (n.includes('amd')) return 'amd'; if (n.includes('apple')) return 'apple'; if (n.includes('qualcomm') || n.includes('snapdragon')) return 'qualcomm'; if (n.includes('mediatek')) return 'mediatek'; if (n.includes('exynos')) return 'exynos'; return null; }
+  function _gpuType(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['rtx', 'gtx', 'geforce', 'radeon', 'arc', 'dedicated', 'discrete'].some((x) => n.includes(x))) return 'dedicated'; if (['integrated', 'shared', 'iris', 'uhd', 'intel hd', 'apple gpu'].some((x) => n.includes(x))) return 'integrated'; return null; }
+  function _connTokens(v) { const n = _normalizeBrowseText(v); const t = []; if (n.includes('wi fi') || n.includes('wifi')) t.push('wi-fi'); if (n.includes('5g')) t.push('5g'); if (n.includes('4g') || n.includes('cellular') || n.includes('lte')) t.push('4g'); return t; }
+  function _weightKg(v) { const n = _normalizeBrowseText(v), x = _num(v); if (x === null) return null; if (n.includes('kg')) return x; if (n.includes('g')) return x / 1000; return x; }
+  function _normSocket(v) { let s = String(v || '').trim().toUpperCase().replace(/SOCKET/g, '').replace(/FCLGA/g, 'LGA').replace(/[^A-Z0-9]/g, ''); if (/^STR\d+$/.test(s)) s = s.slice(1); return s; }
+  function _socketAliases(s) { const n = _normSocket(s); if (!n) return []; const a = [n]; if (n === 'TRX50' || n === 'WRX90') a.push('TR5'); if (n === 'TRX40' || n === 'WRX80') a.push('TR4'); return a; }
+  function _socketFromText(v) { const text = String(v || '').toUpperCase(); const m = text.match(/(?:FC)?LGA\s*\d{3,4}|AM[345]|TRX\d+|STR\d+|TR\d+|WRX\d+|STRP\d+/g) || []; const t = []; m.forEach((x) => _socketAliases(x).forEach((a) => t.push(a))); return t; }
+  function _matchBucket(raw, pairs) { const n = _normalizeBrowseText(raw); for (const [k, v] of pairs) if (n.indexOf(k) !== -1) return v; return null; }
+
+  return function extractBrowse(pb) {
+    const flat = _flattenBrowseSpecs(pb);
+    const tokens = [], seen = {};
+    const addT = (t) => { if (t && !seen[t]) { seen[t] = true; tokens.push(t); } };
+    const first = (keys) => { const v = _findBrowseSpecValues(keys, flat); return v.length ? String(v[0]) : ''; };
+
+    const ram = _ramGb(first(['Memory (RAM)', 'RAM', 'memory ram', 'Bellek (RAM)', 'Bellek'])); if (ram !== null) addT('ram:' + ram + '_gb');
+    const st = _storageToken(first(['Hard Disk (SSD) Size', 'SSD Size', 'Internal Storage', 'internal storage', 'Storage Size', 'Storage Capacity', 'storage', 'Storage', 'Dahili Depolama', 'Depolama'])); if (st) addT('storage:' + st);
+    const os = _osToken(first(['Operating System', 'OS', 'Platform', 'İşletim Sistemi', 'Isletim Sistemi'])); if (os) addT('os:' + os);
+    const cpu = _cpuBrand(first(['Processor Brand', 'Processor', 'CPU', 'Chip', 'Chipset', 'İşlemci', 'İşlemci Markası', 'Yonga Seti'])); if (cpu) addT('processor_brand:' + cpu);
+    const socketTexts = [pb.name, first(['Socket', 'CPU Socket', 'Processor Socket', 'Soket']), first(['Compatible Sockets', 'Socket Support'])];
+    Object.keys(flat).forEach((k) => socketTexts.push(flat[k]));
+    socketTexts.forEach((v) => _socketFromText(v).forEach((tk) => addT('socket:' + tk.toLowerCase())));
+    const gpu = _gpuType(first(['GPU Model', 'Graphics Card', 'Graphics Card Type', 'External Graphics Processor (GPU)', 'Integrated Graphics Model', 'Video Card', 'Ekran Kartı', 'Grafik İşlemci'])); if (gpu) addT('gpu_type:' + gpu);
+    const panel = _matchBucket(first(['Screen Technology', 'Display Type', 'Panel Type', 'Display Technology', 'Display', 'Ekran Teknolojisi', 'Panel Tipi']), [['dynamic amoled', 'dynamic_amoled'], ['super amoled', 'super_amoled'], ['amoled', 'amoled'], ['ltpo', 'ltpo'], ['oled', 'oled'], ['ips', 'ips'], ['va', 'va'], ['tn', 'tn'], ['lcd', 'lcd']]); if (panel) addT('screen_tech:' + panel);
+    const rr = _num(first(['Screen Refresh Rate', 'Refresh Rate', 'Display Refresh Rate', 'Ekran Yenileme Hızı', 'Yenileme Hızı'])); if (rr !== null) { const hz = Math.round(rr); if ([60, 75, 90, 120, 144, 165, 180, 240, 360].includes(hz)) addT('refresh_rate:' + hz + '_hz'); }
+    _connTokens(first(['Connectivity', 'Connection Type', '4G', '5G', 'Wi-Fi', 'Bağlantı'])).forEach((tk) => addT('connectivity:' + tk));
+    [['five_g', ['5G', '5G Desteği']], ['nfc', ['NFC']], ['wireless_charging', ['Wireless Charging', 'Kablosuz Şarj']], ['fast_charging', ['Fast Charging', 'Hızlı Şarj']], ['fingerprint', ['Fingerprint Reader', 'fingerprint', 'Parmak İzi']], ['water_resistance', ['Water Resistance', 'Suya Dayanıklılık']]].forEach(([tok, keys]) => { if (_bool(first(keys)) === true) addT(tok + ':true'); });
+
+    const screen = _screenSizeFromFlat(flat);
+    const battery = _batteryMah(first(['Battery Capacity', 'Battery Capacity (Typical)', 'Batarya Kapasitesi', 'Batarya Kapasitesi (Tipik)', 'Pil Kapasitesi']));
+    return {
+      tokens,
+      screenSizeValue: screen || undefined,
+      batteryCapacityValue: battery === null ? undefined : battery,
+      weightValueKg: _weightKg(first(['Weight', 'Ağırlık'])) || undefined,
+    };
+  };
+})();
+
 function tsBuildDoc(pb) {
   const tsDate = (value) => {
     const t = value ? new Date(value).getTime() : 0;
@@ -254,7 +417,7 @@ function tsBuildDoc(pb) {
     affiliateLinks: pb.affiliateLinks || {},
     affiliateLinksByCountry: pb.affiliateLinksByCountry || {},
   };
-  const browseNumericFields = _extractBrowseNumericFields(pb);
+  const browse = _fbExtractBrowse(pb);
   return {
     id: pb.id,
     slug: pb.slug || '',
@@ -274,8 +437,10 @@ function tsBuildDoc(pb) {
     specsCount: pb.specsCount || 0,
     keySpecsText: _flattenKeySpecs(pb.keySpecs),
     tags: Array.isArray(pb.tags) ? pb.tags : [],
-    filterTokens: _extractSocketTokens(pb),
-    ...browseNumericFields,
+    filterTokens: browse.tokens,
+    ...(browse.screenSizeValue != null ? { screenSizeValue: browse.screenSizeValue } : {}),
+    ...(browse.batteryCapacityValue != null ? { batteryCapacityValue: browse.batteryCapacityValue } : {}),
+    ...(browse.weightValueKg != null ? { weightValueKg: browse.weightValueKg } : {}),
     _raw: JSON.stringify(raw),
   };
 }

@@ -3169,7 +3169,17 @@ function _renderProductModal(p,variants=[]){
     : ((lang === sourceLang && p.nameTranslated && p.nameTranslated[sourceLang]) ? p.nameTranslated[sourceLang] : p.name);
   document.getElementById('modalTitle').textContent = localizedName;
   const body=document.getElementById('modalBody');
-  const imgs=(p.images?.length?p.images:(p.imageUrl?[p.imageUrl]:[])).map(safeUrl).filter(Boolean);
+  // Show the EXACT gallery end-users see (website + app): hero first, then the
+  // rest of `images`, de-duplicated by identity so the same photo at a different
+  // size prefix isn't listed twice. Every entry gets a × (see deleteProductImage)
+  // so the hero image is deletable too — previously the hero had no delete button
+  // when it wasn't also inside `images`.
+  const imgs=(()=>{
+    const src=[p.imageUrl||p.imageURL,...(Array.isArray(p.images)?p.images:[])].map(safeUrl).filter(Boolean);
+    const seen=new Set();const out=[];
+    for(const u of src){const k=_imageIdentityKey(u);if(!k||seen.has(k))continue;seen.add(k);out.push(u);}
+    return out;
+  })();
   const dictApiForModal = sourceIsGeizhals ? window.QorAiGeizhals?.dict : window.QorAiDict;
   const dictCacheForModal = (lang !== sourceLang && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
   function modalIsPreserveText(text){
@@ -4034,18 +4044,47 @@ async function saveProductEdit(id){
     toast('Product updated','s');closeModal();renderProductsPage();
   }catch(e){toast('Error: '+e.message,'e')}
 }
-// Delete a single image URL from a product (modal thumbnail × button)
+// Identity key for a product image — mirrors web/src/lib/imageUrl.js
+// (imageIdentityKey) and the Flutter app's ProductEntity._imageIdentityKey so
+// the SAME photo stored at different sizes (m_ / b_ / s_ / t_ … prefixes)
+// collapses to ONE logical image everywhere.
+function _imageIdentityKey(url) {
+  let key = String(url || '').trim().toLowerCase();
+  if (!key) return '';
+  key = key.split(/[?#]/)[0].replace(/^https?:\/\//, '');
+  key = key.replace(/(resim\.epey\.com\/[^/]+\/)[a-z]_/i, '$1');
+  key = key.replace(/-(?:k|s|m|t|c|l|n)\.(webp|jpe?g|png)$/i, '.$1');
+  return key;
+}
+
+// Delete a single image from a product (modal thumbnail × button).
+//
+// The public gallery on the website + app is built as [imageUrl, ...images]
+// and then de-duplicated by identity key (see _imageIdentityKey). The hero
+// `imageUrl` is almost always a size-prefixed copy (e.g. m_vivo-y36-13.png) of
+// a gallery entry (vivo-y36-13.png). Removing only the exact string from
+// `images` therefore did NOT make the photo disappear: the hero re-injected the
+// very image just deleted, so the change never showed on the website/app even
+// though PocketBase + Typesense were updated. Remove the image by identity from
+// the gallery AND repoint the hero when it matches, so it cannot be re-derived.
 async function deleteProductImage(id, url) {
   if (!confirm('Delete this image?')) return;
   try {
     const p = allProducts.find(x => x.id === id);
     if (!p) { toast('Product not found', 'e'); return; }
-    const imgs = (p.images || []).filter(u => u !== url);
+    const delKey = _imageIdentityKey(url);
+    const imgs = (p.images || []).filter(u => _imageIdentityKey(u) !== delKey);
     const updates = { images: imgs, updatedAt: serverTimestamp(), updatedBy: _currentAdminEmail || 'admin' };
-    if (p.imageUrl === url) updates.imageUrl = imgs[0] || '';
+    // Hero is the deleted image (matched by identity, not exact string) →
+    // repoint it to the first surviving gallery image so it can't reappear.
+    // ('' clears it; PocketBase's URL field then keeps the previous value, which
+    // is the best we can do when the last image is removed.)
+    if (_imageIdentityKey(p.imageUrl || p.imageURL) === delKey) {
+      updates.imageUrl = imgs[0] || '';
+    }
     await pbUpdateDoc('products', id, updates);
     p.images = imgs;
-    if (updates.imageUrl !== undefined) p.imageUrl = updates.imageUrl;
+    if (updates.imageUrl !== undefined) { p.imageUrl = updates.imageUrl; p.imageURL = updates.imageUrl; }
     logActivity('product_image_delete', `Image deleted: ${p.name || id}`, { productId: id, url });
     toast('Image deleted', 's');
     openProduct(id); // re-render modal
