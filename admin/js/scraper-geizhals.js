@@ -245,6 +245,46 @@ function geizhalsProductKeysFromUrl(url) {
   return { raw, normalized, slug, idLike };
 }
 
+// ── Persistent "already handled" cache for Geizhals URLs that resolved to an
+// existing product (Epey baseline or an existing Geizhals/cross-source record).
+// Such URLs never create a NEW row, so re-fetching them every run only burns
+// Cloudflare budget + time. We remember their URL keys locally so the pre-pass
+// drops them BEFORE the costly detail fetch. localStorage is per-machine, which
+// is fine: the scraper always runs on this one box (same as the checkpoint).
+const GZ_SKIP_CACHE_KEY = 'qorai_gz_dedup_skip_urls';
+const GZ_SKIP_CACHE_MAX = 60000;
+let _gzSkipCacheSet = null;
+let _gzSkipDirtyCount = 0;
+function _gzSkipCache() {
+  if (!_gzSkipCacheSet) {
+    try {
+      const arr = JSON.parse(localStorage.getItem(GZ_SKIP_CACHE_KEY) || '[]');
+      _gzSkipCacheSet = new Set(Array.isArray(arr) ? arr : []);
+    } catch { _gzSkipCacheSet = new Set(); }
+  }
+  return _gzSkipCacheSet;
+}
+function _flushGeizhalsSkipCache() {
+  try {
+    let arr = [..._gzSkipCache()];
+    if (arr.length > GZ_SKIP_CACHE_MAX) {
+      arr = arr.slice(arr.length - GZ_SKIP_CACHE_MAX);
+      _gzSkipCacheSet = new Set(arr);
+    }
+    localStorage.setItem(GZ_SKIP_CACHE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+function _rememberGeizhalsSkip(url) {
+  const keys = geizhalsProductKeysFromUrl(url);
+  const set = _gzSkipCache();
+  let added = false;
+  [keys.normalized, keys.raw, keys.slug, keys.idLike]
+    .filter(Boolean)
+    .forEach((k) => { if (!set.has(k)) { set.add(k); added = true; } });
+  // Persist in batches so we don't stringify a large array on every product.
+  if (added && (++_gzSkipDirtyCount % 25 === 0)) _flushGeizhalsSkipCache();
+}
+
 function isScrapedSourceRecord(record = {}) {
   const source = String(record.source || '').toLowerCase();
   const sourceUrl = String(record.sourceUrl || '').toLowerCase();
@@ -335,6 +375,20 @@ async function checkProxy() {
   if (el) el.innerHTML = '<span style="color:var(--red)">● Proxy: Offline</span>';
   if (card) card.style.display = '';
   return false;
+}
+
+// Pre-flight check for the local translate worker (port 8797). Geizhals specs
+// arrive in German and MUST be translated before save; if the worker is down
+// every product fails _assertCleanGermanEnglishPayload and the whole run is
+// burned with nothing saved. Gate the translating scrape entry points on this
+// so the user gets one clear message instead of a wall of skip errors.
+async function checkTranslateWorker() {
+  try {
+    const res = await fetch('http://127.0.0.1:8797/health', { signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function copyProxyCommand() {
@@ -3708,6 +3762,10 @@ function _saveCheckpoint(urlItems, nextIndex, categoryId, results) {
   } catch (e) {
     console.warn('[checkpoint] save failed:', e.message);
   }
+  // Persist the dedup-skip cache alongside the checkpoint so an aborted run
+  // (Cloudflare block, manual stop) still avoids re-fetching the duplicates it
+  // already resolved before the interruption.
+  _flushGeizhalsSkipCache();
 }
 function _clearCheckpoint() {
   try { localStorage.removeItem(_CHECKPOINT_KEY); } catch {}
@@ -3729,6 +3787,10 @@ async function resumeBulkScrape() {
   }
   if (scraperRunning) { toast('Scraper zaten çalışıyor', 'w'); return; }
   if (!(await checkProxy())) { toast('Önce proxy başlat', 'e'); return; }
+  if (!(await checkTranslateWorker())) {
+    toast('Çeviri worker (8797) kapalı — "npm run scraper:stack" ile başlat', 'e', 7000);
+    return;
+  }
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 3000;
   scraperRunning = true; scraperAbort = false;
   const btn = document.getElementById('btnBulkScrape'); if (btn) btn.style.display = 'none';
@@ -3793,7 +3855,13 @@ async function _loadExistingGeizhalsProducts(categoryId) {
         if (!prev || /epey/i.test(String(rec.source || rec.sourceUrl || ''))) out.byVariantGroup.set(vg, rec);
       }
     }
-    slog(`  preload OK: ${docs.length} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key`, 'success');
+    // Merge the persistent dedup-skip cache: Geizhals URLs that previously
+    // resolved to an existing product (Epey baseline or cross-source) and so
+    // should not be re-fetched. Keys go into both sets because the pre-pass
+    // filter checks urls AND slugs.
+    const skipCache = _gzSkipCache();
+    for (const k of skipCache) { out.urls.add(k); out.slugs.add(k); }
+    slog(`  preload OK: ${docs.length} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key (+${skipCache.size} skip-cache)`, 'success');
     return out;
   } catch (e) {
     slog(`  (existing-URL preload failed: ${e.message})`, 'warn');
@@ -3949,6 +4017,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         errorStreak = 0;
         challengeStreak = 0;
         recent.push('ok');
+        _rememberGeizhalsSkip(item.url); // don't re-fetch this Epey duplicate next run
         slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
         return;
       }
@@ -3957,6 +4026,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         errorStreak = 0;
         challengeStreak = 0;
         recent.push('ok');
+        _rememberGeizhalsSkip(item.url); // already have this Geizhals model — skip on future runs
         slog(`  ⏭ Geizhals model zaten var, tekrar kayıt açılmadı: ${product.name} (mevcut ${existingRec.id})`, 'info');
         return;
       }
@@ -4047,6 +4117,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
 
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
+  // Persist the dedup-skip cache so the duplicates skipped this run are dropped
+  // before the detail fetch next time (batched flushes may have left a tail).
+  _flushGeizhalsSkipCache();
+
   // Final checkpoint clear (success path)
   if (!scraperAbort) _clearCheckpoint();
   return results;
@@ -4129,6 +4203,10 @@ function triggerAITranslation() {
 async function startBulkScrape() {
   if (scraperRunning) { toast('Scraper already running', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (!(await checkTranslateWorker())) {
+    toast('Çeviri worker (8797) kapalı — "npm run scraper:stack" ile başlat, yoksa Almanca specler kaydedilemez', 'e', 7000);
+    return;
+  }
 
   // The bulk-scrape UI is the shared category checklist (same one Epey uses) —
   // there is no longer a brand/mode field, so Geizhals reads the checked
@@ -4223,6 +4301,10 @@ async function scrapeByUrl() {
   const inputVal = nameInput ? nameInput.value.trim() : '';
   if (!inputVal) { toast('Enter a product name or geizhals.eu URL', 'w'); return; }
   if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (!(await checkTranslateWorker())) {
+    toast('Çeviri worker (8797) kapalı — "npm run scraper:stack" ile başlat', 'e', 7000);
+    return;
+  }
 
   clearScraperLog();
 

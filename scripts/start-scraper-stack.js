@@ -189,8 +189,14 @@ function spawnDetached(cmd, args, title, stdoutFile, stderrFile, env = {}) {
     cwd: ROOT,
     env: { ...process.env, ...env },
     detached: true,
+    // windowsHide:true => CREATE_NO_WINDOW. Without it the detached worker still
+    // attaches to the launcher's console, so closing that window delivers a
+    // CTRL_CLOSE_EVENT and the (Fortran/MKL-backed) translate worker aborts with
+    // "forrtl: error (200): program aborting due to window-CLOSE event". With no
+    // console attached the worker truly runs in the background and survives the
+    // launcher window being closed. Output already goes to the log files below.
     stdio: ['ignore', out, err],
-    windowsHide: false,
+    windowsHide: true,
     shell: false,
   });
   child.unref();
