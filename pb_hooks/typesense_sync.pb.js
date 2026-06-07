@@ -7,7 +7,7 @@
 /// Qor AI admin web panel.
 
 const TS_URL        = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-const TS_KEY        = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+const TS_KEY        = '5wnpGrWLYeq8IKV9x96q80i1oDMvc4hjhq0HnnrWCSFB';
 const TS_COLLECTION = 'products';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -119,6 +119,7 @@ function buildTsDoc(record) {
     category:      record.get('category')     || '',
     subcategory:   record.get('subcategory')  || '',
     source:        record.get('source')       || '',
+    sourceUrl:     record.get('sourceUrl')    || '',
     imageUrl:      record.get('imageUrl') || record.get('imageURL') || '',
     imageURL:      record.get('imageURL') || record.get('imageUrl') || '',
     // The product gallery array MUST be carried into _raw — the app + website
@@ -146,8 +147,17 @@ function buildTsDoc(record) {
     lowestOfferUrl: record.get('lowestOfferUrl') || '',
     lowestOfferStore: record.get('lowestOfferStore') || '',
     offerCount:    parseInt(record.get('offerCount'), 10) || 0,
+    pricedOfferCount: parseInt(record.get('pricedOfferCount'), 10) || 0,
+    bestOfferId:   record.get('bestOfferId') || '',
+    bestOfferCheckedAt: record.get('bestOfferCheckedAt') || '',
+    bestOfferExpiresAt: record.get('bestOfferExpiresAt') || '',
     description:   record.get('description') || '',
     variantGroup:  record.get('variantGroup') || '',
+    variantCount:  parseInt(record.get('variantCount'), 10) || 0,
+    variantPrimary: record.get('variantPrimary'),
+    gtin:          record.get('gtin') || '',
+    mpn:           record.get('mpn') || '',
+    icecatId:      parseInt(record.get('icecatId'), 10) || 0,
     isActive:      record.get('isActive') !== false,
     // PocketBase uses 'created'/'updated'; ProductModel.fromMap reads
     // 'createdAt'/'lastUpdated' so add both so date fields work correctly.

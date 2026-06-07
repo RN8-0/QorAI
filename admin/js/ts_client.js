@@ -6,9 +6,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-// Admin-side API key (full read/write). Admin panel itself is
-// auth-protected, so embedding the key here is acceptable.
-const TS_KEY = '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+// Admin-side API key — scoped to documents:* on `products` only (NOT the
+// Typesense bootstrap key). Admin panel is basic-auth protected; even if this
+// leaks it cannot manage API keys or touch other collections.
+const TS_KEY = 'eyrKnk9DUJyTYqUD0nJFJvewhg27vAYu';
 const TS_COLLECTION = 'products';
 
 function _tsHeaders() {

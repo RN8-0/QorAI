@@ -16,7 +16,7 @@
 // ── /api/qhome — curated home feed ──────────────────────────────────
 routerAdd('GET', '/api/qhome', (e) => {
   const TS_URL = $os.getenv('QORAI_TS_URL') || 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-  const TS_KEY = $os.getenv('QORAI_TS_KEY') || '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+  const TS_KEY = $os.getenv('QORAI_TS_KEY') || 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
   const COL = 'products';
   const LF = 'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,price_segment,lowestPriceUSD,keySpecsText,filterTokens,screenSizeValue,batteryCapacityValue,weightValueKg';
   const lit = (v) => '`' + String(v).replace(/`/g, '') + '`';
@@ -81,7 +81,7 @@ routerAdd('GET', '/api/qhome', (e) => {
 // ── /api/qts — constrained search + category listing + facets ───────
 routerAdd('GET', '/api/qts', (e) => {
   const TS_URL = $os.getenv('QORAI_TS_URL') || 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-  const TS_KEY = $os.getenv('QORAI_TS_KEY') || '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+  const TS_KEY = $os.getenv('QORAI_TS_KEY') || 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
   const COL = 'products';
   const LF = 'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,price_segment,lowestPriceUSD,keySpecsText,filterTokens,screenSizeValue,batteryCapacityValue,weightValueKg';
   const MAX_PER_PAGE = 40;
@@ -170,7 +170,7 @@ routerAdd('GET', '/api/qts', (e) => {
 // ── /api/qproduct — single full product (with specs) ────────────────
 routerAdd('GET', '/api/qproduct', (e) => {
   const TS_URL = $os.getenv('QORAI_TS_URL') || 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-  const TS_KEY = $os.getenv('QORAI_TS_KEY') || '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+  const TS_KEY = $os.getenv('QORAI_TS_KEY') || 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
   try {
     const id = String(e.request.url.query().get('id') || '').trim();
     if (!id) return e.json(400, { error: 'id_required' });
@@ -188,7 +188,7 @@ routerAdd('GET', '/api/qproduct', (e) => {
 // ── /api/qsimilar — same category, nearest tech score ───────────────
 routerAdd('GET', '/api/qsimilar', (e) => {
   const TS_URL = $os.getenv('QORAI_TS_URL') || 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
-  const TS_KEY = $os.getenv('QORAI_TS_KEY') || '9l6gsRj1V9NuXAagocxHJbhmaMgQex9GP7NRFqtT';
+  const TS_KEY = $os.getenv('QORAI_TS_KEY') || 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
   const COL = 'products';
   const LF = 'id,name,imageUrl,category,subcategory,brand,slug,techScore,trendScore,price_segment,lowestPriceUSD,keySpecsText,filterTokens,screenSizeValue,batteryCapacityValue,weightValueKg';
   const lit = (v) => '`' + String(v).replace(/`/g, '') + '`';
