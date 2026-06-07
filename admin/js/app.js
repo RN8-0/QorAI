@@ -1773,6 +1773,7 @@ function renderProductsPage(){
     const vc=Number(p.variantCount)||0;
     const effectiveVariantCount=vc||Number(p._variantCount)||0;
     const variantBadge=(_groupVariants&&effectiveVariantCount>1)?`<div class="variant-badge" title="${effectiveVariantCount} varyant">×${effectiveVariantCount>99?'99+':effectiveVariantCount}</div>`:'';
+    const amzBadge=(Number(p.offerCount)>0)?`<div title="Amazon affiliate" style="position:absolute;left:6px;bottom:6px;background:rgba(18,22,30,.85);border:1px solid var(--border);border-radius:6px;padding:2px 5px;display:flex;align-items:center;line-height:0">${_amazonLogoSvg(12)}</div>`:'';
     const langOffer=_adminOfferForLang(p);
     const priceText=_adminFormatOfferPrice(langOffer);
     const offerUrl=safeUrl(langOffer?.url||'');
@@ -1783,7 +1784,7 @@ function renderProductsPage(){
         + (offerUrl?`<a href="${offerUrl}" target="_blank" rel="noopener sponsored" onclick="event.stopPropagation()" style="font-size:10px;font-weight:800;color:#fff;background:#0064d2;padding:1px 6px;border-radius:4px;text-decoration:none">${offerStore} ↗</a>`:'')
         + `</div>`
       : '';
-    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}</div><div class="product-info"><div class="product-brand">${brand}</div>${offerHtml}<div class="product-name">${name}</div><div class="product-meta"><span>${category}</span></div></div></div>`;
+    return`<div class="product-card${selectedIds.has(p.id)?' selected':''}" onclick="handleCardClick(event,'${id}')"><input type="checkbox" class="product-checkbox" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${id}')"><div style="position:relative">${image?`<img class="product-img" src="${image}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="product-img-ph" style="display:${image?'none':'flex'}">📱</div>${s>0?`<div class="score-badge" style="border-color:${sc};color:${sc}">${s}</div>`:''}${variantBadge}${amzBadge}</div><div class="product-info"><div class="product-brand">${brand}</div>${offerHtml}<div class="product-name">${name}</div><div class="product-meta"><span>${category}</span></div></div></div>`;
   }).join('');
   populateFiltersFromCurrentPage();
 
@@ -3110,28 +3111,86 @@ async function openProduct(id){
   const body=document.getElementById('modalBody');
   if(body)body.innerHTML='<div class="placeholder"><div class="spinner" style="margin:0 auto 8px"></div>Loading variants...</div>';
   document.getElementById('modalOverlay').style.display='flex';
+  // Amazon search links are price-less, so they never reach the product price
+  // rollup — pull live affiliate offers straight from the offers collection.
+  p._offers = await _adminFetchOffers(p.id).catch(()=>[]);
   const variants=await _adminFetchProductVariants(p);
   _renderProductModal(p,variants);
+}
+
+async function _adminFetchOffers(productId){
+  if(!productId)return[];
+  try{
+    const r=await pbGetList('offers',1,50,{
+      filter:`productId="${productId}"`,
+      fields:'id,store,network,country,url,affiliateUrl,price,priceUnknown,currency',
+      $autoCancel:false,
+    });
+    return Array.isArray(r?.items)?r.items:[];
+  }catch{ return []; }
+}
+
+// Inline Amazon wordmark + smile (admin ships no image assets). White text for
+// the dark admin theme; the smile + arrowhead use the Amazon orange.
+function _amazonLogoSvg(h=18){
+  return `<svg viewBox="0 0 92 24" height="${h}" style="vertical-align:middle;display:inline-block" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Amazon"><text x="2" y="15" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="16" fill="#fff">amazon</text><path d="M7 18 Q 44 27 80 18" stroke="#FF9900" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M80 18 l-5 -1 M80 18 l-2 4" stroke="#FF9900" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`;
 }
 
 // Single cheapest-offer row for the product modal: store logo + lowest price
 // + a "Satın Al" affiliate button. Built from the product's price rollup
 // (lowestPrice / lowestOfferStore / lowestOfferUrl) — no extra query.
 function _buildOfferRow(p){
+  let html='';
+  // Affiliate offers straight from the offers collection. Amazon search links
+  // carry no price (priceUnknown), so they only show here — never in the priced
+  // rollup row below. Localize the storefront to the modal language at click.
+  const offers=Array.isArray(p._offers)?p._offers:[];
+  const amazon=offers.find(o=>String(o.network||'').toLowerCase()==='amazon'||/amazon/i.test(o.store||''));
+  if(amazon){
+    const url=safeUrl(_adminLocalizeAmazon(amazon.affiliateUrl||amazon.url||'',_modalLang||'tr'));
+    if(url){
+      html+=`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">`
+        +_amazonLogoSvg(22)
+        +`<span style="font-size:11px;color:var(--text3)">affiliate link${amazon.country?` · ${escHtml(String(amazon.country))}`:''}</span>`
+        +`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#FF9900;color:#111;font-weight:800;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Amazon'da Gör ↗</a>`
+        +`</div>`;
+    }
+  }
+  // Priced rollup offer (Geizhals / Awin / Admitad with a real price).
   const offer=_adminOfferForLang(p,_modalLang||'tr');
-  if(!offer)return'';
-  const priceText=escHtml(_adminFormatOfferPrice(offer));
-  const store=offer.store||p.lowestOfferStore||'Affiliate';
-  const url=safeUrl(offer.url||p.lowestOfferUrl||'');
-  const logo=`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
-  const countryNote=offer.country?`<span style="font-size:11px;color:var(--text3)">(${escHtml(offer.country)})</span>`:'';
-  return`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">`
-    +logo
-    +`<span style="font-weight:800;color:#22c55e;font-size:22px">${priceText}</span>`
-    +countryNote
-    +`<span style="font-size:11px;color:var(--text3)">en ucuz fiyat</span>`
-    +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Satın Al ↗</a>`:'')
-    +`</div>`;
+  if(offer){
+    const priceText=escHtml(_adminFormatOfferPrice(offer));
+    const store=offer.store||p.lowestOfferStore||'Affiliate';
+    const url=safeUrl(offer.url||p.lowestOfferUrl||'');
+    const logo=`<span style="font-weight:800;font-size:15px">${escHtml(store)}</span>`;
+    const countryNote=offer.country?`<span style="font-size:11px;color:var(--text3)">(${escHtml(offer.country)})</span>`:'';
+    html+=`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">`
+      +logo
+      +`<span style="font-weight:800;color:#22c55e;font-size:22px">${priceText}</span>`
+      +countryNote
+      +`<span style="font-size:11px;color:var(--text3)">en ucuz fiyat</span>`
+      +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Satın Al ↗</a>`:'')
+      +`</div>`;
+  }
+  return html;
+}
+
+// Mirror of the website's localizeAmazonUrl: swap the storefront + tag to match
+// the modal language so admin previews land where real users do (tr→com.tr).
+function _adminLocalizeAmazon(url,lang){
+  const raw=safeUrl(url);
+  if(!raw)return raw;
+  try{
+    const u=new URL(raw);
+    if(!/(^|\.)amazon\./i.test(u.hostname))return raw;
+    const DOMAIN={US:'www.amazon.com',GB:'www.amazon.co.uk',DE:'www.amazon.de',FR:'www.amazon.fr',IT:'www.amazon.it',ES:'www.amazon.es',CA:'www.amazon.ca',TR:'www.amazon.com.tr'};
+    const TAG={TR:'qorai-21'};
+    const BY_LANG={tr:'TR',en:'US',de:'DE',fr:'FR',it:'IT',es:'ES',pt:'ES',ru:'DE'};
+    const m=BY_LANG[String(lang||'tr').slice(0,2).toLowerCase()]||'US';
+    if(DOMAIN[m])u.hostname=DOMAIN[m];
+    u.searchParams.set('tag',TAG[m]||'qorai-20');
+    return u.toString();
+  }catch{ return raw; }
 }
 
 function _renderProductModal(p,variants=[]){
