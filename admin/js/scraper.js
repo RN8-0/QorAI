@@ -267,6 +267,34 @@ function _dispatchSingleProductSaved(id, product) {
 
 if (typeof window !== 'undefined') window.qoraiDispatchSingleProductSaved = _dispatchSingleProductSaved;
 
+// ── Auto-attach Amazon affiliate offers to newly scraped products ──────────
+// Both single and bulk scrape fire 'qorai:product-saved'. Debounced so a bulk
+// run triggers ONE offer sync after the last save, not one per product.
+// missing-only = only products without an offer yet; noReindex = skip the
+// ~330s Typesense backfill (Amazon search links carry no price, so they never
+// move lowestPriceUSD). Silent + best-effort: if the proxy is down or a sync
+// is already running (409), it just skips.
+let _autoOfferTimer = null;
+async function _runAutoAmazonOffers() {
+  try {
+    if (typeof checkProxy === 'function' && !(await checkProxy())) return;
+    const r = await fetch(`${PROXY_URL}/offers/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connector: 'amazon', missingOnly: true, noReindex: true }),
+    });
+    if (r.ok && typeof slog === 'function') {
+      slog('💰 Yeni ürünlere Amazon affiliate linki ekleniyor (otomatik)…', 'info');
+    }
+  } catch (_) { /* proxy yoksa / hata olursa sessizce atla */ }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('qorai:product-saved', () => {
+    clearTimeout(_autoOfferTimer);
+    _autoOfferTimer = setTimeout(_runAutoAmazonOffers, 8000);
+  });
+}
+
 function updateProgress(current, total, label) {
   const pg = document.getElementById('scraperProgress');
   if (!pg) return;

@@ -234,7 +234,9 @@ async function main() {
   // Products page (and any Typesense-backed listing on the website) sees
   // the "Fiyatlı" filter return the right rows immediately. Without this
   // step the index lagged PB by hours/days and the dropdown looked broken.
-  if (offersWritten > 0) {
+  // Batched runners set NO_REINDEX=1 so the expensive full backfill (scans all
+  // ~106k products, ~330s) runs once at the end instead of after every batch.
+  if (offersWritten > 0 && !process.env.NO_REINDEX) {
     try {
       const { spawnSync } = require('child_process');
       log(`\n  Reindexing Typesense lowestPriceUSD…`);

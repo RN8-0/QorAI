@@ -693,6 +693,9 @@
   width: 100%; margin-top: 12px;
 }
 .pd-store2-name { font-weight: 700; opacity: .85; }
+.pd-store-multi { display: flex; gap: 10px; margin-top: 12px; }
+.pd-store-multi .pd-store2 { width: auto; flex: 1; margin-top: 0; }
+@media (max-width: 420px) { .pd-store-multi { flex-direction: column; } .pd-store-multi .pd-store2 { width: 100%; } }
 .pd-aff2 {
   margin-top: 10px; padding: 10px 12px;
   border: 1px solid var(--border); border-radius: var(--radius-sm);

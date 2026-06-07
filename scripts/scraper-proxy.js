@@ -1876,7 +1876,16 @@ const server = http.createServer(async (req, res) => {
         if (concurrency > 0) args.push(`--concurrency=${Math.min(12, Math.max(1, concurrency))}`);
         const { spawn } = require('child_process');
         offersLog = '';
-        offersProc = spawn('node', args, { cwd: rootDir, env: process.env });
+        const offersEnv = { ...process.env };
+        // Auto-triggered Amazon syncs pass noReindex to skip the ~330s Typesense
+        // backfill (search links are price-less, lowestPriceUSD never changes).
+        if (opts.noReindex) offersEnv.NO_REINDEX = '1';
+        // dns-patch: the admin machine's router blocks external DNS, so the
+        // spawned sync_offers can't resolve the PocketBase sslip.io host without
+        // it. The patch only overrides those hostnames; TLS verification stays on.
+        const dnsPatch = path.join(__dirname, 'dns-patch.js');
+        const spawnArgs = fs.existsSync(dnsPatch) ? ['--require', dnsPatch, ...args] : args;
+        offersProc = spawn('node', spawnArgs, { cwd: rootDir, env: offersEnv });
         offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
         offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
         offersProc.on('exit', code => { offersLog += `\n[offers] exited with code ${code}\n`; });

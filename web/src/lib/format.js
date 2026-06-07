@@ -165,13 +165,24 @@ export function safeExternalUrl(url) {
 // the same tag tracks on every domain. Languages outside OneLink's coverage
 // (tr, ru, pt) fall back to the nearest in-coverage storefront that ships
 // internationally, since amazon.com.tr is not part of OneLink.
-const AMAZON_ONELINK_DOMAIN = {
+const AMAZON_DOMAIN = {
   US: 'www.amazon.com', GB: 'www.amazon.co.uk', DE: 'www.amazon.de',
-  FR: 'www.amazon.fr', IT: 'www.amazon.it', ES: 'www.amazon.es', CA: 'www.amazon.ca',
+  FR: 'www.amazon.fr', IT: 'www.amazon.it', ES: 'www.amazon.es',
+  CA: 'www.amazon.ca', TR: 'www.amazon.com.tr',
 };
+const AMAZON_FLAG = { US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', CA: '🇨🇦', TR: '🇹🇷' };
+// Tag is per-program: amazon.com.tr is its own TR Associates program (qorai-21);
+// every OneLink storefront rides the single qorai-20 store ID.
+const AMAZON_TAG_BY_MARKET = { TR: 'qorai-21' };
+const AMAZON_DEFAULT_TAG = 'qorai-20';
+// Single-storefront redirect target per language (used by /go).
 const AMAZON_MARKET_BY_LANG = {
   tr: 'DE', en: 'US', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
 };
+// Languages that surface MULTIPLE storefront buttons on the product page.
+// Turkish gets both the local TR store (TL, domestic shipping) and DE (wider
+// GTIN coverage, ships intl). Other languages use the single redirect below.
+const AMAZON_STOREFRONTS_BY_LANG = { tr: ['TR', 'DE'] };
 
 export function localizeAmazonUrl(url, lang = 'en') {
   const raw = safeExternalUrl(url);
@@ -180,12 +191,33 @@ export function localizeAmazonUrl(url, lang = 'en') {
     const u = new URL(raw);
     if (!/(^|\.)amazon\./i.test(u.hostname)) return raw;
     const code = String(lang || 'en').slice(0, 2).toLowerCase();
-    const host = AMAZON_ONELINK_DOMAIN[AMAZON_MARKET_BY_LANG[code] || 'US'];
-    if (host) u.hostname = host;
+    const market = AMAZON_MARKET_BY_LANG[code] || 'US';
+    if (AMAZON_DOMAIN[market]) u.hostname = AMAZON_DOMAIN[market];
+    u.searchParams.set('tag', AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG);
     return u.toString();
   } catch {
     return raw;
   }
+}
+
+// Returns multiple storefront targets for languages configured with more than
+// one (currently Turkish → [TR, DE]). Returns [] for single-storefront
+// languages so callers fall back to the localizeAmazonUrl redirect.
+export function amazonStorefrontsForLang(url, lang = 'en') {
+  const raw = safeExternalUrl(url);
+  if (!raw) return [];
+  let u;
+  try { u = new URL(raw); } catch { return []; }
+  if (!/(^|\.)amazon\./i.test(u.hostname)) return [];
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const markets = AMAZON_STOREFRONTS_BY_LANG[code];
+  if (!markets || markets.length < 2) return [];
+  return markets.map((m) => {
+    const nu = new URL(raw);
+    if (AMAZON_DOMAIN[m]) nu.hostname = AMAZON_DOMAIN[m];
+    nu.searchParams.set('tag', AMAZON_TAG_BY_MARKET[m] || AMAZON_DEFAULT_TAG);
+    return { market: m, flag: AMAZON_FLAG[m] || '', url: nu.toString() };
+  });
 }
 
 function rollupPriceIsFresh(product) {

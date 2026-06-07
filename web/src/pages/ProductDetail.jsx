@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
@@ -9,7 +9,7 @@ import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { amazonStorefrontsForLang, catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
@@ -21,7 +21,7 @@ import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
-import { productPath } from '../lib/routes';
+import { extractProductId, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import './ProductDetail.css';
 
@@ -256,61 +256,171 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
 }
 
 
+function dateOnly(value) {
+  const n = Date.parse(value || '');
+  if (!Number.isFinite(n)) return '';
+  return new Date(n).toISOString().slice(0, 10);
+}
+
+function seoImageUrls(product) {
+  const urls = productImageList(product, 'full')
+    .filter((src) => /^https?:\/\//i.test(src))
+    .slice(0, 6);
+  return urls.length ? urls : [DEFAULT_OG_IMAGE];
+}
+
+function productPropertyValues(product, lang) {
+  const out = [];
+  const seen = new Set();
+  const add = (name, value) => {
+    const n = String(name || '').replace(/\s+/g, ' ').trim();
+    const v = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!n || !v || seen.has(n.toLowerCase())) return;
+    seen.add(n.toLowerCase());
+    out.push({ '@type': 'PropertyValue', name: n, value: v });
+  };
+
+  const score = Number(product?.techScore) || 0;
+  if (score > 0) add('Qor AI Tech Score', `${Math.round(score)}/100`);
+
+  seoSpecEntries(product).slice(0, 8).forEach(([name, value]) => {
+    add(localizedSpecLabel(name, lang), localizedSpecValue(String(value || ''), lang));
+  });
+
+  return out.slice(0, 10);
+}
+
+function seoSpecEntries(product) {
+  const entries = product?.keySpecs && typeof product.keySpecs === 'object'
+    ? Object.entries(product.keySpecs)
+    : [];
+  return entries.filter(([name, value]) => {
+    const label = String(name || '').toLowerCase();
+    const val = String(value || '').toLowerCase();
+    if (!label || !val || val.length > 50) return false;
+    if (/qor|score|puan|rank|tier|internal|anchor|engine/.test(label)) return false;
+    if (/(battery|batarya|pil|akku)/.test(label) && /\b(gb|tb|usb|hdmi|displayport)\b/.test(val)) return false;
+    if (/(storage|depolama|speicher)/.test(label) && /\bmah\b/.test(val)) return false;
+    if (/(screen|display|ekran|bildschirm)/.test(label) && /\b(gb|tb|mah|usb)\b/.test(val)) return false;
+    return true;
+  });
+}
+
+function productOffer(product, url) {
+  const validUntil = dateOnly(product?.bestOfferExpiresAt);
+  const fresh = validUntil && Date.parse(`${validUntil}T23:59:59.999Z`) > Date.now();
+  if (!fresh) return null;
+
+  const localPrice = Number(product?.lowestPrice) || 0;
+  const localCurrency = String(product?.lowestPriceCurrency || '').toUpperCase();
+  const usdPrice = Number(product?.lowestPriceUSD) || 0;
+  const price = localPrice > 0 && /^[A-Z]{3}$/.test(localCurrency) ? localPrice : usdPrice;
+  const currency = localPrice > 0 && /^[A-Z]{3}$/.test(localCurrency) ? localCurrency : 'USD';
+  if (!(price > 0)) return null;
+
+  return {
+    '@type': 'Offer',
+    url,
+    price: Number(price.toFixed(2)),
+    priceCurrency: currency,
+    priceValidUntil: validUntil,
+    availability: 'https://schema.org/InStock',
+    itemCondition: 'https://schema.org/NewCondition',
+  };
+}
+
+function productIdentifiers(product) {
+  const ids = { sku: product?.id };
+  const gtin = String(product?.gtin || '').replace(/\s+/g, '').trim();
+  const mpn = String(product?.mpn || '').trim();
+  if (gtin) ids.gtin = gtin;
+  if (mpn) ids.mpn = mpn;
+  return ids;
+}
+
+function buildLoadingProductSeo(id, path) {
+  return {
+    title: 'Ürün yükleniyor — Qor AI',
+    description: 'Qor AI ürün detay sayfası hazırlanıyor.',
+    path: path || productPath(id),
+    noindex: !id,
+  };
+}
+
 // Builds title / description / Open Graph + Product & Breadcrumb JSON-LD.
-function buildProductSeo(p, t) {
+function buildProductSeo(p, t, lang) {
   if (!p) {
-    return { title: `${t('pd.notFound')} · Qor AI`, noindex: true };
+    return { title: `${t('pd.notFound')} — Qor AI`, description: t('pd.notFoundDesc'), noindex: true };
   }
   const meta = catMeta(p.category);
-  const keySpecs = p.keySpecs && typeof p.keySpecs === 'object'
-    ? Object.entries(p.keySpecs).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ')
-    : '';
+  const name = localizedProductName(p, lang);
+  const category = categoryLabel(p.category, lang);
+  const keySpecs = seoSpecEntries(p).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ');
   const score = Number(p.techScore) || 0;
-  const title = `${p.name} · ${meta.label} — Qor AI`;
+  const title = truncate(`${name} özellikleri ve karşılaştırma — Qor AI`, 68);
   const description = truncate(
     p.description
-    || `${p.name}: ${p.brand ? `${p.brand}, ` : ''}${meta.label}. `
+    || `${name}: ${p.brand ? `${p.brand}, ` : ''}${category}. `
        + `${score > 0 ? `Qor AI teknik skoru ${score}/100. ` : ''}`
        + `${keySpecs ? `${keySpecs}. ` : ''}`
        + 'Özellikleri incele, karşılaştır ve karar ver.',
   );
-  const image = p.imageUrl || DEFAULT_OG_IMAGE;
-  const url = `${SITE_URL}${productPath(p.id)}`;
-  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
-  const price = priceFresh ? Number(p.lowestPriceUSD) || 0 : 0;
+  const images = seoImageUrls(p);
+  const image = images[0] || DEFAULT_OG_IMAGE;
+  const path = productPath(p);
+  const url = `${SITE_URL}${path}`;
+  const categoryUrl = p.category
+    ? `${SITE_URL}/category?cat=${encodeURIComponent(String(p.category).toLowerCase())}`
+    : `${SITE_URL}/category`;
+  const offer = productOffer(p, url);
+  const properties = productPropertyValues(p, lang);
 
   const product = {
     '@type': 'Product',
-    name: p.name,
-    image,
+    '@id': `${url}#product`,
+    ...productIdentifiers(p),
+    name,
+    image: images,
     description,
+    url,
+    mainEntityOfPage: { '@id': `${url}#webpage` },
     ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
-    ...(p.category ? { category: meta.label } : {}),
-    ...(price > 0 ? {
-      offers: {
-        '@type': 'Offer', price: price.toFixed(2),
-        priceCurrency: 'USD', url, availability: 'https://schema.org/InStock',
-      },
-    } : {}),
+    ...(p.category ? { category } : {}),
+    ...(properties.length ? { additionalProperty: properties } : {}),
+    ...(offer ? { offers: offer } : {}),
   };
   const breadcrumb = {
     '@type': 'BreadcrumbList',
+    '@id': `${url}#breadcrumb`,
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE_URL}/` },
-      { '@type': 'ListItem', position: 2, name: meta.label, item: `${SITE_URL}/` },
-      { '@type': 'ListItem', position: 3, name: p.name, item: url },
+      { '@type': 'ListItem', position: 2, name: category || meta.label, item: categoryUrl },
+      { '@type': 'ListItem', position: 3, name, item: url },
     ],
   };
+  const webPage = {
+    '@type': 'WebPage',
+    '@id': `${url}#webpage`,
+    url,
+    name: title,
+    description,
+    inLanguage: lang || 'tr',
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    primaryImageOfPage: { '@type': 'ImageObject', url: image },
+    breadcrumb: { '@id': `${url}#breadcrumb` },
+    mainEntity: { '@id': `${url}#product` },
+  };
   return {
-    title, description, image, path: productPath(p.id), type: 'product',
-    jsonLd: { '@context': 'https://schema.org', '@graph': [product, breadcrumb] },
+    title, description, image, imageAlt: name, path, type: 'product',
+    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, product, breadcrumb] },
   };
 }
 
 export default function ProductDetail() {
   const params = useParams();
   const [searchParams] = useSearchParams();
-  const id = params.id || searchParams.get('id') || '';
+  const loc = useLocation();
+  const id = extractProductId(params.id || searchParams.get('id') || '');
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { ids, has, add, remove } = useCompare();
@@ -359,6 +469,15 @@ export default function ProductDetail() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [id]);
+
+  useEffect(() => {
+    if (!p?.id) return;
+    const canonicalPath = productPath(p);
+    const currentPath = `${loc.pathname}${loc.search}`;
+    if (canonicalPath !== currentPath && loc.pathname.startsWith('/product')) {
+      window.history.replaceState(window.history.state, '', canonicalPath);
+    }
+  }, [loc.pathname, loc.search, p]);
 
   useEffect(() => {
     let live = true;
@@ -428,7 +547,9 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [ids.join(','), p?.id]);
 
-  useSeo(buildProductSeo(p, t));
+  useSeo(loading
+    ? buildLoadingProductSeo(id, `${loc.pathname}${loc.search}`)
+    : buildProductSeo(p, t, lang));
 
   if (loading) {
     return (
@@ -642,22 +763,41 @@ export default function ProductDetail() {
 
             {/* Affiliate store link — prices are intentionally not shown; the
                 affiliate link itself stays so users can still jump to the store. */}
-            {offerUrl && (
-              <>
-                <a className="btn btn-buy pd-store2" href={offerUrl} target="_blank" rel="sponsored noopener">
-                  🛒 {L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
-                  {offer?.store ? <span className="pd-store2-name">· {offer.store}</span> : null}
-                </a>
-                <p className="pd-aff2">
-                  {L(
-                    'Some links may be affiliate links — this never changes your price or affects Qor AI scores.',
-                    'Bazı bağlantılar affiliate olabilir — ödeyeceğin fiyatı değiştirmez, Qor AI puanlarını etkilemez.',
-                    'Einige Links können Affiliate-Links sein — ohne Einfluss auf Preis oder Qor AI Bewertung.',
-                  )}{' '}
-                  <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
-                </p>
-              </>
-            )}
+            {offerUrl && (() => {
+              // Turkish visitors see two Amazon storefronts (TR for TL/domestic
+              // shipping, DE for wider GTIN coverage); every other language uses
+              // the single language-localized redirect.
+              const stores = offer?.network === 'amazon'
+                ? amazonStorefrontsForLang(offer.url, lang)
+                : [];
+              return (
+                <>
+                  {stores.length > 1 ? (
+                    <div className="pd-store-multi">
+                      {stores.map((s) => (
+                        <a key={s.market} className="btn btn-buy pd-store2"
+                          href={s.url} target="_blank" rel="sponsored noopener">
+                          🛒 {s.flag} Amazon {s.market}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <a className="btn btn-buy pd-store2" href={offerUrl} target="_blank" rel="sponsored noopener">
+                      🛒 {L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
+                      {offer?.store ? <span className="pd-store2-name">· {offer.store}</span> : null}
+                    </a>
+                  )}
+                  <p className="pd-aff2">
+                    {L(
+                      'Some links may be affiliate links — this never changes your price or affects Qor AI scores.',
+                      'Bazı bağlantılar affiliate olabilir — ödeyeceğin fiyatı değiştirmez, Qor AI puanlarını etkilemez.',
+                      'Einige Links können Affiliate-Links sein — ohne Einfluss auf Preis oder Qor AI Bewertung.',
+                    )}{' '}
+                    <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
+                  </p>
+                </>
+              );
+            })()}
 
           </div>
           <div className="pd-detail-pane">
