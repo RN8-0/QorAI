@@ -13,6 +13,7 @@ import { amazonStorefrontsForLang, catMeta, categoryLabel, keySpecChips } from '
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
+import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
 import Reviews from '../components/Reviews.jsx';
@@ -736,68 +737,67 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <div className="pd-compare2">
-              <button type="button"
-                className={'pd-compare-plus' + (inCompare ? ' on' : '')}
-                onClick={toggleComparePool}
-                aria-label={inCompare ? t('pd.inList') : t('pd.addCompare')}
-                title={inCompare ? t('pd.inList') : t('pd.addCompare')}>
-                {inCompare ? '✓' : '+'}
-              </button>
-              <div className="pd-compare-copy">
-                <b>{L('Compare pool', 'Karşılaştırma havuzu', 'Vergleichspool')}</b>
-                <span>
-                  {compareCount}/{COMPARE_MAX} · {compareCategory
-                    ? t('cmp.sameCategoryHint', { cat: categoryLabel(compareCategory, lang) })
-                    : L('Same category products only', 'Sadece aynı kategorideki ürünler', 'Nur Produkte derselben Kategorie')}
-                </span>
-                {compareMsg && <small>{compareMsg}</small>}
-              </div>
-              <Link to="/compare"
-                className={'pd-compare-open' + (canOpenCompare ? '' : ' disabled')}
-                onClick={(e) => { if (!canOpenCompare) e.preventDefault(); }}
-                aria-disabled={!canOpenCompare}>
-                {L('Compare', 'Karşılaştır', 'Vergleichen')}
-              </Link>
-            </div>
-
-            {/* Affiliate store link — prices are intentionally not shown; the
-                affiliate link itself stays so users can still jump to the store. */}
+            {/* Modern buy card — Amazon logo + storefront button(s). Turkish
+                visitors get two storefronts (TR for TL/domestic shipping, DE for
+                wider GTIN coverage); other languages get the single localized
+                redirect. Prices are intentionally not shown for search links. */}
             {offerUrl && (() => {
-              // Turkish visitors see two Amazon storefronts (TR for TL/domestic
-              // shipping, DE for wider GTIN coverage); every other language uses
-              // the single language-localized redirect.
-              const stores = offer?.network === 'amazon'
-                ? amazonStorefrontsForLang(offer.url, lang)
-                : [];
+              const isAmazon = offer?.network === 'amazon';
+              const stores = isAmazon ? amazonStorefrontsForLang(offer.url, lang) : [];
               return (
-                <>
-                  {stores.length > 1 ? (
-                    <div className="pd-store-multi">
-                      {stores.map((s) => (
-                        <a key={s.market} className="btn btn-buy pd-store2"
-                          href={s.url} target="_blank" rel="sponsored noopener">
-                          🛒 {s.flag} Amazon {s.market}
+                <div className={'pd-buy' + (isAmazon ? ' pd-buy-amazon' : '')}>
+                  <div className="pd-buy-top">
+                    {isAmazon
+                      ? <AmazonLogo height={24} />
+                      : <span className="pd-buy-store">{offer?.store || L('Store', 'Mağaza', 'Shop')}</span>}
+                    <span className="pd-buy-tag">
+                      {isAmazon
+                        ? L('Buy on Amazon', 'Amazon’da satın al', 'Bei Amazon kaufen')
+                        : L('Go to store', 'Mağazaya git', 'Zum Shop')}
+                    </span>
+                  </div>
+                  <div className="pd-buy-actions">
+                    {stores.length > 1 ? (
+                      stores.map((s) => (
+                        <a key={s.market} className="pd-buy-btn" href={s.url}
+                          target="_blank" rel="sponsored noopener">
+                          <span className="pd-buy-flag">{s.flag}</span>
+                          Amazon {s.market}
+                          <span className="pd-buy-arrow">↗</span>
                         </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <a className="btn btn-buy pd-store2" href={offerUrl} target="_blank" rel="sponsored noopener">
-                      🛒 {L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
-                      {offer?.store ? <span className="pd-store2-name">· {offer.store}</span> : null}
-                    </a>
-                  )}
-                  <p className="pd-aff2">
+                      ))
+                    ) : (
+                      <a className="pd-buy-btn" href={offerUrl} target="_blank" rel="sponsored noopener">
+                        🛒 {isAmazon
+                          ? L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')
+                          : L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
+                        <span className="pd-buy-arrow">↗</span>
+                      </a>
+                    )}
+                  </div>
+                  <p className="pd-buy-note">
                     {L(
-                      'Some links may be affiliate links — this never changes your price or affects Qor AI scores.',
-                      'Bazı bağlantılar affiliate olabilir — ödeyeceğin fiyatı değiştirmez, Qor AI puanlarını etkilemez.',
-                      'Einige Links können Affiliate-Links sein — ohne Einfluss auf Preis oder Qor AI Bewertung.',
+                      'Affiliate link — your price never changes and Qor AI scores stay independent.',
+                      'Affiliate bağlantı — ödeyeceğin fiyat değişmez, Qor AI puanları bağımsız kalır.',
+                      'Affiliate-Link — dein Preis ändert sich nicht, Qor AI Bewertungen bleiben unabhängig.',
                     )}{' '}
                     <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
                   </p>
-                </>
+                </div>
               );
             })()}
+
+            {/* Add-to-compare toggle. The pool counter + "Compare" CTA now live
+                in the header; here we only add/remove the current product. */}
+            <button type="button"
+              className={'pd-compare-add' + (inCompare ? ' on' : '')}
+              onClick={toggleComparePool}>
+              <span className="pd-compare-add-ic">{inCompare ? '✓' : '+'}</span>
+              {inCompare
+                ? L('In compare list', 'Karşılaştırmada', 'Im Vergleich')
+                : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich hinzufügen')}
+            </button>
+            {compareMsg && <small className="pd-compare-msg">{compareMsg}</small>}
 
           </div>
           <div className="pd-detail-pane">

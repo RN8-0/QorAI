@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 // survives navigation and is shared across the detail / compare pages.
 
 const KEY = 'qor-compare';
-export const COMPARE_MAX = 4;
+// No hard cap on the compare pool — users can stack as many same-category
+// products as they like. Kept exported (large value) for any legacy callers
+// that still read a max.
+export const COMPARE_MAX = 999;
 const EVT = 'qor-compare-change';
 
 function read() {

@@ -128,6 +128,28 @@
 .hd-icon:hover { border-color: var(--border2); background: var(--bg4); }
 .hd-signin { padding: 9px 18px; }
 
+/* Compare pool indicator (right side of the header). Shows a live count and,
+   once 2+ products are queued, expands into a "Compare" call-to-action. */
+.hd-compare {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; margin-right: 2px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; font-weight: 800;
+  text-decoration: none; transition: background .15s, border-color .15s, color .15s;
+}
+.hd-compare:hover { color: var(--text); border-color: var(--accent-ring); }
+.hd-compare-n {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--text3); color: var(--surface); font-size: 11px; font-weight: 900;
+}
+.hd-compare.ready {
+  background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent);
+}
+.hd-compare.ready .hd-compare-n { background: var(--accent); color: #fff; }
+.hd-compare-txt { font-size: 13px; font-weight: 800; }
+@media (max-width: 560px) { .hd-compare-txt { display: none; } }
+
 .hd-user { position: relative; display: flex; align-items: center; gap: 8px; }
 .hd-coins {
   display: flex; align-items: center; gap: 5px;

@@ -116,7 +116,7 @@ export default function Compare() {
   const guardAiAccess = useAiAccess(lang);
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
-    description: t('cmp.subtitle', { max: COMPARE_MAX }),
+    description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.'),
     path: '/compare',
   });
   const { ids, remove, clear, add } = useCompare();
@@ -292,7 +292,7 @@ export default function Compare() {
       <div className="cmp-hero">
         <div className="container">
           <h1>{t('cmp.title')}</h1>
-          <p>{t('cmp.subtitle', { max: COMPARE_MAX })}</p>
+          <p>{L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.')}</p>
         </div>
       </div>
 
@@ -373,11 +373,11 @@ export default function Compare() {
                     {isBest && products.length > 1 && (
                       <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
                     )}
-                    <Link to={productPath(p.id)} className="img-tile cmp-card-img">
+                    <Link to={productPath(p)} className="img-tile cmp-card-img">
                       <ProductImg src={p.imageUrl} alt={p.name} size="card" />
                     </Link>
                     {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
-                    <Link to={productPath(p.id)} className="cmp-card-name">{p.name}</Link>
+                    <Link to={productPath(p)} className="cmp-card-name">{p.name}</Link>
                     <div className="cmp-card-cat">{m.icon} {categoryLabel(p.category, lang)}</div>
                     <div className="cmp-rings">
                       {showMatchScore && match > 0 && (
@@ -423,7 +423,7 @@ export default function Compare() {
                         <th className="cmp-th-spec">{t('cmp.specCol')}</th>
                         {slots.map((p) => (
                           <th key={p.id} className="cmp-th-prod cmp-th-compact">
-                            <Link to={productPath(p.id)} className="cmp-th-name">{p.name}</Link>
+                            <Link to={productPath(p)} className="cmp-th-name">{p.name}</Link>
                           </th>
                         ))}
                       </tr>
@@ -473,7 +473,7 @@ export default function Compare() {
                     const offerUrl = offer?.url || '';
                     return (
                       <div className="card pad cmp-price-card" key={p.id}>
-                        <Link to={productPath(p.id)} className="cmp-price-name">{p.name}</Link>
+                        <Link to={productPath(p)} className="cmp-price-name">{p.name}</Link>
                         {price > 0
                           ? <div className="cmp-price-amt">{formatOffer(offer, lang) || `$${price.toLocaleString(lang)}`}</div>
                           : <div className="cmp-price-none">{L('No price yet', 'Henüz fiyat yok', 'Noch kein Preis')}</div>}
@@ -541,7 +541,7 @@ export default function Compare() {
                 <div className="cmp-reviews-grid fade-up">
                   {slots.map((p) => (
                     <div className="card pad cmp-review-card" key={p.id}>
-                      <Link to={productPath(p.id)} className="cmp-review-title">{p.name}</Link>
+                      <Link to={productPath(p)} className="cmp-review-title">{p.name}</Link>
                       <Reviews productId={p.id} />
                     </div>
                   ))}

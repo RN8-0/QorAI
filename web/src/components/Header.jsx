@@ -6,6 +6,7 @@ import { premiumStatus } from '../lib/premium';
 import { formatQorCoins } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
+import { useCompare } from '../lib/compare';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 
@@ -26,6 +27,7 @@ export default function Header() {
   const { user, openAuth, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const { t, lang } = useI18n();
+  const { ids: compareIds } = useCompare();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -109,6 +111,22 @@ export default function Header() {
           )}
 
           <div className="grow" />
+
+          {compareIds.length > 0 && (
+            <Link to="/compare"
+              className={'hd-compare' + (compareIds.length >= 2 ? ' ready' : '')}
+              title={L('Compare', 'Karşılaştır', 'Vergleichen')}
+              aria-label={L('Compare', 'Karşılaştır', 'Vergleichen')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="7" height="16" rx="1.4" /><rect x="14" y="4" width="7" height="16" rx="1.4" />
+              </svg>
+              <span className="hd-compare-n">{compareIds.length}</span>
+              {compareIds.length >= 2 && (
+                <span className="hd-compare-txt">{L('Compare', 'Karşılaştır', 'Vergleichen')}</span>
+              )}
+            </Link>
+          )}
+
           <button className="iconbtn" onClick={toggle} aria-label={t('header.theme')}>
             {theme === 'dark'
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
