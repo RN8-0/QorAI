@@ -1315,40 +1315,97 @@ function _looksLikePassThroughDuringLoad(srcKey, storedValue) {
   return false;
 }
 
+// Reserved meta keys that may live alongside term entries in the doc value
+// (written by wipeDictionary's re-create). They must never be treated as terms.
+const _DE_DICT_META_KEYS = new Set(['sharded', 'totalterms', 'updatedat', 'manifestkey', 'totalshards', 'terms', 'batchid', 'index', 'total']);
+
+let _deDictLoadPromise = null;
 async function _loadDeDict() {
   if (_deDictLoaded) return;
-  try {
-    const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
-    if (doc.exists) {
-      const data = typeof doc.data === 'function' ? doc.data() : doc;
-      const stored = data?.value || data || {};
-      if (typeof stored === 'object' && !Array.isArray(stored)) {
-        // Filter stale pass-through entries written by the old narrow
-        // _localTranslationLooksUseful. They make _deDictLookup return
-        // German text for English/Turkish/etc.
-        for (const [rawKey, rawEntry] of Object.entries(stored)) {
-          if (!rawEntry || typeof rawEntry !== 'object') continue;
-          const cleaned = {};
-          for (const [lang, value] of Object.entries(rawEntry)) {
-            if (typeof value !== 'string' || !value.trim()) continue;
-            const trimmed = value.trim();
-            if (lang !== 'de' && _looksLikePassThroughDuringLoad(rawKey, trimmed)) continue;
-            cleaned[lang] = trimmed;
+  if (_deDictLoadPromise) return _deDictLoadPromise;
+  _deDictLoadPromise = (async () => {
+    let lastErr = null;
+    let parsedOk = false;
+    // Retry the single-doc fetch. The previous version swallowed a cold-start
+    // failure and then set _deDictLoaded=true with an EMPTY cache — that locked
+    // "DE 0 terms" in for the whole session even though the doc holds 253 terms.
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
+        if (doc.exists) {
+          const data = typeof doc.data === 'function' ? doc.data() : doc;
+          const stored = data?.value || data || {};
+          if (typeof stored === 'object' && !Array.isArray(stored)) {
+            // The normal save writes a FLAT map { germanText: { en, tr } }.
+            // A wipe re-creates the doc with a { terms: {} } wrapper instead,
+            // so unwrap that shape if present.
+            const termsRoot = (stored.terms && typeof stored.terms === 'object' && !Array.isArray(stored.terms))
+              ? stored.terms
+              : stored;
+            // Filter stale pass-through entries written by the old narrow
+            // _localTranslationLooksUseful. They make _deDictLookup return
+            // German text for English/Turkish/etc.
+            for (const [rawKey, rawEntry] of Object.entries(termsRoot)) {
+              if (_DE_DICT_META_KEYS.has(String(rawKey).toLowerCase())) continue;
+              if (!rawEntry || typeof rawEntry !== 'object') continue;
+              const cleaned = {};
+              for (const [lang, value] of Object.entries(rawEntry)) {
+                if (typeof value !== 'string' || !value.trim()) continue;
+                const trimmed = value.trim();
+                if (lang !== 'de' && _looksLikePassThroughDuringLoad(rawKey, trimmed)) continue;
+                cleaned[lang] = trimmed;
+              }
+              if (Object.keys(cleaned).length) _deDictCache[String(rawKey).toLowerCase().trim()] = cleaned;
+            }
           }
-          if (Object.keys(cleaned).length) _deDictCache[String(rawKey).toLowerCase().trim()] = cleaned;
         }
+        parsedOk = true;
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`[de-dict] load attempt ${attempt} failed: ${e.message || e}`);
+        await new Promise((r) => setTimeout(r, attempt * 800));
       }
     }
-  } catch (e) {
-    console.warn('[de-dict] load failed:', e.message);
+    if (!parsedOk && lastErr) {
+      // Do NOT mark loaded — a transient failure must not lock 0 in; the next
+      // caller retries instead of showing an empty dictionary.
+      throw new Error(`de dictionary load failed: ${lastErr.message || lastErr}`);
+    }
+    _deDictLoaded = true;
+  })();
+  try {
+    await _deDictLoadPromise;
+  } finally {
+    _deDictLoadPromise = null;
   }
-  _deDictLoaded = true;
 }
 
 async function _saveDeDict() {
   if (!_deDictDirty) return;
   _deDictDirty = false;
   try {
+    // Anti-clobber guard: the whole doc is overwritten with the in-memory
+    // cache on every save. If the cache is suspiciously small (e.g. a failed
+    // load left it near-empty and a scrape added a handful of new terms),
+    // refuse to overwrite a populated remote dict — that's how a dictionary
+    // gets silently shrunk. Force a reload before any future save.
+    const localCount = Object.keys(_deDictCache).length;
+    if (localCount < 200) {
+      const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY).catch(() => null);
+      const stored = doc?.exists ? ((typeof doc.data === 'function' ? doc.data() : doc)?.value || {}) : {};
+      const termsRoot = (stored.terms && typeof stored.terms === 'object') ? stored.terms : stored;
+      const remoteCount = (termsRoot && typeof termsRoot === 'object')
+        ? Object.keys(termsRoot).filter((k) => !_DE_DICT_META_KEYS.has(String(k).toLowerCase()) && termsRoot[k] && typeof termsRoot[k] === 'object').length
+        : 0;
+      if (remoteCount >= 100 && localCount < remoteCount * 0.6) {
+        _deDictDirty = true;       // keep the pending terms for the next attempt
+        _deDictLoaded = false;     // force a full reload first
+        console.warn(`[de-dict] refusing to shrink: local ${localCount} vs remote ${remoteCount} terms — reload required`);
+        return;
+      }
+    }
     await pbSetDoc('public_config', DE_DICT_PB_KEY, {
       key: DE_DICT_PB_KEY,
       value: _deDictCache,

@@ -9158,15 +9158,35 @@ function _refreshDictCounter() {
 
 // Pre-load both dicts on first scraper view, then poll for live changes.
 let _dictCounterStarted = false;
+let _dictWarmupInflight = false;
+// Load whichever dict is still empty. Both loaders short-circuit once loaded
+// and now THROW (instead of silently locking 0) on a transient cold-start
+// failure, so re-calling them here is a safe retry until the terms appear.
+async function _warmupEmptyDicts() {
+  if (_dictWarmupInflight) return;
+  _dictWarmupInflight = true;
+  try {
+    const { tr, de } = _getDictSizes();
+    if (tr === 0) { try { await _loadDeDict(); } catch (e) { console.warn('[dict-counter] TR warmup retry pending:', e.message || e); } }
+    if (de === 0) { try { await window.QorAiGeizhals?.dict?.load?.(); } catch (e) { console.warn('[dict-counter] DE warmup retry pending:', e.message || e); } }
+  } finally {
+    _dictWarmupInflight = false;
+    _refreshDictCounter();
+  }
+}
 async function _startDictCounter() {
   if (_dictCounterStarted) return;
   _dictCounterStarted = true;
-  // Warm up TR dict (Epey scraper)
-  try { await _loadDeDict(); } catch {}
-  // Warm up DE dict (Geizhals scraper, if loaded)
-  try { await window.QorAiGeizhals?.dict?.load?.(); } catch {}
+  await _warmupEmptyDicts();
   _refreshDictCounter();
-  setInterval(_refreshDictCounter, 1000);
+  // Refresh the displayed counts every second; while either dict is still
+  // empty, keep retrying the load (handles cold-start PB failures gracefully).
+  let tick = 0;
+  setInterval(() => {
+    _refreshDictCounter();
+    const { tr, de } = _getDictSizes();
+    if ((tr === 0 || de === 0) && (++tick % 5 === 0)) _warmupEmptyDicts();
+  }, 1000);
 }
 
 if (typeof document !== 'undefined') {
