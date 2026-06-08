@@ -108,6 +108,15 @@
   overflow: hidden;
 }
 
+.q-product-card-price {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 850;
+  color: #16a34a;
+  letter-spacing: -0.01em;
+}
+
 .q-product-card-specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

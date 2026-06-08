@@ -280,6 +280,30 @@ function rollupPriceIsFresh(product) {
   return Number.isFinite(expires) && expires > Date.now();
 }
 
+// Price for ONE specific country (the visitor's detected country), used on
+// list/home cards. Unlike offerForLang it never falls back to another market —
+// a TR visitor only sees a price if the product actually has a fresh TR offer,
+// never a DE price they can't order.
+export function priceForCountry(product, country) {
+  const cc = String(country || '').toUpperCase();
+  if (!cc) return null;
+  if (!rollupPriceIsFresh(product)) return null;
+  const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};
+  const raw = Number(prices[cc] ?? prices[cc.toLowerCase()]);
+  if (!(raw > 0)) return null;
+  return { price: raw, currency: CURRENCY_BY_COUNTRY[cc] || 'USD', country: cc };
+}
+
+export function formatPriceAmount(price, currency, lang = 'en') {
+  const n = Number(price) || 0;
+  if (n <= 0) return '';
+  try {
+    return new Intl.NumberFormat(lang, { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 }).format(n);
+  } catch {
+    return `${currency || 'USD'} ${n.toLocaleString(lang, { maximumFractionDigits: 0 })}`;
+  }
+}
+
 export function offerForLang(product, lang = 'en') {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};

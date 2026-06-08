@@ -817,6 +817,16 @@ export default function ProductDetail() {
             <b title={displayName}>{displayName}</b>
           </div>
           <div className="pd-crumbs-actions">
+            <a
+              className="pd-act-btn pd-act-yt"
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${displayName} ${lang === 'tr' ? 'inceleme' : lang === 'de' ? 'test' : 'review'}`)}`}
+              target="_blank" rel="noopener"
+              title={L('Watch video reviews', 'Video incelemeleri izle', 'Video-Reviews ansehen')}
+              aria-label="YouTube">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
+              </svg>
+            </a>
             <button type="button"
               className={'pd-act-btn pd-act-fav' + (isFavorite(p.id) ? ' on' : '')}
               onClick={() => toggleFavorite(p.id)}
@@ -927,8 +937,16 @@ export default function ProductDetail() {
                 .filter(Boolean),
             )];
             const sel = String(priceCountry || geoCountry || 'US').toUpperCase();
-            const countryOptions = [...new Set([sel, ...offerCountries].filter(Boolean))];
+            // Always offer a stable base list (so TR never disappears after the
+            // user switches to DE), plus the detected geo and any country that
+            // actually has an offer for this product.
             const FLAG = { TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦' };
+            const countryOptions = [...new Set([
+              String(geoCountry || '').toUpperCase(),
+              'TR', 'DE', 'GB', 'US',
+              ...offerCountries,
+              sel,
+            ].filter(Boolean))];
 
             const amazonUrl = amazonUrlForProduct(p, sel || 'US');
             // Retailer offers shippable to the SELECTED country. Amazon is shown
@@ -944,23 +962,25 @@ export default function ProductDetail() {
             if (!amazonUrl && priced.length === 0 && countryOptions.length <= 1) return null;
             return (
               <section className="pd-block">
-                <h2 className="pd-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
-                {/* Ship-to country: defaults to detected geo, visitor can switch
-                    to compare another market's price (mirrors the app + admin). */}
-                {countryOptions.length > 0 && (
-                  <div className="pd-ship-to">
-                    <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat ülkesi', 'Lieferland')}:</span>
-                    <select
-                      className="pd-ship-to-sel"
-                      value={sel}
-                      onChange={(e) => { priceCountryTouched.current = true; setPriceCountry(e.target.value); }}
-                    >
-                      {countryOptions.map((c) => (
-                        <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${c}`}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Title + ship-to selector on one aligned row (selector right,
+                    not floating alone in the centre). */}
+                <div className="pd-prices-head">
+                  <h2 className="pd-block-title pd-block-title-inline">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+                  {countryOptions.length > 0 && (
+                    <label className="pd-ship-to">
+                      <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat', 'Lieferland')}</span>
+                      <select
+                        className="pd-ship-to-sel"
+                        value={sel}
+                        onChange={(e) => { priceCountryTouched.current = true; setPriceCountry(e.target.value); }}
+                      >
+                        {countryOptions.map((c) => (
+                          <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${c}`}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
                 <div className="pd-prices-list">
                   {amazonUrl && (
                     <a className="pd-price-row" href={amazonUrl} target="_blank" rel="sponsored noopener">

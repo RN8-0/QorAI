@@ -256,6 +256,7 @@ async function importFeed(feed, globalOpts = {}) {
   const rows = await parseRows(text, feed);
   const limit = Number(feed.limit || globalOpts.limit || 0);
   let scanned = 0, written = 0, skipped = 0, errors = 0;
+  const matchedIds = new Set();
   for (const row of rows) {
     if (limit && scanned >= limit) break;
     scanned++;
@@ -267,7 +268,7 @@ async function importFeed(feed, globalOpts = {}) {
     }
     try {
       const res = await upsertOffer(offer);
-      if (res.ok) written++;
+      if (res.ok) { written++; if (res.productId) matchedIds.add(res.productId); }
       else skipped++;
     } catch (err) {
       errors++;
@@ -275,7 +276,7 @@ async function importFeed(feed, globalOpts = {}) {
     }
   }
   console.log(`  ${label}: ${written} written · ${skipped} skipped · ${errors} errors · ${scanned}/${rows.length} rows`);
-  return { scanned, written, skipped, errors };
+  return { scanned, written, skipped, errors, matchedIds: [...matchedIds] };
 }
 
 async function loadConfig(opts) {
@@ -323,6 +324,7 @@ async function main() {
   }
   console.log(`\n  Offer feed import${opts['dry-run'] || opts.dryRun ? ' (dry run)' : ''}\n`);
   let totalWritten = 0, totalErrors = 0;
+  const allMatchedIds = new Set();
   for (const feed of feeds) {
     const res = await importFeed(feed, {
       dryRun: opts['dry-run'] || opts.dryRun,
@@ -330,18 +332,25 @@ async function main() {
     });
     totalWritten += res.written;
     totalErrors += res.errors;
+    for (const id of (res.matchedIds || [])) allMatchedIds.add(id);
   }
-  if (totalWritten > 0 && !(opts['dry-run'] || opts.dryRun) && !opts['skip-reindex']) {
+  // Re-upsert ONLY the matched products into Typesense so each card's stored
+  // `_raw` carries the fresh per-country prices + affiliate links (the price
+  // chip on list/home cards reads prices[country] from there). This is far
+  // lighter than the full lowestPriceUSD backfill and keeps cards in sync.
+  if (allMatchedIds.size > 0 && !(opts['dry-run'] || opts.dryRun) && !opts['skip-reindex']) {
     const { spawnSync } = require('child_process');
-    console.log('\n  Reindexing Typesense lowestPriceUSD...');
-    const r = spawnSync('node', ['scripts/ts_backfill_lowest_price.js', '--confirm'], {
+    const ids = [...allMatchedIds];
+    console.log(`\n  Refreshing ${ids.length} matched products in Typesense (_raw + price)…`);
+    const r = spawnSync('node', ['scripts/ts_fast_upsert_products.js'], {
       cwd: path.join(__dirname, '..'),
       stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
+      env: { ...process.env, TS_FAST_IDS: ids.join(',') },
     });
     const tail = (r.stdout || '').trim().split(/\r?\n/).slice(-2).join(' · ');
-    if (r.status === 0) console.log(`  ✓ TS reindex: ${tail}`);
-    else console.log(`  ! TS reindex exit=${r.status}: ${(r.stderr || '').slice(0, 200)}`);
+    if (r.status === 0) console.log(`  ✓ TS upsert: ${tail}`);
+    else console.log(`  ! TS upsert exit=${r.status}: ${(r.stderr || '').slice(0, 200)}`);
   }
   console.log(`\n  Done — ${totalWritten} offers ${opts['dry-run'] || opts.dryRun ? 'would be written' : 'written'} · ${totalErrors} errors\n`);
 }

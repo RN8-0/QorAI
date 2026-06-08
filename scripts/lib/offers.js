@@ -26,6 +26,21 @@ const PRICE_TTL_MINUTES = {
   DEFAULT: 180,
 };
 
+// Affiliate product feeds (Awin, Admitad…) are snapshots refreshed roughly
+// daily, not live-scraped prices. A 2 h freshness window made a feed price
+// vanish into "see price" the same afternoon it was imported. Give feed-sourced
+// offers a 48 h window so the price stays visible until the next feed refresh.
+const FEED_NETWORKS = new Set([
+  'awin', 'admitad', 'kelkoo', 'tradedoubler', 'daisycon', 'webgains', 'belboon',
+  'cj', 'rakuten', 'partnerize', 'impact', 'tradetracker', 'effiliation',
+]);
+const FEED_TTL_MINUTES = 48 * 60;
+
+function ttlMinutesFor(offer) {
+  if (FEED_NETWORKS.has(String(offer && offer.network || '').toLowerCase())) return FEED_TTL_MINUTES;
+  return ttlMinutesForCountry(offer && offer.country);
+}
+
 /** Convert a price to USD using the shared FX table; 0 when not convertible. */
 function toUsd(price, currency) {
   const rate = FX_TO_USD[String(currency || '').toUpperCase()];
@@ -42,7 +57,7 @@ function expiryForOffer(offer, checkedAt = Date.now()) {
   const price = Number(offer.totalPrice || offer.price) || 0;
   if (offer.priceUnknown || price <= 0) return '';
   const base = Number.isFinite(checkedAt) ? checkedAt : Date.now();
-  return new Date(base + ttlMinutesForCountry(offer.country) * 60 * 1000).toISOString();
+  return new Date(base + ttlMinutesFor(offer) * 60 * 1000).toISOString();
 }
 
 function isFreshPricedOffer(offer, at = Date.now()) {
@@ -55,7 +70,7 @@ function isFreshPricedOffer(offer, at = Date.now()) {
   if (Number.isFinite(expiry)) return expiry > at;
   const checked = Date.parse(offer.lastCheckedAt || offer.priceUpdatedAt || offer.scrapedAt || offer.updated || '');
   if (!Number.isFinite(checked)) return false;
-  return at - checked <= ttlMinutesForCountry(offer.country) * 60 * 1000;
+  return at - checked <= ttlMinutesFor(offer) * 60 * 1000;
 }
 
 function effectivePrice(offer) {

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { catMeta, categoryLabel, keySpecChips, priceForCountry, formatPriceAmount } from '../lib/format';
 import { productPath } from '../lib/routes';
+import { useGeoCountry } from '../lib/geo';
 import { useI18n } from '../i18n/index.jsx';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import Gauge, { techColor } from './Gauge.jsx';
@@ -202,11 +203,14 @@ function polishCardSpecLabel(label, lang) {
 
 export default function ProductCard({ product: p, variant = 'card', onClick }) {
   const { t, lang } = useI18n();
+  const geoCountry = useGeoCountry();
   const hasScore = Number(p.techScore) > 0;
   const specs = productSpecs(p, t, lang);
+  // Price for the visitor's detected country only (never a non-shippable market).
+  const cardPrice = priceForCountry(p, geoCountry);
 
   return (
-    <Link to={productPath(p.id)} onClick={onClick}
+    <Link to={productPath(p)} onClick={onClick}
       className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={p.name}>
       <div className="q-product-card-media">
         {hasScore && (
@@ -222,6 +226,9 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
           {!p.brand && <span className="q-product-card-brand">{categoryLabel(p.category, lang)}</span>}
         </div>
         <span className="q-product-card-name">{p.name}</span>
+        {cardPrice && (
+          <span className="q-product-card-price">{formatPriceAmount(cardPrice.price, cardPrice.currency, lang)}</span>
+        )}
         <div className="q-product-card-specs">
           {specs.map((spec, index) => {
             const label = polishCardSpecLabel(localizedSpecLabel(spec.label, lang), lang);

@@ -240,7 +240,6 @@ export default function Reviews({ productId, productName, lang }) {
 
   return (
     <section className="pd-section">
-      {productName && <YouTubeSearchCard productName={productName} lang={lang} />}
       <div className="pd-section-head">
         <h2>{t('pd.reviews')}</h2>
         {reviews.length > 0 && (

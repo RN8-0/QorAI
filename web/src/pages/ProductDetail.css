@@ -657,13 +657,17 @@
 .pd-detail-flow { margin-top: 32px; display: flex; flex-direction: column; gap: 32px; }
 .pd-block-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 16px; color: var(--text); }
 
-.pd-ship-to {
-  display: flex; align-items: center; gap: 8px;
-  justify-content: center; margin: -6px 0 14px;
+/* Title row: "Fiyatlar" left, ship-to selector right — aligned with the price
+   list below it, not floating alone in the centre. */
+.pd-prices-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
 }
-.pd-ship-to-lbl { font-size: 13px; font-weight: 700; color: var(--text2); }
+.pd-block-title-inline { margin: 0; text-align: left; }
+.pd-ship-to { display: inline-flex; align-items: center; gap: 8px; }
+.pd-ship-to-lbl { font-size: 12.5px; font-weight: 750; color: var(--text2); white-space: nowrap; }
 .pd-ship-to-sel {
-  appearance: none; padding: 7px 30px 7px 12px; border-radius: 10px;
+  appearance: none; padding: 8px 30px 8px 12px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
   font-size: 13.5px; font-weight: 800; cursor: pointer; line-height: 1.2;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
@@ -672,6 +676,10 @@
 }
 .pd-ship-to-sel:hover { border-color: var(--accent-ring); }
 .pd-ship-to-sel:focus { outline: none; border-color: var(--accent); }
+@media (max-width: 560px) {
+  .pd-prices-head { justify-content: space-between; }
+  .pd-block-title-inline { font-size: 16px; }
+}
 
 .pd-prices-list { display: flex; flex-direction: column; gap: 8px; }
 /* Whole row is the click target (store logo/name left, price right). No arrow
@@ -738,11 +746,12 @@
 .pd-variant-spec small { font-size: 11px; font-weight: 600; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .pd-tabs2 {
-  display: flex; gap: 0; justify-content: center; margin-bottom: 24px;
+  display: flex; gap: 0; justify-content: stretch; margin-bottom: 24px;
   border-bottom: 2px solid var(--border);
 }
 .pd-tabs2 button {
-  padding: 12px 32px; border-radius: 0;
+  flex: 1 1 0; text-align: center;
+  padding: 12px 16px; border-radius: 0;
   border: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
   background: transparent; color: var(--text2);
   font-weight: 800; font-size: 15px; cursor: pointer;
@@ -979,6 +988,8 @@
 .pd-act-btn:hover { border-color: var(--accent-ring); color: var(--text); transform: translateY(-1px); }
 .pd-act-btn:active { transform: translateY(0); }
 .pd-act-fav.on { background: color-mix(in srgb, #ef4444 15%, transparent); border-color: #ef4444; color: #ef4444; }
+.pd-act-yt { color: var(--text2); }
+.pd-act-yt:hover { background: color-mix(in srgb, #ff0033 14%, transparent); border-color: #ff0033; color: #ff0033; }
 .pd-act-cmp.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
 
 @media (max-width: 860px) {
