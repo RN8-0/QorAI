@@ -9085,6 +9085,45 @@ async function offersStartSync() {
   }
 }
 
+// Self-service: import a partner datafeed straight from its download URL. No
+// per-affiliate code — paste URL + country/currency, the proxy downloads and
+// matches by EAN/GTIN or MPN+brand and writes country-tagged offers.
+async function offersImportFeed(dryRun = false) {
+  if (!(await checkProxy())) { toast('Önce local proxy başlat', 'e'); return; }
+  const url = document.getElementById('feedImportUrl')?.value.trim() || '';
+  if (!/^https?:\/\//i.test(url)) { toast('Geçerli bir feed URL gir (http/https)', 'w'); return; }
+  const payload = {
+    url,
+    store: document.getElementById('feedImportStore')?.value.trim() || '',
+    network: document.getElementById('feedImportNetwork')?.value || 'awin',
+    country: document.getElementById('feedImportCountry')?.value || '',
+    currency: document.getElementById('feedImportCurrency')?.value || '',
+    // If no fixed store name, read each row's merchant from the feed so a
+    // combined multi-merchant download is attributed correctly.
+    storeField: (document.getElementById('feedImportStore')?.value.trim() ? '' : 'merchant_name,programme_name,data_feed_name'),
+    dryRun: !!dryRun,
+  };
+  try {
+    const r = await fetch(`${PROXY_URL}/offers/import-feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('İçe aktarılamadı: ' + (j.error || r.status), 'e'); return; }
+    const btn = document.getElementById('btnOffersSync');
+    const stop = document.getElementById('btnOffersStop');
+    if (btn) btn.style.display = 'none';
+    if (stop) stop.style.display = '';
+    const log = document.getElementById('offersLog');
+    if (log) log.textContent = `Feed indiriliyor + eşleştiriliyor${dryRun ? ' (önizleme)' : ''}…\n`;
+    toast(dryRun ? 'Önizleme başladı' : 'Feed import başladı', 's');
+    _offersStartPolling();
+  } catch (e) {
+    toast('Proxy ulaşılamadı: ' + e.message, 'e');
+  }
+}
+
 async function offersStop() {
   try { await fetch(`${PROXY_URL}/offers/stop`, { method: 'POST' }); } catch {}
   setTimeout(offersRefreshStatus, 400);
@@ -9122,6 +9161,7 @@ function _offersStartPolling() {
 }
 
 window.offersStartSync = offersStartSync;
+window.offersImportFeed = offersImportFeed;
 window.offersStop = offersStop;
 window.offersRefreshStatus = offersRefreshStatus;
 window.offersLoadConfig = offersLoadConfig;

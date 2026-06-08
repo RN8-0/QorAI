@@ -291,6 +291,7 @@ async function loadConfig(opts) {
     delimiter: opts.delimiter,
     network: opts.network,
     store: opts.store,
+    storeField: opts['store-field'] || opts.storeField,
     merchant: opts.merchant,
     country: opts.country,
     currency: opts.currency,

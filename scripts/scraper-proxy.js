@@ -1899,6 +1899,64 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+  // POST /offers/import-feed  body: {url, store?, storeField?, country, currency,
+  //   network?} -> downloads + imports a product feed via import_offer_feed.js.
+  // Self-service: paste any partner's datafeed URL (Awin productdata, Admitad,
+  // Kelkoo, a direct merchant CSV/XML…) and it matches by EAN/GTIN or MPN+brand
+  // and writes country-tagged offers — no code change per new affiliate.
+  if (req.url === '/offers/import-feed' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        if (isOffersRunning()) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Offer sync/import already running' }));
+          return;
+        }
+        const opts = body ? JSON.parse(body) : {};
+        const url = String(opts.url || '').trim();
+        if (!/^https?:\/\//i.test(url)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Geçerli bir feed URL gerekli (http/https)' }));
+          return;
+        }
+        const args = ['scripts/import_offer_feed.js', `--url=${url}`];
+        const network = String(opts.network || 'awin').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+        args.push(`--network=${network || 'awin'}`);
+        const country = String(opts.country || '').replace(/[^a-z]/gi, '').toUpperCase();
+        if (country) args.push(`--country=${country}`);
+        const currency = String(opts.currency || '').replace(/[^a-z]/gi, '').toUpperCase();
+        if (currency) args.push(`--currency=${currency}`);
+        const store = String(opts.store || '').trim();
+        if (store) args.push(`--store=${store}`);
+        // When a single combined feed bundles multiple merchants, read the store
+        // from this row column (e.g. merchant_name) instead of a fixed name.
+        const storeField = String(opts.storeField || '').replace(/[^a-z0-9_,]/gi, '');
+        if (storeField) args.push(`--store-field=${storeField}`);
+        const limit = parseInt(opts.limit, 10);
+        if (limit > 0) args.push(`--limit=${limit}`);
+        if (opts.dryRun) args.push('--dry-run');
+        const { spawn } = require('child_process');
+        offersLog = '';
+        const offersEnv = { ...process.env };
+        const dnsPatch = path.join(__dirname, 'dns-patch.js');
+        const spawnArgs = fs.existsSync(dnsPatch) ? ['--require', dnsPatch, ...args] : args;
+        offersProc = spawn('node', spawnArgs, { cwd: rootDir, env: offersEnv });
+        offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+        offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+        offersProc.on('exit', code => { offersLog += `\n[import-feed] exited with code ${code}\n`; });
+        // Don't echo the full URL (it carries the feed apikey) to the log.
+        console.log(`  💰 /offers/import-feed network=${network} country=${country} store=${store || storeField || '?'}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, pid: offersProc.pid }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
   if (req.url === '/offers/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ running: isOffersRunning(), logTail: offersLog.slice(-6000), config: getOffersConfig() }));

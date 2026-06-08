@@ -846,6 +846,64 @@
                 <strong>Not:</strong> Network hesabı açık olsa bile fiyat feed'i çoğu zaman merchant onayına bağlıdır; bu yüzden adminde connector ayrı, merchant/feed ayrı yönetilir.
               </p>
             </details>
+
+            <!-- Self-service feed import: paste any affiliate's datafeed URL -->
+            <div class="affiliate-provider-card" style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:14px;background:color-mix(in srgb,#10b981 6%,transparent)">
+              <div style="font-weight:800;margin-bottom:4px">🔗 Feed URL'den Fiyat İçe Aktar (self-servis)</div>
+              <p class="text-muted" style="font-size:11.5px;margin:0 0 10px">
+                Yeni bir affiliate ile anlaştığında: o ağın <strong>datafeed indirme URL'ini</strong> yapıştır, ülke/para birimini seç, <strong>İçe Aktar</strong>'a bas.
+                Ürünler katalogla <strong>sadece EAN/GTIN veya MPN+marka</strong> ile eşleştirilir (yanlış varyant gelmez) ve seçtiğin ülkeye etiketlenir. Kod değişikliği gerekmez.
+                <br>Awin için: Toolbox → Create-a-Feed → CSV + gzip → <em>productdata.awin.com/datafeed/download/...</em> URL'i (ui.awin.com değil).
+              </p>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                <div class="form-field" style="grid-column:span 2">
+                  <label>Feed URL (.csv / .csv.gz / .xml / .json)</label>
+                  <input class="input" id="feedImportUrl" placeholder="https://productdata.awin.com/datafeed/download/apikey/.../format/csv/.../compression/gzip/">
+                </div>
+                <div class="form-field">
+                  <label>Mağaza adı (boşsa feed'deki merchant_name kullanılır)</label>
+                  <input class="input" id="feedImportStore" placeholder="Coolblue">
+                </div>
+                <div class="form-field">
+                  <label>Ağ</label>
+                  <select class="input" id="feedImportNetwork">
+                    <option value="awin">awin</option>
+                    <option value="admitad">admitad</option>
+                    <option value="kelkoo">kelkoo</option>
+                    <option value="tradedoubler">tradedoubler</option>
+                    <option value="direct">direct</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Ülke (ISO-2)</label>
+                  <select class="input" id="feedImportCountry">
+                    <option value="DE">DE — Almanya</option>
+                    <option value="GB">GB — İngiltere</option>
+                    <option value="FR">FR — Fransa</option>
+                    <option value="IT">IT — İtalya</option>
+                    <option value="ES">ES — İspanya</option>
+                    <option value="NL">NL — Hollanda</option>
+                    <option value="US">US — ABD</option>
+                    <option value="TR">TR — Türkiye</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Para birimi</label>
+                  <select class="input" id="feedImportCurrency">
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="USD">USD</option>
+                    <option value="TRY">TRY</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                <button class="btn btn-primary btn-sm" id="btnFeedImport" onclick="offersImportFeed()">⬇ İçe Aktar (eşleştir + fiyat yaz)</button>
+                <button class="btn btn-ghost btn-sm" onclick="offersImportFeed(true)">👁 Önizle (dry-run)</button>
+                <span class="text-muted" style="font-size:11px">Sonuç aşağıdaki log alanında görünür. Ülke/para birimi otomatik, sadece o ülkedeki ziyaretçilere gösterilir.</span>
+              </div>
+            </div>
+
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
               <div class="form-field">
                 <label>Kategori</label>
