@@ -556,7 +556,7 @@
 .pd-detail-flow { margin-top: 32px; display: flex; flex-direction: column; gap: 32px; }
 .pd-block-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 16px; color: var(--text); }
 
-.pd-prices-list { display: flex; flex-direction: column; gap: 8px; max-width: 680px; margin: 0 auto; }
+.pd-prices-list { display: flex; flex-direction: column; gap: 8px; }
 .pd-price-row {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px; border-radius: 12px;
@@ -568,30 +568,64 @@
 .pd-price-amt { font-weight: 800; color: #22c55e; font-size: 16px; }
 .pd-price-go { margin-left: auto; font-weight: 700; color: var(--accent); font-size: 13px; }
 
-.pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: flex-start; }
 .pd-variant-card {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 18px 10px 10px; border-radius: 14px;
-  border: 1px solid var(--border); background: var(--surface-2);
-  text-decoration: none; min-width: 170px;
-  transition: border-color .15s, transform .05s;
+  display: grid; grid-template-columns: 100px minmax(0, 1fr);
+  gap: 12px; min-height: 130px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); text-decoration: none;
+  flex: 1 1 220px; max-width: 320px; overflow: hidden;
+  box-shadow: 0 1px 0 color-mix(in srgb, #020617 8%, transparent);
+  transition: border-color .14s ease, transform .14s ease, box-shadow .14s ease;
 }
-.pd-variant-card:hover { border-color: var(--accent-ring); transform: translateY(-1px); }
+.pd-variant-card:hover {
+  border-color: var(--border-strong); transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, #020617 12%, transparent);
+}
 .pd-variant-card.on { border-color: var(--accent); background: var(--accent-soft); }
-.pd-variant-img { width: 52px; height: 52px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: var(--surface); }
-.pd-variant-img img { width: 100%; height: 100%; object-fit: contain; }
-.pd-variant-lbl { font-weight: 800; font-size: 14.5px; color: var(--text); }
+.pd-variant-media { position: relative; min-width: 0; align-self: start; }
+.pd-variant-img {
+  width: 100px; height: 100px;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.pd-variant-img img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+.pd-variant-lbl { display: none; }
+.pd-variant-body { min-width: 0; display: flex; flex-direction: column; padding: 2px 0 0; }
+.pd-variant-brand {
+  font-size: 11px; font-weight: 850; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pd-variant-name {
+  font-size: 15px; font-weight: 800; line-height: 1.24; color: var(--text);
+  margin-top: 4px; min-height: 36px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pd-variant-specs {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px; margin-top: auto; padding-top: 8px;
+}
+.pd-variant-spec { display: flex; flex-direction: column; gap: 1px; }
+.pd-variant-spec b { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-variant-spec small { font-size: 11px; font-weight: 600; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.pd-tabs2 { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.pd-tabs2 {
+  display: flex; gap: 0; justify-content: center; margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+}
 .pd-tabs2 button {
-  padding: 10px 22px; border-radius: 999px;
-  border: 1px solid var(--border); background: var(--surface-2);
-  color: var(--text2); font-weight: 800; font-size: 14px; cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s;
+  padding: 12px 32px; border-radius: 0;
+  border: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  background: transparent; color: var(--text2);
+  font-weight: 800; font-size: 15px; cursor: pointer;
+  transition: color .15s, border-bottom-color .15s;
+  letter-spacing: 0.01em; white-space: nowrap;
 }
 .pd-tabs2 button:hover { color: var(--text); }
-.pd-tabs2 button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.pd-tab-body { max-width: 1000px; margin: 0 auto; }
+.pd-tabs2 button.on { color: var(--accent); border-bottom-color: var(--accent); }
+.pd-tab-body { }
 .pd-crumbs a { color: var(--text2); }
 .pd-crumbs a:hover { color: var(--accent); }
 .pd-crumbs b { color: var(--text); font-weight: 750; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -603,8 +637,9 @@
 }
 .pd-crumb-back:hover { border-color: var(--border-strong); }
 
-/* gallery scrolls away with the page (no sticky — it was leaving a gap). */
-.pd-product-hero .prod-gallery { align-self: start; }
+/* gallery column stretches to full hero row height so card fills to the bottom */
+.pd-product-hero .prod-gallery { align-self: stretch; display: flex; flex-direction: column; }
+.pd-product-hero .prod-gallery > .card { flex: 1; }
 .pd-gallery-card { padding: 16px; }
 .pd-photo {
   position: relative; width: 100%; aspect-ratio: 1 / 1; margin-bottom: 14px;
@@ -641,7 +676,7 @@
 }
 
 /* info column */
-.pd-info2 { min-width: 0; }
+.pd-info2 { min-width: 0; display: flex; flex-direction: column; }
 .pd-brand2 { color: var(--brand-cyan); font-size: 13px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
 .pd-name2 { font-size: clamp(23px, 3vw, 33px); font-weight: 850; line-height: 1.12; margin: 6px 0 18px; }
 
@@ -657,7 +692,7 @@
 .pd-score2-sep { width: 1px; align-self: stretch; background: var(--divider); margin: 2px 6px; }
 
 .pd-keyspecs2 {
-  margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+  margin-top: auto; padding-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
 }
 .pd-keyspec2 {
   display: flex; align-items: center; gap: 11px;

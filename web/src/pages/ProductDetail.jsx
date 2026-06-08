@@ -52,6 +52,28 @@ function variantLabel(v) {
   return v?.name || '';
 }
 
+// Returns keySpecs entries that differ between variant and base product (up to 4).
+// Priority: storage, RAM, battery — then any other differing key.
+function computeVariantDiffs(variant, base) {
+  const vks = variant?.keySpecs && typeof variant.keySpecs === 'object' ? variant.keySpecs : {};
+  const bks = base?.keySpecs && typeof base.keySpecs === 'object' ? base.keySpecs : {};
+  const priority = ['spec.storage', 'spec.ram', 'spec.battery', 'spec.camera'];
+  const diffs = [];
+  for (const k of priority) {
+    const vv = String(vks[k] || '').trim();
+    const bv = String(bks[k] || '').trim();
+    if (vv && vv !== bv) diffs.push({ label: k, value: vv });
+  }
+  for (const [k, v] of Object.entries(vks)) {
+    if (diffs.length >= 4) break;
+    if (priority.includes(k)) continue;
+    const vv = String(v || '').trim();
+    const bv = String(bks[k] || '').trim();
+    if (vv && vv !== '-' && vv !== bv) diffs.push({ label: k, value: vv });
+  }
+  return diffs.slice(0, 4);
+}
+
 function normHeroSpecText(value) {
   return String(value || '')
     .toLowerCase()
@@ -705,7 +727,7 @@ export default function ProductDetail() {
           </div>
         </nav>
 
-        <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'start' }}>
+        <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'stretch' }}>
           {/* gallery */}
           <div className="prod-gallery">
             <div className="card pd-gallery-card">
@@ -814,15 +836,33 @@ export default function ProductDetail() {
             <section className="pd-block">
               <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
               <div className="pd-variants-list">
-                {variants.map((v) => (
-                  <Link key={v.id} to={productPath(v)}
-                    className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
-                    <div className="pd-variant-img">
-                      <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
-                    </div>
-                    <span className="pd-variant-lbl">{variantLabel(v)}</span>
-                  </Link>
-                ))}
+                {variants.map((v) => {
+                  const diffs = computeVariantDiffs(v, p);
+                  return (
+                    <Link key={v.id} to={productPath(v)}
+                      className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
+                      <div className="pd-variant-media">
+                        <div className="pd-variant-img">
+                          <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
+                        </div>
+                      </div>
+                      <div className="pd-variant-body">
+                        {v.brand && <span className="pd-variant-brand">{v.brand}</span>}
+                        <span className="pd-variant-name">{variantLabel(v)}</span>
+                        {diffs.length > 0 && (
+                          <div className="pd-variant-specs">
+                            {diffs.map((d, i) => (
+                              <span className="pd-variant-spec" key={i}>
+                                <b>{localizedSpecValue(d.value, lang)}</b>
+                                <small>{localizedSpecLabel(specTr(d.label), lang)}</small>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
