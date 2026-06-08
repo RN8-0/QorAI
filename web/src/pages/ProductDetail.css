@@ -537,8 +537,20 @@
 /* ═══ Redesigned product detail (2026) ═══════════════════════════ */
 .pd-crumbs {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  justify-content: space-between;
   margin-bottom: 18px; font-size: 13px; color: var(--text3); font-weight: 650;
 }
+.pd-crumbs-path { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.pd-crumbs-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pd-cmp-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); font-weight: 700; font-size: 13.5px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.pd-cmp-btn:hover { border-color: var(--accent-ring); }
+.pd-cmp-btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
 .pd-crumbs a { color: var(--text2); }
 .pd-crumbs a:hover { color: var(--accent); }
 .pd-crumbs b { color: var(--text); font-weight: 750; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

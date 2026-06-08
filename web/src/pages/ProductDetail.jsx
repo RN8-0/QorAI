@@ -10,7 +10,8 @@ import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { amazonStorefrontsForProduct, catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { amazonUrlForProduct, catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
@@ -427,6 +428,7 @@ export default function ProductDetail() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { ids, has, add, remove } = useCompare();
   const { has: isFavorite, toggle: toggleFavorite } = useFavorites();
+  const geoCountry = useGeoCountry();
   const { user } = useAuth();
   const requireAiAccess = useAiAccess(lang);
 
@@ -656,15 +658,36 @@ export default function ProductDetail() {
   return (
     <div className="page">
       <div className="container" style={{ maxWidth: 1240 }}>
-        {/* breadcrumb */}
+        {/* breadcrumb + favorite / compare actions (aligned to the title row) */}
         <nav className="pd-crumbs">
-          <button className="pd-crumb-back" aria-label="back"
-            onClick={() => (window.history.length > 1 ? window.history.back() : null)}>‹</button>
-          <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
-          <span aria-hidden="true">›</span>
-          <Link to={`/category?cat=${encodeURIComponent(p.category || '')}`}>{categoryLabel(p.category, lang)}</Link>
-          <span aria-hidden="true">›</span>
-          <b title={displayName}>{displayName}</b>
+          <div className="pd-crumbs-path">
+            <button className="pd-crumb-back" aria-label="back"
+              onClick={() => (window.history.length > 1 ? window.history.back() : null)}>‹</button>
+            <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
+            <span aria-hidden="true">›</span>
+            <Link to={`/category?cat=${encodeURIComponent(p.category || '')}`}>{categoryLabel(p.category, lang)}</Link>
+            <span aria-hidden="true">›</span>
+            <b title={displayName}>{displayName}</b>
+          </div>
+          <div className="pd-crumbs-actions">
+            <button type="button"
+              className={'pd-act-btn pd-act-fav' + (isFavorite(p.id) ? ' on' : '')}
+              onClick={() => toggleFavorite(p.id)}
+              title={isFavorite(p.id) ? L('In favorites', 'Favorilerde', 'In Favoriten') : L('Add to favorites', 'Favorilere ekle', 'Zu Favoriten hinzufügen')}
+              aria-label={L('Favorite', 'Favori', 'Favorit')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(p.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+              </svg>
+            </button>
+            <button type="button"
+              className={'pd-cmp-btn' + (inCompare ? ' on' : '')}
+              onClick={toggleComparePool}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span>{inCompare ? L('In compare', 'Karşılaştırmada', 'Im Vergleich') : L('Compare', 'Karşılaştır', 'Vergleichen')}</span>
+            </button>
+          </div>
         </nav>
 
         <div className="prod-grid pd-product-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px,0.86fr) minmax(0,1.14fr)', gap: 32, alignItems: 'start' }}>
@@ -698,29 +721,7 @@ export default function ProductDetail() {
 
           {/* info */}
           <div className="pd-info2">
-            <div className="pd-info2-top">
-              <div className="pd-brand2">{p.brand || meta.label}</div>
-              <div className="pd-actions2">
-                <button type="button"
-                  className={'pd-act-btn pd-act-fav' + (isFavorite(p.id) ? ' on' : '')}
-                  onClick={() => toggleFavorite(p.id)}
-                  title={isFavorite(p.id) ? L('In favorites', 'Favorilerde', 'In Favoriten') : L('Add to favorites', 'Favorilere ekle', 'Zu Favoriten hinzufügen')}
-                  aria-label={L('Favorite', 'Favori', 'Favorit')}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill={isFavorite(p.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
-                  </svg>
-                </button>
-                <button type="button"
-                  className={'pd-act-btn pd-act-cmp' + (inCompare ? ' on' : '')}
-                  onClick={toggleComparePool}
-                  title={inCompare ? L('In compare list', 'Karşılaştırmada', 'Im Vergleich') : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich hinzufügen')}
-                  aria-label={L('Compare', 'Karşılaştır', 'Vergleichen')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="7" height="16" rx="1.4" /><rect x="14" y="4" width="7" height="16" rx="1.4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <div className="pd-brand2">{p.brand || meta.label}</div>
             <h1 className="pd-name2">{displayName}</h1>
 
             <div className="pd-scores2">
@@ -761,13 +762,13 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Amazon buy card — built straight from the product, so it shows on
-                every product (primary, variant, GTIN-less). Turkish visitors get
-                two storefronts (TR for TL/domestic shipping, DE for wider GTIN
-                coverage); other languages get the single localized storefront. */}
+            {/* Amazon buy card — single button routed to the visitor's own
+                country store (detected from their IP via Cloudflare). Built from
+                the product itself, so it shows on every product (variant /
+                GTIN-less included). */}
             {(() => {
-              const stores = amazonStorefrontsForProduct(p, lang);
-              if (!stores.length) return null;
+              const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
+              if (!amazonUrl) return null;
               return (
                 <div className="pd-buy pd-buy-amazon">
                   <div className="pd-buy-top">
@@ -775,21 +776,10 @@ export default function ProductDetail() {
                     <span className="pd-buy-tag">{L('Buy on Amazon', 'Amazon’da satın al', 'Bei Amazon kaufen')}</span>
                   </div>
                   <div className="pd-buy-actions">
-                    {stores.length > 1 ? (
-                      stores.map((s) => (
-                        <a key={s.market} className="pd-buy-btn" href={s.url}
-                          target="_blank" rel="sponsored noopener">
-                          <span className="pd-buy-flag">{s.flag}</span>
-                          Amazon {s.market}
-                          <span className="pd-buy-arrow">↗</span>
-                        </a>
-                      ))
-                    ) : (
-                      <a className="pd-buy-btn" href={stores[0].url} target="_blank" rel="sponsored noopener">
-                        🛒 {L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')}
-                        <span className="pd-buy-arrow">↗</span>
-                      </a>
-                    )}
+                    <a className="pd-buy-btn" href={amazonUrl} target="_blank" rel="sponsored noopener">
+                      🛒 {L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')}
+                      <span className="pd-buy-arrow">↗</span>
+                    </a>
                   </div>
                   <p className="pd-buy-note">
                     {L(

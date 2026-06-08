@@ -258,6 +258,23 @@ export function amazonStorefrontsForProduct(product, lang = 'en') {
   }));
 }
 
+// Map a visitor country to the Amazon storefront we earn on. OneLink covers
+// US/GB/DE/FR/IT/ES/CA on qorai-20; Turkey has its own program (qorai-21).
+// Countries outside coverage fall back to the nearest in-coverage store.
+const AMAZON_COUNTRY_TO_MARKET = {
+  TR: 'TR', US: 'US', GB: 'GB', DE: 'DE', FR: 'FR', IT: 'IT', ES: 'ES', CA: 'CA',
+  AT: 'DE', CH: 'DE', NL: 'DE', BE: 'FR', LU: 'FR', IE: 'GB', PT: 'ES',
+  AU: 'GB', NZ: 'GB', MX: 'US',
+};
+
+// Single Amazon link for a product, routed to the visitor's country store.
+export function amazonUrlForProduct(product, country = 'US') {
+  const query = amazonQueryForProduct(product);
+  if (!query) return '';
+  const market = AMAZON_COUNTRY_TO_MARKET[String(country || 'US').toUpperCase()] || 'US';
+  return amazonMarketUrl(market, query);
+}
+
 function rollupPriceIsFresh(product) {
   const expires = Date.parse(product?.bestOfferExpiresAt || '');
   return Number.isFinite(expires) && expires > Date.now();
