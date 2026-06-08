@@ -275,9 +275,26 @@ if (typeof window !== 'undefined') window.qoraiDispatchSingleProductSaved = _dis
 // move lowestPriceUSD). Silent + best-effort: if the proxy is down or a sync
 // is already running (409), it just skips.
 let _autoOfferTimer = null;
-async function _runAutoAmazonOffers() {
+let _lastFeedRematchAt = 0;
+const _FEED_REMATCH_MIN_GAP_MS = 10 * 60 * 1000; // re-match partner feeds at most once / 10 min
+
+async function _waitOffersIdle(maxMs = 180000) {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    try {
+      const r = await fetch(`${PROXY_URL}/offers/status`, { signal: AbortSignal.timeout(3000) });
+      const s = await r.json();
+      if (!s.running) return true;
+    } catch { return true; }
+    await new Promise(res => setTimeout(res, 4000));
+  }
+  return false;
+}
+
+async function _runAutoAffiliate() {
   try {
     if (typeof checkProxy === 'function' && !(await checkProxy())) return;
+    // 1) Amazon search links for every new product (instant, price-less).
     const r = await fetch(`${PROXY_URL}/offers/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -286,12 +303,23 @@ async function _runAutoAmazonOffers() {
     if (r.ok && typeof slog === 'function') {
       slog('💰 Yeni ürünlere Amazon affiliate linki ekleniyor (otomatik)…', 'info');
     }
+    // 2) Re-match cached partner feeds (Coolblue/AWIN…) so a new product that
+    //    exists in a feed gets its real-price offer too. Throttled + only after
+    //    the Amazon sync finishes (single offers process slot on the proxy).
+    if (Date.now() - _lastFeedRematchAt > _FEED_REMATCH_MIN_GAP_MS) {
+      await _waitOffersIdle();
+      const fr = await fetch(`${PROXY_URL}/offers/feed-rematch`, { method: 'POST' }).catch(() => null);
+      if (fr && fr.ok) {
+        _lastFeedRematchAt = Date.now();
+        if (typeof slog === 'function') slog('🔗 Affiliate feed\'leri yeni ürünlere göre yeniden eşleştiriliyor…', 'info');
+      }
+    }
   } catch (_) { /* proxy yoksa / hata olursa sessizce atla */ }
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('qorai:product-saved', () => {
     clearTimeout(_autoOfferTimer);
-    _autoOfferTimer = setTimeout(_runAutoAmazonOffers, 8000);
+    _autoOfferTimer = setTimeout(_runAutoAffiliate, 10000);
   });
 }
 

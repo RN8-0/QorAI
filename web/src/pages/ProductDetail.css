@@ -674,16 +674,25 @@
 .pd-ship-to-sel:focus { outline: none; border-color: var(--accent); }
 
 .pd-prices-list { display: flex; flex-direction: column; gap: 8px; }
+/* Whole row is the click target (store logo/name left, price right). No arrow
+   or "View" button — clicking anywhere opens the store, mirroring the app. */
 .pd-price-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 18px; border-radius: 12px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; border-radius: 12px;
   border: 1px solid var(--border); background: var(--surface-2);
-  text-decoration: none; color: var(--text); transition: border-color .15s;
+  text-decoration: none; color: var(--text);
+  transition: border-color .15s, box-shadow .15s, transform .05s;
 }
-.pd-price-row:hover { border-color: var(--accent-ring); }
-.pd-price-store { font-weight: 800; font-size: 15px; display: inline-flex; align-items: center; }
-.pd-price-amt { font-weight: 800; color: #22c55e; font-size: 16px; }
-.pd-price-go { margin-left: auto; font-weight: 700; color: var(--accent); font-size: 13px; }
+.pd-price-row:hover {
+  border-color: var(--accent-ring);
+  box-shadow: 0 6px 18px color-mix(in srgb, #020617 8%, transparent);
+}
+.pd-price-row:active { transform: translateY(1px); }
+.pd-price-store { font-weight: 850; font-size: 16px; display: inline-flex; align-items: center; }
+.pd-price-amt { margin-left: auto; font-weight: 850; color: #22c55e; font-size: 19px; white-space: nowrap; }
+/* Price-less rows (Amazon search link) show a muted, accent-coloured hint on
+   the right instead of a number — still no arrow, whole row clickable. */
+.pd-price-amt-link { color: var(--accent); font-size: 14px; font-weight: 800; }
 
 .pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 .pd-variant-card {

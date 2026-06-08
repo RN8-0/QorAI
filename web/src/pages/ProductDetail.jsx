@@ -964,15 +964,16 @@ export default function ProductDetail() {
                 <div className="pd-prices-list">
                   {amazonUrl && (
                     <a className="pd-price-row" href={amazonUrl} target="_blank" rel="sponsored noopener">
-                      <span className="pd-price-store"><AmazonLogo height={17} /></span>
-                      <span className="pd-price-go">{L('View', 'Görüntüle', 'Ansehen')} ↗</span>
+                      <span className="pd-price-store"><AmazonLogo height={26} /></span>
+                      <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
                     </a>
                   )}
                   {priced.map((o) => (
                     <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o)} target="_blank" rel="sponsored noopener">
                       <span className="pd-price-store">{o.store || L('Store', 'Mağaza', 'Shop')}</span>
-                      {o.hasExactPrice && <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>}
-                      <span className="pd-price-go">↗</span>
+                      {o.hasExactPrice
+                        ? <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
+                        : <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>}
                     </a>
                   ))}
                 </div>

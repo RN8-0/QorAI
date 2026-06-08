@@ -1957,6 +1957,42 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+  // POST /offers/feed-rematch -> re-runs the configured partner feeds
+  // (scripts/offer_feeds.json) against the catalog so NEWLY scraped products
+  // that match a cached feed (by EAN/GTIN or MPN+brand) get their affiliate
+  // offer automatically. Skips the Typesense reindex (kept light for the
+  // post-scrape auto-trigger). No-op if the config or feed files are missing.
+  if (req.url === '/offers/feed-rematch' && req.method === 'POST') {
+    try {
+      if (isOffersRunning()) {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'offers busy' }));
+        return;
+      }
+      const cfgPath = path.join(rootDir, 'scripts', 'offer_feeds.json');
+      if (!fs.existsSync(cfgPath)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, skipped: 'no-config' }));
+        return;
+      }
+      const { spawn } = require('child_process');
+      const args = ['scripts/import_offer_feed.js', '--config=scripts/offer_feeds.json', '--skip-reindex'];
+      const dnsPatch = path.join(__dirname, 'dns-patch.js');
+      const spawnArgs = fs.existsSync(dnsPatch) ? ['--require', dnsPatch, ...args] : args;
+      offersLog = '';
+      offersProc = spawn('node', spawnArgs, { cwd: rootDir, env: { ...process.env } });
+      offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+      offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+      offersProc.on('exit', code => { offersLog += `\n[feed-rematch] exited with code ${code}\n`; });
+      console.log('  💰 /offers/feed-rematch — re-matching cached partner feeds');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, pid: offersProc.pid }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
   if (req.url === '/offers/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ running: isOffersRunning(), logTail: offersLog.slice(-6000), config: getOffersConfig() }));
