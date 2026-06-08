@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar, getVariants } from '../lib/typesense';
@@ -52,26 +52,25 @@ function variantLabel(v) {
   return v?.name || '';
 }
 
-// Returns keySpecs entries that differ between variant and base product (up to 4).
-// Priority: storage, RAM, battery — then any other differing key.
-function computeVariantDiffs(variant, base) {
-  const vks = variant?.keySpecs && typeof variant.keySpecs === 'object' ? variant.keySpecs : {};
-  const bks = base?.keySpecs && typeof base.keySpecs === 'object' ? base.keySpecs : {};
-  const priority = ['spec.storage', 'spec.ram', 'spec.battery', 'spec.camera'];
-  const diffs = [];
+// Picks up to 2 spec keys that vary across the variant list — the SAME keys for
+// every card so the chips line up (e.g. all cards show "Storage / RAM" even
+// when one variant only differs by one of them). Priority list is the user-
+// recognisable axes; we drop a key if every variant has the same value.
+function pickVariantDiffKeys(variants) {
+  if (!Array.isArray(variants) || variants.length < 2) return [];
+  const priority = ['spec.storage', 'spec.ram', 'spec.battery', 'spec.screen', 'spec.camera', 'spec.cpu'];
+  const out = [];
   for (const k of priority) {
-    const vv = String(vks[k] || '').trim();
-    const bv = String(bks[k] || '').trim();
-    if (vv && vv !== bv) diffs.push({ label: k, value: vv });
+    const vals = new Set();
+    for (const v of variants) {
+      const ks = (v && v.keySpecs) || {};
+      const val = String(ks[k] || '').trim();
+      if (val) vals.add(val);
+    }
+    if (vals.size >= 2) out.push(k);
+    if (out.length >= 2) break;
   }
-  for (const [k, v] of Object.entries(vks)) {
-    if (diffs.length >= 4) break;
-    if (priority.includes(k)) continue;
-    const vv = String(v || '').trim();
-    const bv = String(bks[k] || '').trim();
-    if (vv && vv !== '-' && vv !== bv) diffs.push({ label: k, value: vv });
-  }
-  return diffs.slice(0, 4);
+  return out;
 }
 
 function normHeroSpecText(value) {
@@ -145,6 +144,83 @@ function sectionIcon(name) {
   if (has('özellik', 'ozellik', 'feature', 'öne')) return '✨';
   if (has('temel', 'genel', 'general', 'core')) return 'ℹ️';
   return '📋';
+}
+
+// Shared product fingerprint used by every AI prompt below — keeps the spec
+// context identical across the four AI features (deep / alternatives / advisor
+// / prediction) so the model has the same grounding regardless of which card
+// the user opens first.
+function productFingerprint(p, lang) {
+  const productName = localizedProductName(p, lang);
+  const ks = p.keySpecs && typeof p.keySpecs === 'object'
+    ? Object.entries(p.keySpecs).slice(0, 18).map(([k, v]) => `${k}: ${v}`).join(', ')
+    : '';
+  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
+  const price = priceFresh && Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
+  return { productName, ks, price };
+}
+
+function aiDeepPrompt(p, lang) {
+  const { productName, ks, price } = productFingerprint(p, lang);
+  return (
+    'You are Qor AI, a senior tech product analyst. Produce a deep technical analysis ' +
+    `of the product below. Reply ONLY in language ISO=${lang}, valid markdown, no preamble.\n\n` +
+    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Qor AI Tech Score: ${p.techScore || '-'}/100\nApprox. price: ${price}\n` +
+    `Key specs: ${ks || '-'}\n\n` +
+    '## OUTPUT\n' +
+    '**Genel Değerlendirme / Overall** — 2-3 paragraphs.\n' +
+    '**Güçlü Yönler / Strengths** — 5-7 "-" bullets with real-world impact.\n' +
+    '**Zayıf Yönler / Weaknesses** — 4-6 honest "-" bullets.\n' +
+    '**Performans Skoru** — give a short table of 4 axes (Performance, Design, Value, Longevity) each scored 0-100.\n'
+  );
+}
+function aiAlternativesPrompt(p, lang) {
+  const { productName, ks, price } = productFingerprint(p, lang);
+  return (
+    'You are Qor AI. List the 3 strongest competing alternatives to the product below. ' +
+    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
+    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Approx. price: ${price}\nKey specs: ${ks || '-'}\n\n` +
+    '## OUTPUT\nFor EACH of the 3 alternatives, give a section:\n' +
+    '### <Product name>\n' +
+    '**Neden bu? / Why this?** 1-2 sentences.\n' +
+    '**Avantaj / Pros:** 2-3 "-" bullets vs the target.\n' +
+    '**Dezavantaj / Cons:** 2-3 "-" bullets vs the target.\n' +
+    '**Kime uygun / Who it fits:** 1 sentence.\n'
+  );
+}
+function aiAdvisorPrompt(p, lang, userProfile = {}) {
+  const { productName, ks, price } = productFingerprint(p, lang);
+  const profile = Object.entries(userProfile)
+    .filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`)
+    .slice(0, 14).join('\n');
+  return (
+    'You are Qor AI Product Advisor. Give tailored buying advice based on the user profile. ' +
+    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
+    `Product: ${productName} (${p.brand || '-'} / ${p.category || '-'})\n` +
+    `Approx. price: ${price}\nKey specs: ${ks || '-'}\n` +
+    (profile ? `\nUser profile:\n${profile}\n` : '') +
+    '\n## OUTPUT\n' +
+    '**Senin için uygun mu? / Is it right for you?** 2-3 paragraphs grounded in the profile.\n' +
+    '**Dikkat Etmen Gerekenler / Watch out for** — 3-5 "-" bullets.\n' +
+    '**Karar / Verdict** — 1 sentence, blunt: AL / DÜŞÜN / ALMA (BUY / CONSIDER / SKIP).\n'
+  );
+}
+function aiPredictionPrompt(p, lang) {
+  const { productName, ks, price } = productFingerprint(p, lang);
+  return (
+    'You are Qor AI Price Forecaster. Predict near-term price trend for the product. ' +
+    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
+    `Product: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
+    `Approx. current price: ${price}\nKey specs: ${ks || '-'}\n\n` +
+    '## OUTPUT\n' +
+    '**Fiyat Trendi / Trend** — short paragraph (Will it drop, hold, or rise in the next 3-6 months and why).\n' +
+    '**En İyi Alım Zamanı / Best time to buy** — 1-2 sentences with a target month / season.\n' +
+    '**Risk Faktörleri / Risks** — 3-4 "-" bullets (new model coming, supply, demand cycle, etc.).\n' +
+    '**Tahmini İndirim / Expected discount** — give a rough % range expected within 6 months.\n'
+  );
 }
 
 // Mirrors the mobile app's senior-analyst (PRO) product analysis: a grounded,
@@ -478,10 +554,15 @@ export default function ProductDetail() {
   const [compareBase, setCompareBase] = useState(null);
   const [compareMsg, setCompareMsg] = useState('');
 
-  const [aiText, setAiText] = useState('');
-  const [aiNotice, setAiNotice] = useState('');
-  const [aiBusy, setAiBusy] = useState(false);
-  const aiRunRef = useRef('');
+  // Four separate AI cards (deep, alternatives, advisor, prediction) — each
+  // tracks its own busy / notice / text / expanded flag so the user can open
+  // one without it kicking off all four (Qor coin costs add up otherwise).
+  const [aiCards, setAiCards] = useState({
+    deep: { text: '', busy: false, notice: '', expanded: false },
+    alts: { text: '', busy: false, notice: '', expanded: false },
+    advisor: { text: '', busy: false, notice: '', expanded: false },
+    pred: { text: '', busy: false, notice: '', expanded: false },
+  });
   const aiUserKeyRef = useRef('');
 
   const [similar, setSimilar] = useState([]);
@@ -489,14 +570,27 @@ export default function ProductDetail() {
 
   useEffect(() => {
     const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
-    if (aiUserKeyRef.current && aiUserKeyRef.current !== key) aiRunRef.current = '';
+    if (aiUserKeyRef.current && aiUserKeyRef.current !== key) {
+      setAiCards({
+        deep: { text: '', busy: false, notice: '', expanded: false },
+        alts: { text: '', busy: false, notice: '', expanded: false },
+        advisor: { text: '', busy: false, notice: '', expanded: false },
+        pred: { text: '', busy: false, notice: '', expanded: false },
+      });
+    }
     aiUserKeyRef.current = key;
   }, [user?.id, user?.quizCompleted]);
 
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiText(''); setAiNotice(''); setSimilar([]); setVariants([]); aiRunRef.current = '';
+    setAiCards({
+      deep: { text: '', busy: false, notice: '', expanded: false },
+      alts: { text: '', busy: false, notice: '', expanded: false },
+      advisor: { text: '', busy: false, notice: '', expanded: false },
+      pred: { text: '', busy: false, notice: '', expanded: false },
+    });
+    setSimilar([]); setVariants([]);
     getProduct(id)
       .then((prod) => {
         if (!live) return;
@@ -545,35 +639,38 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [lang]);
 
-  // Generate the AI analysis the first time the tab is opened.
-  useEffect(() => {
-    if (tab !== 'premium' || !p || aiText || aiBusy) return;
-    const runKey = `${p.id}|${lang}`;
-    if (aiRunRef.current === runKey) return;
-    aiRunRef.current = runKey;
-    (async () => {
-      setAiNotice('');
-      setAiBusy(true);
-      const access = await requireAiAccess('detail_ai', {
-        onMessage: (message) => setAiNotice(message),
-      });
-      if (!access.ok) {
-        aiRunRef.current = '';
-        setAiBusy(false);
-        return;
+  // Click handler shared by the four AI cards in the AI tab. Each card is
+  // independent: the user pays a detail_ai cost only for the card they open,
+  // and re-opening a card that already has content just toggles the expand
+  // state (no second charge).
+  const runAiCard = useCallback(async (key, promptBuilder) => {
+    if (!p) return;
+    setAiCards((prev) => {
+      const cur = prev[key] || { text: '', busy: false, notice: '', expanded: false };
+      if (cur.text) {
+        return { ...prev, [key]: { ...cur, expanded: !cur.expanded } };
       }
-      try {
-        const txt = await askQorAi([{ role: 'user', text: aiPrompt(p, lang, aiUserProfile(user)) }]);
-        setAiText(txt);
-        saveProductAnalysisHistory({ product: p, analysis: txt });
-      } catch {
-        aiRunRef.current = '';
-        setAiNotice(t('pd.aiError'));
-      } finally {
-        setAiBusy(false);
-      }
-    })();
-  }, [tab, p, aiText, aiBusy, lang, requireAiAccess, t, user]);
+      return prev;
+    });
+    const cur = aiCards[key];
+    if (cur && (cur.text || cur.busy)) return;
+    setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: true, notice: '', expanded: true } }));
+    const access = await requireAiAccess('detail_ai', {
+      onMessage: (message) => setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], notice: message } })),
+    });
+    if (!access.ok) {
+      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false } }));
+      return;
+    }
+    try {
+      const prompt = promptBuilder(p, lang, aiUserProfile(user));
+      const txt = await askQorAi([{ role: 'user', text: prompt }]);
+      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false, text: txt, expanded: true } }));
+      if (key === 'deep') saveProductAnalysisHistory({ product: p, analysis: txt });
+    } catch {
+      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false, notice: t('pd.aiError') } }));
+    }
+  }, [p, lang, requireAiAccess, t, user, aiCards]);
 
   useEffect(() => {
     let live = true;
@@ -832,40 +929,46 @@ export default function ProductDetail() {
             );
           })()}
 
-          {variants.length > 0 && (
-            <section className="pd-block">
-              <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
-              <div className="pd-variants-list">
-                {variants.map((v) => {
-                  const diffs = computeVariantDiffs(v, p);
-                  return (
-                    <Link key={v.id} to={productPath(v)}
-                      className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
-                      <div className="pd-variant-media">
-                        <div className="pd-variant-img">
-                          <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
-                        </div>
-                      </div>
-                      <div className="pd-variant-body">
-                        {v.brand && <span className="pd-variant-brand">{v.brand}</span>}
-                        <span className="pd-variant-name">{variantLabel(v)}</span>
-                        {diffs.length > 0 && (
-                          <div className="pd-variant-specs">
-                            {diffs.map((d, i) => (
-                              <span className="pd-variant-spec" key={i}>
-                                <b>{localizedSpecValue(d.value, lang)}</b>
-                                <small>{localizedSpecLabel(specTr(d.label), lang)}</small>
-                              </span>
-                            ))}
+          {variants.length > 0 && (() => {
+            const diffKeys = pickVariantDiffKeys(variants);
+            return (
+              <section className="pd-block">
+                <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
+                <div className="pd-variants-list">
+                  {variants.map((v) => {
+                    const vks = (v && v.keySpecs) || {};
+                    return (
+                      <Link key={v.id} to={productPath(v)}
+                        className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
+                        <div className="pd-variant-media">
+                          <div className="pd-variant-img">
+                            <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
                           </div>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                        </div>
+                        <div className="pd-variant-body">
+                          {v.brand && <span className="pd-variant-brand">{v.brand}</span>}
+                          <span className="pd-variant-name">{variantLabel(v)}</span>
+                          {diffKeys.length > 0 && (
+                            <div className="pd-variant-specs">
+                              {diffKeys.map((k) => {
+                                const raw = String(vks[k] || '').trim();
+                                return (
+                                  <span className="pd-variant-spec" key={k}>
+                                    <b>{raw ? localizedSpecValue(raw, lang) : '—'}</b>
+                                    <small>{localizedSpecLabel(specTr(k), lang)}</small>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })()}
 
           <section className="pd-block">
             <div className="pd-tabs2">
@@ -886,29 +989,57 @@ export default function ProductDetail() {
                 </div>
               )}
               {tab === 'premium' && (
-                <div className="fade-up">
-                  <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
-                    <div className="row" style={{ gap: 9, marginBottom: 10 }}>
-                      <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
-                        <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
-                      </div>
-                    </div>
-                    {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
-                    {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
-                    {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
-                  </div>
-                  {pros.length > 0 && (
-                    <div className="ad-card ad-pos" style={{ marginTop: 14 }}>
-                      <h4>✓ {t('pd.pros').toUpperCase()}</h4>
-                      <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
-                    </div>
-                  )}
-                  {cons.length > 0 && (
-                    <div className="ad-card ad-neg" style={{ marginTop: 14 }}>
-                      <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
-                      <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
+                <div className="fade-up pd-ai-grid">
+                  <AiAnalysisCard
+                    icon="🧠"
+                    gradient="grad-violet"
+                    title={L('AI Deep Analysis', 'AI Derin Analiz', 'KI-Tiefenanalyse')}
+                    subtitle={L('Comprehensive AI product evaluation', 'Kapsamlı AI ürün değerlendirmesi', 'Umfassende KI-Produktbewertung')}
+                    state={aiCards.deep}
+                    onOpen={() => runAiCard('deep', aiDeepPrompt)}
+                    loadingLabel={t('pd.aiLoading')}
+                  />
+                  <AiAnalysisCard
+                    icon="🔁"
+                    gradient="grad-orange"
+                    title={L('Smart Alternatives', 'Akıllı Alternatifler', 'Intelligente Alternativen')}
+                    subtitle={L('AI-curated similar products', 'AI tarafından seçilmiş benzer ürünler', 'KI-kuratierte ähnliche Produkte')}
+                    state={aiCards.alts}
+                    onOpen={() => runAiCard('alts', aiAlternativesPrompt)}
+                    loadingLabel={t('pd.aiLoading')}
+                  />
+                  <AiAnalysisCard
+                    icon="🎯"
+                    gradient="grad-cyan"
+                    title={L('AI Product Advisor', 'AI Ürün Danışmanı', 'KI-Produktberater')}
+                    subtitle={L('Buying advice tailored to your profile', 'Profiline göre satın alma tavsiyeleri', 'Maßgeschneiderte Kaufberatung')}
+                    state={aiCards.advisor}
+                    onOpen={() => runAiCard('advisor', aiAdvisorPrompt)}
+                    loadingLabel={t('pd.aiLoading')}
+                  />
+                  <AiAnalysisCard
+                    icon="📉"
+                    gradient="grad-green"
+                    title={L('Price Prediction', 'Fiyat Tahmini', 'Preisvorhersage')}
+                    subtitle={L('AI price trend & best time to buy', 'AI fiyat trendi ve en iyi alım zamanı', 'KI-Preistrend & beste Kaufzeit')}
+                    state={aiCards.pred}
+                    onOpen={() => runAiCard('pred', aiPredictionPrompt)}
+                    loadingLabel={t('pd.aiLoading')}
+                  />
+                  {(pros.length > 0 || cons.length > 0) && (
+                    <div className="pd-ai-procon">
+                      {pros.length > 0 && (
+                        <div className="ad-card ad-pos">
+                          <h4>✓ {t('pd.pros').toUpperCase()}</h4>
+                          <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
+                        </div>
+                      )}
+                      {cons.length > 0 && (
+                        <div className="ad-card ad-neg">
+                          <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
+                          <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -918,7 +1049,7 @@ export default function ProductDetail() {
 
           <section className="pd-block">
             <h2 className="pd-block-title">💬 {L('Reviews', 'Yorumlar', 'Bewertungen')}</h2>
-            <Reviews productId={p.id} />
+            <Reviews productId={p.id} productName={displayName} lang={lang} />
           </section>
         </div>
 
@@ -979,6 +1110,40 @@ export default function ProductDetail() {
           </section>
         </div>,
         document.body,
+      )}
+    </div>
+  );
+}
+
+// Collapsible AI analysis card used in the AI tab. Mirrors the mobile app's
+// SharedPremiumFeaturesSection style: gradient header with icon + title +
+// chevron, body either shows a spinner, a notice (auth / insufficient coins)
+// or a fully rendered markdown analysis.
+function AiAnalysisCard({ icon, gradient, title, subtitle, state, onOpen, loadingLabel }) {
+  const { text, busy, notice, expanded } = state || {};
+  const open = !!expanded;
+  return (
+    <div className={'pd-ai-card' + (open ? ' on' : '')}>
+      <button type="button" className={'pd-ai-card-head ' + gradient} onClick={onOpen} disabled={busy}>
+        <span className="pd-ai-card-ic">{icon}</span>
+        <span className="pd-ai-card-h">
+          <b>{title}</b>
+          <small>{subtitle}</small>
+        </span>
+        <span className="pd-ai-card-arr" aria-hidden="true">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="pd-ai-card-body fade-up">
+          {busy && (
+            <div className="pd-ai-loading"><div className="spinner" /><span>{loadingLabel}</span></div>
+          )}
+          {!busy && notice && (
+            <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{notice}</div>
+          )}
+          {!busy && text && (
+            <div style={{ fontSize: 14.5, lineHeight: 1.65 }}><AiText text={text} /></div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -257,6 +257,52 @@
   display: flex; align-items: center; justify-content: center; gap: 11px;
   padding: 50px 20px; color: var(--text2); font-size: 14px;
 }
+
+/* App-parity AI analysis grid — four collapsible cards (deep / alternatives
+   / advisor / prediction) each with a colourful gradient header. Mirrors the
+   mobile SharedPremiumFeaturesSection so users moving between web and app see
+   the same set of premium AI tools. */
+.pd-ai-grid { display: flex; flex-direction: column; gap: 12px; }
+.pd-ai-card {
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface-2); overflow: hidden;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pd-ai-card.on { border-color: var(--accent-ring); box-shadow: 0 14px 32px color-mix(in srgb, #020617 10%, transparent); }
+.pd-ai-card-head {
+  display: grid; grid-template-columns: 46px minmax(0, 1fr) 28px;
+  gap: 14px; align-items: center;
+  width: 100%; padding: 14px 18px; border: none; cursor: pointer;
+  color: #ffffff; text-align: left;
+  background: var(--brand-grad);
+}
+.pd-ai-card-head.grad-violet { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+.pd-ai-card-head.grad-orange { background: linear-gradient(135deg, #f59e0b, #f97316); }
+.pd-ai-card-head.grad-cyan { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+.pd-ai-card-head.grad-green { background: linear-gradient(135deg, #10b981, #059669); }
+.pd-ai-card-head:disabled { opacity: 0.7; cursor: wait; }
+.pd-ai-card-ic {
+  width: 46px; height: 46px; display: grid; place-items: center;
+  border-radius: 12px; font-size: 22px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.pd-ai-card-h { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pd-ai-card-h b { font-size: 15.5px; font-weight: 850; line-height: 1.2; }
+.pd-ai-card-h small { font-size: 12.5px; opacity: 0.92; font-weight: 600; line-height: 1.35; }
+.pd-ai-card-arr {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  font-size: 18px; font-weight: 900; line-height: 1;
+  border-radius: 999px; background: rgba(255, 255, 255, 0.18);
+}
+.pd-ai-card-body { padding: 18px 20px; }
+.pd-ai-procon { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+@media (max-width: 640px) {
+  .pd-ai-procon { grid-template-columns: 1fr; }
+  .pd-ai-card-head { grid-template-columns: 40px minmax(0, 1fr) 24px; padding: 12px 14px; gap: 10px; }
+  .pd-ai-card-ic { width: 40px; height: 40px; font-size: 19px; }
+  .pd-ai-card-h b { font-size: 14.5px; }
+  .pd-ai-card-h small { font-size: 11.5px; }
+}
 .pd-ai {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden;
@@ -452,6 +498,61 @@
   font-weight: 750;
 }
 
+/* App-parity review extras: YouTube shortcut, rating breakdown, sort tabs */
+.pd-yt-card {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 18px;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, #ff0033 10%, var(--surface-2)), var(--surface-2));
+  text-decoration: none; color: var(--text);
+  transition: border-color .15s, transform .05s, box-shadow .15s;
+}
+.pd-yt-card:hover { border-color: #ff0033; transform: translateY(-1px); box-shadow: 0 10px 22px color-mix(in srgb, #ff0033 18%, transparent); }
+.pd-yt-ic { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 12px; background: #fff; }
+.pd-yt-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pd-yt-t b { font-size: 15px; font-weight: 850; }
+.pd-yt-t small { font-size: 12.5px; color: var(--text3); font-weight: 600; line-height: 1.35; }
+.pd-yt-arr { font-size: 18px; color: var(--accent); font-weight: 900; text-align: right; }
+
+.pd-rev-summary {
+  display: grid; grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  gap: 28px; align-items: center;
+  padding: 16px 18px; margin-bottom: 16px;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface-2);
+}
+.pd-rev-summary-score {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 110px;
+}
+.pd-rev-summary-score b { font-size: 36px; font-weight: 900; line-height: 1; color: var(--text); }
+.pd-rev-summary-score small { font-size: 12px; color: var(--text3); font-weight: 700; }
+.pd-rev-dist { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pd-rev-dist-row { display: grid; grid-template-columns: 28px 1fr 36px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--text2); }
+.pd-rev-dist-lbl { font-weight: 800; color: var(--text); }
+.pd-rev-dist-bar { height: 7px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
+.pd-rev-dist-bar i { display: block; height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); border-radius: 999px; }
+.pd-rev-dist-n { text-align: right; font-weight: 700; color: var(--text3); }
+
+.pd-rev-sort {
+  display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.pd-rev-sort button {
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text2); font-size: 12.5px; font-weight: 750; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.pd-rev-sort button:hover { color: var(--text); }
+.pd-rev-sort button.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+
+@media (max-width: 560px) {
+  .pd-rev-summary { grid-template-columns: 1fr; gap: 14px; }
+  .pd-rev-summary-score { flex-direction: row; min-width: 0; }
+  .pd-yt-card { grid-template-columns: 40px minmax(0, 1fr) 18px; padding: 12px 14px; gap: 10px; }
+  .pd-yt-ic { width: 40px; height: 40px; }
+}
+
 .pd-rev-list { display: flex; flex-direction: column; gap: 12px; }
 .pd-rev-item {
   background: var(--bg2); border: 1px solid var(--border);
@@ -568,7 +669,7 @@
 .pd-price-amt { font-weight: 800; color: #22c55e; font-size: 16px; }
 .pd-price-go { margin-left: auto; font-weight: 700; color: var(--accent); font-size: 13px; }
 
-.pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: flex-start; }
+.pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 .pd-variant-card {
   display: grid; grid-template-columns: 100px minmax(0, 1fr);
   gap: 12px; min-height: 130px; padding: 10px;

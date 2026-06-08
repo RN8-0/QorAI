@@ -121,7 +121,65 @@ function Replies({ reviewId }) {
   );
 }
 
-export default function Reviews({ productId }) {
+// Rating distribution sidebar (1★..5★ bars). The mobile app shows the same
+// breakdown beside the average — without it the website looks sparse next to
+// the app for products with many reviews.
+function RatingBreakdown({ reviews }) {
+  const buckets = [0, 0, 0, 0, 0];
+  for (const r of reviews) {
+    const n = Math.round(Number(r.rating) || 0);
+    if (n >= 1 && n <= 5) buckets[n - 1] += 1;
+  }
+  const max = Math.max(1, ...buckets);
+  return (
+    <div className="pd-rev-dist">
+      {[5, 4, 3, 2, 1].map((s) => {
+        const count = buckets[s - 1];
+        const pct = Math.round((count / max) * 100);
+        return (
+          <div className="pd-rev-dist-row" key={s}>
+            <span className="pd-rev-dist-lbl">{s}★</span>
+            <span className="pd-rev-dist-bar"><i style={{ width: `${pct}%` }} /></span>
+            <span className="pd-rev-dist-n">{count}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Opens a YouTube search for "<product> detailed review" in the user's
+// language. Apps shows actual embedded thumbnails — we can't scrape YouTube
+// from the browser (CORS), so we link out instead. Mirrors the app's intent:
+// give the user a one-tap shortcut to video reviews.
+function YouTubeSearchCard({ productName, lang }) {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const keyword = {
+    tr: 'detaylı inceleme', de: 'ausführlicher Test', fr: 'test complet avis',
+    es: 'análisis completo review', it: 'recensione completa', pt: 'análise completa',
+    ru: 'подробный обзор', ar: 'مراجعة شاملة', ja: 'レビュー 詳細',
+    ko: '리뷰 상세', zh: '详细评测',
+  }[code] || 'detailed review';
+  const query = encodeURIComponent(`${productName} ${keyword}`);
+  const url = `https://www.youtube.com/results?search_query=${query}`;
+  const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);
+  return (
+    <a className="pd-yt-card" href={url} target="_blank" rel="noopener">
+      <span className="pd-yt-ic" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#ff0033">
+          <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
+        </svg>
+      </span>
+      <span className="pd-yt-t">
+        <b>{L('Watch YouTube reviews', 'YouTube incelemelerini izle', 'YouTube-Reviews ansehen')}</b>
+        <small>{L('Curated video reviews from creators', 'YouTube\'da detaylı inceleme videolarını aç', 'Kuratierte Video-Reviews öffnen')}</small>
+      </span>
+      <span className="pd-yt-arr" aria-hidden="true">↗</span>
+    </a>
+  );
+}
+
+export default function Reviews({ productId, productName, lang }) {
   const t = useT();
   const { user, openAuth } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -130,6 +188,7 @@ export default function Reviews({ productId }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [openReplies, setOpenReplies] = useState(null);
+  const [sortMode, setSortMode] = useState('new');
 
   useEffect(() => {
     setReviews([]); setRating(0); setText(''); setMsg(''); setOpenReplies(null);
@@ -167,9 +226,21 @@ export default function Reviews({ productId }) {
   }
 
   const avg = averageRating(reviews);
+  const sortedReviews = (() => {
+    const list = [...reviews];
+    if (sortMode === 'top') {
+      list.sort((a, b) => (b.likedBy.length - b.dislikedBy.length) - (a.likedBy.length - a.dislikedBy.length));
+    } else if (sortMode === 'high') {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortMode === 'low') {
+      list.sort((a, b) => (a.rating || 0) - (b.rating || 0));
+    }
+    return list;
+  })();
 
   return (
     <section className="pd-section">
+      {productName && <YouTubeSearchCard productName={productName} lang={lang} />}
       <div className="pd-section-head">
         <h2>{t('pd.reviews')}</h2>
         {reviews.length > 0 && (
@@ -179,6 +250,16 @@ export default function Reviews({ productId }) {
           </span>
         )}
       </div>
+      {reviews.length > 0 && (
+        <div className="pd-rev-summary">
+          <div className="pd-rev-summary-score">
+            <b>{avg.toFixed(1)}</b>
+            <Stars value={Math.round(avg)} />
+            <small>{reviews.length} {reviews.length === 1 ? '★' : '★★'}</small>
+          </div>
+          <RatingBreakdown reviews={reviews} />
+        </div>
+      )}
 
       <form className="pd-rev-form" onSubmit={submit}>
         {user ? (
@@ -212,8 +293,15 @@ export default function Reviews({ productId }) {
       {reviews.length === 0 ? (
         <div className="pd-note">{t('pd.revNone')}</div>
       ) : (
-        <div className="pd-rev-list">
-          {reviews.map((r) => {
+        <>
+          <div className="pd-rev-sort">
+            <button className={sortMode === 'new' ? 'on' : ''} onClick={() => setSortMode('new')}>{t('pd.revSortNew') || 'Yeni'}</button>
+            <button className={sortMode === 'top' ? 'on' : ''} onClick={() => setSortMode('top')}>{t('pd.revSortTop') || 'En Beğenilen'}</button>
+            <button className={sortMode === 'high' ? 'on' : ''} onClick={() => setSortMode('high')}>{t('pd.revSortHigh') || 'En Yüksek'}</button>
+            <button className={sortMode === 'low' ? 'on' : ''} onClick={() => setSortMode('low')}>{t('pd.revSortLow') || 'En Düşük'}</button>
+          </div>
+          <div className="pd-rev-list">
+          {sortedReviews.map((r) => {
             const mine = user && r.likedBy.includes(user.id) ? 'like'
               : user && r.dislikedBy.includes(user.id) ? 'dislike' : '';
             return (
@@ -245,7 +333,8 @@ export default function Reviews({ productId }) {
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </section>
   );
