@@ -2927,6 +2927,9 @@ const MODAL_LANGS = [
   ['tr','Türkçe (source)'], ['en','English'], ['de','Deutsch'],
 ];
 let _modalLang = 'tr';
+// '' = auto (pick by the modal language). A country code (e.g. 'DE') pins the
+// offer panel to that country's prices + every store link for it.
+let _modalCountry = '';
 
 function _adminActiveProductLang() {
   return localStorage.getItem('qorai_modal_lang') || _modalLang || 'tr';
@@ -3119,11 +3122,16 @@ async function _adminFetchProductVariants(p){
   }
 }
 
+let _modalProductId = '';
 async function openProduct(id){
   let p=allProducts.find(x=>x.id===id);
   const doc=await pbGetDoc('products',id).catch(()=>null);
   if(doc?.exists)p={id:doc.id,...doc.data()};
   if(!p)return;
+  // Reset the pinned country only when switching to a DIFFERENT product (a new
+  // product may not stock the previously selected country). Re-opening the same
+  // product — e.g. from switchModalCountry — keeps the pin.
+  if(id!==_modalProductId){ _modalCountry=''; _modalProductId=id; }
   // Default to user's saved preference (else Turkish source)
   _modalLang = localStorage.getItem('qorai_modal_lang') || 'tr';
   if (!MODAL_LANGS.some(([code]) => code === _modalLang)) _modalLang = 'tr';
@@ -3158,8 +3166,73 @@ function _amazonLogoSvg(h=18){
 // Single cheapest-offer row for the product modal: store logo + lowest price
 // + a "Satın Al" affiliate button. Built from the product's price rollup
 // (lowestPrice / lowestOfferStore / lowestOfferUrl) — no extra query.
+// Countries that actually have an offer or a price for this product — drives
+// the modal country selector so the admin only sees real options.
+function _adminOfferCountries(p){
+  const set=new Set();
+  for(const o of (Array.isArray(p._offers)?p._offers:[])){ const c=String(o.country||'').toUpperCase(); if(c)set.add(c); }
+  const prices=p?.prices&&typeof p.prices==='object'?p.prices:{};
+  for(const k of Object.keys(prices)){ if(Number(prices[k])>0)set.add(String(k).toUpperCase()); }
+  const links=p?.affiliateLinksByCountry&&typeof p.affiliateLinksByCountry==='object'?p.affiliateLinksByCountry:{};
+  for(const k of Object.keys(links)){ set.add(String(k).toUpperCase()); }
+  return [...set].sort();
+}
+
+// All store offers for ONE country: every offers-collection row tagged with it,
+// plus any affiliateLinksByCountry entries not already covered. Used when the
+// admin pins the modal to a country.
+function _adminOffersForCountry(p, cc){
+  const country=String(cc||'').toUpperCase();
+  const out=[];
+  const seen=new Set();
+  for(const o of (Array.isArray(p._offers)?p._offers:[])){
+    if(String(o.country||'').toUpperCase()!==country)continue;
+    const url=o.affiliateUrl||o.url||'';
+    const key=`${(o.store||'').toLowerCase()}|${url}`;
+    if(seen.has(key))continue; seen.add(key);
+    const isAmazon=String(o.network||'').toLowerCase()==='amazon'||/amazon/i.test(o.store||'');
+    out.push({
+      store:o.store||'Store', network:o.network||'',
+      price:(!o.priceUnknown&&Number(o.price)>0)?Number(o.price):0,
+      currency:o.currency||ADMIN_CURRENCY_BY_COUNTRY[country]||'',
+      url:isAmazon?_adminLocalizeAmazon(url,_modalLang||'tr'):url,
+    });
+  }
+  const links=(p?.affiliateLinksByCountry||{})[country]||(p?.affiliateLinksByCountry||{})[country.toLowerCase()]||{};
+  const priceForC=Number((p?.prices||{})[country]??(p?.prices||{})[country.toLowerCase()])||0;
+  for(const [store,url] of Object.entries(links)){
+    if(!String(url||'').trim())continue;
+    const key=`${store.toLowerCase()}|${url}`;
+    if(seen.has(key))continue; seen.add(key);
+    out.push({store, network:'', price:priceForC, currency:ADMIN_CURRENCY_BY_COUNTRY[country]||'', url});
+  }
+  return out;
+}
+
 function _buildOfferRow(p){
   let html='';
+  // Country-pinned view: list EVERY store offer for the selected country with
+  // its price + affiliate link, so the admin can verify per-country pricing.
+  if(_modalCountry){
+    const rows=_adminOffersForCountry(p,_modalCountry);
+    if(!rows.length){
+      return `<div class="card" style="margin:14px 0 0;border:1px dashed var(--border);padding:14px;color:var(--text3);font-size:13px">Bu ürün için <b>${escHtml(_modalCountry)}</b> ülkesinde kayıtlı fiyat/link yok.</div>`;
+    }
+    html+=`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:12px"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:10px">${escHtml(_modalCountry)} — fiyatlar & linkler (${rows.length})</div>`;
+    for(const r of rows){
+      const isAmazon=/amazon/i.test(r.store)||String(r.network).toLowerCase()==='amazon';
+      const priceText=r.price>0?escHtml(_adminFormatOfferPrice({price:r.price,currency:r.currency})):'<span style="color:var(--text3);font-weight:600">fiyat yok</span>';
+      const btnColor=isAmazon?'#FF9900':'#0064d2'; const btnText=isAmazon?'#111':'#fff';
+      const url=safeUrl(r.url);
+      html+=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">`
+        +`<span style="font-weight:800;font-size:14px">${escHtml(r.store)}</span>`
+        +`<span style="font-weight:800;color:#22c55e;font-size:18px">${priceText}</span>`
+        +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:${btnColor};color:${btnText};font-weight:800;font-size:12px;padding:7px 14px;border-radius:8px;text-decoration:none">${isAmazon?"Amazon'da Gör":'Satın Al'} ↗</a>`:'')
+        +`</div>`;
+    }
+    html+=`</div>`;
+    return html;
+  }
   // Affiliate offers straight from the offers collection. Amazon search links
   // carry no price (priceUnknown), so they only show here — never in the priced
   // rollup row below. Localize the storefront to the modal language at click.
@@ -4066,9 +4139,15 @@ function _renderProductModal(p,variants=[]){
     })
     .join('');
   const langChip = `<span class="pm-chip" style="padding:2px 8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4)">🌐 <select onchange="switchModalLang('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit;font-weight:600">${langOptions}</select></span>`;
+  // Country selector for the price/offer panel: lists every country that has a
+  // real offer/price for this product. "Auto" follows the modal language.
+  const offerCountries = _adminOfferCountries(p);
+  const countryChip = offerCountries.length
+    ? `<span class="pm-chip" style="padding:2px 8px;background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.4)">📍 <select onchange="switchModalCountry('${safeId}', this.value)" style="background:transparent;color:inherit;border:none;outline:none;cursor:pointer;font:inherit;font-weight:600"><option value=""${_modalCountry===''?' selected':''}>Oto (dil)</option>${offerCountries.map(c=>`<option value="${c}"${c===_modalCountry?' selected':''}>${c}</option>`).join('')}</select></span>`
+    : '';
   const uniqueVariants=(variants||[]).filter(v=>v&&v.id);
   const variantPanel=uniqueVariants.length>1?`<div class="card" style="margin:14px 0 0;border:1px solid var(--border);padding:12px"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;margin-bottom:8px">Variants</div><div style="display:flex;gap:8px;flex-wrap:wrap">${uniqueVariants.map(v=>`<button class="btn btn-sm ${v.id===id?'btn-primary':'btn-ghost'}" type="button" onclick="openProduct('${escJs(v.id)}')" title="${escHtml(v.name||'')}">${escHtml(_adminVariantLabel(v))}</button>`).join('')}</div></div>`:'';
-  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
+  body.innerHTML=`<div class="pm-hero"><div class="pm-img-area">${imgs[0]?`<img class="pm-main-img" id="pmMainImg" src="${imgs[0]}" onerror="this.style.display='none'">`:''}${imgs.length>0?`<div class="pm-thumbs">${imgs.map((u,i)=>`<div class="pm-thumb-wrap" style="position:relative;display:inline-block"><img class="pm-thumb${i===0?' active':''}" src="${u}" onclick="document.getElementById('pmMainImg').src='${escJs(u)}';document.querySelectorAll('.pm-thumb').forEach(t=>t.classList.remove('active'));this.classList.add('active')"><button title="Delete image" onclick="event.stopPropagation();deleteProductImage('${safeId}','${escJs(u)}')" style="position:absolute;top:2px;right:2px;background:rgba(220,38,38,.95);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>`).join('')}</div>`:''}</div><div class="pm-info"><div class="pm-brand">${safeBrand}</div><div class="pm-name">${safeName}</div><div class="pm-chips"><span class="pm-chip"><b>${p.specsCount||Object.keys(p.specs||{}).length}</b> specs</span><span class="pm-chip">${safeCategory}</span>${p.scrapedAt?`<span class="pm-chip">${new Date(p.scrapedAt).toLocaleDateString()}</span>`:''}${langChip}${countryChip}</div>${sc>0?`<div class="pm-score"><div class="pm-score-circle"><svg viewBox="0 0 36 36" class="pm-score-svg"><circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${scc}" stroke-width="3" stroke-dasharray="${sc} ${100-sc}" stroke-dashoffset="25" stroke-linecap="round"/></svg><div class="pm-score-num" style="color:${scc}">${sc}</div></div></div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="toggleEditForm('${safeId}')">✏️ Edit</button>${safeSourceUrl?`<button class="btn btn-sm" onclick="rescrapeProduct('${safeId}')" style="background:#0891b2;color:#fff">🔄 Re-scrape</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteProduct('${safeId}');closeModal()">Delete</button>${safeSourceUrl?`<a href="${safeSourceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Source</a>`:''}</div></div></div>
   ${variantPanel}
   ${_buildOfferRow(p)}
   <div id="editFormContainer" style="display:none;margin:16px 0">
@@ -4099,6 +4178,11 @@ function switchModalLang(id, lang){
   try { localStorage.setItem('qorai_modal_lang', lang); } catch {}
   openProduct(id);
   renderProductsPage();
+}
+// Pin the offer panel to a country's prices/links (or '' = auto by language).
+function switchModalCountry(id, cc){
+  _modalCountry = String(cc || '').toUpperCase();
+  openProduct(id);
 }
 async function saveProductEdit(id){
   const updates={};

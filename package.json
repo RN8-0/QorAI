@@ -26,7 +26,8 @@
     "icecat:test": "node scripts/icecat_ingest.js --limit=20 --langs=EN,TR --workers=1 --delay=1000",
     "icecat:cleanup-old": "node scripts/cleanup_old_icecat_products.js --dry-run",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "offers:awin": "node scripts/import_offer_feed.js --config=scripts/offer_feeds.json"
+    "offers:awin": "node scripts/awin-download.js && node scripts/import_offer_feed.js --config=scripts/offer_feeds.json",
+    "offers:awin:import": "node scripts/import_offer_feed.js --config=scripts/offer_feeds.json"
   },
   "keywords": [],
   "author": "",
