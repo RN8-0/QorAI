@@ -362,6 +362,12 @@
 
 .cmp-table td { font-size: 13px; }
 .cmp-td-empty { color: var(--text3); }
+.cmp-na {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--border); color: var(--text3);
+  font-size: 12px; font-weight: 800;
+}
 .cmp-row-score td { background: var(--accent-soft); }
 .cmp-row-score .cmp-td-spec { background: var(--accent-soft); color: var(--accent); }
 .cmp-spec-list {

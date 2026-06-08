@@ -4,12 +4,13 @@ import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom'
 import { getProduct, getSimilar } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
+import { useFavorites } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { amazonStorefrontsForLang, catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { amazonStorefrontsForProduct, catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
@@ -425,6 +426,7 @@ export default function ProductDetail() {
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { ids, has, add, remove } = useCompare();
+  const { has: isFavorite, toggle: toggleFavorite } = useFavorites();
   const { user } = useAuth();
   const requireAiAccess = useAiAccess(lang);
 
@@ -696,7 +698,29 @@ export default function ProductDetail() {
 
           {/* info */}
           <div className="pd-info2">
-            <div className="pd-brand2">{p.brand || meta.label}</div>
+            <div className="pd-info2-top">
+              <div className="pd-brand2">{p.brand || meta.label}</div>
+              <div className="pd-actions2">
+                <button type="button"
+                  className={'pd-act-btn pd-act-fav' + (isFavorite(p.id) ? ' on' : '')}
+                  onClick={() => toggleFavorite(p.id)}
+                  title={isFavorite(p.id) ? L('In favorites', 'Favorilerde', 'In Favoriten') : L('Add to favorites', 'Favorilere ekle', 'Zu Favoriten hinzufügen')}
+                  aria-label={L('Favorite', 'Favori', 'Favorit')}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill={isFavorite(p.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+                  </svg>
+                </button>
+                <button type="button"
+                  className={'pd-act-btn pd-act-cmp' + (inCompare ? ' on' : '')}
+                  onClick={toggleComparePool}
+                  title={inCompare ? L('In compare list', 'Karşılaştırmada', 'Im Vergleich') : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich hinzufügen')}
+                  aria-label={L('Compare', 'Karşılaştır', 'Vergleichen')}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="7" height="16" rx="1.4" /><rect x="14" y="4" width="7" height="16" rx="1.4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <h1 className="pd-name2">{displayName}</h1>
 
             <div className="pd-scores2">
@@ -737,24 +761,18 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Modern buy card — Amazon logo + storefront button(s). Turkish
-                visitors get two storefronts (TR for TL/domestic shipping, DE for
-                wider GTIN coverage); other languages get the single localized
-                redirect. Prices are intentionally not shown for search links. */}
-            {offerUrl && (() => {
-              const isAmazon = offer?.network === 'amazon';
-              const stores = isAmazon ? amazonStorefrontsForLang(offer.url, lang) : [];
+            {/* Amazon buy card — built straight from the product, so it shows on
+                every product (primary, variant, GTIN-less). Turkish visitors get
+                two storefronts (TR for TL/domestic shipping, DE for wider GTIN
+                coverage); other languages get the single localized storefront. */}
+            {(() => {
+              const stores = amazonStorefrontsForProduct(p, lang);
+              if (!stores.length) return null;
               return (
-                <div className={'pd-buy' + (isAmazon ? ' pd-buy-amazon' : '')}>
+                <div className="pd-buy pd-buy-amazon">
                   <div className="pd-buy-top">
-                    {isAmazon
-                      ? <AmazonLogo height={24} />
-                      : <span className="pd-buy-store">{offer?.store || L('Store', 'Mağaza', 'Shop')}</span>}
-                    <span className="pd-buy-tag">
-                      {isAmazon
-                        ? L('Buy on Amazon', 'Amazon’da satın al', 'Bei Amazon kaufen')
-                        : L('Go to store', 'Mağazaya git', 'Zum Shop')}
-                    </span>
+                    <AmazonLogo height={24} />
+                    <span className="pd-buy-tag">{L('Buy on Amazon', 'Amazon’da satın al', 'Bei Amazon kaufen')}</span>
                   </div>
                   <div className="pd-buy-actions">
                     {stores.length > 1 ? (
@@ -767,10 +785,8 @@ export default function ProductDetail() {
                         </a>
                       ))
                     ) : (
-                      <a className="pd-buy-btn" href={offerUrl} target="_blank" rel="sponsored noopener">
-                        🛒 {isAmazon
-                          ? L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')
-                          : L('View at store', 'Mağazada incele', 'Im Shop ansehen')}
+                      <a className="pd-buy-btn" href={stores[0].url} target="_blank" rel="sponsored noopener">
+                        🛒 {L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')}
                         <span className="pd-buy-arrow">↗</span>
                       </a>
                     )}
@@ -786,17 +802,6 @@ export default function ProductDetail() {
                 </div>
               );
             })()}
-
-            {/* Add-to-compare toggle. The pool counter + "Compare" CTA now live
-                in the header; here we only add/remove the current product. */}
-            <button type="button"
-              className={'pd-compare-add' + (inCompare ? ' on' : '')}
-              onClick={toggleComparePool}>
-              <span className="pd-compare-add-ic">{inCompare ? '✓' : '+'}</span>
-              {inCompare
-                ? L('In compare list', 'Karşılaştırmada', 'Im Vergleich')
-                : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich hinzufügen')}
-            </button>
             {compareMsg && <small className="pd-compare-msg">{compareMsg}</small>}
 
           </div>

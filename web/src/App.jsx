@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import BottomNav from './components/BottomNav.jsx';
+import CompareBar from './components/CompareBar.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
@@ -78,6 +79,7 @@ export default function App() {
       </main>
       <Footer />
       <BottomNav />
+      <CompareBar />
       <AuthModal />
       <AiBubble />
     </>

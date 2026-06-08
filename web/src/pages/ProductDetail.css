@@ -752,6 +752,21 @@
 .pd-compare-add.on .pd-compare-add-ic { background: var(--accent); color: #fff; }
 .pd-compare-msg { display: block; margin-top: 8px; color: #f59e0b; font-size: 12px; }
 
+/* Product-title action row: brand on the left, favorite + compare on the right */
+.pd-info2-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pd-actions2 { display: flex; gap: 8px; flex-shrink: 0; }
+.pd-act-btn {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s, transform .05s;
+}
+.pd-act-btn:hover { border-color: var(--accent-ring); color: var(--text); transform: translateY(-1px); }
+.pd-act-btn:active { transform: translateY(0); }
+.pd-act-fav.on { background: color-mix(in srgb, #ef4444 15%, transparent); border-color: #ef4444; color: #ef4444; }
+.pd-act-cmp.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+
 @media (max-width: 860px) {
   .pd-product-hero { grid-template-columns: 1fr !important; }
   .pd-product-hero .prod-gallery { position: static; }

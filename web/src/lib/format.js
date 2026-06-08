@@ -220,6 +220,44 @@ export function amazonStorefrontsForLang(url, lang = 'en') {
   });
 }
 
+// Build an Amazon search query straight from the product (mirrors the offer
+// connector's buildKeywordQuery). This lets EVERY product — primary or variant,
+// with or without a GTIN — get a working Amazon link without depending on the
+// offers collection (variants never get their own offer row).
+function amazonQueryForProduct(p) {
+  const gtin = String(p?.gtin || '').trim();
+  if (gtin) return gtin;
+  let name = String(p?.name || '').replace(/\s+/g, ' ').trim();
+  const cut = name.search(/\s(?:\d+(?:[.,]\d+)?\s*(?:cm|mm|inch|gb|tb|ghz|mhz|mah|wh|w)\b|\(\d|dual\s*sim|single\s*sim|android|wi-?fi|bluetooth)/i);
+  if (cut > 10) name = name.slice(0, cut).trim();
+  const brand = String(p?.brand || '').trim();
+  const brandFirst = brand.split(/\s+/)[0] || '';
+  if (brandFirst && !name.toLowerCase().startsWith(brandFirst.toLowerCase())) {
+    name = `${brand} ${name}`.trim();
+  }
+  return name.replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+
+function amazonMarketUrl(market, query) {
+  const host = AMAZON_DOMAIN[market] || AMAZON_DOMAIN.US;
+  const tag = AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG;
+  return `https://${host}/s?k=${encodeURIComponent(query)}&i=electronics&tag=${encodeURIComponent(tag)}`;
+}
+
+// Storefront button(s) for a product. Turkish gets two (TR + DE); every other
+// language gets the single storefront mapped to its locale.
+export function amazonStorefrontsForProduct(product, lang = 'en') {
+  const query = amazonQueryForProduct(product);
+  if (!query) return [];
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const markets = AMAZON_STOREFRONTS_BY_LANG[code] || [AMAZON_MARKET_BY_LANG[code] || 'US'];
+  return markets.map((m) => ({
+    market: m,
+    flag: AMAZON_FLAG[m] || '',
+    url: amazonMarketUrl(m, query),
+  }));
+}
+
 function rollupPriceIsFresh(product) {
   const expires = Date.parse(product?.bestOfferExpiresAt || '');
   return Number.isFinite(expires) && expires > Date.now();

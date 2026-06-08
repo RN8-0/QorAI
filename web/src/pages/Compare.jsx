@@ -446,8 +446,14 @@ export default function Compare() {
                           {row.values.map((v, i) => (
                             <td key={i}
                               className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
-                              {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
-                              <SpecValue value={v} lang={lang} />
+                              {v === '—' ? (
+                                <span className="cmp-na" title={L('No data', 'Veri yok', 'Keine Daten')}>?</span>
+                              ) : (
+                                <>
+                                  {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
+                                  <SpecValue value={v} lang={lang} />
+                                </>
+                              )}
                             </td>
                           ))}
                         </tr>
