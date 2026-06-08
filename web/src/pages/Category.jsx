@@ -7,7 +7,7 @@ import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
-import { useSeo } from '../lib/seo';
+import { SITE_URL, useSeo } from '../lib/seo';
 import './Category.css';
 
 // Price sorts are intentionally gone — the site does not surface prices.
@@ -77,17 +77,41 @@ export default function Category() {
   const cat = (params.get('cat') || '').toLowerCase();
   const meta = catMeta(cat);
   const catTitle = categoryLabel(cat, lang);
+  const categoryPath = cat ? `/category?cat=${encodeURIComponent(cat)}` : '/category';
+  const categoryDescription = cat
+    ? t('category.seo', { cat: catTitle })
+    : L('Browse every product category on Qor AI.',
+        'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
+        'Durchstöbere alle Produktkategorien auf Qor AI.');
 
   useSeo({
     title: cat
       ? `${catTitle} — Qor AI`
       : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
-    description: cat
-      ? t('category.seo', { cat: catTitle })
-      : L('Browse every product category on Qor AI.',
-          'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
-          'Durchstöbere alle Produktkategorien auf Qor AI.'),
-    path: cat ? `/category?cat=${encodeURIComponent(cat)}` : '/category',
+    description: categoryDescription,
+    path: categoryPath,
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'CollectionPage',
+          '@id': `${SITE_URL}${categoryPath}#webpage`,
+          url: `${SITE_URL}${categoryPath}`,
+          name: cat ? `${catTitle} — Qor AI` : 'Qor AI Categories',
+          description: categoryDescription,
+          inLanguage: lang || 'tr',
+          isPartOf: { '@id': `${SITE_URL}/#website` },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          '@id': `${SITE_URL}${categoryPath}#breadcrumb`,
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE_URL}/` },
+            { '@type': 'ListItem', position: 2, name: catTitle, item: `${SITE_URL}${categoryPath}` },
+          ],
+        },
+      ],
+    },
   });
 
   const [q, setQ] = useState('');

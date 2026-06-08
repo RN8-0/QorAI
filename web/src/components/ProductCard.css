@@ -117,6 +117,25 @@
   letter-spacing: -0.01em;
 }
 
+/* Top-right + button: add this product to the compare pool (same category). */
+.q-product-card-cmp {
+  position: absolute; top: 8px; right: 8px; z-index: 4;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text2); font-size: 19px; font-weight: 800; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 6px color-mix(in srgb, #020617 14%, transparent);
+  transition: background .14s, border-color .14s, color .14s, transform .05s;
+}
+.q-product-card-cmp:hover { border-color: var(--accent-ring); color: var(--accent); transform: scale(1.06); }
+.q-product-card-cmp.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.q-product-card-cmp-msg {
+  position: absolute; top: 42px; right: 8px; z-index: 5;
+  background: #f59e0b; color: #1a1205; font-size: 10.5px; font-weight: 800;
+  padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+  box-shadow: 0 3px 10px color-mix(in srgb, #020617 22%, transparent);
+}
+
 .q-product-card-specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

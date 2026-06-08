@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { catMeta, categoryLabel, keySpecChips, priceForCountry, formatPriceAmount } from '../lib/format';
 import { productPath } from '../lib/routes';
 import { useGeoCountry } from '../lib/geo';
+import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import Gauge, { techColor } from './Gauge.jsx';
@@ -204,14 +206,37 @@ function polishCardSpecLabel(label, lang) {
 export default function ProductCard({ product: p, variant = 'card', onClick }) {
   const { t, lang } = useI18n();
   const geoCountry = useGeoCountry();
+  const { has, tryAdd, remove } = useCompare();
+  const [cmpMsg, setCmpMsg] = useState('');
   const hasScore = Number(p.techScore) > 0;
   const specs = productSpecs(p, t, lang);
   // Price for the visitor's detected country only (never a non-shippable market).
   const cardPrice = priceForCountry(p, geoCountry);
+  const inCompare = has(p.id);
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+
+  const onCompareClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inCompare) { remove(p.id); return; }
+    const r = tryAdd(p);
+    if (!r.ok && r.reason === 'category') {
+      setCmpMsg(L('Different category', 'Farklı kategori', 'Andere Kategorie'));
+      setTimeout(() => setCmpMsg(''), 2200);
+    }
+  };
 
   return (
     <Link to={productPath(p)} onClick={onClick}
       className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={p.name}>
+      <button type="button"
+        className={'q-product-card-cmp' + (inCompare ? ' on' : '')}
+        onClick={onCompareClick}
+        title={inCompare ? L('In compare', 'Karşılaştırmada', 'Im Vergleich') : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
+        aria-label={L('Compare', 'Karşılaştır', 'Vergleichen')}>
+        {inCompare ? '✓' : '+'}
+      </button>
+      {cmpMsg && <span className="q-product-card-cmp-msg">{cmpMsg}</span>}
       <div className="q-product-card-media">
         {hasScore && (
           <span className="q-product-card-score gauge-badge" title={`Qor AI ${Math.round(p.techScore)}`}>

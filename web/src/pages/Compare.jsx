@@ -4,7 +4,7 @@ import { getProduct, popularProducts, productMatchesRequestedCategory, searchPro
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, categoryLabel, offerForLang, scoreClass, scoreLabel } from '../lib/format';
+import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -15,8 +15,10 @@ import { askQorAi } from '../lib/ai';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
-import { searchYoutubeReviews } from '../lib/youtube';
-import Reviews from '../components/Reviews.jsx';
+import { useGeoCountry } from '../lib/geo';
+import CompareReviews from '../components/CompareReviews.jsx';
+import AiAnalysisView, { buildComparePrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import './Compare.css';
@@ -132,11 +134,14 @@ export default function Compare() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
-  const [youtubeByProduct, setYoutubeByProduct] = useState({});
-  const [youtubeLoading, setYoutubeLoading] = useState(false);
+  const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
   const compareCategory = products[0]?.category || '';
   const showMatchScore = hasProfileMatch(user);
+  const ytQuery = products.map((p) => p.name).filter(Boolean).join(' vs ');
+  const ytUrl = ytQuery
+    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ytQuery} ${lang === 'tr' ? 'karşılaştırma' : lang === 'de' ? 'Vergleich' : 'comparison'}`)}`
+    : '';
 
   useEffect(() => {
     let live = true;
@@ -194,22 +199,6 @@ export default function Compare() {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  useEffect(() => {
-    if (tab !== 'ai' || products.length < 1) return undefined;
-    let live = true;
-    setYoutubeLoading(true);
-    Promise.all(products.map(async (p) => {
-      const videos = await searchYoutubeReviews(p.name, 2).catch(() => []);
-      return [p.id, videos];
-    }))
-      .then((entries) => {
-        if (!live) return;
-        setYoutubeByProduct(Object.fromEntries(entries));
-      })
-      .finally(() => { if (live) setYoutubeLoading(false); });
-    return () => { live = false; };
-  }, [tab, products.map((p) => p.id).join('|')]); // eslint-disable-line
-
   const specRows = useMemo(() => {
     if (products.length < 1) return [];
     const flats = products.map(flatSpecs);
@@ -247,19 +236,7 @@ export default function Compare() {
   }
 
   function buildAiComparePrompt() {
-    const names = products.map((p) => p.name).join(' vs ');
-    const profile = JSON.stringify(aiUserProfile(user), null, 2);
-    const productSummary = products.map((p) => (
-      `${p.name}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\nQor AI score: ${scoreLabel(p.techScore)}`
-    )).join('\n\n');
-    const specTable = specRows.slice(0, 140)
-      .map((row) => `${localizedSpecLabel(row.key, lang)}: ${row.values.map((v, i) => `${products[i]?.name || `Product ${i + 1}`}=${localizedSpecValue(v, lang)}`).join(' | ')}`)
-      .join('\n');
-    return L(
-      `Compare these products for the signed-in user's profile. Products: ${names}\n\nUser profile:\n${profile}\n\nProducts:\n${productSummary}\n\nSpecs:\n${specTable}\n\nGive a clear verdict, best-for scenarios, strengths, weaknesses and final recommendation. Use only the provided catalog data when citing specs.`,
-      `Bu ürünleri giriş yapan kullanıcının profiline göre karşılaştır. Ürünler: ${names}\n\nKullanıcı profili:\n${profile}\n\nÜrünler:\n${productSummary}\n\nTeknik özellikler:\n${specTable}\n\nNet karar, kime uygun olduğu, güçlü/zayıf yönler ve final öneri ver. Özellik söylerken sadece verilen katalog verisine dayan.`,
-      `Vergleiche diese Produkte anhand des eingeloggten Nutzerprofils. Produkte: ${names}\n\nNutzerprofil:\n${profile}\n\nProdukte:\n${productSummary}\n\nSpecs:\n${specTable}\n\nGib Urteil, passende Szenarien, Stärken, Schwächen und finale Empfehlung. Nutze nur die angegebenen Katalogdaten für Specs.`,
-    );
+    return buildComparePrompt(products, lang, aiUserProfile(user));
   }
 
   async function runAiCompare() {
@@ -398,19 +375,48 @@ export default function Compare() {
               })}
             </div>
 
-            {/* tabs — Specs · Prices · AI */}
-            <div className="tabs">
+            {ytUrl && products.length >= 2 && (
+              <div className="cmp-yt-row">
+                <a className="cmp-yt-btn" href={ytUrl} target="_blank" rel="noopener">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
+                  </svg>
+                  {L('Watch this comparison on YouTube', 'Bu karşılaştırmayı YouTube\'da izle', 'Diesen Vergleich auf YouTube ansehen')}
+                </a>
+              </div>
+            )}
+
+            {/* Prices — independent block ABOVE the tabs, one card per product
+                column, country-aware (visitor's detected market). */}
+            <section className="cmp-prices-block">
+              <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+              <div className="cmp-prices" style={{ gridTemplateColumns: `repeat(${slots.length}, minmax(0, 1fr))` }}>
+                {slots.map((p) => {
+                  const cp = priceForCountry(p, geoCountry);
+                  const amz = amazonUrlForProduct(p, (geoCountry || 'US'));
+                  return (
+                    <div className="cmp-price-card" key={p.id}>
+                      <Link to={productPath(p)} className="cmp-price-name">{p.name}</Link>
+                      {cp ? <div className="cmp-price-amt">{formatPriceAmount(cp.price, cp.currency, lang)}</div>
+                        : <div className="cmp-price-none">{L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}</div>}
+                      {amz && (
+                        <a className="cmp-price-row-link" href={amz} target="_blank" rel="sponsored noopener">
+                          <AmazonLogo height={20} /><span>{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* tabs — Specs · AI (centered) */}
+            <div className="tabs cmp-tabs2">
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
                 {L('Specs', 'Özellikler', 'Eigenschaften')}
               </button>
-              <button className={tab === 'prices' ? 'on' : ''} onClick={() => setTab('prices')}>
-                {L('Prices', 'Fiyatlar', 'Preise')}
-              </button>
               <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>
                 {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
-              </button>
-              <button className={tab === 'reviews' ? 'on' : ''} onClick={() => setTab('reviews')}>
-                {L('Reviews', 'Yorumlar', 'Bewertungen')}
               </button>
             </div>
 
@@ -471,89 +477,40 @@ export default function Compare() {
                 </div>
               )}
 
-              {tab === 'prices' && (
-                <div className="cmp-prices fade-up">
-                  {slots.map((p) => {
-                    const offer = offerForLang(p, lang);
-                    const price = Number(offer?.price) || 0;
-                    const offerUrl = offer?.url || '';
-                    return (
-                      <div className="card pad cmp-price-card" key={p.id}>
-                        <Link to={productPath(p)} className="cmp-price-name">{p.name}</Link>
-                        {price > 0
-                          ? <div className="cmp-price-amt">{formatOffer(offer, lang) || `$${price.toLocaleString(lang)}`}</div>
-                          : <div className="cmp-price-none">{L('No price yet', 'Henüz fiyat yok', 'Noch kein Preis')}</div>}
-                        {offerUrl ? (
-                          <a className="btn btn-buy btn-block" href={offerUrl} target="_blank" rel="sponsored noopener">
-                            🛒 {L('Go to store', 'Mağazaya git', 'Zum Shop')}
-                          </a>
-                        ) : (
-                          <button className="btn btn-buy btn-block"
-                            onClick={() => window.dispatchEvent(new CustomEvent('qor-open-ai', {
-                              detail: L(`Find the best offer for ${p.name}`, `${p.name} için en iyi teklifi bul`, `Finde das beste Angebot für ${p.name}`),
-                            }))}>
-                            🛒 {L('Find best offer', 'En iyi teklifi bul', 'Bestes Angebot')}
-                          </button>
-                        )}
-                        <div className="cmp-aff-note">
-                          {L('Store links may be affiliate links.', 'Mağaza linkleri affiliate olabilir.', 'Shop-Links können Affiliate-Links sein.')}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               {tab === 'ai' && (
                 <div className="cmp-ai-layout fade-up">
                   <div className="card pad-lg cmp-ai">
-                    <div className="cmp-ai-icon">🤖</div>
-                    <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
-                    <p>{L(
-                      'Let Qor AI weigh these products against each other and recommend the best fit for you.',
-                      'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
-                      'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
-                    )}</p>
-                    <button className="btn btn-grad btn-lg" onClick={runAiCompare} disabled={aiBusy}>
-                      {aiBusy ? L('Analyzing...', 'Analiz ediliyor...', 'Analyse läuft...') : `✨ ${L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}`}
-                    </button>
+                    {!aiText && (
+                      <>
+                        <div className="cmp-ai-icon">🤖</div>
+                        <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
+                        <p>{L(
+                          'Let Qor AI weigh these products against each other and recommend the best fit for you.',
+                          'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
+                          'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
+                        )}</p>
+                      </>
+                    )}
+                    {!aiText && (
+                      <button className="btn btn-grad btn-lg" onClick={runAiCompare} disabled={aiBusy}>
+                        {aiBusy ? L('Analyzing...', 'Analiz ediliyor...', 'Analyse läuft...') : `✨ ${L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}`}
+                      </button>
+                    )}
                     {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
-                    {aiText && <div className="cmp-ai-result"><PlainAiText text={aiText} /></div>}
+                    {aiText && (
+                      parseAiJson(aiText)
+                        ? <div className="cmp-ai-result"><AiAnalysisView kind="compare" raw={aiText} lang={lang} /></div>
+                        : <div className="cmp-ai-result"><PlainAiText text={aiText} /></div>
+                    )}
                   </div>
-                  {(youtubeLoading || Object.values(youtubeByProduct).some((items) => items?.length)) && (
-                    <div className="card pad cmp-youtube">
-                      <h3>{L('YouTube reviews', 'YouTube incelemeleri', 'YouTube-Reviews')}</h3>
-                      {youtubeLoading ? <div className="muted">{L('Loading...', 'Yükleniyor...', 'Wird geladen...')}</div> : (
-                        <div className="cmp-youtube-grid">
-                          {slots.map((p) => (
-                            <div key={p.id} className="cmp-youtube-product">
-                              <h4>{p.name}</h4>
-                              {(youtubeByProduct[p.id] || []).map((v) => (
-                                <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer" className="cmp-video">
-                                  {v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" />}
-                                  <span><b>{v.title}</b><small>{v.channel}</small></span>
-                                </a>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {tab === 'reviews' && (
-                <div className="cmp-reviews-grid fade-up">
-                  {slots.map((p) => (
-                    <div className="card pad cmp-review-card" key={p.id}>
-                      <Link to={productPath(p)} className="cmp-review-title">{p.name}</Link>
-                      <Reviews productId={p.id} />
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
+
+            {/* Unified comparison reviews — one thread for this exact set of
+                products, shared with the app, independent of the tabs. */}
+            <CompareReviews productIds={products.map((p) => p.id)} productNames={products.map((p) => p.name).join('  ·  ')} />
+
             <section className="cmp-picks cmp-picks-after">
               <div className="cmp-picks-head">
                 <h2>{t('cmp.popularTitle')}</h2>

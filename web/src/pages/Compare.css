@@ -133,11 +133,46 @@
 /* compact spec-table head — the cards above carry the rich product header now */
 .cmp-th-compact { padding-top: 12px; min-width: 150px; text-align: left; }
 
-/* ─── Prices tab ─────────────────────────────────────────────── */
+/* ─── Prices — independent block above the tabs ──────────────── */
+.cmp-prices-block { margin-top: 22px; }
+.cmp-block-title { text-align: center; font-size: 18px; font-weight: 850; margin: 0 0 14px; }
 .cmp-prices {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px;
 }
-.cmp-price-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+.cmp-price-card {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
+}
+.cmp-price-row-link {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 2px;
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--accent); font-weight: 800; font-size: 13px; text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.cmp-price-row-link:hover { border-color: var(--accent-ring); box-shadow: 0 4px 12px color-mix(in srgb, #020617 8%, transparent); }
+
+/* Centered Specs / AI tabs */
+.cmp-tabs2 { justify-content: center !important; }
+
+/* YouTube comparison button */
+.cmp-yt-row { display: flex; justify-content: center; margin-top: 18px; }
+.cmp-yt-btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 10px 18px; border-radius: 12px; text-decoration: none;
+  background: color-mix(in srgb, #ff0033 10%, var(--surface-2)); border: 1px solid color-mix(in srgb, #ff0033 30%, var(--border));
+  color: #ff0033; font-weight: 800; font-size: 13.5px;
+  transition: border-color .15s, transform .05s, box-shadow .15s;
+}
+.cmp-yt-btn:hover { border-color: #ff0033; transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, #ff0033 18%, transparent); }
+
+/* Unified comparison reviews */
+.cmp-reviews { margin-top: 36px; }
+.cmp-reviews-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.cmp-reviews-head h2 { font-size: 19px; font-weight: 850; margin: 0; }
+.cmp-reviews-sub { font-size: 12.5px; color: var(--text3); font-weight: 650; }
+.cmp-reviews-note { font-size: 12.5px; color: var(--text3); margin: 0 0 14px; line-height: 1.5; }
+
+.cmp-price-card-legacy { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
 .cmp-price-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
 .cmp-price-name:hover { color: var(--accent); }
 .cmp-price-amt { font-size: 26px; font-weight: 800; letter-spacing: 0; }

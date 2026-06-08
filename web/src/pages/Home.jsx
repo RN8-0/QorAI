@@ -162,9 +162,10 @@ export default function Home() {
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [
-        { '@type': 'Organization', name: 'Qor AI', url: `${SITE_URL}/`, logo: DEFAULT_OG_IMAGE },
+        { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: 'Qor AI', url: `${SITE_URL}/`, logo: DEFAULT_OG_IMAGE },
         {
-          '@type': 'WebSite', name: 'Qor AI', url: `${SITE_URL}/`,
+          '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Qor AI', url: `${SITE_URL}/`,
+          publisher: { '@id': `${SITE_URL}/#organization` },
           potentialAction: {
             '@type': 'SearchAction',
             target: `${SITE_URL}/?q={search_term_string}`,
@@ -239,7 +240,7 @@ export default function Home() {
   function openProduct(product) {
     saveSearchHistory(q.trim(), product.id);
     setSuggestOpen(false);
-    nav(productPath(product.id));
+    nav(productPath(product));
   }
 
   function clearSearch() {

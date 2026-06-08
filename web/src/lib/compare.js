@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 // survives navigation and is shared across the detail / compare pages.
 
 const KEY = 'qor-compare';
+const CAT_KEY = 'qor-compare-cat';
 // No hard cap on the compare pool — users can stack as many same-category
 // products as they like. Kept exported (large value) for any legacy callers
 // that still read a max.
@@ -13,8 +14,18 @@ const EVT = 'qor-compare-change';
 function read() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
 }
-function write(ids) {
+function readCat() {
+  try { return localStorage.getItem(CAT_KEY) || ''; } catch { return ''; }
+}
+function write(ids, cat) {
   localStorage.setItem(KEY, JSON.stringify(ids));
+  // The pool is single-category: the first product sets it, an empty pool
+  // clears it so the next product can start a fresh category.
+  if (cat !== undefined) {
+    if (cat) localStorage.setItem(CAT_KEY, cat);
+    else localStorage.removeItem(CAT_KEY);
+  }
+  if (!ids.length) localStorage.removeItem(CAT_KEY);
   window.dispatchEvent(new Event(EVT));
 }
 
@@ -52,9 +63,27 @@ export function useCompare() {
   }, []);
 
   const remove = useCallback((id) => write(read().filter((x) => x !== id)), []);
-  const clear = useCallback(() => write([]), []);
+  const clear = useCallback(() => write([], ''), []);
 
-  return { ids, has, toggle, add, remove, clear, max: COMPARE_MAX };
+  // Category-aware add used by the card + button. The compare pool only holds
+  // one category at a time (you can't compare a phone against a TV), so adding
+  // a product from a different category is rejected with reason 'category'.
+  const tryAdd = useCallback((product) => {
+    const id = product && product.id;
+    if (!id) return { ok: false, reason: 'invalid' };
+    const cat = String(product.category || '').trim();
+    const cur = read();
+    if (cur.includes(id)) return { ok: true, already: true };
+    const poolCat = readCat();
+    if (cur.length && poolCat && cat && poolCat !== cat) {
+      return { ok: false, reason: 'category', poolCat, cat };
+    }
+    if (cur.length >= COMPARE_MAX) return { ok: false, reason: 'full' };
+    write([...cur, id], cat);
+    return { ok: true };
+  }, []);
+
+  return { ids, has, toggle, add, tryAdd, remove, clear, max: COMPARE_MAX, category: readCat() };
 }
 
 // Replaces the whole compare selection — used to open a saved comparison.

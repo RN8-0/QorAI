@@ -18,6 +18,9 @@ import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
+import AiAnalysisView, {
+  buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt, parseAiJson,
+} from '../components/AiAnalysis.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
@@ -1064,11 +1067,13 @@ export default function ProductDetail() {
                 <div className="fade-up pd-ai-grid">
                   <AiAnalysisCard
                     icon="🧠"
+                    kind="deep"
+                    lang={lang}
                     gradient="grad-violet"
                     title={L('AI Deep Analysis', 'AI Derin Analiz', 'KI-Tiefenanalyse')}
                     subtitle={L('Comprehensive AI product evaluation', 'Kapsamlı AI ürün değerlendirmesi', 'Umfassende KI-Produktbewertung')}
                     state={aiCards.deep}
-                    onOpen={() => runAiCard('deep', aiDeepPrompt)}
+                    onOpen={() => runAiCard('deep', buildDeepPrompt)}
                     loadingLabel={t('pd.aiLoading')}
                   />
                   <AiAnalysisCard
@@ -1077,7 +1082,9 @@ export default function ProductDetail() {
                     title={L('Smart Alternatives', 'Akıllı Alternatifler', 'Intelligente Alternativen')}
                     subtitle={L('AI-curated similar products', 'AI tarafından seçilmiş benzer ürünler', 'KI-kuratierte ähnliche Produkte')}
                     state={aiCards.alts}
-                    onOpen={() => runAiCard('alts', aiAlternativesPrompt)}
+                    kind="alts"
+                    lang={lang}
+                    onOpen={() => runAiCard('alts', buildAltPrompt)}
                     loadingLabel={t('pd.aiLoading')}
                   />
                   <AiAnalysisCard
@@ -1086,7 +1093,9 @@ export default function ProductDetail() {
                     title={L('AI Product Advisor', 'AI Ürün Danışmanı', 'KI-Produktberater')}
                     subtitle={L('Buying advice tailored to your profile', 'Profiline göre satın alma tavsiyeleri', 'Maßgeschneiderte Kaufberatung')}
                     state={aiCards.advisor}
-                    onOpen={() => runAiCard('advisor', aiAdvisorPrompt)}
+                    kind="advisor"
+                    lang={lang}
+                    onOpen={() => runAiCard('advisor', buildAdvisorPrompt)}
                     loadingLabel={t('pd.aiLoading')}
                   />
                   <AiAnalysisCard
@@ -1095,7 +1104,9 @@ export default function ProductDetail() {
                     title={L('Price Prediction', 'Fiyat Tahmini', 'Preisvorhersage')}
                     subtitle={L('AI price trend & best time to buy', 'AI fiyat trendi ve en iyi alım zamanı', 'KI-Preistrend & beste Kaufzeit')}
                     state={aiCards.pred}
-                    onOpen={() => runAiCard('pred', aiPredictionPrompt)}
+                    kind="pred"
+                    lang={lang}
+                    onOpen={() => runAiCard('pred', buildPredictionPrompt)}
                     loadingLabel={t('pd.aiLoading')}
                   />
                   {(pros.length > 0 || cons.length > 0) && (
@@ -1191,9 +1202,13 @@ export default function ProductDetail() {
 // SharedPremiumFeaturesSection style: gradient header with icon + title +
 // chevron, body either shows a spinner, a notice (auth / insufficient coins)
 // or a fully rendered markdown analysis.
-function AiAnalysisCard({ icon, gradient, title, subtitle, state, onOpen, loadingLabel }) {
+function AiAnalysisCard({ icon, gradient, title, subtitle, state, onOpen, loadingLabel, kind, lang }) {
   const { text, busy, notice, expanded } = state || {};
   const open = !!expanded;
+  // Prefer the app-style structured visual; if the model returned non-JSON,
+  // fall back to plain markdown so the user still sees something useful.
+  const structured = !busy && text && kind ? <AiAnalysisView kind={kind} raw={text} lang={lang} /> : null;
+  const showText = !busy && text && (!kind || !parseAiJson(text));
   return (
     <div className={'pd-ai-card' + (open ? ' on' : '')}>
       <button type="button" className={'pd-ai-card-head ' + gradient} onClick={onOpen} disabled={busy}>
@@ -1212,7 +1227,8 @@ function AiAnalysisCard({ icon, gradient, title, subtitle, state, onOpen, loadin
           {!busy && notice && (
             <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{notice}</div>
           )}
-          {!busy && text && (
+          {structured}
+          {showText && (
             <div style={{ fontSize: 14.5, lineHeight: 1.65 }}><AiText text={text} /></div>
           )}
         </div>

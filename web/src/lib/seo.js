@@ -37,10 +37,10 @@ function upsertLink(rel, href) {
   el.setAttribute('href', href);
 }
 
-// useSeo({ title, description, image, path, type, noindex, jsonLd })
+// useSeo({ title, description, image, imageAlt, path, type, noindex, jsonLd })
 export function useSeo(seo = {}) {
   const {
-    title, description, image, path, type = 'website',
+    title, description, image, imageAlt, path, type = 'website',
     noindex = false, jsonLd = null,
   } = seo;
   const ld = jsonLd ? JSON.stringify(jsonLd) : '';
@@ -51,18 +51,21 @@ export function useSeo(seo = {}) {
 
     if (title) document.title = title;
     upsertMeta('name', 'description', description);
-    upsertMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow');
+    upsertMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
     upsertLink('canonical', url);
 
     upsertMeta('property', 'og:type', type);
+    upsertMeta('property', 'og:site_name', 'Qor AI');
     upsertMeta('property', 'og:title', title);
     upsertMeta('property', 'og:description', description);
     upsertMeta('property', 'og:image', img);
+    upsertMeta('property', 'og:image:alt', imageAlt || title);
     upsertMeta('property', 'og:url', url);
     upsertMeta('name', 'twitter:card', 'summary_large_image');
     upsertMeta('name', 'twitter:title', title);
     upsertMeta('name', 'twitter:description', description);
     upsertMeta('name', 'twitter:image', img);
+    upsertMeta('name', 'twitter:image:alt', imageAlt || title);
 
     const SID = 'seo-jsonld';
     let script = document.getElementById(SID);
@@ -77,5 +80,5 @@ export function useSeo(seo = {}) {
     } else if (script) {
       script.remove();
     }
-  }, [title, description, image, path, type, noindex, ld]);
+  }, [title, description, image, imageAlt, path, type, noindex, ld]);
 }
