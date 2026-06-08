@@ -777,36 +777,6 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Amazon buy card — single button routed to the visitor's own
-                country store (detected from their IP via Cloudflare). Built from
-                the product itself, so it shows on every product (variant /
-                GTIN-less included). */}
-            {(() => {
-              const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
-              if (!amazonUrl) return null;
-              return (
-                <div className="pd-buy pd-buy-amazon">
-                  <div className="pd-buy-top">
-                    <AmazonLogo height={24} />
-                    <span className="pd-buy-tag">{L('Buy on Amazon', 'Amazon’da satın al', 'Bei Amazon kaufen')}</span>
-                  </div>
-                  <div className="pd-buy-actions">
-                    <a className="pd-buy-btn" href={amazonUrl} target="_blank" rel="sponsored noopener">
-                      🛒 {L('View on Amazon', 'Amazon’da Görüntüle', 'Auf Amazon ansehen')}
-                      <span className="pd-buy-arrow">↗</span>
-                    </a>
-                  </div>
-                  <p className="pd-buy-note">
-                    {L(
-                      'Affiliate link — your price never changes and Qor AI scores stay independent.',
-                      'Affiliate bağlantı — ödeyeceğin fiyat değişmez, Qor AI puanları bağımsız kalır.',
-                      'Affiliate-Link — dein Preis ändert sich nicht, Qor AI Bewertungen bleiben unabhängig.',
-                    )}{' '}
-                    <a href="/affiliate-disclosure.html">{L('Disclosure', 'Açıklama', 'Hinweis')}</a>
-                  </p>
-                </div>
-              );
-            })()}
             {compareMsg && <small className="pd-compare-msg">{compareMsg}</small>}
 
           </div>
@@ -846,8 +816,11 @@ export default function ProductDetail() {
               <div className="pd-variants-list">
                 {variants.map((v) => (
                   <Link key={v.id} to={productPath(v)}
-                    className={'pd-variant' + (v.id === p.id ? ' on' : '')}>
-                    {variantLabel(v)}
+                    className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
+                    <div className="pd-variant-img">
+                      <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
+                    </div>
+                    <span className="pd-variant-lbl">{variantLabel(v)}</span>
                   </Link>
                 ))}
               </div>
