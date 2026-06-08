@@ -384,19 +384,19 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
 }
 
 // Sibling SKUs in the same product family (different storage/RAM), used by the
-// product page "Variants" strip. Returns [] when the group is unknown.
+// product page "Variants" strip. variantGroup isn't indexed in Typesense, so we
+// read it straight from PocketBase. Returns [] when the group is unknown.
 export async function getVariants(variantGroup, excludeId, limit = 24) {
   if (!variantGroup) return [];
   try {
-    const data = await searchDocs({
-      q: '*',
-      query_by: 'name',
-      filter_by: `variantGroup:=${lit(String(variantGroup))}`,
-      sort_by: 'techScore:desc',
-      per_page: Math.max(limit, 24),
-      include_fields: LIST_FIELDS,
+    const { pb } = await import('./pocketbase');
+    const res = await pb.collection('products').getList(1, limit, {
+      filter: `variantGroup="${String(variantGroup).replace(/"/g, '\\"')}"`,
+      fields: 'id,slug,name,brand,category,imageUrl,images,keySpecs,variantGroup,techScore',
+      sort: '-techScore',
+      $autoCancel: false,
     });
-    return docs(data).map(docToProduct).filter((p) => p.id && p.id !== excludeId);
+    return (res.items || []).filter((p) => p.id && p.id !== excludeId);
   } catch (err) {
     console.warn('[catalog] variants failed', err);
     return [];

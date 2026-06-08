@@ -39,13 +39,17 @@ function bandLabel(s, L) {
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
 
-// Short label for a variant chip — RAM / storage when available, else the name.
+// Short label for a variant chip — RAM / storage when available, otherwise the
+// trailing "(1 TB)" / "(512 GB)" from the name, otherwise the full name.
 function variantLabel(v) {
   const ks = (v && v.keySpecs) || {};
   const ram = ks['spec.ram'] || ks.ram || '';
   const storage = ks['spec.storage'] || ks.storage || '';
   if (ram && storage) return `${ram} / ${storage}`;
-  return storage || ram || v?.name || '';
+  if (storage) return storage;
+  const m = String(v?.name || '').match(/\(([^)]+)\)\s*$/);
+  if (m) return m[1].trim();
+  return v?.name || '';
 }
 
 function normHeroSpecText(value) {
