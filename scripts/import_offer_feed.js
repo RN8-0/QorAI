@@ -208,6 +208,14 @@ function buildOffer(row, feed) {
   const affiliateRaw = String(firstValue(row, fieldAliases(feed, 'affiliateUrl')) || '').trim();
   const network = String(feed.network || 'direct').toLowerCase();
   const country = String(feed.country || '').toUpperCase();
+  // A single AWIN download can bundle several advertisers (e.g. Coolblue +
+  // inateck in one feed). When `storeField` is set we read the merchant name
+  // from the row so each offer is attributed to the right store; otherwise we
+  // fall back to the fixed feed.store.
+  const rowStore = feed.storeField
+    ? String(firstValue(row, Array.isArray(feed.storeField) ? feed.storeField : [feed.storeField]) || '').trim()
+    : '';
+  const store = rowStore || feed.store || feed.merchant || '';
   const title = String(firstValue(row, fieldAliases(feed, 'title')) || '').trim();
   const merchantProductId = String(firstValue(row, fieldAliases(feed, 'merchantProductId')) || '').trim();
   const availability = normalizeAvailability(firstValue(row, fieldAliases(feed, 'availability')));
@@ -224,7 +232,7 @@ function buildOffer(row, feed) {
     brand,
     merchantProductId,
     title,
-    store: feed.store || feed.merchant || '',
+    store,
     network,
     country,
     price,

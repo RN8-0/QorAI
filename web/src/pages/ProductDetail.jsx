@@ -905,6 +905,7 @@ export default function ProductDetail() {
         <div className="pd-detail-flow">
           {(() => {
             const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
+            const geo = String(geoCountry || '').toUpperCase();
             // Amazon is rendered ONCE as the geo/IP-localized link below
             // (amazonUrlForProduct uses the visitor's detected country). Stored
             // Amazon offers carry a fixed-country URL (e.g. amazon.it) and no
@@ -917,6 +918,13 @@ export default function ProductDetail() {
                   || /(^|\.)amazon\./i.test(o.url);
                 if (isAmazon) return false;
               }
+              // Country gate: a retailer offer only makes sense to a visitor who
+              // can actually order from that store. Coolblue/inateck (DE) don't
+              // ship to Turkey, so a DE offer must NOT show to a TR visitor.
+              // Amazon is exempt (handled by its own geo link above). Offers with
+              // no country, or when geo is undetected, are left visible.
+              const oc = String(o.country || '').toUpperCase();
+              if (oc && geo && oc !== geo) return false;
               return true;
             });
             if (!amazonUrl && priced.length === 0) return null;

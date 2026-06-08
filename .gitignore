@@ -101,3 +101,8 @@ scripts/.par-r*.json
 local-translate-worker.err
 local-translate-worker.log
 
+
+# Partner product feeds — large + affiliate data; keep folder, ignore feed files
+feeds/*
+!feeds/.gitkeep
+!feeds/README.md

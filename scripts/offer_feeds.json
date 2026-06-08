@@ -1,0 +1,30 @@
+{
+  "_readme": "AWIN product-price feeds for Qor AI. Download the .gz feed from AWIN (Toolbox → Create-a-Feed → Download Datafeed) into feeds/, then run:  npm run offers:awin   (or: node scripts/import_offer_feed.js --config=scripts/offer_feeds.json). Offers are matched to catalog products ONLY by EAN/GTIN (no fuzzy title match), tagged with country=DE so the website shows them only to DE visitors who can actually order. See feeds/README.md for the download steps.",
+  "feeds": [
+    {
+      "store": "Coolblue",
+      "storeField": ["merchant_name", "programme_name", "data_feed_name"],
+      "network": "awin",
+      "country": "DE",
+      "currency": "EUR",
+      "file": "feeds/awin-de.csv.gz",
+      "format": "csv",
+      "delimiter": ",",
+      "allowRefurbished": false,
+      "fields": {
+        "gtin": ["ean", "gtin", "barcode", "product_GTIN"],
+        "mpn": ["mpn", "manufacturer_part_number", "model_number", "product_model"],
+        "brand": ["brand_name", "brand", "manufacturer"],
+        "title": ["product_name", "title", "name"],
+        "price": ["search_price", "store_price", "price", "sale_price"],
+        "shipping": ["delivery_cost", "shipping", "delivery_charge"],
+        "currency": ["currency", "price_currency"],
+        "url": ["merchant_deep_link", "product_url", "link"],
+        "affiliateUrl": ["aw_deep_link", "deeplink", "tracking_url"],
+        "availability": ["in_stock", "stock_status", "availability"],
+        "condition": ["condition", "product_condition"],
+        "merchantProductId": ["merchant_product_id", "aw_product_id", "id"]
+      }
+    }
+  ]
+}
