@@ -553,6 +553,11 @@ export default function ProductDetail() {
   const [offersLoading, setOffersLoading] = useState(false);
   const [compareBase, setCompareBase] = useState(null);
   const [compareMsg, setCompareMsg] = useState('');
+  // Ship-to country for the price list. Defaults to the IP-detected country but
+  // the visitor can override it (e.g. someone in TR comparing the DE price, or
+  // when the cached geo lags behind a VPN). '' until the user picks / geo loads.
+  const [priceCountry, setPriceCountry] = useState('');
+  const priceCountryTouched = useRef(false);
 
   // Four separate AI cards (deep, alternatives, advisor, prediction) — each
   // tracks its own busy / notice / text / expanded flag so the user can open
@@ -564,6 +569,14 @@ export default function ProductDetail() {
     pred: { text: '', busy: false, notice: '', expanded: false },
   });
   const aiUserKeyRef = useRef('');
+
+  // Seed the ship-to country from the detected geo once it resolves, unless the
+  // visitor has already picked one manually.
+  useEffect(() => {
+    if (priceCountryTouched.current) return;
+    const cc = String(geoCountry || '').toUpperCase();
+    if (cc) setPriceCountry(cc);
+  }, [geoCountry]);
 
   const [similar, setSimilar] = useState([]);
   const [variants, setVariants] = useState([]);
@@ -904,33 +917,50 @@ export default function ProductDetail() {
         {/* Detail flow: prices → variants → specs/AI tabs → reviews */}
         <div className="pd-detail-flow">
           {(() => {
-            const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
-            const geo = String(geoCountry || '').toUpperCase();
-            // Amazon is rendered ONCE as the geo/IP-localized link below
-            // (amazonUrlForProduct uses the visitor's detected country). Stored
-            // Amazon offers carry a fixed-country URL (e.g. amazon.it) and no
-            // exact price, so when the geo link exists we drop them — otherwise
-            // a Turkish visitor would see a second, wrong-country Amazon row.
+            // Countries that actually have a retailer offer for this product
+            // (Amazon excluded — it has its own geo link), plus the visitor's
+            // detected geo, so the ship-to selector always lists somewhere useful.
+            const offerCountries = [...new Set(
+              offers
+                .filter((o) => o.url && String(o.network || '').toLowerCase() !== 'amazon' && !/(^|\.)amazon\./i.test(o.url))
+                .map((o) => String(o.country || '').toUpperCase())
+                .filter(Boolean),
+            )];
+            const sel = String(priceCountry || geoCountry || 'US').toUpperCase();
+            const countryOptions = [...new Set([sel, ...offerCountries].filter(Boolean))];
+            const FLAG = { TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦' };
+
+            const amazonUrl = amazonUrlForProduct(p, sel || 'US');
+            // Retailer offers shippable to the SELECTED country. Amazon is shown
+            // once as its own geo link, so its stored offers are dropped here.
             const priced = offers.filter((o) => {
               if (!o.url) return false;
-              if (amazonUrl) {
-                const isAmazon = String(o.network || '').toLowerCase() === 'amazon'
-                  || /(^|\.)amazon\./i.test(o.url);
-                if (isAmazon) return false;
-              }
-              // Country gate: a retailer offer only makes sense to a visitor who
-              // can actually order from that store. Coolblue/inateck (DE) don't
-              // ship to Turkey, so a DE offer must NOT show to a TR visitor.
-              // Amazon is exempt (handled by its own geo link above). Offers with
-              // no country, or when geo is undetected, are left visible.
+              const isAmazon = String(o.network || '').toLowerCase() === 'amazon' || /(^|\.)amazon\./i.test(o.url);
+              if (isAmazon) return false;
               const oc = String(o.country || '').toUpperCase();
-              if (oc && geo && oc !== geo) return false;
+              if (oc && sel && oc !== sel) return false;
               return true;
             });
-            if (!amazonUrl && priced.length === 0) return null;
+            if (!amazonUrl && priced.length === 0 && countryOptions.length <= 1) return null;
             return (
               <section className="pd-block">
                 <h2 className="pd-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+                {/* Ship-to country: defaults to detected geo, visitor can switch
+                    to compare another market's price (mirrors the app + admin). */}
+                {countryOptions.length > 0 && (
+                  <div className="pd-ship-to">
+                    <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat ülkesi', 'Lieferland')}:</span>
+                    <select
+                      className="pd-ship-to-sel"
+                      value={sel}
+                      onChange={(e) => { priceCountryTouched.current = true; setPriceCountry(e.target.value); }}
+                    >
+                      {countryOptions.map((c) => (
+                        <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${c}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="pd-prices-list">
                   {amazonUrl && (
                     <a className="pd-price-row" href={amazonUrl} target="_blank" rel="sponsored noopener">
