@@ -905,7 +905,20 @@ export default function ProductDetail() {
         <div className="pd-detail-flow">
           {(() => {
             const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
-            const priced = offers.filter((o) => o.url);
+            // Amazon is rendered ONCE as the geo/IP-localized link below
+            // (amazonUrlForProduct uses the visitor's detected country). Stored
+            // Amazon offers carry a fixed-country URL (e.g. amazon.it) and no
+            // exact price, so when the geo link exists we drop them — otherwise
+            // a Turkish visitor would see a second, wrong-country Amazon row.
+            const priced = offers.filter((o) => {
+              if (!o.url) return false;
+              if (amazonUrl) {
+                const isAmazon = String(o.network || '').toLowerCase() === 'amazon'
+                  || /(^|\.)amazon\./i.test(o.url);
+                if (isAmazon) return false;
+              }
+              return true;
+            });
             if (!amazonUrl && priced.length === 0) return null;
             return (
               <section className="pd-block">
