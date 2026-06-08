@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
-import { getProduct, getSimilar } from '../lib/typesense';
+import { getProduct, getSimilar, getVariants } from '../lib/typesense';
 import { askQorAi } from '../lib/ai';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { useFavorites } from '../lib/favorites';
@@ -38,6 +38,15 @@ function bandLabel(s, L) {
     : L('Weak', 'Zayıf', 'Schwach');
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
+
+// Short label for a variant chip — RAM / storage when available, else the name.
+function variantLabel(v) {
+  const ks = (v && v.keySpecs) || {};
+  const ram = ks['spec.ram'] || ks.ram || '';
+  const storage = ks['spec.storage'] || ks.storage || '';
+  if (ram && storage) return `${ram} / ${storage}`;
+  return storage || ram || v?.name || '';
+}
 
 function normHeroSpecText(value) {
   return String(value || '')
@@ -450,6 +459,7 @@ export default function ProductDetail() {
   const aiUserKeyRef = useRef('');
 
   const [similar, setSimilar] = useState([]);
+  const [variants, setVariants] = useState([]);
 
   useEffect(() => {
     const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
@@ -460,7 +470,7 @@ export default function ProductDetail() {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiText(''); setAiNotice(''); setSimilar([]); aiRunRef.current = '';
+    setAiText(''); setAiNotice(''); setSimilar([]); setVariants([]); aiRunRef.current = '';
     getProduct(id)
       .then((prod) => {
         if (!live) return;
@@ -468,6 +478,7 @@ export default function ProductDetail() {
         if (prod) {
           pushRecent(prod);
           getSimilar(prod.category, prod.techScore, prod.id).then((s) => live && setSimilar(s)).catch(() => {});
+          getVariants(prod.variantGroup, prod.id).then((v) => live && setVariants(v)).catch(() => {});
         }
       })
       .catch(() => {})
@@ -797,51 +808,99 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Detail flow (no tabs): specs + AI side by side, reviews below. */}
+        {/* Detail flow: prices → variants → specs/AI tabs → reviews */}
         <div className="pd-detail-flow">
-          <div className="pd-specs-ai">
-            <section className="pd-col-specs">
-              {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
-              {bricks.length > 0 ? (
-                <div className="card pad pd-spec-sheet">
-                  <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
-                  <div className="pd-bricks">
-                    {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
-                  </div>
+          {(() => {
+            const amazonUrl = amazonUrlForProduct(p, geoCountry || 'US');
+            const priced = offers.filter((o) => o.url);
+            if (!amazonUrl && priced.length === 0) return null;
+            return (
+              <section className="pd-block">
+                <h2 className="pd-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+                <div className="pd-prices-list">
+                  {amazonUrl && (
+                    <a className="pd-price-row" href={amazonUrl} target="_blank" rel="sponsored noopener">
+                      <span className="pd-price-store"><AmazonLogo height={17} /></span>
+                      <span className="pd-price-go">{L('View', 'Görüntüle', 'Ansehen')} ↗</span>
+                    </a>
+                  )}
+                  {priced.map((o) => (
+                    <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o)} target="_blank" rel="sponsored noopener">
+                      <span className="pd-price-store">{o.store || L('Store', 'Mağaza', 'Shop')}</span>
+                      {o.hasExactPrice && <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>}
+                      <span className="pd-price-go">↗</span>
+                    </a>
+                  ))}
                 </div>
-              ) : (
-                !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
-              )}
-            </section>
-            <aside className="pd-col-ai">
-              <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
-                <div className="row" style={{ gap: 9, marginBottom: 10 }}>
-                  <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
-                    <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
-                  </div>
-                </div>
-                {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
-                {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
-                {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
+              </section>
+            );
+          })()}
+
+          {variants.length > 0 && (
+            <section className="pd-block">
+              <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
+              <div className="pd-variants-list">
+                {variants.map((v) => (
+                  <Link key={v.id} to={productPath(v)}
+                    className={'pd-variant' + (v.id === p.id ? ' on' : '')}>
+                    {variantLabel(v)}
+                  </Link>
+                ))}
               </div>
-              {pros.length > 0 && (
-                <div className="ad-card ad-pos" style={{ marginTop: 14 }}>
-                  <h4>✓ {t('pd.pros').toUpperCase()}</h4>
-                  <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
+            </section>
+          )}
+
+          <section className="pd-block">
+            <div className="pd-tabs2">
+              <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
+              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>{t('pd.tabAi')}</button>
+            </div>
+            <div className="pd-tab-body">
+              {tab === 'specs' && (
+                <div className="fade-up">
+                  {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
+                  {bricks.length > 0 ? (
+                    <div className="pd-bricks">
+                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
+                    </div>
+                  ) : (
+                    !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
+                  )}
                 </div>
               )}
-              {cons.length > 0 && (
-                <div className="ad-card ad-neg" style={{ marginTop: 14 }}>
-                  <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
-                  <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
+              {tab === 'premium' && (
+                <div className="fade-up">
+                  <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
+                    <div className="row" style={{ gap: 9, marginBottom: 10 }}>
+                      <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
+                        <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
+                      </div>
+                    </div>
+                    {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
+                    {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
+                    {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
+                  </div>
+                  {pros.length > 0 && (
+                    <div className="ad-card ad-pos" style={{ marginTop: 14 }}>
+                      <h4>✓ {t('pd.pros').toUpperCase()}</h4>
+                      <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
+                    </div>
+                  )}
+                  {cons.length > 0 && (
+                    <div className="ad-card ad-neg" style={{ marginTop: 14 }}>
+                      <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
+                      <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
+                    </div>
+                  )}
                 </div>
               )}
-            </aside>
-          </div>
-          <section className="pd-reviews-sec">
-            <div className="pd-section-title">💬 {L('Reviews', 'Yorumlar', 'Bewertungen')}</div>
+            </div>
+          </section>
+
+          <section className="pd-block">
+            <h2 className="pd-block-title">💬 {L('Reviews', 'Yorumlar', 'Bewertungen')}</h2>
             <Reviews productId={p.id} />
           </section>
         </div>

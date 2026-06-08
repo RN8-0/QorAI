@@ -177,8 +177,26 @@ export function docToProduct(doc) {
     lowestPriceCurrency: base.lowestPriceCurrency || '',
     lowestOfferUrl: base.lowestOfferUrl || '',
     lowestOfferStore: base.lowestOfferStore || '',
+    offerCount: base.offerCount || 0,
+    pricedOfferCount: base.pricedOfferCount || 0,
+    bestOfferId: base.bestOfferId || '',
+    bestOfferCheckedAt: base.bestOfferCheckedAt || '',
+    bestOfferExpiresAt: base.bestOfferExpiresAt || '',
     prices: base.prices || {},
     affiliateLinksByCountry: base.affiliateLinksByCountry || {},
+    source: base.source || doc.source || '',
+    sourceUrl: base.sourceUrl || '',
+    gtin: base.gtin || '',
+    mpn: base.mpn || '',
+    icecatId: base.icecatId || 0,
+    description: base.description || '',
+    variantGroup: base.variantGroup || '',
+    variantCount: base.variantCount || 0,
+    variantPrimary: base.variantPrimary,
+    created: base.created || '',
+    updated: base.updated || '',
+    createdAt: base.createdAt || base.created || '',
+    lastUpdated: base.lastUpdated || base.updated || '',
     slug: base.slug || doc.slug || '',
     keySpecsText: doc.keySpecsText || '',
     filterTokens: Array.isArray(doc.filterTokens) ? doc.filterTokens : [],
@@ -361,6 +379,26 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
       .slice(0, limit)
   } catch (err) {
     console.warn('[catalog] similar failed', err);
+    return [];
+  }
+}
+
+// Sibling SKUs in the same product family (different storage/RAM), used by the
+// product page "Variants" strip. Returns [] when the group is unknown.
+export async function getVariants(variantGroup, excludeId, limit = 24) {
+  if (!variantGroup) return [];
+  try {
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      filter_by: `variantGroup:=${lit(String(variantGroup))}`,
+      sort_by: 'techScore:desc',
+      per_page: Math.max(limit, 24),
+      include_fields: LIST_FIELDS,
+    });
+    return docs(data).map(docToProduct).filter((p) => p.id && p.id !== excludeId);
+  } catch (err) {
+    console.warn('[catalog] variants failed', err);
     return [];
   }
 }

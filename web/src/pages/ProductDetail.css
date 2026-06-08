@@ -552,15 +552,42 @@
 .pd-cmp-btn:hover { border-color: var(--accent-ring); }
 .pd-cmp-btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
 
-/* Detail flow below the hero: specs (left) + AI (right), reviews full-width */
-.pd-detail-flow { margin-top: 34px; display: flex; flex-direction: column; gap: 34px; }
-.pd-specs-ai { display: grid; grid-template-columns: 1.35fr 1fr; gap: 26px; align-items: start; }
-.pd-col-specs { min-width: 0; }
-.pd-col-ai { position: sticky; top: 84px; }
-@media (max-width: 920px) {
-  .pd-specs-ai { grid-template-columns: 1fr; gap: 20px; }
-  .pd-col-ai { position: static; }
+/* Detail flow below the hero: prices → variants → specs/AI tabs → reviews */
+.pd-detail-flow { margin-top: 32px; display: flex; flex-direction: column; gap: 32px; }
+.pd-block-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 16px; color: var(--text); }
+
+.pd-prices-list { display: flex; flex-direction: column; gap: 8px; max-width: 680px; margin: 0 auto; }
+.pd-price-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  text-decoration: none; color: var(--text); transition: border-color .15s;
 }
+.pd-price-row:hover { border-color: var(--accent-ring); }
+.pd-price-store { font-weight: 800; font-size: 15px; display: inline-flex; align-items: center; }
+.pd-price-amt { font-weight: 800; color: #22c55e; font-size: 16px; }
+.pd-price-go { margin-left: auto; font-weight: 700; color: var(--accent); font-size: 13px; }
+
+.pd-variants-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.pd-variant {
+  padding: 10px 16px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text2); font-weight: 700; font-size: 13.5px; text-decoration: none;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.pd-variant:hover { border-color: var(--accent-ring); color: var(--text); }
+.pd-variant.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+
+.pd-tabs2 { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.pd-tabs2 button {
+  padding: 10px 22px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text2); font-weight: 800; font-size: 14px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.pd-tabs2 button:hover { color: var(--text); }
+.pd-tabs2 button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pd-tab-body { max-width: 1000px; margin: 0 auto; }
 .pd-crumbs a { color: var(--text2); }
 .pd-crumbs a:hover { color: var(--accent); }
 .pd-crumbs b { color: var(--text); font-weight: 750; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
