@@ -2515,11 +2515,30 @@ async function startCategoryTranslation(){
     _xlateProgress(0, 0, 'Loading dictionary…');
     _xlateLog(`▶ Translating Epey products in category: ${categoryId === '__all_epey__' ? 'ALL EPEY' : categoryId}`);
     window.QorAiDict?.resetFailures?.();
-    await window.QorAiBulkTranslate.loadDict();
+    try {
+      await window.QorAiBulkTranslate.loadDict();
+    } catch (loadErr) {
+      // A transient shard-fetch failure used to surface as "0 terms" and then
+      // the run would re-translate everything from scratch (slow + wasteful)
+      // while looking like the dictionary had been wiped. Abort loudly instead
+      // so the existing terms stay authoritative and the user can just retry.
+      _xlateLog(`❌ Sözlük yüklenemedi (geçici hata): ${loadErr.message || loadErr}`, 'error');
+      _xlateLog('Mevcut sözlük PocketBase\'de duruyor — silinmedi. Lütfen birkaç saniye sonra tekrar başlat.', 'warn');
+      toast('Sözlük yüklenemedi — tekrar dene (kelimeler güvende)', 'e');
+      return;
+    }
     const loadedTerms = Object.keys(window.QorAiDict?.cache?.() || {}).length;
     _refreshDictionaryStatsOnly();
     try { renderDictionaryTable(); } catch {}
     _xlateLog(`✓ Dictionary loaded: ${loadedTerms} terms`);
+    // Defensive: if the load somehow reported success with an empty cache, do
+    // NOT proceed — translating against an empty dict re-sends every atom to
+    // DeepSeek and produces the "half-done" result the user saw.
+    if (loadedTerms === 0) {
+      _xlateLog('❌ Sözlük 0 terim döndü — PocketBase\'deki kayıtlı sözlük korunuyor, çeviri iptal edildi. Tekrar dene.', 'error');
+      toast('Sözlük 0 terim — iptal edildi, tekrar dene', 'e');
+      return;
+    }
 
     _xlateProgress(0, 0, 'Fetching products…');
     const fetched = await _fetchDictionaryProducts(categoryId);

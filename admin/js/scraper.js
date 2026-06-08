@@ -1882,9 +1882,11 @@ async function _mergeActiveDeDictFromPocketBase() {
   try {
     const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
     let merged = 0;
+    let mainExpected = 0;
     if (doc.exists) {
       const stored = _dictDocValue(doc);
       if (!stored?.sharded) merged += _mergeDictObject(stored);
+      else mainExpected = Number(stored?.totalTerms) || 0;
     }
 
     const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
@@ -1892,17 +1894,52 @@ async function _mergeActiveDeDictFromPocketBase() {
     const manifest = _dictDocValue(manifestDoc);
     const batchId = manifest?.batchId || '';
     if (!manifest?.sharded || !batchId) return merged;
+    // How many terms the last save recorded for this batch. We use it to detect
+    // a half-loaded dict (cold-start 500 / dropped 8 MB request) and refuse to
+    // report 0/partial as success — otherwise a transient fetch failure looked
+    // exactly like "the dictionary was wiped".
+    const expectedTerms = Number(manifest?.totalTerms) || mainExpected || 0;
 
-    const docs = await pbGetAll('public_config', {
-      filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
-      fields: 'key,value',
-      batch: 200,
-    }).catch(() => []);
+    // Fetch the shard docs with a few retries. The previous `.catch(() => [])`
+    // silently turned ANY transient failure into an empty dict and then
+    // _loadDeDict locked that 0 in for the whole session via _deDictLoaded.
+    let docs = [];
+    let lastErr = null;
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        docs = await pbGetAll('public_config', {
+          filter: `key~"${DE_DICT_SHARD_PREFIX}"`,
+          fields: 'key,value',
+          batch: 10, // paginate into smaller requests — gentler on the RAM-bound host than one 8 MB response
+        });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`[de-dict] shard fetch attempt ${attempt} failed: ${e.message || e}`);
+        await new Promise((r) => setTimeout(r, attempt * 1000));
+      }
+    }
+    if (lastErr && !docs.length) {
+      // Surface the real failure so _loadDeDict does NOT mark the dict loaded.
+      throw new Error(`dictionary shard fetch failed: ${lastErr.message || lastErr}`);
+    }
 
+    let shardMerged = 0;
     for (const doc of docs.sort((a, b) => String(a.data().key || '').localeCompare(String(b.data().key || '')))) {
       const value = _dictDocValue(doc);
       if (value?.batchId !== batchId) continue;
-      merged += _mergeDictObject(value.terms || {});
+      shardMerged += _mergeDictObject(value.terms || {});
+    }
+    merged += shardMerged;
+
+    // If the manifest promised a meaningful number of terms but we recovered
+    // almost none, treat it as a failed load (don't lock 0 in). 60% floor
+    // tolerates a couple of dropped shards without crying wolf.
+    if (expectedTerms >= 100 && shardMerged < expectedTerms * 0.6) {
+      throw new Error(
+        `dictionary load incomplete: got ${shardMerged}/${expectedTerms} terms from ${docs.length} shards (batch ${batchId})`,
+      );
     }
     return merged;
   } finally {
@@ -2022,6 +2059,24 @@ async function _saveDeDictNow() {
           await _mergeActiveDeDictFromPocketBase();
         }
         const snapshot = JSON.parse(JSON.stringify(_deDictCache));
+        // Anti-clobber guard: never overwrite the canonical PB dictionary with a
+        // snapshot that is dramatically smaller than what's already stored. A
+        // half-loaded cache (cold-start 500) writing back used to SHRINK the
+        // dictionary (100k → a few k). If the remote manifest says it holds far
+        // more terms than we're about to write, abort the save and force a fresh
+        // reload next time instead of destroying the good data.
+        try {
+          const manifestDoc = await pbGetDoc('public_config', DE_DICT_MANIFEST_KEY).catch(() => ({ exists: false }));
+          const remoteTotal = manifestDoc.exists ? (Number(_dictDocValue(manifestDoc)?.totalTerms) || 0) : 0;
+          const localTotal = Object.keys(snapshot).length;
+          if (remoteTotal >= 1000 && localTotal < remoteTotal * 0.6) {
+            _deDictLoaded = false; // force a full reload before any future save
+            throw new Error(`refusing to shrink dictionary: local ${localTotal} vs remote ${remoteTotal} terms — reload required`);
+          }
+        } catch (guardErr) {
+          if (/refusing to shrink/.test(guardErr.message || '')) throw guardErr;
+          // a failed manifest read shouldn't block a legitimate save
+        }
         const shards = _buildDictShards(snapshot);
         const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const updatedAt = new Date().toISOString();
@@ -8203,6 +8258,11 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 async function _findExistingByVariantGroup(variantGroup, productName = '') {
   const vg = String(variantGroup || '').trim();
   if (!vg) return null;
+  // These dedup helpers are exported to window and called from the Geizhals
+  // scraper, where the module-scope `pb` of the main scrape loop is NOT in
+  // scope. Resolve the shared client here so the lookup actually runs instead
+  // of throwing `pb is not defined` (which silently aborted dedup → duplicates).
+  const pb = getPb();
   try {
     const r = await pb.collection('products').getList(1, 25, {
       filter: `variantGroup = "${vg.replace(/"/g, '\\"')}"`,
@@ -8290,6 +8350,7 @@ async function _findExistingEpeyByModelFamily(product = {}) {
     || _identitySlug(product.name);
   const tokens = famSlug.split('-').filter((t) => t && t.length >= 2).slice(0, 5);
   if (!tokens.length) return null;
+  const pb = getPb(); // see _findExistingByVariantGroup — window-exported, needs its own client
   try {
     const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     const parts = ['(source ~ "epey" || sourceUrl ~ "epey.com")'];
@@ -8342,6 +8403,7 @@ async function _findExistingEpeyByModelFamily(product = {}) {
 //   • PATCH back to PB; return merged payload for the saved event
 async function _mergeIntoExistingRecord(existingId, incoming) {
   if (!existingId || !incoming) return null;
+  const pb = getPb(); // see _findExistingByVariantGroup — window-exported, needs its own client
   try {
     const got = await pb.collection('products').getOne(existingId, { $autoCancel: false });
     const oldData = (typeof got?.data === 'function' ? got.data() : got) || {};
