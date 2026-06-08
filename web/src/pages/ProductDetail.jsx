@@ -795,65 +795,55 @@ export default function ProductDetail() {
             {compareMsg && <small className="pd-compare-msg">{compareMsg}</small>}
 
           </div>
-          <div className="pd-detail-pane">
-            {/* tabs */}
-            <div className={'tabs' + (tab === 'premium' ? ' violet' : '')} style={{ marginTop: 22 }}>
-              <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
-              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>{t('pd.tabAi')}</button>
-              <button className={tab === 'reviews' ? 'on' : ''} onClick={() => setTab('reviews')}>{t('pd.tabReviews')}</button>
-            </div>
+        </div>
 
-            <div style={{ marginTop: 20 }}>
-              {tab === 'specs' && (
-                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-                  {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>{p.description}</p>}
-                  {/* Key-spec overview removed here — it duplicated the hero key
-                      specs; the full sectioned sheet below is the single source. */}
-                  {bricks.length > 0 ? (
-                    <div className="card pad pd-spec-sheet">
-                      <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
-                      <div className="pd-bricks">
-                        {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
-                      </div>
-                    </div>
-                  ) : (
-                    !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
-                  )}
-                </div>
-              )}
-
-              {tab === 'premium' && (
-                <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
-                    <div className="row" style={{ gap: 9, marginBottom: 10 }}>
-                      <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
-                        <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
-                      </div>
-                    </div>
-                    {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
-                    {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
-                    {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
+        {/* Detail flow (no tabs): specs + AI side by side, reviews below. */}
+        <div className="pd-detail-flow">
+          <div className="pd-specs-ai">
+            <section className="pd-col-specs">
+              {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
+              {bricks.length > 0 ? (
+                <div className="card pad pd-spec-sheet">
+                  <div className="pd-section-title">📋 {L('Specifications', 'Teknik Özellikler', 'Spezifikationen')}</div>
+                  <div className="pd-bricks">
+                    {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
                   </div>
-                  {pros.length > 0 && (
-                    <div className="ad-card ad-pos">
-                      <h4>✓ {t('pd.pros').toUpperCase()}</h4>
-                      <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
-                    </div>
-                  )}
-                  {cons.length > 0 && (
-                    <div className="ad-card ad-neg">
-                      <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
-                      <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
-                    </div>
-                  )}
+                </div>
+              ) : (
+                !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
+              )}
+            </section>
+            <aside className="pd-col-ai">
+              <div className="card pad" style={{ borderColor: 'color-mix(in srgb, var(--violet) 30%, transparent)', background: 'color-mix(in srgb, var(--violet) 5%, var(--surface-2))' }}>
+                <div className="row" style={{ gap: 9, marginBottom: 10 }}>
+                  <span className="cat-ic" style={{ width: 38, height: 38, fontSize: 18, background: 'var(--grad-violet)', borderRadius: 'var(--r-sm)' }}>🧠</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>{t('pd.aiHead')}</div>
+                    <div className="tag tag-violet" style={{ marginTop: 2 }}>PRO · senior analyst</div>
+                  </div>
+                </div>
+                {aiBusy && <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>}
+                {!aiBusy && aiNotice && <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{aiNotice}</div>}
+                {!aiBusy && aiText && <div style={{ fontSize: 15, lineHeight: 1.65 }}><AiText text={aiText} /></div>}
+              </div>
+              {pros.length > 0 && (
+                <div className="ad-card ad-pos" style={{ marginTop: 14 }}>
+                  <h4>✓ {t('pd.pros').toUpperCase()}</h4>
+                  <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
                 </div>
               )}
-
-              {tab === 'reviews' && <Reviews productId={p.id} />}
-            </div>
+              {cons.length > 0 && (
+                <div className="ad-card ad-neg" style={{ marginTop: 14 }}>
+                  <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
+                  <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
+                </div>
+              )}
+            </aside>
           </div>
+          <section className="pd-reviews-sec">
+            <div className="pd-section-title">💬 {L('Reviews', 'Yorumlar', 'Bewertungen')}</div>
+            <Reviews productId={p.id} />
+          </section>
         </div>
 
         {/* SIMILAR */}

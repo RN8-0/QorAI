@@ -551,6 +551,16 @@
 }
 .pd-cmp-btn:hover { border-color: var(--accent-ring); }
 .pd-cmp-btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+
+/* Detail flow below the hero: specs (left) + AI (right), reviews full-width */
+.pd-detail-flow { margin-top: 34px; display: flex; flex-direction: column; gap: 34px; }
+.pd-specs-ai { display: grid; grid-template-columns: 1.35fr 1fr; gap: 26px; align-items: start; }
+.pd-col-specs { min-width: 0; }
+.pd-col-ai { position: sticky; top: 84px; }
+@media (max-width: 920px) {
+  .pd-specs-ai { grid-template-columns: 1fr; gap: 20px; }
+  .pd-col-ai { position: static; }
+}
 .pd-crumbs a { color: var(--text2); }
 .pd-crumbs a:hover { color: var(--accent); }
 .pd-crumbs b { color: var(--text); font-weight: 750; max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
