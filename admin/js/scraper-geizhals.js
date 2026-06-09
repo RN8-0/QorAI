@@ -1053,23 +1053,44 @@ function imgThumb(url) { return _imgTier(url, 'm'); }
 function imgMedium(url) { return _imgTier(url, 'l'); }
 function imgHQ(url)     { return _imgTier(url, 'n'); }
 
-function extractImages(doc /*, productSlug */) {
+// Pull the Geizhals article number from a product slug/url. Ids look like
+// `…-a3728320` (article) or `…-v228688` (variant family). Geizhals serves a
+// product's own images from paths that CONTAIN this number
+// (e.g. gzhls.at/i/05/29/3728320-l.webp), so it's the reliable key for
+// telling THIS product's images apart from the related/comparison products
+// that also appear on the page.
+function _geizhalsArticleNum(slugOrUrl) {
+  const matches = String(slugOrUrl || '').match(/[-_/]([av])?(\d{6,9})(?=[-_/.]|$)/gi) || [];
+  if (!matches.length) return '';
+  const last = matches[matches.length - 1];
+  return (last.match(/\d{6,9}/) || [''])[0];
+}
+
+function extractImages(doc, slug) {
   if (typeof doc === 'string') doc = parseHTML(doc);
 
   // Canonical form: -l.webp (mid-quality, web/mobile-friendly).
-  // Storing only the medium URL keeps the DB lean; the app can derive
-  // thumb / HQ on demand by string replacement.
   function canonicalize(url) {
     return _imgTier(url.trim().split(/[?#]/)[0], 'l');
   }
 
+  // The product's own images all contain this article number in the URL.
+  // Anything else on the page (iPhone/Samsung thumbnails in "related
+  // products", price-comparison rows, carousels) carries a DIFFERENT number
+  // and must be rejected — that cross-product leak is the bug we're fixing.
+  const articleNum = _geizhalsArticleNum(slug);
+  const belongs = (u) => {
+    if (!u) return false;
+    if (!articleNum) return true; // no id to filter on → can't be selective
+    return u.includes(articleNum);
+  };
+
   const images = [];
   const seen = new Set();
-  function addImg(url) {
+  function addImg(url, { force = false } = {}) {
     if (!url) return;
     const u = canonicalize(url);
-    // Dedup on a key that ignores the size tier so we don't keep the same
-    // image in 3 different sizes
+    if (!force && !belongs(u)) return; // drop foreign-product images
     const key = u.replace(/-[a-z]\.webp$/i, '').toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -1077,47 +1098,36 @@ function extractImages(doc /*, productSlug */) {
     }
   }
 
-  // 1. og:image (always the product's hero image)
+  // 1. og:image — the product's hero. Trusted as the canonical first image
+  //    even if (rarely) it doesn't contain the article number.
   const ogImg = doc.querySelector('meta[property="og:image"]');
   if (ogImg) {
     const content = ogImg.getAttribute('content');
-    if (content && content.includes('gzhls.at/pix')) addImg(content);
+    if (content && /gzhls\.at\//i.test(content)) addImg(content, { force: true });
   }
 
-  // 2. <img> tags inside the product gallery only
-  //    Geizhals wraps gallery images in `.product-gallery`, `.gallery`,
-  //    `#productGallery` containers; restricting to these avoids carousel
-  //    "related products" leaking in.
-  const galleryScopes = doc.querySelectorAll(
-    '.product-gallery, .productgallery, .gallery, #productGallery, [data-testid="product-gallery"], .swiper-wrapper'
-  );
-  const imgScopes = galleryScopes.length ? Array.from(galleryScopes) : [doc];
-  for (const scope of imgScopes) {
-    scope.querySelectorAll('img, source').forEach(img => {
-      for (const attr of ['src', 'srcset', 'data-srcset', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-full']) {
-        const val = img.getAttribute(attr);
-        if (val && val.includes('gzhls.at/pix')) {
-          if (/srcset/i.test(attr)) {
-            val.split(',').forEach(part => addImg(part.trim().split(/\s+/)[0]));
-          } else {
-            addImg(val);
-          }
-          break;
-        }
+  // 2. Gallery <img>/<source> + 3. lightbox anchors + 4. raw HTML sweep — every
+  //    candidate is funnelled through belongs(), so only images carrying THIS
+  //    product's article number survive (no more wrong-product galleries).
+  doc.querySelectorAll('img, source').forEach(img => {
+    for (const attr of ['src', 'srcset', 'data-srcset', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-full']) {
+      const val = img.getAttribute(attr);
+      if (val && /gzhls\.at\/(pix|i)\//i.test(val)) {
+        if (/srcset/i.test(attr)) val.split(',').forEach(part => addImg(part.trim().split(/\s+/)[0]));
+        else addImg(val);
+        break;
       }
-    });
-  }
-
-  // 3. Direct anchors to the original-size image (lightbox links)
-  doc.querySelectorAll('a[href*="gzhls.at/pix/"]').forEach(a => {
+    }
+  });
+  doc.querySelectorAll('a[href*="gzhls.at/"]').forEach(a => {
     const href = a.getAttribute('href');
-    if (href) addImg(href);
+    if (href && /gzhls\.at\/(pix|i)\//i.test(href)) addImg(href);
   });
 
   const html = String(doc.documentElement?.innerHTML || '')
     .replace(/\\\//g, '/')
     .replace(/&amp;/g, '&');
-  const re = /https?:\/\/gzhls\.at\/pix\/[^,"'()<>\s\\]+/gi;
+  const re = /https?:\/\/gzhls\.at\/(?:pix|i)\/[^,"'()<>\s\\]+/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
     addImg(m[0]);
