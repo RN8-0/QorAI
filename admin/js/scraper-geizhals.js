@@ -1053,85 +1053,66 @@ function imgThumb(url) { return _imgTier(url, 'm'); }
 function imgMedium(url) { return _imgTier(url, 'l'); }
 function imgHQ(url)     { return _imgTier(url, 'n'); }
 
-// Pull the Geizhals article number from a product slug/url. Ids look like
-// `…-a3728320` (article) or `…-v228688` (variant family). Geizhals serves a
-// product's own images from paths that CONTAIN this number
-// (e.g. gzhls.at/i/05/29/3728320-l.webp), so it's the reliable key for
-// telling THIS product's images apart from the related/comparison products
-// that also appear on the page.
-function _geizhalsArticleNum(slugOrUrl) {
-  const matches = String(slugOrUrl || '').match(/[-_/]([av])?(\d{6,9})(?=[-_/.]|$)/gi) || [];
-  if (!matches.length) return '';
-  const last = matches[matches.length - 1];
-  return (last.match(/\d{6,9}/) || [''])[0];
-}
-
-function extractImages(doc, slug) {
+// Geizhals image URLs are hash-based (gzhls.at/pix/31/f0/31f0…-l.webp) and
+// carry NO product/article id, so a product's own photos can't be told apart
+// from the iPhone/Samsung thumbnails in the page's "related products" /
+// price-comparison carousels by URL alone. The reliable source of a product's
+// OWN images is the JSON-LD Product schema (and og:image) that Geizhals embeds
+// — those list only this product's media. We use those and deliberately do NOT
+// sweep the whole page (that whole-page sweep was the cross-product leak).
+function extractImages(doc /*, slug */) {
   if (typeof doc === 'string') doc = parseHTML(doc);
 
-  // Canonical form: -l.webp (mid-quality, web/mobile-friendly).
   function canonicalize(url) {
-    return _imgTier(url.trim().split(/[?#]/)[0], 'l');
+    return _imgTier(String(url).trim().split(/[?#]/)[0], 'l');
   }
-
-  // The product's own images all contain this article number in the URL.
-  // Anything else on the page (iPhone/Samsung thumbnails in "related
-  // products", price-comparison rows, carousels) carries a DIFFERENT number
-  // and must be rejected — that cross-product leak is the bug we're fixing.
-  const articleNum = _geizhalsArticleNum(slug);
-  const belongs = (u) => {
-    if (!u) return false;
-    if (!articleNum) return true; // no id to filter on → can't be selective
-    return u.includes(articleNum);
-  };
 
   const images = [];
   const seen = new Set();
-  function addImg(url, { force = false } = {}) {
+  function addImg(url) {
     if (!url) return;
+    if (!/gzhls\.at\/(pix|i)\//i.test(url)) return;
     const u = canonicalize(url);
-    if (!force && !belongs(u)) return; // drop foreign-product images
     const key = u.replace(/-[a-z]\.webp$/i, '').toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      images.push(u);
-    }
+    if (!seen.has(key)) { seen.add(key); images.push(u); }
   }
 
-  // 1. og:image — the product's hero. Trusted as the canonical first image
-  //    even if (rarely) it doesn't contain the article number.
+  // 1. og:image — the product's canonical hero (first image).
   const ogImg = doc.querySelector('meta[property="og:image"]');
-  if (ogImg) {
-    const content = ogImg.getAttribute('content');
-    if (content && /gzhls\.at\//i.test(content)) addImg(content, { force: true });
-  }
+  if (ogImg) addImg(ogImg.getAttribute('content') || '');
 
-  // 2. Gallery <img>/<source> + 3. lightbox anchors + 4. raw HTML sweep — every
-  //    candidate is funnelled through belongs(), so only images carrying THIS
-  //    product's article number survive (no more wrong-product galleries).
-  doc.querySelectorAll('img, source').forEach(img => {
-    for (const attr of ['src', 'srcset', 'data-srcset', 'data-src', 'data-lazy', 'data-original', 'data-zoom', 'data-full']) {
-      const val = img.getAttribute(attr);
-      if (val && /gzhls\.at\/(pix|i)\//i.test(val)) {
-        if (/srcset/i.test(attr)) val.split(',').forEach(part => addImg(part.trim().split(/\s+/)[0]));
-        else addImg(val);
-        break;
-      }
+  // 2. JSON-LD Product.image — the authoritative, foreign-free gallery.
+  doc.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+    let data;
+    try { data = JSON.parse(s.textContent || 'null'); } catch { return; }
+    const nodes = Array.isArray(data) ? data : (data && Array.isArray(data['@graph']) ? data['@graph'] : [data]);
+    for (const n of nodes) {
+      if (!n || typeof n !== 'object') continue;
+      const type = Array.isArray(n['@type']) ? n['@type'].join(' ') : String(n['@type'] || '');
+      if (!/product/i.test(type)) continue;
+      const img = n.image;
+      if (typeof img === 'string') addImg(img);
+      else if (Array.isArray(img)) img.forEach((x) => addImg(typeof x === 'string' ? x : (x && (x.url || x.contentUrl))));
+      else if (img && (img.url || img.contentUrl)) addImg(img.url || img.contentUrl);
     }
   });
-  doc.querySelectorAll('a[href*="gzhls.at/"]').forEach(a => {
-    const href = a.getAttribute('href');
-    if (href && /gzhls\.at\/(pix|i)\//i.test(href)) addImg(href);
-  });
 
-  const html = String(doc.documentElement?.innerHTML || '')
-    .replace(/\\\//g, '/')
-    .replace(/&amp;/g, '&');
-  const re = /https?:\/\/gzhls\.at\/(?:pix|i)\/[^,"'()<>\s\\]+/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    addImg(m[0]);
-    if (images.length >= MAX_IMAGES_PER_PRODUCT) break;
+  // 3. Only if JSON-LD gave us nothing extra, fall back to a STRICT product
+  //    gallery container (never the whole document, so related products can't
+  //    leak in). Geizhals wraps the product gallery in these containers.
+  if (images.length <= 1) {
+    doc.querySelectorAll('.gallery, .product-gallery, .productgallery, #gallery, [data-testid="product-gallery"]').forEach((scope) => {
+      scope.querySelectorAll('img, source').forEach((img) => {
+        for (const attr of ['src', 'srcset', 'data-srcset', 'data-src', 'data-original', 'data-zoom', 'data-full']) {
+          const val = img.getAttribute(attr);
+          if (val && /gzhls\.at\/(pix|i)\//i.test(val)) {
+            if (/srcset/i.test(attr)) val.split(',').forEach((part) => addImg(part.trim().split(/\s+/)[0]));
+            else addImg(val);
+            break;
+          }
+        }
+      });
+    });
   }
 
   return images.slice(0, MAX_IMAGES_PER_PRODUCT);
