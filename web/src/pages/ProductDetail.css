@@ -280,6 +280,7 @@
 .pd-ai-card-head.grad-orange { background: linear-gradient(135deg, #f59e0b, #f97316); }
 .pd-ai-card-head.grad-cyan { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
 .pd-ai-card-head.grad-green { background: linear-gradient(135deg, #10b981, #059669); }
+.pd-ai-card-head.grad-pink { background: linear-gradient(135deg, #ec4899, #8b5cf6); }
 .pd-ai-card-head:disabled { opacity: 0.7; cursor: wait; }
 .pd-ai-card-ic {
   width: 46px; height: 46px; display: grid; place-items: center;

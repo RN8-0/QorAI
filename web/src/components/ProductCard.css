@@ -117,17 +117,19 @@
   letter-spacing: -0.01em;
 }
 
-/* Top-right + button: add this product to the compare pool (same category). */
+/* Top-right + button: add this product to the compare pool (same category).
+   Uses an SVG glyph so the icon is pixel-centered in the circle. */
 .q-product-card-cmp {
   position: absolute; top: 8px; right: 8px; z-index: 4;
-  width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 50%; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
   background: var(--surface); border: 1px solid var(--border);
-  color: var(--text2); font-size: 19px; font-weight: 800; line-height: 1; cursor: pointer;
-  box-shadow: 0 2px 6px color-mix(in srgb, #020617 14%, transparent);
-  transition: background .14s, border-color .14s, color .14s, transform .05s;
+  color: var(--text2); cursor: pointer;
+  box-shadow: 0 1px 4px color-mix(in srgb, #020617 12%, transparent);
+  transition: background .14s, border-color .14s, color .14s, transform .08s;
 }
-.q-product-card-cmp:hover { border-color: var(--accent-ring); color: var(--accent); transform: scale(1.06); }
+.q-product-card-cmp svg { display: block; }
+.q-product-card-cmp:hover { border-color: var(--accent-ring); color: var(--accent); transform: scale(1.08); }
 .q-product-card-cmp.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .q-product-card-cmp-msg {
   position: absolute; top: 42px; right: 8px; z-index: 5;

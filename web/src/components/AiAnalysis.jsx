@@ -70,6 +70,29 @@ export function buildPredictionPrompt(p, lang) {
   );
 }
 
+// Forum / community satisfaction — synthesises what people say across public
+// forums (Reddit, XDA, dedicated communities, retailer reviews) into a single
+// satisfaction percentage + praise / complaints. Mirrors the app's
+// "Community Satisfaction" review analysis.
+export function buildForumPrompt(p, lang) {
+  const { name, brand, category, ks } = productLine(p, lang);
+  return (
+    `You are Qor AI analysing public community sentiment for "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
+    'Base it on widely-known discussions across public forums and communities (e.g. Reddit, XDA, dedicated enthusiast forums, large retailer review sections). ' +
+    'Do NOT invent specific quotes or fake numbers — give a grounded synthesis.\n\n' +
+    `IMPORTANT: Return ONLY valid JSON. ALL text MUST be written in ${langName(lang)} (keep forum/site names as-is).\n\n` +
+    'Return a JSON object with this EXACT structure:\n' +
+    '{\n  "satisfaction": <number 0-100, overall % of owners who seem satisfied>,\n' +
+    '  "summary": "<2-3 sentence synthesis of the community consensus>",\n' +
+    '  "praise": ["<most common praise>", "<...>", "<...>"],\n' +
+    '  "complaints": ["<most common complaint>", "<...>"],\n' +
+    '  "sources": ["<forum/site 1>", "<forum/site 2>"],\n' +
+    '  "verdict": "<1 sentence overall community verdict>"\n}\n\n' +
+    'Rules:\n- satisfaction realistic (not always 90+).\n- 3-5 praise, 2-4 complaints.\n- Cite the kinds of communities where this product is discussed.\n\n' +
+    `Context: key specs: ${ks || '-'}`
+  );
+}
+
 // Compare prompt — structured JSON so the result renders as graphs (winner
 // banner + per-product score bars + pros/cons) rather than a wall of text.
 export function buildComparePrompt(products, lang, profile = {}) {
@@ -323,6 +346,41 @@ function CompareView({ data, L }) {
   );
 }
 
+// ─── FORUM / COMMUNITY SATISFACTION ─────────────────────────────────────────
+function ForumView({ data, L }) {
+  const sat = toInt(data.satisfaction);
+  const praise = arr(data.praise).map(String);
+  const complaints = arr(data.complaints).map(String);
+  const sources = arr(data.sources).map(String);
+  return (
+    <div className="ai-forum">
+      {sat > 0 && (
+        <div className="ai-forum-gauge">
+          <ScoreRing value={sat} suffix="%" />
+          <div className="ai-forum-gauge-t">
+            <b>{L('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}</b>
+            <small>{L('Synthesised from public forums & reviews', 'Açık forum ve yorumlardan derlendi', 'Aus öffentlichen Foren & Reviews')}</small>
+          </div>
+        </div>
+      )}
+      {String(data.summary || '').trim() && <p className="ai-forum-summary">{data.summary}</p>}
+      {(praise.length > 0 || complaints.length > 0) && (
+        <div className="ai-procon-row">
+          <ProCon icon="✓" title={L('People love', 'Beğenilenler', 'Beliebt')} items={praise} color="#22c55e" />
+          <ProCon icon="✕" title={L('Common complaints', 'Şikayetler', 'Häufige Kritik')} items={complaints} color="#f43f5e" />
+        </div>
+      )}
+      {sources.length > 0 && (
+        <div className="ai-forum-sources">
+          <small>{L('Sources', 'Kaynaklar', 'Quellen')}:</small>
+          {sources.map((s, i) => <span key={i} className="ai-forum-src">{s}</span>)}
+        </div>
+      )}
+      {String(data.verdict || '').trim() && <div className="ai-verdict"><span>👥</span><p>{data.verdict}</p></div>}
+    </div>
+  );
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 // kind: 'deep' | 'alts' | 'advisor' | 'pred'. Returns null when JSON is unusable
 // so the caller can fall back to plain text.
@@ -336,5 +394,6 @@ export default function AiAnalysisView({ kind, raw, lang }) {
   if (kind === 'advisor') return <AdvisorView data={data} L={L} />;
   if (kind === 'pred') return <PredictionView data={data} L={L} />;
   if (kind === 'compare') return <CompareView data={data} L={L} />;
+  if (kind === 'forum') return <ForumView data={data} L={L} />;
   return null;
 }

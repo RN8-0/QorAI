@@ -19,7 +19,7 @@ import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiText from '../components/AiText.jsx';
 import AiAnalysisView, {
-  buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt, parseAiJson,
+  buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt, buildForumPrompt, parseAiJson,
 } from '../components/AiAnalysis.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
@@ -570,6 +570,7 @@ export default function ProductDetail() {
     alts: { text: '', busy: false, notice: '', expanded: false },
     advisor: { text: '', busy: false, notice: '', expanded: false },
     pred: { text: '', busy: false, notice: '', expanded: false },
+    forum: { text: '', busy: false, notice: '', expanded: false },
   });
   const aiUserKeyRef = useRef('');
 
@@ -592,6 +593,7 @@ export default function ProductDetail() {
         alts: { text: '', busy: false, notice: '', expanded: false },
         advisor: { text: '', busy: false, notice: '', expanded: false },
         pred: { text: '', busy: false, notice: '', expanded: false },
+        forum: { text: '', busy: false, notice: '', expanded: false },
       });
     }
     aiUserKeyRef.current = key;
@@ -605,6 +607,7 @@ export default function ProductDetail() {
       alts: { text: '', busy: false, notice: '', expanded: false },
       advisor: { text: '', busy: false, notice: '', expanded: false },
       pred: { text: '', busy: false, notice: '', expanded: false },
+      forum: { text: '', busy: false, notice: '', expanded: false },
     });
     setSimilar([]); setVariants([]);
     getProduct(id)
@@ -1107,6 +1110,17 @@ export default function ProductDetail() {
                     kind="pred"
                     lang={lang}
                     onOpen={() => runAiCard('pred', buildPredictionPrompt)}
+                    loadingLabel={t('pd.aiLoading')}
+                  />
+                  <AiAnalysisCard
+                    icon="👥"
+                    kind="forum"
+                    lang={lang}
+                    gradient="grad-pink"
+                    title={L('Forum Satisfaction', 'Forum Memnuniyeti', 'Forum-Zufriedenheit')}
+                    subtitle={L('What communities (Reddit, forums…) really think', 'Toplulukların (Reddit, forumlar…) gerçek görüşü', 'Was Communities (Reddit, Foren…) wirklich denken')}
+                    state={aiCards.forum}
+                    onOpen={() => runAiCard('forum', buildForumPrompt)}
                     loadingLabel={t('pd.aiLoading')}
                   />
                   {(pros.length > 0 || cons.length > 0) && (

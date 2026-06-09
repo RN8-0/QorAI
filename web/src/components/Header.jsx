@@ -40,6 +40,10 @@ export default function Header() {
 
   const coins = user ? formatQorCoins(user.bonusQCoins, lang) : '0';
   const isPremium = premiumStatus(user).isPremium;
+  // Premium = no coin cap; mirror the app and show ∞ / "Sınırsız" so it's clear
+  // AI features are unlimited rather than a depleting number.
+  const coinDisplay = isPremium ? '∞' : coins;
+  const coinWord = isPremium ? L('Unlimited', 'Sınırsız', 'Unbegrenzt') : 'Qor Coin';
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
 
   return (
@@ -121,7 +125,7 @@ export default function Header() {
           {user ? (
             <div className="hd-user">
               {isPremium && <span className="hd-pro" title={t('header.premium')}>PRO</span>}
-              <span className="hd-coins" title={t('header.coins')}><span className="coin-dot">Q</span>{coins}</span>
+              <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} title={isPremium ? coinWord : t('header.coins')}><span className="coin-dot">Q</span>{coinDisplay}</span>
               <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>{displayName[0]?.toUpperCase() || 'U'}</button>
               {menu && (
                 <>
@@ -131,7 +135,7 @@ export default function Header() {
                       <strong>{displayName}{isPremium && <span className="hd-pro hd-pro-sm">PRO</span>}</strong>
                       <span>{user.email}</span>
                     </div>
-                    <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coins}</b> Qor Coin</div>
+                    <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coinDisplay}</b> {coinWord}</div>
                     <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.profile')}</Link>
                     <Link to="/settings" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.settings')}</Link>
                     <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>{t('nav.signOut')}</button>

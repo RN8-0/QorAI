@@ -17,19 +17,19 @@ function messageFor(code, { feature, cost, balance, lang }) {
       return 'AI özellikleri için önce profil quizini tamamlamalısın. Seni quiz sayfasına yönlendiriyorum.';
     }
     if (code === 'INSUFFICIENT_QOR_COINS') {
-      return `Yetersiz Qor Coin. Bu işlem ${amount} Qor Coin, bakiyen ${bal}.`;
+      return `Yetersiz Qor Coin. Bu işlem ${amount} Qor Coin, bakiyen ${bal}. Sınırsız AI için Premium'a geç.`;
     }
     return 'AI erişimi hazırlanamadı. Lütfen tekrar dene.';
   }
   if (l === 'de') {
     if (code === 'AUTH_REQUIRED') return `Sign in to use this AI feature. Cost: ${amount} Qor Coin.`;
     if (code === 'QUIZ_REQUIRED') return 'Complete the profile quiz first. Sending you to the quiz page.';
-    if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}.`;
+    if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}. Go Premium for unlimited AI.`;
     return 'AI access could not be prepared. Please try again.';
   }
   if (code === 'AUTH_REQUIRED') return `Sign in to use this AI feature. Cost: ${amount} Qor Coin.`;
   if (code === 'QUIZ_REQUIRED') return 'Complete the profile quiz first. Sending you to the quiz page.';
-  if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}.`;
+  if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}. Go Premium for unlimited AI.`;
   return 'AI access could not be prepared. Please try again.';
 }
 
