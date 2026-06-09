@@ -267,6 +267,24 @@ function _dispatchSingleProductSaved(id, product) {
 
 if (typeof window !== 'undefined') window.qoraiDispatchSingleProductSaved = _dispatchSingleProductSaved;
 
+function _queuePostScrapeScore(category, opts = {}) {
+  if (typeof window === 'undefined' || typeof window.qoraiQueueScoreUpdate !== 'function') return;
+  const cat = String(category || '').trim();
+  if (!cat) return;
+  const prevSuppressed = window.qoraiAutoScoreSuppressed;
+  window.qoraiAutoScoreSuppressed = false;
+  try {
+    window.qoraiQueueScoreUpdate(cat, { immediate: !!opts.immediate });
+    if (typeof slog === 'function') {
+      slog(`⚡ Bulk scrape sonrası skor kuyruğu: ${cat}`, 'info');
+    }
+  } finally {
+    window.qoraiAutoScoreSuppressed = prevSuppressed;
+  }
+}
+
+if (typeof window !== 'undefined') window.qoraiQueuePostScrapeScore = _queuePostScrapeScore;
+
 // ── Auto-attach Amazon affiliate offers to newly scraped products ──────────
 // Both single and bulk scrape fire 'qorai:product-saved'. Debounced so a bulk
 // run triggers ONE offer sync after the last save, not one per product.
@@ -720,7 +738,7 @@ function normalizeProductDedupText(value) {
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
     .replace(/\b\d+\s*\/\s*\d+\b/g, '')
     .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
-    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|obsidian|porcelain|hazel|charcoal|snow|sage|bay|rose|lemongrass|wintergreen|peony|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
     .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -850,6 +868,7 @@ function modelFamilyKey({ name, brand, category }) {
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
     /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro\s+max|pro|max|plus|mini|air|e))?)\b/i,
+    /\b(pixel\s+(?:fold|tablet|\d+[a-z]*(?:\s+(?:pro\s+fold|pro|fold|xl|a|lite))*))\b/i,
     /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
@@ -914,7 +933,7 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
     .replace(/\b(?:windows|macos|linux|freebsd|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
-    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
+    .replace(/\b(?:black|white|silver|gold|blue|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|natural|ivory|obsidian|porcelain|hazel|charcoal|snow|sage|bay|rose|lemongrass|wintergreen|peony|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
     .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|gb)\b/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
@@ -5783,6 +5802,7 @@ async function resumeBulkScrape() {
   }
   slog(`▶ Resuming scrape: ${cp.remainingUrls.length} of ${cp.total} remaining (${groups.size} kategori grubu)`, 'info');
   const totals = { added: 0, updated: 0, skipped: 0, errors: 0 };
+  const scoreCats = new Set();
   const retryLater = [];
   for (const [cat, items] of groups.entries()) {
     if (scraperAbort) break;
@@ -5792,10 +5812,12 @@ async function resumeBulkScrape() {
     totals.updated += res.updated || 0;
     totals.skipped += res.skipped || 0;
     totals.errors += res.errors || 0;
+    if ((res.added || 0) + (res.updated || 0) > 0 && cat) scoreCats.add(cat);
     if (Array.isArray(res.retryLater)) {
       retryLater.push(...res.retryLater.map(u => ({ ...u, categoryId: u.categoryId || cat })));
     }
   }
+  scoreCats.forEach(cat => _queuePostScrapeScore(cat));
   if (retryLater.length) {
     _saveCheckpoint([], 0, '__multi_epey_retry__', totals, retryLater);
     slog(`↻ Resume sonunda ${retryLater.length} URL tekrar denemeye kaldı.`, 'warn');
@@ -6525,17 +6547,26 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         return;
       }
 
-      // Cross-source dedup: same variantGroup already in PB?
-      //   • SAME source  → skip (slug-level dedup handled elsewhere already)
-      //   • OTHER source → MERGE specs into existing record (specs union
-      //     across TR + DE), keep the existing record's id/source/affiliate
-      //     fields, never create a duplicate.
-      // Cross-source merge is FAST (no DeepSeek), so it runs inline here.
-      // Pure-new products are pushed to the raw-save queue and persisted by
-      // background save workers — scrape worker keeps moving.
       const mergeKey = clean.variantGroup;
+      const scrapedDuplicate = await _findExistingScrapedDuplicate(clean, existingByVG);
+      if (scrapedDuplicate) {
+        results.skipped++;
+        errorStreak = 0;
+        recent.push('ok');
+        if (mergeKey) existingByVG.set(mergeKey, scrapedDuplicate);
+        slog(
+          `  ⏭ Zaten scrape edilmiş, tekrar çekilmedi: ${product.name} ` +
+          `(mevcut ${scrapedDuplicate.id}${scrapedDuplicate.source ? ` / ${scrapedDuplicate.source}` : ''})`,
+          'info'
+        );
+        clearRetryLater(item);
+        return;
+      }
+
+      // Non-scraper sources may still be enriched, but Epey/Geizhals rows are
+      // treated as canonical scrape results and are never merged/overwritten.
       const existing = mergeKey ? existingByVG.get(mergeKey) : null;
-      if (existing && existing.source && existing.source !== clean.source) {
+      if (existing && existing.source && existing.source !== clean.source && !_isScrapedSourceRecord(existing)) {
         const merged = await _mergeIntoExistingRecord(existing.id, clean);
         if (merged) {
           window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existing.id, product: merged } }));
@@ -8331,6 +8362,12 @@ function _isEpeyRecord(record = {}) {
   return /epey/i.test(String(record.source || record.sourceUrl || ''));
 }
 
+function _isScrapedSourceRecord(record = {}) {
+  const source = String(record.source || '').toLowerCase();
+  const sourceUrl = String(record.sourceUrl || '').toLowerCase();
+  return /(epey|geizhals)/.test(source) || /(epey\.com|geizhals\.eu)/.test(sourceUrl);
+}
+
 function _stripModelCodesForIdentity(value) {
   return String(value || '')
     .replace(/\b(?:cph|sm|rmx|mzb|mzl|v)\d{3,}[a-z0-9-]*\b/gi, ' ')
@@ -8361,6 +8398,116 @@ function _productIdentityKeys(product = {}) {
 function _storageVariantToken(value) {
   const m = String(value || '').match(/(\d+)\s*(tb|gb)\b/i);
   return m ? `${m[1]}${m[2].toLowerCase()}` : '';
+}
+
+function _storageCompatibleForDedup(incomingName, existingName) {
+  const incomingStorage = _storageVariantToken(incomingName);
+  const existingStorage = _storageVariantToken(existingName);
+  return !incomingStorage || !existingStorage || incomingStorage === existingStorage;
+}
+
+function _summarizeExistingRecord(record = {}) {
+  return {
+    id: record.id || '',
+    source: record.source || '',
+    sourceUrl: record.sourceUrl || '',
+    name: record.name || '',
+    brand: record.brand || '',
+    category: record.category || '',
+    variantGroup: record.variantGroup || '',
+  };
+}
+
+async function _findExistingScrapedDuplicate(product = {}, existingByVG = null) {
+  const vg = String(product.variantGroup || '').trim();
+  if (vg && existingByVG && typeof existingByVG.get === 'function') {
+    const local = existingByVG.get(vg);
+    if (local && _isScrapedSourceRecord(local) && _storageCompatibleForDedup(product.name, local.name)) {
+      return _summarizeExistingRecord(local);
+    }
+  }
+
+  if (vg) {
+    const byVariant = await _findExistingByVariantGroup(vg, product.name);
+    if (byVariant && _isScrapedSourceRecord(byVariant) && _storageCompatibleForDedup(product.name, byVariant.name)) {
+      return _summarizeExistingRecord(byVariant);
+    }
+  }
+
+  const byFamily = await _findExistingScrapedByModelFamily(product);
+  if (byFamily) return byFamily;
+
+  const esc = (v) => String(v || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const sourceUrl = normalizeScrapeUrlKey(product.sourceUrl || '');
+  const rawSourceUrl = String(product.sourceUrl || '').trim();
+  const slug = String(product.slug || '').trim();
+  const idLike = slug ? generateProductId(slug) : '';
+  const orParts = [];
+  if (rawSourceUrl) orParts.push(`sourceUrl = "${esc(rawSourceUrl)}"`);
+  if (sourceUrl && sourceUrl !== rawSourceUrl) orParts.push(`sourceUrl = "${esc(sourceUrl)}"`);
+  if (slug) orParts.push(`slug = "${esc(slug)}"`);
+  if (idLike && idLike !== slug) {
+    orParts.push(`slug = "${esc(idLike)}"`);
+    orParts.push(`id = "${esc(idLike)}"`);
+  }
+  if (!orParts.length) return null;
+
+  try {
+    const res = await pbGetList('products', 1, 25, {
+      filter: orParts.join(' || '),
+      fields: 'id,source,sourceUrl,slug,name,brand,category,variantGroup',
+      sort: '-updated',
+    });
+    const sourceKey = sourceUrl || rawSourceUrl;
+    const items = (res.items || []).filter(_isScrapedSourceRecord);
+    for (const item of items) {
+      const savedUrl = normalizeScrapeUrlKey(item.sourceUrl || '');
+      const urlHit = sourceKey && savedUrl && savedUrl === sourceKey;
+      const slugHit = slug && (String(item.slug || '') === slug || String(item.id || '') === slug);
+      const idHit = idLike && (String(item.slug || '') === idLike || String(item.id || '') === idLike);
+      const vgHit = vg && String(item.variantGroup || '') === vg && _storageCompatibleForDedup(product.name, item.name);
+      if (urlHit || slugHit || idHit || vgHit) return _summarizeExistingRecord(item);
+    }
+  } catch (e) {
+    slog(`  ⚠ scraped duplicate lookup failed: ${e.message}`, 'warn');
+  }
+  return null;
+}
+
+async function _findExistingScrapedByModelFamily(product = {}) {
+  const targetKeys = _productIdentityKeys(product);
+  if (!targetKeys.size) return null;
+  const famSlug = _identitySlug(modelFamilyKey({ name: product.name, brand: product.brand, category: product.category }))
+    || _identitySlug(product.variantGroup)
+    || _identitySlug(product.name);
+  const tokens = famSlug.split('-').filter((t) => t && t.length >= 2).slice(0, 5);
+  if (!tokens.length) return null;
+  const pb = getPb();
+  try {
+    const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const parts = ['(source ~ "epey" || sourceUrl ~ "epey.com" || source ~ "geizhals" || sourceUrl ~ "geizhals.eu")'];
+    const category = String(product.category || '').trim();
+    if (category) parts.push(`category = "${esc(category)}"`);
+    if (product.brand) parts.push(`brand ~ "${esc(product.brand)}"`);
+    tokens.forEach((t) => parts.push(`name ~ "${esc(t)}"`));
+    const r = await pb.collection('products').getList(1, 50, {
+      filter: parts.join(' && '),
+      fields: 'id,name,brand,category,source,sourceUrl,variantGroup',
+      $autoCancel: false,
+    });
+    const candidates = r?.items || [];
+    for (const item of candidates) {
+      if (!_isScrapedSourceRecord(item)) continue;
+      const itemKeys = _productIdentityKeys(item);
+      const familyMatch = [...itemKeys].some((k) => targetKeys.has(k));
+      if (!familyMatch) continue;
+      if (!_storageCompatibleForDedup(product.name, item.name)) continue;
+      return _summarizeExistingRecord(item);
+    }
+  } catch (e) {
+    slog(`  ⚠ scraped model dedup lookup failed: ${e.message}`, 'warn');
+  }
+  return null;
 }
 
 // Find an existing record for the same MODEL+VARIANT. Replaces the old version
@@ -8663,6 +8810,7 @@ async function startBulkScrape() {
         return;
       }
       const totals = { added: 0, updated: 0, skipped: 0, errors: 0, queued: 0, missingCats: [] };
+      const scoreCats = new Set();
       // Surface admin categories that have NO epeyPath so the user knows
       // up front which ones can never be scraped from Epey.
       try {
@@ -8738,6 +8886,7 @@ async function startBulkScrape() {
         totals.skipped += res.skipped || 0;
         totals.errors += res.errors || 0;
         totals.queued += res.translationQueued || 0;
+        if ((res.added || 0) + (res.updated || 0) > 0) scoreCats.add(cat.id);
         if (Array.isArray(res.retryLater) && res.retryLater.length) {
           multiCategoryRetryLater.push(...res.retryLater.map(u => ({ ...u, categoryId: u.categoryId || cat.id })));
         }
@@ -8761,6 +8910,7 @@ async function startBulkScrape() {
         scraperAbort ? 'warn' : 'success'
       );
       if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
+      scoreCats.forEach(cat => _queuePostScrapeScore(cat));
       finishScraping();
       return;
     }
@@ -8775,6 +8925,9 @@ async function startBulkScrape() {
       return;
     }
     const results = await sequentialScrape(urlItems.slice(0, singleLimit), singleCat?.id || categoryId, delay, concurrency);
+    if ((results.added || 0) + (results.updated || 0) > 0) {
+      _queuePostScrapeScore(singleCat?.id || categoryId);
+    }
     slog(
       `\n═══ Scrape done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata` +
       `${results.translationQueued ? ` | ${results.translationQueued} raw kayıt arka planda` : ''} ═══`,
@@ -8842,6 +8995,16 @@ async function scrapeByUrl() {
       toast('Bu kategori katalogdan kaldırıldı; ürün kaydedilmedi', 'w');
       return;
     }
+    const scrapedDuplicate = await _findExistingScrapedDuplicate(clean);
+    if (scrapedDuplicate) {
+      slog(
+        `↩ Zaten scrape edilmiş, tekrar çekilmedi: ${clean.name} ` +
+        `(mevcut ${scrapedDuplicate.id}${scrapedDuplicate.source ? ` / ${scrapedDuplicate.source}` : ''})`,
+        'info'
+      );
+      if (typeof loadProducts === 'function') await loadProducts();
+      return;
+    }
     slog(`🌐 Tekli ürün çevirisi başlıyor: ${clean.name}`, 'info');
     // Single URL imports are intentionally stricter than bulk imports: the
     // product is saved only after EN/DE translation payloads exist.
@@ -8856,7 +9019,7 @@ async function scrapeByUrl() {
 
     if (clean.variantGroup) {
       const existing = await _findExistingByVariantGroup(clean.variantGroup, clean.name);
-      if (existing && existing.source && existing.source !== clean.source) {
+      if (existing && existing.source && existing.source !== clean.source && !_isScrapedSourceRecord(existing)) {
         const merged = await _mergeIntoExistingRecord(existing.id, clean);
         if (merged) {
           _dispatchSingleProductSaved(existing.id, merged);

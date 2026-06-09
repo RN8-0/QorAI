@@ -519,7 +519,7 @@ function normalizeProductDedupText(value) {
     .replace(/\b\d+\s*(?:gb|tb|mb)\b/gi, '')
     .replace(/\b\d+\s*\/\s*\d+\b/g, '')
     .replace(/\b(?:wi-fi|wifi|cellular|5g|lte)\b/gi, '')
-    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|obsidian|porcelain|hazel|charcoal|snow|sage|bay|rose|lemongrass|wintergreen|peony|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, '')
     .replace(/\b\d+(?:[.,]\d+)?\s*w\b/gi, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -569,6 +569,7 @@ function modelFamilyKey({ name, brand, category }) {
     /\b(thinkbook\s+[a-z0-9]+(?:\s+gen\s+\d+)?)\b/i,
     /\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b/i,
     /\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b/i,
+    /\b(pixel\s+(?:fold|tablet|\d+[a-z]*(?:\s+(?:pro\s+fold|pro|fold|xl|a|lite))*))\b/i,
     /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
     /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
@@ -609,7 +610,7 @@ function modelFamilyKey({ name, brand, category }) {
     .replace(/\bandroid\s*\d+(?:[.,]\d+)?\b/gi, ' ')
     .replace(/\b(?:windows|macos)\s*\d+(?:[.,]\d+)?(?:\s*pro)?\b/gi, ' ')
     .replace(/\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi, ' ')
-    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
+    .replace(/\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|stone\s*colour|dark\s*blue|dark\s*green|orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|obsidian|porcelain|hazel|charcoal|snow|sage|bay|rose|lemongrass|wintergreen|peony|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi, ' ')
     .replace(/\b(?:de|uk|us|eu|pl|fr|it|es|se|gb)\b/gi, ' ')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -4053,11 +4054,19 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       if (!existingRec && clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
         try {
           existingRec = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
-          if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
-            existingRec = await window._findExistingEpeyByModelFamily(clean);
-          }
         } catch (e) {
-          slog(`  ⚠ dedup probe failed: ${e.message}`, 'warn');
+          slog(`  ⚠ variantGroup dedup probe failed: ${e.message}`, 'warn');
+        }
+      }
+      // Cross-source (Epey baseline) dedup MUST run independently of
+      // variantGroup — otherwise a Geizhals product whose model family didn't
+      // produce a variantGroup (e.g. "Google Pixel 10a 128GB obsidian") would
+      // skip this check and get re-added next to the existing Epey record.
+      if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
+        try {
+          existingRec = await window._findExistingEpeyByModelFamily(clean);
+        } catch (e) {
+          slog(`  ⚠ Epey model dedup probe failed: ${e.message}`, 'warn');
         }
       }
       if (existingRec && /epey/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
@@ -4314,6 +4323,7 @@ async function startBulkScrape() {
 
   try {
     const totals = { added: 0, skipped: 0, errors: 0 };
+    const scoreCats = new Set();
     if (checkedCats.length) {
       slog(`Geizhals import: ${checkedCats.length} kategori · ${collectAll ? 'ne varsa' : maxProducts + '/kategori'}`, 'info');
       for (let i = 0; i < checkedCats.length && !scraperAbort; i++) {
@@ -4321,6 +4331,7 @@ async function startBulkScrape() {
         slog(`\n[${i + 1}/${checkedCats.length}] ── ${cat.name || cat.id} ──`, 'info');
         const r = await runCategory(cat.id, () => collectProductUrls(cat.id, maxProducts));
         totals.added += r.added; totals.skipped += r.skipped; totals.errors += r.errors;
+        if ((r.added || 0) > 0) scoreCats.add(cat.id);
       }
     } else {
       slog(`Bulk scrape (brand): "${searchTerm}", max ${maxProducts}`, 'info');
@@ -4331,6 +4342,9 @@ async function startBulkScrape() {
     if (totals.added > 0 && typeof loadProducts === 'function') {
       await loadProducts();
       slog('Products view refreshed.', 'success');
+    }
+    if (typeof window !== 'undefined' && typeof window.qoraiQueuePostScrapeScore === 'function') {
+      scoreCats.forEach(cat => window.qoraiQueuePostScrapeScore(cat));
     }
   } catch (e) {
     slog(`Fatal error: ${e.message}`, 'error');

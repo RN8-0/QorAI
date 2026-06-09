@@ -67,6 +67,7 @@ const FAMILY_PATTERNS = [
   // to " plus " before matching so S24 and S24+ never collapse together.
   /\b(galaxy\s+(?:s|z|a|m|tab|note|xcover)\s*\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip|edge))*)/i,
   /\b(iphone\s+(?:se\s+)?\d+[a-z]*(?:\s+(?:pro|max|plus|mini))*)/i,
+  /\b(pixel\s+(?:fold|tablet|\d+[a-z]*(?:\s+(?:pro\s+fold|pro|fold|xl|a|lite))*))\b/i,
   /\b(redmi\s+note\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
   /\b(redmi\s+\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
   /\b(poco\s+[a-z]\d+[a-z]*(?:\s+(?:pro\s+plus|pro|plus|ultra|5g))*)/i,
@@ -132,7 +133,7 @@ const STRIP = [
   // languages / colours / regions
   /\b(?:spanish|german|french|italian|english|turkish|dutch|polish|portuguese|swedish|arabic|japanese|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b/gi,
   /\b(?:black|white|silver|gold|blue|navy|purple|violet|pink|red|green|gray|grey|cream|graphite|lavender|wood|bordeaux|midnight|starlight|titanium|anthracite|carbon|schwarz|weiß|weiss|silber|blau|grün|gruen|creme|grau|siyah|beyaz|yeşil|yesil|gri|mavi|kırmızı|kirmizi|mor|pembe|sarı|sari)\b/gi,
-  /\b(?:orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight)\b/gi,
+  /\b(?:orange|sand|camouflage|camo|beige|khaki|mint|aqua|turquoise|teal|coral|brown|bronze|copper|natural|ivory|tundra|umber|moonlight|obsidian|porcelain|hazel|charcoal|snow|sage|bay|rose|lemongrass|wintergreen|peony)\b/gi,
   /\b(?:de|uk|us|eu|pl|fr|it|es|gb|nl|be|at|ch)\b/gi,
   /\b\d+(?:[.,]\d+)?\s*w\b/gi,
   /\bcopilot\+?\s*pc\b/gi,
