@@ -462,6 +462,18 @@ async function proxyFetch(url, retries = 3) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.text();
     } catch (e) {
+      const isTimeout = e.name === 'TimeoutError' || /timed?\s*out/i.test(e.message || '');
+      if (isTimeout) {
+        // A timeout means the proxy session is CF-poisoned, not a transient
+        // blip — retrying the same fingerprint burns 210s per attempt (the
+        // 2026-06-10 run lost ~30 min to 6 workers doing exactly that).
+        // Rotate the session once, retry once, then fail fast so the
+        // caller's streak handling takes over.
+        if (attempt >= 1) throw e;
+        slog(`Timeout on ${url.slice(0, 70)}… — rotating proxy session and retrying once`, 'warn');
+        await maybeResetProxySession('proxyFetch timeout');
+        continue;
+      }
       if (attempt === retries) throw e;
       const delay = Math.min(5000 * Math.pow(2, attempt), 60000) + Math.random() * 3000;
       slog(`Retry ${attempt + 1}/${retries}: ${e.message}, waiting ${(delay / 1000).toFixed(0)}s...`, 'warn');
@@ -486,6 +498,26 @@ async function resetProxySessionShared(reason) {
   } catch (e) {
     slog(`  ⚠️ reset-session failed: ${e.message}`, 'warn');
   }
+}
+
+// Throttled wrapper: with 6 parallel detail workers a CF wave would otherwise
+// fire 6 simultaneous resets. One reset per minInterval; concurrent callers
+// await the in-flight one and continue together after a settle pause.
+let _lastProxyResetAt = 0;
+let _proxyResetPromise = null;
+async function maybeResetProxySession(reason, minIntervalMs = 60000) {
+  if (_proxyResetPromise) return _proxyResetPromise;
+  if (Date.now() - _lastProxyResetAt < minIntervalMs) return;
+  _proxyResetPromise = (async () => {
+    try {
+      await resetProxySessionShared(reason);
+      _lastProxyResetAt = Date.now();
+      await sleep(20000); // settle before the fresh fingerprint takes traffic
+    } finally {
+      _proxyResetPromise = null;
+    }
+  })();
+  return _proxyResetPromise;
 }
 
 // ═══════════════════════════════════════
@@ -3651,7 +3683,19 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
           reason = reason || `fallback-${e.message}`;
         }
       }
-      return { ok: !cloudflareBlocked, cloudflare: cloudflareBlocked, reason, links };
+      // A fetch failure (timeout / network / non-2xx) with zero links is NOT
+      // an empty listing page. Returning ok:true here made the collector
+      // count a Cloudflare wall as "no more products" and end the whole URL
+      // collection two pages later (2026-06-10 run stopped at page 91 this
+      // way). Route it through the CF-fail path instead: retry budget,
+      // session reset, skip-and-continue.
+      const fetchFailed = links.length === 0 && !!reason;
+      return {
+        ok: !cloudflareBlocked && !fetchFailed,
+        cloudflare: cloudflareBlocked || fetchFailed,
+        reason,
+        links,
+      };
     }
 
     // Per-page retry budget (Cloudflare gives transient blocks; a 30-60s
@@ -4232,6 +4276,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
 
       if (errorStreak >= 3) {
+        // Sleeping alone never recovers a flagged CF session — the listing
+        // phase learned this; the detail phase now does the same fingerprint
+        // rotation instead of only backing off (2026-06-10 run died at 10
+        // consecutive timeouts without a single reset).
+        await maybeResetProxySession(`detail error streak ${errorStreak}`);
         const backoff = Math.min(10000 * Math.pow(2, errorStreak - 3), 120000);
         slog(`Error streak (${errorStreak}), backing off ${(backoff / 1000).toFixed(0)}s...`, 'warn');
         await sleep(backoff);
@@ -4255,6 +4304,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       updateProgress(completed, urlItems.length, 'Products');
       if (completed % 50 === 0) {
         slog(`  … progress ${completed}/${urlItems.length} · added ${results.added}, updated ${results.updated}, skipped ${results.skipped}, errors ${results.errors}`, 'info');
+      }
+      // Proactive fingerprint rotation — same trick that fixed the listing
+      // phase's ~50-page Cloudflare wall, applied to the detail phase.
+      if (completed > 0 && completed % 150 === 0) {
+        await maybeResetProxySession('proactive after 150 product details', 180000);
       }
     }
   };
