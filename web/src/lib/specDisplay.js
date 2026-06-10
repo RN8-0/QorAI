@@ -59,6 +59,59 @@ const LABELS = {
     'Wi-Fi': 'Wi-Fi',
     'Width': 'Genişlik',
     'Wireless charging': 'Kablosuz şarj',
+    // ── Section titles (canonical English → Turkish) — Geizhals products store
+    //    specs in English, so these section headers need TR on the .tr view.
+    'General': 'Genel',
+    'General information': 'Genel bilgiler',
+    'General features': 'Genel özellikler',
+    'Graphics': 'Grafik',
+    'Graphics processor': 'Grafik işlemcisi',
+    'Memory': 'Bellek',
+    'Memory features': 'Bellek özellikleri',
+    'Memory & storage': 'Bellek & depolama',
+    'Camera': 'Kamera',
+    'Battery': 'Pil',
+    'Power': 'Güç',
+    'Battery / Power': 'Pil / Güç',
+    'Display features': 'Ekran özellikleri',
+    'Connectivity': 'Bağlantı',
+    'Connections': 'Bağlantılar',
+    'Connectivity features': 'Bağlantı özellikleri',
+    'Ports': 'Bağlantı noktaları',
+    'Network': 'Ağ',
+    'Network connections': 'Ağ bağlantıları',
+    'Design': 'Tasarım',
+    'Design & dimensions': 'Tasarım & boyutlar',
+    'Audio': 'Ses',
+    'Audio features': 'Ses özellikleri',
+    'Software': 'Yazılım',
+    'Software / Operating system': 'Yazılım / İşletim sistemi',
+    'Performance': 'Performans',
+    'Documents': 'Belgeler',
+    'Documents / Software': 'Belgeler / Yazılım',
+    'Release & Pricing': 'Çıkış & Fiyat',
+    'Release': 'Çıkış',
+    'Highlights': 'Öne çıkanlar',
+    'Chip / Processor': 'Yonga / İşlemci',
+    // ── Common labels (English → Turkish) ──
+    'Form factor': 'Biçim faktörü',
+    'Free fall': 'Düşme dayanımı',
+    'Interfaces': 'Arayüzler',
+    'Interface': 'Arayüz',
+    'Modem': 'Modem',
+    'Material': 'Malzeme',
+    'SoC': 'Yonga (SoC)',
+    'Protection rating': 'Koruma sınıfı',
+    'Repairability class': 'Onarılabilirlik sınıfı',
+    'Energy efficiency class': 'Enerji verimliliği sınıfı',
+    'SAR value': 'SAR değeri',
+    'SIM card': 'SIM kartı',
+    'Battery life per cycle': 'Döngü başına pil ömrü',
+    'Battery endurance': 'Pil dayanıklılığı',
+    'Navigation': 'Navigasyon',
+    'Rear camera': 'Arka kamera',
+    'Internal storage': 'Dahili depolama',
+    'Connection': 'Bağlantı',
   },
   de: {
     '5G': '5G',
@@ -434,6 +487,20 @@ function titleCase(text) {
   return cleanupLabel(text).replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
+// Case-insensitive index of the LABELS maps so an UPPERCASE section header like
+// "GENERAL" or a lowercase "general" both resolve to the curated translation.
+const _LABEL_CI = {};
+for (const code of Object.keys(LABELS)) {
+  _LABEL_CI[code] = {};
+  for (const [k, v] of Object.entries(LABELS[code])) {
+    const lk = k.toLowerCase();
+    if (!(lk in _LABEL_CI[code])) _LABEL_CI[code][lk] = v;
+  }
+}
+function ciLabel(code, clean) {
+  return _LABEL_CI[code]?.[String(clean || '').toLowerCase()] || '';
+}
+
 function labelCase(text, locale = 'en-US') {
   return cleanupLabel(text)
     .split(' ')
@@ -450,7 +517,7 @@ export function localizedSpecLabel(label, lang = 'en') {
   const code = rawCode === 'tr' || rawCode === 'de' ? rawCode : 'en';
   const clean = cleanupLabel(label);
   if (!clean) return '';
-  const exact = LABELS[code]?.[clean] || LABELS[code]?.[titleCase(clean)];
+  const exact = LABELS[code]?.[clean] || LABELS[code]?.[titleCase(clean)] || ciLabel(code, clean);
   if (exact) return exact;
   if (code === 'de') {
     let out = clean;
@@ -543,7 +610,30 @@ function cleanupValueLine(line, lang) {
       .replace(/\(eSIM only\)/gi, '(yalnızca eSIM)')
       .replace(/\bDual SIM\b/g, 'Çift SIM')
       .replace(/\bVoice over LTE\b/g, 'LTE üzerinden ses')
-      .replace(/\bLithium Ion\b/g, 'Lityum iyon');
+      .replace(/\bLithium Ion\b/g, 'Lityum iyon')
+      // sensors (appear as values in the Sensors row)
+      .replace(/\bAccelerometer\b/gi, 'İvmeölçer')
+      .replace(/\bGyroscope\b/gi, 'Jiroskop')
+      .replace(/\bProximity sensor\b/gi, 'Yakınlık sensörü')
+      .replace(/\bAmbient light sensor\b/gi, 'Ortam ışık sensörü')
+      .replace(/\bLight sensor\b/gi, 'Işık sensörü')
+      .replace(/\bColor spectrum sensor\b/gi, 'Renk spektrumu sensörü')
+      .replace(/\bCompass\b/gi, 'Pusula')
+      .replace(/\bBarometer\b/gi, 'Barometre')
+      .replace(/\bFingerprint sensor\b/gi, 'Parmak izi sensörü')
+      .replace(/\bunder display\b/gi, 'ekran altı')
+      // materials / build
+      .replace(/\bStainless steel\b/gi, 'Paslanmaz çelik')
+      .replace(/\bAlumin[iu]+m\b/gi, 'Alüminyum')
+      .replace(/\bGlass\b/gi, 'Cam')
+      .replace(/\bPlastic\b/gi, 'Plastik')
+      .replace(/\(back\)/gi, '(arka)')
+      .replace(/\(front\)/gi, '(ön)')
+      .replace(/\(frame\)/gi, '(çerçeve)')
+      // charging / connectivity values
+      .replace(/\bReverse charging\b/gi, 'Ters şarj')
+      .replace(/\bWired\b/gi, 'Kablolu')
+      .replace(/\bWireless\b/gi, 'Kablosuz');
   }
 
   if (code === 'de') {
