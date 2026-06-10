@@ -284,13 +284,16 @@ function buildSpecTranslator(product, lang) {
   const norm = (s) => String(s ?? '')
     .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
   const lookup = new Map();
-  // For German-source (Geizhals) products multiLangSpecs.de is the FULL German
-  // spec object ({label: value}) and multiLangSections.de is NESTED — neither
-  // is an atom map. Feeding them into the lookup turns the "Display" label
-  // into the whole display value text and section titles into
-  // "[object Object]". The German view renders the German source directly
-  // (see mergeSpecBricks), so it needs no per-product lookup at all.
-  const skipLookup = code === 'de' && String(product?.sourceLang || '').toLowerCase() === 'de';
+  // The product's SOURCE-language entry in multiLangSpecs is the FULL spec
+  // object ({label: value}) — Epey stores .tr that way, Geizhals .de — and
+  // multiLangSections.<source> is NESTED. Neither is an atom map: feeding
+  // them into the lookup makes a label resolve to its own VALUE ("Pil
+  // kapasitesi" → "3988 mAh", so the row shows "3988 mAh | 3988 mAh") and
+  // section titles render "[object Object]". A same-language view needs no
+  // per-product lookup at all — the content already is that language.
+  const srcLang = String(product?.sourceLang || '').toLowerCase()
+    || (/epey/i.test(String(product?.source || '')) ? 'tr' : '');
+  const skipLookup = code === srcLang;
   if (!skipLookup) {
     for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
       if (src && typeof src === 'object' && !Array.isArray(src)) {
