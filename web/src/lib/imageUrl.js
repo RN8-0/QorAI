@@ -21,7 +21,7 @@ function imageIdentityKey(url) {
   if (!key) return '';
   key = key.split(/[?#]/)[0].replace(/^https?:\/\//, '');
   key = key.replace(/(resim\.epey\.com\/[^/]+\/)[a-z]_/i, '$1');
-  key = key.replace(/-(?:k|s|m|t|c|l|n)\.(webp|jpe?g|png)$/i, '.$1');
+  key = key.replace(/-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)$/i, '$1.$2');
   return key;
 }
 

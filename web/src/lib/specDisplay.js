@@ -112,6 +112,13 @@ const LABELS = {
     'Rear camera': 'Arka kamera',
     'Internal storage': 'Dahili depolama',
     'Connection': 'Bağlantı',
+    // ── Canonical-EN Geizhals labels (post 2026-06-10 glossary rebuild) ──
+    'Listed since': 'Listelenme tarihi',
+    'Free fall reliability class': 'Düşme dayanıklılık sınıfı',
+    'Frequency bands': 'Frekans bantları',
+    'Screen-to-body ratio': 'Ekran/gövde oranı',
+    'Battery cycle life': 'Pil şarj döngüsü',
+    'Battery': 'Pil',
   },
   de: {
     '5G': '5G',
@@ -263,6 +270,32 @@ const LABELS = {
     'Bellek Kapasitesi': 'Speicherkapazität',
     'Bellek Teknolojisi': 'Speichertechnologie',
     'Output Yılı': 'Erscheinungsjahr',
+    // ── Canonical-EN Geizhals labels + sections → German ──
+    'Listed since': 'Gelistet seit',
+    'Free fall reliability class': 'Freifall-Zuverlässigkeitsklasse',
+    'Frequency bands': 'Frequenzbänder',
+    'Screen-to-body ratio': 'Display/Gehäuse-Verhältnis',
+    'Battery cycle life': 'Batterieausdauer',
+    'Battery life per cycle': 'Akkulaufzeit pro Zyklus',
+    'Battery': 'Akku',
+    'Energy efficiency class': 'Energieeffizienzklasse',
+    'Repairability class': 'Reparierbarkeitsklasse',
+    'Protection rating': 'Schutzart',
+    'SAR value': 'SAR-Wert',
+    'SIM card': 'SIM-Karte',
+    'Interfaces': 'Schnittstellen',
+    'Material': 'Material',
+    'Form factor': 'Bauform',
+    'Navigation': 'Navigation',
+    'Features': 'Besonderheiten',
+    'Battery / Power': 'Akku / Energie',
+    'Chip / Processor': 'Chip / Prozessor',
+    'Software / OS': 'Software / Betriebssystem',
+    'Release & Pricing': 'Erscheinung & Preis',
+    'Memory': 'Speicher',
+    'Graphics': 'Grafik',
+    'General': 'Allgemein',
+    'Camera': 'Kamera',
   },
 };
 
@@ -633,7 +666,66 @@ function cleanupValueLine(line, lang) {
       // charging / connectivity values
       .replace(/\bReverse charging\b/gi, 'Ters şarj')
       .replace(/\bWired\b/gi, 'Kablolu')
-      .replace(/\bWireless\b/gi, 'Kablosuz');
+      .replace(/\bWireless\b/gi, 'Kablosuz')
+      // ── Canonical-EN Geizhals values (post 2026-06-10 glossary rebuild) ──
+      .replace(/\bout of the box\b/gi, 'fabrika çıkışı')
+      .replace(/\bvia update\b/gi, 'güncellemeyle')
+      .replace(/\bcharge cycles\b/gi, 'şarj döngüsü')
+      .replace(/\bcharging cycles\b/gi, 'şarj döngüsü')
+      .replace(/\bnits\s*\(peak\)/gi, 'nit (maksimum)')
+      .replace(/\bnits\s*\(typical\)/gi, 'nit (tipik)')
+      .replace(/\brefresh rate\b/gi, 'yenileme hızı')
+      .replace(/\btouch sampling rate\b/gi, 'dokunmatik örnekleme hızı')
+      .replace(/\bcores\b/gi, 'çekirdek')
+      .replace(/\bbillion colors\b/gi, 'milyar renk')
+      .replace(/\bmillion colors\b/gi, 'milyon renk')
+      .replace(/\byears of security updates\b/gi, 'yıl güvenlik güncellemesi')
+      .replace(/\bOS updates\b/g, 'işletim sistemi güncellemesi')
+      .replace(/\bPhase-detection AF\b/gi, 'Faz algılamalı AF')
+      .replace(/\bPeriscope telephoto lens\b/gi, 'Periskop telefoto lens')
+      .replace(/\bTelephoto lens\b/gi, 'Telefoto lens')
+      .replace(/\bWide-angle lens\b/gi, 'Geniş açı lens')
+      .replace(/\bUltra-wide lens\b/gi, 'Ultra geniş açı lens')
+      .replace(/\bMacro lens\b/gi, 'Makro lens')
+      .replace(/\bDual-LED flash\b/gi, 'Çift LED flaş')
+      .replace(/\bLED flash\b/gi, 'LED flaş')
+      .replace(/\bPunch-hole camera\b/gi, 'Kamera deliği')
+      .replace(/\bCapacitive touchscreen\b/gi, 'Kapasitif dokunmatik ekran')
+      .replace(/\bFoldable \(clamshell\)/gi, 'Katlanabilir (kapaklı)')
+      .replace(/\bFoldable \(booklet\)/gi, 'Katlanabilir (kitap tipi)')
+      .replace(/\bFoldable \(inward\)/gi, 'Katlanabilir (içe katlanır)')
+      .replace(/\(unfolded\)/gi, '(açık)')
+      .replace(/\(folded\)/gi, '(kapalı)')
+      .replace(/\(head\)/gi, '(baş)')
+      .replace(/\(body\)/gi, '(gövde)')
+      .replace(/\(in-display\)/gi, '(ekran içi)')
+      .replace(/\(side-mounted\)/gi, '(yan tuşta)')
+      .replace(/\bSatellite communication\b/gi, 'Uydu iletişimi')
+      .replace(/\(text messages, emergency only\)/gi, '(kısa mesaj, sadece acil durum)')
+      .replace(/\bNot specified\b/gi, 'Belirtilmemiş')
+      .replace(/\bUnder-display\b/gi, 'Ekran altı')
+      .replace(/\bNotification LED\b/gi, "Bildirim LED'i")
+      .replace(/\bDual SIM\b/gi, 'Çift SIM')
+      .replace(/\bmicroSD slot\b/gi, 'microSD yuvası')
+      .replace(/\bdedicated, up to\b/gi, 'özel, en fazla')
+      .replace(/\bshared, up to\b/gi, 'paylaşımlı, en fazla')
+      .replace(/\(display (\d)\)/gi, '(ekran $1)')
+      .replace(/\(Camera (\d)\)/gi, '(Kamera $1)')
+      .replace(/\bStereo speakers\b/gi, 'Stereo hoparlör')
+      .replace(/\(hybrid\)/gi, '(hibrit)')
+      .replace(/\bInfrared port\b/gi, 'Kızılötesi port')
+      .replace(/\bFace scanner\b/gi, 'Yüz tarayıcı')
+      .replace(/\(3D, infrared\)/gi, '(3D, kızılötesi)')
+      .replace(/\bRemovable\b/gi, 'Çıkarılabilir')
+      .replace(/\bcertified\b/gi, 'sertifikalı')
+      .replace(/\(A to ([A-Z])\)/g, '(A ile $1)')
+      .replace(/\bNotch\b/gi, 'Çentik')
+      .replace(/\bOuter display\b/gi, 'Dış ekran')
+      .replace(/\bCurved\b/gi, 'Kavisli')
+      .replace(/\bFlat\b/gi, 'Düz')
+      .replace(/\bContrast AF\b/gi, 'Kontrast AF')
+      .replace(/\bjack\b/gi, 'kulaklık girişi');
+    if (/^bar$/i.test(out.trim())) out = 'Düz (bar)';
   }
 
   if (code === 'de') {
@@ -664,7 +756,39 @@ function cleanupValueLine(line, lang) {
       .replace(/\bUltra geniş açı\b/gi, 'Ultraweitwinkel')
       .replace(/\bGeniş açı\b/gi, 'Weitwinkel')
       .replace(/\bLazer AF\b/gi, 'Laser-AF')
-      .replace(/\bLityum iyon\b/gi, 'Lithium-Ionen');
+      .replace(/\bLityum iyon\b/gi, 'Lithium-Ionen')
+      // ── Canonical-EN Geizhals values → German (fallback when the German
+      //    source map is unavailable) ──
+      .replace(/\bout of the box\b/gi, 'ab Werk')
+      .replace(/\bvia update\b/gi, 'per Update')
+      .replace(/\bcharge cycles\b/gi, 'Ladezyklen')
+      .replace(/\bnits\s*\(peak\)/gi, 'Nits (maximal)')
+      .replace(/\bnits\s*\(typical\)/gi, 'Nits (typisch)')
+      .replace(/\brefresh rate\b/gi, 'Bildwiederholrate')
+      .replace(/\btouch sampling rate\b/gi, 'Abtastrate')
+      .replace(/\bcores\b/gi, 'Kerne')
+      .replace(/\bbillion colors\b/gi, 'Mrd. Farben')
+      .replace(/\bmillion colors\b/gi, 'Mio. Farben')
+      .replace(/\byears of security updates\b/gi, 'Jahre Sicherheits-Updates')
+      .replace(/\bOS updates\b/g, 'Betriebssystem-Updates')
+      .replace(/\bPhase-detection AF\b/gi, 'Phasenvergleich-AF')
+      .replace(/\bPeriscope telephoto lens\b/gi, 'Periskop-Teleobjektiv')
+      .replace(/\bTelephoto lens\b/gi, 'Teleobjektiv')
+      .replace(/\bWide-angle lens\b/gi, 'Weitwinkelobjektiv')
+      .replace(/\bMacro lens\b/gi, 'Makroobjektiv')
+      .replace(/\bDual-LED flash\b/gi, 'Dual-LED-Blitz')
+      .replace(/\bLED flash\b/gi, 'LED-Blitz')
+      .replace(/\bPunch-hole camera\b/gi, 'Kameraloch')
+      .replace(/\bCapacitive touchscreen\b/gi, 'Kapazitiver Touchscreen')
+      .replace(/\(unfolded\)/gi, '(offen)')
+      .replace(/\(folded\)/gi, '(geschlossen)')
+      .replace(/\(head\)/gi, '(Kopf)')
+      .replace(/\(body\)/gi, '(Körper)')
+      .replace(/\bNot specified\b/gi, 'Keine Angabe')
+      .replace(/\bBuilt-in\b/gi, 'Fest verbaut')
+      .replace(/\bWireless charging\b/gi, 'Kabelloses Laden')
+      .replace(/\bReverse charging\b/gi, 'Umgekehrtes Laden')
+      .replace(/\bpixels\b/gi, 'Pixel');
   }
   // Writing rule: every spec value line starts with a capital letter.
   return upperFirst(out, code);

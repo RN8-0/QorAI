@@ -1460,7 +1460,7 @@ function _imgTier(url, tier /* 'm' | 'l' | 'n' */) {
   // /[ksmt]_ prefix path with the requested tier.
   return url
     .replace(/\/[ksmtc]_/g, `/-${tier}.webp`)
-    .replace(/-(?:k|s|m|t|c|l|n)\.webp(\.\w+)?$/i, `-${tier}.webp`);
+    .replace(/-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)(\.\w+)?$/i, `-${tier}$1.$2$3`);
 }
 function imgThumb(url) { return _imgTier(url, 'm'); }
 function imgMedium(url) { return _imgTier(url, 'l'); }

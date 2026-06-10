@@ -3704,6 +3704,16 @@ function _renderProductModal(p,variants=[]){
         .trim();
     }
 
+    // Capitalize first letter of every spec string
+    if (out) {
+      const firstLetterMatch = out.search(/[\p{L}\p{N}]/u);
+      if (firstLetterMatch !== -1) {
+        const ch = out[firstLetterMatch];
+        const up = lang === 'tr' ? ch.toLocaleUpperCase('tr-TR') : ch.toUpperCase();
+        out = out.slice(0, firstLetterMatch) + up + out.slice(firstLetterMatch + 1);
+      }
+    }
+
     return out;
   }
   function knownModalTranslation(text){
@@ -3715,6 +3725,17 @@ function _renderProductModal(p,variants=[]){
       const germanExact = {
         'betriebssystem': { tr:'İşletim sistemi', en:'Operating system', es:'Sistema operativo', fr:"Système d'exploitation", pt:'Sistema operacional', ru:'Операционная система' },
         'kamera vorne': { tr:'Ön kamera', en:'Front camera', es:'Cámara frontal', fr:'Caméra avant', pt:'Câmera frontal', ru:'Фронтальная камера' },
+        'kamera hinten': { tr:'Arka kamera', en:'Rear camera', es:'Cámara trasera', fr:'Caméra arrière', pt:'Câmera traseira', ru:'Задняя камера' },
+        'kamera 1': { tr:'Kamera 1', en:'Camera 1', es:'Cámara 1', fr:'Caméra 1', pt:'Câmera 1', ru:'Камера 1' },
+        'kamera 2': { tr:'Kamera 2', en:'Camera 2', es:'Cámara 2', fr:'Caméra 2', pt:'Câmera 2', ru:'Камера 2' },
+        'kamera 3': { tr:'Kamera 3', en:'Camera 3', es:'Cámara 3', fr:'Caméra 3', pt:'Câmera 3', ru:'Камера 3' },
+        'kamera 4': { tr:'Kamera 4', en:'Camera 4', es:'Cámara 4', fr:'Caméra 4', pt:'Câmera 4', ru:'Камера 4' },
+        'weitwinkelobjektiv': { tr:'Geniş açı objektifi', en:'Wide-angle lens', es:'Lente gran angular', fr:'Objectif grand angle', pt:'Lente grande angular', ru:'Широкоугольный объектив' },
+        'teleobjektiv': { tr:'Telefoto objektifi', en:'Telephoto lens', es:'Teleobjetivo', fr:'Téléobjectif', pt:'Teleobjetiva', ru:'Телеобъектив' },
+        'makroobjektiv': { tr:'Makro objektifi', en:'Macro lens', es:'Lente macro', fr:'Objectif macro', pt:'Lente macro', ru:'Макрообъектив' },
+        'tiefensensor': { tr:'Derinlik sensörü', en:'Depth sensor', es:'Sensor de profundidad', fr:'Capteur de profondeur', pt:'Sensor de profundidade', ru:'Датчик глубины' },
+        'akkulaufzeit pro zyklus': { tr:'Döngü başına pil ömrü', en:'Battery life per cycle', es:'Duración de la batería por ciclo', fr:'Autonomie de la batterie par cycle', pt:'Duração da bateria por ciclo', ru:'Срок службы батареи за цикл' },
+        'batterieausdauer': { tr:'Pil dayanıklılığı', en:'Battery endurance', es:'Resistencia de la batería', fr:'Endurance de la batterie', pt:'Resistência da bateria', ru:'Выносливость батареи' },
         'sensoren': { tr:'Sensörler', en:'Sensors', es:'Sensores', fr:'Capteurs', pt:'Sensores', ru:'Датчики' },
         'sim-karte': { tr:'SIM kartı', en:'SIM card', es:'Tarjeta SIM', fr:'Carte SIM', pt:'Cartão SIM', ru:'SIM-карта' },
         'abmessungen': { tr:'Boyutlar', en:'Dimensions', es:'Dimensiones', fr:'Dimensions', pt:'Dimensões', ru:'Размеры' },
@@ -4215,7 +4236,7 @@ function _imageIdentityKey(url) {
   if (!key) return '';
   key = key.split(/[?#]/)[0].replace(/^https?:\/\//, '');
   key = key.replace(/(resim\.epey\.com\/[^/]+\/)[a-z]_/i, '$1');
-  key = key.replace(/-(?:k|s|m|t|c|l|n)\.(webp|jpe?g|png)$/i, '.$1');
+  key = key.replace(/-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)$/i, '$1.$2');
   return key;
 }
 

@@ -11,7 +11,7 @@
 //  the runtime useSeo() hook — this guarantees parity for the rest.
 // ═══════════════════════════════════════════════════════════════
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -40,23 +40,65 @@ function truncate(s, max = 158) {
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
 }
 
+function slugifyProduct(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90);
+}
+
+function productPath(product) {
+  const id = String(product?.id || '').trim();
+  if (!id) return '';
+  const slug = slugifyProduct(product.slug || product.name || '');
+  const qs = new URLSearchParams();
+  if (slug) qs.set('slug', slug);
+  qs.set('id', id);
+  return `/product?${qs.toString()}`;
+}
+
+function categoryPath(category) {
+  const cat = String(category || '').trim().toLowerCase();
+  return cat ? `/category?cat=${encodeURIComponent(cat)}` : '';
+}
+
+function lastmodFromTs(value) {
+  const n = Number(value) || 0;
+  if (!n) return NOW;
+  const ms = n > 1e12 ? n : n * 1000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? NOW : d.toISOString().slice(0, 10);
+}
+
 // Renders the <head> SEO block injected between the seo markers.
-function seoBlock({ title, description, url, image = DEFAULT_IMG, type = 'website', noindex = false, jsonLd = null }) {
+function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null }) {
   const lines = [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(description)}" />`,
     `<link rel="canonical" href="${esc(url)}" />`,
-    `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow'}" />`,
+    `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'}" />`,
     `<meta property="og:type" content="${esc(type)}" />`,
     '<meta property="og:site_name" content="Qor AI" />',
     `<meta property="og:title" content="${esc(title)}" />`,
     `<meta property="og:description" content="${esc(description)}" />`,
     `<meta property="og:image" content="${esc(image)}" />`,
+    `<meta property="og:image:alt" content="${esc(imageAlt)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
     '<meta name="twitter:card" content="summary_large_image" />',
     `<meta name="twitter:title" content="${esc(title)}" />`,
     `<meta name="twitter:description" content="${esc(description)}" />`,
     `<meta name="twitter:image" content="${esc(image)}" />`,
+    `<meta name="twitter:image:alt" content="${esc(imageAlt)}" />`,
   ];
   if (jsonLd) {
     lines.push(`<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
@@ -107,7 +149,7 @@ function writeHtml(routeDir, html) {
 // ── Typesense: pull the whole catalogue ─────────────────────────
 async function fetchAllProducts() {
   const perPage = 250;
-  const fields = 'id,name,brand,category,imageUrl,techScore,lowestPriceUSD';
+  const fields = 'id,name,slug,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount,updatedAtTs,scrapedAtTs';
   const page = async (p) => {
     const qs = new URLSearchParams({
       q: '*', query_by: 'name', sort_by: 'techScore:desc',
@@ -143,9 +185,10 @@ const STATIC_ROUTES = [
       jsonLd: {
         '@context': 'https://schema.org',
         '@graph': [
-          { '@type': 'Organization', name: 'Qor AI', url: `${SITE}/`, logo: DEFAULT_IMG },
+          { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Qor AI', url: `${SITE}/`, logo: DEFAULT_IMG },
           {
-            '@type': 'WebSite', name: 'Qor AI', url: `${SITE}/`,
+            '@type': 'WebSite', '@id': `${SITE}/#website`, name: 'Qor AI', url: `${SITE}/`,
+            publisher: { '@id': `${SITE}/#organization` },
             potentialAction: {
               '@type': 'SearchAction',
               target: `${SITE}/?q={search_term_string}`,
@@ -164,11 +207,10 @@ const STATIC_ROUTES = [
     },
   },
   {
-    dir: 'product', path: '/product', noindex: true,
+    dir: 'product', path: '/product', sitemap: false,
     seo: {
-      title: 'Ürün — Qor AI',
-      description: 'Qor AI ürün detay sayfası.',
-      noindex: true,
+      title: 'Ürün özellikleri ve karşılaştırma — Qor AI',
+      description: 'Qor AI ürün detay sayfası. Ürün özelliklerini, teknik skoru, görselleri ve karşılaştırma seçeneklerini incele.',
     },
   },
   {
@@ -256,36 +298,49 @@ async function main() {
   //    We deliberately DO NOT prerender a static HTML file per product.
   //    Doing so wrote 100k+ tiny files into the repo (every build = a
   //    100k-file diff) for near-zero gain: Googlebot renders the SPA and
-  //    reads the same per-product <head> from the runtime useSeo() hook,
-  //    and /product?id=... returns a real route shell with HTTP 200.
-  //    The sitemap below lists every product with that static-safe URL.
+  //    reads the same per-product <head> from the runtime useSeo() hook.
+  //    The sitemap below lists every product with a static-safe
+  //    /product?slug=...&id=... URL that carries the product name.
   let products = [];
   try {
     products = await fetchAllProducts();
     console.log(`[seo] fetched ${products.length} products from Typesense`);
   } catch (err) {
-    console.warn(`[seo] product fetch failed (${err.message}) — sitemap will list routes only`);
+    if (process.env.SEO_ALLOW_EMPTY_CATALOG === '1') {
+      console.warn(`[seo] product fetch failed (${err.message}) — sitemap will list routes only because SEO_ALLOW_EMPTY_CATALOG=1`);
+    } else {
+      throw new Error(`product fetch failed; refusing to publish a stripped sitemap (${err.message})`);
+    }
   }
 
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
-  const routeUrls = STATIC_ROUTES.filter((r) => !r.noindex).map((r) => ({
+  const routeUrls = STATIC_ROUTES.filter((r) => r.sitemap !== false && !r.noindex && !r.seo?.noindex).map((r) => ({
     loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
   }));
-  const productUrls = products.filter((d) => d && d.id).map((d) => ({
-    loc: `${SITE}/product?id=${encodeURIComponent(String(d.id))}`, changefreq: 'weekly', priority: '0.6',
+  const categoryUrls = [...new Set(products.map((d) => categoryPath(d?.category)).filter(Boolean))]
+    .sort()
+    .map((path) => ({
+      loc: `${SITE}${path}`, changefreq: 'weekly', priority: '0.8',
+    }));
+  const productUrls = products.filter((d) => d?.id && d?.name).map((d) => ({
+    loc: `${SITE}${productPath(d)}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
   }));
-  const allUrls = [...routeUrls, ...productUrls];
+  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls];
 
   const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + items.map((u) =>
-      `  <url><loc>${esc(u.loc)}</loc><lastmod>${NOW}</lastmod>`
+      `  <url><loc>${esc(u.loc)}</loc><lastmod>${u.lastmod || NOW}</lastmod>`
       + `<changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`,
     ).join('\n')
     + '\n</urlset>\n';
+
+  for (const file of readdirSync(site).filter((name) => /^sitemap-\d+\.xml$/.test(name))) {
+    try { rmSync(join(site, file), { force: true }); } catch (_) {}
+  }
 
   const chunks = [];
   for (let i = 0; i < allUrls.length; i += CHUNK) chunks.push(allUrls.slice(i, i + CHUNK));
@@ -313,7 +368,7 @@ async function main() {
     [
       'User-agent: *',
       'Allow: /',
-      'Disallow: /profile',
+      'Disallow: /go',
       '',
       `Sitemap: ${SITE}/sitemap.xml`,
       '',

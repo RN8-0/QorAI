@@ -284,29 +284,42 @@ function buildSpecTranslator(product, lang) {
   const norm = (s) => String(s ?? '')
     .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
   const lookup = new Map();
-  if (code !== 'tr') {
+  // For German-source (Geizhals) products multiLangSpecs.de is the FULL German
+  // spec object ({label: value}) and multiLangSections.de is NESTED — neither
+  // is an atom map. Feeding them into the lookup turns the "Display" label
+  // into the whole display value text and section titles into
+  // "[object Object]". The German view renders the German source directly
+  // (see mergeSpecBricks), so it needs no per-product lookup at all.
+  const skipLookup = code === 'de' && String(product?.sourceLang || '').toLowerCase() === 'de';
+  if (!skipLookup) {
     for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
       if (src && typeof src === 'object' && !Array.isArray(src)) {
         for (const [k, v] of Object.entries(src)) {
+          if (typeof v !== 'string') continue; // nested objects are not atoms
           const nk = norm(k);
-          if (nk && v != null && String(v).trim()) lookup.set(nk, String(v));
+          if (nk && v.trim()) lookup.set(nk, v);
         }
       }
     }
   }
   return (term) => {
     const raw = String(term ?? '');
-    if (code === 'tr' || !raw.trim()) return code === 'tr' ? raw : trSpec(raw, code);
+    let fallback = code === 'tr' ? raw : trSpec(raw, code);
+    if (!raw.trim()) return fallback;
+    const isSectionOrKeySpec = raw.length < 50 && !raw.includes(':') && !raw.includes('\n');
+    if (isSectionOrKeySpec) {
+      fallback = localizedSpecLabel(raw, code) || fallback;
+    }
     if (raw.includes('\n')) {
       return raw.split(/\r?\n/).map((line) => {
         const t = line.trim();
         if (!t) return line;
         const hit = lookup.get(norm(t));
-        return hit != null ? line.replace(t, hit) : trSpec(line, code);
+        return hit != null ? line.replace(t, hit) : (code === 'tr' ? line : trSpec(line, code));
       }).join('\n');
     }
     const hit = lookup.get(norm(raw));
-    return hit != null ? hit : trSpec(raw, code);
+    return hit != null ? hit : fallback;
   };
 }
 
@@ -340,15 +353,21 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   // they landed in got overwritten by other content. Per-row trSpec()
   // translation already handles localisation; the canonical step was just
   // throwing data away.
-  const usesTurkishSource = String(product?.sourceLang || '').toLowerCase() === 'tr';
-  const keySpecs = usesTurkishSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object'
+  const srcLang = String(product?.sourceLang || '').toLowerCase();
+  // Same-language source wins: a Turkish visitor on an Epey (TR) product and a
+  // German visitor on a Geizhals (DE) product both get the AUTHENTIC source
+  // specs — no translation round-trip, zero leak risk.
+  const usesTurkishSource = srcLang === 'tr' && String(lang).toLowerCase().startsWith('tr');
+  const usesGermanSource = srcLang === 'de' && String(lang).toLowerCase().startsWith('de');
+  const useSource = (usesTurkishSource || usesGermanSource);
+  const keySpecs = useSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object' && Object.keys(product.sourceKeySpecs).length
     ? product.sourceKeySpecs
     : product?.keySpecs;
   if (keySpecs && typeof keySpecs === 'object' && Object.keys(keySpecs).length > 0) {
     addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
   }
 
-  const sections = usesTurkishSource && product?.sourceSpecSections && typeof product.sourceSpecSections === 'object'
+  const sections = useSource && product?.sourceSpecSections && typeof product.sourceSpecSections === 'object' && Object.keys(product.sourceSpecSections).length
     ? product.sourceSpecSections
     : (product?.specSections && typeof product.specSections === 'object' ? product.specSections : null);
   if (sections) {
@@ -360,7 +379,7 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   }
 
   // Catch-all: any flat spec that didn't make it into a section above.
-  const flat = usesTurkishSource && product?.sourceSpecs && typeof product.sourceSpecs === 'object'
+  const flat = useSource && product?.sourceSpecs && typeof product.sourceSpecs === 'object' && Object.keys(product.sourceSpecs).length
     ? product.sourceSpecs
     : (product?.specs && typeof product.specs === 'object' ? product.specs : null);
   if (flat) {

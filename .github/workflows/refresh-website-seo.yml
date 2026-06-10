@@ -1,0 +1,35 @@
+name: Refresh website SEO
+
+on:
+  schedule:
+    # Rebuild only the public website every 6 hours so newly indexed catalog
+    # products are pulled into sitemap.xml without redeploying admin/PocketBase.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-website-seo
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger website rebuild
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBSITE_UUID: ${{ secrets.COOLIFY_WEBSITE_UUID }}
+        run: |
+          set -euo pipefail
+          : "${COOLIFY_URL:?COOLIFY_URL secret is missing}"
+          : "${COOLIFY_TOKEN:?COOLIFY_TOKEN secret is missing}"
+          : "${COOLIFY_WEBSITE_UUID:?COOLIFY_WEBSITE_UUID secret is missing}"
+
+          base="${COOLIFY_URL%/}"
+          curl --fail --show-error --silent \
+            --request GET \
+            --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            --header "Accept: application/json" \
+            "${base}/api/v1/deploy?uuid=${COOLIFY_WEBSITE_UUID}&force=true"
+          echo

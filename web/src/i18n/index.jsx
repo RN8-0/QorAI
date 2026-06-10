@@ -13,12 +13,20 @@ export const LANGS = [
 const AVAILABLE = LANGS.filter((l) => STRINGS[l.code]);
 const CODES = AVAILABLE.map((l) => l.code);
 const RTL = new Set(['ar']);
-// Browser language only: tr => Turkish, de/ge => German, everything else => English.
 function detectLang() {
+  try {
+    const stored = localStorage.getItem('lang');
+    if (stored && CODES.includes(stored)) return stored;
+  } catch (e) {}
+
   const nav = (navigator.languages || [navigator.language || 'en'])
     .map((l) => String(l).slice(0, 2).toLowerCase());
-  if (nav.some((l) => l === 'tr')) return 'tr';
-  if (nav.some((l) => l === 'de' || l === 'ge')) return 'de';
+  
+  for (const l of nav) {
+    if (l === 'tr') return 'tr';
+    if (l === 'de' || l === 'ge') return 'de';
+    if (l === 'en') return 'en';
+  }
   return 'en';
 }
 
@@ -36,6 +44,7 @@ export function LangProvider({ children }) {
 
   const setLang = useCallback((code) => {
     if (!CODES.includes(code)) return;
+    try { localStorage.setItem('lang', code); } catch (e) {}
     setLangState(code);
   }, []);
 

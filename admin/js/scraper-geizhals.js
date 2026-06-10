@@ -664,7 +664,38 @@ function _translationSourceProduct(p) {
 
 function prepareProductPayload(product) {
   const sourceSnapshot = _sourceSnapshotForProduct(product);
-  const sanitized = sanitizeProductSpecs(product.specs || {}, product.specSections || {});
+  // Deterministic DE→EN BEFORE canonicalization (2026-06-10). The glossary
+  // translates every Geizhals label/value ("Kamera hinten" → "Main camera",
+  // "umgekehrtes Laden" → "Reverse charging", "B (A bis G)" → "B (A to G)")
+  // so no German ever reaches the canonical specs — the old pipeline leaked
+  // residue whenever spec_canonical.js had no alias for a German key.
+  const _gloss = (typeof window !== 'undefined' && window.QorAiGeizhalsGlossary) || null;
+  let specsInput = product.specs || {};
+  let sectionsInput = product.specSections || {};
+  let keySpecsInput = product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {};
+  if (_gloss) {
+    try {
+      const builtEn = _gloss.buildProductTranslations({
+        sourceSpecs: sourceSnapshot.sourceSpecs,
+        sourceSpecSections: sourceSnapshot.sourceSpecSections,
+        name: product.name,
+      });
+      if (builtEn && Object.keys(builtEn.specs || {}).length) {
+        specsInput = builtEn.specs;
+        sectionsInput = builtEn.specSections;
+      }
+      const cleanKeySpecs = {};
+      for (const [k, v] of Object.entries(keySpecsInput)) {
+        const ck = _gloss.canonicalLabel(k);
+        const cv = _gloss.translateValue(v, 'en');
+        if (ck && cv) cleanKeySpecs[ck] = cv;
+      }
+      keySpecsInput = cleanKeySpecs;
+    } catch (e) {
+      console.warn('[geizhals] glossary EN build failed, falling back to legacy path:', e.message);
+    }
+  }
+  const sanitized = sanitizeProductSpecs(specsInput, sectionsInput);
   // Apply spec canonicalization (DE "Bildschirmhelligkeit" → "Brightness",
   // "Auflösung" → "Resolution", etc.) so this record can merge cleanly with
   // an Epey TR record that has "Ekran parlaklığı" → "Brightness".
@@ -674,12 +705,12 @@ function prepareProductPayload(product) {
         ...product,
         specs: sanitized.specs,
         specSections: sanitized.sections,
-        keySpecs: product.keySpecs || {},
+        keySpecs: keySpecsInput,
       })
     : {
         specs: sanitized.specs,
         specSections: sanitized.sections,
-        keySpecs: product.keySpecs || {},
+        keySpecs: keySpecsInput,
       };
   const category = window.QorAiCategories?.canonicalId
     ? window.QorAiCategories.canonicalId(product.category || '')
@@ -721,7 +752,7 @@ function prepareProductPayload(product) {
     specSections: canonical.specSections || sanitized.sections,
     keySpecs: canonical.keySpecs && typeof canonical.keySpecs === 'object'
       ? canonical.keySpecs
-      : (product.keySpecs && typeof product.keySpecs === 'object' ? product.keySpecs : {}),
+      : keySpecsInput,
     techScore,
     specsCount: Object.keys(canonical.specs || sanitized.specs).length,
     variantGroup: String(
@@ -1048,7 +1079,7 @@ function _imgTier(url, tier /* 'm' | 'l' | 'n' */) {
   // /[ksmt]_ prefix path with the requested tier.
   return url
     .replace(/\/[ksmtc]_/g, `/-${tier}.webp`)
-    .replace(/-(?:k|s|m|t|c|l|n)\.webp(\.\w+)?$/i, `-${tier}.webp`);
+    .replace(/-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)(\.\w+)?$/i, `-${tier}$1.$2$3`);
 }
 function imgThumb(url) { return _imgTier(url, 'm'); }
 function imgMedium(url) { return _imgTier(url, 'l'); }
@@ -1074,7 +1105,7 @@ function extractImages(doc /*, slug */) {
     if (!url) return;
     if (!/gzhls\.at\/(pix|i)\//i.test(url)) return;
     const u = canonicalize(url);
-    const key = u.replace(/-[a-z]\.webp$/i, '').toLowerCase();
+    const key = u.replace(/-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)$/i, '$1.$2').toLowerCase();
     if (!seen.has(key)) { seen.add(key); images.push(u); }
   }
 
@@ -1432,6 +1463,24 @@ function _escapeRegExp(s) {
 
 function _knownGermanRuleTranslation(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
+  // ── Deterministic glossary first (2026-06-10) ──────────────────────────
+  // geizhals-glossary.js covers the COMPLETE Geizhals smartphone vocabulary.
+  // A glossary hit short-circuits machine translation entirely — Argos/NLLB
+  // hallucinated on short technical atoms ("25W (Samsung AFC)" → EU-law
+  // prose, "LED-Blitz" → "LED lightning"), so MT only ever sees atoms the
+  // glossary cannot fully clean.
+  const gloss = (typeof window !== 'undefined' && window.QorAiGeizhalsGlossary) || null;
+  if (gloss && (targetLang === 'en' || targetLang === 'tr')) {
+    try {
+      const folded = gloss.foldDe(germanText);
+      const lbl = gloss.LABELS[folded];
+      if (lbl) return targetLang === 'tr' ? lbl.tr : lbl.en;
+      const sec = gloss.SECTIONS[folded];
+      if (sec) return targetLang === 'tr' ? sec.tr : sec.en;
+      const out = gloss.translateValue(germanText, targetLang);
+      if (out && !gloss.residueCheck(out, targetLang).length) return out;
+    } catch (e) { /* fall through to legacy rules */ }
+  }
   const map = {
     'betriebssystem': {
       tr: 'İşletim sistemi', en: 'Operating system', es: 'Sistema operativo',
@@ -2226,10 +2275,10 @@ function _uniqueEnglishSpecKey(target, key) {
   return `${out} ${n}`;
 }
 
-function _sanitizeGermanEnglishSpecText(text, sourceText = '') {
+function _sanitizeGermanSpecText(text, sourceText = '', targetLang = 'en') {
   const raw = String(text == null ? '' : text).trim();
   if (!raw) return '';
-  let out = _normalizeGermanSourceTranslation(sourceText || raw, 'en', raw)
+  let out = _normalizeGermanSourceTranslation(sourceText || raw, targetLang, raw)
     // Strip German compound-word artifacts where dashed translation
     // survived ("MIL-STD-810H-certified", "12/24h-display").
     .replace(/\b12\/24h-display\b/gi, '12/24h format')
@@ -2237,24 +2286,29 @@ function _sanitizeGermanEnglishSpecText(text, sourceText = '') {
     .replace(/\b(MIL-STD-\d+[A-Z]?)-certified\b/g, '$1 certified')
     .replace(/\b(MIL-STD-\d+[A-Z]?)-zertifiziert\b/g, '$1 certified')
     // EKG (DE/TR abbrev) -> ECG (English standard)
-    .replace(/\bEKG\b/g, 'ECG')
+    .replace(/\bEKG\b/g, targetLang === 'tr' ? 'EKG' : 'ECG')
     // Bracelets (Armbänder plural) for smartwatch -> Strap
-    .replace(/\bBracelets?\b/g, 'Strap')
+    .replace(/\bBracelets?\b/g, targetLang === 'tr' ? 'Kordon' : 'Strap')
     .replace(/\s{2,}/g, ' ')
     .trim();
   // CAPITALIZATION: first character upper.
-  if (out && /^[a-z]/.test(out) && !/^(?:[gma]?USB|[ie]?Phone|i[A-Z]|nano|micro|pro|max|m[Aa]h)/.test(out)) {
-    out = out[0].toUpperCase() + out.slice(1);
+  if (out && /^[a-zıiöüşğç]/i.test(out) && !/^(?:[gma]?USB|[ie]?Phone|i[A-Z]|nano|micro|pro|max|m[Aa]h)/.test(out)) {
+    const i = out.search(/[\p{L}\p{N}]/u);
+    if (i !== -1) {
+      const ch = out[i];
+      const up = targetLang === 'tr' ? ch.toLocaleUpperCase('tr-TR') : ch.toUpperCase();
+      out = out.slice(0, i) + up + out.slice(i + 1);
+    }
   }
   return out;
 }
 
-function _sanitizeGermanEnglishSpecMap(map) {
+function _sanitizeGermanSpecMap(map, targetLang = 'en') {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
   for (const [k, v] of Object.entries(map)) {
-    let nk = _sanitizeGermanEnglishSpecText(k, k);
-    let nv = _sanitizeGermanEnglishSpecText(v, v);
+    let nk = _sanitizeGermanSpecText(k, k, targetLang);
+    let nv = _sanitizeGermanSpecText(v, v, targetLang);
     // Strip dangling dashes from compound German artifacts.
     nv = String(nv)
       .replace(/\b12\/24h-display\b/gi, '12/24h format')
@@ -2263,7 +2317,7 @@ function _sanitizeGermanEnglishSpecMap(map) {
       .replace(/(MIL-STD-\d+[A-Z]?)-zertifiziert/g, '$1 certified')
       .trim();
     // "Bracelets" (plural Armbänder) for smartwatch strap -> "Strap"
-    if (/^Bracelets?$/i.test(nk)) nk = 'Strap';
+    if (/^Bracelets?$/i.test(nk)) nk = targetLang === 'tr' ? 'Kordon' : 'Strap';
     // Drop entries with empty values that show up as "X: :" in UI
     if (typeof nv === 'string' && /^[:;\-—]+$/.test(nv.trim())) continue;
     if (!nk || !nv) continue;
@@ -2272,26 +2326,26 @@ function _sanitizeGermanEnglishSpecMap(map) {
   return out;
 }
 
-function _sanitizeGermanEnglishSectionMap(sections) {
+function _sanitizeGermanSectionMap(sections, targetLang = 'en') {
   if (!sections || typeof sections !== 'object') return sections || {};
   const out = {};
   for (const [section, body] of Object.entries(sections)) {
-    let ns = _sanitizeGermanEnglishSpecText(section, section) || 'General';
+    let ns = _sanitizeGermanSpecText(section, section, targetLang) || (targetLang === 'tr' ? 'Genel' : 'General');
     // Smartwatch section: "Bracelets" -> "General" (the section list usually
     // already has a "Features"/"Allgemein" section with strap info).
-    if (/^Bracelets?$/i.test(ns)) ns = 'General';
-    out[ns] = _sanitizeGermanEnglishSpecMap(body || {});
+    if (/^Bracelets?$/i.test(ns)) ns = targetLang === 'tr' ? 'Genel' : 'General';
+    out[ns] = _sanitizeGermanSpecMap(body || {}, targetLang);
   }
   return out;
 }
 
-function _sanitizeGermanEnglishTranslationMap(map) {
+function _sanitizeGermanTranslationMap(map, targetLang = 'en') {
   if (!map || typeof map !== 'object') return map || {};
   const out = {};
   for (const [source, tx] of Object.entries(map)) {
     const clean = (tx && typeof tx === 'object')
-      ? _sanitizeGermanEnglishSpecText(source, source)
-      : _sanitizeGermanEnglishSpecText(tx, source);
+      ? _sanitizeGermanSpecText(source, source, targetLang)
+      : _sanitizeGermanSpecText(tx, source, targetLang);
     if (clean) out[source] = clean;
   }
   return out;
@@ -2299,22 +2353,29 @@ function _sanitizeGermanEnglishTranslationMap(map) {
 
 function _sanitizeGermanEnglishPayload(payload) {
   if (!payload || typeof payload !== 'object') return payload;
-  payload.specs = _sanitizeGermanEnglishSpecMap(payload.specs || {});
-  payload.specSections = _sanitizeGermanEnglishSectionMap(payload.specSections || {});
-  payload.specsEn = _sanitizeGermanEnglishSpecMap(payload.specsEn || payload.specs || {});
-  payload.keySpecs = _sanitizeGermanEnglishSpecMap(payload.keySpecs || {});
+  payload.specs = _sanitizeGermanSpecMap(payload.specs || {}, 'en');
+  payload.specSections = _sanitizeGermanSectionMap(payload.specSections || {}, 'en');
+  payload.specsEn = _sanitizeGermanSpecMap(payload.specsEn || payload.specs || {}, 'en');
+  payload.keySpecs = _sanitizeGermanSpecMap(payload.keySpecs || {}, 'en');
   payload.multiLangSpecs = payload.multiLangSpecs && typeof payload.multiLangSpecs === 'object'
     ? { ...payload.multiLangSpecs }
     : {};
   payload.multiLangSections = payload.multiLangSections && typeof payload.multiLangSections === 'object'
     ? { ...payload.multiLangSections }
     : {};
-  payload.multiLangSpecs.en = _sanitizeGermanEnglishSpecMap(payload.multiLangSpecs.en || payload.specs || {});
-  // multiLangSections.en is a FLAT {sourceName: translation} string-map, not a
-  // nested {section: {key: value}} structure. Use the translation-map
-  // sanitizer so values get _sanitizeGermanEnglishSpecText (which carries the
-  // 'Bracelets -> Strap', EKG -> ECG, dash-strip rules).
-  payload.multiLangSections.en = _sanitizeGermanEnglishTranslationMap(payload.multiLangSections.en || {});
+  
+  if (payload.multiLangSpecs.en || payload.specs) {
+    payload.multiLangSpecs.en = _sanitizeGermanSpecMap(payload.multiLangSpecs.en || payload.specs || {}, 'en');
+  }
+  if (payload.multiLangSections.en) {
+    payload.multiLangSections.en = _sanitizeGermanTranslationMap(payload.multiLangSections.en || {}, 'en');
+  }
+  if (payload.multiLangSpecs.tr) {
+    payload.multiLangSpecs.tr = _sanitizeGermanSpecMap(payload.multiLangSpecs.tr || {}, 'tr');
+  }
+  if (payload.multiLangSections.tr) {
+    payload.multiLangSections.tr = _sanitizeGermanTranslationMap(payload.multiLangSections.tr || {}, 'tr');
+  }
   return payload;
 }
 
@@ -2411,8 +2472,15 @@ function _deDictLookup(germanText, targetLang) {
   const key = _normalizeDictSourceKey(germanText);
   const rule = _knownGermanRuleTranslation(germanText, targetLang);
   if (rule) {
-    _deDictStore(germanText, targetLang, rule);
-    return _deDictCache[key]?.[targetLang] || rule;
+    // Store VERBATIM — glossary/rule outputs are already correctly cased.
+    // _deDictStore would run _applyTitleCase, whose locale-less lowercasing
+    // mangles Turkish dotted İ ("İşletim" → "Işletim"/combining-dot mess).
+    if (!_deDictCache[key]) _deDictCache[key] = {};
+    if (_deDictCache[key][targetLang] !== rule) {
+      _deDictCache[key][targetLang] = rule;
+      _deDictDirty = true;
+    }
+    return rule;
   }
   const entry = _deDictCache[key];
   if (entry && entry[targetLang]) {
@@ -3044,13 +3112,19 @@ async function translateSpecSections(specSections, targetLangs = TARGET_LANGS) {
   return out;
 }
 
-// Translate single German product name to all languages (single API call)
+// Translate single German product name to all languages. Names are NEVER
+// machine-translated — MT mangled casing ("Samsung galaxy z Flip7 fe"). The
+// glossary swaps German color words and preserves the model name verbatim.
 async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
   await _loadDeDict();
-  await _deepSeekAllLangsBatch([germanName], targetLangs);
+  const gloss = (typeof window !== 'undefined' && window.QorAiGeizhalsGlossary) || null;
+  const mtLangs = targetLangs.filter(l => !(gloss && (l === 'en' || l === 'tr')));
+  if (mtLangs.length) await _deepSeekAllLangsBatch([germanName], mtLangs);
   const names = {};
   for (const lang of targetLangs) {
-    names[lang] = _deDictLookup(germanName, lang) || germanName;
+    names[lang] = (gloss && (lang === 'en' || lang === 'tr'))
+      ? gloss.translateName(germanName, lang)
+      : (_deDictLookup(germanName, lang) || germanName);
   }
   return names;
 }
@@ -3120,7 +3194,20 @@ function _buildProductTranslations(p, targetLangs) {
     }
     multiLangSections[lang] = secMap;
 
-    nameTranslated[lang] = _deDictLookup(p.name, lang) || p.name;
+    const gloss = (typeof window !== 'undefined' && window.QorAiGeizhalsGlossary) || null;
+    nameTranslated[lang] = (gloss && (lang === 'en' || lang === 'tr'))
+      ? gloss.translateName(p.name, lang)
+      : (_deDictLookup(p.name, lang) || p.name);
+  }
+  // Website TR view renders the canonical-EN specs, so the TR atom map must
+  // also be keyed by the EN translations, not only by the German source.
+  if (multiLangSpecs.en && multiLangSpecs.tr) {
+    for (const [deAtom, enAtom] of Object.entries(multiLangSpecs.en)) {
+      const trAtom = multiLangSpecs.tr[deAtom];
+      if (typeof enAtom === 'string' && typeof trAtom === 'string' && enAtom && trAtom && enAtom !== trAtom && !multiLangSpecs.tr[enAtom]) {
+        multiLangSpecs.tr[enAtom] = trAtom;
+      }
+    }
   }
   return { multiLangSpecs, multiLangSections, nameTranslated };
 }
