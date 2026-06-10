@@ -1,0 +1,82 @@
+.hist-panel {
+  margin: 26px auto 0;
+  max-width: 720px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.18));
+  border-radius: 16px;
+  background: var(--card, rgba(127, 127, 127, 0.04));
+  overflow: hidden;
+}
+.hist-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.hist-head-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.hist-head-title small {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  padding: 0 6px;
+}
+.hist-caret { transition: transform 0.18s ease; opacity: 0.6; }
+.hist-caret.open { transform: rotate(180deg); }
+.hist-list { padding: 4px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.hist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.hist-item:hover {
+  border-color: var(--border, rgba(127, 127, 127, 0.2));
+  background: rgba(127, 127, 127, 0.06);
+}
+.hist-logos { display: flex; align-items: center; }
+.hist-logos .sub-logo { margin-right: -8px; box-shadow: 0 0 0 2px var(--bg, #fff); }
+.hist-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hist-meta b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-meta small { opacity: 0.55; font-size: 12px; }
+.hist-del {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; opacity: 0.45; font-size: 17px;
+}
+.hist-del:hover { opacity: 1; background: rgba(214, 48, 49, 0.12); color: #d63031; }
+
+/* Shared logo chip */
+.sub-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  overflow: hidden;
+  flex: none;
+}
+.sub-logo img { object-fit: contain; }
+.sub-logo-fallback { color: #fff; font-weight: 800; }

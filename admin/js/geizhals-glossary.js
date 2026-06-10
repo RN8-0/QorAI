@@ -429,12 +429,24 @@
   // survive verbatim (MT mangled "Samsung Galaxy Z Flip7 FE" into "Samsung
   // galaxy z Flip7 fe"). Only German color words get swapped.
   const NAME_COLORS = [
+    // Compounds FIRST so the simple color words below don't pre-empt them.
+    [gb('himmelblau'), 'Sky Blue', 'Gök Mavisi'],
+    [gb('tiefblau'), 'Deep Blue', 'Derin Mavi'],
+    [gb('dunkelblau'), 'Dark Blue', 'Koyu Mavi'],
+    [gb('hellblau'), 'Light Blue', 'Açık Mavi'],
+    [gb('mitternachtschwarz|mitternacht'), 'Midnight', 'Gece Siyahı'],
+    [gb('titanschwarz'), 'Titanium Black', 'Titanyum Siyah'],
+    [gb('titangrau'), 'Titanium Gray', 'Titanyum Gri'],
+    [gb('titanblau'), 'Titanium Blue', 'Titanyum Mavi'],
+    [gb('titanweiss|titanweiß'), 'Titanium White', 'Titanyum Beyaz'],
+    [gb('graphitgrau'), 'Graphite Gray', 'Grafit Gri'],
+    [gb('spacegrau|space grau'), 'Space Gray', 'Uzay Grisi'],
+    [gb('polarweiss|polarweiß'), 'Polar White', 'Kutup Beyazı'],
+    [gb('schneeweiss|schneeweiß|perlweiss|perlweiß'), 'Pearl White', 'İnci Beyazı'],
     [gb('schwarz'), 'Black', 'Siyah'],
     [gb('weiß|weiss'), 'White', 'Beyaz'],
     [gb('grau'), 'Gray', 'Gri'],
     [gb('blau'), 'Blue', 'Mavi'],
-    [gb('dunkelblau'), 'Dark Blue', 'Koyu Mavi'],
-    [gb('hellblau'), 'Light Blue', 'Açık Mavi'],
     [gb('grün|gruen'), 'Green', 'Yeşil'],
     [gb('dunkelgrün|dunkelgruen'), 'Dark Green', 'Koyu Yeşil'],
     [gb('rot'), 'Red', 'Kırmızı'],
@@ -457,7 +469,20 @@
     if (!out) return out;
     if (lang === 'de') return out;
     const idx = lang === 'tr' ? 2 : 1;
+    // Branded color names are product identity, not vocabulary — "PANTONE
+    // Bronze Green" must survive verbatim (the TR pass once turned it into
+    // "PANTONE Bronz Green").
+    const masked = [];
+    out = out.replace(/\bPANTONE\s+[A-Za-zÀ-ÿ' -]+/g, (m) => {
+      masked.push(m);
+      return `${masked.length - 1}`;
+    });
     for (const rule of NAME_COLORS) out = out.replace(rule[0], rule[idx]);
+    out = out.replace(/(\d+)/g, (_, n) => {
+      // PANTONE names are officially Title Case (source sometimes lowercases).
+      const phrase = masked[Number(n)] ?? '';
+      return phrase.replace(/\b[a-zà-ÿ]/g, (c) => c.toUpperCase());
+    });
     // English color words at the tail get Title Case ("pitch black" → "Pitch Black").
     out = out.replace(/\b(pitch|midnight|phantom|titanium|graphite|obsidian|onyx|cosmic|mystic|aura|jade|ice|sky|ocean|forest|desert|lunar|stellar|shadow|pearl|frost|black|white|gray|grey|blue|green|red|silver|gold|purple|pink|yellow|orange|teal|cyan|violet|lavender|coral|mint|cream|beige|charcoal|sand|stone|snow|rose)\b/gi,
       (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());

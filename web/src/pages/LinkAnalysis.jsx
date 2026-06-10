@@ -11,6 +11,7 @@ import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
+import HistoryPanel from '../components/HistoryPanel.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
@@ -157,6 +158,7 @@ export default function LinkAnalysis() {
   const [questions, setQuestions] = useState([]);
   const [enhanced, setEnhanced] = useState(null);
   const [compareText, setCompareText] = useState('');
+  const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
 
   function setUrl(i, val) { setUrls((u) => u.map((x, idx) => (idx === i ? val : x))); }
@@ -219,7 +221,8 @@ export default function LinkAnalysis() {
       const data = await enhancedAnalysis({ base: baseResult, answers, language: lang, userProfile: aiUserProfile(user) });
       setEnhanced(data);
       setPhase('result');
-      saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single' });
+      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single' });
+      setHistRefresh((n) => n + 1);
     } catch {
       setErr(t('la.errFail')); setPhase('quiz');
     }
@@ -236,7 +239,8 @@ export default function LinkAnalysis() {
       const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang, aiUserProfile(user)) }]);
       setCompareText(text);
       setPhase('result');
-      saveLinkAnalysisHistory({ urls: list, analysis: text, type: 'compare' });
+      await saveLinkAnalysisHistory({ urls: list, analysis: text, type: 'compare' });
+      setHistRefresh((n) => n + 1);
     } catch {
       setErr(t('la.errFail')); setPhase('input');
     }
@@ -332,6 +336,19 @@ export default function LinkAnalysis() {
               </button>
             </div>
           </form>
+
+          <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
+            onOpen={(it) => {
+              // Reopen the saved verdict — same record shape the app's history
+              // screen reads. Stored analyses are text, so the compare-style
+              // long-form view renders both single and compare entries.
+              setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
+              setMode(it.urls.length > 1 ? 'compare' : 'single');
+              setEnhanced(null);
+              setCompareText(String(it.analysis || ''));
+              setErr('');
+              setPhase('result');
+            }} />
         </>
       )}
 

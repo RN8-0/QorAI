@@ -301,6 +301,8 @@ export async function getSavedAnalyses(limit = 40) {
           analysis: d.analysis || d.analysisResult || a.aiSummary || '',
           urls: Array.isArray(d.urls) ? d.urls : [],
           services: Array.isArray(d.services) ? d.services : [],
+          scores: d.scores && typeof d.scores === 'object' ? d.scores : {},
+          type: d.type || '',
           productIds: Array.isArray(d.productIds) ? d.productIds : [],
           productId: d.productId || '',
           at: a.savedAt || d.timestamp || a.created,

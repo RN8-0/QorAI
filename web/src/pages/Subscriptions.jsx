@@ -10,6 +10,8 @@ import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
+import SubLogo from '../components/SubLogo.jsx';
+import HistoryPanel from '../components/HistoryPanel.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
@@ -27,6 +29,7 @@ function ServiceCard({ s, isWinner, L }) {
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
       <div className="subs-svc-top">
+        <SubLogo name={s.name} size={46} radius={12} />
         <Gauge value={score} size={56} stroke={5} color={techColor(score)} fontSize={16} />
         <div className="subs-svc-id">
           <strong>{s.name}</strong>
@@ -68,13 +71,15 @@ export default function Subscriptions() {
 
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
-  // phase: select | quizLoading | quiz | analyzing | result
+  // phase: select | quizLoading | quiz | analyzing | result | history
   const [phase, setPhase] = useState('select');
   const [questions, setQuestions] = useState([]);
   const [result, setResult] = useState(null);
+  const [histEntry, setHistEntry] = useState(null);
+  const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
 
-  function resetAnalysis() { setPhase('select'); setQuestions([]); setResult(null); setErr(''); }
+  function resetAnalysis() { setPhase('select'); setQuestions([]); setResult(null); setHistEntry(null); setErr(''); }
   function toggle(name) {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
     resetAnalysis();
@@ -136,7 +141,8 @@ export default function Subscriptions() {
       const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: aiUserProfile(user) });
       setResult(data);
       setPhase('result');
-      saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores });
+      await saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores });
+      setHistRefresh((n) => n + 1);
     } catch {
       setErr(t('la.errFail'));
       setPhase('quiz');
@@ -180,9 +186,11 @@ export default function Subscriptions() {
           <div className="subs-pills">
             {PRESETS.map((name) => (
               <button key={name}
-                className={'subs-pill' + (selected.includes(name) ? ' active' : '')}
+                className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
                 onClick={() => toggle(name)}>
-                {selected.includes(name) ? '✓ ' : '+ '}{name}
+                <SubLogo name={name} size={24} radius={7} />
+                <span>{name}</span>
+                <i>{selected.includes(name) ? '✓' : '+'}</i>
               </button>
             ))}
           </div>
@@ -197,6 +205,7 @@ export default function Subscriptions() {
             <div className="subs-selected">
               {selected.map((s) => (
                 <span key={s} className="subs-chip">
+                  <SubLogo name={s} size={22} radius={6} />
                   {s}<button onClick={() => toggle(s)} aria-label="Remove">×</button>
                 </span>
               ))}
@@ -209,7 +218,45 @@ export default function Subscriptions() {
             onClick={() => startQuiz()} disabled={selected.length < 1}>
             {selected.length < 1 ? t('subs.goMin') : t('la.analyze')}
           </button>
+
+          <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
+            onOpen={(it) => { setHistEntry(it); setPhase('history'); }} />
         </>
+      )}
+
+      {phase === 'history' && histEntry && (
+        <div className="subs-result fade-up">
+          <div className="subs-hist-meta">
+            <div className="subs-quiz-for">
+              {histEntry.services.map((s) => (
+                <span key={s} className="subs-chip subs-chip-static">
+                  <SubLogo name={s} size={22} radius={6} />{s}
+                </span>
+              ))}
+            </div>
+          </div>
+          {Object.keys(histEntry.scores || {}).length > 0 && (
+            <div className="subs-hist-scores">
+              {Object.entries(histEntry.scores).map(([name, sc]) => (
+                <div className="subs-svc-factor" key={name}>
+                  <span><SubLogo name={name} size={20} radius={6} /> {name} — <b style={{ color: techColor(Number(sc) || 0) }}>{Math.round(Number(sc) || 0)}</b></span>
+                  <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, Number(sc) || 0))}%`, background: techColor(Number(sc) || 0) }} /></div>
+                </div>
+              ))}
+            </div>
+          )}
+          {histEntry.analysis && (
+            <div className="subs-reco">
+              <div className="subs-reco-head">✨ {t('subs.resultHead')}</div>
+              <div className="subs-reco-body"><AiText text={histEntry.analysis} /></div>
+            </div>
+          )}
+          <div className="subs-again">
+            <button type="button" className="btn btn-ghost" onClick={resetAnalysis}>
+              ← {L('Back', 'Geri', 'Zurück')}
+            </button>
+          </div>
+        </div>
       )}
 
       {(phase === 'quizLoading' || phase === 'analyzing') && (
