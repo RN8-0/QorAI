@@ -14,7 +14,8 @@
   max-width: var(--la-col);
   margin: 28px auto 0;
 }
-.la .hiw { max-width: var(--la-col); }
+.la-body .hiw { max-width: var(--la-col); }
+.la-history .hist-panel { max-width: none; margin: 0; }
 
 .la-workbench {
   display: grid;

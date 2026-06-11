@@ -45,8 +45,9 @@ const PRESETS = [...new Set(PRESET_GROUPS.flatMap((g) => g.items))];
 const TOP20 = [
   'Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'YouTube Premium',
   'BluTV', 'Exxen', 'Crunchyroll', 'Spotify', 'Apple Music', 'YouTube Music',
-  'Tidal', 'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Xbox Game Pass',
-  'PlayStation Plus', 'Microsoft 365', 'Google One',
+  'Tidal', 'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Midjourney',
+  'Xbox Game Pass', 'PlayStation Plus', 'Microsoft 365', 'Google One', 'iCloud+',
+  'Adobe Creative Cloud', 'Notion', 'Canva', 'Hostinger',
 ];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 

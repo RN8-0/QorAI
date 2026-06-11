@@ -4,12 +4,17 @@
   --subs-col: 920px;
   padding-bottom: 90px;
 }
-.subs-result, .subs-quiz-for, .subs .quiz, .subs-loading {
+.subs-result, .subs-quiz-for, .subs-body .quiz, .subs-loading {
   width: 100%;
   max-width: var(--subs-col);
   margin-left: auto;
   margin-right: auto;
 }
+/* The how-it-works and history panels must span the SAME width as the picker.
+   (The page wrapper is .subs-page/.subs-body, so the old `.subs .hiw` selector
+   no longer matched and they fell back to their narrow defaults.) */
+.subs-body .hiw { max-width: var(--subs-col); }
+.subs-history .hist-panel { max-width: none; margin: 0; }
 
 /* Square logo tiles — top-20 only, no names (hover title shows the name). */
 .subs-grid {

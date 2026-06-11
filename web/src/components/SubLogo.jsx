@@ -34,7 +34,8 @@ const KNOWN_DOMAINS = {
   'trello': 'trello.com', 'asana': 'asana.com', 'monday.com': 'monday.com', 'monday': 'monday.com',
   'airtable': 'airtable.com', 'loom': 'loom.com', 'miro': 'miro.com', 'framer': 'framer.com',
   'webflow': 'webflow.com', 'squarespace': 'squarespace.com', 'wix': 'wix.com',
-  'shopify': 'shopify.com', 'cloudflare': 'cloudflare.com',
+  'shopify': 'shopify.com', 'cloudflare': 'cloudflare.com', 'hostinger': 'hostinger.com',
+  'godaddy': 'godaddy.com', 'namecheap': 'namecheap.com', 'adobe creative cloud': 'adobe.com',
   // Turkish services
   'blutv': 'blutv.com', 'blu tv': 'blutv.com', 'exxen': 'exxen.com', 'gain': 'gain.tv',
   'mubi': 'mubi.com', 'tabii': 'tabii.com', 'puhutv': 'puhutv.com', 'puhu tv': 'puhutv.com',

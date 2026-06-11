@@ -51,6 +51,8 @@ export async function askQorAi(history) {
 // Low-level call with a custom system instruction — used by the quiz / link /
 // subscription engines that need their own prompt and a JSON reply (mirrors the
 // app's DeepSeek _jsonRequest, but over the same Gemini proxy the web chat uses).
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temperature = 0.7 }) {
   const body = {
     model: MODEL,
@@ -58,16 +60,29 @@ export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temper
     contents: [{ role: 'user', parts: [{ text: user }] }],
     generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
   };
-  const res = await fetch(AI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`AI ${res.status}`);
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI boş yanıt döndü');
-  return text.trim();
+  // The Gemini free tier throttles per minute → 429 bursts. Back off and retry a
+  // few times so a transient rate-limit doesn't surface as "analysis failed".
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await sleep([0, 2500, 5000, 9000][attempt]);
+    const res = await fetch(AI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('AI boş yanıt döndü');
+      return text.trim();
+    }
+    lastStatus = res.status;
+    // Retry only the transient ones (rate limit / overloaded / 5xx).
+    if (res.status !== 429 && res.status !== 503 && res.status < 500) {
+      throw new Error(`AI ${res.status}`);
+    }
+  }
+  throw new Error(`AI ${lastStatus}`);
 }
 
 // Tolerant JSON extraction — Gemini sometimes wraps JSON in ```json fences or

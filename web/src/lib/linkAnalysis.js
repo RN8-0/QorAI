@@ -395,13 +395,13 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
+  // askQorAiRaw already backs off and retries on 429/5xx; one extra attempt here
+  // covers a truncated/non-JSON body without over-waiting.
   const call = () => askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
-    maxOutputTokens: 16384,
+    maxOutputTokens: 12288,
   });
-  // The big JSON schema can occasionally come back truncated/non-JSON; one retry
-  // turns most "analysis failed" flukes into a clean result.
   let res;
   try { res = await call(); } catch { res = await call(); }
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
@@ -456,7 +456,7 @@ const SUB_CATEGORY = {
   pcloud: 'cloud', mega: 'cloud',
   'adobe creative cloud': 'creative', canva: 'creative',
   'microsoft 365': 'productivity', 'office 365': 'productivity', notion: 'productivity',
-  'google workspace': 'productivity',
+  'google workspace': 'productivity', hostinger: 'hosting',
   'xbox game pass': 'gaming', 'playstation plus': 'gaming', 'ps plus': 'gaming',
   'ea play': 'gaming', 'geforce now': 'gaming', 'nintendo switch online': 'gaming',
   'ubisoft+': 'gaming', 'apple arcade': 'gaming',
