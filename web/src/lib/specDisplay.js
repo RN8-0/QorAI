@@ -513,11 +513,91 @@ function upperFirst(text, code) {
 }
 
 function cleanupLabel(label) {
-  return String(label || '').normalize('NFC').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let out = String(label || '').normalize('NFC').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Source junk: dangling close-paren without an opener ("Kullanım Kılavuzu)")
+  // and trailing colons ("Response Time:").
+  if (out.includes(')') && !out.includes('(')) out = out.replace(/\)+/g, ' ').replace(/\s+/g, ' ').trim();
+  return out.replace(/\s*:\s*$/, '');
 }
 
 function titleCase(text) {
-  return cleanupLabel(text).replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  // ASCII \b breaks on Turkish: lowercase 'İ' is i + combining dot, so the
+  // letter AFTER the mark sat on a word boundary and got uppercased too —
+  // "(İnç)" rendered as "(İNç)". Only uppercase a-z not preceded by a letter
+  // or combining mark.
+  return cleanupLabel(text).replace(/(?<![\p{L}\p{M}])[a-z]/gu, (c) => c.toUpperCase());
+}
+
+// Turkish words that survive inside half-translated EN labels coming from old
+// MT runs ("Display Boyutu (İnç)"). The admin modal repairs these at display
+// time; the site must read identically — admin is the reference.
+const TR_LABEL_RESIDUE_EN = [
+  [/\bboyutu\b/gi, 'size'],
+  [/\bboyut\b/gi, 'size'],
+  [/\bteknolojisi\b/gi, 'technology'],
+  [/\bsayısı\b/gi, 'count'],
+  [/\bsayisi\b/gi, 'count'],
+  [/\badedi\b/gi, 'count'],
+  [/\bhızı\b/gi, 'rate'],
+  [/\bhizi\b/gi, 'rate'],
+  [/\bsüresi\b/gi, 'time'],
+  [/\bsuresi\b/gi, 'time'],
+  [/\bözellikleri\b/gi, 'features'],
+  [/\bozellikleri\b/gi, 'features'],
+  [/\bözellikler\b/gi, 'features'],
+  [/\bgirişi\b/gi, 'input'],
+  [/\bgiriş\b/gi, 'input'],
+  [/\bçıkışı\b/gi, 'output'],
+  [/\bversiyonu\b/gi, 'version'],
+  [/\bkapasitesi\b/gi, 'capacity'],
+  [/\bgücü\b/gi, 'power'],
+  [/\bgucu\b/gi, 'power'],
+  [/\btüketimi\b/gi, 'consumption'],
+  [/\bağırlığı\b/gi, 'weight'],
+  [/\byüksekliği\b/gi, 'height'],
+  [/\bgenişliği\b/gi, 'width'],
+  [/\bderinliği\b/gi, 'depth'],
+  [/\bkılavuzu\b/gi, 'manual'],
+  [/\bkilavuzu\b/gi, 'manual'],
+  [/\bkullanım\b/gi, 'user'],
+  [/\bkullanim\b/gi, 'user'],
+  // JS /i cannot case-fold dotted İ, so spell the variants out.
+  [/\(\s*[İIıi]n[çc]\s*\)/g, '(inches)'],
+  [/\b[İIıi]n[çc]\b/g, 'inches'],
+  [/[öOo]zell[İiı]kler[İiı]?/gi, 'features'],
+  [/ÖZELL[İI]KLER/g, 'features'],
+  // Old MT glued Turkish possessive endings onto English words.
+  [/\bspecificationsi\b/gi, 'specifications'],
+  [/\bfeaturesi\b/gi, 'features'],
+  [/\btechnologysi\b/gi, 'technology'],
+  [/\bve\b/gi, 'and'],
+  [/\bsınıfı\b/gi, 'class'],
+  [/\bsinifi\b/gi, 'class'],
+  [/\boranı\b/gi, 'ratio'],
+  [/\byılı\b/gi, 'year'],
+  [/\byili\b/gi, 'year'],
+  [/\brengi\b/gi, 'color'],
+  [/\bmalzemesi\b/gi, 'material'],
+  [/\bdesteği\b/gi, 'support'],
+  [/\bdestegi\b/gi, 'support'],
+  [/\bgenel\b/gi, 'general'],
+];
+function scrubTurkishLabelResidueEn(text) {
+  let out = String(text || '');
+  // Suffix-blind gate: "Teknolojisi"/"Boyutu" are stems + Turkish possessive,
+  // so no trailing \b — substring match is the point here.
+  if (!/[çğışöüÇĞİŞÜı]|boyut|teknoloji|sayis|adet|hiz[ıi]|sures|ozellik|giris|kilavuz|specificationsi|featuresi|technologysi/i.test(out)) return out;
+  for (const [re, rep] of TR_LABEL_RESIDUE_EN) out = out.replace(re, rep);
+  // Anything still carrying Turkish-only letters gets ASCII-folded so the EN
+  // view never shows İ/ş/ğ ("KullanıM" can't happen again).
+  out = out
+    .replace(/İ/g, 'I').replace(/ı/g, 'i')
+    .replace(/Ş/g, 'S').replace(/ş/g, 's')
+    .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+    .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+    .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+    .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+  return out.replace(/\s+/g, ' ').trim();
 }
 
 // Case-insensitive index of the LABELS maps so an UPPERCASE section header like
@@ -568,11 +648,29 @@ export function localizedSpecLabel(label, lang = 'en') {
     return labelCase(out, 'de-DE');
   }
   if (code !== 'tr') {
-    // English view: scrub any German label residue from Geizhals products.
+    // English view: scrub German (Geizhals) AND half-translated Turkish
+    // (Epey) residue — the admin modal repairs both, and the site must
+    // match the admin output exactly.
     let outEn = clean;
     for (const [re, map] of DE_LABEL_RESIDUE) outEn = outEn.replace(re, map.en);
     for (const [re, map] of DE_RESIDUE) outEn = outEn.replace(re, map.en);
-    return titleCase(outEn);
+    outEn = scrubTurkishLabelResidueEn(outEn);
+    // Units stay lowercase after title-casing ("(cm)", "3.5mm"), acronyms
+    // stay uppercase ("USB", not "Usb") — matches the admin modal output.
+    return titleCase(outEn)
+      .replace(/\((Cm|Mm|Ms|Kg|Gr|Gb|Tb)\)/g, (m) => m.toLowerCase())
+      .replace(/\b(\d+(?:\.\d+)?)(Mm|Cm|Ms|Kg|Gb|Tb|Hz|Khz|Mhz|Ghz|Kwh|Kw|W)\b/g, (m, n, u) => n + u.toLowerCase())
+      .replace(/\bUsb\b/g, 'USB')
+      .replace(/\bVga\b/g, 'VGA')
+      .replace(/\bHdmi\b/g, 'HDMI')
+      .replace(/\bHdr\b/g, 'HDR')
+      .replace(/\bSdr\b/g, 'SDR')
+      .replace(/\bKvm\b/g, 'KVM')
+      .replace(/\bRgb\b/g, 'RGB')
+      .replace(/\bVesa\b/g, 'VESA')
+      .replace(/\bAmd\b/g, 'AMD')
+      .replace(/\bDci\b/g, 'DCI')
+      .replace(/\bSrgb\b/g, 'sRGB');
   }
   let out = clean;
   for (const [re, map] of DE_LABEL_RESIDUE) out = out.replace(re, map.tr);
@@ -600,6 +698,15 @@ function cleanupValueLine(line, lang) {
   // Scrub German residue on tr/en views (Geizhals source text leaking through).
   if (code === 'tr' || code === 'en') {
     for (const [re, map] of DE_RESIDUE) out = out.replace(re, map[code] || map.en);
+  }
+  if (code === 'en') {
+    // Unit casing junk from old MT ("0.03 Ms" → "0.03 ms") + leftover Turkish.
+    out = out
+      .replace(/(\d)\s*Ms\b/g, '$1 ms')
+      .replace(/\binç\b/gi, 'inches')
+      .replace(/\bsaat\b/gi, 'hours')
+      .replace(/\bvar\b/gi, 'Yes')
+      .replace(/\byok\b/gi, 'No');
   }
 
   out = out

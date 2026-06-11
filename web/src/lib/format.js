@@ -169,8 +169,23 @@ const AMAZON_DOMAIN = {
   US: 'www.amazon.com', GB: 'www.amazon.co.uk', DE: 'www.amazon.de',
   FR: 'www.amazon.fr', IT: 'www.amazon.it', ES: 'www.amazon.es',
   CA: 'www.amazon.ca', TR: 'www.amazon.com.tr',
+  NL: 'www.amazon.nl', PL: 'www.amazon.pl', SE: 'www.amazon.se',
 };
-const AMAZON_FLAG = { US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', CA: '🇨🇦', TR: '🇹🇷' };
+const AMAZON_FLAG = {
+  US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', CA: '🇨🇦', TR: '🇹🇷',
+  NL: '🇳🇱', PL: '🇵🇱', SE: '🇸🇪',
+};
+// All storefronts the qorai-20 store earns from via Earn Globally (plus the
+// separate TR program). Drives the product-page ship-to selector.
+export const AMAZON_ONELINK_COUNTRIES = ['TR', 'DE', 'GB', 'US', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE', 'CA'];
+export function countryDisplayName(code, lang = 'en') {
+  try {
+    const dn = new Intl.DisplayNames([lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en'], { type: 'region' });
+    return dn.of(String(code || '').toUpperCase()) || code;
+  } catch {
+    return code;
+  }
+}
 // Tag is per-program: amazon.com.tr is its own TR Associates program (qorai-21);
 // every OneLink storefront rides the single qorai-20 store ID.
 const AMAZON_TAG_BY_MARKET = { TR: 'qorai-21' };
@@ -263,7 +278,9 @@ export function amazonStorefrontsForProduct(product, lang = 'en') {
 // Countries outside coverage fall back to the nearest in-coverage store.
 const AMAZON_COUNTRY_TO_MARKET = {
   TR: 'TR', US: 'US', GB: 'GB', DE: 'DE', FR: 'FR', IT: 'IT', ES: 'ES', CA: 'CA',
-  AT: 'DE', CH: 'DE', NL: 'DE', BE: 'FR', LU: 'FR', IE: 'GB', PT: 'ES',
+  NL: 'NL', PL: 'PL', SE: 'SE',
+  AT: 'DE', CH: 'DE', BE: 'FR', LU: 'FR', IE: 'GB', PT: 'ES',
+  DK: 'SE', NO: 'SE', FI: 'SE', CZ: 'PL',
   AU: 'GB', NZ: 'GB', MX: 'US',
 };
 

@@ -15,12 +15,15 @@ import HistoryPanel from '../components/HistoryPanel.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
-const PRESETS = [
-  'Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max',
-  'BluTV', 'Exxen', 'Gain', 'MUBI', 'YouTube Premium',
-  'Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer',
-  'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Microsoft 365',
+// Grouped like the app's subscriptions screen — one category per comparison.
+const PRESET_GROUPS = [
+  { id: 'video', label: { en: 'Video', tr: 'Video', de: 'Video' }, icon: '🎬', items: ['Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'BluTV', 'Exxen', 'Gain', 'MUBI', 'YouTube Premium', 'Crunchyroll', 'beIN Sports', 'TOD'] },
+  { id: 'music', label: { en: 'Music', tr: 'Müzik', de: 'Musik' }, icon: '🎧', items: ['Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer'] },
+  { id: 'ai', label: { en: 'AI', tr: 'Yapay Zekâ', de: 'KI' }, icon: '🤖', items: ['ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Microsoft Copilot', 'Midjourney'] },
+  { id: 'cloud', label: { en: 'Cloud & Productivity', tr: 'Bulut & Verimlilik', de: 'Cloud & Produktivität' }, icon: '☁️', items: ['Microsoft 365', 'Google One', 'iCloud+', 'Dropbox', 'Notion', 'Canva'] },
+  { id: 'gaming', label: { en: 'Gaming', tr: 'Oyun', de: 'Gaming' }, icon: '🎮', items: ['Xbox Game Pass', 'PlayStation Plus', 'Nintendo Switch Online', 'GeForce Now', 'EA Play'] },
 ];
+const PRESETS = PRESET_GROUPS.flatMap((g) => g.items);
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
 function ServiceCard({ s, isWinner, L }) {
@@ -70,6 +73,7 @@ export default function Subscriptions() {
   useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
 
   const [selected, setSelected] = useState([]);
+  const [group, setGroup] = useState('video');
   const [custom, setCustom] = useState('');
   // phase: select | quizLoading | quiz | analyzing | result | history
   const [phase, setPhase] = useState('select');
@@ -183,8 +187,17 @@ export default function Subscriptions() {
 
       {showPicker && (
         <>
+          <div className="subs-cats" role="tablist">
+            {PRESET_GROUPS.map((g) => (
+              <button key={g.id} type="button" role="tab"
+                className={'subs-cat' + (group === g.id ? ' active' : '')}
+                onClick={() => setGroup(g.id)}>
+                <span aria-hidden="true">{g.icon}</span> {g.label[lang] || g.label.en}
+              </button>
+            ))}
+          </div>
           <div className="subs-pills">
-            {PRESETS.map((name) => (
+            {(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).items.map((name) => (
               <button key={name}
                 className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
                 onClick={() => toggle(name)}>

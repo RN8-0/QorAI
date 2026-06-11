@@ -201,3 +201,28 @@
   margin-bottom: 4px;
 }
 .subs-hist-meta { margin-top: 8px; }
+
+.subs-cats {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 18px;
+}
+.subs-cat {
+  border: 1px solid var(--border, rgba(127,127,127,0.22));
+  background: var(--card, rgba(127,127,127,0.04));
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.subs-cat:hover { border-color: var(--accent, #3b82f6); }
+.subs-cat.active {
+  background: var(--accent, #3b82f6);
+  border-color: var(--accent, #3b82f6);
+  color: #fff;
+}

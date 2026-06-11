@@ -10,7 +10,7 @@ import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { amazonUrlForProduct, catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
@@ -295,10 +295,15 @@ function buildSpecTranslator(product, lang) {
     || (/epey/i.test(String(product?.source || '')) ? 'tr' : '');
   const skipLookup = code === srcLang;
   if (!skipLookup) {
+    // Half-translated atoms from old MT runs ("Ekran Boyutu (İnç)" →
+    // "Display Boyutu (İnç)") must not win over the curated fallback chain —
+    // an EN "translation" still carrying Turkish/German letters is junk.
+    const junkForEn = /[çğışıİäßÇĞŞ]/;
     for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
       if (src && typeof src === 'object' && !Array.isArray(src)) {
         for (const [k, v] of Object.entries(src)) {
           if (typeof v !== 'string') continue; // nested objects are not atoms
+          if (code === 'en' && junkForEn.test(v)) continue;
           const nk = norm(k);
           if (nk && v.trim()) lookup.set(nk, v);
         }
@@ -968,10 +973,12 @@ export default function ProductDetail() {
             // Always offer a stable base list (so TR never disappears after the
             // user switches to DE), plus the detected geo and any country that
             // actually has an offer for this product.
-            const FLAG = { TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦' };
+            const FLAG = { TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', PL: '🇵🇱', SE: '🇸🇪', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦' };
+            // Every Amazon storefront the OneLink store earns from, plus the
+            // detected geo and any country with a retailer offer.
             const countryOptions = [...new Set([
               String(geoCountry || '').toUpperCase(),
-              'TR', 'DE', 'GB', 'US',
+              ...AMAZON_ONELINK_COUNTRIES,
               ...offerCountries,
               sel,
             ].filter(Boolean))];
@@ -1003,7 +1010,7 @@ export default function ProductDetail() {
                         onChange={(e) => { priceCountryTouched.current = true; setPriceCountry(e.target.value); }}
                       >
                         {countryOptions.map((c) => (
-                          <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${c}`}</option>
+                          <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${countryDisplayName(c, lang)}`}</option>
                         ))}
                       </select>
                     </label>
