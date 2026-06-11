@@ -40,25 +40,6 @@
 .subs-pill.active {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--brand-cyan) 55%, var(--accent-ring));
-
-.subs-pills {
-  max-width: none;
-  margin-inline: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
-}
-.subs-pill {
-  min-height: 46px;
-  padding: 10px 14px; border-radius: 12px;
-  background: var(--bg2); border: 1px solid var(--border);
-  font-size: 13px; font-weight: 750; color: var(--text2); transition: all 0.13s;
-  text-align: left;
-}
-.subs-pill:hover { border-color: var(--border2); color: var(--text); }
-.subs-pill.active {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--brand-cyan) 55%, var(--accent-ring));
   color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-cyan) 10%, transparent);
 }
