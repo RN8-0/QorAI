@@ -13,6 +13,7 @@ import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
 import { productPath } from '../lib/routes';
+import Reveal from '../components/Reveal.jsx';
 import './Home.css';
 
 function StatItem({ n, l }) {
@@ -117,7 +118,7 @@ function Section({ title, products, loading, seeAllTo, t, dense = false }) {
     : visibleProducts.map((p) => <ProductCard key={p.id} product={p} />);
   const cls = `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
-    <>
+    <Reveal>
       <div className="sec-head">
         <h2><span className="bar" /> {title}</h2>
         {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
@@ -125,7 +126,7 @@ function Section({ title, products, loading, seeAllTo, t, dense = false }) {
       <div className={cls}>
         {items}
       </div>
-    </>
+    </Reveal>
   );
 }
 
@@ -274,7 +275,7 @@ export default function Home() {
     <div className="page">
       <div className="container">
         {/* HERO — two columns: copy + spotlight (design parity) */}
-        <section className="hero card glow" style={{ padding: 'clamp(28px,5vw,56px)' }}>
+        <section className="hero card glow aurora" style={{ padding: 'clamp(28px,5vw,56px)' }}>
           <div className="hero-glow" />
           <div className="between wrap" style={{ position: 'relative', gap: 40, alignItems: 'center' }}>
             <div style={{ flex: '1 1 460px', minWidth: 0 }}>
@@ -285,7 +286,7 @@ export default function Home() {
               )}
               <h1>
                 {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
-                <span className="grad">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
+                <span className="grad grad-anim">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
               </h1>
               <p className="sub" style={{ marginTop: 16 }}>
                 {L(
@@ -310,7 +311,7 @@ export default function Home() {
                       setSuggestOpen(Boolean(value.trim()));
                     }}
                     placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
-                  <button type="submit" className="btn btn-grad">{t('common.search')}</button>
+                  <button type="submit" className="btn btn-grad btn-shine">{t('common.search')}</button>
                 </form>
                 {suggestOpen && q.trim() && (
                   <SearchSuggestionList products={searchResults} searching={searching} onOpen={openProduct} L={L} />

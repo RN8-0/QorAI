@@ -412,3 +412,106 @@ input, textarea, select { font-family: inherit; }
   .page { padding-bottom: 90px; }
   body { font-size: 14px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MODERN EFFECTS LAYER — scroll reveals, aurora heroes, gradient
+   borders, button shine, animated headline gradients.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Scroll reveal (Reveal.jsx). Hidden state only applies when motion is OK. */
+.rv { transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: no-preference) {
+  .rv:not(.rv-in) { opacity: 0; transform: translateY(22px); }
+}
+
+/* Animated gradient headline (high-specificity variant overrides .hero h1 .grad) */
+.grad-anim,
+.hero h1 .grad.grad-anim {
+  background: linear-gradient(90deg, var(--brand-cyan), var(--brand-blue), var(--violet), var(--brand-cyan));
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradShift 7s linear infinite;
+}
+@keyframes gradShift { to { background-position: 280% 0; } }
+
+/* Aurora hero backdrop — two drifting blobs behind hero content */
+.aurora { position: relative; overflow: hidden; }
+.aurora::before, .aurora::after {
+  content: '';
+  position: absolute;
+  width: 480px; height: 480px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora::before {
+  background: color-mix(in srgb, var(--brand-cyan) 26%, transparent);
+  top: -180px; left: -120px;
+  animation: blobA 16s ease-in-out infinite alternate;
+}
+.aurora::after {
+  background: color-mix(in srgb, var(--brand-blue) 30%, transparent);
+  bottom: -200px; right: -140px;
+  animation: blobB 19s ease-in-out infinite alternate;
+}
+.aurora > * { position: relative; z-index: 1; }
+@keyframes blobA { to { transform: translate(70px, 50px) scale(1.15); } }
+@keyframes blobB { to { transform: translate(-80px, -40px) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before, .aurora::after { animation: none; }
+}
+
+/* Button shine sweep */
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -80%;
+  width: 50%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  transform: skewX(-22deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.btn-shine:hover::after { left: 130%; }
+
+/* Gradient ring card (animated border for featured surfaces) */
+.grad-ring {
+  position: relative;
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue), var(--violet)) border-box;
+}
+
+/* Interactive card lift */
+.lift { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s, border-color 0.18s; }
+.lift:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--brand-cyan) 32%, var(--border));
+  box-shadow: 0 22px 48px color-mix(in srgb, var(--brand-blue) 14%, transparent), var(--card-glow);
+}
+
+/* Pop-in select feedback (subscription pills, quiz options) */
+@keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.18); } 100% { transform: scale(1); opacity: 1; } }
+.pop-in { animation: popIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Soft pulse for loading rows */
+@keyframes softPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.soft-pulse { animation: softPulse 1.6s ease-in-out infinite; }
+
+/* Animated AI thinking dots */
+.ai-dots { display: inline-flex; gap: 5px; align-items: center; }
+.ai-dots i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: aiDot 1.2s ease-in-out infinite;
+}
+.ai-dots i:nth-child(2) { animation-delay: 0.18s; }
+.ai-dots i:nth-child(3) { animation-delay: 0.36s; }
+@keyframes aiDot { 0%, 100% { transform: translateY(0); opacity: 0.45; } 40% { transform: translateY(-5px); opacity: 1; } }

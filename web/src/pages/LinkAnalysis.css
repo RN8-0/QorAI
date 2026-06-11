@@ -25,6 +25,13 @@
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-blue) 30%, transparent);
 }
+@media (prefers-reduced-motion: no-preference) {
+  .la-icon { animation: laFloat 3.6s ease-in-out infinite; }
+}
+@keyframes laFloat {
+  0%, 100% { transform: translateY(0); box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-blue) 30%, transparent); }
+  50% { transform: translateY(-6px); box-shadow: 0 22px 40px color-mix(in srgb, var(--brand-blue) 38%, transparent); }
+}
 .la-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 850; letter-spacing: -0.5px; line-height: 1.1; }
 .la-head p {
   color: var(--text2);
@@ -114,9 +121,16 @@
 .la-form {
   max-width: none;
   margin-inline: 0;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--r-lg, 18px); padding: 18px;
+  background: color-mix(in srgb, var(--bg2) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl, 24px); padding: 20px;
   box-shadow: var(--card-glow);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.la-form:focus-within {
+  border-color: color-mix(in srgb, var(--brand-cyan) 36%, var(--border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 9%, transparent), var(--card-glow);
 }
 .la-form-head {
   display: flex;

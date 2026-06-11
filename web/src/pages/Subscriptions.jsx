@@ -12,6 +12,7 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
+import Reveal from '../components/Reveal.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
@@ -30,6 +31,10 @@ const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
 function ServiceCard({ s, isWinner, L }) {
   const score = Math.round(s.score || 0);
+  // History entries saved by older builds may miss the array fields.
+  const factors = Array.isArray(s.factors) ? s.factors : [];
+  const pros = Array.isArray(s.pros) ? s.pros : [];
+  const cons = Array.isArray(s.cons) ? s.cons : [];
   return (
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
@@ -42,9 +47,9 @@ function ServiceCard({ s, isWinner, L }) {
         </div>
       </div>
       {s.explanation && <p className="subs-svc-exp">{s.explanation}</p>}
-      {s.factors.length > 0 && (
+      {factors.length > 0 && (
         <div className="subs-svc-factors">
-          {s.factors.map((f) => (
+          {factors.map((f) => (
             <div className="subs-svc-factor" key={f.label}>
               <span>{f.label.replace(/_/g, ' ')}</span>
               <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
@@ -53,11 +58,11 @@ function ServiceCard({ s, isWinner, L }) {
         </div>
       )}
       <div className="subs-svc-pc">
-        {s.pros.length > 0 && (
-          <ul className="subs-svc-pros">{s.pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        {pros.length > 0 && (
+          <ul className="subs-svc-pros">{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
         )}
-        {s.cons.length > 0 && (
-          <ul className="subs-svc-cons">{s.cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        {cons.length > 0 && (
+          <ul className="subs-svc-cons">{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
         )}
       </div>
       {s.community && <p className="subs-svc-comm">🌐 {s.community}</p>}
@@ -187,22 +192,22 @@ export default function Subscriptions() {
 
   return (
     <div className={'container subs' + (showPicker ? ' is-empty' : '')}>
-      <div className="subs-head">
+      <div className="subs-head fade-up">
         <h1>{t('subs.title')}</h1>
         <p>{t('subs.subtitle')}</p>
       </div>
 
       {showPicker && (
         <>
-          <section className="subs-picker-panel">
+          <Reveal as="section" className="subs-picker-panel">
             <div className="subs-pills">
               {PRESETS.map((name) => (
                 <button key={name}
-                  className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
+                  className={'subs-pill subs-pill-logo lift' + (selected.includes(name) ? ' active' : '')}
                   onClick={() => toggle(name)}>
                   <SubLogo name={name} size={24} radius={7} />
                   <span>{name}</span>
-                  <i>{selected.includes(name) ? '✓' : '+'}</i>
+                  <i className={selected.includes(name) ? 'pop-in' : ''}>{selected.includes(name) ? '✓' : '+'}</i>
                 </button>
               ))}
             </div>
@@ -226,16 +231,18 @@ export default function Subscriptions() {
 
             {err && <div className="subs-err">{err}</div>}
 
-            <button className="btn btn-grad btn-lg subs-go"
+            <button className="btn btn-grad btn-lg btn-shine subs-go"
               onClick={() => startAnalysis()} disabled={selected.length < 1}>
               {selected.length < 1 ? t('subs.goMin') : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
             </button>
-          </section>
+          </Reveal>
 
-          <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+          <Reveal delay={90}>
+            <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+          </Reveal>
 
           {user && (
-            <div className="subs-history">
+            <Reveal delay={140} className="subs-history">
               <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
                   if (it.result && Array.isArray(it.result.services)) {
@@ -248,7 +255,7 @@ export default function Subscriptions() {
                     setPhase('history');
                   }
                 }} />
-            </div>
+            </Reveal>
           )}
         </>
       )}
@@ -257,7 +264,7 @@ export default function Subscriptions() {
         <div className="subs-result fade-up">
           <div className="subs-hist-meta">
             <div className="subs-quiz-for">
-              {histEntry.services.map((s) => (
+              {(histEntry.services || []).map((s) => (
                 <span key={s} className="subs-chip subs-chip-static">
                   <SubLogo name={s} size={22} radius={6} />{s}
                 </span>
@@ -289,15 +296,16 @@ export default function Subscriptions() {
       )}
 
       {phase === 'analyzing' && (
-        <div className="subs-loading"><div className="spinner" /><span>
-          {t('subs.loading')}
-        </span></div>
+        <div className="subs-loading fade-up">
+          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span className="soft-pulse">{t('subs.loading')}</span>
+        </div>
       )}
 
       {phase === 'result' && result && (
         <div className="subs-result fade-up">
           <div className="subs-svc-grid">
-            {result.services.map((s) => (
+            {(result.services || []).map((s) => (
               <ServiceCard key={s.name} s={s} isWinner={result.isCompare && s.name === winnerName} L={L} />
             ))}
           </div>

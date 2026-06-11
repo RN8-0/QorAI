@@ -13,6 +13,7 @@ import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
+import Reveal from '../components/Reveal.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
@@ -50,7 +51,7 @@ function bandLabel(s, L) {
         : L('Weak match', 'Zayıf uyum', 'Schwach');
 }
 
-function FactorBars({ factors }) {
+function FactorBars({ factors = [] }) {
   if (!factors.length) return null;
   return (
     <div className="la-factors">
@@ -69,11 +70,17 @@ function FactorBars({ factors }) {
 
 function EnhancedResult({ data, L }) {
   const score = Math.round(data.enhancedScore || 0);
+  // History entries saved by older builds may miss the array fields — guard so
+  // opening them never crashes the page.
+  const pros = Array.isArray(data.prosForUser) ? data.prosForUser : [];
+  const cons = Array.isArray(data.consForUser) ? data.consForUser : [];
+  const alts = Array.isArray(data.alternatives) ? data.alternatives : [];
+  const base = data.base || {};
   return (
     <div className="la-result fade-up">
       <div className="la-result-head">
         <span>{L('Qor AI Analysis', 'Qor AI Analizi', 'Qor AI Analyse')}</span>
-        <span className="la-result-title">{data.base.title}</span>
+        <span className="la-result-title">{base.title}</span>
       </div>
       <div className="la-result-body">
         <div className="la-score-row">
@@ -81,7 +88,7 @@ function EnhancedResult({ data, L }) {
           <div>
             <div className="la-score-band" style={{ color: techColor(score) }}>{bandLabel(score, L)}</div>
             <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
-            {data.base.siteName && <div className="la-score-site">{data.base.siteName}</div>}
+            {base.siteName && <div className="la-score-site">{base.siteName}</div>}
           </div>
         </div>
 
@@ -94,27 +101,27 @@ function EnhancedResult({ data, L }) {
           </section>
         )}
 
-        {(data.prosForUser.length > 0 || data.consForUser.length > 0) && (
+        {(pros.length > 0 || cons.length > 0) && (
           <div className="la-poncons">
-            {data.prosForUser.length > 0 && (
+            {pros.length > 0 && (
               <div className="la-pc la-pc-pro">
                 <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
-                <ul>{data.prosForUser.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
               </div>
             )}
-            {data.consForUser.length > 0 && (
+            {cons.length > 0 && (
               <div className="la-pc la-pc-con">
                 <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
-                <ul>{data.consForUser.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
               </div>
             )}
           </div>
         )}
 
-        {data.alternatives.length > 0 && (
+        {alts.length > 0 && (
           <section className="la-sec">
             <h4>🔀 {L('Alternatives', 'Alternatifler', 'Alternativen')}</h4>
-            <div className="la-alts">{data.alternatives.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
+            <div className="la-alts">{alts.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
           </section>
         )}
 
@@ -237,7 +244,10 @@ export default function LinkAnalysis() {
       await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single', result: data });
       setHistRefresh((n) => n + 1);
     } catch {
-      setErr(t('la.errFail')); setPhase('quiz');
+      setErr(t('la.errFail'));
+      // Only fall back to the quiz when there actually IS a quiz to show —
+      // otherwise an empty quiz rendered as a dead-end blank screen.
+      setPhase(questions.length ? 'quiz' : 'input');
     }
   }
 
@@ -317,7 +327,7 @@ export default function LinkAnalysis() {
 
   return (
     <div className={'container la' + (showForm ? ' is-empty' : '')}>
-      <div className="la-head">
+      <div className="la-head fade-up">
         <div className="la-icon" aria-hidden="true">
           <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -330,7 +340,7 @@ export default function LinkAnalysis() {
 
       {showForm && (
         <>
-          <div className="la-stage">
+          <Reveal className="la-stage">
             <form className="la-form" onSubmit={analyze}>
               <div className="la-form-head">
                 <strong>{L('Paste product links', 'Ürün linklerini yapıştır', 'Produktlinks einfügen')}</strong>
@@ -352,17 +362,19 @@ export default function LinkAnalysis() {
               </div>
 
               <div className="la-actions">
-                <button type="submit" className="btn btn-grad btn-lg la-go" disabled={!filled}>
+                <button type="submit" className="btn btn-grad btn-lg btn-shine la-go" disabled={!filled}>
                   {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
                 </button>
               </div>
             </form>
-          </div>
+          </Reveal>
 
-          <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+          <Reveal delay={90}>
+            <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+          </Reveal>
 
           {user && (
-            <div className="la-history">
+            <Reveal delay={140} className="la-history">
               <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
                   setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
@@ -376,7 +388,7 @@ export default function LinkAnalysis() {
                   setErr('');
                   setPhase('result');
                 }} />
-            </div>
+            </Reveal>
           )}
         </>
       )}
@@ -384,9 +396,9 @@ export default function LinkAnalysis() {
       {err && <div className="la-err">{err}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
-        <div className="la-loading">
-          <div className="spinner" />
-          <span>{phase === 'identifying'
+        <div className="la-loading fade-up">
+          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span className="soft-pulse">{phase === 'identifying'
             ? L('Identifying the product…', 'Ürün tanımlanıyor…', 'Produkt wird erkannt…')
             : phase === 'quizLoading'
               ? L('Preparing your quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')
@@ -394,7 +406,7 @@ export default function LinkAnalysis() {
         </div>
       )}
 
-      {phase === 'quiz' && base && (
+      {phase === 'quiz' && base && questions.length > 0 && (
         <>
           <div className="la-identified">
             <span className="la-identified-tag">{L('Product', 'Ürün', 'Produkt')}</span>

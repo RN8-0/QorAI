@@ -69,9 +69,10 @@
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  background: var(--bg2);
+  background: color-mix(in srgb, var(--bg2) 88%, transparent);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
-  border-radius: var(--r-lg, 18px);
+  border-radius: var(--r-xl, 24px);
   padding: 22px;
   box-shadow: var(--card-glow);
 }
@@ -103,7 +104,12 @@
   text-align: left;
 }
 .subs-pill:hover { border-color: var(--border2); color: var(--text); }
-.subs-pill.active { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+.subs-pill.active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--brand-cyan) 55%, var(--accent-ring));
+  color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-cyan) 10%, transparent);
+}
 
 .subs-custom {
   display: flex; gap: 8px; margin-top: 14px;

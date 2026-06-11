@@ -395,23 +395,26 @@ export default function Quiz() {
 
       <div className="quiz-card fade-up">
         <div className="quiz-progress">
-          <div className="quiz-progress-bar" style={{ width: `${(step / total) * 100}%` }} />
+          <div className="quiz-progress-bar" style={{ width: `${((step + 1) / total) * 100}%` }} />
         </div>
-        <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
-        <h2 className="quiz-q">{tx(lang, current.title)}</h2>
-        {current.subtitle && <p className="quiz-sub">{tx(lang, current.subtitle)}</p>}
-        <div className="quiz-opts">
-          {current.options.map((o) => {
-            const value = o[0];
-            const on = current.multiple
-              ? Array.isArray(selected) && selected.includes(value)
-              : selected === value;
-            return (
-              <button key={value} className={'quiz-opt' + (on ? ' on' : '')} onClick={() => pick(value)}>
-                {lang === 'tr' ? o[2] : lang === 'de' ? o[3] : o[1]}
-              </button>
-            );
-          })}
+        {/* key={step} re-runs the entrance animation on every step change */}
+        <div key={step} className="quiz-step fade-up">
+          <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
+          <h2 className="quiz-q">{tx(lang, current.title)}</h2>
+          {current.subtitle && <p className="quiz-sub">{tx(lang, current.subtitle)}</p>}
+          <div className="quiz-opts">
+            {current.options.map((o) => {
+              const value = o[0];
+              const on = current.multiple
+                ? Array.isArray(selected) && selected.includes(value)
+                : selected === value;
+              return (
+                <button key={value} className={'quiz-opt' + (on ? ' on' : '')} onClick={() => pick(value)}>
+                  {lang === 'tr' ? o[2] : lang === 'de' ? o[3] : o[1]}
+                </button>
+              );
+            })}
+          </div>
         </div>
         {err && <div className="quiz-err">{err}</div>}
         <div className="quiz-actions">
@@ -420,7 +423,7 @@ export default function Quiz() {
               {t('quiz.back')}
             </button>
           )}
-          <button className="btn btn-primary" onClick={next} disabled={busy}>
+          <button className="btn btn-primary btn-shine" onClick={next} disabled={busy}>
             {busy ? t('common.loading') : step + 1 >= total ? L('Save profile', 'Profili kaydet', 'Profil speichern') : L('Next', 'İleri', 'Weiter')}
           </button>
         </div>

@@ -6,7 +6,7 @@ import './QuizFlow.css';
 // app's quiz step: AI-generated questions, four tappable option cards each, a
 // progress bar, and Submit / Skip actions. Answers are returned as
 // [{ question, answer }] so they can be fed straight into the analysis prompts.
-export default function QuizFlow({ questions, onSubmit, onSkip, busy = false, title, subtitle }) {
+export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = false, title, subtitle }) {
   const { lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [answers, setAnswers] = useState({});
@@ -25,6 +25,10 @@ export default function QuizFlow({ questions, onSubmit, onSkip, busy = false, ti
     if (!allAnswered || busy) return;
     onSubmit(questions.map((q) => ({ question: q.text, answer: answers[q.id] ?? null })));
   }
+
+  // No questions → nothing to render. Prevents a dead-end card whose submit
+  // button can never enable ("Answer all 0 questions").
+  if (!questions.length) return null;
 
   return (
     <div className="quiz fade-up">

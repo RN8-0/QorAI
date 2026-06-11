@@ -2,6 +2,7 @@ import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import PlayBadge from '../components/PlayBadge.jsx';
+import Reveal from '../components/Reveal.jsx';
 import './Premium.css';
 
 const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.compair.app';
@@ -73,10 +74,10 @@ export default function Premium() {
 
   return (
     <div className="premium-page">
-      <section className="premium-hero">
-        <div className="container premium-hero-inner">
+      <section className="premium-hero aurora">
+        <div className="container premium-hero-inner fade-up">
           <span className="premium-kicker">Premium</span>
-          <h1>{L('Unlock deeper Qor AI analysis', 'Daha derin Qor AI analizini aç', 'Schalte tiefere Qor AI Analysen frei')}</h1>
+          <h1>{L('Unlock deeper ', 'Daha derin ', 'Schalte tiefere ')}<span className="grad-anim">Qor AI</span>{L(' analysis', ' analizini aç', ' Analysen frei')}</h1>
           <p>
             {L(
               'Use the same Premium plan across product analysis, link analysis and subscription decisions.',
@@ -90,19 +91,22 @@ export default function Premium() {
       </section>
 
       <section className="container premium-grid" aria-label="Premium plans">
-        {plans(L).map((plan) => (
-          <article key={plan.name} className={'premium-card' + (plan.featured ? ' featured' : '')}>
-            {plan.badge && <span className="premium-badge">{plan.badge}</span>}
-            <h2>{plan.name}</h2>
-            <div className="premium-price"><b>{plan.price}</b><span>{plan.cadence}</span></div>
-            <ul>
-              {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
-            </ul>
-            <button className={'btn btn-block ' + (plan.featured ? 'btn-primary' : 'btn-ghost')}
-              onClick={choose}>
-              {plan.cta}
-            </button>
-          </article>
+        {plans(L).map((plan, i) => (
+          <Reveal key={plan.name} delay={i * 90}>
+            <article className={'premium-card lift' + (plan.featured ? ' featured grad-ring' : '')}>
+              {plan.badge && <span className="premium-badge">{plan.badge}</span>}
+              {plan.featured && <span className="premium-badge">{L('Most popular', 'En popüler', 'Am beliebtesten')}</span>}
+              <h2>{plan.name}</h2>
+              <div className="premium-price"><b>{plan.price}</b><span>{plan.cadence}</span></div>
+              <ul>
+                {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+              </ul>
+              <button className={'btn btn-block btn-shine ' + (plan.featured ? 'btn-grad' : 'btn-ghost')}
+                onClick={choose}>
+                {plan.cta}
+              </button>
+            </article>
+          </Reveal>
         ))}
       </section>
     </div>

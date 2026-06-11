@@ -77,6 +77,19 @@
     var(--surface);
 }
 
+/* Featured + gradient ring: keep the inner cyan wash AND the animated-looking
+   gradient border (padding-box / border-box pair). Must out-specify .featured. */
+.premium-card.featured.grad-ring {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-cyan) 10%, var(--surface)), var(--surface) 48%) padding-box,
+    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue), var(--violet)) border-box;
+}
+
+/* Cards live inside a Reveal wrapper now — stretch to equal heights. */
+.premium-grid > .rv { display: flex; }
+.premium-grid > .rv > .premium-card { flex: 1; }
+
 .premium-badge {
   position: absolute;
   right: 18px;
