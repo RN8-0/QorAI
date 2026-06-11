@@ -395,15 +395,12 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  // askQorAiRaw already backs off and retries on 429/5xx; one extra attempt here
-  // covers a truncated/non-JSON body without over-waiting.
-  const call = () => askQorAiJson({
+  // askQorAiRaw already backs off and retries on 429/5xx internally.
+  const res = await askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
     maxOutputTokens: 12288,
   });
-  let res;
-  try { res = await call(); } catch { res = await call(); }
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
   const services = Object.entries(subsRaw).map(([name, d]) => ({
     name,

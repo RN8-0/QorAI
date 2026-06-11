@@ -60,11 +60,13 @@ export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temper
     contents: [{ role: 'user', parts: [{ text: user }] }],
     generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
   };
-  // The Gemini free tier throttles per minute → 429 bursts. Back off and retry a
-  // few times so a transient rate-limit doesn't surface as "analysis failed".
+  // The Gemini free tier throttles hard (per-minute 429 bursts). Back off across
+  // a wider window so the rate-limit slot frees up before we give up. NOTE: when
+  // 429s are this frequent the real fix is a higher Gemini API quota server-side.
+  const backoff = [0, 3000, 7000, 12000, 18000, 25000];
   let lastStatus = 0;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await sleep([0, 2500, 5000, 9000][attempt]);
+  for (let attempt = 0; attempt < backoff.length; attempt++) {
+    if (attempt > 0) await sleep(backoff[attempt]);
     const res = await fetch(AI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
