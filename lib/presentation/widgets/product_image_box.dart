@@ -68,10 +68,9 @@ class _ProductImageBoxState extends State<ProductImageBox> {
   }
 
   // epey CDN size variants live as a filename prefix
-  // (k_/s_/t_/c_/m_/b_ + no-prefix original). The scraper now stores the
-  // original (no-prefix) master, so we try it first for maximum sharpness and
-  // fall back down to b_ then the reliable m_ medium, so a missing tier never
-  // breaks the image.
+  // (k_/s_/t_/c_/m_/b_ + no-prefix original). Compact cards need fast first
+  // paint more than maximum resolution, so medium is tried before heavier
+  // variants and each failure steps to the next candidate.
   static final _epey = RegExp(
     r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
   );
@@ -80,8 +79,7 @@ class _ProductImageBoxState extends State<ProductImageBox> {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    // Original (max) → big → medium fallback.
-    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+    return ['${path}m_$file', '${path}b_$file', '$path$file'];
   }
 
   // Ad / banner / sponsor / placeholder junk that occasionally leaks into a

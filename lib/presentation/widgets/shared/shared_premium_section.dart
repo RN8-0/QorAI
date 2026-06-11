@@ -41,6 +41,7 @@ class SharedPremiumFeaturesSectionState
   bool _unifiedAiExpanded = false;
   bool _unifiedAiRunning = false;
   bool _unifiedAiUserCollapsed = false;
+  bool _unifiedAiAutoStarted = false;
   String _unifiedAiStep = '';
 
   bool _deepAnalysisUserCollapsed = false;
@@ -81,6 +82,30 @@ class SharedPremiumFeaturesSectionState
       details.add('key specs: ${highlightedSpecs.join(' | ')}');
     }
     return details.join(', ');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleUnifiedAiAutoStart();
+  }
+
+  @override
+  void didUpdateWidget(covariant SharedPremiumFeaturesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.product.id != widget.product.id) {
+      _unifiedAiAutoStarted = false;
+      _scheduleUnifiedAiAutoStart();
+    }
+  }
+
+  void _scheduleUnifiedAiAutoStart() {
+    if (_unifiedAiAutoStarted) return;
+    _unifiedAiAutoStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _toggleUnifiedAnalysis(autoStart: true);
+    });
   }
 
   @override
@@ -197,7 +222,7 @@ class SharedPremiumFeaturesSectionState
             isLoading: isLoading,
             stepMessage: stepMessage,
             hasContent: hasContent,
-            onTap: _toggleUnifiedAnalysis,
+            onTap: () => _toggleUnifiedAnalysis(),
             expandedChild: (hasContent || isLoading)
                 ? _buildUnifiedAnalysisVisual(
                     review: reviewResult,
@@ -2064,9 +2089,10 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
-  Future<void> _toggleUnifiedAnalysis() async {
+  Future<void> _toggleUnifiedAnalysis({bool autoStart = false}) async {
     if (_unifiedAiRunning) return;
     if (_unifiedAiExpanded) {
+      if (autoStart) return;
       setState(() {
         _unifiedAiExpanded = false;
         _unifiedAiUserCollapsed = true;
@@ -2084,13 +2110,17 @@ class SharedPremiumFeaturesSectionState
     final advisor = ref.read(advisorCacheProvider(key)).valueOrNull;
     final alternatives = ref.read(alternativesCacheProvider(key)).valueOrNull;
     final prediction = ref.read(predictionCacheProvider(key)).valueOrNull;
+    final needsReview = review == null || review.failed;
+    final needsDeep = deep?.hasUsableContent != true;
+    final needsAdvisor = advisor?.hasUsableContent != true;
+    final needsAlternatives = alternatives?.hasUsableContent != true;
+    final needsPrediction = prediction?.hasUsableContent != true;
     final hasMissing =
-        review == null ||
-        review.failed ||
-        deep?.hasUsableContent != true ||
-        advisor?.hasUsableContent != true ||
-        alternatives?.hasUsableContent != true ||
-        prediction?.hasUsableContent != true;
+        needsReview ||
+        needsDeep ||
+        needsAdvisor ||
+        needsAlternatives ||
+        needsPrediction;
 
     if (hasMissing && !await _checkAiFeatureLimit()) return;
     if (!mounted) return;
@@ -2113,67 +2143,53 @@ class SharedPremiumFeaturesSectionState
         ? AppUtils.formatCurrency(priceVal, currency)
         : 'unknown price';
 
-    Future<void> runStep(
-      String tr,
-      String en,
-      Future<void> Function() run,
-    ) async {
-      if (!mounted) return;
-      setState(() => _unifiedAiStep = _txt(tr: tr, en: en));
-      await run();
-    }
-
     try {
-      await runStep(
-        'Internet yorumlari taraniyor...',
-        'Scanning web reviews...',
-        () => ref
-            .read(aiReviewCacheProvider(key).notifier)
-            .startAnalysis(widget.product.name, product: widget.product),
-      );
-      await runStep(
-        'Teknik analiz hazirlaniyor...',
-        'Preparing technical analysis...',
-        () => ref
-            .read(deepAnalysisCacheProvider(key).notifier)
-            .startAnalysis(
-              widget.product.name,
-              category: widget.product.category,
-              brand: widget.product.brand,
-              year: ProductFilter.getExactReleaseYear(widget.product),
-            ),
-      );
-      await runStep(
-        'Satin alma tavsiyesi olusturuluyor...',
-        'Building buying advice...',
-        () => ref
-            .read(advisorCacheProvider(key).notifier)
-            .startQuery(
-              widget.product.name,
-              widget.product.category,
-              price,
-              productContext: _predictionProductContext(widget.product),
-            ),
-      );
-      await runStep(
-        'Alternatif urunler karsilastiriliyor...',
-        'Comparing alternatives...',
-        () => ref
-            .read(alternativesCacheProvider(key).notifier)
-            .startQuery(widget.product.name, widget.product.category),
-      );
-      await runStep(
-        'Fiyat zamanlamasi cikariliyor...',
-        'Calculating price timing...',
-        () => ref
-            .read(predictionCacheProvider(key).notifier)
-            .startQuery(
-              widget.product.name,
-              widget.product.category,
-              price,
-              productContext: _predictionProductContext(widget.product),
-            ),
-      );
+      if (mounted) {
+        setState(
+          () => _unifiedAiStep = _txt(
+            tr: 'AI analizleri aynı anda başlatılıyor...',
+            en: 'Starting AI analyses in parallel...',
+          ),
+        );
+      }
+      final tasks = <Future<void>>[
+        if (needsReview)
+          ref
+              .read(aiReviewCacheProvider(key).notifier)
+              .startAnalysis(widget.product.name, product: widget.product),
+        if (needsDeep)
+          ref
+              .read(deepAnalysisCacheProvider(key).notifier)
+              .startAnalysis(
+                widget.product.name,
+                category: widget.product.category,
+                brand: widget.product.brand,
+                year: ProductFilter.getExactReleaseYear(widget.product),
+              ),
+        if (needsAdvisor)
+          ref
+              .read(advisorCacheProvider(key).notifier)
+              .startQuery(
+                widget.product.name,
+                widget.product.category,
+                price,
+                productContext: _predictionProductContext(widget.product),
+              ),
+        if (needsAlternatives)
+          ref
+              .read(alternativesCacheProvider(key).notifier)
+              .startQuery(widget.product.name, widget.product.category),
+        if (needsPrediction)
+          ref
+              .read(predictionCacheProvider(key).notifier)
+              .startQuery(
+                widget.product.name,
+                widget.product.category,
+                price,
+                productContext: _predictionProductContext(widget.product),
+              ),
+      ];
+      await Future.wait(tasks);
     } finally {
       if (mounted) {
         setState(() {

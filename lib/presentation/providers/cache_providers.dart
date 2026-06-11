@@ -262,7 +262,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
             maxTokens: 1800,
           )
           .timeout(
-            const Duration(seconds: 90),
+            const Duration(seconds: 45),
             onTimeout: () => throw Exception('ai review timeout'),
           );
 

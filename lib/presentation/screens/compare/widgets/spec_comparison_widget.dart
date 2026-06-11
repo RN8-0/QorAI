@@ -90,6 +90,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   final Map<_AiPanelType, String> _aiProgressText = {};
   bool _unifiedAiExpanded = false;
   bool _unifiedAiRunning = false;
+  bool _unifiedAiAutoStarted = false;
   String _unifiedAiProgress = '';
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
@@ -512,24 +513,29 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   }) async {
     final gemini = ref.read(geminiServiceProvider);
     String? lastError;
-    for (var attempt = 1; attempt <= 3; attempt++) {
+    final maxAttempts = useGrounding ? 1 : 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         onProgress?.call(
           _isTr
-              ? 'AI analizi yapılıyor ($attempt/3)…'
-              : 'Analyzing… ($attempt/3)',
+              ? 'AI analizi yapılıyor ($attempt/$maxAttempts)…'
+              : 'Analyzing… ($attempt/$maxAttempts)',
         );
         final result = useGrounding
-            ? await gemini.groundedQuery(
-                '$prompt\n\nUse web search where helpful, then return only the requested JSON object.',
-                maxTokens: maxTokens,
-              )
-            : await gemini.jsonFreeTextQuery(
-                prompt,
-                language: lang,
-                maxTokens: maxTokens,
-                tier: AiTier.heavy,
-              );
+            ? await gemini
+                  .groundedQuery(
+                    '$prompt\n\nUse web search where helpful, then return only the requested JSON object.',
+                    maxTokens: maxTokens,
+                  )
+                  .timeout(const Duration(seconds: 45))
+            : await gemini
+                  .jsonFreeTextQuery(
+                    prompt,
+                    language: lang,
+                    maxTokens: maxTokens,
+                    tier: AiTier.heavy,
+                  )
+                  .timeout(const Duration(seconds: 45));
         debugPrint(
           '[Qor AI] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}',
         );
@@ -537,13 +543,17 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         if (parsed != null) return (data: parsed, error: null);
         lastError = 'JSON parse failed';
         debugPrint(
-          '[Qor AI] $label parse FAILED attempt $attempt${attempt < 3 ? " — retrying" : " — giving up"}',
+          '[Qor AI] $label parse FAILED attempt $attempt${attempt < maxAttempts ? " — retrying" : " — giving up"}',
         );
-        if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
+        if (attempt < maxAttempts) {
+          await Future.delayed(Duration(seconds: attempt));
+        }
       } catch (e) {
         lastError = e.toString();
         debugPrint('[Qor AI] $label attempt $attempt error: $e');
-        if (attempt < 3) await Future.delayed(Duration(seconds: attempt));
+        if (attempt < maxAttempts) {
+          await Future.delayed(Duration(seconds: attempt));
+        }
       }
     }
     if (allowGeminiFallback) {
@@ -893,9 +903,23 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       _alternativesLoading ||
       _predictionLoading;
 
-  Future<void> _toggleUnifiedCompareAi() async {
+  void _scheduleUnifiedCompareAiAutoStart() {
+    if (_unifiedAiAutoStarted ||
+        _unifiedAiRunning ||
+        _hasAllUnifiedCompareAiData) {
+      return;
+    }
+    _unifiedAiAutoStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _toggleUnifiedCompareAi(autoStart: true);
+    });
+  }
+
+  Future<void> _toggleUnifiedCompareAi({bool autoStart = false}) async {
     if (_unifiedAiRunning) return;
     if (_unifiedAiExpanded) {
+      if (autoStart) return;
       setState(() {
         _unifiedAiExpanded = false;
       });
@@ -926,37 +950,20 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     });
     if (!shouldFetch) return;
 
-    Future<void> runStep(
-      String tr,
-      String en,
-      Future<void> Function() run,
-    ) async {
-      if (!mounted) return;
-      setState(() => _unifiedAiProgress = _isTr ? tr : en);
-      await run();
-    }
-
     try {
-      await runStep(
-        'Satın alma kararı hazırlanıyor...',
-        'Preparing buying decision...',
-        _fetchAdvisor,
-      );
-      await runStep(
-        'Teknik farklar analiz ediliyor...',
-        'Analyzing technical differences...',
-        _fetchDeepAnalysis,
-      );
-      await runStep(
-        'Alternatifler taranıyor...',
-        'Scanning alternatives...',
-        _fetchAlternatives,
-      );
-      await runStep(
-        'Fiyat döngüsü tahmin ediliyor...',
-        'Forecasting price cycle...',
-        _fetchPrediction,
-      );
+      if (mounted) {
+        setState(
+          () => _unifiedAiProgress = _isTr
+              ? 'AI analizleri aynı anda başlatılıyor...'
+              : 'Starting AI analyses in parallel...',
+        );
+      }
+      await Future.wait([
+        if (_advisorStructured == null) _fetchAdvisor(),
+        if (_deepAnalysisStructured == null) _fetchDeepAnalysis(),
+        if (_alternativesStructured == null) _fetchAlternatives(),
+        if (_predictionStructured == null) _fetchPrediction(),
+      ]);
     } finally {
       if (mounted) {
         setState(() {
@@ -5884,6 +5891,9 @@ Rules:
                     final selectedIndex =
                         controller.animation?.value.round() ?? controller.index;
                     final isAiSelected = selectedIndex == 2;
+                    if (isAiSelected) {
+                      _scheduleUnifiedCompareAiAutoStart();
+                    }
                     final activeTabColor = isAiSelected
                         ? AppTheme.premiumGold
                         : Theme.of(context).colorScheme.primary;
@@ -6528,7 +6538,9 @@ Rules:
     required ProductOfferModel offer,
     required String selectedCountry,
   }) {
-    final brand = _resolveCompareStoreBrand(offer.store);
+    final brand = _resolveCompareStoreBrand(
+      '${offer.displayStore} ${offer.network} ${offer.url}',
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -6555,11 +6567,16 @@ Rules:
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: brand.$2.withValues(alpha: 0.12),
+                    color: brand.logoUrl == null
+                        ? brand.color.withValues(alpha: 0.12)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: brand.$2.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: brand.color.withValues(alpha: 0.2),
+                    ),
                   ),
-                  child: Icon(brand.$3, size: 17, color: brand.$2),
+                  alignment: Alignment.center,
+                  child: _CompareStoreLogo(brand: brand),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -6567,7 +6584,7 @@ Rules:
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        brand.$1,
+                        brand.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
@@ -6793,7 +6810,6 @@ Rules:
   }
 
   Widget _buildProTab() {
-    // RULE 1: No auto-fetch. All AI calls are lazy — triggered only when user taps a card.
     final progressText = _unifiedAiProgress.trim().isNotEmpty
         ? _unifiedAiProgress
         : [
@@ -6850,8 +6866,8 @@ Rules:
               _predictionError,
           errorMsg: unifiedErrorMsg,
           loadingStatusText: progressText,
-          onRetry: _toggleUnifiedCompareAi,
-          onTap: _toggleUnifiedCompareAi,
+          onRetry: () => _toggleUnifiedCompareAi(),
+          onTap: () => _toggleUnifiedCompareAi(),
         ),
       ],
     );
@@ -7538,7 +7554,7 @@ Rules:
           ]
           // Loading: no expansion, step text shown in subtitle above
           // Structured content widget (the ONLY content display path)
-          else if (isExpanded && !isLoading && contentWidget != null) ...[
+          else if (isExpanded && contentWidget != null) ...[
             const SizedBox(height: 14),
             GestureDetector(onTap: () {}, child: contentWidget),
           ],

@@ -8,9 +8,7 @@ class _LoadingScreen extends StatelessWidget {
   const _LoadingScreen();
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -29,11 +27,17 @@ class _ErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+              const Icon(
+                Icons.error_outline,
+                size: 56,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 16),
               Text(
                 context.l10n?.couldNotLoadProduct ?? 'Could not load product',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
@@ -60,11 +64,13 @@ class _ErrorScreen extends StatelessWidget {
 class _FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
+  final String productCategory;
   final Animation<double> animation;
 
   const _FullScreenImageViewer({
     required this.images,
     required this.initialIndex,
+    required this.productCategory,
     required this.animation,
   });
 
@@ -98,8 +104,20 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     final screenW = MediaQuery.sizeOf(context).width;
     final screenH = MediaQuery.sizeOf(context).height;
-    final fullCacheWidth = (screenW * dpr).round().clamp(720, 1200);
-    final fullCacheHeight = (screenH * dpr).round().clamp(720, 1400);
+    final category = widget.productCategory.toLowerCase();
+    final isHandheldProduct =
+        category.contains('phone') ||
+        category.contains('telefon') ||
+        category.contains('smartphone') ||
+        category.contains('watch') ||
+        category.contains('earbud') ||
+        category.contains('headphone');
+    final maxImageWidth = isHandheldProduct
+        ? dart_math.min(screenW * 0.76, 340.0)
+        : screenW * 0.9;
+    final maxImageHeight = isHandheldProduct ? screenH * 0.72 : screenH * 0.82;
+    final fullCacheWidth = (maxImageWidth * dpr).round().clamp(520, 1080);
+    final fullCacheHeight = (maxImageHeight * dpr).round().clamp(520, 1280);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -122,6 +140,10 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                   url: widget.images[index],
                   cacheWidth: fullCacheWidth,
                   cacheHeight: fullCacheHeight,
+                  widthFactor: 0.9,
+                  heightFactor: 0.82,
+                  maxLogicalWidth: maxImageWidth,
+                  maxLogicalHeight: maxImageHeight,
                   fallback: Icon(
                     Icons.broken_image,
                     color: fgColor.withValues(alpha: 0.5),
@@ -167,7 +189,9 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                     width: isActive ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: isActive ? fgColor : fgColor.withValues(alpha: 0.3),
+                      color: isActive
+                          ? fgColor
+                          : fgColor.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );

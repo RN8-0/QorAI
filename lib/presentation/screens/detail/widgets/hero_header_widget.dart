@@ -129,6 +129,7 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                                   return _FullScreenImageViewer(
                                     images: allImages,
                                     initialIndex: _selectedIndex,
+                                    productCategory: widget.product.category,
                                     animation: animation,
                                   );
                                 },
@@ -681,9 +682,9 @@ class _HeroScoreBadge extends StatelessWidget {
   }
 }
 
-/// Hero product image with an original-first epey variant chain and a graceful
-/// fallback: no-prefix -> big (b_) -> medium (m_) -> category emoji. The size
-/// variant is upgraded in-place and each failure steps down (never blank).
+/// Hero product image with a fast-first epey variant chain and a graceful
+/// fallback: medium (m_) -> big (b_) -> original -> category emoji. Each
+/// failure steps to the next candidate, so the slot never stays blank.
 class _HeroNetworkImage extends StatefulWidget {
   const _HeroNetworkImage({
     required this.url,
@@ -691,6 +692,10 @@ class _HeroNetworkImage extends StatefulWidget {
     required this.cacheWidth,
     required this.cacheHeight,
     required this.fallback,
+    this.widthFactor = 0.78,
+    this.heightFactor = 0.78,
+    this.maxLogicalWidth,
+    this.maxLogicalHeight,
   });
 
   final String url;
@@ -698,6 +703,10 @@ class _HeroNetworkImage extends StatefulWidget {
   final int cacheWidth;
   final int cacheHeight;
   final Widget fallback;
+  final double widthFactor;
+  final double heightFactor;
+  final double? maxLogicalWidth;
+  final double? maxLogicalHeight;
 
   static final _epey = RegExp(
     r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
@@ -708,7 +717,7 @@ class _HeroNetworkImage extends StatefulWidget {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['$path$file', '${path}b_$file', '${path}m_$file'];
+    return ['${path}m_$file', '${path}b_$file', '$path$file'];
   }
 
   static String bestCandidate(String url) => _expand(url).first;
@@ -754,31 +763,74 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
     if (_idx >= _urls.length) return Center(child: widget.fallback);
     final url = _urls[_idx];
     return Center(
-      child: FractionallySizedBox(
-        widthFactor: 0.78,
-        heightFactor: 0.78,
-        child: CachedNetworkImage(
-          key: ValueKey(url),
-          imageUrl: url,
-          fit: BoxFit.scaleDown,
-          memCacheWidth: widget.cacheWidth,
-          memCacheHeight: widget.cacheHeight,
-          maxWidthDiskCache: widget.cacheWidth,
-          maxHeightDiskCache: widget.cacheHeight,
-          filterQuality: FilterQuality.medium,
-          fadeInDuration: const Duration(milliseconds: 80),
-          placeholder: (_, _) => const ColoredBox(color: Colors.white),
-          errorWidget: (_, failed, _) {
-            CachedNetworkImageProvider(
-              failed,
-              maxWidth: widget.cacheWidth,
-              maxHeight: widget.cacheHeight,
-            ).evict();
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _idx < _urls.length) setState(() => _idx++);
-            });
-            return const ColoredBox(color: Colors.white);
-          },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final slotWidth = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          final slotHeight = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : MediaQuery.sizeOf(context).height;
+          final targetWidth = dart_math
+              .min(
+                slotWidth * widget.widthFactor.clamp(0.1, 1.0),
+                widget.maxLogicalWidth ?? double.infinity,
+              )
+              .toDouble();
+          final targetHeight = dart_math
+              .min(
+                slotHeight * widget.heightFactor.clamp(0.1, 1.0),
+                widget.maxLogicalHeight ?? double.infinity,
+              )
+              .toDouble();
+          return SizedBox(
+            width: targetWidth,
+            height: targetHeight,
+            child: CachedNetworkImage(
+              key: ValueKey(url),
+              imageUrl: url,
+              fit: BoxFit.scaleDown,
+              memCacheWidth: widget.cacheWidth,
+              memCacheHeight: widget.cacheHeight,
+              maxWidthDiskCache: widget.cacheWidth,
+              maxHeightDiskCache: widget.cacheHeight,
+              filterQuality: FilterQuality.medium,
+              fadeInDuration: const Duration(milliseconds: 80),
+              placeholder: (_, _) => const _HeroImageLoadingIndicator(),
+              errorWidget: (_, failed, _) {
+                CachedNetworkImageProvider(
+                  failed,
+                  maxWidth: widget.cacheWidth,
+                  maxHeight: widget.cacheHeight,
+                ).evict();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _idx < _urls.length) setState(() => _idx++);
+                });
+                return const _HeroImageLoadingIndicator();
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HeroImageLoadingIndicator extends StatelessWidget {
+  const _HeroImageLoadingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.white,
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppTheme.primaryBlue.withValues(alpha: 0.65),
+          ),
         ),
       ),
     );

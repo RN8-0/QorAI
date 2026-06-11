@@ -285,7 +285,9 @@ class _OfferLinkRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final brand = _resolveStoreBrand(offer.store);
+    final brand = _resolveStoreBrand(
+      '${offer.displayStore} ${offer.network} ${offer.url}',
+    );
     final showCountry =
         offer.country.isNotEmpty &&
         offer.country != selectedCountry.trim().toUpperCase();
@@ -545,7 +547,13 @@ class _StoreBrandData {
   final String displayName;
   final Color color;
   final IconData icon;
-  const _StoreBrandData(this.displayName, this.color, this.icon);
+  final String? logoUrl;
+  const _StoreBrandData(
+    this.displayName,
+    this.color,
+    this.icon, [
+    this.logoUrl,
+  ]);
 }
 
 _StoreBrandData _resolveStoreBrand(String rawName) {
@@ -555,6 +563,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Amazon',
       const Color(0xFFFF9900),
       Icons.shopping_cart_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=amazon.com',
     );
   }
   if (n.contains('bestbuy') || n.contains('best buy')) {
@@ -562,6 +571,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Best Buy',
       const Color(0xFF003B70),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=bestbuy.com',
     );
   }
   if (n.contains('walmart')) {
@@ -569,6 +579,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Walmart',
       const Color(0xFF0071CE),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=walmart.com',
     );
   }
   if (n.contains('aliexpress') || n.contains('ali ')) {
@@ -576,6 +587,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'AliExpress',
       const Color(0xFFE62E04),
       Icons.local_shipping_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=aliexpress.com',
     );
   }
   if (n.contains('trendyol')) {
@@ -583,6 +595,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Trendyol',
       const Color(0xFFF27A1A),
       Icons.shopping_bag_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=trendyol.com',
     );
   }
   if (n.contains('hepsiburada')) {
@@ -590,6 +603,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Hepsiburada',
       const Color(0xFFFF6000),
       Icons.shopping_bag_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=hepsiburada.com',
     );
   }
   if (n.contains('n11')) {
@@ -597,6 +611,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'n11',
       const Color(0xFF923899),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=n11.com',
     );
   }
   if (n.contains('gittigidiyor')) {
@@ -604,6 +619,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'GittiGidiyor',
       const Color(0xFFFFC600),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=gittigidiyor.com',
     );
   }
   if (n.contains('vatan')) {
@@ -611,6 +627,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Vatan',
       const Color(0xFFE60000),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=vatanbilgisayar.com',
     );
   }
   if (n.contains('teknosa')) {
@@ -618,6 +635,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Teknosa',
       const Color(0xFFE30613),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=teknosa.com',
     );
   }
   if (n.contains('mediamarkt')) {
@@ -625,6 +643,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'MediaMarkt',
       const Color(0xFFE5121A),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=mediamarkt.com',
     );
   }
   if (n.contains('newegg')) {
@@ -632,16 +651,23 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Newegg',
       const Color(0xFFF7A028),
       Icons.memory_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=newegg.com',
     );
   }
   if (n.contains('apple')) {
-    return _StoreBrandData('Apple', const Color(0xFF000000), Icons.apple);
+    return _StoreBrandData(
+      'Apple',
+      const Color(0xFF000000),
+      Icons.apple,
+      'https://www.google.com/s2/favicons?sz=64&domain=apple.com',
+    );
   }
   if (n.contains('samsung')) {
     return _StoreBrandData(
       'Samsung',
       const Color(0xFF1428A0),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=samsung.com',
     );
   }
   if (n.contains('google')) {
@@ -649,6 +675,7 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'Google Store',
       const Color(0xFF4285F4),
       Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=store.google.com',
     );
   }
   // Generic fallback — title-case the raw name.
@@ -674,12 +701,29 @@ class _StoreLogo extends StatelessWidget {
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: brand.color.withValues(alpha: 0.12),
+        color: brand.logoUrl == null
+            ? brand.color.withValues(alpha: 0.12)
+            : Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: brand.color.withValues(alpha: 0.2)),
       ),
       alignment: Alignment.center,
-      child: Icon(brand.icon, size: 18, color: brand.color),
+      child: brand.logoUrl == null
+          ? Icon(brand.icon, size: 18, color: brand.color)
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: CachedNetworkImage(
+                imageUrl: brand.logoUrl!,
+                width: 22,
+                height: 22,
+                fit: BoxFit.contain,
+                fadeInDuration: Duration.zero,
+                placeholder: (_, _) =>
+                    Icon(brand.icon, size: 17, color: brand.color),
+                errorWidget: (_, _, _) =>
+                    Icon(brand.icon, size: 17, color: brand.color),
+              ),
+            ),
     );
   }
 }

@@ -202,16 +202,21 @@ class _CompareStoreRow extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: brand.$2.withValues(alpha: 0.12),
+                    color: brand.logoUrl == null
+                        ? brand.color.withValues(alpha: 0.12)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: brand.$2.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: brand.color.withValues(alpha: 0.2),
+                    ),
                   ),
-                  child: Icon(brand.$3, size: 17, color: brand.$2),
+                  alignment: Alignment.center,
+                  child: _CompareStoreLogo(brand: brand),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    brand.$1,
+                    brand.displayName,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -233,60 +238,166 @@ class _CompareStoreRow extends StatelessWidget {
   }
 }
 
-(String, Color, IconData) _resolveCompareStoreBrand(String rawName) {
+class _CompareStoreBrandData {
+  final String displayName;
+  final Color color;
+  final IconData icon;
+  final String? logoUrl;
+
+  const _CompareStoreBrandData(
+    this.displayName,
+    this.color,
+    this.icon, [
+    this.logoUrl,
+  ]);
+}
+
+class _CompareStoreLogo extends StatelessWidget {
+  final _CompareStoreBrandData brand;
+  const _CompareStoreLogo({required this.brand});
+
+  @override
+  Widget build(BuildContext context) {
+    final logoUrl = brand.logoUrl;
+    if (logoUrl == null) {
+      return Icon(brand.icon, size: 17, color: brand.color);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: CachedNetworkImage(
+        imageUrl: logoUrl,
+        width: 21,
+        height: 21,
+        fit: BoxFit.contain,
+        fadeInDuration: Duration.zero,
+        placeholder: (_, _) => Icon(brand.icon, size: 17, color: brand.color),
+        errorWidget: (_, _, _) =>
+            Icon(brand.icon, size: 17, color: brand.color),
+      ),
+    );
+  }
+}
+
+_CompareStoreBrandData _resolveCompareStoreBrand(String rawName) {
   final n = rawName.toLowerCase().trim();
   if (n.contains('amazon')) {
-    return ('Amazon', const Color(0xFFFF9900), Icons.shopping_cart_rounded);
+    return _CompareStoreBrandData(
+      'Amazon',
+      const Color(0xFFFF9900),
+      Icons.shopping_cart_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=amazon.com',
+    );
   }
   if (n.contains('bestbuy') || n.contains('best buy')) {
-    return ('Best Buy', const Color(0xFF003B70), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Best Buy',
+      const Color(0xFF003B70),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=bestbuy.com',
+    );
   }
   if (n.contains('walmart')) {
-    return ('Walmart', const Color(0xFF0071CE), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Walmart',
+      const Color(0xFF0071CE),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=walmart.com',
+    );
   }
   if (n.contains('aliexpress')) {
-    return (
+    return _CompareStoreBrandData(
       'AliExpress',
       const Color(0xFFE62E04),
       Icons.local_shipping_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=aliexpress.com',
     );
   }
   if (n.contains('trendyol')) {
-    return ('Trendyol', const Color(0xFFF27A1A), Icons.shopping_bag_rounded);
+    return _CompareStoreBrandData(
+      'Trendyol',
+      const Color(0xFFF27A1A),
+      Icons.shopping_bag_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=trendyol.com',
+    );
   }
   if (n.contains('hepsiburada')) {
-    return ('Hepsiburada', const Color(0xFFFF6000), Icons.shopping_bag_rounded);
+    return _CompareStoreBrandData(
+      'Hepsiburada',
+      const Color(0xFFFF6000),
+      Icons.shopping_bag_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=hepsiburada.com',
+    );
   }
   if (n.contains('n11')) {
-    return ('n11', const Color(0xFF923899), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'n11',
+      const Color(0xFF923899),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=n11.com',
+    );
   }
   if (n.contains('vatan')) {
-    return ('Vatan', const Color(0xFFE60000), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Vatan',
+      const Color(0xFFE60000),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=vatanbilgisayar.com',
+    );
   }
   if (n.contains('teknosa')) {
-    return ('Teknosa', const Color(0xFFE30613), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Teknosa',
+      const Color(0xFFE30613),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=teknosa.com',
+    );
   }
   if (n.contains('mediamarkt')) {
-    return ('MediaMarkt', const Color(0xFFE5121A), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'MediaMarkt',
+      const Color(0xFFE5121A),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=mediamarkt.com',
+    );
   }
   if (n.contains('newegg')) {
-    return ('Newegg', const Color(0xFFF7A028), Icons.memory_rounded);
+    return _CompareStoreBrandData(
+      'Newegg',
+      const Color(0xFFF7A028),
+      Icons.memory_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=newegg.com',
+    );
   }
   if (n.contains('apple')) {
-    return ('Apple', Colors.black, Icons.apple);
+    return _CompareStoreBrandData(
+      'Apple',
+      Colors.black,
+      Icons.apple,
+      'https://www.google.com/s2/favicons?sz=64&domain=apple.com',
+    );
   }
   if (n.contains('samsung')) {
-    return ('Samsung', const Color(0xFF1428A0), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Samsung',
+      const Color(0xFF1428A0),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=samsung.com',
+    );
   }
   if (n.contains('google')) {
-    return ('Google Store', const Color(0xFF4285F4), Icons.storefront_rounded);
+    return _CompareStoreBrandData(
+      'Google Store',
+      const Color(0xFF4285F4),
+      Icons.storefront_rounded,
+      'https://www.google.com/s2/favicons?sz=64&domain=store.google.com',
+    );
   }
   final display = rawName
       .split(RegExp(r'[\s_-]+'))
       .where((p) => p.isNotEmpty)
       .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
       .join(' ');
-  return (
+  return _CompareStoreBrandData(
     display.isEmpty ? 'Store' : display,
     AppTheme.primaryBlue,
     Icons.storefront_rounded,
