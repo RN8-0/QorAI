@@ -214,13 +214,6 @@ const STATIC_ROUTES = [
     },
   },
   {
-    dir: 'compare', path: '/compare', changefreq: 'weekly', priority: '0.8',
-    seo: {
-      title: 'Ürün Karşılaştır — Qor AI',
-      description: '4 ürüne kadar yan yana, özellik özellik karşılaştır. Qor AI skorları ve kazanan değer vurgusuyla doğru kararı ver.',
-    },
-  },
-  {
     dir: 'link-analysis', path: '/link-analysis', changefreq: 'weekly', priority: '0.8',
     seo: {
       title: 'Link Analizi — Qor AI',

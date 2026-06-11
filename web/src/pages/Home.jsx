@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
-import { catMeta, categoryLabel } from '../lib/format';
+import { catMeta, categoryLabel, CANONICAL_CATEGORY_GROUPS } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
+import SubLogo from '../components/SubLogo.jsx';
 import { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
@@ -126,6 +127,67 @@ function Section({ title, products, loading, seeAllTo, t, dense = false }) {
         {items}
       </div>
     </>
+  );
+}
+
+function HomeTools({ L }) {
+  const tools = [
+    { to: '/link-analysis', icon: '🔗', grad: 'linear-gradient(135deg, var(--brand-blue), var(--brand-deep))',
+      title: L('Link Analysis', 'Link Analizi', 'Link-Analyse'),
+      desc: L('Paste any product link for an instant AI verdict.', 'Herhangi bir ürün linkini yapıştır, anında AI değerlendirmesi al.', 'Füge einen Produktlink ein für ein sofortiges KI-Urteil.') },
+    { to: '/subscriptions', icon: '🎬', grad: 'linear-gradient(135deg, var(--brand-cyan), var(--brand-blue))',
+      title: L('Subscriptions', 'Abonelikler', 'Abos'),
+      desc: L('Compare streaming, music & AI plans by value.', 'Yayın, müzik ve AI planlarını değerine göre karşılaştır.', 'Streaming-, Musik- & KI-Abos nach Wert vergleichen.') },
+    { to: '/ai-chat', icon: '💬', grad: 'linear-gradient(135deg, var(--brand-sky), var(--brand-cyan))',
+      title: L('Ask Qor AI', 'Qor AI’ya Sor', 'Qor AI fragen'),
+      desc: L('Chat with an AI advisor about any product.', 'Herhangi bir ürün hakkında AI danışmanla konuş.', 'Chatte mit einem KI-Berater über jedes Produkt.') },
+  ];
+  return (
+    <div className="home-tools">
+      {tools.map((tl, i) => (
+        <Link key={tl.to} to={tl.to} className="home-tool fade-rise" style={{ animationDelay: `${i * 70}ms` }}>
+          <span className="home-tool-ic" style={{ background: tl.grad }} aria-hidden="true">{tl.icon}</span>
+          <span className="home-tool-tx"><strong>{tl.title}</strong><span>{tl.desc}</span></span>
+          <svg className="home-tool-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+const TOP_CATS = CANONICAL_CATEGORY_GROUPS.flatMap((g) => g.cats).slice(0, 14);
+function CategoryChips({ lang }) {
+  return (
+    <div className="home-chips">
+      {TOP_CATS.map((id, i) => (
+        <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`} className="home-chip fade-rise" style={{ animationDelay: `${i * 35}ms` }}>
+          <span aria-hidden="true">{catMeta(id).icon}</span> {categoryLabel(id, lang)}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+const PROMO_SERVICES = ['Netflix', 'Spotify', 'ChatGPT Plus', 'Disney+', 'YouTube Premium', 'Xbox Game Pass'];
+function SubsPromo({ L }) {
+  return (
+    <section className="home-promo card glow">
+      <div className="home-promo-tx">
+        <span className="home-promo-tag">{L('New', 'Yeni', 'Neu')}</span>
+        <h3>{L('Compare your subscriptions', 'Aboneliklerini karşılaştır', 'Vergleiche deine Abos')}</h3>
+        <p>{L('Netflix vs Disney+, Spotify vs Apple Music, ChatGPT vs Claude — see which gives you the best value.',
+          'Netflix mi Disney+ mı, Spotify mı Apple Music mi, ChatGPT mı Claude mu — sana en çok değeri hangisi veriyor gör.',
+          'Netflix vs Disney+, Spotify vs Apple Music, ChatGPT vs Claude — finde das beste Preis-Leistungs-Verhältnis.')}</p>
+        <Link to="/subscriptions" className="btn btn-grad btn-lg">{L('Compare subscriptions', 'Abonelikleri karşılaştır', 'Abos vergleichen')}</Link>
+      </div>
+      <div className="home-promo-logos" aria-hidden="true">
+        {PROMO_SERVICES.map((n, i) => (
+          <span key={n} className="home-promo-logo fade-rise" style={{ animationDelay: `${i * 80}ms` }}>
+            <SubLogo name={n} size={42} radius={12} />
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -271,7 +333,7 @@ export default function Home() {
       : [];
 
   return (
-    <div className="page">
+    <div className="page home">
       <div className="container">
         {/* HERO — two columns: copy + spotlight (design parity) */}
         <section className="hero card glow" style={{ padding: 'clamp(28px,5vw,56px)' }}>
@@ -349,11 +411,23 @@ export default function Home() {
 
         {!searchMode && (
           <>
+            {/* QUICK TOOLS */}
+            <HomeTools L={L} />
+
+            {/* CATEGORY CHIPS */}
+            <div className="sec-head" style={{ marginBottom: 10 }}>
+              <h2><span className="bar" /> {L('Explore categories', 'Kategorileri keşfet', 'Kategorien entdecken')}</h2>
+            </div>
+            <CategoryChips lang={lang} />
+
             {/* FOR YOU */}
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
             {/* TRENDING */}
             <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} seeAllTo="/category?cat=smartphones&sort=trend" />
+
+            {/* SUBSCRIPTIONS PROMO */}
+            <SubsPromo L={L} />
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 

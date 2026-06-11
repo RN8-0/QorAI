@@ -15,15 +15,17 @@ import HowItWorks from '../components/HowItWorks.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
-// Grouped like the app's subscriptions screen — one category per comparison.
+// Every supported service in one flat list — no category tabs. Same-category
+// enforcement still happens at analysis time (subscriptionsMixCategories), so a
+// user can stack many services of one type and compare them all at once.
 const PRESET_GROUPS = [
-  { id: 'video', label: { en: 'Video', tr: 'Video', de: 'Video' }, icon: '🎬', items: ['Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'BluTV', 'Exxen', 'Gain', 'MUBI', 'YouTube Premium', 'Crunchyroll', 'beIN Sports', 'TOD'] },
-  { id: 'music', label: { en: 'Music', tr: 'Müzik', de: 'Musik' }, icon: '🎧', items: ['Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer'] },
-  { id: 'ai', label: { en: 'AI', tr: 'Yapay Zekâ', de: 'KI' }, icon: '🤖', items: ['ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Microsoft Copilot', 'Midjourney'] },
-  { id: 'cloud', label: { en: 'Cloud & Productivity', tr: 'Bulut & Verimlilik', de: 'Cloud & Produktivität' }, icon: '☁️', items: ['Microsoft 365', 'Google One', 'iCloud+', 'Dropbox', 'Notion', 'Canva'] },
-  { id: 'gaming', label: { en: 'Gaming', tr: 'Oyun', de: 'Gaming' }, icon: '🎮', items: ['Xbox Game Pass', 'PlayStation Plus', 'Nintendo Switch Online', 'GeForce Now', 'EA Play'] },
+  { id: 'video', items: ['Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'BluTV', 'Exxen', 'Gain', 'MUBI', 'YouTube Premium', 'Crunchyroll', 'beIN Sports', 'TOD', 'Tabii', 'Paramount+', 'Peacock', 'Hulu'] },
+  { id: 'music', items: ['Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer', 'Amazon Music', 'Fizy', 'SoundCloud Go'] },
+  { id: 'ai', items: ['ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Microsoft Copilot', 'Midjourney', 'Grok', 'DeepSeek'] },
+  { id: 'cloud', items: ['Microsoft 365', 'Google One', 'iCloud+', 'Dropbox', 'Notion', 'Canva', 'Google Workspace', 'pCloud'] },
+  { id: 'gaming', items: ['Xbox Game Pass', 'PlayStation Plus', 'Nintendo Switch Online', 'GeForce Now', 'EA Play', 'Ubisoft+', 'Apple Arcade'] },
 ];
-const PRESETS = PRESET_GROUPS.flatMap((g) => g.items);
+const PRESETS = [...new Set(PRESET_GROUPS.flatMap((g) => g.items))];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
 function ServiceCard({ s, isWinner, L }) {
@@ -73,7 +75,6 @@ export default function Subscriptions() {
   useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
 
   const [selected, setSelected] = useState([]);
-  const [group, setGroup] = useState('video');
   const [custom, setCustom] = useState('');
   // phase: select | analyzing | result | history
   const [phase, setPhase] = useState('select');
@@ -187,35 +188,15 @@ export default function Subscriptions() {
   return (
     <div className={'container subs' + (showPicker ? ' is-empty' : '')}>
       <div className="subs-head">
-        <div className="subs-icon" aria-hidden="true">
-          <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="13" rx="2" />
-            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
-          </svg>
-        </div>
         <h1>{t('subs.title')}</h1>
         <p>{t('subs.subtitle')}</p>
-        <div className="subs-mini-stats" aria-label="Subscription selection state">
-          <span>{selected.length}/4</span>
-          <span>{(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).label[lang] || PRESET_GROUPS[0].label.en}</span>
-        </div>
       </div>
 
       {showPicker && (
         <>
           <section className="subs-picker-panel">
-            <div className="subs-cats" role="tablist">
-              {PRESET_GROUPS.map((g) => (
-                <button key={g.id} type="button" role="tab"
-                  className={'subs-cat' + (group === g.id ? ' active' : '')}
-                  onClick={() => setGroup(g.id)}>
-                  <span aria-hidden="true">{g.icon}</span> {g.label[lang] || g.label.en}
-                </button>
-              ))}
-            </div>
             <div className="subs-pills">
-              {(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).items.map((name) => (
+              {PRESETS.map((name) => (
                 <button key={name}
                   className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
                   onClick={() => toggle(name)}>

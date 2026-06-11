@@ -2,7 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://qorai.net/</loc><lastmod>2026-06-11</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://qorai.net/category</loc><lastmod>2026-06-11</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://qorai.net/compare</loc><lastmod>2026-06-11</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/link-analysis</loc><lastmod>2026-06-11</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/subscriptions</loc><lastmod>2026-06-11</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/premium</loc><lastmod>2026-06-11</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -45000,4 +44999,5 @@
   <url><loc>https://qorai.net/product?slug=oppo-a98-5g&amp;id=jb9u5wgggtx24t4</loc><lastmod>2026-05-31</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=oppo-reno13-fs-5g&amp;id=j5kpihcrtmdk6r2</loc><lastmod>2026-05-31</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=oppo-reno14-f&amp;id=usl869dey9pjnhw</loc><lastmod>2026-06-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/product?slug=huawei-nova-12s&amp;id=4ziv0d75dfdmkpe</loc><lastmod>2026-05-31</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
 </urlset>

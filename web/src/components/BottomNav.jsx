@@ -30,7 +30,6 @@ const ICONS = {
 
 const ITEMS = [
   { to: '/', key: 'nav.home', end: true, icon: ICONS.home },
-  { to: '/compare', key: 'nav.compare', icon: ICONS.compare },
   { to: '/link-analysis', key: 'nav.linkAnalysis', icon: ICONS.link },
   { to: '/subscriptions', key: 'nav.subscriptions', icon: ICONS.subs },
 ];

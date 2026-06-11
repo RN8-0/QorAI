@@ -152,7 +152,6 @@ export default function LinkAnalysis() {
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
 
   const [urls, setUrls] = useState(['']);
-  const [mode, setMode] = useState('single');
   // phase: input | identifying | quizLoading | quiz | analyzing | result
   const [phase, setPhase] = useState('input');
   const [base, setBase] = useState(null);
@@ -162,12 +161,21 @@ export default function LinkAnalysis() {
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
 
-  function setUrl(i, val) { setUrls((u) => u.map((x, idx) => (idx === i ? val : x))); }
-  function addUrl() { setMode('compare'); setUrls((u) => (u.length < MAX_LINKS ? [...u, ''] : u)); }
+  // One link → analysis, two+ → comparison. Fields auto-grow as links are
+  // pasted (a fresh empty row appears), so there is no single/compare toggle.
+  function setUrl(i, val) {
+    setUrls((u) => {
+      let next = u.map((x, idx) => (idx === i ? val : x));
+      if (next[next.length - 1].trim() && next.length < MAX_LINKS) next = [...next, ''];
+      while (next.length > 1 && !next[next.length - 1].trim() && !next[next.length - 2].trim()) {
+        next = next.slice(0, -1);
+      }
+      return next;
+    });
+  }
   function removeUrl(i) {
     setUrls((u) => {
       const next = u.filter((_, idx) => idx !== i);
-      if (next.length <= 1) setMode('single');
       return next.length ? next : [''];
     });
   }
@@ -177,7 +185,7 @@ export default function LinkAnalysis() {
   }
 
   function savePending(list) {
-    localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, mode, ts: Date.now() }));
+    localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, ts: Date.now() }));
   }
 
   function needsQuiz(list) {
@@ -276,8 +284,7 @@ export default function LinkAnalysis() {
       const pending = JSON.parse(raw);
       const list = Array.isArray(pending.urls) ? pending.urls.slice(0, MAX_LINKS).filter(Boolean) : [];
       if (!list.length) return;
-      setUrls(list);
-      setMode(list.length > 1 ? 'compare' : 'single');
+      setUrls(list.length < MAX_LINKS ? [...list, ''] : list);
       if (list.length > 1) runCompare(list); else startSingle(list[0]);
     } catch { /* ignore stale pending payloads */ }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -319,30 +326,17 @@ export default function LinkAnalysis() {
         </div>
         <h1>{t('la.title')}</h1>
         <p>{t('la.subtitle')}</p>
-        <div className="la-mini-stats" aria-label="Link analysis state">
-          <span>{filled}/{MAX_LINKS}</span>
-          <span>{mode === 'compare' ? L('Compare', 'Karşılaştır', 'Vergleich') : L('Single', 'Tek', 'Einzeln')}</span>
-        </div>
       </div>
 
       {showForm && (
         <>
           <div className="la-stage">
-            <div className="la-mode" role="tablist" aria-label="Link mode">
-              <button type="button" className={mode === 'single' ? 'active' : ''}
-                onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
-                {L('Single product', 'Tek ürün', 'Ein Produkt')}
-              </button>
-              <button type="button" className={mode === 'compare' ? 'active' : ''}
-                onClick={() => { setMode('compare'); setUrls((u) => (u.length > 1 ? u : [...u, ''])); }}>
-                {L('Compare links', 'Linkleri karşılaştır', 'Links vergleichen')}
-              </button>
-            </div>
-
             <form className="la-form" onSubmit={analyze}>
               <div className="la-form-head">
-                <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
-                <span>{mode === 'compare' ? t('la.hintMulti') : L('Personalized match analysis', 'Kişisel uyum analizi', 'Personalisierte Analyse')}</span>
+                <strong>{L('Paste product links', 'Ürün linklerini yapıştır', 'Produktlinks einfügen')}</strong>
+                <span>{filled > 1
+                  ? L('Comparison mode — analyzing side by side', 'Karşılaştırma modu — yan yana analiz', 'Vergleichsmodus — Seite an Seite')
+                  : L('Add a second link to compare', 'Karşılaştırmak için ikinci link ekle', 'Zweiten Link zum Vergleichen hinzufügen')}</span>
               </div>
               <div className="la-rows">
                 {urls.map((url, i) => (
@@ -350,7 +344,7 @@ export default function LinkAnalysis() {
                     <span className="la-row-no">{i + 1}</span>
                     <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
                       placeholder={t('la.placeholder')} />
-                    {urls.length > 1 && (
+                    {urls.length > 1 && url.trim() && (
                       <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
                     )}
                   </div>
@@ -358,13 +352,7 @@ export default function LinkAnalysis() {
               </div>
 
               <div className="la-actions">
-                {mode === 'compare' && urls.length < MAX_LINKS && (
-                  <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
-                )}
-                {mode === 'single' && (
-                  <button type="button" className="la-add" onClick={addUrl}>{L('Switch to compare', 'Karşılaştırmaya geç', 'Zum Vergleich wechseln')}</button>
-                )}
-                <button type="submit" className="btn btn-grad btn-lg la-go">
+                <button type="submit" className="btn btn-grad btn-lg la-go" disabled={!filled}>
                   {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
                 </button>
               </div>
@@ -378,7 +366,6 @@ export default function LinkAnalysis() {
               <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
                   setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
-                  setMode(it.urls.length > 1 ? 'compare' : 'single');
                   if (it.result && it.result.base) {
                     setEnhanced(it.result);
                     setCompareText('');

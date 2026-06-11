@@ -19,8 +19,8 @@
   background: var(--grad-brand, linear-gradient(180deg, var(--brand-blue), var(--brand-cyan)));
 }
 .hiw-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 12px;
 }
 .hiw-card {

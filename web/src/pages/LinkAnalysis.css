@@ -45,16 +45,16 @@
    rather than stretching edge to edge. */
 .la-stage {
   width: 100%;
-  max-width: 640px;
+  max-width: 860px;
   margin: 0 auto;
 }
 .la-history {
   width: 100%;
-  max-width: 640px;
+  max-width: 860px;
   margin: 30px auto 0;
 }
 /* Keep the explainer aligned with the entry column on this page. */
-.la .hiw { max-width: 640px; }
+.la .hiw { max-width: 860px; }
 .la-mini-stats span {
   min-height: 30px;
   display: inline-flex;

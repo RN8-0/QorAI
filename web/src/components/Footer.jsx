@@ -30,7 +30,6 @@ export default function Footer() {
             <div>
               <h5>{t('footer.product')}</h5>
               <Link to="/">{t('nav.home')}</Link>
-              <Link to="/compare">{t('nav.compare')}</Link>
               <Link to="/link-analysis">{t('nav.linkAnalysis')}</Link>
               <Link to="/subscriptions">{t('nav.subscriptions')}</Link>
             </div>

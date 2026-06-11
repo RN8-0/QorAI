@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
@@ -263,6 +263,11 @@ export default function Compare() {
 
   const slots = [...products];
   const canAdd = slots.length < COMPARE_MAX;
+
+  // The standalone Compare page was removed from navigation — it's only reached
+  // via the compare tray once products are queued. With nothing queued there is
+  // no landing page to show, so send visitors home.
+  if (!ids.length) return <Navigate to="/" replace />;
 
   return (
     <div className="cmp">

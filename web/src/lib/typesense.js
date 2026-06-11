@@ -265,16 +265,25 @@ export async function searchProducts(query, limit = 40) {
   try {
     const data = await searchDocs({
       q,
-      query_by: 'name,brand,keySpecsText,category,filterTokens',
-      query_by_weights: '8,4,2,2,1',
+      // Name carries almost all of the relevance signal. filterTokens
+      // ("ram:8gb", "storage:256gb") were pulling in unrelated products on a
+      // plain-name search, so they're dropped from the query; keySpecsText is
+      // kept only as a faint tie-breaker.
+      query_by: 'name,brand,category,keySpecsText',
+      query_by_weights: '12,5,2,1',
       sort_by: '_text_match:desc,trendScore:desc,techScore:desc',
       per_page: Math.min(limit, 60),
       include_fields: LIST_FIELDS,
       prefix: 'true',
-      num_typos: '2,1,1,0,0',
+      // Tighter fuzziness: at most one typo, and only on tokens long enough that
+      // a typo is plausible — keeps "iphone 15" from matching half the catalog.
+      num_typos: '1,0,0,0',
+      min_len_1typo: 5,
+      min_len_2typo: 12,
       drop_tokens_threshold: 1,
       typo_tokens_threshold: 1,
       prioritize_exact_match: 'true',
+      prioritize_token_position: 'true',
     });
     return uniqueProducts(docs(data).map(docToProduct));
   } catch (err) {

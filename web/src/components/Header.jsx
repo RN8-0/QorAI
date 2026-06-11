@@ -11,7 +11,6 @@ import './Header.css';
 
 // Order: Home, then the Categories mega-menu trigger, then the tools.
 const NAV_REST = [
-  { to: '/compare', key: 'nav.compare' },
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
   { to: '/premium', key: 'nav.premium' },
