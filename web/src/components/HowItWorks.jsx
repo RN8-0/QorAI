@@ -8,18 +8,18 @@ export default function HowItWorks({ title, steps }) {
   return (
     <section className="hiw">
       <div className="hiw-head"><span className="hiw-bar" aria-hidden="true" />{title}</div>
-      <div className="hiw-list">
+      <ol className="hiw-list">
         {steps.map((s, i) => (
-          <div className="hiw-card" key={i}>
+          <li className="hiw-row" key={i}>
             <span className="hiw-no">{String(i + 1).padStart(2, '0')}</span>
             <span className="hiw-icon" style={s.grad ? { background: s.grad } : undefined} aria-hidden="true">{s.icon}</span>
             <div className="hiw-text">
               <strong>{s.title}</strong>
               <span>{s.desc}</span>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

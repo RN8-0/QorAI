@@ -375,14 +375,17 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 items, cons exactly 4 items — each item must be specific and explain real user impact
+- pros must have exactly 5 items, cons exactly 4 items — each item one concise sentence
 - factors are 0-100 integers
-- Be specific and personalized, not generic
-- Write long-form analysis like the mobile app: cover usage fit, content/library fit, workflow impact, ecosystem lock-in, limitations, long-term value and who should skip it
+- Be specific and personalized to the quiz answers and the user profile, not generic
+- Blend the user's profile, browsing history and quiz answers when scoring
+- compatibility_explanation: 3-4 sentences. community_sentiment: 2 short paragraphs.
+  best_for: 2 sentences. recommendation / detailed_comparison fields: 2-3 short
+  paragraphs each. Keep it substantial but DO NOT pad — finishing the full JSON
+  for ALL services matters more than length.
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
-- community_sentiment, compatibility_explanation, recommendation and detailed_comparison must be substantial, not short summaries
 
-Return ONLY valid JSON matching this exact schema:
+Return ONLY valid JSON (no markdown fences, no commentary) matching this exact schema:
 ${schema}`;
 }
 
@@ -392,11 +395,15 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  const res = await askQorAiJson({
+  const call = () => askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
-    maxOutputTokens: 8192,
+    maxOutputTokens: 16384,
   });
+  // The big JSON schema can occasionally come back truncated/non-JSON; one retry
+  // turns most "analysis failed" flukes into a clean result.
+  let res;
+  try { res = await call(); } catch { res = await call(); }
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
   const services = Object.entries(subsRaw).map(([name, d]) => ({
     name,

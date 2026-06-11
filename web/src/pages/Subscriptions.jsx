@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { subscriptionAnalysis, subscriptionsMixCategories } from '../lib/linkAnalysis';
+import { subscriptionAnalysis, subscriptionsMixCategories, generateSubscriptionQuiz } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveSubscriptionHistory } from '../lib/pbHistory';
+import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
@@ -12,10 +13,21 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
+import QuizFlow from '../components/QuizFlow.jsx';
 import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
+
+// Browsing history → compact signal the analysis can blend in (app parity:
+// the recommendation factors in what you've actually been looking at).
+function browsingSignal() {
+  try {
+    return getRecentProducts().slice(0, 10).map((p) => ({
+      name: p.name, category: p.category, brand: p.brand,
+    })).filter((x) => x.name);
+  } catch { return []; }
+}
 
 // Every supported service in one flat list — no category tabs. Same-category
 // enforcement still happens at analysis time (subscriptionsMixCategories), so a
@@ -28,7 +40,43 @@ const PRESET_GROUPS = [
   { id: 'gaming', items: ['Xbox Game Pass', 'PlayStation Plus', 'Nintendo Switch Online', 'GeForce Now', 'EA Play', 'Ubisoft+', 'Apple Arcade'] },
 ];
 const PRESETS = [...new Set(PRESET_GROUPS.flatMap((g) => g.items))];
+// Only the 20 most popular show as square logo tiles; anything else is added via
+// the "Type a subscription" box.
+const TOP20 = [
+  'Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'YouTube Premium',
+  'BluTV', 'Exxen', 'Crunchyroll', 'Spotify', 'Apple Music', 'YouTube Music',
+  'Tidal', 'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Xbox Game Pass',
+  'PlayStation Plus', 'Microsoft 365', 'Google One',
+];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
+
+// Horizontal bar chart comparing each service's overall compatibility score —
+// the "graph" the app shows above the per-service breakdown.
+function ScoreChart({ services, L }) {
+  const rows = (services || []).filter((s) => s && s.name).slice(0, 8);
+  if (rows.length < 1) return null;
+  const max = Math.max(100, ...rows.map((s) => Math.round(s.score || 0)));
+  return (
+    <div className="subs-chart">
+      <div className="subs-chart-head">{L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
+      <div className="subs-chart-rows">
+        {rows.map((s) => {
+          const v = Math.round(s.score || 0);
+          const col = techColor(v);
+          return (
+            <div className="subs-chart-row" key={s.name}>
+              <span className="subs-chart-label"><SubLogo name={s.name} size={20} radius={6} />{s.name}</span>
+              <div className="subs-chart-track">
+                <i style={{ width: `${Math.max(3, (v / max) * 100)}%`, background: col }} />
+              </div>
+              <b style={{ color: col }}>{v}</b>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function ServiceCard({ s, isWinner, L }) {
   const score = Math.round(s.score || 0);
@@ -82,14 +130,19 @@ export default function Subscriptions() {
 
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
-  // phase: select | analyzing | result | history
+  // phase: select | quizLoading | quiz | analyzing | result | history
   const [phase, setPhase] = useState('select');
+  const [questions, setQuestions] = useState([]);
+  const [pendingItems, setPendingItems] = useState([]);
   const [result, setResult] = useState(null);
   const [histEntry, setHistEntry] = useState(null);
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
 
-  function resetAnalysis() { setPhase('select'); setResult(null); setHistEntry(null); setErr(''); }
+  function profile() {
+    return { ...aiUserProfile(user), recentlyViewed: browsingSignal() };
+  }
+  function resetAnalysis() { setPhase('select'); setResult(null); setHistEntry(null); setQuestions([]); setErr(''); }
   function toggle(name) {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
     resetAnalysis();
@@ -132,19 +185,30 @@ export default function Subscriptions() {
     try {
       const access = await requireAiAccess('subscription_analysis', { onMessage: setErr });
       if (!access.ok) { setPhase('select'); return; }
-      await runAnalysis(items, [], 'select');
+      // App parity: select → personalized quiz → analysis. If the quiz can't be
+      // generated, fall straight through to the analysis.
+      setPendingItems(items);
+      setPhase('quizLoading');
+      let qs = [];
+      try {
+        qs = await generateSubscriptionQuiz({ subscriptionNames: items, language: lang, userProfile: profile() });
+      } catch { qs = []; }
+      if (qs.length) { setQuestions(qs); setPhase('quiz'); }
+      else { await runAnalysis(items, []); }
     } catch {
       setErr(t('la.errFail'));
       setPhase('select');
     }
   }
 
-  // Step 2: structured subscription analysis (scores / winner / recommendation).
+  // Step 2: structured subscription analysis (scores / winner / recommendation),
+  // blending profile + browsing history + quiz answers.
   async function runAnalysis(items, answers, failPhase = 'select') {
     setPhase('analyzing');
     trackEvent('subscription_compare', { count: items.length });
     try {
-      const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: aiUserProfile(user) });
+      const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: profile() });
+      if (!data.services.length) throw new Error('empty analysis');
       setResult(data);
       setPhase('result');
       await saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores, result: data });
@@ -209,16 +273,18 @@ export default function Subscriptions() {
       {showPicker && (
         <>
           <Reveal as="section" className="subs-picker-panel">
-            <div className="subs-pills">
-              {PRESETS.map((name) => (
-                <button key={name}
-                  className={'subs-pill subs-pill-logo lift' + (selected.includes(name) ? ' active' : '')}
-                  onClick={() => toggle(name)}>
-                  <SubLogo name={name} size={24} radius={7} />
-                  <span>{name}</span>
-                  <i className={selected.includes(name) ? 'pop-in' : ''}>{selected.includes(name) ? '✓' : '+'}</i>
-                </button>
-              ))}
+            <div className="subs-grid">
+              {TOP20.map((name) => {
+                const on = selected.includes(name);
+                return (
+                  <button key={name} type="button" title={name} aria-label={name}
+                    className={'subs-tile' + (on ? ' active' : '')}
+                    onClick={() => toggle(name)}>
+                    <SubLogo name={name} size={44} radius={12} />
+                    {on && <span className="subs-tile-check pop-in" aria-hidden="true">✓</span>}
+                  </button>
+                );
+              })}
             </div>
 
             <form className="subs-custom" onSubmit={addCustom}>
@@ -269,6 +335,35 @@ export default function Subscriptions() {
         </>
       )}
 
+      {phase === 'quizLoading' && (
+        <div className="subs-loading fade-up">
+          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span className="soft-pulse">{L('Preparing your quiz…', 'Quiz hazırlanıyor…', 'Quiz wird vorbereitet…')}</span>
+        </div>
+      )}
+
+      {phase === 'quiz' && questions.length > 0 && (
+        <>
+          <div className="subs-quiz-for">
+            {pendingItems.map((s) => (
+              <span key={s} className="subs-chip subs-chip-static">
+                <SubLogo name={s} size={22} radius={6} />{s}
+              </span>
+            ))}
+          </div>
+          <QuizFlow
+            questions={questions}
+            busy={false}
+            title={L('Tune your match', 'Eşleşmeni kişiselleştir', 'Match anpassen')}
+            subtitle={L('A few quick questions so Qor AI weighs the services for how you actually use them.',
+              'Birkaç kısa soru — Qor AI servisleri senin gerçek kullanımına göre tartsın.',
+              'Ein paar kurze Fragen, damit Qor AI die Dienste nach deiner Nutzung gewichtet.')}
+            onSubmit={(answers) => runAnalysis(pendingItems, answers)}
+            onSkip={() => runAnalysis(pendingItems, [])}
+          />
+        </>
+      )}
+
       {phase === 'history' && histEntry && (
         <div className="subs-result fade-up">
           <div className="subs-hist-meta">
@@ -313,6 +408,8 @@ export default function Subscriptions() {
 
       {phase === 'result' && result && (
         <div className="subs-result fade-up">
+          {(result.services || []).length > 1 && <ScoreChart services={result.services} L={L} />}
+
           <div className="subs-svc-grid">
             {(result.services || []).map((s) => (
               <ServiceCard key={s.name} s={s} isWinner={result.isCompare && s.name === winnerName} L={L} />

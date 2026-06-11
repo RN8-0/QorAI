@@ -1,7 +1,82 @@
-/* Page body below the shared hero band. One consistent column width. */
+/* Page body below the shared hero band. One consistent column width — picker,
+   how-it-works, history and results all share these edges. */
 .subs-body {
-  --subs-col: 880px;
+  --subs-col: 920px;
   padding-bottom: 90px;
+}
+.subs-result, .subs-quiz-for, .subs .quiz, .subs-loading {
+  width: 100%;
+  max-width: var(--subs-col);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Square logo tiles — top-20 only, no names (hover title shows the name). */
+.subs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 12px;
+}
+.subs-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+}
+.subs-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--border2);
+  box-shadow: 0 12px 26px color-mix(in srgb, #020617 10%, transparent);
+}
+.subs-tile.active {
+  border-color: color-mix(in srgb, var(--brand-cyan) 60%, var(--accent-ring));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-cyan) 14%, transparent);
+  background: var(--accent-soft);
+}
+.subs-tile-check {
+  position: absolute;
+  top: -7px; right: -7px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--grad-ai);
+  color: #fff;
+  font-size: 12px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-blue) 40%, transparent);
+}
+
+/* Comparison score chart (the "graph" above the per-service breakdown). */
+.subs-chart {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 18px);
+  padding: 18px 20px;
+  box-shadow: var(--card-glow);
+}
+.subs-chart-head { font-size: 14px; font-weight: 850; margin-bottom: 14px; }
+.subs-chart-rows { display: flex; flex-direction: column; gap: 11px; }
+.subs-chart-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 34px;
+  align-items: center;
+  gap: 12px;
+}
+.subs-chart-label {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+  font-size: 13px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.subs-chart-track { height: 10px; border-radius: 999px; background: var(--bg3); overflow: hidden; }
+.subs-chart-track i { display: block; height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.subs-chart-row b { font-size: 14px; font-weight: 850; text-align: right; }
+
+@media (max-width: 560px) {
+  .subs-chart-row { grid-template-columns: 110px 1fr 28px; gap: 8px; }
 }
 .subs-picker-panel {
   min-width: 0;

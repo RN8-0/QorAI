@@ -18,27 +18,24 @@
   border-radius: 2px;
   background: var(--grad-brand, linear-gradient(180deg, var(--brand-blue), var(--brand-cyan)));
 }
+/* Single list card — rows separated by hairlines, no individual boxes. */
 .hiw-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 12px;
-}
-.hiw-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 15px 18px;
+  list-style: none;
+  margin: 0;
+  padding: 4px 6px;
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--r-lg, 18px);
   box-shadow: var(--card-glow);
+}
+.hiw-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 14px;
   text-align: left;
-  transition: border-color 0.15s, transform 0.15s;
 }
-.hiw-card:hover {
-  border-color: color-mix(in srgb, var(--brand-cyan) 30%, var(--border));
-  transform: translateY(-1px);
-}
+.hiw-row + .hiw-row { border-top: 1px solid var(--border); }
 .hiw-no {
   flex: none;
   min-width: 22px;
