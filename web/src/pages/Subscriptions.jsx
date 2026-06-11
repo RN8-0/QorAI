@@ -11,6 +11,7 @@ import AiText from '../components/AiText.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
+import HowItWorks from '../components/HowItWorks.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
@@ -165,22 +166,36 @@ export default function Subscriptions() {
   const showPicker = phase === 'select';
   const winnerName = result?.winner?.best || result?.winner?.overall || '';
 
+  const howItWorks = [
+    { icon: '💬', grad: 'linear-gradient(135deg, var(--brand-cyan), var(--brand-blue))',
+      title: L('Community Voice', 'İnternet Yorumları', 'Community-Stimmen'),
+      desc: L('Real user feedback from Reddit, forums, and social media with a positive/negative summary.',
+        'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet.',
+        'Echtes Feedback aus Reddit, Foren und Social Media mit Positiv-/Negativ-Zusammenfassung.') },
+    { icon: '🎯', grad: 'linear-gradient(135deg, var(--brand-sky), var(--brand-cyan))',
+      title: L('Personal Quiz', 'Kişisel Quiz', 'Persönliches Quiz'),
+      desc: L('AI tailors questions to your habits so every answer sharpens the match.',
+        'AI alışkanlıklarına göre sorular hazırlar — her cevap eşleşmeyi keskinleştirir.',
+        'Die KI passt Fragen an deine Gewohnheiten an und personalisiert so das Ergebnis.') },
+    { icon: '✨', grad: 'linear-gradient(135deg, var(--brand-cyan), #10B981)',
+      title: L('Smart Match', 'Akıllı Eşleşme', 'Smart Match'),
+      desc: L('Compatibility score and a detailed recommendation tuned to your profile.',
+        'Profiline göre uyum puanı ve sana özel detaylı öneri.',
+        'Kompatibilitätsscore und detaillierte Empfehlung passend zu deinem Profil.') },
+  ];
+
   return (
     <div className={'container subs' + (showPicker ? ' is-empty' : '')}>
       <div className="subs-head">
-        <div className="subs-titlebar">
-          <div className="subs-icon" aria-hidden="true">
-            <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="7" width="20" height="13" rx="2" />
-              <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-              <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
-            </svg>
-          </div>
-          <div>
-            <h1>{t('subs.title')}</h1>
-            <p>{t('subs.subtitle')}</p>
-          </div>
+        <div className="subs-icon" aria-hidden="true">
+          <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="13" rx="2" />
+            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
+          </svg>
         </div>
+        <h1>{t('subs.title')}</h1>
+        <p>{t('subs.subtitle')}</p>
         <div className="subs-mini-stats" aria-label="Subscription selection state">
           <span>{selected.length}/4</span>
           <span>{(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).label[lang] || PRESET_GROUPS[0].label.en}</span>
@@ -188,7 +203,7 @@ export default function Subscriptions() {
       </div>
 
       {showPicker && (
-        <div className="subs-workbench">
+        <>
           <section className="subs-picker-panel">
             <div className="subs-cats" role="tablist">
               {PRESET_GROUPS.map((g) => (
@@ -230,25 +245,31 @@ export default function Subscriptions() {
 
             {err && <div className="subs-err">{err}</div>}
 
-            <button className="btn btn-primary btn-lg subs-go"
+            <button className="btn btn-grad btn-lg subs-go"
               onClick={() => startAnalysis()} disabled={selected.length < 1}>
-              {selected.length < 1 ? t('subs.goMin') : t('la.analyze')}
+              {selected.length < 1 ? t('subs.goMin') : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
             </button>
           </section>
 
-          {user && <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
-            onOpen={(it) => {
-              if (it.result && Array.isArray(it.result.services)) {
-                setSelected(it.services.length ? it.services : it.result.services.map((s) => s.name).filter(Boolean));
-                setResult(it.result);
-                setHistEntry(null);
-                setPhase('result');
-              } else {
-                setHistEntry(it);
-                setPhase('history');
-              }
-            }} />}
-        </div>
+          <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+
+          {user && (
+            <div className="subs-history">
+              <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
+                onOpen={(it) => {
+                  if (it.result && Array.isArray(it.result.services)) {
+                    setSelected(it.services.length ? it.services : it.result.services.map((s) => s.name).filter(Boolean));
+                    setResult(it.result);
+                    setHistEntry(null);
+                    setPhase('result');
+                  } else {
+                    setHistEntry(it);
+                    setPhase('history');
+                  }
+                }} />
+            </div>
+          )}
+        </>
       )}
 
       {phase === 'history' && histEntry && (

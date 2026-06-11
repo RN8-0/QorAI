@@ -12,6 +12,7 @@ import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
+import HowItWorks from '../components/HowItWorks.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
@@ -284,21 +285,40 @@ export default function LinkAnalysis() {
   const filled = urls.filter((u) => u.trim()).length;
   const showForm = phase === 'input';
 
+  const howItWorks = [
+    { icon: '🔗', grad: 'linear-gradient(135deg, var(--brand-blue), var(--brand-deep))',
+      title: L('Paste Link', 'Bağlantıyı Yapıştır', 'Link einfügen'),
+      desc: L('Paste any product link from 100+ stores — Qor AI identifies it.',
+        '100+ mağazadan herhangi bir ürün linkini yapıştır — Qor AI ürünü tanır.',
+        'Füge einen Produktlink aus 100+ Shops ein — Qor AI erkennt ihn.') },
+    { icon: '💬', grad: 'linear-gradient(135deg, var(--brand-cyan), var(--brand-blue))',
+      title: L('Community Voice', 'İnternet Yorumları', 'Community-Stimmen'),
+      desc: L('Real user opinions gathered from Reddit, YouTube and forums.',
+        'Reddit, YouTube ve forumlardan gerçek kullanıcı görüşlerini toplar.',
+        'Echte Nutzermeinungen von Reddit, YouTube und Foren.') },
+    { icon: '🎯', grad: 'linear-gradient(135deg, var(--brand-sky), var(--brand-cyan))',
+      title: L('Personal Quiz', 'Kişisel Quiz', 'Persönliches Quiz'),
+      desc: L('A few quick questions — each answer sharpens your match.',
+        'Birkaç kısa soru; her yanıt sana özel eşleşmeyi keskinleştirir.',
+        'Ein paar kurze Fragen — jede Antwort schärft deinen Match.') },
+    { icon: '✨', grad: 'linear-gradient(135deg, var(--brand-cyan), #10B981)',
+      title: L('Match Score', 'Eşleşme Skoru', 'Match-Score'),
+      desc: L('A compatibility score and detailed recommendation for your profile.',
+        'Profiline göre kişisel uyum puanı ve detaylı öneri sunar.',
+        'Ein Kompatibilitätsscore und eine detaillierte Empfehlung für dein Profil.') },
+  ];
+
   return (
     <div className={'container la' + (showForm ? ' is-empty' : '')}>
       <div className="la-head">
-        <div className="la-titlebar">
-          <div className="la-icon" aria-hidden="true">
-            <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-          </div>
-          <div>
-            <h1>{t('la.title')}</h1>
-            <p>{t('la.subtitle')}</p>
-          </div>
+        <div className="la-icon" aria-hidden="true">
+          <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
         </div>
+        <h1>{t('la.title')}</h1>
+        <p>{t('la.subtitle')}</p>
         <div className="la-mini-stats" aria-label="Link analysis state">
           <span>{filled}/{MAX_LINKS}</span>
           <span>{mode === 'compare' ? L('Compare', 'Karşılaştır', 'Vergleich') : L('Single', 'Tek', 'Einzeln')}</span>
@@ -306,66 +326,72 @@ export default function LinkAnalysis() {
       </div>
 
       {showForm && (
-        <div className="la-workbench">
-          <section className="la-entry-panel">
-          <div className="la-mode" role="tablist" aria-label="Link mode">
-            <button type="button" className={mode === 'single' ? 'active' : ''}
-              onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
-              {L('Single product', 'Tek ürün', 'Ein Produkt')}
-            </button>
-            <button type="button" className={mode === 'compare' ? 'active' : ''}
-              onClick={() => { setMode('compare'); setUrls((u) => (u.length > 1 ? u : [...u, ''])); }}>
-              {L('Compare links', 'Linkleri karşılaştır', 'Links vergleichen')}
-            </button>
-          </div>
-
-          <form className="la-form" onSubmit={analyze}>
-            <div className="la-form-head">
-              <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
-              <span>{mode === 'compare' ? t('la.hintMulti') : L('Personalized match analysis', 'Kişisel uyum analizi', 'Personalisierte Analyse')}</span>
-            </div>
-            <div className="la-rows">
-              {urls.map((url, i) => (
-                <div className="la-row" key={i}>
-                  <span className="la-row-no">{i + 1}</span>
-                  <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
-                    placeholder={t('la.placeholder')} />
-                  {urls.length > 1 && (
-                    <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="la-actions">
-              {mode === 'compare' && urls.length < MAX_LINKS && (
-                <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
-              )}
-              {mode === 'single' && (
-                <button type="button" className="la-add" onClick={addUrl}>{L('Switch to compare', 'Karşılaştırmaya geç', 'Zum Vergleich wechseln')}</button>
-              )}
-              <button type="submit" className="btn btn-primary la-go">
-                {filled > 1 ? t('la.analyzeMany', { n: filled }) : t('la.analyzeOne')}
+        <>
+          <div className="la-stage">
+            <div className="la-mode" role="tablist" aria-label="Link mode">
+              <button type="button" className={mode === 'single' ? 'active' : ''}
+                onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
+                {L('Single product', 'Tek ürün', 'Ein Produkt')}
+              </button>
+              <button type="button" className={mode === 'compare' ? 'active' : ''}
+                onClick={() => { setMode('compare'); setUrls((u) => (u.length > 1 ? u : [...u, ''])); }}>
+                {L('Compare links', 'Linkleri karşılaştır', 'Links vergleichen')}
               </button>
             </div>
-          </form>
-          </section>
 
-          {user && <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
-            onOpen={(it) => {
-              setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
-              setMode(it.urls.length > 1 ? 'compare' : 'single');
-              if (it.result && it.result.base) {
-                setEnhanced(it.result);
-                setCompareText('');
-              } else {
-                setEnhanced(null);
-                setCompareText(String(it.analysis || ''));
-              }
-              setErr('');
-              setPhase('result');
-            }} />}
-        </div>
+            <form className="la-form" onSubmit={analyze}>
+              <div className="la-form-head">
+                <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
+                <span>{mode === 'compare' ? t('la.hintMulti') : L('Personalized match analysis', 'Kişisel uyum analizi', 'Personalisierte Analyse')}</span>
+              </div>
+              <div className="la-rows">
+                {urls.map((url, i) => (
+                  <div className="la-row" key={i}>
+                    <span className="la-row-no">{i + 1}</span>
+                    <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
+                      placeholder={t('la.placeholder')} />
+                    {urls.length > 1 && (
+                      <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="la-actions">
+                {mode === 'compare' && urls.length < MAX_LINKS && (
+                  <button type="button" className="la-add" onClick={addUrl}>{t('la.addLink')}</button>
+                )}
+                {mode === 'single' && (
+                  <button type="button" className="la-add" onClick={addUrl}>{L('Switch to compare', 'Karşılaştırmaya geç', 'Zum Vergleich wechseln')}</button>
+                )}
+                <button type="submit" className="btn btn-grad btn-lg la-go">
+                  {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+
+          {user && (
+            <div className="la-history">
+              <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
+                onOpen={(it) => {
+                  setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
+                  setMode(it.urls.length > 1 ? 'compare' : 'single');
+                  if (it.result && it.result.base) {
+                    setEnhanced(it.result);
+                    setCompareText('');
+                  } else {
+                    setEnhanced(null);
+                    setCompareText(String(it.analysis || ''));
+                  }
+                  setErr('');
+                  setPhase('result');
+                }} />
+            </div>
+          )}
+        </>
       )}
 
       {err && <div className="la-err">{err}</div>}
