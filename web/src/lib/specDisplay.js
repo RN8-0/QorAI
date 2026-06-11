@@ -700,6 +700,12 @@ function cleanupValueLine(line, lang) {
     for (const [re, map] of DE_RESIDUE) out = out.replace(re, map[code] || map.en);
   }
   if (code === 'en') {
+    // Epey writes bilingual values as "<Turkish term> (<English term>)". On the
+    // EN view keep only the English parenthetical when the prefix still carries
+    // Turkish-specific letters — "Blue Işık Filtresi (Blue Light Filter)" →
+    // "Blue Light Filter". Numeric/acronym parentheticals ("50.0MP (Camera 1)")
+    // have no Turkish prefix so they are untouched.
+    out = out.replace(/^.*?[çğışıİÇĞŞ][^()]*\(([A-Za-z0-9][A-Za-z0-9 .,/+%'’"-]*)\)\s*$/, '$1').trim();
     // Unit casing junk from old MT ("0.03 Ms" → "0.03 ms") + leftover Turkish.
     out = out
       .replace(/(\d)\s*Ms\b/g, '$1 ms')
