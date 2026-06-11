@@ -116,14 +116,18 @@ String _localizedPredictionField(
 class AIReviewResult {
   final String summary;
   final int satisfaction;
+  final int confidence;
   final List<String> praised;
   final List<String> criticized;
+  final List<String> sources;
   final bool failed;
   const AIReviewResult({
     this.summary = '',
     this.satisfaction = 0,
+    this.confidence = 0,
     this.praised = const [],
     this.criticized = const [],
+    this.sources = const [],
     this.failed = false,
   });
 }
@@ -163,7 +167,7 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
   final Ref _ref;
   final String _productId;
   final String _languageCode;
-  static const int _cacheVersion = 2;
+  static const int _cacheVersion = 3;
   _AIReviewNotifier(this._ref, LocalizedProductKey key)
     : _productId = key.productId,
       _languageCode = key.normalizedLanguageCode.isEmpty
@@ -190,7 +194,10 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     } catch (_) {}
   }
 
-  Future<void> startAnalysis(String productName) async {
+  Future<void> startAnalysis(
+    String productName, {
+    ProductEntity? product,
+  }) async {
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
     state = const AsyncValue.loading();
@@ -217,11 +224,20 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     try {
       final gemini = _ref.read(geminiServiceProvider);
       final langName = _getLanguageName(_languageCode);
+      final productContext = product == null
+          ? ''
+          : [
+              'brand="${product.brand ?? ''}"',
+              'category="${product.category}"',
+              'subcategory="${product.subcategory}"',
+              if (product.keySpecs.isNotEmpty)
+                'keySpecs="${product.keySpecs.entries.take(8).map((e) => '${e.key}: ${e.value}').join(' | ')}"',
+            ].join(', ');
       final prompt = await _geminiAdminPrompt(
         _ref,
         'product_review_analysis',
         'You are a senior technology product analyst with expertise in consumer electronics. '
-            'Based on your comprehensive knowledge of publicly available user reviews, Reddit threads, '
+            'Use web search to inspect publicly available user reviews, Reddit threads, forums, retailer reviews, '
             'professional review sites (GSMArena, RTINGS, NotebookCheck, Tom\'s Hardware, etc.), '
             'YouTube teardowns and long-term reviews, and tech community feedback for "$productName", '
             'provide a thorough and professional consumer sentiment analysis.\n\n'
@@ -232,19 +248,21 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
             '"summary": A comprehensive 4-5 sentence professional overview of community sentiment. '
             'Cover overall reception, standout strengths, notable weaknesses, and long-term ownership insights.\n'
             '"satisfaction": Integer 0-100 representing aggregated user satisfaction across all sources.\n'
+            '"confidence": Integer 0-100 representing how much public review data was found.\n'
             '"praised": Array of 4-5 specific, concrete features/aspects users consistently praise. '
             'Be precise (e.g., "Exceptional battery life — 6+ days reported by users" not just "battery").\n'
             '"criticized": Array of 3-4 specific, real-world issues users consistently report. '
-            'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").',
+            'Be honest and precise (e.g., "Thermal throttling under sustained CPU load" not just "heating").\n'
+            '"sources": Array of 3-6 short source labels or domains you used.',
       );
       final response = await gemini
-          .jsonFreeTextQuery(
-            '$prompt\n\nRuntime context: productName="$productName", language="$langName".',
-            language: _languageCode,
-            maxTokens: 1400,
+          .groundedQuery(
+            '$prompt\n\nRuntime context: productName="$productName", language="$langName", $productContext. '
+            'Search broadly before estimating satisfaction. Return only the JSON object.',
+            maxTokens: 1800,
           )
           .timeout(
-            _premiumAiRequestTimeout,
+            const Duration(seconds: 90),
             onTimeout: () => throw Exception('ai review timeout'),
           );
 
@@ -279,11 +297,17 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
         satisfaction: data['satisfaction'] is num
             ? (data['satisfaction'] as num).toInt().clamp(0, 100)
             : int.tryParse(data['satisfaction']?.toString() ?? '') ?? 0,
+        confidence: data['confidence'] is num
+            ? (data['confidence'] as num).toInt().clamp(0, 100)
+            : int.tryParse(data['confidence']?.toString() ?? '') ?? 0,
         praised: (data['praised'] is List)
             ? (data['praised'] as List).map((e) => e.toString()).toList()
             : [],
         criticized: (data['criticized'] is List)
             ? (data['criticized'] as List).map((e) => e.toString()).toList()
+            : [],
+        sources: (data['sources'] is List)
+            ? (data['sources'] as List).map((e) => e.toString()).toList()
             : [],
       );
     } catch (_) {

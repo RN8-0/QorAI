@@ -43,10 +43,17 @@ void main() {
       expect(product.allImages, ['https://example.com/img.jpg']);
     });
 
-    test('allImages returns images list when not empty', () {
-      final withImages = product.copyWith(images: ['img1.jpg', 'img2.jpg']);
-      expect(withImages.allImages, ['img1.jpg', 'img2.jpg']);
-    });
+    test(
+      'allImages returns primary image before images list when not empty',
+      () {
+        final withImages = product.copyWith(images: ['img1.jpg', 'img2.jpg']);
+        expect(withImages.allImages, [
+          'https://example.com/img.jpg',
+          'img1.jpg',
+          'img2.jpg',
+        ]);
+      },
+    );
 
     test('allImages returns empty list when no images at all', () {
       final noImages = product.copyWith(imageURL: '', images: []);
@@ -87,9 +94,12 @@ void main() {
       expect(noBrand.brand, isNull);
     });
 
-    test('getAffiliateLinksForCountry returns empty map for missing country', () {
-      expect(product.getAffiliateLinksForCountry('JP'), isEmpty);
-    });
+    test(
+      'getAffiliateLinksForCountry returns empty map for missing country',
+      () {
+        expect(product.getAffiliateLinksForCountry('JP'), isEmpty);
+      },
+    );
   });
 
   // ─── ProductRatings Tests ───
@@ -103,7 +113,12 @@ void main() {
     });
 
     test('convenience getters return correct values', () {
-      const ratings = ProductRatings(expert: 85, community: 78, user: 90, count: 150);
+      const ratings = ProductRatings(
+        expert: 85,
+        community: 78,
+        user: 90,
+        count: 150,
+      );
       expect(ratings.expertScore, 85);
       expect(ratings.communityScore, 78);
       expect(ratings.userScore, 90);

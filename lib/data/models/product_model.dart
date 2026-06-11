@@ -52,7 +52,8 @@ class ProductModel extends ProductEntity {
     final prices = <String, double>{};
     if (data.containsKey('prices') && data['prices'] is Map) {
       _deepCastMap(data['prices']).forEach((k, v) {
-        if (v is num) prices[k] = v.toDouble();
+        final parsed = _parsePriceValue(v);
+        if (parsed != null && parsed > 0) prices[k.toString()] = parsed;
       });
     }
 
@@ -333,9 +334,11 @@ class ProductModel extends ProductEntity {
   /// Read from Hive cache (deserialize from Map) - Section 7.4
   factory ProductModel.fromMap(Map<String, dynamic> data) {
     final pricesData = data['prices'] as Map<String, dynamic>? ?? {};
-    final prices = pricesData.map(
-      (key, value) => MapEntry(key, (value as num).toDouble()),
-    );
+    final prices = <String, double>{};
+    pricesData.forEach((key, value) {
+      final parsed = _parsePriceValue(value);
+      if (parsed != null && parsed > 0) prices[key] = parsed;
+    });
     if (prices.isEmpty) {
       final lowestPrice = (data['lowestPrice'] as num?)?.toDouble();
       final country = _countryForCurrency(
@@ -446,6 +449,17 @@ class ProductModel extends ProductEntity {
         ),
       ),
     );
+  }
+
+  static double? _parsePriceValue(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    final normalized = text
+        .replaceAll(RegExp(r'[^0-9,.-]'), '')
+        .replaceAll(',', '.');
+    return double.tryParse(normalized);
   }
 }
 

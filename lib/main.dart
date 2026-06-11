@@ -27,14 +27,13 @@ import 'package:qor_ai/presentation/providers/providers.dart';
 // Sıralı queue + aralarındaki nefes payı (gap) sayesinde her init kendi
 // başına çalışır, UI thread arasında frame paint penceresi açılır.
 //
-// İlk 2500ms tamamen UI'a bırakılır → HomeScreen Stage 0 + feed READY +
-// Stage 1-6 reveal pipeline tamamen yerleşir. Önceki 750ms değeri spec
-// init ile HomeScreen mount'un çakışmasına yol açıyordu (logta görüldü:
-// spec init sırasında Stage 1-3 build ediliyor → 174 frame skip).
-// Spec translations sadece compare ekranında kritik — HomeScreen
-// tamamen yerleştikten sonra başlamak güvenli.
-const _kStartupInitialIdle = Duration(milliseconds: 2500);
-const _kStartupGap = Duration(milliseconds: 600);
+// First seconds belong to the UI only. The live spec dictionary is large
+// enough to cause skipped frames on mid-range Android when it starts during
+// the home feed reveal, so it is pushed deeper into the startup tail.
+const _kStartupInitialIdle = Duration(seconds: 6);
+const _kSpecDictionaryIdle = Duration(seconds: 10);
+const _kStartupGap = Duration(seconds: 1);
+const _kLegacyCacheCleanupDelay = Duration(seconds: 20);
 
 Future<void> _clearLegacyFeedCache(CacheService cacheService) async {
   await Future.wait([
@@ -65,8 +64,8 @@ int _warmupTask(int x) => x;
 /// devices into GC churn after a few navigations.
 void _configureImageCache() {
   final cache = PaintingBinding.instance.imageCache;
-  cache.maximumSize = 900;
-  cache.maximumSizeBytes = 72 * 1024 * 1024;
+  cache.maximumSize = 650;
+  cache.maximumSizeBytes = 56 * 1024 * 1024;
 }
 
 /// Pre-warm the most-used Google Fonts before the first frame is painted.
@@ -92,23 +91,26 @@ void _preloadGoogleFonts() {
 /// Sıralı çalıştırma + her adım arasında 600ms gap → her init temiz başlar,
 /// UI thread paint penceresi açılır.
 ///
-/// Sıralama (toplam ~3-4s startup tail; UI bunlardan etkilenmez):
-///   t=750ms  → Spec translations (compare ekranı için kritik)
-///   t=1350ms → Notifications init (FCM permission + token)
-///   t=1950ms → ATT request (iOS only, opsiyonel)
-Future<void> _scheduleDeferredStartupTasks() async {
+/// Sıralama:
+///   t=6s  -> Notifications init
+///   t=17s -> Spec translations dictionary
+///   t=18s -> ATT request (iOS only)
+Future<void> _scheduleDeferredStartupTasks(CacheService cacheService) async {
   await Future<void>.delayed(_kStartupInitialIdle);
-  await _initializeSpecTranslations();
-
   if (!kIsWeb) {
-    await Future<void>.delayed(_kStartupGap);
     await _initializeNotifications();
   }
+
+  await Future<void>.delayed(_kSpecDictionaryIdle);
+  await _initializeSpecTranslations();
 
   if (!kIsWeb && Platform.isIOS) {
     await Future<void>.delayed(_kStartupGap);
     await _requestTrackingTransparency();
   }
+
+  await Future<void>.delayed(_kLegacyCacheCleanupDelay);
+  unawaited(_clearLegacyFeedCache(cacheService));
 }
 
 Future<void> _initializeSpecTranslations() async {
@@ -143,83 +145,82 @@ Future<void> _requestTrackingTransparency() async {
 }
 
 void main() {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    // System UI settings (mobile only)
-    if (!kIsWeb) {
-      SystemChrome.setSystemUIOverlayStyle(
-        const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-        ),
+      // System UI settings (mobile only)
+      if (!kIsWeb) {
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+        );
+
+        // Disable landscape modes (portrait only)
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+      }
+
+      // Initialize Cache & Hive - Section 7.4
+      final cacheService = CacheService();
+      final hiveDS = HiveDataSource();
+      try {
+        await Future.wait([cacheService.initialize(), hiveDS.initialize()]);
+        debugPrint('=== QOR AI: CacheService + HiveDS initialized ===');
+      } catch (e) {
+        debugPrint('=== QOR AI: CacheService FAILED: $e ===');
+      }
+
+      // Initialize PocketBase with persistent auth store (SharedPreferences).
+      // This must happen before any provider reads `pb` global singleton.
+      try {
+        pb_client.pb = await pb_client.createPbClientWithPersistence();
+        debugPrint(
+          '=== QOR AI: PocketBase client initialized with persistent auth ===',
+        );
+      } catch (e) {
+        // Fallback: in-memory auth (no persistence but app still works)
+        debugPrint(
+          '=== QOR AI: PocketBase persistence init failed, using in-memory: $e ===',
+        );
+        pb_client.pb = PocketBase(pb_client.kPbBaseUrl);
+      }
+
+      // Initialize Remote Config via PocketBase
+      final remoteConfigService = RemoteConfigService.fromPb(
+        PbDataSource(),
+        deferredLoad: const Duration(seconds: 12),
       );
 
-      // Disable landscape modes (portrait only)
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    }
+      // Pre-warm Google Fonts before first frame so text renders without flash.
+      _preloadGoogleFonts();
+      // ImageCache limitini explicit ayarla — 333 ürün × scroll senaryosu.
+      _configureImageCache();
 
-    // Initialize Cache & Hive - Section 7.4
-    final cacheService = CacheService();
-    final hiveDS = HiveDataSource();
-    try {
-      await Future.wait([
-        cacheService.initialize(),
-        hiveDS.initialize(),
-      ]);
-      unawaited(_clearLegacyFeedCache(cacheService));
-      debugPrint('=== QOR AI: CacheService + HiveDS initialized ===');
-    } catch (e) {
-      debugPrint('=== QOR AI: CacheService FAILED: $e ===');
-    }
+      debugPrint('=== QOR AI: Calling runApp ===');
 
-    // Initialize PocketBase with persistent auth store (SharedPreferences).
-    // This must happen before any provider reads `pb` global singleton.
-    try {
-      pb_client.pb = await pb_client.createPbClientWithPersistence();
-      debugPrint('=== QOR AI: PocketBase client initialized with persistent auth ===');
-    } catch (e) {
-      // Fallback: in-memory auth (no persistence but app still works)
-      debugPrint('=== QOR AI: PocketBase persistence init failed, using in-memory: $e ===');
-      pb_client.pb = PocketBase(pb_client.kPbBaseUrl);
-    }
-
-    // Initialize Remote Config via PocketBase
-    final remoteConfigService = RemoteConfigService.fromPb(
-      PbDataSource(),
-      deferredLoad: const Duration(seconds: 12),
-    );
-
-    // Pre-warm Google Fonts before first frame so text renders without flash.
-    _preloadGoogleFonts();
-    // ImageCache limitini explicit ayarla — 333 ürün × scroll senaryosu.
-    _configureImageCache();
-
-    debugPrint('=== QOR AI: Calling runApp ===');
-
-    runApp(
-      ProviderScope(
-        overrides: [
-          cacheServiceProvider.overrideWithValue(cacheService),
-          hiveDataSourceProvider.overrideWithValue(hiveDS),
-          remoteConfigServiceProvider.overrideWithValue(remoteConfigService),
-        ],
-        child: const QorAiApp(),
-      ),
-    );
-    // Orchestrator runApp'tan SONRA başlar; ilk frame paint olana kadar
-    // (Stage 0 statik UI) hiçbir ağır init çalışmaz.
-    unawaited(_scheduleDeferredStartupTasks());
-    // Compute isolate pool'unu arka planda ısıt. homeFeedProvider'ın
-    // Hive cache decode'u tetiklendiğinde isolate hazır olur → ~50-100ms
-    // spawn maliyetini app start süresinde gizliyoruz.
-    unawaited(_warmupComputeIsolate());
-  }, (error, stack) {
-    debugPrint('=== QOR AI: ZONE ERROR: $error ===');
-    debugPrint('$stack');
-  });
+      runApp(
+        ProviderScope(
+          overrides: [
+            cacheServiceProvider.overrideWithValue(cacheService),
+            hiveDataSourceProvider.overrideWithValue(hiveDS),
+            remoteConfigServiceProvider.overrideWithValue(remoteConfigService),
+          ],
+          child: const QorAiApp(),
+        ),
+      );
+      // Orchestrator runApp'tan SONRA başlar; ilk frame paint olana kadar
+      // (Stage 0 statik UI) hiçbir ağır init çalışmaz.
+      unawaited(_scheduleDeferredStartupTasks(cacheService));
+      // Compute isolate pool'unu arka planda ısıt. homeFeedProvider'ın
+      // Hive cache decode'u tetiklendiğinde isolate hazır olur → ~50-100ms
+      // spawn maliyetini app start süresinde gizliyoruz.
+      unawaited(_warmupComputeIsolate());
+    },
+    (error, stack) {
+      debugPrint('=== QOR AI: ZONE ERROR: $error ===');
+      debugPrint('$stack');
+    },
+  );
 }
-
-

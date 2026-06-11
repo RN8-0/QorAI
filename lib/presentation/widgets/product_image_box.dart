@@ -128,8 +128,8 @@ class _ProductImageBoxState extends State<ProductImageBox> {
       // explicit width geçmesi önerilir (_WideProductCard gibi).
       final targetW = widget.width ?? widget.height ?? 140.0;
       final targetH = widget.height ?? widget.width ?? 140.0;
-      final cacheW = (targetW * dpr).round().clamp(120, 900);
-      final cacheH = (targetH * dpr).round().clamp(120, 900);
+      final cacheW = (targetW * dpr).round().clamp(120, 720);
+      final cacheH = (targetH * dpr).round().clamp(120, 720);
       imageWidget = CachedNetworkImage(
         key: ValueKey(url),
         imageUrl: url,

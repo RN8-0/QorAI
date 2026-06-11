@@ -18,18 +18,33 @@ class _PricesTabContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final offersAsync = ref.watch(productOffersProvider(product.id));
+    final liveOffers = _sortOffersForCountry(
+      offersAsync.valueOrNull ?? const <ProductOfferModel>[],
+      country,
+    );
     final stores = product.getAffiliateLinksForCountry(country);
     final storeEntries = stores.isNotEmpty
         ? stores.entries.toList()
         : product.affiliateLinks.entries.toList();
+    final fallbackEntries = _dedupeStoreEntries(storeEntries, liveOffers);
 
-    // Split store links into pre-variants (first 4) and post-variants (next 4),
-    // remainder shown after the similar products row.
-    final firstChunk = storeEntries.take(4).toList();
-    final secondChunk = storeEntries.skip(4).take(4).toList();
-    final restChunk = storeEntries.skip(8).toList();
+    final firstOfferChunk = liveOffers.take(4).toList();
+    final secondOfferChunk = liveOffers.skip(4).take(4).toList();
+    final restOfferChunk = liveOffers.skip(8).toList();
 
-    final hasAnyStores = storeEntries.isNotEmpty;
+    final firstStoreChunk = firstOfferChunk.isEmpty
+        ? fallbackEntries.take(4).toList()
+        : const <MapEntry<String, String>>[];
+    final secondStoreChunk = firstOfferChunk.isEmpty
+        ? fallbackEntries.skip(4).take(4).toList()
+        : fallbackEntries.take(4).toList();
+    final restStoreChunk = firstOfferChunk.isEmpty
+        ? fallbackEntries.skip(8).toList()
+        : fallbackEntries.skip(4).toList();
+
+    final hasAnyStores = liveOffers.isNotEmpty || fallbackEntries.isNotEmpty;
+    final isLoadingOffers = offersAsync is AsyncLoading;
 
     return CustomScrollView(
       key: PageStorageKey<String>('prices-tab-${product.id}'),
@@ -41,12 +56,22 @@ class _PricesTabContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (firstChunk.isNotEmpty) ...[
+                if (firstOfferChunk.isNotEmpty) ...[
+                  _OfferLinksCard(
+                    product: product,
+                    country: country,
+                    offers: firstOfferChunk,
+                  ),
+                  const SizedBox(height: 16),
+                ] else if (firstStoreChunk.isNotEmpty) ...[
                   _StoreLinksCard(
                     product: product,
                     country: country,
-                    entries: firstChunk,
+                    entries: firstStoreChunk,
                   ),
+                  const SizedBox(height: 16),
+                ] else if (isLoadingOffers && !hasAnyStores) ...[
+                  _PriceLoadingCard(),
                   const SizedBox(height: 16),
                 ] else if (!hasAnyStores) ...[
                   _PriceFallbackCard(product: product, country: country),
@@ -54,11 +79,20 @@ class _PricesTabContent extends ConsumerWidget {
                 ],
                 _CompactVariantsSection(product: product),
                 const SizedBox(height: 16),
-                if (secondChunk.isNotEmpty) ...[
+                if (secondOfferChunk.isNotEmpty) ...[
+                  _OfferLinksCard(
+                    product: product,
+                    country: country,
+                    offers: secondOfferChunk,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (secondStoreChunk.isNotEmpty) ...[
                   _StoreLinksCard(
                     product: product,
                     country: country,
-                    entries: secondChunk,
+                    entries: secondStoreChunk,
                     compact: true,
                   ),
                   const SizedBox(height: 16),
@@ -69,14 +103,26 @@ class _PricesTabContent extends ConsumerWidget {
         ),
         // Similar products — horizontal scrollable row
         SliverToBoxAdapter(child: _HorizontalSimilarSection(product: product)),
-        if (restChunk.isNotEmpty)
+        if (restOfferChunk.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _OfferLinksCard(
+                product: product,
+                country: country,
+                offers: restOfferChunk,
+                compact: true,
+              ),
+            ),
+          ),
+        if (restStoreChunk.isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: _StoreLinksCard(
                 product: product,
                 country: country,
-                entries: restChunk,
+                entries: restStoreChunk,
                 compact: true,
               ),
             ),
@@ -85,6 +131,257 @@ class _PricesTabContent extends ConsumerWidget {
           child: SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
         ),
       ],
+    );
+  }
+
+  static List<ProductOfferModel> _sortOffersForCountry(
+    List<ProductOfferModel> offers,
+    String country,
+  ) {
+    final selected = country.trim().toUpperCase();
+    final live = offers.where((offer) => offer.isLive).toList();
+    int rank(ProductOfferModel offer) {
+      final c = offer.country.trim().toUpperCase();
+      if (c == selected) return 0;
+      if (c.isEmpty) return 2;
+      if (c == 'US') return 3;
+      return 1;
+    }
+
+    live.sort((a, b) {
+      final rankCompare = rank(a).compareTo(rank(b));
+      if (rankCompare != 0) return rankCompare;
+      if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
+      if (a.hasExactPrice != b.hasExactPrice) {
+        return a.hasExactPrice ? -1 : 1;
+      }
+      if (a.hasExactPrice && b.hasExactPrice && a.price != b.price) {
+        return a.price.compareTo(b.price);
+      }
+      return a.displayStore.compareTo(b.displayStore);
+    });
+    return live;
+  }
+
+  static List<MapEntry<String, String>> _dedupeStoreEntries(
+    List<MapEntry<String, String>> entries,
+    List<ProductOfferModel> offers,
+  ) {
+    final seenUrls = offers
+        .map((offer) => offer.url.trim().toLowerCase())
+        .where((url) => url.isNotEmpty)
+        .toSet();
+    final result = <MapEntry<String, String>>[];
+    for (final entry in entries) {
+      final url = entry.value.trim();
+      if (url.isEmpty) continue;
+      final normalized = url.toLowerCase();
+      if (seenUrls.contains(normalized)) continue;
+      if (result.any((e) => e.value.trim().toLowerCase() == normalized)) {
+        continue;
+      }
+      result.add(MapEntry(entry.key, url));
+    }
+    return result;
+  }
+}
+
+class _OfferLinksCard extends StatelessWidget {
+  final ProductEntity product;
+  final String country;
+  final List<ProductOfferModel> offers;
+  final bool compact;
+  const _OfferLinksCard({
+    required this.product,
+    required this.country,
+    required this.offers,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pricedOffers = offers.where((offer) => offer.hasExactPrice).toList();
+    final bestOffer = pricedOffers.isEmpty ? null : pricedOffers.first;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!compact)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.scoreExcellent, AppTheme.accentTeal],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.local_offer_outlined,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      Localizations.localeOf(context).languageCode == 'tr'
+                          ? 'Canli Fiyatlar'
+                          : 'Live Prices',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (bestOffer != null)
+                    Text(
+                      AppUtils.formatCurrency(
+                        bestOffer.price,
+                        bestOffer.currency,
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.scoreExcellent,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ...offers.map(
+            (offer) => _OfferLinkRow(
+              offer: offer,
+              selectedCountry: country,
+              productId: product.id,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferLinkRow extends ConsumerWidget {
+  final ProductOfferModel offer;
+  final String selectedCountry;
+  final String productId;
+  const _OfferLinkRow({
+    required this.offer,
+    required this.selectedCountry,
+    required this.productId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brand = _resolveStoreBrand(offer.store);
+    final showCountry =
+        offer.country.isNotEmpty &&
+        offer.country != selectedCountry.trim().toUpperCase();
+    final priceLabel = offer.hasExactPrice
+        ? AppUtils.formatCurrency(offer.price, offer.currency)
+        : (offer.priceText.isNotEmpty
+              ? offer.priceText
+              : (Localizations.localeOf(context).languageCode == 'tr'
+                    ? 'Fiyati gor'
+                    : 'Check price'));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final uri = Uri.tryParse(offer.url);
+            if (uri == null) return;
+            try {
+              ref.read(behaviorTrackingProvider).trackAffiliateTap(productId);
+            } catch (_) {}
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (_) {}
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.dividerColor),
+            ),
+            child: Row(
+              children: [
+                _StoreLogo(brand: brand),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        brand.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      if (showCountry || offer.priceText.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            [
+                              if (showCountry) offer.country,
+                              if (offer.priceText.isNotEmpty &&
+                                  !offer.hasExactPrice)
+                                offer.priceText,
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textTertiaryColor,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  priceLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: offer.hasExactPrice
+                        ? AppTheme.scoreExcellent
+                        : context.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.open_in_new_rounded,
+                  size: 16,
+                  color: context.textTertiaryColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -383,6 +680,40 @@ class _StoreLogo extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Icon(brand.icon, size: 18, color: brand.color),
+    );
+  }
+}
+
+class _PriceLoadingCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            Localizations.localeOf(context).languageCode == 'tr'
+                ? 'Fiyatlar yukleniyor'
+                : 'Loading prices',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: context.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -33,20 +33,21 @@ class CategoryModel extends CategoryEntity {
     );
   }
 
-  factory CategoryModel.fromFirestore(dynamic doc) => CategoryModel.fromPb(doc as RecordModel);
+  factory CategoryModel.fromFirestore(dynamic doc) =>
+      CategoryModel.fromPb(doc as RecordModel);
 
   Map<String, dynamic> toFirestore() => toMap();
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'icon': icon,
-        if (emoji != null) 'emoji': emoji,
-        'order': order,
-        'isActive': isActive,
-        'subcategories': subcategories,
-        'productCount': productCount,
-      };
+    'id': id,
+    'name': name,
+    'icon': icon,
+    if (emoji != null) 'emoji': emoji,
+    'order': order,
+    'isActive': isActive,
+    'subcategories': subcategories,
+    'productCount': productCount,
+  };
 
   factory CategoryModel.fromMap(Map<String, dynamic> data) {
     return CategoryModel(
@@ -90,7 +91,10 @@ class AffiliateClickModel {
       productId: data['productId'] ?? '',
       affiliateUrl: data['affiliateUrl'] ?? '',
       country: data['country'] ?? '',
-      timestamp: _parseDate(data['created']) ?? _parseDate(data['timestamp']) ?? DateTime.now(),
+      timestamp:
+          _parseDate(data['created']) ??
+          _parseDate(data['timestamp']) ??
+          DateTime.now(),
       converted: data['converted'] ?? false,
     );
   }
@@ -102,15 +106,184 @@ class AffiliateClickModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'productId': productId,
-        'affiliateUrl': affiliateUrl,
-        'country': country,
-        'timestamp': timestamp.toIso8601String(),
-        'converted': converted,
-      };
+    'userId': userId,
+    'productId': productId,
+    'affiliateUrl': affiliateUrl,
+    'country': country,
+    'timestamp': timestamp.toIso8601String(),
+    'converted': converted,
+  };
 
   Map<String, dynamic> toFirestore() => toMap();
+}
+
+// ─── Product Offer Model ─── Live affiliate offers from PocketBase
+class ProductOfferModel {
+  final String id;
+  final String productId;
+  final String store;
+  final String network;
+  final String country;
+  final double price;
+  final double itemPrice;
+  final double shipping;
+  final String currency;
+  final String priceText;
+  final String url;
+  final String directUrl;
+  final String condition;
+  final String availability;
+  final bool inStock;
+  final bool priceUnknown;
+  final double matchConfidence;
+  final DateTime? lastCheckedAt;
+  final DateTime? expiresAt;
+  final String source;
+
+  const ProductOfferModel({
+    required this.id,
+    required this.productId,
+    required this.store,
+    this.network = '',
+    this.country = '',
+    this.price = 0,
+    this.itemPrice = 0,
+    this.shipping = 0,
+    this.currency = 'USD',
+    this.priceText = '',
+    required this.url,
+    this.directUrl = '',
+    this.condition = '',
+    this.availability = '',
+    this.inStock = true,
+    this.priceUnknown = false,
+    this.matchConfidence = 0,
+    this.lastCheckedAt,
+    this.expiresAt,
+    this.source = '',
+  });
+
+  factory ProductOfferModel.fromPb(RecordModel record) {
+    return ProductOfferModel.fromMap(record.id, record.data);
+  }
+
+  factory ProductOfferModel.fromMap(String id, Map<String, dynamic> data) {
+    final rawPrice = _offerDouble(data['price']);
+    final totalPrice = _offerDouble(data['totalPrice']);
+    final shipping = _offerDouble(data['shipping']);
+    final computedTotal = totalPrice > 0
+        ? totalPrice
+        : (rawPrice > 0 ? rawPrice + shipping : 0.0);
+    final affiliateUrl = (data['affiliateUrl'] ?? '').toString().trim();
+    final directUrl = (data['url'] ?? '').toString().trim();
+    final store = (data['store'] ?? data['merchant'] ?? data['seller'] ?? '')
+        .toString()
+        .trim();
+
+    return ProductOfferModel(
+      id: id,
+      productId: (data['productId'] ?? '').toString(),
+      store: store.isEmpty ? 'Store' : store,
+      network: (data['network'] ?? '').toString(),
+      country: (data['country'] ?? '').toString().trim().toUpperCase(),
+      price: computedTotal,
+      itemPrice: rawPrice,
+      shipping: shipping,
+      currency: _offerCurrency(data['currency']),
+      priceText: (data['priceText'] ?? '').toString().trim(),
+      url: affiliateUrl.isNotEmpty ? affiliateUrl : directUrl,
+      directUrl: directUrl,
+      condition: (data['condition'] ?? '').toString(),
+      availability: (data['availability'] ?? '').toString(),
+      inStock: data['inStock'] is bool ? data['inStock'] as bool : true,
+      priceUnknown: data['priceUnknown'] is bool
+          ? data['priceUnknown'] as bool
+          : false,
+      matchConfidence: _offerDouble(data['matchConfidence']),
+      lastCheckedAt:
+          _offerDate(data['lastCheckedAt']) ??
+          _offerDate(data['priceUpdatedAt']) ??
+          _offerDate(data['scrapedAt']) ??
+          _offerDate(data['updated']),
+      expiresAt: _offerDate(data['expiresAt']),
+      source: (data['source'] ?? '').toString(),
+    );
+  }
+
+  bool get hasExactPrice => !priceUnknown && price > 0;
+
+  bool get isExpired =>
+      expiresAt != null && expiresAt!.isBefore(DateTime.now().toUtc());
+
+  bool get isFresh {
+    if (!isLive) return false;
+    if (!hasExactPrice) return false;
+    if (expiresAt != null) return !isExpired;
+    if (lastCheckedAt == null) return true;
+    final age = DateTime.now().toUtc().difference(lastCheckedAt!.toUtc());
+    return age <= _offerTtlForCountry(country);
+  }
+
+  bool get isLive {
+    if (url.trim().isEmpty) return false;
+    if (!inStock) return false;
+    if (isExpired) return false;
+    final availabilityText = availability.toLowerCase();
+    if (availabilityText.contains('out') ||
+        availabilityText.contains('unavailable') ||
+        availabilityText.contains('sold out')) {
+      return false;
+    }
+    return true;
+  }
+
+  String get displayStore {
+    final cleanStore = store.trim();
+    if (network.trim().isEmpty ||
+        cleanStore.toLowerCase() == network.trim().toLowerCase()) {
+      return cleanStore.isEmpty ? 'Store' : cleanStore;
+    }
+    return cleanStore.isEmpty ? network.trim() : '$cleanStore · $network';
+  }
+
+  static double _offerDouble(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    final text = value.toString().trim();
+    if (text.isEmpty) return 0;
+    final normalized = text
+        .replaceAll(RegExp(r'[^0-9,.-]'), '')
+        .replaceAll(',', '.');
+    return double.tryParse(normalized) ?? 0;
+  }
+
+  static String _offerCurrency(dynamic value) {
+    final text = value?.toString().trim().toUpperCase() ?? '';
+    return text.isEmpty || text == 'NULL' ? 'USD' : text;
+  }
+
+  static DateTime? _offerDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    return DateTime.tryParse(text);
+  }
+
+  static Duration _offerTtlForCountry(String country) {
+    switch (country.toUpperCase()) {
+      case 'TR':
+        return const Duration(minutes: 45);
+      case 'DE':
+      case 'GB':
+      case 'UK':
+        return const Duration(minutes: 120);
+      case 'US':
+        return const Duration(minutes: 180);
+      default:
+        return const Duration(hours: 6);
+    }
+  }
 }
 
 // ─── User Link Model ─── Section 4.4 (Link Paste Feature)
@@ -146,7 +319,10 @@ class UserLinkModel {
       aiScore: (data['aiScore'] as num?)?.toDouble() ?? 0.0,
       aiAnalysis: data['aiAnalysis'] ?? '',
       category: data['category'],
-      createdAt: _parseDate(data['created']) ?? _parseDate(data['createdAt']) ?? DateTime.now(),
+      createdAt:
+          _parseDate(data['created']) ??
+          _parseDate(data['createdAt']) ??
+          DateTime.now(),
     );
   }
 
@@ -157,13 +333,13 @@ class UserLinkModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'url': url,
-        'ogMetadata': ogMetadata?.toMap(),
-        'aiScore': aiScore,
-        'aiAnalysis': aiAnalysis,
-        'category': category,
-      };
+    'userId': userId,
+    'url': url,
+    'ogMetadata': ogMetadata?.toMap(),
+    'aiScore': aiScore,
+    'aiAnalysis': aiAnalysis,
+    'category': category,
+  };
 
   Map<String, dynamic> toFirestore() => toMap();
 }
@@ -174,26 +350,21 @@ class OgMetadataModel {
   final String? image;
   final String? price;
 
-  const OgMetadataModel({
-    this.title,
-    this.description,
-    this.image,
-    this.price,
-  });
+  const OgMetadataModel({this.title, this.description, this.image, this.price});
 
   factory OgMetadataModel.fromMap(Map<String, dynamic> map) => OgMetadataModel(
-        title: map['title'],
-        description: map['description'],
-        image: map['image'],
-        price: map['price'],
-      );
+    title: map['title'],
+    description: map['description'],
+    image: map['image'],
+    price: map['price'],
+  );
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'description': description,
-        'image': image,
-        'price': price,
-      };
+    'title': title,
+    'description': description,
+    'image': image,
+    'price': price,
+  };
 }
 
 // ─── Trend Model ─── Section 4.4
@@ -232,7 +403,8 @@ class TrendModel {
     );
   }
 
-  factory TrendModel.fromFirestore(dynamic doc) => TrendModel.fromPb(doc as RecordModel);
+  factory TrendModel.fromFirestore(dynamic doc) =>
+      TrendModel.fromPb(doc as RecordModel);
 
   static DateTime? _parseDate(dynamic v) {
     if (v == null) return null;
@@ -241,13 +413,13 @@ class TrendModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'category': category,
-        'country': country,
-        'items': items.map((e) => e.toMap()).toList(),
-        'weekStart': weekStart.toIso8601String(),
-        'weekEnd': weekEnd.toIso8601String(),
-        'source': source,
-      };
+    'category': category,
+    'country': country,
+    'items': items.map((e) => e.toMap()).toList(),
+    'weekStart': weekStart.toIso8601String(),
+    'weekEnd': weekEnd.toIso8601String(),
+    'source': source,
+  };
 
   Map<String, dynamic> toFirestore() => toMap();
 }
@@ -268,20 +440,20 @@ class TrendItem {
   });
 
   factory TrendItem.fromMap(Map<String, dynamic> map) => TrendItem(
-        productId: map['productId'] ?? '',
-        name: map['name'] ?? '',
-        imageURL: map['imageURL'] ?? '',
-        score: (map['score'] as num?)?.toDouble() ?? 0.0,
-        rank: map['rank'] ?? 0,
-      );
+    productId: map['productId'] ?? '',
+    name: map['name'] ?? '',
+    imageURL: map['imageURL'] ?? '',
+    score: (map['score'] as num?)?.toDouble() ?? 0.0,
+    rank: map['rank'] ?? 0,
+  );
 
   Map<String, dynamic> toMap() => {
-        'productId': productId,
-        'name': name,
-        'imageURL': imageURL,
-        'score': score,
-        'rank': rank,
-      };
+    'productId': productId,
+    'name': name,
+    'imageURL': imageURL,
+    'score': score,
+    'rank': rank,
+  };
 }
 
 // ─── Review Model ─── Section 4.4 (Community Reviews)
@@ -338,7 +510,8 @@ class ReviewModel {
     );
   }
 
-  factory ReviewModel.fromFirestore(dynamic doc) => ReviewModel.fromPb(doc as RecordModel);
+  factory ReviewModel.fromFirestore(dynamic doc) =>
+      ReviewModel.fromPb(doc as RecordModel);
 
   static DateTime? _parseDate(dynamic v) {
     if (v == null) return null;
@@ -347,17 +520,17 @@ class ReviewModel {
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'productId': productId,
-        'rating': rating,
-        'text': text,
-        'helpful': helpful,
-        'reported': reported,
-        'likedBy': likedBy,
-        'dislikedBy': dislikedBy,
-        if (authorDisplayName.isNotEmpty) 'authorDisplayName': authorDisplayName,
-        if (authorPhotoURL.isNotEmpty) 'authorPhotoURL': authorPhotoURL,
-      };
+    'userId': userId,
+    'productId': productId,
+    'rating': rating,
+    'text': text,
+    'helpful': helpful,
+    'reported': reported,
+    'likedBy': likedBy,
+    'dislikedBy': dislikedBy,
+    if (authorDisplayName.isNotEmpty) 'authorDisplayName': authorDisplayName,
+    if (authorPhotoURL.isNotEmpty) 'authorPhotoURL': authorPhotoURL,
+  };
 
   Map<String, dynamic> toFirestore() => toMap();
 }
@@ -439,9 +612,11 @@ class SubscriptionServiceModel {
       cons: List<String>.from(d['cons'] as List? ?? []),
       platforms: List<String>.from(d['platforms'] as List? ?? []),
       plans: (d['plans'] as List? ?? [])
-          .map((p) => SubscriptionPlan.fromMap(
-                Map<String, dynamic>.from(p as Map? ?? {}),
-              ))
+          .map(
+            (p) => SubscriptionPlan.fromMap(
+              Map<String, dynamic>.from(p as Map? ?? {}),
+            ),
+          )
           .toList(),
     );
   }
@@ -557,12 +732,17 @@ class UserSubscriptionDetail {
     this.isActive = true,
   });
 
-  factory UserSubscriptionDetail.fromMap(String serviceId, Map<String, dynamic> data) {
+  factory UserSubscriptionDetail.fromMap(
+    String serviceId,
+    Map<String, dynamic> data,
+  ) {
     return UserSubscriptionDetail(
       serviceId: serviceId,
       serviceName: data['serviceName'] as String? ?? '',
       planName: data['planName'] as String? ?? '',
-      startDate: DateTime.tryParse(data['startDate']?.toString() ?? '') ?? DateTime.now(),
+      startDate:
+          DateTime.tryParse(data['startDate']?.toString() ?? '') ??
+          DateTime.now(),
       renewalDate: DateTime.tryParse(data['renewalDate']?.toString() ?? ''),
       monthlyCost: (data['monthlyCost'] as num?)?.toDouble() ?? 0.0,
       currency: data['currency'] as String? ?? 'USD',

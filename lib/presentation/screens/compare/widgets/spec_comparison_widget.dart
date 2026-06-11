@@ -88,6 +88,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _matchScoreExpanded = false;
   bool _matchScoreFetched = false;
   final Map<_AiPanelType, String> _aiProgressText = {};
+  bool _unifiedAiExpanded = false;
+  bool _unifiedAiRunning = false;
+  String _unifiedAiProgress = '';
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
@@ -505,6 +508,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     int maxTokens = 4096,
     void Function(String message)? onProgress,
     bool allowGeminiFallback = false,
+    bool useGrounding = false,
   }) async {
     final gemini = ref.read(geminiServiceProvider);
     String? lastError;
@@ -515,12 +519,17 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
               ? 'AI analizi yapılıyor ($attempt/3)…'
               : 'Analyzing… ($attempt/3)',
         );
-        final result = await gemini.jsonFreeTextQuery(
-          prompt,
-          language: lang,
-          maxTokens: maxTokens,
-          tier: AiTier.heavy,
-        );
+        final result = useGrounding
+            ? await gemini.groundedQuery(
+                '$prompt\n\nUse web search where helpful, then return only the requested JSON object.',
+                maxTokens: maxTokens,
+              )
+            : await gemini.jsonFreeTextQuery(
+                prompt,
+                language: lang,
+                maxTokens: maxTokens,
+                tier: AiTier.heavy,
+              );
         debugPrint(
           '[Qor AI] 🔍 $label RAW attempt $attempt (${result.length} chars):\n${result.length > 600 ? result.substring(0, 600) : result}',
         );
@@ -865,6 +874,100 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
+  bool get _hasAnyUnifiedCompareAiData =>
+      _advisorStructured != null ||
+      _deepAnalysisStructured != null ||
+      _alternativesStructured != null ||
+      _predictionStructured != null;
+
+  bool get _hasAllUnifiedCompareAiData =>
+      _advisorStructured != null &&
+      _deepAnalysisStructured != null &&
+      _alternativesStructured != null &&
+      _predictionStructured != null;
+
+  bool get _isAnyUnifiedCompareAiLoading =>
+      _unifiedAiRunning ||
+      _advisorLoading ||
+      _deepAnalysisLoading ||
+      _alternativesLoading ||
+      _predictionLoading;
+
+  Future<void> _toggleUnifiedCompareAi() async {
+    if (_unifiedAiRunning) return;
+    if (_unifiedAiExpanded) {
+      setState(() {
+        _unifiedAiExpanded = false;
+      });
+      return;
+    }
+
+    final shouldFetch = !_hasAllUnifiedCompareAiData;
+    if (shouldFetch) {
+      if (!requireAuth(context)) return;
+      if (!await ensureEmailVerified(context, ref)) return;
+      if (!mounted) return;
+      final sub = ref.read(subscriptionServiceProvider);
+      if (!sub.isPremium || !sub.canUseCompareAi) {
+        _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+        return;
+      }
+      sub.recordCompareAi();
+    }
+
+    setState(() {
+      _unifiedAiExpanded = true;
+      _unifiedAiRunning = shouldFetch;
+      _unifiedAiProgress = '';
+      _advisorExpanded = true;
+      _deepAnalysisExpanded = true;
+      _alternativesExpanded = true;
+      _predictionExpanded = true;
+    });
+    if (!shouldFetch) return;
+
+    Future<void> runStep(
+      String tr,
+      String en,
+      Future<void> Function() run,
+    ) async {
+      if (!mounted) return;
+      setState(() => _unifiedAiProgress = _isTr ? tr : en);
+      await run();
+    }
+
+    try {
+      await runStep(
+        'Satın alma kararı hazırlanıyor...',
+        'Preparing buying decision...',
+        _fetchAdvisor,
+      );
+      await runStep(
+        'Teknik farklar analiz ediliyor...',
+        'Analyzing technical differences...',
+        _fetchDeepAnalysis,
+      );
+      await runStep(
+        'Alternatifler taranıyor...',
+        'Scanning alternatives...',
+        _fetchAlternatives,
+      );
+      await runStep(
+        'Fiyat döngüsü tahmin ediliyor...',
+        'Forecasting price cycle...',
+        _fetchPrediction,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _unifiedAiRunning = false;
+          _unifiedAiProgress = '';
+        });
+      }
+    }
+  }
+
+  // ignore: unused_element
   void _retryAiPanel(_AiPanelType panel, Future<void> Function() fetcher) {
     setState(() {
       _setAiPanelError(panel, hasError: false, message: null);
@@ -926,6 +1029,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     required String lang,
     required int maxTokens,
     String? startMessage,
+    bool useGrounding = false,
   }) async {
     if (_hasAiPanelData(panel)) return;
 
@@ -979,6 +1083,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
         lang,
         maxTokens: maxTokens,
         allowGeminiFallback: true,
+        useGrounding: useGrounding,
         onProgress: (message) {
           if (!mounted) return;
           setState(() {
@@ -1033,6 +1138,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     return '$base\n\nRuntime comparison context follows; preserve the requested JSON schema and use the listed products/specs:\n$fallback';
   }
 
+  // ignore: unused_element
   Future<void> _toggleDeepAnalysis() async {
     await _toggleAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis);
   }
@@ -1099,13 +1205,16 @@ CRITICAL: Include ALL ${widget.products.length} products in every section. Retur
           '- If products are near-identical variants, say so clearly; do not invent large performance gaps.\n'
           '- Category scores must stay within 3 points when the listed specs are effectively the same.\n'
           '- Prefer practical buyer guidance over hype; mention uncertainty when price/spec data is missing.\n'
+          '- Use public review/community sentiment when available; mention recurring owner praise or complaints inside verdict/recommendation.\n'
           '- verdict and recommendation should each be 4-6 sentences and should differ in focus.',
       lang: lang,
       maxTokens: 8192,
       startMessage: '[Qor AI] Deep Analysis starting for: $productNames',
+      useGrounding: true,
     );
   }
 
+  // ignore: unused_element
   Future<void> _toggleAlternatives() async {
     await _toggleAiPanel(_AiPanelType.alternatives, _fetchAlternatives);
   }
@@ -1166,9 +1275,11 @@ Return ONLY valid JSON:
       lang: lang,
       maxTokens: 2048,
       startMessage: '[Qor AI] Alternatives starting for: $productNames',
+      useGrounding: true,
     );
   }
 
+  // ignore: unused_element
   Future<void> _toggleAdvisor() async {
     await _toggleAiPanel(_AiPanelType.advisor, _fetchAdvisor);
   }
@@ -1220,14 +1331,17 @@ Return ONLY valid JSON, no markdown, no explanation:
           '- final_verdict should be 4-6 sentences with explicit trade-offs.\n'
           '- If products are very similar, recommend based on price, cooling/noise, warranty, size, or availability instead of fake performance differences.\n'
           '- Do not overstate certainty when price/spec fields are missing.\n'
+          '- Use public review/community sentiment when available; reflect satisfaction and recurring complaints in final_verdict.\n'
           '- Avoid generic advice; tie recommendation to concrete product context.\n'
           '- Use varied wording across products and points.',
       lang: lang,
       maxTokens: 2048,
       startMessage: '[Qor AI] Advisor starting',
+      useGrounding: true,
     );
   }
 
+  // ignore: unused_element
   Future<void> _togglePrediction() async {
     await _toggleAiPanel(_AiPanelType.prediction, _fetchPrediction);
   }
@@ -1294,6 +1408,7 @@ Rules:
       lang: lang,
       maxTokens: 4096,
       startMessage: '[Qor AI] Prediction starting',
+      useGrounding: true,
     );
   }
 
@@ -1737,7 +1852,16 @@ Rules:
     final svc = SpecTranslationService.instance;
     final canonicalValue = svc.isLoaded ? svc.canonicalizeToEnglish(val) : val;
     final canonicalLower = canonicalValue.trim().toLowerCase();
-    if (locale == 'en') return _sentenceCaseLocalized(canonicalValue);
+    if (locale == 'en') {
+      // Canlı TR→EN sözlüğü (78k terim) asset canonical'ın kaçırdığı
+      // "Dahili Hoparlör", "İvme Ölçer", "Jiroskop" gibi değerleri yakalar;
+      // boş dönerse asset canonical'a düşer. Türkçe sızıntısını giderir.
+      if (svc.isLoaded) {
+        final live = svc.translateValueForLocale(val, 'en').trim();
+        if (live.isNotEmpty) return _sentenceCaseLocalized(live);
+      }
+      return _sentenceCaseLocalized(canonicalValue);
+    }
     // Boolean/status shortcuts
     final l = context.l10n;
     if (l != null) {
@@ -2122,6 +2246,7 @@ Rules:
   /// Returns the index of the "better" value for a given spec.
   /// Uses SpecDirectionService (with component rankings + Firestore overrides).
   /// -1 if values are equal or undecidable.
+  // ignore: unused_element
   int _findBetterIndex(String key, List<String> values) {
     final serviceAsync = ref.read(specDirectionServiceProvider);
     final service = serviceAsync.valueOrNull;
@@ -4998,6 +5123,7 @@ Rules:
     return _findCompareWinnerFallbackIndexes(label, values);
   }
 
+  // ignore: unused_element
   int _findCompareWinnerFallback(String label, List<String> values) {
     final winners = _findCompareWinnerFallbackIndexes(label, values);
     return winners.isEmpty ? -1 : winners.first;
@@ -5394,59 +5520,40 @@ Rules:
     required Map<String, List<String>> rows,
     required EdgeInsetsGeometry margin,
   }) {
+    final theme = Theme.of(context);
     return Container(
       margin: margin,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [context.surfaceColor, context.surfaceVariantColor],
-        ),
-        border: Border.all(color: context.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(16),
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.max,
               children: [
                 Icon(
                   _iconForCompareSection(title),
-                  size: 14,
-                  color: Colors.white,
+                  size: 16,
+                  color: theme.colorScheme.primary,
                 ),
-                const SizedBox(width: 6),
-                Flexible(
+                const SizedBox(width: 8),
+                Expanded(
+                  // Bölüm başlığını uygulama diline çevir (ham 'title' yalnızca
+                  // ikon eşleştirmesinde kullanılır). "Öne Çıkanlar" → "Highlights".
                   child: Text(
-                    title.toUpperCase(),
+                    _localizedSpecName(context, title),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 11,
-                      height: 1.2,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: context.textPrimary,
+                      fontSize: 14,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -5457,7 +5564,6 @@ Rules:
             _buildAdminCompareSpecRow(
               label: indexed.value.key,
               values: indexed.value.value,
-              isOdd: indexed.key.isOdd,
             ),
         ],
       ),
@@ -5467,9 +5573,9 @@ Rules:
   Widget _buildAdminCompareSpecRow({
     required String label,
     required List<String> values,
-    required bool isOdd,
   }) {
     final productCount = widget.products.length;
+    final theme = Theme.of(context);
     final paddedValues = [
       for (var i = 0; i < productCount; i++)
         i < values.length ? values[i] : '—',
@@ -5477,30 +5583,31 @@ Rules:
     final winnerIndexes = _findCompareWinnerIndexes(label, paddedValues);
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isOdd
-            ? Colors.black.withValues(alpha: 0.10)
-            : Colors.white.withValues(alpha: 0.015),
-        border: Border(bottom: BorderSide(color: context.dividerColor)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 7, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Satır etiketini uygulama diline çevir (ham 'label' kazanan
+          // hesaplamasında kullanılır). "Titreşim" → "Vibration",
+          // "Bağlantı Tipi" → "Connection Type" vb. Türkçe sızıntısını giderir.
           Text(
-            label,
-            maxLines: 1,
+            _localizedSpecName(context, label),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 10.5,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
               height: 1.25,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.1,
+              fontWeight: FontWeight.w700,
               color: context.textSecondary,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -5775,8 +5882,7 @@ Rules:
                   animation: controller.animation!,
                   builder: (context, _) {
                     final selectedIndex =
-                        controller.animation?.value.round() ??
-                            controller.index;
+                        controller.animation?.value.round() ?? controller.index;
                     final isAiSelected = selectedIndex == 2;
                     final activeTabColor = isAiSelected
                         ? AppTheme.premiumGold
@@ -5934,7 +6040,7 @@ Rules:
       widgets.add(
         Expanded(
           child: GestureDetector(
-            onTap: () => _openCompareImageFullscreen(context, product),
+            onTap: () => context.push('/product/${product.id}'),
             onLongPress:
                 widget.onRemoveProduct != null && widget.products.length > 2
                 ? () => _showRemoveProductDialog(product)
@@ -6051,26 +6157,6 @@ Rules:
     );
   }
 
-  void _openCompareImageFullscreen(BuildContext context, ProductEntity product) {
-    final images = product.images.isNotEmpty
-        ? product.images
-        : (product.imageUrl != null && product.imageUrl!.isNotEmpty
-            ? [product.imageUrl!]
-            : <String>[]);
-    if (images.isEmpty) return;
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.transparent,
-        pageBuilder: (ctx, anim, _) => _CompareFullScreenImageViewer(
-          images: images,
-        ),
-        transitionsBuilder: (ctx, anim, _, child) =>
-            FadeTransition(opacity: anim, child: child),
-      ),
-    );
-  }
-
   // ignore: unused_element
   Widget _buildReviewsTab() {
     // Build "product1 vs product2" search query for comparison videos
@@ -6108,108 +6194,473 @@ Rules:
   }
 
   Widget _buildSimilarTab() {
-    final excludeIds = widget.products.map((p) => p.id).toSet();
-    final similarAsync = ref.watch(
-      similarProductsProvider(widget.products.first),
-    );
     final country = ref.watch(selectedCountryProvider);
-
-    // Collect store links across all compared products (deduped by store name).
-    final aggregateStores = <String, String>{};
-    for (final p in widget.products) {
-      final stores = p.getAffiliateLinksForCountry(country);
-      final effective = stores.isNotEmpty ? stores : p.affiliateLinks;
-      for (final e in effective.entries) {
-        aggregateStores.putIfAbsent(e.key, () => e.value);
-      }
-    }
-    final storeEntries = aggregateStores.entries.toList();
-    final firstChunk = storeEntries.take(4).toList();
-    final secondChunk = storeEntries.skip(4).take(4).toList();
-    final restChunk = storeEntries.skip(8).toList();
+    final priceInfos = widget.products
+        .map((product) => _comparePriceInfo(product, country))
+        .toList(growable: false);
+    final priced = priceInfos
+        .where((info) => info.amount != null && info.amount! > 0)
+        .map((info) => info.amount!)
+        .toList(growable: false);
+    final bestPrice = priced.isEmpty ? null : priced.reduce(min);
+    // "3 veya daha az fiyat varsa benzer ürünler göster": karşılaştırmada
+    // gerçek fiyatı olan ürün sayısı 3 veya altındaysa, her ürünün altında
+    // detay sayfasındaki gibi benzer ürün önerileri gösteririz.
+    final showSimilar = priced.length <= 3;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
+        14,
         16,
-        16,
-        MediaQuery.of(context).padding.bottom + 16,
+        MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
       ),
       children: [
-        if (firstChunk.isNotEmpty) ...[
-          _CompareStoreLinksCard(entries: firstChunk),
-          const SizedBox(height: 16),
-        ],
-        if (secondChunk.isNotEmpty) ...[
-          _CompareStoreLinksCard(entries: secondChunk),
-          const SizedBox(height: 16),
-        ],
-        // Horizontal-scroll similar products.
-        similarAsync.when(
-          loading: () => _buildSimilarShimmer(),
-          error: (_, _) => _buildSimilarEmpty(),
-          data: (products) {
-            final filtered = products
-                .where((p) => !excludeIds.contains(p.id))
-                .take(12)
-                .toList();
-            if (filtered.isEmpty) return _buildSimilarEmpty();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          gradient: _accentGradient,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.widgets_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        context.l10n?.similarProducts ?? 'Similar Products',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 210,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (context, i) => SizedBox(
-                      width: 150,
-                      child: SharedSimilarGridCard(product: filtered[i]),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        if (restChunk.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _CompareStoreLinksCard(entries: restChunk),
+        for (var i = 0; i < widget.products.length; i++) ...[
+          _buildComparePriceCard(
+            product: widget.products[i],
+            info: priceInfos[i],
+            country: country,
+            isBest:
+                bestPrice != null &&
+                priceInfos[i].amount != null &&
+                priceInfos[i].amount == bestPrice,
+            showSimilar: showSimilar,
+          ),
+          if (i != widget.products.length - 1) const SizedBox(height: 12),
         ],
       ],
     );
   }
 
+  ({double? amount, String currency}) _comparePriceInfo(
+    ProductEntity product,
+    String country,
+  ) {
+    final countryInfo = SupportedCountries.countries[country];
+    final localPrice = product.getPriceForCountry(country);
+    if (localPrice != null && localPrice > 0) {
+      return (amount: localPrice, currency: countryInfo?.currency ?? 'USD');
+    }
+    final usPrice = product.getPriceForCountry('US');
+    if (usPrice != null && usPrice > 0) {
+      return (amount: usPrice, currency: 'USD');
+    }
+    for (final entry in product.prices.entries) {
+      if (entry.value > 0) {
+        return (amount: entry.value, currency: _currencyForCountry(entry.key));
+      }
+    }
+    return (amount: null, currency: countryInfo?.currency ?? 'USD');
+  }
+
+  String _currencyForCountry(String countryCode) {
+    return SupportedCountries.countries[countryCode.toUpperCase()]?.currency ??
+        ref.read(currencyProvider);
+  }
+
+  Widget _buildComparePriceCard({
+    required ProductEntity product,
+    required ({double? amount, String currency}) info,
+    required String country,
+    required bool isBest,
+    bool showSimilar = false,
+  }) {
+    final offersAsync = ref.watch(productOffersProvider(product.id));
+    final offers = _sortCompareOffersForCountry(
+      offersAsync.valueOrNull ?? const <ProductOfferModel>[],
+      country,
+    );
+    ProductOfferModel? bestOffer;
+    for (final offer in offers) {
+      if (offer.hasExactPrice) {
+        bestOffer = offer;
+        break;
+      }
+    }
+    final stores = product.getAffiliateLinksForCountry(country);
+    final entries = (stores.isNotEmpty ? stores : product.affiliateLinks)
+        .entries
+        .where((entry) => entry.value.trim().isNotEmpty)
+        .where(
+          (entry) => !offers.any(
+            (offer) =>
+                offer.url.trim().toLowerCase() ==
+                entry.value.trim().toLowerCase(),
+          ),
+        )
+        .take(4)
+        .toList(growable: false);
+    final displayAmount = bestOffer?.price ?? info.amount;
+    final displayCurrency = bestOffer?.currency ?? info.currency;
+    final hasPrice = displayAmount != null && displayAmount > 0;
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isBest
+              ? AppTheme.scoreExcellent.withValues(alpha: 0.35)
+              : context.dividerColor.withValues(alpha: 0.6),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Ürün görseli üstte, kendi fiyatı hemen altında (Specs sekmesindeki
+          // ürün sütunu düzenine paralel).
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProductImageBox(
+                  imageUrl: product.imageUrl,
+                  fallbackUrls: product.images,
+                  width: 76,
+                  height: 76,
+                  borderRadius: BorderRadius.circular(14),
+                  padding: const EdgeInsets.all(6),
+                ),
+                const SizedBox(height: 8),
+                if (isBest)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.scoreExcellent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      isTr ? 'En iyi fiyat' : 'Best price',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.scoreExcellent,
+                      ),
+                    ),
+                  ),
+                Text(
+                  hasPrice
+                      ? AppUtils.formatCurrency(displayAmount, displayCurrency)
+                      : (isTr ? 'Fiyat yok' : 'No price'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: hasPrice ? 18 : 13,
+                    fontWeight: FontWeight.w900,
+                    color: hasPrice
+                        ? AppTheme.scoreExcellent
+                        : context.textTertiaryColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  product.name,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                if (product.brand?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    product.brand!.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (offers.isEmpty && entries.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.surfaceVariantColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.price_change_outlined,
+                    size: 18,
+                    color: context.textTertiaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isTr
+                          ? (offersAsync is AsyncLoading
+                                ? 'Fiyatlar yükleniyor'
+                                : 'Bu ürün için mağaza/fiyat bilgisi yok')
+                          : (offersAsync is AsyncLoading
+                                ? 'Loading prices'
+                                : 'No store or price information for this product'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (offers.isNotEmpty)
+            ...offers
+                .take(4)
+                .map(
+                  (offer) => _buildCompareOfferRow(
+                    offer: offer,
+                    selectedCountry: country,
+                  ),
+                )
+          else
+            ...entries.map(
+              (entry) => _CompareStoreRow(name: entry.key, url: entry.value),
+            ),
+          if (showSimilar) _buildCompareSimilarRow(product),
+        ],
+      ),
+    );
+  }
+
+  List<ProductOfferModel> _sortCompareOffersForCountry(
+    List<ProductOfferModel> offers,
+    String country,
+  ) {
+    final selected = country.trim().toUpperCase();
+    final live = offers.where((offer) => offer.isLive).toList();
+    int rank(ProductOfferModel offer) {
+      final c = offer.country.trim().toUpperCase();
+      if (c == selected) return 0;
+      if (c.isEmpty) return 2;
+      if (c == 'US') return 3;
+      return 1;
+    }
+
+    live.sort((a, b) {
+      final rankCompare = rank(a).compareTo(rank(b));
+      if (rankCompare != 0) return rankCompare;
+      if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
+      if (a.hasExactPrice != b.hasExactPrice) {
+        return a.hasExactPrice ? -1 : 1;
+      }
+      if (a.hasExactPrice && b.hasExactPrice && a.price != b.price) {
+        return a.price.compareTo(b.price);
+      }
+      return a.displayStore.compareTo(b.displayStore);
+    });
+    return live;
+  }
+
+  Widget _buildCompareOfferPrice(ProductOfferModel offer) {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final label = offer.hasExactPrice
+        ? AppUtils.formatCurrency(offer.price, offer.currency)
+        : (offer.priceText.isNotEmpty
+              ? offer.priceText
+              : (isTr ? 'Fiyatı gör' : 'Check price'));
+    return Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w900,
+        color: offer.hasExactPrice
+            ? AppTheme.scoreExcellent
+            : context.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildCompareOfferSubtitle(
+    ProductOfferModel offer,
+    String selectedCountry,
+  ) {
+    final showCountry =
+        offer.country.isNotEmpty &&
+        offer.country != selectedCountry.trim().toUpperCase();
+    if (!showCountry && offer.priceText.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        [
+          if (showCountry) offer.country,
+          if (offer.priceText.isNotEmpty && !offer.hasExactPrice)
+            offer.priceText,
+        ].join(' · '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 10.5,
+          color: context.textTertiaryColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompareOfferRow({
+    required ProductOfferModel offer,
+    required String selectedCountry,
+  }) {
+    final brand = _resolveCompareStoreBrand(offer.store);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final uri = Uri.tryParse(offer.url);
+            if (uri == null) return;
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (_) {}
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.dividerColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: brand.$2.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: brand.$2.withValues(alpha: 0.2)),
+                  ),
+                  child: Icon(brand.$3, size: 17, color: brand.$2),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        brand.$1,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      _buildCompareOfferSubtitle(offer, selectedCountry),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildCompareOfferPrice(offer),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.open_in_new_rounded,
+                  size: 15,
+                  color: context.textTertiaryColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Detay sayfasındaki "Benzer Ürünler" satırının compare karşılığı. Fiyat
+  /// bilgisi az olduğunda (≤3) her ürünün altında alternatif öneriler gösterir.
+  Widget _buildCompareSimilarRow(ProductEntity product) {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final similarAsync = ref.watch(similarProductsProvider(product));
+    return similarAsync.maybeWhen(
+      data: (products) {
+        if (products.isEmpty) return const SizedBox.shrink();
+        final list = products.take(10).toList(growable: false);
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.brandBlue, Color(0xFF7C3AED)],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.widgets_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.l10n?.similarProducts ??
+                        (isTr ? 'Benzer Ürünler' : 'Similar Products'),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 210,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) => SizedBox(
+                    width: 150,
+                    child: SharedSimilarGridCard(product: list[i]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildSimilarEmpty() {
     return Center(
       child: Padding(
@@ -6238,6 +6689,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   Widget _buildSimilarShimmer() {
     return GridView.builder(
       shrinkWrap: true,
@@ -6342,13 +6794,29 @@ Rules:
 
   Widget _buildProTab() {
     // RULE 1: No auto-fetch. All AI calls are lazy — triggered only when user taps a card.
-    // Read subscription state once to avoid multiple watches for the same provider.
-    final isPremium = ref.watch(premiumProvider);
-    final aiCreditCost = isPremium
-        ? null
-        : ref
-              .read(subscriptionServiceProvider)
-              .creditCostForFeature('compare_ai');
+    final progressText = _unifiedAiProgress.trim().isNotEmpty
+        ? _unifiedAiProgress
+        : [
+            _aiProgressText[_AiPanelType.advisor],
+            _aiProgressText[_AiPanelType.deepAnalysis],
+            _aiProgressText[_AiPanelType.alternatives],
+            _aiProgressText[_AiPanelType.prediction],
+          ].firstWhere(
+            (text) => text != null && text.trim().isNotEmpty,
+            orElse: () => '',
+          );
+    final unifiedErrorMsg =
+        [
+          _advisorErrorMsg,
+          _deepAnalysisErrorMsg,
+          _alternativesErrorMsg,
+          _predictionErrorMsg,
+        ].firstWhere(
+          (message) => message != null && message.trim().isNotEmpty,
+          orElse: () => _isTr
+              ? 'AI analizi tamamlanamadi'
+              : 'AI analysis could not be completed',
+        );
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -6361,97 +6829,157 @@ Rules:
         // 1. Personalized Match
         _buildMatchScoreSection(),
         const SizedBox(height: 14),
-        // 2. AI Product Advisor
+        // 2. Unified AI Analysis
         _buildExpandableCard(
-          icon: Icons.support_agent_rounded,
-          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
-          subtitle:
-              context.l10n?.personalizedPurchaseAdvice ??
-              'Personalized comparison purchase advice',
-          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
-          isExpanded: _advisorExpanded,
-          isLoading: _advisorLoading,
-          content: _advisorResult,
-          contentWidget: _advisorStructured != null
-              ? _buildAdvisorVisual()
-              : null,
-          isError: _advisorError,
-          errorMsg: _advisorErrorMsg,
-          loadingStatusText: _aiProgressText[_AiPanelType.advisor],
-          onRetry: () => _retryAiPanel(_AiPanelType.advisor, _fetchAdvisor),
-          onTap: _toggleAdvisor,
-          cost: aiCreditCost,
-        ),
-        const SizedBox(height: 14),
-        // 3. AI Deep Analysis
-        _buildExpandableCard(
-          icon: Icons.psychology_rounded,
-          title: context.l10n?.aiDeepAnalysis ?? 'AI Deep Analysis',
-          subtitle:
-              context.l10n?.comprehensiveAiComparison ??
-              'Comprehensive AI-powered comparison evaluation',
-          gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
-          isExpanded: _deepAnalysisExpanded,
-          isLoading: _deepAnalysisLoading,
-          content: _deepAnalysisResult,
-          contentWidget: _deepAnalysisStructured != null
-              ? _buildDeepAnalysisVisual()
-              : null,
-          isError: _deepAnalysisError,
-          errorMsg: _deepAnalysisErrorMsg,
-          loadingStatusText: _aiProgressText[_AiPanelType.deepAnalysis],
-          onRetry: () =>
-              _retryAiPanel(_AiPanelType.deepAnalysis, _fetchDeepAnalysis),
-          onTap: _toggleDeepAnalysis,
-          cost: aiCreditCost,
-        ),
-        const SizedBox(height: 14),
-        // 4. Smart Alternatives
-        _buildExpandableCard(
-          icon: Icons.swap_horizontal_circle_rounded,
-          title: context.l10n?.smartAlternatives ?? 'Smart Alternatives',
-          subtitle:
-              context.l10n?.aiAlternativesToConsider ??
-              'AI-curated alternatives you should consider',
-          gradient: const [AppTheme.warning, Color(0xFFF97316)],
-          isExpanded: _alternativesExpanded,
-          isLoading: _alternativesLoading,
-          content: _alternativesResult,
-          contentWidget: _alternativesStructured != null
-              ? _buildAlternativesVisual()
-              : null,
-          isError: _alternativesError,
-          errorMsg: _alternativesErrorMsg,
-          loadingStatusText: _aiProgressText[_AiPanelType.alternatives],
-          onRetry: () =>
-              _retryAiPanel(_AiPanelType.alternatives, _fetchAlternatives),
-          onTap: _toggleAlternatives,
-          cost: aiCreditCost,
-        ),
-        const SizedBox(height: 14),
-        // 5. Price Prediction
-        _buildExpandableCard(
-          icon: Icons.trending_down_rounded,
-          title: context.l10n?.pricePrediction ?? 'Price Prediction',
-          subtitle:
-              context.l10n?.aiPriceTrendAnalysis ??
-              'AI-powered price trend analysis & best time to buy',
-          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          isExpanded: _predictionExpanded,
-          isLoading: _predictionLoading,
-          content: _predictionResult,
-          contentWidget: _predictionStructured != null
-              ? _buildPredictionVisual()
-              : null,
-          isError: _predictionError,
-          errorMsg: _predictionErrorMsg,
-          loadingStatusText: _aiProgressText[_AiPanelType.prediction],
-          onRetry: () =>
-              _retryAiPanel(_AiPanelType.prediction, _fetchPrediction),
-          onTap: _togglePrediction,
-          cost: aiCreditCost,
+          icon: Icons.auto_awesome_rounded,
+          title: _compareAiAnalysesTabLabel(context),
+          subtitle: _isTr
+              ? 'Tavsiye, teknik farklar, alternatifler ve fiyat tahmini'
+              : 'Advice, technical differences, alternatives and price timing',
+          gradient: const [AppTheme.premiumPurple, AppTheme.primaryBlue],
+          isExpanded: _unifiedAiExpanded,
+          isLoading: _isAnyUnifiedCompareAiLoading,
+          content: _hasAnyUnifiedCompareAiData ? 'ready' : null,
+          contentWidget: _hasAnyUnifiedCompareAiData
+              ? _buildUnifiedCompareAiVisual()
+              : _buildUnifiedCompareAiPlaceholder(),
+          isError:
+              _advisorError &&
+              _deepAnalysisError &&
+              _alternativesError &&
+              _predictionError,
+          errorMsg: unifiedErrorMsg,
+          loadingStatusText: progressText,
+          onRetry: _toggleUnifiedCompareAi,
+          onTap: _toggleUnifiedCompareAi,
         ),
       ],
+    );
+  }
+
+  Widget _buildUnifiedCompareAiVisual() {
+    final sections = <Widget>[];
+    if (_advisorStructured != null) {
+      sections.add(
+        _buildUnifiedCompareSection(
+          icon: Icons.support_agent_rounded,
+          title: _isTr ? 'Satın Alma Kararı' : 'Buying Decision',
+          color: AppTheme.primaryBlue,
+          child: _buildAdvisorVisual(),
+        ),
+      );
+    }
+    if (_deepAnalysisStructured != null) {
+      sections.add(
+        _buildUnifiedCompareSection(
+          icon: Icons.psychology_rounded,
+          title: _isTr ? 'Teknik Farklar' : 'Technical Differences',
+          color: AppTheme.premiumPurple,
+          child: _buildDeepAnalysisVisual(),
+        ),
+      );
+    }
+    if (_alternativesStructured != null) {
+      sections.add(
+        _buildUnifiedCompareSection(
+          icon: Icons.swap_horizontal_circle_rounded,
+          title: _isTr ? 'Alternatifler' : 'Alternatives',
+          color: AppTheme.warning,
+          child: _buildAlternativesVisual(),
+        ),
+      );
+    }
+    if (_predictionStructured != null) {
+      sections.add(
+        _buildUnifiedCompareSection(
+          icon: Icons.trending_down_rounded,
+          title: _isTr ? 'Fiyat Zamanlaması' : 'Price Timing',
+          color: AppTheme.green500,
+          child: _buildPredictionVisual(),
+        ),
+      );
+    }
+    if (sections.isEmpty) return _buildUnifiedCompareAiPlaceholder();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < sections.length; i++) ...[
+          if (i > 0) const SizedBox(height: 16),
+          sections[i],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildUnifiedCompareSection({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildUnifiedCompareAiPlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Row(
+        children: [
+          if (_isAnyUnifiedCompareAiLoading)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 18,
+              color: context.textTertiaryColor,
+            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _isAnyUnifiedCompareAiLoading
+                  ? (_isTr ? 'Analiz hazırlanıyor...' : 'Preparing analysis...')
+                  : (_isTr ? 'AI analizini başlat' : 'Start AI analysis'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -6468,30 +6996,66 @@ Rules:
       const Color(0xFFF59E0B),
       const Color(0xFF10B981),
     ];
+    final matchKeys = widget.products
+        .map(
+          (product) => LocalizedProductKey(
+            productId: product.id,
+            languageCode: _appLang,
+          ),
+        )
+        .toList(growable: false);
+    final matchStates = matchKeys
+        .map((key) => ref.watch(geminiMatchScoreProvider(key)))
+        .toList(growable: false);
+    final hasMissingAiScore = matchStates.any(
+      (state) => state.valueOrNull == null,
+    );
+    final anyMatchLoading = matchStates.any((state) => state is AsyncLoading);
+    final matchStepText = widget.products
+        .map((product) => ref.watch(aiMatchStepProvider(product.id)).trim())
+        .firstWhere((step) => step.isNotEmpty, orElse: () => '');
 
-    // No AI: scores are computed locally from quiz + behavior + product specs.
-    // Auto-mark as fetched so the section is fully visible once expanded.
-    if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
+    if (_matchScoreExpanded &&
+        quizCompleted &&
+        !_matchScoreFetched &&
+        hasMissingAiScore) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _matchScoreFetched) return;
         setState(() => _matchScoreFetched = true);
+        for (var i = 0; i < widget.products.length; i++) {
+          final currentState = ref.read(geminiMatchScoreProvider(matchKeys[i]));
+          if (currentState is AsyncLoading ||
+              currentState.valueOrNull != null) {
+            continue;
+          }
+          ref
+              .read(geminiMatchScoreProvider(matchKeys[i]).notifier)
+              .fetchMatchScore(
+                product: widget.products[i],
+                forCompareBatch: true,
+              );
+        }
       });
     }
 
-    const String matchStepText = '';
-    final isMatchLoading = _matchScoreExpanded && isUserProfileLoading;
+    final isMatchLoading =
+        _matchScoreExpanded &&
+        (isUserProfileLoading ||
+            anyMatchLoading ||
+            (quizCompleted && !_matchScoreFetched && hasMissingAiScore));
 
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.15)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.brandBlue.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -6501,28 +7065,38 @@ Rules:
           // Header row toggles expand/collapse
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
+            onTap: () async {
               if (!requireAuth(context)) return;
-              // No AI gating: local algorithm computes scores at zero cost.
-              setState(() => _matchScoreExpanded = !_matchScoreExpanded);
-              if (_matchScoreExpanded && !_matchScoreFetched && quizCompleted) {
-                _matchScoreFetched = true; // local algorithm, no AI fetch
+              final willExpand = !_matchScoreExpanded;
+              if (willExpand && quizCompleted && hasMissingAiScore) {
+                if (!await ensureEmailVerified(context, ref)) return;
+                if (!mounted) return;
+                final sub = ref.read(subscriptionServiceProvider);
+                if (!sub.canUseCompareAi) {
+                  _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+                  return;
+                }
+                sub.recordCompareAi();
               }
+              setState(() => _matchScoreExpanded = !_matchScoreExpanded);
             },
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.brandSkyBlue, AppTheme.brandDeepBlue],
+                    color: AppTheme.brandSkyBlue.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppTheme.brandSkyBlue.withValues(alpha: 0.16),
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.person_search_rounded,
-                    size: 20,
-                    color: Colors.white,
+                    size: 19,
+                    color: AppTheme.brandSkyBlue,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -6537,8 +7111,8 @@ Rules:
                               context.l10n?.personalizedMatch ??
                                   'Personalized Match',
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
                                 color: context.textPrimary,
                               ),
                               maxLines: 1,
@@ -6570,7 +7144,7 @@ Rules:
                                 matchStepText,
                                 key: ValueKey(matchStepText),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   color: AppTheme.brandBlue,
                                   fontStyle: FontStyle.italic,
                                   fontWeight: FontWeight.w500,
@@ -6583,7 +7157,7 @@ Rules:
                                     'AI-powered compatibility analysis',
                                 key: const ValueKey('subtitle'),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   color: context.textSecondary,
                                 ),
                               ),
@@ -6601,11 +7175,21 @@ Rules:
                     ),
                   )
                 else
-                  Icon(
-                    _matchScoreExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: AppTheme.brandBlue,
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _matchScoreExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 19,
+                      color: AppTheme.brandBlue,
+                    ),
                   ),
               ],
             ),
@@ -6661,13 +7245,13 @@ Rules:
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: List.generate(productCount, (i) {
                           final product = widget.products[i];
-                          // Local algorithm-based match score (no AI).
-                          final matchScore = ref.watch(
-                            localMatchScoreProvider(product),
-                          );
-                          const reason = '';
-                          const topFactors = <String>[];
-                          const missingFactors = <String>[];
+                          final matchResult = matchStates[i].valueOrNull;
+                          final matchScore = matchResult?.matchScore;
+                          final reason = matchResult?.reason ?? '';
+                          final topFactors =
+                              matchResult?.topMatchFactors ?? const <String>[];
+                          final missingFactors =
+                              matchResult?.missingFactors ?? const <String>[];
                           final color = barColors[i % barColors.length];
 
                           final matchColor = matchScore == null
@@ -6710,7 +7294,7 @@ Rules:
                                     Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Local-algorithm score circle (no AI, no loading state)
+                                        // AI match score circle.
                                         TweenAnimationBuilder<double>(
                                           tween: Tween(
                                             begin: 0,
@@ -6814,17 +7398,18 @@ Rules:
     String? loadingStatusText,
     num? cost,
   }) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
         boxShadow: [
           BoxShadow(
-            color: gradient[0].withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -6837,16 +7422,17 @@ Rules:
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradient),
-                    borderRadius: BorderRadius.circular(12),
+                    color: gradient[0].withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: gradient[0].withValues(alpha: 0.16),
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: context.surfaceVariantColor,
-                    size: 20,
-                  ),
+                  child: Icon(icon, color: gradient[0], size: 19),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -6861,8 +7447,8 @@ Rules:
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
                                 color: context.textPrimary,
                               ),
                             ),
@@ -6895,7 +7481,7 @@ Rules:
                                 loadingStatusText,
                                 key: ValueKey(loadingStatusText),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   color: gradient[0],
                                   fontStyle: FontStyle.italic,
                                   fontWeight: FontWeight.w500,
@@ -6907,7 +7493,7 @@ Rules:
                                 subtitle,
                                 key: const ValueKey('subtitle'),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   color: context.textSecondary,
                                 ),
                               ),
@@ -6925,11 +7511,21 @@ Rules:
                     ),
                   )
                 else
-                  Icon(
-                    isExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: gradient[0],
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: gradient[0].withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 19,
+                      color: gradient[0],
+                    ),
                   ),
               ],
             ),
@@ -7745,7 +8341,10 @@ String _compareCanonicalSpecKey(String key, [String value = '']) {
     return 'Fast charging power';
   }
   if (k.contains('usb type c charging port') &&
-      RegExp(r'^(yes|no|var|yok|true|false)$', caseSensitive: false).hasMatch(value.trim())) {
+      RegExp(
+        r'^(yes|no|var|yok|true|false)$',
+        caseSensitive: false,
+      ).hasMatch(value.trim())) {
     return 'USB-C charging';
   }
   final exact = _compareExactSpecAliases[k];
@@ -7759,11 +8358,15 @@ String _compareCanonicalSpecKey(String key, [String value = '']) {
   }
   for (final entry in _compareExactSpecAliases.entries) {
     final alias = entry.key;
-    if (alias.length > 3 && (k == alias || k.contains(alias) || alias.contains(k))) {
+    if (alias.length > 3 &&
+        (k == alias || k.contains(alias) || alias.contains(k))) {
       return entry.value;
     }
   }
-  return key.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  return key
+      .replaceAll(RegExp(r':$'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 String _compareCanonicalSection(String section, [String key = '']) {
@@ -7772,38 +8375,92 @@ String _compareCanonicalSection(String section, [String key = '']) {
   if (has(['display', 'screen', 'ekran'])) return 'Display';
   if (has(['battery', 'batarya', 'pil', 'charging', 'sarj'])) return 'Battery';
   if (has(['camera', 'kamera', 'photo', 'video'])) return 'Camera';
-  if (has(['processor', 'cpu', 'islemci', 'chipset', 'yonga', 'gpu', 'graphics', 'grafik'])) {
+  if (has([
+    'processor',
+    'cpu',
+    'islemci',
+    'chipset',
+    'yonga',
+    'gpu',
+    'graphics',
+    'grafik',
+  ])) {
     return 'Performance';
   }
   if (has(['memory', 'ram', 'bellek', 'storage', 'depolama', 'ssd', 'hdd'])) {
     return 'Memory and storage';
   }
-  if (has(['wi fi', 'wifi', 'wlan', 'bluetooth', 'network', 'baglanti', 'usb', 'nfc', 'sim', '5g', '4g'])) {
+  if (has([
+    'wi fi',
+    'wifi',
+    'wlan',
+    'bluetooth',
+    'network',
+    'baglanti',
+    'usb',
+    'nfc',
+    'sim',
+    '5g',
+    '4g',
+  ])) {
     return 'Connectivity';
   }
-  if (has(['design', 'tasarim', 'body', 'dimension', 'weight', 'agirlik', 'thickness', 'kalinlik'])) {
+  if (has([
+    'design',
+    'tasarim',
+    'body',
+    'dimension',
+    'weight',
+    'agirlik',
+    'thickness',
+    'kalinlik',
+  ])) {
     return 'Design';
   }
   if (has(['audio', 'sound', 'speaker', 'ses', 'hoparlor'])) return 'Audio';
-  if (has(['software', 'operating system', 'isletim', 'os', 'windows', 'android', 'ios'])) {
+  if (has([
+    'software',
+    'operating system',
+    'isletim',
+    'os',
+    'windows',
+    'android',
+    'ios',
+  ])) {
     return 'Software';
   }
   if (has(['sensor', 'fingerprint', 'gps', 'gyro'])) return 'Sensors';
-  return section.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim().isEmpty
+  return section
+          .replaceAll(RegExp(r':$'), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim()
+          .isEmpty
       ? 'General'
-      : section.replaceAll(RegExp(r':$'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+      : section
+            .replaceAll(RegExp(r':$'), '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
 }
 
 String _mergeCompareValue(String existing, String incoming) {
   final a = existing.trim();
   final b = incoming.trim();
   if (a.isEmpty) return b;
-  if (b.isEmpty || _compareNormalizeText(a) == _compareNormalizeText(b)) return a;
+  if (b.isEmpty || _compareNormalizeText(a) == _compareNormalizeText(b)) {
+    return a;
+  }
   if (_compareNormalizeText(a).contains(_compareNormalizeText(b))) return a;
   if (_compareNormalizeText(b).contains(_compareNormalizeText(a))) return b;
-  final lines = a.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
-  for (final line in b.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty)) {
-    if (!lines.any((x) => _compareNormalizeText(x) == _compareNormalizeText(line))) {
+  final lines = a
+      .split('\n')
+      .map((x) => x.trim())
+      .where((x) => x.isNotEmpty)
+      .toList();
+  for (final line
+      in b.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty)) {
+    if (!lines.any(
+      (x) => _compareNormalizeText(x) == _compareNormalizeText(line),
+    )) {
       lines.add(line);
     }
   }

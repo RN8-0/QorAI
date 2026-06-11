@@ -1,6 +1,7 @@
 part of '../compare_screen.dart';
 
 // ─── Compare full-screen image viewer (theme-aware backdrop) ─────────────────
+// ignore: unused_element
 class _CompareFullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   const _CompareFullScreenImageViewer({required this.images});
@@ -27,8 +28,9 @@ class _CompareFullScreenImageViewerState
     const bgColor = Colors.white;
     const fgColor = Colors.black;
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
-    final screenW = MediaQuery.sizeOf(context).width;
-    final cacheWidth = (screenW * dpr).round().clamp(1080, 2400);
+    final size = MediaQuery.sizeOf(context);
+    final cacheWidth = (size.width * dpr).round().clamp(720, 1440);
+    final cacheHeight = (size.height * dpr).round().clamp(720, 1440);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -46,7 +48,9 @@ class _CompareFullScreenImageViewerState
                   imageUrl: widget.images[i],
                   fit: BoxFit.contain,
                   memCacheWidth: cacheWidth,
+                  memCacheHeight: cacheHeight,
                   maxWidthDiskCache: cacheWidth,
+                  maxHeightDiskCache: cacheHeight,
                   placeholder: (_, _) => Center(
                     child: CircularProgressIndicator(
                       color: fgColor.withValues(alpha: 0.6),
@@ -110,6 +114,7 @@ class _CompareFullScreenImageViewerState
 }
 
 // ─── Aggregated store-links card for compare prices tab ─────────────────────
+// ignore: unused_element
 class _CompareStoreLinksCard extends StatelessWidget {
   final List<MapEntry<String, String>> entries;
   const _CompareStoreLinksCard({required this.entries});
@@ -230,37 +235,52 @@ class _CompareStoreRow extends StatelessWidget {
 
 (String, Color, IconData) _resolveCompareStoreBrand(String rawName) {
   final n = rawName.toLowerCase().trim();
-  if (n.contains('amazon'))
+  if (n.contains('amazon')) {
     return ('Amazon', const Color(0xFFFF9900), Icons.shopping_cart_rounded);
-  if (n.contains('bestbuy') || n.contains('best buy'))
+  }
+  if (n.contains('bestbuy') || n.contains('best buy')) {
     return ('Best Buy', const Color(0xFF003B70), Icons.storefront_rounded);
-  if (n.contains('walmart'))
+  }
+  if (n.contains('walmart')) {
     return ('Walmart', const Color(0xFF0071CE), Icons.storefront_rounded);
-  if (n.contains('aliexpress'))
+  }
+  if (n.contains('aliexpress')) {
     return (
       'AliExpress',
       const Color(0xFFE62E04),
       Icons.local_shipping_rounded,
     );
-  if (n.contains('trendyol'))
+  }
+  if (n.contains('trendyol')) {
     return ('Trendyol', const Color(0xFFF27A1A), Icons.shopping_bag_rounded);
-  if (n.contains('hepsiburada'))
+  }
+  if (n.contains('hepsiburada')) {
     return ('Hepsiburada', const Color(0xFFFF6000), Icons.shopping_bag_rounded);
-  if (n.contains('n11'))
+  }
+  if (n.contains('n11')) {
     return ('n11', const Color(0xFF923899), Icons.storefront_rounded);
-  if (n.contains('vatan'))
+  }
+  if (n.contains('vatan')) {
     return ('Vatan', const Color(0xFFE60000), Icons.storefront_rounded);
-  if (n.contains('teknosa'))
+  }
+  if (n.contains('teknosa')) {
     return ('Teknosa', const Color(0xFFE30613), Icons.storefront_rounded);
-  if (n.contains('mediamarkt'))
+  }
+  if (n.contains('mediamarkt')) {
     return ('MediaMarkt', const Color(0xFFE5121A), Icons.storefront_rounded);
-  if (n.contains('newegg'))
+  }
+  if (n.contains('newegg')) {
     return ('Newegg', const Color(0xFFF7A028), Icons.memory_rounded);
-  if (n.contains('apple')) return ('Apple', Colors.black, Icons.apple);
-  if (n.contains('samsung'))
+  }
+  if (n.contains('apple')) {
+    return ('Apple', Colors.black, Icons.apple);
+  }
+  if (n.contains('samsung')) {
     return ('Samsung', const Color(0xFF1428A0), Icons.storefront_rounded);
-  if (n.contains('google'))
+  }
+  if (n.contains('google')) {
     return ('Google Store', const Color(0xFF4285F4), Icons.storefront_rounded);
+  }
   final display = rawName
       .split(RegExp(r'[\s_-]+'))
       .where((p) => p.isNotEmpty)

@@ -91,8 +91,8 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
     const heroBaseHeight = 300.0;
     // Hero is padded and product images are mostly cutouts; decoding far beyond
     // the visible slot wastes memory and causes GC stutter on mid-range phones.
-    final heroCacheWidth = (screenWidth * dpr).round().clamp(540, 960);
-    final heroCacheHeight = (heroBaseHeight * dpr).round().clamp(540, 960);
+    final heroCacheWidth = (screenWidth * dpr).round().clamp(480, 840);
+    final heroCacheHeight = (heroBaseHeight * dpr).round().clamp(480, 840);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _precacheAdjacentImages(
@@ -148,46 +148,43 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                         );
                       }
                     : null,
-                child: Padding(
-                  // A touch more breathing room so medium-res product images
-                  // aren't upscaled edge-to-edge (which reads as blurry).
-                  padding: const EdgeInsets.fromLTRB(34, 18, 34, 38),
-                  child: allImages.isEmpty
-                      ? Center(
-                          child: _CategoryEmoji(
-                            cat: widget.product.categoryId,
-                          ),
-                        )
-                      : PageView.builder(
-                          controller: _pageController,
-                          itemCount: allImages.length,
-                          dragStartBehavior: DragStartBehavior.down,
-                          physics: const _GentlePageScrollPhysics(),
-                          onPageChanged: (i) {
-                            if (i == _selectedIndex) return;
-                            setState(() => _selectedIndex = i);
-                            _precacheAdjacentImages(
-                              allImages: allImages,
-                              centerIndex: i,
+                child: allImages.isEmpty
+                    ? Center(
+                        child: _CategoryEmoji(cat: widget.product.categoryId),
+                      )
+                    : PageView.builder(
+                        controller: _pageController,
+                        itemCount: allImages.length,
+                        allowImplicitScrolling: true,
+                        dragStartBehavior: DragStartBehavior.down,
+                        physics: const _GentlePageScrollPhysics(),
+                        onPageChanged: (i) {
+                          if (i == _selectedIndex) return;
+                          setState(() => _selectedIndex = i);
+                          _precacheAdjacentImages(
+                            allImages: allImages,
+                            centerIndex: i,
+                            cacheWidth: heroCacheWidth,
+                            cacheHeight: heroCacheHeight,
+                          );
+                        },
+                        itemBuilder: (context, i) {
+                          return Hero(
+                            tag: 'product_image_${widget.product.id}_$i',
+                            child: _HeroNetworkImage(
+                              url: allImages[i],
+                              fallbackUrls: i == 0
+                                  ? allImages.skip(1).toList(growable: false)
+                                  : const <String>[],
                               cacheWidth: heroCacheWidth,
                               cacheHeight: heroCacheHeight,
-                            );
-                          },
-                          itemBuilder: (context, i) {
-                            return Hero(
-                              tag: 'product_image_${widget.product.id}_$i',
-                              child: _HeroNetworkImage(
-                                url: allImages[i],
-                                cacheWidth: heroCacheWidth,
-                                cacheHeight: heroCacheHeight,
-                                fallback: _CategoryEmoji(
-                                  cat: widget.product.categoryId,
-                                ),
+                              fallback: _CategoryEmoji(
+                                cat: widget.product.categoryId,
                               ),
-                            );
-                          },
-                        ),
-                ),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
             // ── Score badges (Tech + Match, stacked, top-right) ──
@@ -256,19 +253,68 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
 class _GentlePageScrollPhysics extends PageScrollPhysics {
   const _GentlePageScrollPhysics({super.parent});
 
+  static const double _pageTurnThreshold = 0.16;
+  static const double _directionalVelocity = 4;
+
   @override
   _GentlePageScrollPhysics applyTo(ScrollPhysics? ancestor) {
     return _GentlePageScrollPhysics(parent: buildParent(ancestor));
   }
 
   @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    if (position.outOfRange) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final pageExtent = position.viewportDimension;
+    if (pageExtent <= 0) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final currentPage = position.pixels / pageExtent;
+    final lowerPage = currentPage.floorToDouble();
+    final upperPage = currentPage.ceilToDouble();
+    final fraction = currentPage - lowerPage;
+    final double targetPage;
+
+    if (velocity > _directionalVelocity) {
+      targetPage = lowerPage + (fraction >= _pageTurnThreshold ? 1.0 : 0.0);
+    } else if (velocity < -_directionalVelocity) {
+      targetPage =
+          upperPage - (fraction <= 1.0 - _pageTurnThreshold ? 1.0 : 0.0);
+    } else {
+      targetPage = currentPage.roundToDouble();
+    }
+
+    final targetPixels = (targetPage * pageExtent).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((targetPixels - position.pixels).abs() < precisionErrorTolerance) {
+      return null;
+    }
+
+    return ScrollSpringSimulation(
+      spring,
+      position.pixels,
+      targetPixels,
+      velocity,
+      tolerance: toleranceFor(position),
+    );
+  }
+
+  @override
   double get minFlingDistance => 4;
 
   @override
-  double get minFlingVelocity => 40;
+  double get minFlingVelocity => 24;
 
   @override
-  double? get dragStartDistanceMotionThreshold => 1;
+  double? get dragStartDistanceMotionThreshold => 0.5;
 }
 
 // ─── Compact score stack rendered inside the hero (top-right) ───
@@ -304,10 +350,10 @@ class _HeroScoreStack extends ConsumerWidget {
           color: fitScore == null
               ? AppTheme.slate500
               : fitScore >= 80
-                  ? AppTheme.scoreExcellent
-                  : fitScore >= 60
-                      ? AppTheme.warning
-                      : AppTheme.error,
+              ? AppTheme.scoreExcellent
+              : fitScore >= 60
+              ? AppTheme.warning
+              : AppTheme.error,
           kind: _ScoreKind.match,
           dimmed: fitScore == null,
         ),
@@ -362,11 +408,11 @@ class _HeroScoreCircleState extends State<_HeroScoreCircle> {
         : (isTr ? 'Senin Eşleşmen' : 'Your Match');
     final explanation = widget.kind == _ScoreKind.tech
         ? (isTr
-            ? 'Aynı kategorideki ürünlere göre normalize edilmiş teknik özelliklerin (yonga, ekran, pil, kamera vb.) toplam puanı.'
-            : 'A combined score of the product\'s technical specs (chipset, display, battery, camera, etc.) normalized against products in the same category.')
+              ? 'Aynı kategorideki ürünlere göre normalize edilmiş teknik özelliklerin (yonga, ekran, pil, kamera vb.) toplam puanı.'
+              : 'A combined score of the product\'s technical specs (chipset, display, battery, camera, etc.) normalized against products in the same category.')
         : (isTr
-            ? 'Quiz cevaplarına ve davranışlarına göre AI tarafından hesaplanan, bu ürünün senin için ne kadar uygun olduğunu gösteren puan.'
-            : 'A personalized AI-calculated score showing how well this product fits you, based on your quiz answers and behavior signals.');
+              ? 'Quiz cevaplarına ve davranışlarına göre AI tarafından hesaplanan, bu ürünün senin için ne kadar uygun olduğunu gösteren puan.'
+              : 'A personalized AI-calculated score showing how well this product fits you, based on your quiz answers and behavior signals.');
 
     final screenWidth = MediaQuery.of(context).size.width;
     const bubbleWidth = 260.0;
@@ -396,7 +442,9 @@ class _HeroScoreCircleState extends State<_HeroScoreCircle> {
                       ? const Color(0xFF1A1F2E)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: widget.color.withValues(alpha: 0.3),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.18),
@@ -633,18 +681,20 @@ class _HeroScoreBadge extends StatelessWidget {
   }
 }
 
-/// Hero product image with a sharpest-first epey variant chain and a graceful
-/// fallback: big (b_) -> no-prefix -> medium (m_) -> category emoji. The size
+/// Hero product image with an original-first epey variant chain and a graceful
+/// fallback: no-prefix -> big (b_) -> medium (m_) -> category emoji. The size
 /// variant is upgraded in-place and each failure steps down (never blank).
 class _HeroNetworkImage extends StatefulWidget {
   const _HeroNetworkImage({
     required this.url,
+    this.fallbackUrls = const [],
     required this.cacheWidth,
     required this.cacheHeight,
     required this.fallback,
   });
 
   final String url;
+  final List<String> fallbackUrls;
   final int cacheWidth;
   final int cacheHeight;
   final Widget fallback;
@@ -658,10 +708,23 @@ class _HeroNetworkImage extends StatefulWidget {
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['${path}b_$file', '$path$file', '${path}m_$file'];
+    return ['$path$file', '${path}b_$file', '${path}m_$file'];
   }
 
   static String bestCandidate(String url) => _expand(url).first;
+
+  static List<String> candidates(String primary, List<String> fallbacks) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final raw in <String>[primary, ...fallbacks]) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) continue;
+      for (final candidate in _expand(trimmed)) {
+        if (seen.add(candidate.toLowerCase())) out.add(candidate);
+      }
+    }
+    return out;
+  }
 
   @override
   State<_HeroNetworkImage> createState() => _HeroNetworkImageState();
@@ -674,14 +737,14 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
   @override
   void initState() {
     super.initState();
-    _urls = _HeroNetworkImage._expand(widget.url);
+    _urls = _HeroNetworkImage.candidates(widget.url, widget.fallbackUrls);
   }
 
   @override
   void didUpdateWidget(_HeroNetworkImage old) {
     super.didUpdateWidget(old);
-    if (old.url != widget.url) {
-      _urls = _HeroNetworkImage._expand(widget.url);
+    if (old.url != widget.url || old.fallbackUrls != widget.fallbackUrls) {
+      _urls = _HeroNetworkImage.candidates(widget.url, widget.fallbackUrls);
       _idx = 0;
     }
   }
@@ -690,28 +753,34 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
   Widget build(BuildContext context) {
     if (_idx >= _urls.length) return Center(child: widget.fallback);
     final url = _urls[_idx];
-    return CachedNetworkImage(
-      key: ValueKey(url),
-      imageUrl: url,
-      fit: BoxFit.contain,
-      memCacheWidth: widget.cacheWidth,
-      memCacheHeight: widget.cacheHeight,
-      maxWidthDiskCache: widget.cacheWidth,
-      maxHeightDiskCache: widget.cacheHeight,
-      filterQuality: FilterQuality.medium,
-      fadeInDuration: const Duration(milliseconds: 120),
-      placeholder: (_, _) => const ColoredBox(color: Colors.white),
-      errorWidget: (_, failed, _) {
-        CachedNetworkImageProvider(
-          failed,
-          maxWidth: widget.cacheWidth,
-          maxHeight: widget.cacheHeight,
-        ).evict();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _idx < _urls.length) setState(() => _idx++);
-        });
-        return const ColoredBox(color: Colors.white);
-      },
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.78,
+        heightFactor: 0.78,
+        child: CachedNetworkImage(
+          key: ValueKey(url),
+          imageUrl: url,
+          fit: BoxFit.scaleDown,
+          memCacheWidth: widget.cacheWidth,
+          memCacheHeight: widget.cacheHeight,
+          maxWidthDiskCache: widget.cacheWidth,
+          maxHeightDiskCache: widget.cacheHeight,
+          filterQuality: FilterQuality.medium,
+          fadeInDuration: const Duration(milliseconds: 80),
+          placeholder: (_, _) => const ColoredBox(color: Colors.white),
+          errorWidget: (_, failed, _) {
+            CachedNetworkImageProvider(
+              failed,
+              maxWidth: widget.cacheWidth,
+              maxHeight: widget.cacheHeight,
+            ).evict();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _idx < _urls.length) setState(() => _idx++);
+            });
+            return const ColoredBox(color: Colors.white);
+          },
+        ),
+      ),
     );
   }
 }

@@ -3291,6 +3291,16 @@ final productVariantsProvider = FutureProvider.autoDispose
       }
     });
 
+final productOffersProvider = FutureProvider.autoDispose
+    .family<List<ProductOfferModel>, String>((ref, productId) async {
+      final id = productId.trim();
+      if (id.isEmpty) return const <ProductOfferModel>[];
+      return ref
+          .read(pbDataSourceProvider)
+          .getProductOffers(id)
+          .timeout(const Duration(seconds: 12));
+    });
+
 // End of file
 
 // ════════════════════════════════════════════════════

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
@@ -39,6 +38,10 @@ class SharedPremiumFeaturesSectionState
   bool _alternativesExpanded = false;
   bool _advisorExpanded = false;
   bool _predictionExpanded = false;
+  bool _unifiedAiExpanded = false;
+  bool _unifiedAiRunning = false;
+  bool _unifiedAiUserCollapsed = false;
+  String _unifiedAiStep = '';
 
   bool _deepAnalysisUserCollapsed = false;
   bool _alternativesUserCollapsed = false;
@@ -82,14 +85,15 @@ class SharedPremiumFeaturesSectionState
 
   @override
   Widget build(BuildContext context) {
-    final hideQorCost = ref.watch(
-      subscriptionServiceProvider.select((service) => service.isPremium),
-    );
     final pid = widget.product.id;
     final localizedKey = LocalizedProductKey(
       productId: pid,
       languageCode: Localizations.localeOf(context).languageCode,
     );
+
+    final reviewAsync = ref.watch(aiReviewCacheProvider(localizedKey));
+    final reviewResult = reviewAsync.valueOrNull;
+    final isLoadingReview = reviewAsync is AsyncLoading;
 
     final deepAnalysisAsync = ref.watch(
       deepAnalysisCacheProvider(localizedKey),
@@ -111,11 +115,34 @@ class SharedPremiumFeaturesSectionState
     final predictionResult = predictionAsync.valueOrNull;
     final isLoadingPrediction = predictionAsync is AsyncLoading;
 
-    // Step messages for each AI operation
+    // Step messages for each AI operation.
+    final reviewStep = ref.watch(aiOperationStepProvider('${pid}_review'));
     final deepStep = ref.watch(aiOperationStepProvider('${pid}_deep'));
     final altsStep = ref.watch(aiOperationStepProvider('${pid}_alts'));
     final advisorStep = ref.watch(aiOperationStepProvider('${pid}_advisor'));
     final predStep = ref.watch(aiOperationStepProvider('${pid}_prediction'));
+    final stepMessage = _unifiedAiStep.isNotEmpty
+        ? _unifiedAiStep
+        : [
+            reviewStep,
+            deepStep,
+            advisorStep,
+            altsStep,
+            predStep,
+          ].firstWhere((step) => step.trim().isNotEmpty, orElse: () => '');
+    final isLoading =
+        _unifiedAiRunning ||
+        isLoadingReview ||
+        isLoadingAnalysis ||
+        isLoadingAdvisor ||
+        isLoadingAlternatives ||
+        isLoadingPrediction;
+    final hasContent =
+        (reviewResult != null && !reviewResult.failed) ||
+        deepAnalysis?.hasUsableContent == true ||
+        advisorResult?.hasUsableContent == true ||
+        alternatives?.hasUsableContent == true ||
+        predictionResult?.hasUsableContent == true;
 
     // Use ref.listen instead of addPostFrameCallback — prevents rebuild cascade.
     ref.listen(deepAnalysisCacheProvider(localizedKey), (_, next) {
@@ -146,96 +173,41 @@ class SharedPremiumFeaturesSectionState
         setState(() => _predictionExpanded = true);
       }
     });
+    ref.listen(aiReviewCacheProvider(localizedKey), (_, next) {
+      if (next.valueOrNull != null &&
+          !_unifiedAiExpanded &&
+          !_unifiedAiUserCollapsed) {
+        setState(() => _unifiedAiExpanded = true);
+      }
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // AI Deep Analysis
         RepaintBoundary(
           child: _buildCollapsibleHeader(
-          icon: Icons.psychology_rounded,
-          title: context.l10n?.aiDeepAnalysis ?? 'AI Derin Analizi',
-          subtitle:
-              context.l10n?.aiDeepAnalysisDesc ??
-              'Kapsamlı AI destekli ürün değerlendirmesi',
-          gradient: const [AppTheme.premiumPurple, Color(0xFF6366F1)],
-          isExpanded: _deepAnalysisExpanded,
-          isLoading: isLoadingAnalysis,
-          stepMessage: deepStep,
-          hasContent: deepAnalysis != null,
-          onTap: _toggleDeepAnalysis,
-            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
-          expandedChild: deepAnalysis != null
-              ? _buildDeepAnalysisVisual(deepAnalysis)
-              : null,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Smart Alternatives
-        RepaintBoundary(
-          child: _buildCollapsibleHeader(
-          icon: Icons.swap_horizontal_circle_rounded,
-          title: context.l10n?.smartAlternatives ?? 'Akıllı Alternatifler',
-          subtitle:
-              context.l10n?.smartAlternativesDesc ??
-              'AI tarafından seçilmiş benzer ürünler',
-          gradient: const [AppTheme.warning, Color(0xFFF97316)],
-          isExpanded: _alternativesExpanded,
-          isLoading: isLoadingAlternatives,
-          stepMessage: altsStep,
-          hasContent: alternatives != null,
-          onTap: _toggleAlternatives,
-            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
-          expandedChild: alternatives != null
-              ? _buildAlternativesVisual(alternatives)
-              : null,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // AI Product Advisor
-        RepaintBoundary(
-          child: _buildCollapsibleHeader(
-          icon: Icons.support_agent_rounded,
-          title: context.l10n?.aiProductAdvisor ?? 'AI Product Advisor',
-          subtitle: _txt(
-            tr: 'İhtiyaçlarınıza özel satın alma tavsiyeleri',
-            en: 'Tailored buying advice for your needs',
-          ),
-          gradient: const [Color(0xFF3B82F6), Color(0xFF06B6D4)],
-          isExpanded: _advisorExpanded,
-          isLoading: isLoadingAdvisor,
-          stepMessage: advisorStep,
-          hasContent: advisorResult != null,
-          onTap: _toggleAdvisor,
-            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
-          expandedChild: advisorResult != null
-              ? _buildAdvisorVisual(advisorResult)
-              : null,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Price Prediction
-        RepaintBoundary(
-          child: _buildCollapsibleHeader(
-          icon: Icons.trending_down_rounded,
-          title: context.l10n?.pricePrediction ?? 'Price Prediction',
-          subtitle: _txt(
-            tr: 'AI destekli fiyat trendi analizi ve en iyi alim zamani',
-            en: 'AI-powered price trend analysis and best time to buy',
-          ),
-          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          isExpanded: _predictionExpanded,
-          isLoading: isLoadingPrediction,
-          stepMessage: predStep,
-          hasContent: predictionResult != null,
-          onTap: _togglePrediction,
-            cost: hideQorCost ? null : AppConstants.detailAiCreditCost,
-          expandedChild: predictionResult != null
-              ? _buildPredictionVisual(predictionResult)
-              : null,
+            icon: Icons.auto_awesome_rounded,
+            title: _txt(tr: 'AI Analizi', en: 'AI Analysis'),
+            subtitle: _txt(
+              tr: 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini',
+              en: 'Reviews, specs, advice and price prediction',
+            ),
+            gradient: const [AppTheme.premiumPurple, AppTheme.primaryBlue],
+            isExpanded: _unifiedAiExpanded,
+            isLoading: isLoading,
+            stepMessage: stepMessage,
+            hasContent: hasContent,
+            onTap: _toggleUnifiedAnalysis,
+            expandedChild: (hasContent || isLoading)
+                ? _buildUnifiedAnalysisVisual(
+                    review: reviewResult,
+                    deepAnalysis: deepAnalysis,
+                    advisor: advisorResult,
+                    alternatives: alternatives,
+                    prediction: predictionResult,
+                    isLoading: isLoading,
+                  )
+                : null,
           ),
         ),
       ],
@@ -256,123 +228,424 @@ class SharedPremiumFeaturesSectionState
     Widget? expandedChild,
   }) {
     return AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: gradient[0].withValues(alpha: 0.15)),
-          boxShadow: [
-            BoxShadow(
-              color: gradient[0].withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: gradient),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: context.surfaceVariantColor,
-                      size: 20,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: gradient[0].withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: gradient[0].withValues(alpha: 0.16),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: context.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                  child: Icon(icon, color: gradient[0], size: 19),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (cost != null) ...[
+                            const SizedBox(width: 8),
+                            QorAmountBadge(
+                              amount: cost,
+                              color: gradient[0],
+                              fontSize: 10,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
                               ),
                             ),
-                            if (cost != null) ...[
-                              const SizedBox(width: 8),
-                              QorAmountBadge(
-                                amount: cost,
-                                color: gradient[0],
-                                fontSize: 10,
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              ),
-                            ],
                           ],
-                        ),
-                        const SizedBox(height: 2),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: Text(
-                            key: ValueKey(
-                              isLoading && stepMessage.isNotEmpty
-                                  ? stepMessage
-                                  : subtitle,
-                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: Text(
+                          key: ValueKey(
                             isLoading && stepMessage.isNotEmpty
                                 ? stepMessage
                                 : subtitle,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: isLoading && stepMessage.isNotEmpty
-                                  ? gradient[0].withValues(alpha: 0.85)
-                                  : context.textSecondary,
-                              fontStyle: isLoading && stepMessage.isNotEmpty
-                                  ? FontStyle.italic
-                                  : FontStyle.normal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          isLoading && stepMessage.isNotEmpty
+                              ? stepMessage
+                              : subtitle,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: isLoading && stepMessage.isNotEmpty
+                                ? gradient[0].withValues(alpha: 0.85)
+                                : context.textSecondary,
+                            fontStyle: isLoading && stepMessage.isNotEmpty
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  if (isLoading)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else ...[
-                    Icon(
+                ),
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else ...[
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: gradient[0].withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
                       isExpanded
                           ? Icons.expand_less_rounded
                           : Icons.expand_more_rounded,
+                      size: 19,
                       color: gradient[0],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (isExpanded && expandedChild != null) ...[
+            const SizedBox(height: 14),
+            expandedChild,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnifiedAnalysisVisual({
+    required AIReviewResult? review,
+    required DeepAnalysisResult? deepAnalysis,
+    required AdvisorResult? advisor,
+    required AlternativesResult? alternatives,
+    required PredictionResult? prediction,
+    required bool isLoading,
+  }) {
+    final sections = <Widget>[];
+    if (review != null && !review.failed) {
+      sections.add(
+        _buildUnifiedSection(
+          icon: Icons.forum_rounded,
+          title: _txt(tr: 'Yorum Memnuniyeti', en: 'Review Sentiment'),
+          color: AppTheme.accentCyan,
+          child: _buildReviewSentimentVisual(review),
+        ),
+      );
+    }
+    if (deepAnalysis?.hasUsableContent == true) {
+      sections.add(
+        _buildUnifiedSection(
+          icon: Icons.psychology_rounded,
+          title: _txt(tr: 'Teknik Oncelikler', en: 'Technical Priorities'),
+          color: AppTheme.premiumPurple,
+          child: _buildDeepAnalysisVisual(deepAnalysis!),
+        ),
+      );
+    }
+    if (advisor?.hasUsableContent == true) {
+      sections.add(
+        _buildUnifiedSection(
+          icon: Icons.support_agent_rounded,
+          title: _txt(tr: 'Satin Alma Karari', en: 'Buying Decision'),
+          color: AppTheme.primaryBlue,
+          child: _buildAdvisorVisual(advisor!),
+        ),
+      );
+    }
+    if (alternatives?.hasUsableContent == true) {
+      sections.add(
+        _buildUnifiedSection(
+          icon: Icons.swap_horizontal_circle_rounded,
+          title: _txt(
+            tr: 'Daha Mantikli Alternatifler',
+            en: 'Better Alternatives',
+          ),
+          color: AppTheme.warning,
+          child: _buildAlternativesVisual(alternatives!),
+        ),
+      );
+    }
+    if (prediction?.hasUsableContent == true) {
+      sections.add(
+        _buildUnifiedSection(
+          icon: Icons.trending_down_rounded,
+          title: _txt(tr: 'Fiyat Zamanlamasi', en: 'Price Timing'),
+          color: AppTheme.green500,
+          child: _buildPredictionVisual(prediction!),
+        ),
+      );
+    }
+    if (sections.isEmpty) {
+      return _buildAiLoadingPlaceholder(isLoading);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < sections.length; i++) ...[
+          if (i > 0) const SizedBox(height: 16),
+          sections[i],
+        ],
+        if (isLoading) ...[
+          const SizedBox(height: 16),
+          _buildAiLoadingPlaceholder(true),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildUnifiedSection({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionLabel(icon, title, color),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildReviewSentimentVisual(AIReviewResult result) {
+    final satisfaction = result.satisfaction.clamp(0, 100).toInt();
+    final confidence = result.confidence.clamp(0, 100).toInt();
+    final scoreColor = satisfaction >= 80
+        ? AppTheme.green500
+        : satisfaction >= 60
+        ? AppTheme.amber500
+        : AppTheme.rose500;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 92,
+              height: 92,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 92,
+                    height: 92,
+                    child: CircularProgressIndicator(
+                      value: satisfaction / 100.0,
+                      strokeWidth: 8,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: scoreColor.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation(scoreColor),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$satisfaction%',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: scoreColor,
+                        ),
+                      ),
+                      Text(
+                        _txt(tr: 'memnun', en: 'satisfied'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    result.summary,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (confidence > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _txt(
+                        tr: 'Kaynak guveni: $confidence/100',
+                        en: 'Source confidence: $confidence/100',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: context.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            if (isExpanded && expandedChild != null) ...[
-              const SizedBox(height: 14),
-              expandedChild,
-            ],
           ],
         ),
-      );
+        if (result.praised.isNotEmpty || result.criticized.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (result.praised.isNotEmpty)
+                Expanded(
+                  child: _buildProConCard(
+                    icon: Icons.thumb_up_alt_rounded,
+                    title: _txt(tr: 'Ovulenler', en: 'Praised'),
+                    items: result.praised.take(4).toList(),
+                    color: AppTheme.green500,
+                  ),
+                ),
+              if (result.praised.isNotEmpty && result.criticized.isNotEmpty)
+                const SizedBox(width: 8),
+              if (result.criticized.isNotEmpty)
+                Expanded(
+                  child: _buildProConCard(
+                    icon: Icons.report_problem_rounded,
+                    title: _txt(tr: 'Sikayetler', en: 'Complaints'),
+                    items: result.criticized.take(4).toList(),
+                    color: AppTheme.rose500,
+                  ),
+                ),
+            ],
+          ),
+        ],
+        if (result.sources.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: result.sources.take(6).map((source) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentCyan.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Text(
+                  source,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.accentCyan,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAiLoadingPlaceholder(bool isLoading) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Row(
+        children: [
+          if (isLoading)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 18,
+              color: context.textTertiaryColor,
+            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isLoading
+                  ? _txt(
+                      tr: 'Analiz hazirlaniyor...',
+                      en: 'Preparing analysis...',
+                    )
+                  : _txt(tr: 'Analizi baslat', en: 'Start analysis'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildDeepAnalysisVisual(DeepAnalysisResult r) {
@@ -1791,6 +2064,127 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
+  Future<void> _toggleUnifiedAnalysis() async {
+    if (_unifiedAiRunning) return;
+    if (_unifiedAiExpanded) {
+      setState(() {
+        _unifiedAiExpanded = false;
+        _unifiedAiUserCollapsed = true;
+      });
+      return;
+    }
+
+    final lang = Localizations.localeOf(context).languageCode;
+    final key = LocalizedProductKey(
+      productId: widget.product.id,
+      languageCode: lang,
+    );
+    final review = ref.read(aiReviewCacheProvider(key)).valueOrNull;
+    final deep = ref.read(deepAnalysisCacheProvider(key)).valueOrNull;
+    final advisor = ref.read(advisorCacheProvider(key)).valueOrNull;
+    final alternatives = ref.read(alternativesCacheProvider(key)).valueOrNull;
+    final prediction = ref.read(predictionCacheProvider(key)).valueOrNull;
+    final hasMissing =
+        review == null ||
+        review.failed ||
+        deep?.hasUsableContent != true ||
+        advisor?.hasUsableContent != true ||
+        alternatives?.hasUsableContent != true ||
+        prediction?.hasUsableContent != true;
+
+    if (hasMissing && !await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
+    setState(() {
+      _unifiedAiExpanded = true;
+      _unifiedAiUserCollapsed = false;
+      _unifiedAiRunning = hasMissing;
+      _unifiedAiStep = '';
+    });
+    if (!hasMissing) return;
+
+    final country = ref.read(selectedCountryProvider);
+    final currency = ref.read(currencyProvider);
+    final priceVal =
+        widget.product.getPriceForCountry(country) ??
+        (widget.product.prices.isNotEmpty
+            ? widget.product.prices.values.first
+            : 0.0);
+    final price = priceVal > 0
+        ? AppUtils.formatCurrency(priceVal, currency)
+        : 'unknown price';
+
+    Future<void> runStep(
+      String tr,
+      String en,
+      Future<void> Function() run,
+    ) async {
+      if (!mounted) return;
+      setState(() => _unifiedAiStep = _txt(tr: tr, en: en));
+      await run();
+    }
+
+    try {
+      await runStep(
+        'Internet yorumlari taraniyor...',
+        'Scanning web reviews...',
+        () => ref
+            .read(aiReviewCacheProvider(key).notifier)
+            .startAnalysis(widget.product.name, product: widget.product),
+      );
+      await runStep(
+        'Teknik analiz hazirlaniyor...',
+        'Preparing technical analysis...',
+        () => ref
+            .read(deepAnalysisCacheProvider(key).notifier)
+            .startAnalysis(
+              widget.product.name,
+              category: widget.product.category,
+              brand: widget.product.brand,
+              year: ProductFilter.getExactReleaseYear(widget.product),
+            ),
+      );
+      await runStep(
+        'Satin alma tavsiyesi olusturuluyor...',
+        'Building buying advice...',
+        () => ref
+            .read(advisorCacheProvider(key).notifier)
+            .startQuery(
+              widget.product.name,
+              widget.product.category,
+              price,
+              productContext: _predictionProductContext(widget.product),
+            ),
+      );
+      await runStep(
+        'Alternatif urunler karsilastiriliyor...',
+        'Comparing alternatives...',
+        () => ref
+            .read(alternativesCacheProvider(key).notifier)
+            .startQuery(widget.product.name, widget.product.category),
+      );
+      await runStep(
+        'Fiyat zamanlamasi cikariliyor...',
+        'Calculating price timing...',
+        () => ref
+            .read(predictionCacheProvider(key).notifier)
+            .startQuery(
+              widget.product.name,
+              widget.product.category,
+              price,
+              productContext: _predictionProductContext(widget.product),
+            ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _unifiedAiRunning = false;
+          _unifiedAiStep = '';
+        });
+      }
+    }
+  }
+
+  // ignore: unused_element
   Future<void> _toggleDeepAnalysis() async {
     if (_deepAnalysisExpanded) {
       setState(() {
@@ -1821,6 +2215,7 @@ class SharedPremiumFeaturesSectionState
         );
   }
 
+  // ignore: unused_element
   Future<void> _toggleAlternatives() async {
     if (_alternativesExpanded) {
       setState(() {
@@ -1847,6 +2242,7 @@ class SharedPremiumFeaturesSectionState
         .startQuery(widget.product.name, widget.product.category);
   }
 
+  // ignore: unused_element
   Future<void> _toggleAdvisor() async {
     if (_advisorExpanded) {
       setState(() {
@@ -1882,6 +2278,7 @@ class SharedPremiumFeaturesSectionState
         .startQuery(widget.product.name, widget.product.category, price);
   }
 
+  // ignore: unused_element
   Future<void> _togglePrediction() async {
     if (_predictionExpanded) {
       setState(() {
@@ -1928,7 +2325,7 @@ class SharedPremiumFeaturesSectionState
     if (!await ensureEmailVerified(context, ref)) return false;
     if (!mounted) return false;
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.canUseDetailAi) {
+    if (!sub.isPremium || !sub.canUseDetailAi) {
       showLimitReachedDialog(context, featureName: 'detail-ai');
       return false;
     }

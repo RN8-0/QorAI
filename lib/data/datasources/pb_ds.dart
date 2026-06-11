@@ -540,6 +540,58 @@ class PbDataSource {
     }
   }
 
+  Future<List<ProductOfferModel>> getProductOffers(String productId) async {
+    final id = productId.trim();
+    if (id.isEmpty) return const <ProductOfferModel>[];
+    final safeId = id.replaceAll('\\', '\\\\').replaceAll('"', r'\"');
+    try {
+      final result = await _pb
+          .collection('offers')
+          .getList(
+            page: 1,
+            perPage: 120,
+            filter: 'productId = "$safeId"',
+            sort: 'country,totalPrice,price,-updated',
+            fields:
+                'id,collectionId,collectionName,created,updated,productId,store,network,country,'
+                'price,shipping,totalPrice,currency,priceText,url,affiliateUrl,condition,'
+                'availability,inStock,priceUnknown,matchConfidence,lastCheckedAt,'
+                'priceUpdatedAt,expiresAt,scrapedAt,source',
+          )
+          .timeout(const Duration(seconds: 12));
+      final offers = result.items
+          .map((r) {
+            try {
+              return ProductOfferModel.fromPb(r);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ProductOfferModel>()
+          .where((offer) => offer.isLive)
+          .toList();
+      offers.sort((a, b) {
+        if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
+        if (a.hasExactPrice != b.hasExactPrice) {
+          return a.hasExactPrice ? -1 : 1;
+        }
+        if (a.country != b.country) return a.country.compareTo(b.country);
+        if (a.hasExactPrice && b.hasExactPrice && a.price != b.price) {
+          return a.price.compareTo(b.price);
+        }
+        return a.displayStore.compareTo(b.displayStore);
+      });
+      return offers;
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return const <ProductOfferModel>[];
+      debugPrint('=== QOR AI: getProductOffers PB ERROR: $e ===');
+      return const <ProductOfferModel>[];
+    } catch (e) {
+      debugPrint('=== QOR AI: getProductOffers FAILED for $id: $e ===');
+      return const <ProductOfferModel>[];
+    }
+  }
+
   Future<List<ProductModel>> getProducts({
     String? category,
     String? subcategory,
@@ -3032,27 +3084,28 @@ class PbDataSource {
   getTopRatedPageTs({int limit = 20, int page = 1}) async {
     try {
       final sw = Stopwatch()..start();
+      final requestLimit = (limit * 6).clamp(limit, 120);
       final response = await _dio.get(
         '/collections/products/documents/search',
         queryParameters: {
           'q': '*',
           'sort_by': 'techScore:desc,trendScore:desc',
-          'per_page': limit,
+          'per_page': requestLimit,
           'page': page,
           'exclude_fields': 'keySpecsText',
         },
       );
       sw.stop();
       final hits = (response.data['hits'] as List?) ?? [];
-      final products = hits
+      final rawProducts = hits
           .map((h) => _tsHitToProduct(h as Map<String, dynamic>))
           .whereType<ProductModel>()
           .toList();
-      // Trust TS (same reasoning as the other TS callers in this file).
+      final products = _rankTopRatedProducts(rawProducts).take(limit).toList();
       final found = (response.data['found'] as int?) ?? 0;
-      final hasMore = (page * limit) < found;
+      final hasMore = (page * requestLimit) < found;
       debugPrint(
-        '=== QOR AI: TS getTopRated page=$page → ${products.length}/$found in ${sw.elapsedMilliseconds}ms ===',
+        '=== QOR AI: TS getTopRated page=$page -> ${products.length}/${rawProducts.length}/$found in ${sw.elapsedMilliseconds}ms ===',
       );
       return (
         products: products,
@@ -3069,6 +3122,155 @@ class PbDataSource {
         totalFound: 0,
       );
     }
+  }
+
+  List<ProductModel> _rankTopRatedProducts(List<ProductModel> products) {
+    final canonicalTechCats =
+        AppCategories.subcategories[AppCategories.tech]?.toSet() ?? const {};
+    final filtered = products.where((p) {
+      if (!p.isActive) return false;
+      if (p.techScore < 35) return false;
+      if (p.imageURL.trim().isEmpty && p.images.isEmpty) return false;
+      final category = p.category.toLowerCase().trim();
+      if (!canonicalTechCats.contains(category)) return false;
+      return ProductFilter.isAllowed(p);
+    }).toList();
+    final deduped = _dedupeTopRatedProducts(filtered);
+    deduped.sort((a, b) {
+      final scoreCompare = _topRatedScore(b).compareTo(_topRatedScore(a));
+      if (scoreCompare != 0) return scoreCompare;
+      final techCompare = b.techScore.compareTo(a.techScore);
+      if (techCompare != 0) return techCompare;
+      return b.trendScore.compareTo(a.trendScore);
+    });
+    return deduped;
+  }
+
+  List<ProductModel> _dedupeTopRatedProducts(List<ProductModel> products) {
+    final byKey = <String, ProductModel>{};
+    for (final product in products) {
+      final key = _topRatedVariantKey(product);
+      final existing = byKey[key];
+      if (existing == null ||
+          _topRatedScore(product) > _topRatedScore(existing)) {
+        byKey[key] = product;
+      }
+    }
+    return byKey.values.toList();
+  }
+
+  String _topRatedVariantKey(ProductModel product) {
+    final variantGroup = product.variantGroup.trim().toLowerCase();
+    if (variantGroup.isNotEmpty) return 'vg:$variantGroup';
+    final normalizedName = product.name
+        .toLowerCase()
+        .replaceAll(RegExp(r'\b\d+\s?(gb|tb|mb|mah|w)\b'), '')
+        .replaceAll(RegExp(r'\b(black|white|silver|gray|grey|blue|red)\b'), '')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return 'name:${product.brand?.toLowerCase().trim() ?? ''}:$normalizedName';
+  }
+
+  double _topRatedScore(ProductModel product) {
+    final category = product.category.toLowerCase().trim();
+    final categoryWeight = _topRatedCategoryWeight(category);
+    final specQuality =
+        (product.keySpecs.length * 0.18 +
+                product.specs.length * 0.04 +
+                product.specSections.length * 0.12)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final priceSignal =
+        product.prices.isNotEmpty ||
+            product.affiliateLinks.isNotEmpty ||
+            product.affiliateLinksByCountry.isNotEmpty
+        ? 1.0
+        : 0.0;
+    final trend = product.trendScore.clamp(0.0, 100.0).toDouble();
+    final freshness = _topRatedFreshness(product);
+    return product.techScore * 0.62 +
+        trend * 0.10 +
+        categoryWeight * 22 +
+        specQuality * 8 +
+        priceSignal * 4 +
+        freshness * 8;
+  }
+
+  double _topRatedCategoryWeight(String category) {
+    const primary = {
+      'smartphones',
+      'laptops',
+      'tablets',
+      'smartwatches',
+      'headphones',
+      'monitors',
+      'tvs',
+      'graphics_cards',
+      'cpus',
+      'gaming_consoles',
+      'vr_headsets',
+      'drones',
+    };
+    const secondary = {
+      'desktops',
+      'motherboards',
+      'ram',
+      'ssd',
+      'keyboards',
+      'mice',
+      'gamepads',
+      'speakers',
+      'routers',
+      'robot_vacuums',
+      'projectors',
+      'smart_rings',
+      'e_readers',
+    };
+    const lowPriority = {
+      'flash_drives',
+      'printers',
+      '3d_printers',
+      'chargers',
+      'powerbanks',
+      'psu',
+      'pc_cases',
+      'ups',
+      'cpu_coolers',
+      'laptop_coolers',
+      'case_fans',
+      'webcams',
+      'microphones',
+      'modem_routers',
+      'media_players',
+      'av_receivers',
+      'camera_lenses',
+      'ip_cameras',
+      'dashcams',
+      'gimbals',
+      'hardware_wallets',
+    };
+    if (primary.contains(category)) return 1.0;
+    if (secondary.contains(category)) return 0.72;
+    if (lowPriority.contains(category)) return 0.25;
+    return 0.55;
+  }
+
+  double _topRatedFreshness(ProductModel product) {
+    final year = ProductFilter.getExactReleaseYear(product);
+    final currentYear = DateTime.now().year;
+    if (year != null) {
+      final age = (currentYear - year).clamp(0, 8).toDouble();
+      return (1.0 - (age / 8)).clamp(0.0, 1.0).toDouble();
+    }
+    final createdAt = product.createdAt;
+    if (createdAt == null) return 0.45;
+    final ageDays = DateTime.now()
+        .difference(createdAt)
+        .inDays
+        .clamp(0, 900)
+        .toDouble();
+    return (1.0 - (ageDays / 900)).clamp(0.0, 1.0).toDouble();
   }
 
   /// Normalizes a search query for Typesense: splits alpha-digit boundaries
