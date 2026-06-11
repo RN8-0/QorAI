@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
+import { markQuizCompletedLocal } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
@@ -346,6 +347,8 @@ export default function Quiz() {
         quizCompleted: true,
         quizHistory: [entry, ...(Array.isArray(user.quizHistory) ? user.quizHistory : [])].slice(0, 30),
       });
+      // Survive PB schema drift: never bounce this browser back to the quiz.
+      markQuizCompletedLocal(user.id);
       trackEvent('quiz_complete');
       setSummary(recommendation);
       setDone(true);

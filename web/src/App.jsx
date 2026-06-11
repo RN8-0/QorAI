@@ -8,6 +8,7 @@ import AuthModal from './components/AuthModal.jsx';
 import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
+import { hasCompletedQuiz } from './lib/qorCoins.js';
 
 import Home from './pages/Home.jsx';
 import Category from './pages/Category.jsx';
@@ -50,7 +51,7 @@ export default function App() {
   // Same onboarding rule as the mobile app: after login/registration, a user
   // with no completed profile quiz is sent to the quiz before AI features.
   useEffect(() => {
-    if (!user || user.quizCompleted === true || loc.pathname === '/quiz') return;
+    if (!user || hasCompletedQuiz(user) || loc.pathname === '/quiz') return;
     if (canBrowseBeforeQuiz(loc.pathname)) return;
     const next = `${loc.pathname}${loc.search}${loc.hash}`;
     nav(`/quiz?required=1&next=${encodeURIComponent(next)}`, { replace: true });

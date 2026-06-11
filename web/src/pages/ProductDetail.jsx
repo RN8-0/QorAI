@@ -298,7 +298,7 @@ function buildSpecTranslator(product, lang) {
     // Half-translated atoms from old MT runs ("Ekran Boyutu (İnç)" →
     // "Display Boyutu (İnç)") must not win over the curated fallback chain —
     // an EN "translation" still carrying Turkish/German letters is junk.
-    const junkForEn = /[çğışıİäßÇĞŞ]/;
+    const junkForEn = /[çğışıİäßÇĞŞ]|\b(?:diger|ozelligi?|kart\s+okuyucu|okuyucu|klavye|pil|batarya|ekran|depolama|dahili|grafik)\b|\bthe(?:\s+the){2,}\b/i;
     for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
       if (src && typeof src === 'object' && !Array.isArray(src)) {
         for (const [k, v] of Object.entries(src)) {

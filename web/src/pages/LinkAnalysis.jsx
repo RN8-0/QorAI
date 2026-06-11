@@ -203,6 +203,10 @@ export default function LinkAnalysis() {
       if (result.isProduct === false && !result.title) {
         setErr(t('la.errFail')); setPhase('input'); return;
       }
+      if (hasCompletedQuiz(user)) {
+        await runEnhanced(result, []);
+        return;
+      }
       let qs = [];
       setPhase('quizLoading');
       try {
@@ -221,7 +225,7 @@ export default function LinkAnalysis() {
       const data = await enhancedAnalysis({ base: baseResult, answers, language: lang, userProfile: aiUserProfile(user) });
       setEnhanced(data);
       setPhase('result');
-      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single' });
+      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single', result: data });
       setHistRefresh((n) => n + 1);
     } catch {
       setErr(t('la.errFail')); setPhase('quiz');
@@ -281,20 +285,29 @@ export default function LinkAnalysis() {
   const showForm = phase === 'input';
 
   return (
-    <div className="container la">
+    <div className={'container la' + (showForm ? ' is-empty' : '')}>
       <div className="la-head">
-        <div className="la-icon" aria-hidden="true">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
+        <div className="la-titlebar">
+          <div className="la-icon" aria-hidden="true">
+            <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </div>
+          <div>
+            <h1>{t('la.title')}</h1>
+            <p>{t('la.subtitle')}</p>
+          </div>
         </div>
-        <h1>{t('la.title')}</h1>
-        <p>{t('la.subtitle')}</p>
+        <div className="la-mini-stats" aria-label="Link analysis state">
+          <span>{filled}/{MAX_LINKS}</span>
+          <span>{mode === 'compare' ? L('Compare', 'Karşılaştır', 'Vergleich') : L('Single', 'Tek', 'Einzeln')}</span>
+        </div>
       </div>
 
       {showForm && (
-        <>
+        <div className="la-workbench">
+          <section className="la-entry-panel">
           <div className="la-mode" role="tablist" aria-label="Link mode">
             <button type="button" className={mode === 'single' ? 'active' : ''}
               onClick={() => { setMode('single'); setUrls((u) => [u[0] || '']); }}>
@@ -309,7 +322,7 @@ export default function LinkAnalysis() {
           <form className="la-form" onSubmit={analyze}>
             <div className="la-form-head">
               <strong>{L('Paste product URLs', 'Ürün linklerini yapıştır', 'Produkt-URLs einfügen')}</strong>
-              <span>{mode === 'compare' ? t('la.hintMulti') : L('Qor AI identifies the exact product, then a short quiz tunes the analysis to you.', 'Qor AI ürünü kesin tanır, ardından kısa bir quiz analizi sana göre ayarlar.', 'Qor AI erkennt das exakte Produkt, dann personalisiert ein kurzes Quiz die Analyse.')}</span>
+              <span>{mode === 'compare' ? t('la.hintMulti') : L('Personalized match analysis', 'Kişisel uyum analizi', 'Personalisierte Analyse')}</span>
             </div>
             <div className="la-rows">
               {urls.map((url, i) => (
@@ -336,20 +349,23 @@ export default function LinkAnalysis() {
               </button>
             </div>
           </form>
+          </section>
 
-          <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
+          {user && <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
             onOpen={(it) => {
-              // Reopen the saved verdict — same record shape the app's history
-              // screen reads. Stored analyses are text, so the compare-style
-              // long-form view renders both single and compare entries.
               setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
               setMode(it.urls.length > 1 ? 'compare' : 'single');
-              setEnhanced(null);
-              setCompareText(String(it.analysis || ''));
+              if (it.result && it.result.base) {
+                setEnhanced(it.result);
+                setCompareText('');
+              } else {
+                setEnhanced(null);
+                setCompareText(String(it.analysis || ''));
+              }
               setErr('');
               setPhase('result');
-            }} />
-        </>
+            }} />}
+        </div>
       )}
 
       {err && <div className="la-err">{err}</div>}

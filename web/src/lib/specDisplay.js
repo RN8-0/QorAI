@@ -513,7 +513,18 @@ function upperFirst(text, code) {
 }
 
 function cleanupLabel(label) {
-  let out = String(label || '').normalize('NFC').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let out = String(label || '')
+    .normalize('NFC')
+    .replace(/&amp;/gi, '&')
+    .replace(/&apos;|&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&\s*apos\s*;\s*s\b/gi, '')
+    .replace(/\bapos\s*;\s*s\b/gi, '')
+    .replace(/\bamp\s*;\s*apos\s*;\s*s\b/gi, '')
+    .replace(/&\s*'\s*s\b/gi, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   // Source junk: dangling close-paren without an opener ("Kullanım Kılavuzu)")
   // and trailing colons ("Response Time:").
   if (out.includes(')') && !out.includes('(')) out = out.replace(/\)+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -532,6 +543,21 @@ function titleCase(text) {
 // MT runs ("Display Boyutu (İnç)"). The admin modal repairs these at display
 // time; the site must read identically — admin is the reference.
 const TR_LABEL_RESIDUE_EN = [
+  [/\bdiger\b/gi, 'other'],
+  [/\bdiğer\b/gi, 'other'],
+  [/\bozelligi\b/gi, 'feature'],
+  [/\bözelliği\b/gi, 'feature'],
+  [/\bozellik\b/gi, 'feature'],
+  [/\bözellik\b/gi, 'feature'],
+  [/\bkart\s+okuyucu\b/gi, 'card reader'],
+  [/\bokuyucu\b/gi, 'reader'],
+  [/\bklavye\b/gi, 'keyboard'],
+  [/\bpil\b/gi, 'battery'],
+  [/\bbatarya\b/gi, 'battery'],
+  [/\bekran\b/gi, 'screen'],
+  [/\bdahili\b/gi, 'internal'],
+  [/\bdepolama\b/gi, 'storage'],
+  [/\bgrafik\b/gi, 'graphics'],
   [/\bboyutu\b/gi, 'size'],
   [/\bboyut\b/gi, 'size'],
   [/\bteknolojisi\b/gi, 'technology'],
@@ -581,12 +607,13 @@ const TR_LABEL_RESIDUE_EN = [
   [/\bdesteği\b/gi, 'support'],
   [/\bdestegi\b/gi, 'support'],
   [/\bgenel\b/gi, 'general'],
+  [/\barka\s+plan\b/gi, 'background'],
 ];
 function scrubTurkishLabelResidueEn(text) {
   let out = String(text || '');
   // Suffix-blind gate: "Teknolojisi"/"Boyutu" are stems + Turkish possessive,
   // so no trailing \b — substring match is the point here.
-  if (!/[çğışöüÇĞİŞÜı]|boyut|teknoloji|sayis|adet|hiz[ıi]|sures|ozellik|giris|kilavuz|specificationsi|featuresi|technologysi/i.test(out)) return out;
+  if (!/[çğışöüÇĞİŞÜı]|boyut|teknoloji|sayis|adet|hiz[ıi]|sures|ozellik|ozellig|giris|kilavuz|specificationsi|featuresi|technologysi|diger|kart\s+okuyucu|okuyucu|klavye|pil|batarya|ekran|depolama|dahili|grafik|arka\s+plan/i.test(out)) return out;
   for (const [re, rep] of TR_LABEL_RESIDUE_EN) out = out.replace(re, rep);
   // Anything still carrying Turkish-only letters gets ASCII-folded so the EN
   // view never shows İ/ş/ğ ("KullanıM" can't happen again).
@@ -598,6 +625,97 @@ function scrubTurkishLabelResidueEn(text) {
     .replace(/Ö/g, 'O').replace(/ö/g, 'o')
     .replace(/Ü/g, 'U').replace(/ü/g, 'u');
   return out.replace(/\s+/g, ' ').trim();
+}
+
+// Turkish VALUE atoms that leak on the EN view when a product was scraped but
+// not (fully) bulk-translated — e.g. "3 Adet Mikrofon", "Yüksek Empedanslı
+// Kulaklık Supportli 3.5mm Jak", "Fast Kaydırmalı Touchpad", "Dolby Atmos İle
+// Uzamsal Audio". The admin modal translates these at display time; the site
+// must read identically. Multi-word phrases first so partials don't pre-empt
+// full matches. JS /i cannot case-fold dotted İ, so İ-initial words are spelled
+// out explicitly.
+// [pattern source, replacement]. Compiled below with Unicode-aware word
+// boundaries — JS \b treats ı/İ/ş/ğ/ç/ö/ü as NON-word chars, so "\bEmpedanslı\b"
+// and "\bİle\b" never matched. Longest phrases first.
+const TR_VALUE_ATOMS = [
+  // multi-word phrases
+  ['gürültü\\s+engelleme(?:li)?', 'noise cancellation'],
+  ['gürültü\\s+önleme(?:li)?', 'noise cancellation'],
+  ['ultra\\s+geniş\\s+açı', 'ultra-wide angle'],
+  ['geniş\\s+açı', 'wide angle'],
+  ['kart\\s+okuyucu', 'card reader'],
+  ['parmak\\s+izi', 'fingerprint'],
+  ['dokunmatik\\s+yüzey', 'touchpad'],
+  ['arka\\s+aydınlatma(?:lı)?', 'backlight'],
+  ['[İi]şık\\s+sensörü', 'light sensor'],
+  ['yakınlık\\s+sensörü', 'proximity sensor'],
+  ['ortam\\s+ışık\\s+sensörü', 'ambient light sensor'],
+  ['hızlı\\s+şarj', 'fast charging'],
+  ['kablosuz\\s+şarj', 'wireless charging'],
+  ['ters\\s+şarj', 'reverse charging'],
+  ['çift\\s+sim', 'dual SIM'],
+  ['paslanmaz\\s+çelik', 'stainless steel'],
+  ['çift\\s+led', 'dual-LED'],
+  // audio
+  ['mikrofon', 'microphone'],
+  ['kulaklık', 'headphone'],
+  ['hoparlör(?:ler)?', 'speaker'],
+  ['empedanslı', 'impedance'],
+  ['empedans', 'impedance'],
+  ['uzamsal', 'spatial'],
+  ['jak', 'jack'],
+  ['sesli', 'voice'],
+  // generic adjectives / connectors
+  ['yüksek', 'high'],
+  ['düşük', 'low'],
+  ['destekli', 'supported'],
+  ['supportli', 'supported'],
+  ['destekleniyor', 'supported'],
+  ['desteği', 'support'],
+  ['destek', 'support'],
+  ['kaydırmalı', ''],
+  ['[İi]le', 'with'],
+  ['otomatik', 'automatic'],
+  ['manuel', 'manual'],
+  ['harici', 'external'],
+  ['üçlü', 'triple'],
+  ['dörtlü', 'quad'],
+  // build / camera / display vocab
+  ['alüminyum', 'aluminium'],
+  ['plastik', 'plastic'],
+  ['çerçeve', 'frame'],
+  ['gövde', 'body'],
+  ['kavisli', 'curved'],
+  ['çentik', 'notch'],
+  ['kablosuz', 'wireless'],
+  ['kablolu', 'wired'],
+  ['şarj', 'charging'],
+  ['aydınlatma(?:lı)?', 'lighting'],
+  // count word: "3 Adet Mikrofon" → "3 microphone"
+  ['adet', ''],
+  ['dakika', 'minutes'],
+];
+const TR_VALUE_RESIDUE_EN = TR_VALUE_ATOMS.map(([src, rep]) => [
+  new RegExp('(?<![\\p{L}\\p{N}])(?:' + src + ')(?![\\p{L}\\p{N}])', 'giu'),
+  rep,
+]);
+
+function scrubTurkishValueResidueEn(text) {
+  let out = String(text || '');
+  if (!/[çğışöüİÇĞŞÖÜ]|\b(?:adet|mikrofon|hoparl|kulakl|empedans|uzamsal|jak|sesli|destek|supportli|kaydir|yuksek|dusuk|otomatik|manuel|harici|aluminyum|plastik|cerceve|govde|kavisli|centik|sarj|aydinlat|paslanmaz|gurultu|yakinlik|parmak|dokunmatik|kart\s+okuyucu)\b/i.test(out)) {
+    return out;
+  }
+  for (const [re, rep] of TR_VALUE_RESIDUE_EN) out = out.replace(re, rep);
+  // Anything still carrying Turkish-only letters is folded to ASCII so the EN
+  // view never shows İ/ş/ğ/ç/ö/ü.
+  out = out
+    .replace(/İ/g, 'I').replace(/ı/g, 'i')
+    .replace(/Ş/g, 'S').replace(/ş/g, 's')
+    .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+    .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+    .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+    .replace(/Ü/g, 'U').replace(/ü/g, 'u');
+  return out.replace(/\s{2,}/g, ' ').trim();
 }
 
 // Case-insensitive index of the LABELS maps so an UPPERCASE section header like
@@ -655,6 +773,9 @@ export function localizedSpecLabel(label, lang = 'en') {
     for (const [re, map] of DE_LABEL_RESIDUE) outEn = outEn.replace(re, map.en);
     for (const [re, map] of DE_RESIDUE) outEn = outEn.replace(re, map.en);
     outEn = scrubTurkishLabelResidueEn(outEn);
+    if (/^[A-Z0-9\s&/'().+-]+$/.test(outEn) && /[A-Z]{3,}/.test(outEn)) {
+      outEn = outEn.toLowerCase();
+    }
     // Units stay lowercase after title-casing ("(cm)", "3.5mm"), acronyms
     // stay uppercase ("USB", not "Usb") — matches the admin modal output.
     return titleCase(outEn)
@@ -667,10 +788,25 @@ export function localizedSpecLabel(label, lang = 'en') {
       .replace(/\bSdr\b/g, 'SDR')
       .replace(/\bKvm\b/g, 'KVM')
       .replace(/\bRgb\b/g, 'RGB')
+      .replace(/\bCpu\b/g, 'CPU')
+      .replace(/\bGpu\b/g, 'GPU')
+      .replace(/\bRam\b/g, 'RAM')
+      .replace(/\bNfc\b/g, 'NFC')
+      .replace(/\bSsd\b/g, 'SSD')
+      .replace(/\bHdd\b/g, 'HDD')
+      .replace(/\bOled\b/g, 'OLED')
+      .replace(/\bLed\b/g, 'LED')
+      .replace(/\bLcd\b/g, 'LCD')
+      .replace(/\bUhd\b/g, 'UHD')
+      .replace(/\bFhd\b/g, 'FHD')
+      .replace(/\bQhd\b/g, 'QHD')
       .replace(/\bVesa\b/g, 'VESA')
       .replace(/\bAmd\b/g, 'AMD')
       .replace(/\bDci\b/g, 'DCI')
-      .replace(/\bSrgb\b/g, 'sRGB');
+      .replace(/\bSrgb\b/g, 'sRGB')
+      .replace(/\bWifi\b/g, 'Wi-Fi')
+      .replace(/\bWi Fi\b/g, 'Wi-Fi')
+      .replace(/\bMacos\b/g, 'macOS');
   }
   let out = clean;
   for (const [re, map] of DE_LABEL_RESIDUE) out = out.replace(re, map.tr);
@@ -709,10 +845,24 @@ function cleanupValueLine(line, lang) {
     // Unit casing junk from old MT ("0.03 Ms" → "0.03 ms") + leftover Turkish.
     out = out
       .replace(/(\d)\s*Ms\b/g, '$1 ms')
+      .replace(/\bthe(?:\s+the){2,}\b/gi, '')
+      .replace(/\bthe\s+(?=(internet|online|web)\b)/gi, '')
+      .replace(/\bwi\s*fi\b/gi, 'Wi-Fi')
+      .replace(/\bmacos\b/gi, 'macOS')
+      .replace(/\bozelligi\b/gi, 'feature')
+      .replace(/\bözelliği\b/gi, 'feature')
+      .replace(/\bdiger\b/gi, 'other')
+      .replace(/\bdiğer\b/gi, 'other')
+      .replace(/\bkart\s+okuyucu\b/gi, 'card reader')
+      .replace(/\bklavye\b/gi, 'keyboard')
+      .replace(/\bpil\b/gi, 'battery')
       .replace(/\binç\b/gi, 'inches')
       .replace(/\bsaat\b/gi, 'hours')
       .replace(/\bvar\b/gi, 'Yes')
       .replace(/\byok\b/gi, 'No');
+    // Last line of defense: translate/fold any remaining Turkish value atoms so
+    // an English visitor never sees Turkish words ("3 Adet Mikrofon", etc.).
+    out = scrubTurkishValueResidueEn(out);
   }
 
   out = out
@@ -903,8 +1053,17 @@ function cleanupValueLine(line, lang) {
       .replace(/\bReverse charging\b/gi, 'Umgekehrtes Laden')
       .replace(/\bpixels\b/gi, 'Pixel');
   }
-  // Writing rule: every spec value line starts with a capital letter.
-  return upperFirst(out, code);
+  out = out.replace(/\s{2,}/g, ' ').trim();
+  // Writing rule: every spec value line starts with a capital letter, except
+  // product/OS stylings whose official casing starts lowercase.
+  out = upperFirst(out, code);
+  if (code === 'en') {
+    out = out
+      .replace(/\bMacOS\b/g, 'macOS')
+      .replace(/\bmacOS\s+tahoe\b/gi, 'macOS Tahoe')
+      .replace(/\bInternet\b/g, 'internet');
+  }
+  return out;
 }
 
 export function localizedSpecValue(value, lang = 'en') {

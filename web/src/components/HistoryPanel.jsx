@@ -24,7 +24,7 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
   const { user } = useAuth();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [items, setItems] = useState(null); // null = loading
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +48,12 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
     <section className="hist-panel">
       <button type="button" className="hist-head" onClick={() => setOpen((o) => !o)}>
         <span className="hist-head-title">
-          🕘 {L('History', 'Geçmiş', 'Verlauf')}
+          <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <path d="M3 4v5h5" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          {L('History', 'Geçmiş', 'Verlauf')}
           <small>{items.length}</small>
         </span>
         <span className={'hist-caret' + (open ? ' open' : '')}>▾</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateSubscriptionQuiz, subscriptionAnalysis, subscriptionsMixCategories } from '../lib/linkAnalysis';
+import { subscriptionAnalysis, subscriptionsMixCategories } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveSubscriptionHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
@@ -8,7 +8,6 @@ import { useAuth } from '../lib/auth';
 import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
-import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
@@ -75,15 +74,14 @@ export default function Subscriptions() {
   const [selected, setSelected] = useState([]);
   const [group, setGroup] = useState('video');
   const [custom, setCustom] = useState('');
-  // phase: select | quizLoading | quiz | analyzing | result | history
+  // phase: select | analyzing | result | history
   const [phase, setPhase] = useState('select');
-  const [questions, setQuestions] = useState([]);
   const [result, setResult] = useState(null);
   const [histEntry, setHistEntry] = useState(null);
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
 
-  function resetAnalysis() { setPhase('select'); setQuestions([]); setResult(null); setHistEntry(null); setErr(''); }
+  function resetAnalysis() { setPhase('select'); setResult(null); setHistEntry(null); setErr(''); }
   function toggle(name) {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
     resetAnalysis();
@@ -100,8 +98,8 @@ export default function Subscriptions() {
     localStorage.setItem(PENDING_SUBS_KEY, JSON.stringify({ selected: items, custom, ts: Date.now() }));
   }
 
-  // Step 1: validate + generate the AI quiz (same engine as the app).
-  async function startQuiz(items = selected) {
+  // Step 1: validate access, then run the app-matching subscription analysis.
+  async function startAnalysis(items = selected) {
     setErr('');
     if (items.length < 1) return;
     if (subscriptionsMixCategories(items)) {
@@ -123,33 +121,29 @@ export default function Subscriptions() {
       nav(`/quiz?required=1&next=${encodeURIComponent('/subscriptions')}`);
       return;
     }
-    setPhase('quizLoading');
-    trackEvent('subscription_quiz', { count: items.length });
     try {
       const access = await requireAiAccess('subscription_analysis', { onMessage: setErr });
       if (!access.ok) { setPhase('select'); return; }
-      const qs = await generateSubscriptionQuiz({ subscriptionNames: items, language: lang, userProfile: aiUserProfile(user) });
-      if (qs.length) { setQuestions(qs); setPhase('quiz'); }
-      else { await runAnalysis(items, []); }
+      await runAnalysis(items, [], 'select');
     } catch {
-      // If quiz generation fails, fall back to a direct analysis.
-      await runAnalysis(items, []);
+      setErr(t('la.errFail'));
+      setPhase('select');
     }
   }
 
   // Step 2: structured subscription analysis (scores / winner / recommendation).
-  async function runAnalysis(items, answers) {
+  async function runAnalysis(items, answers, failPhase = 'select') {
     setPhase('analyzing');
     trackEvent('subscription_compare', { count: items.length });
     try {
       const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: aiUserProfile(user) });
       setResult(data);
       setPhase('result');
-      await saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores });
+      await saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores, result: data });
       setHistRefresh((n) => n + 1);
     } catch {
       setErr(t('la.errFail'));
-      setPhase('quiz');
+      setPhase(failPhase);
     }
   }
 
@@ -164,7 +158,7 @@ export default function Subscriptions() {
       if (!items.length) return;
       setSelected(items);
       setCustom(pending.custom || '');
-      startQuiz(items);
+      startAnalysis(items);
     } catch { /* ignore stale pending payloads */ }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -172,69 +166,89 @@ export default function Subscriptions() {
   const winnerName = result?.winner?.best || result?.winner?.overall || '';
 
   return (
-    <div className="container subs">
+    <div className={'container subs' + (showPicker ? ' is-empty' : '')}>
       <div className="subs-head">
-        <div className="subs-icon" aria-hidden="true">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="13" rx="2" />
-            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
-          </svg>
+        <div className="subs-titlebar">
+          <div className="subs-icon" aria-hidden="true">
+            <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="13" rx="2" />
+              <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+              <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
+            </svg>
+          </div>
+          <div>
+            <h1>{t('subs.title')}</h1>
+            <p>{t('subs.subtitle')}</p>
+          </div>
         </div>
-        <h1>{t('subs.title')}</h1>
-        <p>{t('subs.subtitle')}</p>
+        <div className="subs-mini-stats" aria-label="Subscription selection state">
+          <span>{selected.length}/4</span>
+          <span>{(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).label[lang] || PRESET_GROUPS[0].label.en}</span>
+        </div>
       </div>
 
       {showPicker && (
-        <>
-          <div className="subs-cats" role="tablist">
-            {PRESET_GROUPS.map((g) => (
-              <button key={g.id} type="button" role="tab"
-                className={'subs-cat' + (group === g.id ? ' active' : '')}
-                onClick={() => setGroup(g.id)}>
-                <span aria-hidden="true">{g.icon}</span> {g.label[lang] || g.label.en}
-              </button>
-            ))}
-          </div>
-          <div className="subs-pills">
-            {(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).items.map((name) => (
-              <button key={name}
-                className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
-                onClick={() => toggle(name)}>
-                <SubLogo name={name} size={24} radius={7} />
-                <span>{name}</span>
-                <i>{selected.includes(name) ? '✓' : '+'}</i>
-              </button>
-            ))}
-          </div>
-
-          <form className="subs-custom" onSubmit={addCustom}>
-            <input value={custom} onChange={(e) => setCustom(e.target.value)}
-              placeholder={t('subs.customPlaceholder')} />
-            <button type="submit" className="btn btn-ghost">{t('subs.add')}</button>
-          </form>
-
-          {selected.length > 0 && (
-            <div className="subs-selected">
-              {selected.map((s) => (
-                <span key={s} className="subs-chip">
-                  <SubLogo name={s} size={22} radius={6} />
-                  {s}<button onClick={() => toggle(s)} aria-label="Remove">×</button>
-                </span>
+        <div className="subs-workbench">
+          <section className="subs-picker-panel">
+            <div className="subs-cats" role="tablist">
+              {PRESET_GROUPS.map((g) => (
+                <button key={g.id} type="button" role="tab"
+                  className={'subs-cat' + (group === g.id ? ' active' : '')}
+                  onClick={() => setGroup(g.id)}>
+                  <span aria-hidden="true">{g.icon}</span> {g.label[lang] || g.label.en}
+                </button>
               ))}
             </div>
-          )}
+            <div className="subs-pills">
+              {(PRESET_GROUPS.find((g) => g.id === group) || PRESET_GROUPS[0]).items.map((name) => (
+                <button key={name}
+                  className={'subs-pill subs-pill-logo' + (selected.includes(name) ? ' active' : '')}
+                  onClick={() => toggle(name)}>
+                  <SubLogo name={name} size={24} radius={7} />
+                  <span>{name}</span>
+                  <i>{selected.includes(name) ? '✓' : '+'}</i>
+                </button>
+              ))}
+            </div>
 
-          {err && <div className="subs-err">{err}</div>}
+            <form className="subs-custom" onSubmit={addCustom}>
+              <input value={custom} onChange={(e) => setCustom(e.target.value)}
+                placeholder={t('subs.customPlaceholder')} />
+              <button type="submit" className="btn btn-ghost">{t('subs.add')}</button>
+            </form>
 
-          <button className="btn btn-primary btn-lg subs-go"
-            onClick={() => startQuiz()} disabled={selected.length < 1}>
-            {selected.length < 1 ? t('subs.goMin') : t('la.analyze')}
-          </button>
+            {selected.length > 0 && (
+              <div className="subs-selected">
+                {selected.map((s) => (
+                  <span key={s} className="subs-chip">
+                    <SubLogo name={s} size={22} radius={6} />
+                    {s}<button onClick={() => toggle(s)} aria-label="Remove">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
 
-          <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
-            onOpen={(it) => { setHistEntry(it); setPhase('history'); }} />
-        </>
+            {err && <div className="subs-err">{err}</div>}
+
+            <button className="btn btn-primary btn-lg subs-go"
+              onClick={() => startAnalysis()} disabled={selected.length < 1}>
+              {selected.length < 1 ? t('subs.goMin') : t('la.analyze')}
+            </button>
+          </section>
+
+          {user && <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
+            onOpen={(it) => {
+              if (it.result && Array.isArray(it.result.services)) {
+                setSelected(it.services.length ? it.services : it.result.services.map((s) => s.name).filter(Boolean));
+                setResult(it.result);
+                setHistEntry(null);
+                setPhase('result');
+              } else {
+                setHistEntry(it);
+                setPhase('history');
+              }
+            }} />}
+        </div>
       )}
 
       {phase === 'history' && histEntry && (
@@ -272,27 +286,10 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {(phase === 'quizLoading' || phase === 'analyzing') && (
+      {phase === 'analyzing' && (
         <div className="subs-loading"><div className="spinner" /><span>
-          {phase === 'quizLoading'
-            ? L('Preparing your quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')
-            : t('subs.loading')}
+          {t('subs.loading')}
         </span></div>
-      )}
-
-      {phase === 'quiz' && (
-        <>
-          <div className="subs-quiz-for">
-            {selected.map((s) => <span key={s} className="subs-chip subs-chip-static">{s}</span>)}
-          </div>
-          <QuizFlow
-            questions={questions}
-            title={t('subs.quizTitle')}
-            subtitle={t('subs.quizDesc')}
-            onSubmit={(answers) => runAnalysis(selected, answers)}
-            onSkip={() => runAnalysis(selected, [])}
-          />
-        </>
       )}
 
       {phase === 'result' && result && (

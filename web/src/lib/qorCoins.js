@@ -40,8 +40,24 @@ export function formatQorCoins(amount, lang = 'en') {
     : text;
 }
 
+// Some PocketBase deployments don't persist the `quizCompleted` flag on the
+// users row (schema drift vs. the app), which made the website bounce the user
+// back to the quiz right after they finished it. We mirror completion into
+// localStorage (keyed per user) so the gate never loops on this browser, no
+// matter what the server echoes back.
+const QUIZ_DONE_KEY = 'qor.quizCompleted';
+
+export function markQuizCompletedLocal(userId) {
+  try { localStorage.setItem(QUIZ_DONE_KEY, String(userId || '1')); } catch { /* storage blocked */ }
+}
+
 export function hasCompletedQuiz(user) {
-  return user?.quizCompleted === true;
+  if (user?.quizCompleted === true) return true;
+  if (!user?.id) return false;
+  try {
+    const v = localStorage.getItem(QUIZ_DONE_KEY);
+    return !!v && (v === '1' || v === String(user.id));
+  } catch { return false; }
 }
 
 export function aiUserProfile(user) {

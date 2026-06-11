@@ -105,7 +105,7 @@ export async function saveComparisonHistory(productIds, products = []) {
   }
 }
 
-export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single' }) {
+export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single', result = null }) {
   const user = currentUser();
   const list = (urls || []).map((u) => String(u || '').trim()).filter(Boolean);
   if (!user || !list.length || !analysis) return;
@@ -121,6 +121,7 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single' 
         urls: list,
         url: list[0] || '',
         analysis,
+        result,
         timestamp: now,
       },
       aiScore: 0,
@@ -212,7 +213,7 @@ export async function saveComparisonAnalysisHistory({ products = [], analysis })
   }
 }
 
-export async function saveSubscriptionHistory({ services, analysis, quiz = {}, scores = {} }) {
+export async function saveSubscriptionHistory({ services, analysis, quiz = {}, scores = {}, result = null }) {
   const user = currentUser();
   const list = (services || []).map((s) => String(s || '').trim()).filter(Boolean);
   if (!user || list.length < 1 || !analysis) return;
@@ -228,6 +229,7 @@ export async function saveSubscriptionHistory({ services, analysis, quiz = {}, s
         quiz,
         scores,
         analysisResult: analysis,
+        result,
         timestamp: now,
       },
       aiScore: 0,
@@ -302,6 +304,7 @@ export async function getSavedAnalyses(limit = 40) {
           urls: Array.isArray(d.urls) ? d.urls : [],
           services: Array.isArray(d.services) ? d.services : [],
           scores: d.scores && typeof d.scores === 'object' ? d.scores : {},
+          result: d.result && typeof d.result === 'object' ? d.result : null,
           type: d.type || '',
           productIds: Array.isArray(d.productIds) ? d.productIds : [],
           productId: d.productId || '',
