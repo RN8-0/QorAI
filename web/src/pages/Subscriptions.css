@@ -1,93 +1,45 @@
-.subs {
-  display: flex;
-  flex-direction: column;
-  padding: clamp(52px, 6vh, 96px) 24px 84px;
-  max-width: var(--maxw);
-  min-height: calc(100vh - var(--header-h, 68px));
-}
-/* The picker grid is tall, so the page stacks from the top with comfortable
-   breathing room under the sticky header (no vertical centering, which made the
-   title clip against the top bar). */
-
-.subs-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
-  margin: 0 auto 22px;
-  max-width: 640px;
-}
-.subs-icon {
-  width: 58px; height: 58px; border-radius: 17px;
-  background: var(--grad-ai); color: #fff;
-  flex: none;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-blue) 30%, transparent);
-}
-.subs-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 850; letter-spacing: -0.5px; line-height: 1.1; }
-.subs-head p {
-  color: var(--text2);
-  font-size: 14.5px;
-  font-weight: 600;
-  line-height: 1.5;
-  max-width: 540px;
-}
-.subs-mini-stats {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.subs-mini-stats span {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 11px;
-  border-radius: var(--r-pill, 999px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.subs-workbench {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-  width: 100%;
-}
-.subs-workbench:has(> .hist-panel) {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+/* Page body below the shared hero band. One consistent column width. */
+.subs-body {
+  --subs-col: 880px;
+  padding-bottom: 90px;
 }
 .subs-picker-panel {
   min-width: 0;
   width: 100%;
-  max-width: 860px;
+  max-width: var(--subs-col);
   margin: 0 auto;
   background: color-mix(in srgb, var(--bg2) 88%, transparent);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: var(--r-xl, 24px);
-  padding: 22px;
+  padding: 24px;
   box-shadow: var(--card-glow);
 }
 .subs-history {
   width: 100%;
-  max-width: 860px;
-  margin: 30px auto 0;
+  max-width: var(--subs-col);
+  margin: 28px auto 0;
 }
-/* Same column width as the Link Analysis screen. */
-.subs .hiw { max-width: 860px; }
-.subs-workbench > .hist-panel {
+.subs .hiw { max-width: var(--subs-col); }
+
+.subs-pills {
   max-width: none;
-  margin: 0;
-  align-self: start;
+  margin-inline: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
 }
+.subs-pill {
+  min-height: 46px;
+  padding: 10px 14px; border-radius: 12px;
+  background: var(--bg2); border: 1px solid var(--border);
+  font-size: 13px; font-weight: 750; color: var(--text2); transition: all 0.13s;
+  text-align: left;
+}
+.subs-pill:hover { border-color: var(--border2); color: var(--text); }
+.subs-pill.active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--brand-cyan) 55%, var(--accent-ring));
 
 .subs-pills {
   max-width: none;

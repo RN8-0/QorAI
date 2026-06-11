@@ -7,10 +7,11 @@ const fs = require('fs');
 const ROOT = path.join(__dirname, '..', 'website');
 const PORT = Number(process.argv[2]) || 4173;
 const MIME = {
-  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp',
-  '.xml': 'application/xml', '.txt': 'text/plain', '.woff2': 'font/woff2',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon', '.webp': 'image/webp', '.xml': 'application/xml',
+  '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2',
 };
 
 http.createServer((req, res) => {

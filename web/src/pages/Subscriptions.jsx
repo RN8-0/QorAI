@@ -13,6 +13,7 @@ import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
+import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
@@ -191,12 +192,20 @@ export default function Subscriptions() {
   ];
 
   return (
-    <div className={'container subs' + (showPicker ? ' is-empty' : '')}>
-      <div className="subs-head fade-up">
-        <h1>{t('subs.title')}</h1>
-        <p>{t('subs.subtitle')}</p>
-      </div>
+    <div className="subs-page">
+      <PageHero
+        title={t('subs.title')}
+        subtitle={t('subs.subtitle')}
+        icon={(
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="13" rx="2" />
+            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
+          </svg>
+        )}
+      />
 
+      <div className="container subs-body">
       {showPicker && (
         <>
           <Reveal as="section" className="subs-picker-panel">
@@ -332,6 +341,7 @@ export default function Subscriptions() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

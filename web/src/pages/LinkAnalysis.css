@@ -1,80 +1,20 @@
-.la {
-  display: flex;
-  flex-direction: column;
-  padding: clamp(52px, 6vh, 96px) 24px 84px;
-  max-width: var(--maxw);
-  min-height: calc(100vh - var(--header-h, 68px));
+/* Page body below the shared hero band. One consistent column width so the
+   form, explainer and history all line up to the same edges. */
+.la-body {
+  --la-col: 760px;
+  padding-bottom: 90px;
 }
-/* Empty/entry state: balance the hero + form vertically in the viewport so the
-   page never clings to the top bar and never looks left-/top-heavy. */
-.la.is-empty { justify-content: center; }
-
-.la-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
-  margin: 0 auto 22px;
-  max-width: 620px;
-}
-.la-icon {
-  width: 58px; height: 58px; border-radius: 17px;
-  background: var(--grad-ai); color: #fff;
-  flex: none;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-blue) 30%, transparent);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .la-icon { animation: laFloat 3.6s ease-in-out infinite; }
-}
-@keyframes laFloat {
-  0%, 100% { transform: translateY(0); box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-blue) 30%, transparent); }
-  50% { transform: translateY(-6px); box-shadow: 0 22px 40px color-mix(in srgb, var(--brand-blue) 38%, transparent); }
-}
-.la-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 850; letter-spacing: -0.5px; line-height: 1.1; }
-.la-head p {
-  color: var(--text2);
-  font-size: 14.5px;
-  font-weight: 600;
-  line-height: 1.5;
-  max-width: 520px;
-}
-.la-mini-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* Centered entry column — the input card sits in a comfortable, app-like width
-   rather than stretching edge to edge. */
 .la-stage {
   width: 100%;
-  max-width: 860px;
+  max-width: var(--la-col);
   margin: 0 auto;
 }
 .la-history {
   width: 100%;
-  max-width: 860px;
-  margin: 30px auto 0;
+  max-width: var(--la-col);
+  margin: 28px auto 0;
 }
-/* Keep the explainer aligned with the entry column on this page. */
-.la .hiw { max-width: 860px; }
-.la-mini-stats span {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 11px;
-  border-radius: var(--r-pill, 999px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 850;
-}
+.la .hiw { max-width: var(--la-col); }
 
 .la-workbench {
   display: grid;

@@ -14,6 +14,7 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
+import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import './LinkAnalysis.css';
 
@@ -326,18 +327,19 @@ export default function LinkAnalysis() {
   ];
 
   return (
-    <div className={'container la' + (showForm ? ' is-empty' : '')}>
-      <div className="la-head fade-up">
-        <div className="la-icon" aria-hidden="true">
-          <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="la-page">
+      <PageHero
+        title={t('la.title')}
+        subtitle={t('la.subtitle')}
+        icon={(
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-        </div>
-        <h1>{t('la.title')}</h1>
-        <p>{t('la.subtitle')}</p>
-      </div>
+        )}
+      />
 
+      <div className="container la-body">
       {showForm && (
         <>
           <Reveal className="la-stage">
@@ -442,6 +444,7 @@ export default function LinkAnalysis() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -22,6 +22,12 @@ const PAGES = [
   for (const p of PAGES) {
     try {
       await page.goto(`${BASE}${p.route}`, { waitUntil: 'networkidle2', timeout: 45000 });
+      // Wait until the main stylesheet has actually applied (font swaps off serif).
+      await page.waitForFunction(
+        () => getComputedStyle(document.body).fontFamily.toLowerCase().includes('jakarta')
+          || !getComputedStyle(document.body).fontFamily.toLowerCase().includes('times'),
+        { timeout: 8000 },
+      ).catch(() => {});
       // Let entrance animations and lazy data settle.
       await new Promise((r) => setTimeout(r, 2200));
       // Scroll a bit so below-the-fold reveals trigger, then back to top.
