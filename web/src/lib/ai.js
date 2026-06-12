@@ -1,15 +1,26 @@
 // ═══════════════════════════════════════════════════════════════
-//  Qor AI chat — talks to the PocketBase Gemini proxy
-//  (/api/ai/gemini) — the same endpoint the mobile app uses.
+//  Qor AI — app-parity AI routing over the PocketBase proxies.
+//
+//  Mirrors the mobile app exactly:
+//   · Link/subscription analysis flows use the GEMINI proxy first
+//     (GeminiService in the app: /api/ai/gemini, gemini-2.5-flash,
+//     retry with backoff on 429/5xx — _shouldFallbackModel).
+//   · If Gemini stays rate-limited/down, we fall back to the DeepSeek
+//     proxy (/api/ai/deepseek, deepseek-chat) — the app's own
+//     "primary text intelligence" service — so the user gets a result
+//     instead of "analysis failed".
 // ═══════════════════════════════════════════════════════════════
 
 import { PB_URL } from './pocketbase';
 
-const AI_URL = `${PB_URL}/api/ai/gemini`;
-const MODEL = 'gemini-2.5-flash';
+const GEMINI_URL = `${PB_URL}/api/ai/gemini`;
+const GEMINI_MODEL = 'gemini-2.5-flash'; // AppConstants.geminiModel
+const DEEPSEEK_URL = `${PB_URL}/api/ai/deepseek`;
+const DEEPSEEK_MODEL = 'deepseek-chat';
+const DEEPSEEK_MAX_OUTPUT = 8192; // deepseek-chat (V3) output cap
 
-// Mirrors the mobile app's Qor AI chat persona (_chatSystemPrompt) so the web
-// gives the same voice, scope and rules as the app.
+// Mirrors the mobile app's Qor AI chat persona so the web gives the same voice,
+// scope and rules as the app.
 const SYSTEM_PROMPT =
   'You are Qor AI — a knowledgeable, friendly shopping and product advisor for ALL product ' +
   'categories (technology, audio, photo, home, fashion and more) on qorai.net.\n' +
@@ -22,73 +33,117 @@ const SYSTEM_PROMPT =
   '- Address the person directly ("you" / "sen" / "siz"), never "the user".\n' +
   '- ALWAYS reply in the exact same language the user writes in.';
 
-// history: [{ role: 'user' | 'model', text: string }]
-export async function askQorAi(history) {
-  const body = {
-    model: MODEL,
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 2048,
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-  };
-
-  const res = await fetch(AI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`AI ${res.status}`);
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI boş yanıt döndü');
-  return text.trim();
-}
-
-// Low-level call with a custom system instruction — used by the quiz / link /
-// subscription engines that need their own prompt and a JSON reply (mirrors the
-// app's DeepSeek _jsonRequest, but over the same Gemini proxy the web chat uses).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temperature = 0.7 }) {
-  const body = {
-    model: MODEL,
-    systemInstruction: { parts: [{ text: system }] },
-    contents: [{ role: 'user', parts: [{ text: user }] }],
-    generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
-  };
-  // The Gemini free tier throttles hard (per-minute 429 bursts). Back off across
-  // a wider window so the rate-limit slot frees up before we give up. NOTE: when
-  // 429s are this frequent the real fix is a higher Gemini API quota server-side.
-  const backoff = [0, 3000, 7000, 12000, 18000, 25000];
-  let lastStatus = 0;
-  for (let attempt = 0; attempt < backoff.length; attempt++) {
-    if (attempt > 0) await sleep(backoff[attempt]);
-    const res = await fetch(AI_URL, {
+// Transient failures worth retrying / falling back on — mirrors the app's
+// _shouldFallbackModel (404/429/5xx + quota wording).
+function transientStatus(status) {
+  return status === 404 || status === 429 || status === 500
+    || status === 502 || status === 503 || status === 504;
+}
+
+async function fetchJson(url, body, timeoutMs = 90000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: ctrl.signal,
     });
-    if (res.ok) {
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('AI boş yanıt döndü');
-      return text.trim();
-    }
-    lastStatus = res.status;
-    // Retry only the transient ones (rate limit / overloaded / 5xx).
-    if (res.status !== 429 && res.status !== 503 && res.status < 500) {
-      throw new Error(`AI ${res.status}`);
-    }
-  }
-  throw new Error(`AI ${lastStatus}`);
+    return res;
+  } finally { clearTimeout(timer); }
 }
 
-// Tolerant JSON extraction — Gemini sometimes wraps JSON in ```json fences or
-// adds a sentence before/after. Pull the first balanced object out.
+// ── Gemini proxy (app's primary for link / subscription analysis) ──
+async function geminiOnce({ system, messages, maxOutputTokens, temperature }) {
+  const body = {
+    model: GEMINI_MODEL,
+    systemInstruction: { parts: [{ text: system }] },
+    contents: messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : m.role,
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
+  };
+  const res = await fetchJson(GEMINI_URL, body);
+  if (!res.ok) {
+    const err = new Error(`gemini ${res.status}`);
+    err.transient = transientStatus(res.status);
+    throw err;
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) { const e = new Error('gemini empty'); e.transient = true; throw e; }
+  return text.trim();
+}
+
+// ── DeepSeek proxy (app's "primary text intelligence" — our fallback) ──
+async function deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode }) {
+  const body = {
+    model: DEEPSEEK_MODEL,
+    messages: [{ role: 'system', content: system }, ...messages],
+    max_tokens: Math.min(maxOutputTokens, DEEPSEEK_MAX_OUTPUT),
+    temperature,
+  };
+  if (jsonMode) body.response_format = { type: 'json_object' };
+  const res = await fetchJson(DEEPSEEK_URL, body);
+  if (!res.ok) {
+    const err = new Error(`deepseek ${res.status}`);
+    err.transient = transientStatus(res.status);
+    throw err;
+  }
+  const data = await res.json();
+  if (data && data.error) {
+    const e = new Error(`deepseek ${data.error}`);
+    e.transient = String(data.error) === 'rate_limited';
+    throw e;
+  }
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) { const e = new Error('deepseek empty'); e.transient = true; throw e; }
+  return content.trim();
+}
+
+// App-parity routing: Gemini first (2 tries with a short backoff, like the app's
+// retry loop), then DeepSeek (2 tries). Throws only when both providers fail.
+async function aiRequest({ system, messages, maxOutputTokens = 4096, temperature = 0.7, jsonMode = false }) {
+  let lastErr;
+  for (let i = 0; i < 2; i++) {
+    if (i > 0) await sleep(2000);
+    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature }); }
+    catch (e) { lastErr = e; if (!e.transient) break; }
+  }
+  for (let i = 0; i < 2; i++) {
+    if (i > 0) await sleep(2500);
+    try { return await deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode }); }
+    catch (e) { lastErr = e; if (!e.transient) break; }
+  }
+  throw lastErr || new Error('AI failed');
+}
+
+// history: [{ role: 'user' | 'model', text: string }]
+export async function askQorAi(history) {
+  const messages = history.map((m) => ({
+    role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
+    content: m.text,
+  }));
+  return aiRequest({ system: SYSTEM_PROMPT, messages, maxOutputTokens: 2048, temperature: 0.7 });
+}
+
+// Custom system + user — used by the quiz / link / subscription engines.
+export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temperature = 0.7, jsonMode = false }) {
+  return aiRequest({
+    system,
+    messages: [{ role: 'user', content: user }],
+    maxOutputTokens,
+    temperature,
+    jsonMode,
+  });
+}
+
+// Tolerant JSON extraction — strips ```json fences and pulls the first balanced
+// object out (Gemini wraps JSON in fences; DeepSeek json_object mode is clean).
 export function parseJsonLoose(text) {
   let t = String(text || '').trim();
   t = t.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
@@ -102,6 +157,6 @@ export function parseJsonLoose(text) {
 }
 
 export async function askQorAiJson({ system, user, maxOutputTokens = 4096 }) {
-  const text = await askQorAiRaw({ system, user, maxOutputTokens, temperature: 0.6 });
+  const text = await askQorAiRaw({ system, user, maxOutputTokens, temperature: 0.6, jsonMode: true });
   return parseJsonLoose(text);
 }
