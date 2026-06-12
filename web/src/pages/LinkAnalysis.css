@@ -16,7 +16,15 @@
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--brand-blue) 26%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 24%, var(--border));
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--brand-blue) 18%, transparent);
+}
+.la-page .page-hero-icon .la-hero-logo {
+  width: 39px;
+  height: 39px;
+  display: block;
+  object-fit: contain;
 }
 .la-page .page-hero h1 {
   font-size: clamp(27px, 3.5vw, 38px);

@@ -378,18 +378,7 @@ export default function LinkAnalysis() {
         title={t('la.title')}
         subtitle={t('la.subtitle')}
         icon={(
-          <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 7.5h5" />
-            <path d="M15 7.5h5" />
-            <path d="M7 10.2v3.6" />
-            <path d="M17 10.2v3.6" />
-            <path d="M8.7 15.8h6.6" />
-            <circle cx="7" cy="7.5" r="2.4" />
-            <circle cx="17" cy="7.5" r="2.4" />
-            <path d="m9.3 17.2 1.7 1.7 3.7-4.1" />
-            <path d="M19.2 15.1v2.7" />
-            <path d="M17.85 16.45h2.7" />
-          </svg>
+          <img className="la-hero-logo" src="/assets/qor_logo_512.png?v=20260605a" alt="" />
         )}
       />
 
