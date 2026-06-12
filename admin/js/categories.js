@@ -1037,6 +1037,26 @@ function updateScrapeCategorySelectedCount() {
   if (countEl) countEl.textContent = `${selected} kategori seçili`;
 }
 
+function _currentScrapeSourceForCategories() {
+  return document.getElementById('scrapeSource')?.value || 'epey';
+}
+
+function _scrapeCategorySupportState(categoryId) {
+  const src = _currentScrapeSourceForCategories();
+  const cat = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getById)
+    ? QorAiCategories.getById(categoryId)
+    : null;
+  if (!cat) return { ok: true, reason: '' };
+  if (src === 'geizhals') {
+    return cat.LegacySlug
+      ? { ok: true, reason: '' }
+      : { ok: false, reason: 'Geizhals yok' };
+  }
+  return (cat.epeyPath && !cat.scrapeDisabled)
+    ? { ok: true, reason: '' }
+    : { ok: false, reason: 'Epey yok' };
+}
+
 function _syncScrapeCategoryChecklistFromSelect() {
   const select = document.getElementById('scrapeCategory');
   const panel = document.getElementById('scrapeCategoryChecklist');
@@ -1068,12 +1088,15 @@ function _syncScrapeCategoryChecklistFromSelect() {
       if (!opts.length) continue;
       parts.push(`<div class="scrape-category-group">${escHtml(node.label || 'Categories')}</div>`);
       opts.forEach(opt => {
-        const checked = previous.has(opt.value) ? ' checked' : '';
+        const support = _scrapeCategorySupportState(opt.value);
+        const checked = previous.has(opt.value) && support.ok ? ' checked' : '';
+        const disabled = support.ok ? '' : ' disabled';
+        const unavailable = support.ok ? '' : `<span class="scrape-category-count muted">${escHtml(support.reason)}</span>`;
         const label = splitOptionLabel(opt.textContent || opt.value);
         const count = label.count != null && label.count !== ''
           ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>`
           : '<span class="scrape-category-count muted">henüz çekilmedi</span>';
-        parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(opt.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
+        parts.push(`<label class="scrape-category-option${support.ok ? '' : ' disabled'}"><span class="scrape-category-name">${escHtml(label.name)}</span>${unavailable || count}<input type="checkbox" value="${escHtml(opt.value)}"${checked}${disabled} onchange="updateScrapeCategorySelectedCount()"></label>`);
       });
     } else if (
       node.tagName === 'OPTION'
@@ -1082,10 +1105,14 @@ function _syncScrapeCategoryChecklistFromSelect() {
       && !isRemovedCategoryLike(node.value)
       && !isRemovedCategoryLike(node.textContent || '')
     ) {
-      const checked = previous.has(node.value) ? ' checked' : '';
+      const support = _scrapeCategorySupportState(node.value);
+      const checked = previous.has(node.value) && support.ok ? ' checked' : '';
+      const disabled = support.ok ? '' : ' disabled';
       const label = splitOptionLabel(node.textContent || node.value);
-      const count = label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>';
-      parts.push(`<label class="scrape-category-option"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(node.value)}"${checked} onchange="updateScrapeCategorySelectedCount()"></label>`);
+      const count = support.ok
+        ? (label.count ? `<span class="scrape-category-count">${escHtml(label.count)} ürün</span>` : '<span class="scrape-category-count muted">yükleniyor</span>')
+        : `<span class="scrape-category-count muted">${escHtml(support.reason)}</span>`;
+      parts.push(`<label class="scrape-category-option${support.ok ? '' : ' disabled'}"><span class="scrape-category-name">${escHtml(label.name)}</span>${count}<input type="checkbox" value="${escHtml(node.value)}"${checked}${disabled} onchange="updateScrapeCategorySelectedCount()"></label>`);
     }
   }
   panel.innerHTML = parts.join('') || '<div class="text-muted" style="font-size:12px">Epey kategorisi bulunamadı.</div>';
@@ -1093,7 +1120,7 @@ function _syncScrapeCategoryChecklistFromSelect() {
 }
 
 function selectAllScrapeCategories() {
-  document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+  document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]:not(:disabled)').forEach(cb => { cb.checked = true; });
   updateScrapeCategorySelectedCount();
 }
 

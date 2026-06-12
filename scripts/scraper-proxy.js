@@ -1210,14 +1210,36 @@ async function fetchWithPuppeteer(url, opts = {}) {
       // the page. No manual click required.
       console.log(`  ⏳ Cloudflare challenge — turnstile auto-solver working… ("${title.substring(0, 50)}")`);
       const POLL_INTERVAL = 2500;
-      const MAX_WAIT = isGeizhals ? 120000 : 45000;
+      const MAX_WAIT = isGeizhals ? 60000 : 45000;
       if (isGeizhals) {
         console.log('  ℹ️  Geizhals challenge: keep the opened Chrome window visible; manual solve is accepted if Cloudflare asks.');
       }
       let waited = 0;
       while (waited < MAX_WAIT) {
-        await _humanDelay(POLL_INTERVAL, POLL_INTERVAL);
+        // Human interaction is required to pass Turnstile. Mouse move + click the challenge bounding box.
+        try {
+          await _humanScroll(page);
+          const rect = await page.evaluate(() => {
+            const f = document.querySelector('iframe[src*="turnstile"], iframe[src*="cloudflare"], #turnstile-wrapper');
+            if (f && f.offsetWidth > 0 && f.offsetHeight > 0) {
+              const r = f.getBoundingClientRect();
+              return { x: r.x + r.width / 3 + Math.random() * (r.width / 3), y: r.y + r.height / 3 + Math.random() * (r.height / 3) };
+            }
+            return { x: window.innerWidth / 2 + (Math.random() * 50 - 25), y: window.innerHeight / 2 + (Math.random() * 50 - 25) };
+          });
+          if (rect) {
+            await page.mouse.move(rect.x, rect.y, { steps: 10 + Math.floor(Math.random() * 15) });
+            await page.mouse.down();
+            await _humanDelay(50, 150);
+            await page.mouse.up();
+          }
+        } catch (e) {
+          // ignore mouse interaction errors
+        }
+
+        await _humanDelay(POLL_INTERVAL / 2, POLL_INTERVAL);
         waited += POLL_INTERVAL;
+        
         title = await page.title().catch(() => '');
         const html2 = await page.content().catch(() => '');
         isChallenge = _isChallengeTitle(title) || _isChallengeHtml(html2);
@@ -1839,7 +1861,7 @@ const server = http.createServer(async (req, res) => {
       if (cat) args.push(`--cat=${cat}`);
       const { spawn } = require('child_process');
       offersLog = `[offers] test run: ${args.join(' ')}\n`;
-      offersProc = spawn('node', args, { cwd: rootDir, env: process.env });
+      offersProc = spawn('node', args, { cwd: rootDir, env: { ...process.env, NO_REINDEX: '1' } });
       offersProc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
       offersProc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
       offersProc.on('exit', code => { offersLog += `\n[offers] exited with code ${code}\n`; });
@@ -2849,14 +2871,17 @@ const server = http.createServer(async (req, res) => {
     let heldSlowLock = false;
     _slowPathBusy++; heldSlowLock = true;
     try {
-      const browserFetch = await fetchWithBrowserFetch(targetUrl);
-      if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.setHeader('X-Status-Code', String(browserFetch.status || 200));
-        res.setHeader('X-Fetch-Engine', 'browser-fetch');
-        res.writeHead(200);
-        res.end(browserFetch.html);
-        return;
+      const isTargetGeizhals = isGeizhalsUrl(targetUrl);
+      if (!isTargetGeizhals) {
+        const browserFetch = await fetchWithBrowserFetch(targetUrl);
+        if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('X-Status-Code', String(browserFetch.status || 200));
+          res.setHeader('X-Fetch-Engine', 'browser-fetch');
+          res.writeHead(200);
+          res.end(browserFetch.html);
+          return;
+        }
       }
       // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
       // (GET or POST) to epey.com is always answered with a 403 challenge — only
@@ -2864,6 +2889,11 @@ const server = http.createServer(async (req, res) => {
       // `referer` is forwarded so Epey's gallery pages (…-resimleri.html), which
       // 404 without a Referer, load correctly.
       let { html, status } = await withBrowserLock(() => fetchHtml(targetUrl, { referer }));
+      if (html && _isChallengeHtml(html)) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'cloudflare_challenge', message: 'Cloudflare challenge is still active after browser fetch.' }));
+        return;
+      }
       if (!html || status === 404) {
         res.setHeader('X-Status-Code', '404');
         res.writeHead(404, { 'Content-Type': 'application/json' });

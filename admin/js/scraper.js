@@ -294,7 +294,13 @@ if (typeof window !== 'undefined') window.qoraiQueuePostScrapeScore = _queuePost
 // is already running (409), it just skips.
 let _autoOfferTimer = null;
 let _lastFeedRematchAt = 0;
+let _autoOfferPending = false;
 const _FEED_REMATCH_MIN_GAP_MS = 10 * 60 * 1000; // re-match partner feeds at most once / 10 min
+
+function _scheduleAutoAffiliate(delayMs = 10000) {
+  clearTimeout(_autoOfferTimer);
+  _autoOfferTimer = setTimeout(_runAutoAffiliate, Math.max(1000, delayMs));
+}
 
 async function _waitOffersIdle(maxMs = 180000) {
   const start = Date.now();
@@ -311,6 +317,12 @@ async function _waitOffersIdle(maxMs = 180000) {
 
 async function _runAutoAffiliate() {
   try {
+    if (window.qoraiScrapeActive) {
+      _scheduleAutoAffiliate(60000);
+      return;
+    }
+    if (!_autoOfferPending) return;
+    _autoOfferPending = false;
     if (typeof checkProxy === 'function' && !(await checkProxy())) return;
     // 1) Amazon search links for every new product (instant, price-less).
     const r = await fetch(`${PROXY_URL}/offers/sync`, {
@@ -336,8 +348,8 @@ async function _runAutoAffiliate() {
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('qorai:product-saved', () => {
-    clearTimeout(_autoOfferTimer);
-    _autoOfferTimer = setTimeout(_runAutoAffiliate, 10000);
+    _autoOfferPending = true;
+    _scheduleAutoAffiliate(window.qoraiScrapeActive ? 60000 : 10000);
   });
 }
 
@@ -9552,6 +9564,9 @@ window.updateScrapeSourceUI = function () {
     hint.textContent = src === 'geizhals'
       ? `Geizhals.eu: Cloudflare korumalı — temkinli (${preset.concurrency} worker, ${preset.delay} ms delay). Almanca specs, AB fiyatları.`
       : `Epey.com: güvenli hızlı mod (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
+  }
+  if (typeof _syncScrapeCategoryChecklistFromSelect === 'function') {
+    _syncScrapeCategoryChecklistFromSelect();
   }
 };
 // Apply initial preset on DOM ready so the UI matches the pre-selected source.

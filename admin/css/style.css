@@ -327,6 +327,8 @@ textarea.input{resize:vertical}
 .scrape-category-group:first-child{margin-top:0;border-top:0}
 .scrape-category-option{display:flex;align-items:center;gap:10px;min-height:38px;padding:8px 12px;border-top:1px solid rgba(128,128,128,.12);background:var(--bg2);font-size:12px;font-weight:700;color:var(--text1);cursor:pointer}
 .scrape-category-option:hover{background:var(--bg3)}
+.scrape-category-option.disabled{opacity:.58;cursor:not-allowed}
+.scrape-category-option.disabled:hover{background:var(--bg2)}
 .scrape-category-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scrape-category-count{font-size:11px;font-weight:800;color:var(--primary);background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.28);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .scrape-category-count.muted{color:var(--text2);background:transparent;border-color:var(--border)}

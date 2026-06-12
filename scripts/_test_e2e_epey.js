@@ -15,7 +15,7 @@ global.AbortController = class { constructor() { this.signal = {}; } abort() {} 
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'admin', 'js', 'scraper.js'), 'utf8');
 const helpersStart = src.indexOf('function _uniqueSpecKey');
-const sanitizerEnd = src.indexOf('function _deDictLookup');
+const sanitizerEnd = src.indexOf('async function _translateProductInline');
 eval(src.slice(helpersStart, sanitizerEnd));
 
 const SCENARIOS = [

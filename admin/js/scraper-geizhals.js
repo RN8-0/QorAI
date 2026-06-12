@@ -15,9 +15,18 @@
 const PROXY_URL = 'http://localhost:3456';
 const GEIZHALS_BASE = 'https://geizhals.eu';
 const PROXY_START_COMMAND = 'npm run scraper:stack';
-const SCRAPER_BUILD = '20260526-geizhals-source-fields';
+const SCRAPER_BUILD = '20260612-geizhals-targeted-dedup';
 const GEIZHALS_LISTING_EXTRA = 'pagesize=30&sort=t&hloc=at&hloc=de&hloc=eu&hloc=pl&hloc=uk';
-const GEIZHALS_PROXY_FETCH_TIMEOUT_MS = 210000;
+// Listing pages can need longer Cloudflare recovery, but detail workers must
+// fail fast so a burned fingerprint checkpoints instead of stalling all lanes.
+const GEIZHALS_LISTING_FETCH_TIMEOUT_MS = 150000;
+const GEIZHALS_DETAIL_FETCH_TIMEOUT_MS = 45000;
+const GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS = 8000;
+const GEIZHALS_PRELOAD_TIMEOUT_MS = 45000;
+const GEIZHALS_TARGETED_PRELOAD_MAX_URLS = 120;
+const GEIZHALS_INLINE_TRANSLATE_TIMEOUT_MS = 120000;
+const GEIZHALS_PB_WRITE_TIMEOUT_MS = 45000;
+const GEIZHALS_DEDUP_CIRCUIT_BASE_MS = 120000;
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
@@ -245,6 +254,98 @@ function geizhalsProductKeysFromUrl(url) {
   return { raw, normalized, slug, idLike };
 }
 
+function _timeoutError(label, timeoutMs) {
+  const err = new Error(`${label} timeout after ${(timeoutMs / 1000).toFixed(0)}s`);
+  err.name = 'TimeoutError';
+  return err;
+}
+
+async function _withAbortTimeout(label, timeoutMs, fn) {
+  const ms = Math.max(0, Number(timeoutMs || 0));
+  if (!ms || typeof AbortController === 'undefined') return fn();
+  const ac = new AbortController();
+  let timer = null;
+  let timedOut = false;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      try { ac.abort(); } catch {}
+      reject(_timeoutError(label, ms));
+    }, ms);
+  });
+  const work = Promise.resolve()
+    .then(() => fn(ac.signal))
+    .catch((e) => {
+      if (timedOut || ac.signal?.aborted) throw _timeoutError(label, ms);
+      throw e;
+    });
+  work.catch(() => {});
+  try {
+    return await Promise.race([work, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function _geizhalsPbGetDoc(collection, id, timeoutMs = GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS) {
+  return _withAbortTimeout(`PB get ${collection}/${id}`, timeoutMs, (signal) =>
+    pbGetDoc(collection, id, { signal }));
+}
+
+async function _geizhalsPbSetDoc(collection, id, data, timeoutMs = GEIZHALS_PB_WRITE_TIMEOUT_MS) {
+  const globalTimeoutWriter = (typeof _pbSetDocWithTimeout === 'function') ? _pbSetDocWithTimeout : null;
+  if (globalTimeoutWriter) return globalTimeoutWriter(collection, id, data, timeoutMs);
+  return _withAbortTimeout(`PB save ${collection}/${id}`, timeoutMs, (signal) =>
+    pbSetDoc(collection, id, data, { signal }));
+}
+
+let _dedupFailureStreak = 0;
+let _dedupCircuitOpenUntil = 0;
+let _dedupCircuitLastLogAt = 0;
+
+function _dedupCircuitOpen() {
+  const now = Date.now();
+  if (now < _dedupCircuitOpenUntil) {
+    if (now - _dedupCircuitLastLogAt > 30000) {
+      _dedupCircuitLastLogAt = now;
+      slog(`  ⚠ PB dedup geçici kapalı (${Math.ceil((_dedupCircuitOpenUntil - now) / 1000)}s kaldı); ürün akışı durdurulmuyor`, 'warn');
+    }
+    return true;
+  }
+  return false;
+}
+
+function _markDedupSuccess() {
+  _dedupFailureStreak = 0;
+  _dedupCircuitOpenUntil = 0;
+}
+
+function _markDedupFailure(label, error) {
+  _dedupFailureStreak++;
+  const message = error?.message || String(error || 'unknown');
+  if (_dedupFailureStreak >= 3) {
+    const multiplier = Math.min(5, _dedupFailureStreak - 2);
+    const cooldown = GEIZHALS_DEDUP_CIRCUIT_BASE_MS * multiplier;
+    _dedupCircuitOpenUntil = Date.now() + cooldown;
+    _dedupCircuitLastLogAt = Date.now();
+    slog(`  ⚠ ${label} arka arkaya ${_dedupFailureStreak} kez patladı (${message}); dedup ${Math.round(cooldown / 1000)}s atlanacak`, 'warn');
+  } else {
+    slog(`  ⚠ ${label} failed: ${message}`, 'warn');
+  }
+}
+
+async function _runDedupProbe(label, fn, timeoutMs = GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS) {
+  if (_dedupCircuitOpen()) return null;
+  try {
+    const result = await _withAbortTimeout(label, timeoutMs, fn);
+    _markDedupSuccess();
+    return result || null;
+  } catch (e) {
+    _markDedupFailure(label, e);
+    return null;
+  }
+}
+
 // ── Persistent "already handled" cache for Geizhals URLs that resolved to an
 // existing product (Epey baseline or an existing Geizhals/cross-source record).
 // Such URLs never create a NEW row, so re-fetching them every run only burns
@@ -296,6 +397,12 @@ function storageVariantToken(value) {
   return m ? `${m[1]}${m[2].toLowerCase()}` : '';
 }
 
+function storageCompatibleForDedup(incomingName, existingName) {
+  const incomingStorage = storageVariantToken(incomingName);
+  const existingStorage = storageVariantToken(existingName);
+  return !incomingStorage || !existingStorage || incomingStorage === existingStorage;
+}
+
 function recordSummary(record = {}) {
   return {
     id: record.id || '',
@@ -319,18 +426,15 @@ async function findExistingGeizhalsProduct(clean = {}) {
   if (keys.normalized !== keys.raw) add('sourceUrl', keys.normalized);
   add('slug', clean.slug || keys.slug);
   if (keys.idLike && keys.idLike !== (clean.slug || keys.slug)) add('id', keys.idLike);
-  if (clean.variantGroup) {
-    const vg = `variantGroup="${escapePbFilterValue(clean.variantGroup)}"`;
-    const cat = String(clean.category || '').trim();
-    orParts.push(cat ? `(${vg} && category="${escapePbFilterValue(cat)}")` : vg);
-  }
   if (!orParts.length) return null;
 
-  try {
+  return _runDedupProbe('Geizhals duplicate lookup', async (signal) => {
     const res = await pbGetList('products', 1, 50, {
       filter: orParts.join(' || '),
       fields: 'id,source,sourceUrl,slug,name,brand,category,variantGroup',
-      sort: '-updated',
+      sort: null,
+      skipTotal: true,
+      signal,
     });
     let items = (res.items || []).filter(isScrapedSourceRecord);
     const targetStorage = storageVariantToken(clean.name);
@@ -350,10 +454,7 @@ async function findExistingGeizhalsProduct(clean = {}) {
     const byEpey = items.find((it) => /epey/i.test(String(it.source || it.sourceUrl || '')));
     const hit = byExactSlug || byExactUrl || byEpey || items[0];
     return hit ? recordSummary(hit) : null;
-  } catch (e) {
-    slog(`  ⚠ Geizhals duplicate lookup failed: ${e.message}`, 'warn');
-    return null;
-  }
+  });
 }
 
 
@@ -445,12 +546,11 @@ function ensureProxyPolling() {
   }, 5000);
 }
 
-async function proxyFetch(url, retries = 3) {
+async function proxyFetch(url, retries = 1, timeoutMs = GEIZHALS_DETAIL_FETCH_TIMEOUT_MS) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`, {
-        // Proxy may spend 45s navigating plus up to 120s on Geizhals CF solving.
-        signal: AbortSignal.timeout(GEIZHALS_PROXY_FETCH_TIMEOUT_MS)
+        signal: AbortSignal.timeout(timeoutMs)
       });
       if (res.status === 429) {
         const delay = Math.min(15000 * Math.pow(2, attempt), 120000) + Math.random() * 5000;
@@ -469,7 +569,7 @@ async function proxyFetch(url, retries = 3) {
         // 2026-06-10 run lost ~30 min to 6 workers doing exactly that).
         // Rotate the session once, retry once, then fail fast so the
         // caller's streak handling takes over.
-        if (attempt >= 1) throw e;
+        if (attempt >= Math.min(retries, 1)) throw e;
         slog(`Timeout on ${url.slice(0, 70)}… — rotating proxy session and retrying once`, 'warn');
         await maybeResetProxySession('proxyFetch timeout');
         continue;
@@ -1386,7 +1486,7 @@ async function _loadDeDict() {
     // "DE 0 terms" in for the whole session even though the doc holds 253 terms.
     for (let attempt = 1; attempt <= 4; attempt++) {
       try {
-        const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY);
+        const doc = await _geizhalsPbGetDoc('public_config', DE_DICT_PB_KEY, GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS);
         if (doc.exists) {
           const data = typeof doc.data === 'function' ? doc.data() : doc;
           const stored = data?.value || data || {};
@@ -1448,7 +1548,7 @@ async function _saveDeDict() {
     // gets silently shrunk. Force a reload before any future save.
     const localCount = Object.keys(_deDictCache).length;
     if (localCount < 200) {
-      const doc = await pbGetDoc('public_config', DE_DICT_PB_KEY).catch(() => null);
+      const doc = await _geizhalsPbGetDoc('public_config', DE_DICT_PB_KEY, GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS).catch(() => null);
       const stored = doc?.exists ? ((typeof doc.data === 'function' ? doc.data() : doc)?.value || {}) : {};
       const termsRoot = (stored.terms && typeof stored.terms === 'object') ? stored.terms : stored;
       const remoteCount = (termsRoot && typeof termsRoot === 'object')
@@ -1461,11 +1561,11 @@ async function _saveDeDict() {
         return;
       }
     }
-    await pbSetDoc('public_config', DE_DICT_PB_KEY, {
+    await _geizhalsPbSetDoc('public_config', DE_DICT_PB_KEY, {
       key: DE_DICT_PB_KEY,
       value: _deDictCache,
       updatedAt: new Date().toISOString()
-    });
+    }, GEIZHALS_PB_WRITE_TIMEOUT_MS);
   } catch (e) {
     console.warn('[de-dict] save failed:', e.message);
     _deDictDirty = true; // retry next time
@@ -3646,7 +3746,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       let reason = '';
       try {
         const res = await fetch(`${PROXY_URL}/category-links?url=${encodeURIComponent(url)}`, {
-          signal: AbortSignal.timeout(GEIZHALS_PROXY_FETCH_TIMEOUT_MS)
+          signal: AbortSignal.timeout(GEIZHALS_LISTING_FETCH_TIMEOUT_MS)
         });
         const contentType = res.headers.get('content-type') || '';
         const isJson = contentType.includes('application/json');
@@ -3671,7 +3771,7 @@ async function collectProductUrls(categoryPath, maxProducts = 200) {
       // Client-side fallback if proxy returned 0 links without a CF flag.
       if (!cloudflareBlocked && links.length === 0) {
         try {
-          const html = await proxyFetch(url);
+          const html = await proxyFetch(url, 0, GEIZHALS_LISTING_FETCH_TIMEOUT_MS);
           if (html) {
             if (isChallengePage(html)) { cloudflareBlocked = true; reason = 'cf-fallback-html'; }
             else {
@@ -4007,41 +4107,116 @@ function updateResumeUI() {
 
 // ── Skip-existing: pull durable product identities already stored in PB and
 // drop them from the scrape list before any Cloudflare-prone detail fetch.
-async function _loadExistingGeizhalsProducts(categoryId) {
+function _addExistingGeizhalsRecord(out, record = {}) {
+  const recId = record.id || '';
+  if (!isScrapedSourceRecord(record)) return;
+  const keys = geizhalsProductKeysFromUrl(record.sourceUrl || '');
+  if (keys.raw) out.urls.add(keys.raw);
+  if (keys.normalized) out.urls.add(keys.normalized);
+  if (keys.slug) out.slugs.add(keys.slug);
+  if (keys.idLike) out.slugs.add(keys.idLike);
+  if (recId) out.slugs.add(String(recId));
+  if (record.slug) out.slugs.add(String(record.slug));
+  const vg = String(record.variantGroup || '').trim();
+  if (vg && recId) {
+    const rec = recordSummary({ id: recId, ...record });
+    const prev = out.byVariantGroup.get(vg);
+    if (!prev || /epey/i.test(String(rec.source || rec.sourceUrl || ''))) out.byVariantGroup.set(vg, rec);
+  }
+}
+
+function _addGeizhalsSkipCacheToExisting(out) {
+  const skipCache = _gzSkipCache();
+  for (const k of skipCache) { out.urls.add(k); out.slugs.add(k); }
+  return skipCache.size;
+}
+
+async function _loadTargetedExistingGeizhalsProducts(urlItems) {
   const out = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
+  const skipCount = _addGeizhalsSkipCacheToExisting(out);
+  const items = Array.isArray(urlItems) ? urlItems : [];
+  const filters = [];
+  const seen = new Set();
+  const add = (field, value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return;
+    const key = `${field}:${raw}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    filters.push(`${field}="${escapePbFilterValue(raw)}"`);
+  };
+  for (const item of items) {
+    const keys = geizhalsProductKeysFromUrl(item?.url || item);
+    add('sourceUrl', keys.raw);
+    if (keys.normalized !== keys.raw) add('sourceUrl', keys.normalized);
+    add('slug', keys.slug);
+    add('id', keys.idLike);
+  }
+
+  if (!filters.length) {
+    slog(`  targeted preload OK: 0 kayıt (+${skipCount} skip-cache)`, 'success');
+    return out;
+  }
+
+  const docs = [];
+  const chunkSize = 80;
+  await _withAbortTimeout('targeted existing preload', GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS, async (signal) => {
+    for (let i = 0; i < filters.length; i += chunkSize) {
+      const res = await pbGetList('products', 1, 100, {
+        filter: filters.slice(i, i + chunkSize).join(' || '),
+        fields: 'id,source,sourceUrl,slug,name,brand,category,variantGroup',
+        sort: null,
+        skipTotal: true,
+        signal,
+      });
+      docs.push(...(res.items || []));
+    }
+  });
+
+  const seenIds = new Set();
+  for (const item of docs) {
+    const id = String(item.id || '').trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    _addExistingGeizhalsRecord(out, item);
+  }
+  slog(`  targeted preload OK: ${seenIds.size} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key (+${skipCount} skip-cache)`, 'success');
+  return out;
+}
+
+async function _loadExistingGeizhalsProducts(categoryId, urlItems = []) {
+  const out = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map() };
+  if (Array.isArray(urlItems) && urlItems.length > 0 && urlItems.length <= GEIZHALS_TARGETED_PRELOAD_MAX_URLS) {
+    try {
+      return await _loadTargetedExistingGeizhalsProducts(urlItems);
+    } catch (e) {
+      const skipCount = _addGeizhalsSkipCacheToExisting(out);
+      slog(`  (targeted preload failed: ${e.message}; continuing with ${skipCount} cached skip keys)`, 'warn');
+      return out;
+    }
+  }
+
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const sourceFilter = `(source = "geizhals.eu" || source = "geizhals" || sourceUrl ~ "geizhals.eu")`;
-    const docs = await pbGetAll('products', {
-      filter: safeCategory ? `category="${safeCategory}"` : sourceFilter,
-      sort: '-created',
-      fields: 'id,source,sourceUrl,slug,name,variantGroup',
-    });
+    const docs = await _withAbortTimeout('existing product preload', GEIZHALS_PRELOAD_TIMEOUT_MS, (signal) =>
+      pbGetAll('products', {
+        filter: safeCategory ? `category="${safeCategory}"` : sourceFilter,
+        sort: '-created',
+        fields: 'id,source,sourceUrl,slug,name,brand,category,variantGroup',
+        batch: 500,
+        signal,
+      }));
     for (const d of docs) {
       const data = typeof d.data === 'function' ? d.data() : (d.data || d);
-      const recId = d.id || data.id || '';
-      if (!isScrapedSourceRecord(data)) continue;
-      const keys = geizhalsProductKeysFromUrl(data.sourceUrl || '');
-      if (keys.raw) out.urls.add(keys.raw);
-      if (keys.normalized) out.urls.add(keys.normalized);
-      if (keys.slug) out.slugs.add(keys.slug);
-      if (keys.idLike) out.slugs.add(keys.idLike);
-      if (recId) out.slugs.add(String(recId));
-      if (data.slug) out.slugs.add(String(data.slug));
-      const vg = String(data.variantGroup || '').trim();
-      if (vg && recId) {
-        const rec = recordSummary({ id: recId, ...data });
-        const prev = out.byVariantGroup.get(vg);
-        if (!prev || /epey/i.test(String(rec.source || rec.sourceUrl || ''))) out.byVariantGroup.set(vg, rec);
-      }
+      _addExistingGeizhalsRecord(out, { id: d.id || data.id || '', ...data });
     }
     // Merge the persistent dedup-skip cache: Geizhals URLs that previously
     // resolved to an existing product (Epey baseline or cross-source) and so
     // should not be re-fetched. Keys go into both sets because the pre-pass
     // filter checks urls AND slugs.
-    const skipCache = _gzSkipCache();
-    for (const k of skipCache) { out.urls.add(k); out.slugs.add(k); }
-    slog(`  preload OK: ${docs.length} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key (+${skipCache.size} skip-cache)`, 'success');
+    const skipCount = _addGeizhalsSkipCacheToExisting(out);
+    slog(`  preload OK: ${docs.length} kayıt, ${out.urls.size} URL key, ${out.slugs.size} slug key (+${skipCount} skip-cache)`, 'success');
     return out;
   } catch (e) {
     slog(`  (existing-URL preload failed: ${e.message})`, 'warn');
@@ -4058,6 +4233,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // 60% we pause for a long cool-down and slow down per-product delay.
   const recent = []; // 'ok' | 'err' | 'cf'
   const _MAX_CONSEC_ERRORS = 10; // hard abort threshold
+  let timeoutStreak = 0;
   // CF guards: once the proxy session is burned by Cloudflare every subsequent
   // request returns the "Nur einen Moment…" interstitial. The fix is to (a)
   // rotate the browser fingerprint on the proxy whenever we see a CF streak,
@@ -4076,7 +4252,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
   slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const existing = await _loadExistingGeizhalsProducts(categoryId);
+  const existing = await _loadExistingGeizhalsProducts(categoryId, urlItems);
   const beforeCount = urlItems.length;
   const seenBatchKeys = new Set();
   urlItems = urlItems.filter((it) => {
@@ -4104,7 +4280,10 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   _scrapeProductCount = 0;
 
   const concurrencyInput = parseInt(concurrencyArg, 10) || parseInt(document.getElementById('scrapeConcurrency')?.value, 10) || 4;
-  const concurrency = Math.max(1, Math.min(16, concurrencyInput));
+  // Geizhals is Cloudflare-fronted; more than four detail lanes causes the
+  // timeout cascade seen in the 2026-06-11 log.
+  const concurrency = Math.max(1, Math.min(4, concurrencyInput));
+  const _TIMEOUT_HARD_ABORT_STREAK = Math.max(3, Math.min(4, concurrency));
   let cursor = 0;
   let completed = 0;
   slog(`⚡ Paralel Geizhals detay + inline çeviri: ${concurrency} işçi · delay ${Math.min(delayMs || 0, 500)}ms/işçi`, 'info');
@@ -4148,6 +4327,7 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       }
       challengeStreak = 0;
       cfRetryUrl = null;
+      timeoutStreak = 0;
       productsSinceReset++;
 
       // Proactive rotation mirrors Phase-1's "every N pages" rule. Doing it
@@ -4177,34 +4357,32 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       // entirely — no merge, no overwrite, no wasted translation calls — so the
       // Epey record (Turkish names + specs the app is tuned for) stays untouched.
       let existingRec = null;
-      try {
+      const localExisting = clean.variantGroup ? existing.byVariantGroup.get(clean.variantGroup) : null;
+      if (localExisting && isScrapedSourceRecord(localExisting) && storageCompatibleForDedup(clean.name, localExisting.name)) {
+        existingRec = localExisting;
+      }
+      if (!existingRec) {
         existingRec = await findExistingGeizhalsProduct(clean);
-      } catch (e) {
-        slog(`  ⚠ Geizhals duplicate probe failed: ${e.message}`, 'warn');
       }
       if (!existingRec && clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
-        try {
-          existingRec = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
-        } catch (e) {
-          slog(`  ⚠ variantGroup dedup probe failed: ${e.message}`, 'warn');
-        }
+        existingRec = await _runDedupProbe('variantGroup dedup lookup', () =>
+          window._findExistingByVariantGroup(clean.variantGroup, clean.name));
       }
       // Cross-source (Epey baseline) dedup MUST run independently of
       // variantGroup — otherwise a Geizhals product whose model family didn't
       // produce a variantGroup (e.g. "Google Pixel 10a 128GB obsidian") would
       // skip this check and get re-added next to the existing Epey record.
       if (!existingRec && typeof window._findExistingEpeyByModelFamily === 'function') {
-        try {
-          existingRec = await window._findExistingEpeyByModelFamily(clean);
-        } catch (e) {
-          slog(`  ⚠ Epey model dedup probe failed: ${e.message}`, 'warn');
-        }
+        existingRec = await _runDedupProbe('Epey model dedup lookup', () =>
+          window._findExistingEpeyByModelFamily(clean));
       }
       if (existingRec && /epey/i.test(String(existingRec.source || existingRec.sourceUrl || ''))) {
         results.skipped++;
         errorStreak = 0;
         challengeStreak = 0;
+        timeoutStreak = 0;
         recent.push('ok');
+        if (clean.variantGroup) existing.byVariantGroup.set(clean.variantGroup, existingRec);
         _rememberGeizhalsSkip(item.url); // don't re-fetch this Epey duplicate next run
         slog(`  ⏭ Epey baz alındı, Geizhals atlandı: ${product.name} (mevcut ${existingRec.id})`, 'info');
         return;
@@ -4213,14 +4391,17 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         results.skipped++;
         errorStreak = 0;
         challengeStreak = 0;
+        timeoutStreak = 0;
         recent.push('ok');
+        if (clean.variantGroup) existing.byVariantGroup.set(clean.variantGroup, existingRec);
         _rememberGeizhalsSkip(item.url); // already have this Geizhals model — skip on future runs
         slog(`  ⏭ Geizhals model zaten var, tekrar kayıt açılmadı: ${product.name} (mevcut ${existingRec.id})`, 'info');
         return;
       }
 
       // Inline translation — shares the dictionary with the Epey scraper.
-      await _translateProductInline(clean);
+      await _withAbortTimeout(`inline translate ${slug}`, GEIZHALS_INLINE_TRANSLATE_TIMEOUT_MS, () =>
+        _translateProductInline(clean));
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || item.url);
 
       // A NON-Epey record already owning this model gets MERGED instead of
@@ -4228,11 +4409,13 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       let mergedExisting = null;
       if (existingRec && existingRec.source) {
         try {
-          mergedExisting = await window._mergeIntoExistingRecord(existingRec.id, clean);
+          mergedExisting = await _withAbortTimeout(`cross-source merge ${existingRec.id}`, GEIZHALS_PB_WRITE_TIMEOUT_MS, () =>
+            window._mergeIntoExistingRecord(existingRec.id, clean));
           if (mergedExisting) {
             window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: existingRec.id, product: mergedExisting } }));
             results.updated++;
             errorStreak = 0;
+            timeoutStreak = 0;
             recent.push('ok');
             slog(`  ↻ Cross-source merge → existing ${existingRec.id} (${existingRec.source}): ${product.name}`, 'info');
             if ((results.added + results.updated) % 25 === 0) {
@@ -4245,11 +4428,15 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         }
       }
 
-      const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+      const saved = await _geizhalsPbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       window.dispatchEvent(new CustomEvent('qorai:product-saved', { detail: { id: saved?.id || clean.slug, product: clean } }));
       results.added++;
       errorStreak = 0;
+      timeoutStreak = 0;
       recent.push('ok');
+      if (clean.variantGroup) {
+        existing.byVariantGroup.set(clean.variantGroup, recordSummary({ id: saved?.id || clean.slug, ...clean }));
+      }
       slog(`  → Added: ${product.name} (${product.specsCount} specs, score: ${product.techScore || '-'})`, 'success');
 
       // Adaptive checkpoint every 25 products
@@ -4261,6 +4448,8 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
       results.errors++;
       errorStreak++;
       recent.push('err');
+      const isTimeoutError = e.name === 'TimeoutError' || /timed?\s*out|abort/i.test(e.message || '');
+      timeoutStreak = isTimeoutError ? timeoutStreak + 1 : 0;
       const details = e.response?.data || e.data || {};
       slog(`  → Error: ${slug} — ${e.message}`, 'error');
       Object.entries(details).forEach(([k,v]) => {
@@ -4275,12 +4464,19 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
         return;
       }
 
-      if (errorStreak >= 3) {
+      if (timeoutStreak >= _TIMEOUT_HARD_ABORT_STREAK) {
+        slog(`🛑 ${timeoutStreak} ardışık timeout. Geizhals oturumu yanmış görünüyor; checkpoint kaydedildi — proxy'i yeniden başlatıp Resume kullan.`, 'error');
+        _saveCheckpoint(urlItems, Math.min(cursor, urlItems.length), categoryId, results);
+        scraperAbort = true;
+        return;
+      }
+
+      if (isTimeoutError || errorStreak >= 3) {
         // Sleeping alone never recovers a flagged CF session — the listing
         // phase learned this; the detail phase now does the same fingerprint
         // rotation instead of only backing off (2026-06-10 run died at 10
         // consecutive timeouts without a single reset).
-        await maybeResetProxySession(`detail error streak ${errorStreak}`);
+        await maybeResetProxySession(isTimeoutError ? `detail timeout streak ${timeoutStreak}` : `detail error streak ${errorStreak}`);
         const backoff = Math.min(10000 * Math.pow(2, errorStreak - 3), 120000);
         slog(`Error streak (${errorStreak}), backing off ${(backoff / 1000).toFixed(0)}s...`, 'warn');
         await sleep(backoff);
@@ -4342,17 +4538,17 @@ async function persistTranslationBacklog(terms) {
   if (batch.length === 0) return {};
 
   try {
-    const existingDoc = await pbGetDoc('app_config', 'translation_backlog');
+    const existingDoc = await _geizhalsPbGetDoc('app_config', 'translation_backlog', GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS);
     const existing = existingDoc.exists ? existingDoc.data() : {};
     const existingTerms = Array.isArray(existing.terms) ? existing.terms : [];
     const mergedTerms = [...new Set([...existingTerms, ...batch])].sort((a, b) => a.localeCompare(b, 'tr'));
 
-    await pbSetDoc('app_config', 'translation_backlog', {
+    await _geizhalsPbSetDoc('app_config', 'translation_backlog', {
       terms: mergedTerms,
       count: mergedTerms.length,
       mode: 'free-dictionary',
       updatedAt: new Date().toISOString(),
-    });
+    }, GEIZHALS_PB_WRITE_TIMEOUT_MS);
 
     slog(`Saved ${batch.length} untranslated terms to PocketBase backlog (${mergedTerms.length} total)`, 'info');
   } catch (e) {
@@ -4364,7 +4560,7 @@ async function persistTranslationBacklog(terms) {
 
 async function loadLearnedTranslations() {
   try {
-    const doc = await pbGetDoc('app_config', 'learned_translations');
+    const doc = await _geizhalsPbGetDoc('app_config', 'learned_translations', GEIZHALS_DEDUP_LOOKUP_TIMEOUT_MS);
     if (doc.exists) {
       const translations = doc.data();
       const dict = getDict();
@@ -4530,10 +4726,12 @@ async function scrapeByUrl() {
       let existing = null;
       existing = await findExistingGeizhalsProduct(clean);
       if (!existing && clean.variantGroup && typeof window._findExistingByVariantGroup === 'function') {
-        existing = await window._findExistingByVariantGroup(clean.variantGroup, clean.name);
+        existing = await _runDedupProbe('variantGroup dedup lookup', () =>
+          window._findExistingByVariantGroup(clean.variantGroup, clean.name));
       }
       if (!existing && typeof window._findExistingEpeyByModelFamily === 'function') {
-        existing = await window._findExistingEpeyByModelFamily(clean);
+        existing = await _runDedupProbe('Epey model dedup lookup', () =>
+          window._findExistingEpeyByModelFamily(clean));
       }
       // Epey is the baseline — never overwrite/enrich an Epey record from Geizhals.
       if (existing && /epey/i.test(String(existing.source || existing.sourceUrl || ''))) {
@@ -4548,7 +4746,7 @@ async function scrapeByUrl() {
       }
       // Single URL must behave like bulk: translate before PB write.
       try {
-        await _translateSingleProductRequired(clean, clean.name || clean.slug || product.sourceUrl || '');
+        await _translateSingleProductRequired(clean, clean.name || clean.slug || product.sourceUrl || '', GEIZHALS_INLINE_TRANSLATE_TIMEOUT_MS);
       } catch (e) {
         slog(`❌ Tekli Geizhals çevirisi tamamlanmadı; ürün kaydedilmedi (${e.message})`, 'error');
         if (typeof toast === 'function') toast('Tekli ürün çevirisi tamamlanmadı; kayıt yapılmadı', 'e');
@@ -4556,7 +4754,8 @@ async function scrapeByUrl() {
       }
       _assertCleanGermanEnglishPayload(clean, clean.name || clean.slug || product.sourceUrl || '');
       if (existing && existing.source && typeof window._mergeIntoExistingRecord === 'function') {
-        const merged = await window._mergeIntoExistingRecord(existing.id, clean);
+        const merged = await _withAbortTimeout(`cross-source merge ${existing.id}`, GEIZHALS_PB_WRITE_TIMEOUT_MS, () =>
+          window._mergeIntoExistingRecord(existing.id, clean));
         if (merged) {
           if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
             window.qoraiDispatchSingleProductSaved(existing.id, merged);
@@ -4568,7 +4767,7 @@ async function scrapeByUrl() {
           return;
         }
       }
-      const saved = await pbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
+      const saved = await _geizhalsPbSetDoc('products', clean.sourceUrl || clean.slug || clean.id, clean);
       if (typeof window.qoraiDispatchSingleProductSaved === 'function') {
         window.qoraiDispatchSingleProductSaved(saved?.id || clean.slug, clean);
       } else {
