@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/errors.dart';
@@ -30,7 +29,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _nameController = TextEditingController();
 
   // Registration data
-  DateTime? _birthDate;
   String? _gender;
   static const List<String> _genderValues = [
     'Male',
@@ -235,11 +233,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
-        _birthDate == null ||
         _gender == null) {
       _showError(
         context.l10n?.pleaseFillAllFields ??
-            'Please fill in all fields (Name, Email, Password, Birth Date, & Gender)',
+            'Please fill in all fields (Name, Email, Password & Gender)',
       );
       return;
     }
@@ -261,16 +258,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    // COPPA compliance: users must be at least 13 years old
-    final age = DateTime.now().difference(_birthDate!).inDays ~/ 365;
-    if (age < 13) {
-      _showError(
-        context.l10n?.mustBe13OrOlder ??
-            'You must be at least 13 years old to use Qor AI.',
-      );
-      return;
-    }
-
+    // Age is collected by the onboarding quiz (ageRange) now, not at sign-up.
     setState(() => _isLoading = true);
     final result = await ref
         .read(authRepositoryProvider)
@@ -278,7 +266,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
           displayName: _nameController.text.trim(),
-          birthDate: _birthDate,
           gender: _gender,
         );
     if (!mounted) return;
@@ -335,66 +322,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       case Failure(error: final error):
         _showError(error.message);
-    }
-  }
-
-  Future<void> _selectBirthDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2000),
-      firstDate: DateTime(1920),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        final baseTheme = Theme.of(context);
-        final isDark = baseTheme.brightness == Brightness.dark;
-        return Theme(
-          data: baseTheme.copyWith(
-            colorScheme:
-                (isDark ? const ColorScheme.dark() : const ColorScheme.light())
-                    .copyWith(
-                      primary: AppTheme.primaryBlue,
-                      onPrimary: Colors.white,
-                      surface: context.surfaceColor,
-                      onSurface: context.textPrimary,
-                    ),
-            dialogTheme: baseTheme.dialogTheme.copyWith(
-              backgroundColor: context.surfaceColor,
-            ),
-            datePickerTheme: baseTheme.datePickerTheme.copyWith(
-              backgroundColor: context.surfaceColor,
-              headerBackgroundColor: AppTheme.primaryBlue,
-              headerForegroundColor: Colors.white,
-              dayForegroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
-                }
-                return context.textPrimary;
-              }),
-              todayForegroundColor: WidgetStateProperty.all(
-                AppTheme.primaryBlue,
-              ),
-              yearForegroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
-                }
-                return context.textPrimary;
-              }),
-              cancelButtonStyle: TextButton.styleFrom(
-                foregroundColor: AppTheme.primaryBlue,
-              ),
-              confirmButtonStyle: TextButton.styleFrom(
-                foregroundColor: AppTheme.primaryBlue,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _birthDate) {
-      setState(() {
-        _birthDate = picked;
-      });
     }
   }
 
@@ -1067,46 +994,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     obscureText: _obscurePassword,
                     onToggle: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  const SizedBox(height: 14),
-                  // Birth Date Picker
-                  GestureDetector(
-                    onTap: _selectBirthDate,
-                    child: Container(
-                      height: 56,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: context.dividerColor,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_month_rounded,
-                            color: context.textSecondary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            _birthDate == null
-                                ? (context.l10n?.birthDate ?? 'Birth Date')
-                                : DateFormat(
-                                    'MMMM d, yyyy',
-                                  ).format(_birthDate!),
-                            style: TextStyle(
-                              color: _birthDate == null
-                                  ? context.textSecondary
-                                  : context.textPrimary,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 14),
                   // Gender Selection

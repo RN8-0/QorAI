@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
-import { markQuizCompletedLocal } from '../lib/qorCoins';
+import { markQuizCompletedLocal, hasCompletedQuiz } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
 import { getCategoryVisuals } from '../lib/typesense';
 import { QuizGlyph } from '../lib/quizIcons.jsx';
@@ -113,14 +113,36 @@ function optionText(option, lang) {
 
 const USES_PRODUCT_COVERS = new Set(['interestCategories', 'currentDevices']);
 
-function optionArtwork(step, value, visuals) {
-  if (!USES_PRODUCT_COVERS.has(step.field)) return '';
-  return visuals[visualCategory(value)] || '';
+const ALL_VISUAL_APP_CATEGORIES = [...new Set([...QUIZ_CATEGORY_UNIVERSE, ...DEVICE_CATEGORY_UNIVERSE])];
+const QUIZ_VISUAL_CATEGORIES = [...new Set(ALL_VISUAL_APP_CATEGORIES.map(visualCategory))];
+
+// getCategoryVisuals returns { tsCategory: [topImages] }. Assign a DISTINCT
+// image to each app-category so steps whose categories share one Typesense
+// category (cameras/lenses, speakers/soundbars, security/ip cameras…) never
+// show the same picture twice.
+function assignDistinctVisuals(lists) {
+  const used = new Set();
+  const cursor = {};
+  const out = {};
+  for (const value of ALL_VISUAL_APP_CATEGORIES) {
+    const tsCat = visualCategory(value);
+    const arr = lists[tsCat] || [];
+    let chosen = '';
+    let i = cursor[tsCat] || 0;
+    for (; i < arr.length; i += 1) {
+      if (!used.has(arr[i])) { chosen = arr[i]; i += 1; break; }
+    }
+    cursor[tsCat] = i;
+    if (!chosen) chosen = arr[0] || ''; // data has fewer products than sharers
+    if (chosen) { used.add(chosen); out[value] = chosen; }
+  }
+  return out;
 }
 
-const QUIZ_VISUAL_CATEGORIES = [...new Set(
-  [...QUIZ_CATEGORY_UNIVERSE, ...DEVICE_CATEGORY_UNIVERSE].map(visualCategory),
-)];
+function optionArtwork(step, value, coverMap) {
+  if (!USES_PRODUCT_COVERS.has(step.field)) return '';
+  return coverMap[value] || '';
+}
 
 // Spotify-style progressive reveal: long steps start trimmed and open more
 // options as the user selects (or taps "show more"); short steps show all.
@@ -254,34 +276,71 @@ const STEPS = [
     min: 1,
     title: { en: 'Which subscriptions are part of your life?', tr: 'Hangi abonelikler hayatında var?', de: 'Welche Abos nutzt du?' },
     subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "Yok" seç.', de: 'Wähle "keine", wenn du keine nutzt.' },
+    // [value, en, tr, de, simpleicons-slug] — slug guarantees a crisp,
+    // brand-coloured SVG logo (no broken hot-links). Values mirror the app.
     options: [
-      ['none', 'None', 'Yok', 'Keine'],
-      ['netflix', 'Netflix', 'Netflix', 'Netflix'],
-      ['disney_plus', 'Disney+', 'Disney+', 'Disney+'],
-      ['prime_video', 'Prime Video', 'Prime Video', 'Prime Video'],
-      ['apple_tv_plus', 'Apple TV+', 'Apple TV+', 'Apple TV+'],
-      ['spotify', 'Spotify', 'Spotify', 'Spotify'],
-      ['youtube_music', 'YouTube Music', 'YouTube Music', 'YouTube Music'],
-      ['youtube_premium', 'YouTube Premium', 'YouTube Premium', 'YouTube Premium'],
-      ['apple_music', 'Apple Music', 'Apple Music', 'Apple Music'],
-      ['icloud', 'iCloud+', 'iCloud+', 'iCloud+'],
-      ['google_one', 'Google One', 'Google One', 'Google One'],
-      ['microsoft_365', 'Microsoft 365', 'Microsoft 365', 'Microsoft 365'],
-      ['google_workspace', 'Google Workspace', 'Google Workspace', 'Google Workspace'],
-      ['dropbox', 'Dropbox', 'Dropbox', 'Dropbox'],
-      ['amazon_prime', 'Amazon Prime', 'Amazon Prime', 'Amazon Prime'],
-      ['game_pass', 'Game Pass', 'Game Pass', 'Game Pass'],
-      ['ps_plus', 'PS Plus', 'PS Plus', 'PS Plus'],
-      ['adobe_cc', 'Adobe CC', 'Adobe CC', 'Adobe CC'],
-      ['canva', 'Canva', 'Canva', 'Canva'],
-      ['notion', 'Notion', 'Notion', 'Notion'],
-      ['chatgpt_plus', 'ChatGPT Plus', 'ChatGPT Plus', 'ChatGPT Plus'],
-      ['claude', 'Claude Pro', 'Claude Pro', 'Claude Pro'],
-      ['gemini', 'Gemini Advanced', 'Gemini Advanced', 'Gemini Advanced'],
-      ['github_copilot', 'GitHub Copilot', 'GitHub Copilot', 'GitHub Copilot'],
-      ['nordvpn', 'NordVPN', 'NordVPN', 'NordVPN'],
-      ['x_premium', 'X Premium', 'X Premium', 'X Premium'],
-      ['reddit_premium', 'Reddit Premium', 'Reddit Premium', 'Reddit Premium'],
+      ['none', 'None', 'Yok', 'Keine', ''],
+      ['netflix', 'Netflix', 'Netflix', 'Netflix', 'netflix'],
+      ['disney_plus', 'Disney+', 'Disney+', 'Disney+', 'disneyplus'],
+      ['prime_video', 'Prime Video', 'Prime Video', 'Prime Video', 'primevideo'],
+      ['apple_tv_plus', 'Apple TV+', 'Apple TV+', 'Apple TV+', 'appletv'],
+      ['max', 'Max', 'Max', 'Max', 'max'],
+      ['hulu', 'Hulu', 'Hulu', 'Hulu', 'hulu'],
+      ['crunchyroll', 'Crunchyroll', 'Crunchyroll', 'Crunchyroll', 'crunchyroll'],
+      ['paramount_plus', 'Paramount+', 'Paramount+', 'Paramount+', 'paramountplus'],
+      ['twitch', 'Twitch', 'Twitch', 'Twitch', 'twitch'],
+      ['dazn', 'DAZN', 'DAZN', 'DAZN', 'dazn'],
+      ['spotify', 'Spotify', 'Spotify', 'Spotify', 'spotify'],
+      ['apple_music', 'Apple Music', 'Apple Music', 'Apple Music', 'applemusic'],
+      ['youtube_music', 'YouTube Music', 'YouTube Music', 'YouTube Music', 'youtubemusic'],
+      ['youtube_premium', 'YouTube Premium', 'YouTube Premium', 'YouTube Premium', 'youtube'],
+      ['tidal', 'Tidal', 'Tidal', 'Tidal', 'tidal'],
+      ['deezer', 'Deezer', 'Deezer', 'Deezer', 'deezer'],
+      ['soundcloud_go', 'SoundCloud', 'SoundCloud', 'SoundCloud', 'soundcloud'],
+      ['audible', 'Audible', 'Audible', 'Audible', 'audible'],
+      ['icloud', 'iCloud+', 'iCloud+', 'iCloud+', 'icloud'],
+      ['google_one', 'Google One', 'Google One', 'Google One', 'google'],
+      ['microsoft_365', 'Microsoft 365', 'Microsoft 365', 'Microsoft 365', 'microsoft'],
+      ['google_workspace', 'Google Workspace', 'Google Workspace', 'Google Workspace', 'google'],
+      ['dropbox', 'Dropbox', 'Dropbox', 'Dropbox', 'dropbox'],
+      ['onedrive', 'OneDrive', 'OneDrive', 'OneDrive', 'microsoftonedrive'],
+      ['amazon_prime', 'Amazon Prime', 'Amazon Prime', 'Amazon Prime', 'amazonprime'],
+      ['game_pass', 'Xbox Game Pass', 'Xbox Game Pass', 'Xbox Game Pass', 'xbox'],
+      ['ps_plus', 'PlayStation Plus', 'PlayStation Plus', 'PlayStation Plus', 'playstation'],
+      ['switch_online', 'Nintendo Online', 'Nintendo Online', 'Nintendo Online', 'nintendoswitch'],
+      ['geforce_now', 'GeForce NOW', 'GeForce NOW', 'GeForce NOW', 'nvidia'],
+      ['adobe_cc', 'Adobe CC', 'Adobe CC', 'Adobe CC', 'adobe'],
+      ['canva', 'Canva', 'Canva', 'Canva', 'canva'],
+      ['figma', 'Figma', 'Figma', 'Figma', 'figma'],
+      ['notion', 'Notion', 'Notion', 'Notion', 'notion'],
+      ['slack', 'Slack', 'Slack', 'Slack', 'slack'],
+      ['zoom', 'Zoom', 'Zoom', 'Zoom', 'zoom'],
+      ['grammarly', 'Grammarly', 'Grammarly', 'Grammarly', 'grammarly'],
+      ['chatgpt_plus', 'ChatGPT Plus', 'ChatGPT Plus', 'ChatGPT Plus', 'openai'],
+      ['claude', 'Claude Pro', 'Claude Pro', 'Claude Pro', 'anthropic'],
+      ['google_ai_premium', 'Gemini Advanced', 'Gemini Advanced', 'Gemini Advanced', 'googlegemini'],
+      ['perplexity', 'Perplexity Pro', 'Perplexity Pro', 'Perplexity Pro', 'perplexity'],
+      ['github_copilot', 'GitHub Copilot', 'GitHub Copilot', 'GitHub Copilot', 'githubcopilot'],
+      ['midjourney', 'Midjourney', 'Midjourney', 'Midjourney', 'midjourney'],
+      ['nordvpn', 'NordVPN', 'NordVPN', 'NordVPN', 'nordvpn'],
+      ['expressvpn', 'ExpressVPN', 'ExpressVPN', 'ExpressVPN', 'expressvpn'],
+      ['surfshark', 'Surfshark', 'Surfshark', 'Surfshark', 'surfshark'],
+      ['proton', 'Proton', 'Proton', 'Proton', 'proton'],
+      ['1password', '1Password', '1Password', '1Password', '1password'],
+      ['bitwarden', 'Bitwarden', 'Bitwarden', 'Bitwarden', 'bitwarden'],
+      ['x_premium', 'X Premium', 'X Premium', 'X Premium', 'x'],
+      ['reddit_premium', 'Reddit Premium', 'Reddit Premium', 'Reddit Premium', 'reddit'],
+      ['discord_nitro', 'Discord Nitro', 'Discord Nitro', 'Discord Nitro', 'discord'],
+      ['telegram_premium', 'Telegram Premium', 'Telegram Premium', 'Telegram Premium', 'telegram'],
+      ['snapchat_plus', 'Snapchat+', 'Snapchat+', 'Snapchat+', 'snapchat'],
+      ['linkedin_premium', 'LinkedIn Premium', 'LinkedIn Premium', 'LinkedIn Premium', 'linkedin'],
+      ['duolingo', 'Duolingo', 'Duolingo', 'Duolingo', 'duolingo'],
+      ['coursera', 'Coursera', 'Coursera', 'Coursera', 'coursera'],
+      ['udemy', 'Udemy', 'Udemy', 'Udemy', 'udemy'],
+      ['skillshare', 'Skillshare', 'Skillshare', 'Skillshare', 'skillshare'],
+      ['strava', 'Strava', 'Strava', 'Strava', 'strava'],
+      ['fitbit_premium', 'Fitbit Premium', 'Fitbit Premium', 'Fitbit Premium', 'fitbit'],
+      ['headspace', 'Headspace', 'Headspace', 'Headspace', 'headspace'],
     ],
   },
 ];
@@ -346,16 +405,16 @@ function BackIcon({ close }) {
   );
 }
 
-function OptionVisual({ step, option, visuals, broken, onBroken }) {
+function OptionVisual({ step, option, coverMap, broken, onBroken }) {
   const value = option[0];
   const label = optionText(option, 'en'); // SubLogo matches by canonical English name
   if (step.field === 'subscriptions' && value !== 'none') {
-    return <SubLogo name={label} size={64} radius={18} />;
+    return <SubLogo name={label} slug={option[4] || ''} size={64} radius={18} />;
   }
   if (step.field === 'ageRange') {
     return <span className="oq-age">{value}</span>;
   }
-  const image = optionArtwork(step, value, visuals);
+  const image = optionArtwork(step, value, coverMap);
   if (image && !broken) {
     return (
       <img className="oq-photo" src={image} alt="" loading="lazy"
@@ -371,7 +430,6 @@ export default function Quiz() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const nextPath = params.get('next') || '/';
-  const required = params.get('required') === '1';
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
   useSeo({ title: `${t('quiz.title')} — Qor AI`, description: t('quiz.subtitle'), path: '/quiz' });
@@ -381,7 +439,6 @@ export default function Quiz() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
-  const [summary, setSummary] = useState('');
   const [visuals, setVisuals] = useState({});
   const [brokenImages, setBrokenImages] = useState({});
   const [visibleCounts, setVisibleCounts] = useState({});
@@ -413,10 +470,11 @@ export default function Quiz() {
     return Boolean(value);
   }, [answers, current]);
 
+  const coverMap = useMemo(() => assignDistinctVisuals(visuals), [visuals]);
+
   if (!user) {
     return (
       <div className="oq-shell">
-        <QuizBackdrop />
         <div className="oq-gate">
           <div className="oq-gate-badge">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" fill="currentColor" /></svg>
@@ -552,7 +610,6 @@ export default function Quiz() {
       // Survive PB schema drift: never bounce this browser back to the quiz.
       markQuizCompletedLocal(user.id);
       trackEvent('quiz_complete');
-      setSummary(recommendation);
       setDone(true);
     } catch {
       setErr(L('Profile could not be saved. Try again.', 'Profil kaydedilemedi. Tekrar dene.', 'Profil konnte nicht gespeichert werden.'));
@@ -561,40 +618,76 @@ export default function Quiz() {
     }
   }
 
-  if (done) {
-    const heroCat = answers.interestCategories[0];
-    const heroImg = heroCat ? visuals[visualCategory(heroCat)] : '';
-    const tags = [
-      answers.ecosystem && optionLabel(STEPS[1], answers.ecosystem, lang),
-      answers.budgetRange && optionLabel(STEPS[2], answers.budgetRange, lang),
-      answers.profession && optionLabel(STEPS[7], answers.profession, lang),
-      ...answers.interestCategories.slice(0, 3).map((v) => optionLabel(STEPS[0], v, lang)),
-    ].filter(Boolean);
+  // Quiz is once-only: a freshly-finished (done) OR previously-completed user
+  // sees the profile summary instead of the questions — no "retake".
+  if (done || hasCompletedQuiz(user)) {
+    const heroCat = answers.interestCategories[0] || 'smartphones';
+    const heroImg = coverMap[heroCat] || '';
+    const catLabels = (answers.interestCategories || []).slice(0, 6).map((v) => optionLabel(STEPS[0], v, lang));
+    const devLabels = (answers.currentDevices || []).filter((x) => x !== 'none').slice(0, 5).map((v) => optionLabel(STEPS[4], v, lang));
+    const prioLabels = (answers.priorities || []).map((v) => optionLabel(STEPS[3], v, lang));
+    const subs = (answers.subscriptions || []).filter((x) => x !== 'none');
+    const eco = answers.ecosystem ? optionLabel(STEPS[1], answers.ecosystem, lang) : '';
+    const budget = answers.budgetRange ? optionLabel(STEPS[2], answers.budgetRange, lang) : '';
+    const usage = answers.usageIntent ? optionLabel(STEPS[5], answers.usageIntent, lang) : '';
+    const prof = answers.profession ? optionLabel(STEPS[7], answers.profession, lang) : '';
+    const age = answers.ageRange || '';
+    const dash = (arr) => arr.filter(Boolean).join(' · ') || '—';
+    const chips = [eco, budget, prof, usage, ...catLabels.slice(0, 3)].filter(Boolean);
+    const headline = catLabels.slice(0, 2).join(' · ') || t('quiz.title');
+    const cards = [
+      { tone: 'c', icon: 'all', title: L('Discovery profile', 'Keşif profili', 'Entdeckungsprofil'), body: dash(catLabels) },
+      { tone: 'v', icon: 'mixed', title: L('Current setup', 'Mevcut kurulum', 'Aktuelles Setup'), body: dash([eco, ...devLabels]) },
+      { tone: 'g', icon: 'quality', title: L('Decision priorities', 'Karar öncelikleri', 'Prioritäten'), body: dash(prioLabels) },
+      { tone: 'a', icon: 'productivity', title: L('Usage & profile', 'Kullanım & profil', 'Nutzung & Profil'), body: dash([usage, prof, age]) },
+      {
+        tone: 'b', icon: 'ecosystem', title: L('Services', 'Servisler', 'Dienste'),
+        body: subs.length
+          ? `${subs.length} ${L('services', 'servis', 'Dienste')} · ${subs.slice(0, 4).map((s) => optionLabel(STEPS[8], s, lang)).join(', ')}`
+          : L('No subscriptions', 'Abonelik yok', 'Keine Abos'),
+      },
+    ];
     return (
       <div className="oq-shell">
-        <QuizBackdrop />
-        <div className="oq-done">
-          <div className="oq-done-hero">
-            {heroImg
-              ? <img src={heroImg} alt="" />
-              : <span className="oq-done-spark"><QuizGlyph field="x" value="_default" /></span>}
-            <span className="oq-done-check">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
-            </span>
-          </div>
-          <div className="oq-done-head">{required ? L('Profile ready', 'Profil hazır', 'Profil bereit') : L('All set!', 'Hazır!', 'Fertig!')}</div>
-          <h1>{L('Your Qor AI profile is live', 'Qor AI profilin hazır', 'Dein Qor AI Profil ist aktiv')}</h1>
-          <p>{summary}</p>
-          <div className="oq-done-tags">
-            {tags.map((tg, i) => <span key={`${tg}-${i}`}>{tg}</span>)}
-          </div>
-          <div className="oq-foot-row oq-done-actions">
-            <button className="oq-btn oq-btn-ghost" onClick={() => { setDone(false); setStep(0); }}>{t('quiz.restart')}</button>
-            <button className="oq-btn oq-btn-primary" onClick={() => nav(nextPath, { replace: true })}>
-              {L('Continue', 'Devam et', 'Weiter')}
-            </button>
+        <div className="oq-scroll">
+          <div className="oq-summary">
+            <div className="oq-sum-hero">
+              <div className="oq-sum-thumb">
+                {heroImg ? <img src={heroImg} alt="" /> : <span className="oq-glyph"><QuizGlyph field="x" value={heroCat} /></span>}
+                <span className="oq-sum-thumb-check">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+                </span>
+              </div>
+              <div className="oq-sum-hero-text">
+                <span className="oq-sum-eyebrow">{L('PROFILE READY', 'PROFİLİN HAZIR', 'PROFIL BEREIT')}</span>
+                <h1>{headline}</h1>
+                <p>{L('Qor AI now personalises every recommendation, link analysis and chat to this profile.', 'Qor AI artık tüm önerileri, link analizini ve sohbeti bu profile göre kişiselleştiriyor.', 'Qor AI personalisiert ab jetzt alles nach diesem Profil.')}</p>
+              </div>
+            </div>
+            {chips.length > 0 && (
+              <div className="oq-sum-chips">{chips.map((c, i) => <span key={`${c}-${i}`}>{c}</span>)}</div>
+            )}
+            <div className="oq-sum-cards">
+              {cards.map((card) => (
+                <div className={`oq-sum-card tone-${card.tone}`} key={card.title}>
+                  <span className="oq-sum-card-icon"><QuizGlyph field="card" value={card.icon} /></span>
+                  <div className="oq-sum-card-text">
+                    <strong>{card.title}</strong>
+                    <span>{card.body}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+        <footer className="oq-foot">
+          <div className="oq-foot-row">
+            <button className="oq-btn oq-btn-primary oq-btn-grow" onClick={() => nav(nextPath, { replace: true })}>
+              {L('Start exploring', 'Keşfe başla', 'Loslegen')}
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+          </div>
+        </footer>
       </div>
     );
   }
@@ -604,8 +697,6 @@ export default function Quiz() {
 
   return (
     <div className="oq-shell">
-      <QuizBackdrop />
-
       <header className="oq-top">
         <button className="oq-top-back" onClick={goBack} aria-label={t('quiz.back')}>
           <BackIcon close={step === 0} />
@@ -657,7 +748,7 @@ export default function Quiz() {
                     <OptionVisual
                       step={current}
                       option={o}
-                      visuals={visuals}
+                      coverMap={coverMap}
                       broken={brokenImages[imageKey]}
                       onBroken={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
                     />
@@ -682,11 +773,6 @@ export default function Quiz() {
 
       <footer className="oq-foot">
         {err && <div className="oq-err">{err}</div>}
-        {required && step === 0 && !err && (
-          <div className="oq-required-note">
-            {L('Complete this once to unlock AI features.', 'AI özelliklerini açmak için bunu bir kez tamamla.', 'Schließe dies einmal ab, um KI-Funktionen freizuschalten.')}
-          </div>
-        )}
         <div className="oq-foot-row">
           {step > 0 && (
             <button className="oq-btn oq-btn-ghost" onClick={goBack} disabled={busy}>
@@ -707,16 +793,6 @@ export default function Quiz() {
           </button>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function QuizBackdrop() {
-  return (
-    <div className="oq-bg" aria-hidden="true">
-      <span className="oq-orb oq-orb-1" />
-      <span className="oq-orb oq-orb-2" />
-      <span className="oq-orb oq-orb-3" />
     </div>
   );
 }

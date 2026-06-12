@@ -53,6 +53,13 @@ export function markQuizCompletedLocal(userId) {
 
 export function hasCompletedQuiz(user) {
   if (user?.quizCompleted === true) return true;
+  // The mobile app fills the same `users` row. On some accounts the
+  // `quizCompleted` bool didn't round-trip (older record / schema drift), but
+  // the profile data did — so a user who already did the quiz in the app would
+  // wrongly be asked again on web. Treat a populated profile as completed.
+  if (Array.isArray(user?.quizHistory) && user.quizHistory.length > 0) return true;
+  if (Array.isArray(user?.interestCategories) && user.interestCategories.length >= 3
+    && (user.ecosystem || user.budgetRange)) return true;
   if (!user?.id) return false;
   try {
     const v = localStorage.getItem(QUIZ_DONE_KEY);

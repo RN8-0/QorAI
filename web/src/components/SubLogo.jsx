@@ -249,24 +249,27 @@ function domainFor(name, website = '') {
   return slug ? `${slug}.com` : '';
 }
 
-export default function SubLogo({ name, website = '', logo = '', size = 40, radius = 10 }) {
+export default function SubLogo({ name, website = '', logo = '', slug = '', size = 40, radius = 10 }) {
   const wordmark = wordmarkFor(name);
   const urls = useMemo(() => {
     const domain = domainFor(name, website);
-    const iconSlug = simpleIconSlug(name);
+    const iconSlug = slug || simpleIconSlug(name);
     const localLogo = localLogoFor(name);
     const list = [];
     const hiRes = Math.max(160, Math.ceil(size * 4));
+    // An explicit slug (passed by the quiz) wins: crisp brand-coloured SVG from
+    // Simple Icons, no broken hot-linked logos.
+    if (slug) list.push(`https://cdn.simpleicons.org/${slug}`);
     if (localLogo) list.push(localLogo);
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
-    if (iconSlug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
+    if (iconSlug && iconSlug !== slug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
     if (domain) {
       list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
     }
-    return list;
-  }, [name, website, logo, size]);
+    return [...new Set(list)];
+  }, [name, website, logo, slug, size]);
   const [idx, setIdx] = useState(0);
-  useEffect(() => { setIdx(0); }, [name, website, logo]);
+  useEffect(() => { setIdx(0); }, [name, website, logo, slug]);
 
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];

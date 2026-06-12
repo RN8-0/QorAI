@@ -2,6 +2,9 @@
    Everything is scoped under .oq-* so it can never collide with the in-page
    "quick quiz" widget that also lives on link/subscription pages. */
 
+/* The animated liquid backdrop is now global (SiteBackground in App.jsx) so it
+   fills the full viewport behind every page with no white gap. The quiz shell
+   is transparent and simply sits on top of it. */
 .oq-shell {
   position: relative;
   isolation: isolate;
@@ -11,31 +14,6 @@
   flex-direction: column;
   overflow: hidden;
   --oq-col: 720px;
-}
-
-/* ── liquid backdrop (cyan / blue / violet orbs, no warm tones) ───────────── */
-.oq-bg {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  background:
-    radial-gradient(900px 460px at 50% -8%, color-mix(in srgb, var(--brand-cyan) 12%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--brand-blue) 6%, var(--bg)) 46%, var(--bg));
-}
-.oq-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(72px);
-  opacity: 0.38;
-  animation: oqFloat 16s ease-in-out infinite;
-}
-.oq-orb-1 { width: 340px; height: 340px; left: -90px; top: -70px; background: var(--brand-cyan); }
-.oq-orb-2 { width: 440px; height: 440px; right: -130px; top: 8%; background: var(--brand-blue); animation-delay: -5s; }
-.oq-orb-3 { width: 380px; height: 380px; left: -70px; bottom: -120px; background: var(--violet); animation-delay: -9s; }
-@keyframes oqFloat {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(18px, 26px, 0) scale(1.08); }
 }
 
 /* ── top bar ──────────────────────────────────────────────────────────────── */
@@ -154,15 +132,17 @@
 .oq-counter.ok .oq-counter-dot { background: var(--accent); color: var(--on-accent); }
 .oq-counter b { color: var(--text); font-weight: 900; }
 
-/* ── option grid ──────────────────────────────────────────────────────────── */
+/* ── option grid (flexbox so a partial last row stays centered, not left) ──── */
 .oq-grid {
   margin: 22px auto 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
-  gap: 22px 16px;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 22px 16px;
 }
 .oq-choice {
+  flex: 0 0 auto;
+  width: 116px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -210,9 +190,10 @@
 .oq-choice.on .oq-art { transform: translateY(-2px) scale(1.05); }
 
 .oq-photo {
-  width: 68%;
-  height: 68%;
+  width: 72%;
+  height: 72%;
   object-fit: contain;
+  object-position: center center;
   filter: drop-shadow(0 6px 10px rgba(2, 8, 23, 0.12));
 }
 .oq-glyph { width: 54%; height: 54%; display: grid; place-items: center; }
@@ -284,10 +265,11 @@
   width: 100%;
   max-width: var(--oq-col);
   margin: 0 auto;
-  padding: 12px 24px max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg) 86%, transparent) 40%);
-  border-top: 1px solid var(--border);
-  backdrop-filter: blur(6px);
+  padding: 14px 24px max(16px, env(safe-area-inset-bottom));
+  /* Soft scrim only (keeps the gradient button legible over the animated bg)
+     — no opaque band, so the global backdrop shows through to the edge. */
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg) 42%, transparent));
+  backdrop-filter: blur(4px);
 }
 .oq-err {
   margin-bottom: 10px;
@@ -299,13 +281,6 @@
   font-size: 13px;
   font-weight: 750;
   text-align: center;
-}
-.oq-required-note {
-  margin-bottom: 10px;
-  text-align: center;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--text2);
 }
 .oq-foot-row { display: flex; align-items: center; gap: 10px; }
 
@@ -340,8 +315,8 @@
 .oq-btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 34px color-mix(in srgb, var(--brand-blue) 42%, transparent); filter: saturate(1.08); }
 .oq-btn-primary:active:not(:disabled) { transform: translateY(0); }
 
-/* ── sign-in gate + completion ────────────────────────────────────────────── */
-.oq-gate, .oq-done {
+/* ── sign-in gate ─────────────────────────────────────────────────────────── */
+.oq-gate {
   flex: 1 1 auto;
   width: 100%;
   max-width: 540px;
@@ -365,14 +340,14 @@
   box-shadow: var(--card-glow);
   margin-bottom: 6px;
 }
-.oq-gate h1, .oq-done h1 {
+.oq-gate h1 {
   margin: 0;
   font-size: clamp(24px, 4.4vw, 32px);
   font-weight: 900;
   letter-spacing: -0.01em;
   color: var(--text);
 }
-.oq-gate p, .oq-done p {
+.oq-gate p {
   margin: 0;
   max-width: 420px;
   font-size: 14.5px;
@@ -382,9 +357,28 @@
 }
 .oq-gate .oq-btn-primary { margin-top: 10px; min-width: 200px; }
 
-.oq-done-hero {
+/* ── completion summary (app-style profile recap) ─────────────────────────── */
+.oq-summary {
+  width: 100%;
+  max-width: var(--oq-col);
+  margin: 0 auto;
+  padding: 18px 24px 24px;
+  animation: oqStepIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.oq-sum-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 22%, var(--border));
+  box-shadow: var(--card-glow);
+}
+.oq-sum-thumb {
   position: relative;
-  width: 132px; height: 132px;
+  flex: 0 0 auto;
+  width: 96px; height: 96px;
   border-radius: 50%;
   display: grid; place-items: center;
   color: var(--brand-blue);
@@ -392,31 +386,46 @@
   background:
     linear-gradient(#fff, #fff) padding-box,
     linear-gradient(135deg, var(--brand-cyan), var(--brand-blue), var(--violet)) border-box;
-  box-shadow: 0 22px 44px color-mix(in srgb, var(--brand-blue) 28%, transparent);
-  margin-bottom: 8px;
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--brand-blue) 24%, transparent);
 }
-.oq-done-hero img { width: 70%; height: 70%; object-fit: contain; }
-.oq-done-spark { width: 56%; height: 56%; display: grid; place-items: center; }
-.oq-done-spark svg { width: 100%; height: 100%; }
-.oq-done-check {
+.oq-sum-thumb img { width: 70%; height: 70%; object-fit: contain; }
+.oq-sum-thumb .oq-glyph { width: 54%; height: 54%; }
+.oq-sum-thumb .oq-glyph svg { width: 100%; height: 100%; }
+.oq-sum-thumb-check {
   position: absolute;
-  right: 2px; bottom: 2px;
-  width: 40px; height: 40px;
+  right: -2px; bottom: -2px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   display: grid; place-items: center;
   background: linear-gradient(135deg, var(--brand-cyan), var(--brand-blue));
   color: #fff;
   box-shadow: 0 0 0 4px var(--bg);
 }
-.oq-done-head {
-  font-size: 12.5px; font-weight: 900; letter-spacing: 0.05em;
+.oq-sum-hero-text { min-width: 0; }
+.oq-sum-eyebrow {
+  font-size: 11.5px; font-weight: 900; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--brand-cyan);
 }
-.oq-done-tags {
-  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  margin-top: 6px;
+.oq-sum-hero-text h1 {
+  margin: 6px 0 0;
+  font-size: clamp(20px, 3.4vw, 26px);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
-.oq-done-tags span {
+.oq-sum-hero-text p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text2);
+}
+.oq-sum-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 16px;
+}
+.oq-sum-chips span {
   padding: 7px 13px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface) 82%, transparent);
@@ -424,25 +433,65 @@
   color: var(--text);
   font-size: 12.5px; font-weight: 800;
 }
-.oq-done-actions { width: 100%; max-width: 420px; margin-top: 18px; }
+.oq-sum-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.oq-sum-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border: 1px solid var(--border);
+}
+.oq-sum-card-icon {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border-radius: 13px;
+  display: grid; place-items: center;
+}
+.oq-sum-card-icon svg { width: 24px; height: 24px; }
+.oq-sum-card-text { min-width: 0; }
+.oq-sum-card-text strong {
+  display: block;
+  font-size: 14.5px; font-weight: 850;
+  color: var(--text);
+}
+.oq-sum-card-text span {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px; font-weight: 600;
+  line-height: 1.45;
+  color: var(--text2);
+  overflow-wrap: anywhere;
+}
+.oq-sum-card.tone-c { border-color: color-mix(in srgb, var(--brand-cyan) 30%, var(--border)); }
+.oq-sum-card.tone-c .oq-sum-card-icon { color: var(--brand-cyan); background: color-mix(in srgb, var(--brand-cyan) 14%, transparent); }
+.oq-sum-card.tone-v { border-color: color-mix(in srgb, var(--violet) 30%, var(--border)); }
+.oq-sum-card.tone-v .oq-sum-card-icon { color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, transparent); }
+.oq-sum-card.tone-g .oq-sum-card-icon { color: #10b981; background: color-mix(in srgb, #10b981 14%, transparent); }
+.oq-sum-card.tone-a .oq-sum-card-icon { color: #f59e0b; background: color-mix(in srgb, #f59e0b 16%, transparent); }
+.oq-sum-card.tone-b .oq-sum-card-icon { color: var(--brand-blue); background: color-mix(in srgb, var(--brand-blue) 14%, transparent); }
 
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {
   .oq-shell { height: auto; min-height: calc(100dvh - var(--header-h)); }
-  .oq-top, .oq-step, .oq-foot { padding-left: 16px; padding-right: 16px; }
-  .oq-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px 10px;
-  }
+  .oq-top, .oq-step, .oq-foot, .oq-summary { padding-left: 16px; padding-right: 16px; }
+  .oq-grid { gap: 18px 10px; }
+  .oq-choice { width: 92px; }
   .oq-art { width: 92px; height: 92px; border-width: 2.5px; }
   .oq-art .sub-logo { width: 58px !important; height: 58px !important; }
   .oq-art .sub-logo img { width: 40px !important; height: 40px !important; }
   .oq-label { font-size: 12px; }
   .oq-foot { padding-bottom: max(78px, calc(70px + env(safe-area-inset-bottom))); }
   .oq-btn { height: 50px; }
+  .oq-sum-cards { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .oq-orb { animation: none; }
-  .oq-step, .oq-choice, .oq-progress-bar, .oq-gate, .oq-done { animation: none; transition: none; }
+  .oq-step, .oq-choice, .oq-progress-bar, .oq-gate, .oq-summary { animation: none; transition: none; }
 }
