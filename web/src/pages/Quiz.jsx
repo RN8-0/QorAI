@@ -5,6 +5,7 @@ import { updateProfile } from '../lib/pocketbase';
 import { markQuizCompletedLocal } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
 import { getCategoryVisuals } from '../lib/typesense';
+import { QuizGlyph } from '../lib/quizIcons.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
@@ -81,112 +82,25 @@ function categoryOptions(list) {
   });
 }
 
+// App slug -> the actual Typesense `category` value (its taxonomy differs).
 const VISUAL_CATEGORY_ALIASES = {
   gpus: 'graphics_cards',
   consoles: 'gaming_consoles',
   'media-players': 'media_players',
   'smart-rings': 'smart_rings',
-  'action-cameras': 'action_cameras',
-  'security-cameras': 'security_cameras',
+  'action-cameras': 'dashcams',
+  'security-cameras': 'ip_cameras',
   'ip-cameras': 'ip_cameras',
   'vr-headsets': 'vr_headsets',
   'robot-vacuums': 'robot_vacuums',
   'e-readers': 'e_readers',
-  psu: 'psu',
   cases: 'pc_cases',
   coolers: 'cpu_coolers',
-};
-
-const OPTION_ART = {
-  smartphones: '📱',
-  tablets: '▣',
-  laptops: '💻',
-  desktops: '🖥',
-  cpus: 'CPU',
-  gpus: 'GPU',
-  ram: 'RAM',
-  ssd: 'SSD',
-  motherboards: 'MB',
-  psu: 'PSU',
-  cases: 'PC',
-  coolers: '❄',
-  monitors: '▭',
-  keyboards: '⌨',
-  mice: '🖱',
-  webcams: 'CAM',
-  printers: '▤',
-  tvs: 'TV',
-  projectors: '▰',
-  'media-players': '▶',
-  headphones: '🎧',
-  speakers: '♪',
-  soundbars: '▬',
-  microphones: 'MIC',
-  smartwatches: '⌚',
-  'smart-rings': '○',
-  cameras: '📷',
-  'action-cameras': '◉',
-  'security-cameras': '◌',
-  'ip-cameras': 'IP',
-  dashcams: '🚘',
-  gimbals: '↕',
-  tripods: '△',
-  lenses: '◍',
-  consoles: '🎮',
-  gamepads: '🎮',
-  'vr-headsets': 'VR',
-  routers: 'Wi-Fi',
-  'robot-vacuums': '◎',
-  powerbanks: '⚡',
-  'e-readers': 'E',
-  drones: '✈',
-  apple: 'A',
-  android: 'A',
-  windows: '⊞',
-  samsung: 'S',
-  google: 'G',
-  xiaomi: 'Mi',
-  huawei: 'H',
-  mixed: '∞',
-  low: '$',
-  mid: '$$',
-  high: '$$$',
-  premium: 'P',
-  any: '∞',
-  price: '$',
-  quality: '★',
-  design: '◆',
-  ecosystem: '∞',
-  performance: '↯',
-  durability: '⬢',
-  battery: '🔋',
-  camera: '📷',
-  portability: '↔',
-  gaming: '🎮',
-  creator: '✦',
-  productivity: '✓',
-  gaming_setup: '🎮',
-  creator_setup: '✦',
-  productivity_setup: '⌘',
-  entertainment_setup: '▶',
-  price_tracking: '$',
-  all: '∞',
-  student: '🎓',
-  engineer: '⚙',
-  designer: '✎',
-  developer: '</>',
-  content_creator: 'REC',
-  video_editor: 'CUT',
-  photographer: '📷',
-  gamer: '🎮',
-  manager: '▦',
-  product_manager: 'PM',
-  entrepreneur: '↗',
-  healthcare: '+',
-  teacher: 'ABC',
-  finance: '$',
-  other: '?',
-  none: '—',
+  speakers: 'audio_systems',
+  soundbars: 'audio_systems',
+  cameras: 'camera_lenses',
+  lenses: 'camera_lenses',
+  tripods: 'gimbals',
 };
 
 function visualCategory(value) {
@@ -197,18 +111,29 @@ function optionText(option, lang) {
   return lang === 'tr' ? option[2] : lang === 'de' ? option[3] : option[1];
 }
 
-function optionArtwork(step, value, visuals) {
-  if (step.field !== 'interestCategories' && step.field !== 'currentDevices') return '';
-  return visuals[visualCategory(value)] || '';
-}
+const USES_PRODUCT_COVERS = new Set(['interestCategories', 'currentDevices']);
 
-function fallbackArt(value, label) {
-  return OPTION_ART[value] || String(label || value || '?').trim().slice(0, 2).toUpperCase();
+function optionArtwork(step, value, visuals) {
+  if (!USES_PRODUCT_COVERS.has(step.field)) return '';
+  return visuals[visualCategory(value)] || '';
 }
 
 const QUIZ_VISUAL_CATEGORIES = [...new Set(
   [...QUIZ_CATEGORY_UNIVERSE, ...DEVICE_CATEGORY_UNIVERSE].map(visualCategory),
 )];
+
+// Spotify-style progressive reveal: long steps start trimmed and open more
+// options as the user selects (or taps "show more"); short steps show all.
+const INITIAL_VISIBLE = {
+  interestCategories: 15,
+  currentDevices: 15,
+  subscriptions: 15,
+};
+const REVEAL_BATCH = 9;
+
+function initialVisibleFor(step) {
+  return Math.min(step.options.length, INITIAL_VISIBLE[step.field] || step.options.length);
+}
 
 const STEPS = [
   {
@@ -222,6 +147,7 @@ const STEPS = [
   {
     field: 'ecosystem',
     title: { en: 'Which ecosystem do you use?', tr: 'Hangi ekosistemi kullanıyorsun?', de: 'Welches Ökosystem nutzt du?' },
+    subtitle: { en: 'Choose the one closest to your setup.', tr: 'Kurulumuna en yakın olanı seç.', de: 'Wähle das passendste.' },
     options: [
       ['apple', 'Apple', 'Apple', 'Apple'],
       ['android', 'Android', 'Android', 'Android'],
@@ -236,6 +162,7 @@ const STEPS = [
   {
     field: 'budgetRange',
     title: { en: 'What budget band fits you?', tr: 'Bütçen hangi bantta?', de: 'Welches Budget passt zu dir?' },
+    subtitle: { en: 'Pick your usual spending level.', tr: 'Genel harcama seviyeni seç.', de: 'Wähle dein Ausgabenniveau.' },
     options: [
       ['low', 'Budget', 'Bütçe Dostu', 'Budget'],
       ['mid', 'Balanced', 'Dengeli', 'Ausgewogen'],
@@ -270,11 +197,13 @@ const STEPS = [
     multiple: true,
     min: 1,
     title: { en: 'Which devices do you actively use today?', tr: 'Şu an hangi cihazları aktif kullanıyorsun?', de: 'Welche Geräte nutzt du aktuell aktiv?' },
+    subtitle: { en: 'Pick everything in your current setup.', tr: 'Mevcut kurulumundakileri seç.', de: 'Wähle alles aus deinem Setup.' },
     options: categoryOptions(DEVICE_CATEGORY_UNIVERSE),
   },
   {
     field: 'usageIntent',
     title: { en: 'What are you mainly buying for?', tr: 'En çok hangi amaç için satın alıyorsun?', de: 'Wofür kaufst du hauptsächlich?' },
+    subtitle: { en: 'This shapes your home feed and AI picks.', tr: 'Bu, ana sayfanı ve AI seçimlerini şekillendirir.', de: 'Das prägt deinen Feed und die KI-Auswahl.' },
     options: [
       ['gaming_setup', 'Gaming & esports', 'Oyun / Gaming', 'Gaming & E-Sport'],
       ['creator_setup', 'Creator workflow', 'İçerik üretimi', 'Creator-Workflow'],
@@ -287,6 +216,7 @@ const STEPS = [
   {
     field: 'ageRange',
     title: { en: 'Which age range fits you?', tr: 'Hangi yaş aralığındasın?', de: 'Welche Altersgruppe passt zu dir?' },
+    subtitle: { en: 'Helps tune recommendation tone and pace.', tr: 'Öneri tonu ve keşif hızını ayarlar.', de: 'Stimmt Ton und Tempo der Empfehlungen ab.' },
     options: [
       ['13-17', '13-17', '13-17', '13-17'],
       ['18-24', '18-24', '18-24', '18-24'],
@@ -299,6 +229,7 @@ const STEPS = [
   {
     field: 'profession',
     title: { en: 'Which profile is closest to you?', tr: 'Hangi profil sana daha yakın?', de: 'Welches Profil passt am besten?' },
+    subtitle: { en: 'Fine-tunes which categories rank higher.', tr: 'Hangi kategorilerin öne çıkacağını ayarlar.', de: 'Stimmt die Kategorie-Priorität ab.' },
     options: [
       ['student', 'Student', 'Öğrenci', 'Student/in'],
       ['engineer', 'Engineer', 'Mühendis', 'Ingenieur/in'],
@@ -322,7 +253,7 @@ const STEPS = [
     multiple: true,
     min: 1,
     title: { en: 'Which subscriptions are part of your life?', tr: 'Hangi abonelikler hayatında var?', de: 'Welche Abos nutzt du?' },
-    subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "yok" seç.', de: 'Wähle "keine", wenn du keine nutzt.' },
+    subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "Yok" seç.', de: 'Wähle "keine", wenn du keine nutzt.' },
     options: [
       ['none', 'None', 'Yok', 'Keine'],
       ['netflix', 'Netflix', 'Netflix', 'Netflix'],
@@ -346,7 +277,7 @@ const STEPS = [
       ['notion', 'Notion', 'Notion', 'Notion'],
       ['chatgpt_plus', 'ChatGPT Plus', 'ChatGPT Plus', 'ChatGPT Plus'],
       ['claude', 'Claude Pro', 'Claude Pro', 'Claude Pro'],
-      ['google_ai_premium', 'Google AI Premium', 'Google AI Premium', 'Google AI Premium'],
+      ['gemini', 'Gemini Advanced', 'Gemini Advanced', 'Gemini Advanced'],
       ['github_copilot', 'GitHub Copilot', 'GitHub Copilot', 'GitHub Copilot'],
       ['nordvpn', 'NordVPN', 'NordVPN', 'NordVPN'],
       ['x_premium', 'X Premium', 'X Premium', 'X Premium'],
@@ -381,6 +312,8 @@ function emptyAnswers(user) {
   };
 }
 
+// Mirrors the app's onboarding profile vector (lib/.../quiz_screen.dart) so the
+// same personalization signals feed the AI/algorithm on web and mobile.
 function buildVector(answers, primaryCategory) {
   const vector = {
     budget_score: answers.budgetRange === 'low' ? 0.2
@@ -404,6 +337,34 @@ function buildVector(answers, primaryCategory) {
   return vector;
 }
 
+function BackIcon({ close }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {close ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M15 5l-7 7 7 7" />}
+    </svg>
+  );
+}
+
+function OptionVisual({ step, option, visuals, broken, onBroken }) {
+  const value = option[0];
+  const label = optionText(option, 'en'); // SubLogo matches by canonical English name
+  if (step.field === 'subscriptions' && value !== 'none') {
+    return <SubLogo name={label} size={64} radius={18} />;
+  }
+  if (step.field === 'ageRange') {
+    return <span className="oq-age">{value}</span>;
+  }
+  const image = optionArtwork(step, value, visuals);
+  if (image && !broken) {
+    return (
+      <img className="oq-photo" src={image} alt="" loading="lazy"
+        onError={onBroken} />
+    );
+  }
+  return <span className="oq-glyph"><QuizGlyph field={step.field} value={value} /></span>;
+}
+
 export default function Quiz() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
@@ -423,6 +384,7 @@ export default function Quiz() {
   const [summary, setSummary] = useState('');
   const [visuals, setVisuals] = useState({});
   const [brokenImages, setBrokenImages] = useState({});
+  const [visibleCounts, setVisibleCounts] = useState({});
 
   useEffect(() => {
     if (!user) openAuth();
@@ -441,6 +403,9 @@ export default function Quiz() {
   const total = STEPS.length;
   const selected = answers[current.field];
   const selectedCount = Array.isArray(selected) ? selected.length : (selected ? 1 : 0);
+  const visibleCount = visibleCounts[current.field] || initialVisibleFor(current);
+  const visibleOptions = current.options.slice(0, visibleCount);
+  const hasMoreOptions = visibleCount < current.options.length;
 
   const canContinue = useMemo(() => {
     const value = answers[current.field];
@@ -450,13 +415,16 @@ export default function Quiz() {
 
   if (!user) {
     return (
-      <div className="container quiz">
-        <div className="quiz-head">
-          <div className="quiz-icon">🎯</div>
+      <div className="oq-shell">
+        <QuizBackdrop />
+        <div className="oq-gate">
+          <div className="oq-gate-badge">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" fill="currentColor" /></svg>
+          </div>
           <h1>{t('quiz.title')}</h1>
-          <p>{L('Sign in to create your Qor AI profile.', 'Qor AI profilini oluşturmak için giriş yap.', 'Melde dich an, um dein Qor AI Profil zu erstellen.')}</p>
+          <p>{L('Sign in to build your Qor AI profile.', 'Qor AI profilini oluşturmak için giriş yap.', 'Melde dich an, um dein Qor AI Profil zu erstellen.')}</p>
+          <button className="oq-btn oq-btn-primary" onClick={openAuth}>{t('nav.signIn')}</button>
         </div>
-        <button className="btn btn-primary btn-block" onClick={openAuth}>{t('nav.signIn')}</button>
       </div>
     );
   }
@@ -469,23 +437,41 @@ export default function Quiz() {
     }
     setAnswers((a) => {
       const prev = Array.isArray(a[current.field]) ? a[current.field] : [];
-      let next;
-      if (value === 'none') next = prev.includes('none') ? [] : ['none'];
+      let nextVal;
+      if (value === 'none') nextVal = prev.includes('none') ? [] : ['none'];
       else {
         const clean = prev.filter((x) => x !== 'none');
-        next = clean.includes(value) ? clean.filter((x) => x !== value) : [...clean, value];
+        nextVal = clean.includes(value) ? clean.filter((x) => x !== value) : [...clean, value];
       }
-      return { ...a, [current.field]: next };
+      return { ...a, [current.field]: nextVal };
+    });
+    if (hasMoreOptions) revealMore();
+  }
+
+  function revealMore() {
+    setVisibleCounts((prev) => {
+      const count = prev[current.field] || initialVisibleFor(current);
+      const nextCount = Math.min(current.options.length, count + REVEAL_BATCH);
+      if (nextCount === count) return prev;
+      return { ...prev, [current.field]: nextCount };
     });
   }
 
-  function next() {
+  function goNext() {
     if (!canContinue) {
-      setErr(current.subtitle ? tx(lang, current.subtitle) : L('Complete this step to continue.', 'Devam etmek için bu adımı tamamla.', 'Schließe diesen Schritt ab.'));
+      setErr(current.field === 'interestCategories'
+        ? L('Select at least 3 categories to continue.', 'Devam etmek için en az 3 kategori seç.', 'Wähle mindestens 3 Kategorien.')
+        : L('Complete this step to continue.', 'Devam etmek için bu adımı tamamla.', 'Schließe diesen Schritt ab.'));
       return;
     }
     if (step + 1 >= total) submit();
     else setStep((s) => s + 1);
+  }
+
+  function goBack() {
+    if (step === 0) { nav(nextPath, { replace: true }); return; }
+    setErr('');
+    setStep((s) => Math.max(0, s - 1));
   }
 
   function snapshot() {
@@ -576,21 +562,35 @@ export default function Quiz() {
   }
 
   if (done) {
+    const heroCat = answers.interestCategories[0];
+    const heroImg = heroCat ? visuals[visualCategory(heroCat)] : '';
+    const tags = [
+      answers.ecosystem && optionLabel(STEPS[1], answers.ecosystem, lang),
+      answers.budgetRange && optionLabel(STEPS[2], answers.budgetRange, lang),
+      answers.profession && optionLabel(STEPS[7], answers.profession, lang),
+      ...answers.interestCategories.slice(0, 3).map((v) => optionLabel(STEPS[0], v, lang)),
+    ].filter(Boolean);
     return (
-      <div className="container quiz">
-        <div className="quiz-result fade-up">
-          <div className="quiz-result-head">{required ? L('Profile required', 'Profil gerekli', 'Profil erforderlich') : t('quiz.resultHead')}</div>
-          <div className="quiz-result-body">
-            <p>{summary}</p>
-            <div className="quiz-summary-list">
-              <span>{optionLabel(STEPS[1], answers.ecosystem, lang)}</span>
-              <span>{optionLabel(STEPS[2], answers.budgetRange, lang)}</span>
-              <span>{answers.interestCategories.slice(0, 3).map((v) => optionLabel(STEPS[0], v, lang)).join(', ')}</span>
-            </div>
+      <div className="oq-shell">
+        <QuizBackdrop />
+        <div className="oq-done">
+          <div className="oq-done-hero">
+            {heroImg
+              ? <img src={heroImg} alt="" />
+              : <span className="oq-done-spark"><QuizGlyph field="x" value="_default" /></span>}
+            <span className="oq-done-check">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+            </span>
           </div>
-          <div className="quiz-result-actions">
-            <button className="btn btn-ghost" onClick={() => { setDone(false); setStep(0); }}>{t('quiz.restart')}</button>
-            <button className="btn btn-primary" onClick={() => nav(nextPath, { replace: true })}>
+          <div className="oq-done-head">{required ? L('Profile ready', 'Profil hazır', 'Profil bereit') : L('All set!', 'Hazır!', 'Fertig!')}</div>
+          <h1>{L('Your Qor AI profile is live', 'Qor AI profilin hazır', 'Dein Qor AI Profil ist aktiv')}</h1>
+          <p>{summary}</p>
+          <div className="oq-done-tags">
+            {tags.map((tg, i) => <span key={`${tg}-${i}`}>{tg}</span>)}
+          </div>
+          <div className="oq-foot-row oq-done-actions">
+            <button className="oq-btn oq-btn-ghost" onClick={() => { setDone(false); setStep(0); }}>{t('quiz.restart')}</button>
+            <button className="oq-btn oq-btn-primary" onClick={() => nav(nextPath, { replace: true })}>
               {L('Continue', 'Devam et', 'Weiter')}
             </button>
           </div>
@@ -599,82 +599,124 @@ export default function Quiz() {
     );
   }
 
-  return (
-    <div className="container quiz">
-      <div className="quiz-head">
-        <div className="quiz-icon">🎯</div>
-        <h1>{t('quiz.title')}</h1>
-        <p>{required
-          ? L('Complete this once to unlock AI features on the website.', 'Web sitesindeki AI özelliklerini açmak için bunu bir kez tamamla.', 'Schließe dies einmal ab, um KI-Funktionen freizuschalten.')
-          : t('quiz.subtitle')}</p>
-      </div>
+  const progress = ((step + 1) / total) * 100;
+  const isLast = step + 1 >= total;
 
-      <div className="quiz-card fade-up">
-        <div className="quiz-progress">
-          <div className="quiz-progress-bar" style={{ width: `${((step + 1) / total) * 100}%` }} />
+  return (
+    <div className="oq-shell">
+      <QuizBackdrop />
+
+      <header className="oq-top">
+        <button className="oq-top-back" onClick={goBack} aria-label={t('quiz.back')}>
+          <BackIcon close={step === 0} />
+        </button>
+        <div className="oq-top-meta">
+          <span className="oq-brand">Qor AI</span>
+          <span className="oq-stepno">{t('quiz.step', { n: step + 1, total })}</span>
         </div>
-        {/* key={step} re-runs the entrance animation on every step change */}
-        <div key={step} className="quiz-step fade-up">
-          <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
-          <h2 className="quiz-q">{tx(lang, current.title)}</h2>
-          {current.subtitle && <p className="quiz-sub">{tx(lang, current.subtitle)}</p>}
+        <div className="oq-progress"><div className="oq-progress-bar" style={{ width: `${progress}%` }} /></div>
+      </header>
+
+      <div className="oq-scroll">
+        <div key={step} className="oq-step">
+          <h1 className="oq-title">{tx(lang, current.title)}</h1>
+          {current.subtitle && <p className="oq-sub">{tx(lang, current.subtitle)}</p>}
+
           {current.multiple && (
-            <div className={'quiz-select-hint' + (canContinue ? ' ok' : '')}>
-              {L('Multiple choices are allowed.', 'Birden fazla seçim yapabilirsin.', 'Mehrfachauswahl ist möglich.')}
-              <span>{selectedCount}/{current.min || 1}</span>
+            <div className={'oq-counter' + (canContinue ? ' ok' : '')}>
+              <span className="oq-counter-dot">
+                {canContinue
+                  ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+                  : <span>{selectedCount}</span>}
+              </span>
+              {current.min > 1
+                ? L(`Select at least ${current.min}`, `En az ${current.min} seç`, `Mindestens ${current.min} wählen`)
+                : L('Multiple choices allowed', 'Birden fazla seçebilirsin', 'Mehrfachauswahl möglich')}
+              <b>{selectedCount}{current.min > 1 ? `/${current.min}` : ''}</b>
             </div>
           )}
-          <div className={'quiz-opts quiz-opts-grid' + (current.options.length > 14 ? ' dense' : '') + (current.field === 'subscriptions' ? ' subs' : '')}>
-            {current.options.map((o) => {
+
+          <div className="oq-grid">
+            {visibleOptions.map((o, idx) => {
               const value = o[0];
               const label = optionText(o, lang);
               const on = current.multiple
                 ? Array.isArray(selected) && selected.includes(value)
                 : selected === value;
               const imageKey = `${current.field}:${value}`;
-              const image = optionArtwork(current, value, visuals);
-              const showImage = image && !brokenImages[imageKey];
               return (
                 <button
                   key={value}
                   type="button"
-                  className={'quiz-choice' + (on ? ' on' : '') + (current.multiple ? ' multi' : ' single')}
+                  className={'oq-choice' + (on ? ' on' : '')}
                   onClick={() => pick(value)}
                   aria-pressed={on}
+                  style={{ '--i': idx % REVEAL_BATCH }}
                 >
-                  <span className="quiz-choice-art" aria-hidden="true">
-                    {current.field === 'subscriptions' && value !== 'none' ? (
-                      <SubLogo name={label} size={72} radius={28} />
-                    ) : showImage ? (
-                      <img
-                        src={image}
-                        alt=""
-                        loading="lazy"
-                        onError={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
-                      />
-                    ) : (
-                      <span className="quiz-choice-fallback">{fallbackArt(value, label)}</span>
-                    )}
-                    <span className="quiz-choice-check">{current.multiple ? '✓' : '●'}</span>
+                  <span className="oq-art">
+                    <OptionVisual
+                      step={current}
+                      option={o}
+                      visuals={visuals}
+                      broken={brokenImages[imageKey]}
+                      onBroken={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
+                    />
+                    <span className="oq-check">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+                    </span>
                   </span>
-                  <span className="quiz-choice-label">{label}</span>
+                  <span className="oq-label">{label}</span>
                 </button>
               );
             })}
           </div>
+
+          {hasMoreOptions && (
+            <button type="button" className="oq-more" onClick={revealMore}>
+              {L('Show more options', 'Daha fazla seçenek', 'Mehr Optionen')}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+          )}
         </div>
-        {err && <div className="quiz-err">{err}</div>}
-        <div className="quiz-actions">
+      </div>
+
+      <footer className="oq-foot">
+        {err && <div className="oq-err">{err}</div>}
+        {required && step === 0 && !err && (
+          <div className="oq-required-note">
+            {L('Complete this once to unlock AI features.', 'AI özelliklerini açmak için bunu bir kez tamamla.', 'Schließe dies einmal ab, um KI-Funktionen freizuschalten.')}
+          </div>
+        )}
+        <div className="oq-foot-row">
           {step > 0 && (
-            <button className="btn btn-ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={busy}>
+            <button className="oq-btn oq-btn-ghost" onClick={goBack} disabled={busy}>
               {t('quiz.back')}
             </button>
           )}
-          <button className="btn btn-primary btn-shine" onClick={next} disabled={busy}>
-            {busy ? t('common.loading') : step + 1 >= total ? L('Save profile', 'Profili kaydet', 'Profil speichern') : L('Next', 'İleri', 'Weiter')}
+          <button className="oq-btn oq-btn-primary oq-btn-grow" onClick={goNext} disabled={busy}>
+            {busy
+              ? t('common.loading')
+              : isLast
+                ? L('Create my profile', 'Profilimi oluştur', 'Profil erstellen')
+                : L('Continue', 'Devam et', 'Weiter')}
+            {!busy && (
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                {isLast ? <path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z" /> : <path d="M5 12h14M13 6l6 6-6 6" />}
+              </svg>
+            )}
           </button>
         </div>
-      </div>
+      </footer>
+    </div>
+  );
+}
+
+function QuizBackdrop() {
+  return (
+    <div className="oq-bg" aria-hidden="true">
+      <span className="oq-orb oq-orb-1" />
+      <span className="oq-orb oq-orb-2" />
+      <span className="oq-orb oq-orb-3" />
     </div>
   );
 }

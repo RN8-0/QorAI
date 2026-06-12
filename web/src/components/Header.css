@@ -151,11 +151,78 @@
 @media (max-width: 560px) { .hd-compare-txt { display: none; } }
 
 .hd-user { position: relative; display: flex; align-items: center; gap: 8px; }
+.hd-quiz-alert {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  background:
+    radial-gradient(circle at 35% 25%, color-mix(in srgb, #ffffff 34%, transparent), transparent 35%),
+    linear-gradient(135deg, var(--violet), var(--brand-blue));
+  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--accent) 44%, transparent);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--brand-blue) 22%, transparent);
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.hd-quiz-alert:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--brand-blue) 30%, transparent);
+}
+.hd-coins-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .hd-coins {
   display: flex; align-items: center; gap: 5px;
   padding: 6px 11px 6px 7px; border-radius: 999px;
   background: var(--accent-soft); border: 1px solid var(--accent-ring);
   font-size: 13px; font-weight: 800; color: var(--accent);
+}
+.hd-coins:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent);
+  outline-offset: 2px;
+}
+.hd-tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 250px;
+  z-index: 240;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--bg));
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.hd-tip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 24px;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  background: inherit;
+  border-left: 1px solid var(--border-strong);
+  border-top: 1px solid var(--border-strong);
+}
+.hd-coins-wrap:hover .hd-tip,
+.hd-coins-wrap:focus-within .hd-tip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 .hd-pro {
   padding: 4px 9px; border-radius: 999px;

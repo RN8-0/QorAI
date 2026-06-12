@@ -212,6 +212,11 @@ async function searchDocs(params) {
   return tsGet(SEARCH_PATH, params);
 }
 
+// One representative product image per category, for the onboarding quiz
+// circles. We use Typesense `group_by=category&group_limit=1` so EVERY
+// requested category that has products returns its top product — a plain
+// global sort starves low-volume categories (cpus, gpus, vr_headsets…) out of
+// the first page, which is why the quiz used to fall back to text marks.
 export async function getCategoryVisuals(categories = []) {
   const cats = [...new Set(
     (categories || []).map((cat) => String(cat || '').toLowerCase()).filter(Boolean),
@@ -223,10 +228,26 @@ export async function getCategoryVisuals(categories = []) {
       query_by: 'name',
       sort_by: 'techScore:desc,trendScore:desc,updatedAtTs:desc',
       filter_by: `category:[${cats.map(lit).join(',')}]`,
-      per_page: Math.min(Math.max(cats.length * 6, 80), 250),
+      group_by: 'category',
+      group_limit: 1,
+      per_page: Math.min(Math.max(cats.length, 30), 250),
       include_fields: LIST_FIELDS,
     });
     const out = {};
+    const groups = Array.isArray(data?.grouped_hits) ? data.grouped_hits : [];
+    if (groups.length) {
+      for (const group of groups) {
+        const hit = (group.hits || [])[0];
+        if (!hit?.document) continue;
+        const product = docToProduct(hit.document);
+        const cat = String(product.category || '').toLowerCase();
+        if (!cat || !cats.includes(cat) || !product.imageUrl) continue;
+        if (!productMatchesRequestedCategory(product, cat)) continue;
+        out[cat] = product.imageUrl;
+      }
+      return out;
+    }
+    // Fallback (group_by unsupported): first image per category from a flat list.
     for (const product of docs(data).map(docToProduct)) {
       const cat = String(product.category || '').toLowerCase();
       if (!cat || out[cat] || !product.imageUrl || !cats.includes(cat)) continue;

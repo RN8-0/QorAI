@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
-import { formatQorCoins } from '../lib/qorCoins';
+import { formatQorCoins, hasCompletedQuiz } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
 import PlayBadge from './PlayBadge.jsx';
@@ -23,6 +23,7 @@ const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
 
 export default function Header() {
   const { user, openAuth, logout } = useAuth();
+  const loc = useLocation();
   const { theme, toggle } = useTheme();
   const { t, lang } = useI18n();
   const [drawer, setDrawer] = useState(false);
@@ -44,6 +45,17 @@ export default function Header() {
   const coinDisplay = isPremium ? '∞' : coins;
   const coinWord = isPremium ? L('Unlimited', 'Sınırsız', 'Unbegrenzt') : 'Qor Coin';
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
+  const quizMissing = !!user
+    && !hasCompletedQuiz(user)
+    && !String(user.email || '').toLowerCase().endsWith('@qorai.local');
+  const quizNext = `${loc.pathname}${loc.search}${loc.hash}`;
+  const coinTip = isPremium
+    ? L('Premium is active. AI features do not spend Qor Coins.',
+      'Premium aktif. AI özellikleri Qor Coin harcamaz.',
+      'Premium ist aktiv. KI-Funktionen verbrauchen keine Qor Coins.')
+    : L('Qor Coins are used for AI actions such as chat, link analysis and subscription analysis.',
+      'Qor Coin; chat, link analizi ve abonelik analizi gibi AI işlemlerinde kullanılır.',
+      'Qor Coins werden für KI-Aktionen wie Chat, Link-Analyse und Abo-Analyse genutzt.');
 
   return (
     <>
@@ -120,12 +132,27 @@ export default function Header() {
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>}
           </button>
 
-          <PlayBadge size="sm" className="desk-only" iconOnly={isPremium}
+          <PlayBadge size="sm" className="desk-only" iconOnly
             getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
 
           {user ? (
             <div className="hd-user">
-              <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} title={isPremium ? coinWord : t('header.coins')}><span className="coin-dot">Q</span>{coinDisplay}</span>
+              {quizMissing && (
+                <Link
+                  className="hd-quiz-alert"
+                  to={`/quiz?required=1&next=${encodeURIComponent(quizNext)}`}
+                  title={L('Complete your profile quiz', 'Profil quizini tamamla', 'Profil-Quiz abschließen')}
+                  aria-label={L('Complete your profile quiz', 'Profil quizini tamamla', 'Profil-Quiz abschließen')}
+                >
+                  !
+                </Link>
+              )}
+              <span className="hd-coins-wrap">
+                <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} tabIndex={0}>
+                  <span className="coin-dot">Q</span>{coinDisplay}
+                </span>
+                <span className="hd-tip" role="tooltip">{coinTip}</span>
+              </span>
               <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>{displayName[0]?.toUpperCase() || 'U'}</button>
               {menu && (
                 <>
