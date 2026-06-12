@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 // Port of the app's SubscriptionLogoWidget (lib/presentation/widgets/
-// subscription_logo_widget.dart): known service → crisp SVG logo,
-// high-res favicon fallback, letter-avatar last resort.
+// subscription_logo_widget.dart): known service -> crisp SVG logo,
+// high-res domain logo fallback, short mark last resort.
 
 const KNOWN_DOMAINS = {
   'netflix': 'netflix.com', 'spotify': 'spotify.com', 'apple music': 'music.apple.com',
@@ -68,22 +68,22 @@ const AVATAR_COLORS = ['#6c5ce7', '#0984e3', '#00b894', '#e17055', '#d63031', '#
 
 const WORDMARKS = {
   'netflix': { text: 'N', color: '#E50914', bg: '#FFFFFF' },
-  'disney+': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
-  'disney plus': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
-  'amazon prime': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
-  'amazon prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
-  'prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'disney+': { text: 'D+', color: '#113CCF', bg: '#F7FAFF' },
+  'disney plus': { text: 'D+', color: '#113CCF', bg: '#F7FAFF' },
+  'amazon prime': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
+  'amazon prime video': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
+  'prime video': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
   'apple tv+': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
   'apple tv': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
   'hbo max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
   'max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
   'youtube premium': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
   'youtube': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
-  'blutv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
-  'blu tv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
-  'exxen': { text: 'EXXEN', color: '#0D0D0D', bg: '#FFD400' },
-  'gain': { text: 'GAIN', color: '#111827', bg: '#FFFFFF' },
-  'mubi': { text: 'MUBI', color: '#FFFFFF', bg: '#111827' },
+  'blutv': { text: 'BLU', color: '#0B5CFF', bg: '#F4F8FF' },
+  'blu tv': { text: 'BLU', color: '#0B5CFF', bg: '#F4F8FF' },
+  'exxen': { text: 'EX', color: '#0D0D0D', bg: '#FFD400' },
+  'gain': { text: 'G', color: '#111827', bg: '#FFFFFF' },
+  'mubi': { text: 'M', color: '#FFFFFF', bg: '#111827' },
   'crunchyroll': { text: 'C', color: '#F47521', bg: '#FFFFFF' },
   'spotify': { text: 'S', color: '#1DB954', bg: '#FFFFFF' },
   'apple music': { text: '♪', color: '#FA243C', bg: '#FFFFFF' },
@@ -105,11 +105,11 @@ const WORDMARKS = {
   'beinsports': { text: 'beIN', color: '#5C2D91', bg: '#FFFFFF' },
   'tod': { text: 'TOD', color: '#111827', bg: '#FFFFFF' },
   'tabii': { text: 'tabii', color: '#10B981', bg: '#F5FFFB' },
-  'microsoft 365': { text: 'M365', color: '#2563EB', bg: '#F8FBFF' },
+  'microsoft 365': { text: '365', color: '#2563EB', bg: '#F8FBFF' },
   'google one': { text: 'One', color: '#4285F4', bg: '#FFFFFF' },
-  'icloud+': { text: 'iCloud', color: '#111827', bg: '#FFFFFF' },
-  'icloud': { text: 'iCloud', color: '#111827', bg: '#FFFFFF' },
-  'adobe creative cloud': { text: 'Adobe', color: '#FA0F00', bg: '#FFFFFF' },
+  'icloud+': { text: 'iC', color: '#111827', bg: '#FFFFFF' },
+  'icloud': { text: 'iC', color: '#111827', bg: '#FFFFFF' },
+  'adobe creative cloud': { text: 'A', color: '#FA0F00', bg: '#FFFFFF' },
   'notion': { text: 'N', color: '#111827', bg: '#FFFFFF' },
   'canva': { text: 'C', color: '#7D2AE8', bg: '#FFFFFF' },
   'hostinger': { text: 'H', color: '#673DE6', bg: '#FFFFFF' },
@@ -129,6 +129,10 @@ const SIMPLE_ICON_SLUGS = {
   'youtube': 'youtube',
   'youtube music': 'youtubemusic',
   'youtube premium': 'youtube',
+  'blutv': 'blutv',
+  'blu tv': 'blutv',
+  'exxen': 'exxen',
+  'gain': 'gain',
   'crunchyroll': 'crunchyroll',
   'spotify': 'spotify',
   'apple music': 'applemusic',
@@ -172,6 +176,10 @@ const SIMPLE_ICON_SLUGS = {
   'canva': 'canva',
   'hostinger': 'hostinger',
   'mubi': 'mubi',
+  'beinsports': 'beinsports',
+  'bein sports': 'beinsports',
+  'tod': 'tod',
+  'tabii': 'trt',
 };
 
 function simpleIconSlug(name) {
@@ -206,8 +214,8 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
     if (iconSlug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
     if (domain) {
-      list.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=${hiRes}`);
       list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
+      list.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=${hiRes}`);
       list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     }
     return list;
@@ -218,9 +226,9 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
-  if (wordmark && !logo) {
+  if (idx >= urls.length && wordmark) {
     const textLen = wordmark.text.length;
-    const fontSize = Math.max(8, Math.min(size * 0.38, size / Math.max(1.8, textLen * 0.48)));
+    const fontSize = Math.max(9, Math.min(size * 0.42, size / Math.max(1.7, textLen * 0.72)));
     return (
       <span className="sub-logo sub-logo-wordmark" style={{
         width: size,

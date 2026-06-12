@@ -103,8 +103,7 @@
 }
 .sub-logo-wordmark span {
   display: block;
-  max-width: calc(100% - 8px);
+  max-width: calc(100% - 4px);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
 }
