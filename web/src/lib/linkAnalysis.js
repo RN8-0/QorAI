@@ -10,7 +10,7 @@
 //  wording is identical even though the model differs.
 // ═══════════════════════════════════════════════════════════════
 
-import { askQorAiJson } from './ai';
+import { askQorAiJson, askQorAiRaw } from './ai';
 
 const LANG_NAMES = {
   en: 'English', tr: 'Turkish', de: 'German', fr: 'French', es: 'Spanish',
@@ -73,12 +73,18 @@ export function titleFromUrl(url) {
   try {
     const u = new URL(url);
     const segs = u.pathname.split('/').map((s) => s.trim()).filter(Boolean);
-    const ignore = /^(p|dp|pd|gp|aw|d|product|urun|item)$/i;
+    let slug = '';
+    if (/amazon\./i.test(u.hostname)) {
+      const dpIndex = segs.findIndex((s) => /^(dp|product)$/i.test(s));
+      if (dpIndex > 0) slug = segs[dpIndex - 1];
+    }
+    const ignore = /^(p|dp|pd|gp|aw|d|product|urun|item|ref|ref=.*|psc=.*|qid=.*|sr=.*)$/i;
     const idLike = /^(?:[a-z0-9]{10}|[a-f0-9]{16,}|[0-9]{8,})$/i;
-    let slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s) && !idLike.test(s)) || '';
+    const trackingLike = /^(ref[=_-]|sr[=_-]|qid[=_-]|psc[=_-])/i;
+    if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s) && !idLike.test(s) && !trackingLike.test(s)) || '';
     if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s)) || '';
     slug = slug.replace(/\.(html?|php|aspx?)$/i, '').replace(/[-_]+/g, ' ');
-    slug = slug.replace(/\b(p|dp|pd|product|urun|item)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    slug = slug.replace(/\b(p|dp|pd|product|urun|item|ref)\b/gi, ' ').replace(/\s+/g, ' ').trim();
     if (slug.length < 3) return '';
     return slug.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80);
   } catch {
@@ -107,7 +113,7 @@ function fallbackBaseAnalysis({ url, title, siteName, language }) {
     return `"${name}" bağlantısı ürün sayfası olarak işlendi. Qor AI ürün adını bağlantı ve site bilgisinden çıkardı; canlı sayfa verisi alınamadığında değerlendirme, ürün adı/kategori sinyalleri ve profil cevapların üzerinden hazırlanır. Satın almadan önce satıcı sayfasındaki güncel fiyat, garanti ve teknik özellikleri de kontrol et.`;
   }
   if (lang === 'de') {
-    return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
+    return `"${name}" wurde als Produktlink verarbeitet. Qor AI hat das Produkt aus der URL und dem Shop-Signal erkannt; wenn keine Live-Seitendaten verfügbar sind, wird die Empfehlung aus Titel, Kategorie-Signalen und deinen Antworten erstellt. Prüfe vor dem Kauf trotzdem den aktuellen Preis, die Garantie und die technischen Daten auf der Verkäuferseite.`;
   }
   return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
 }
@@ -193,6 +199,54 @@ export async function generateQuiz({ category, productTitle, url, language, user
   return questions;
 }
 
+function compareQuizGenerationPrompt(language) {
+  const langName = languageName(language);
+  return `You are Qor AI's comparison quiz engine. Generate a SHORT but high-signal quiz
+(5-6 questions) that helps choose between multiple product links.
+
+LANGUAGE: Generate ALL questions and options in ${langName}.
+
+Rules:
+- Questions must compare the listed products, not ask generic shopping questions
+- Cover usage intent, performance expectations, portability/durability, risk tolerance, and must-have features
+- Each question has exactly 4 options
+- Keep questions conversational with emoji
+- NEVER ask about budget or brand preference
+- ALL text must be in ${langName}
+
+Return valid JSON:
+{
+  "questions": [
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    ...
+  ]
+}`;
+}
+
+export async function generateCompareQuiz({ products, language, userProfile = {} }) {
+  const res = await askQorAiJson({
+    system: compareQuizGenerationPrompt(language),
+    user: JSON.stringify({
+      products: (products || []).map((p) => ({
+        title: p.title,
+        url: p.url,
+        category: p.category,
+        initialScore: p.score,
+        initialAnalysis: p.analysis,
+      })),
+      userProfile,
+    }),
+    maxOutputTokens: 2048,
+  });
+  return (Array.isArray(res.questions) ? res.questions : [])
+    .map((q, i) => ({
+      id: `cq${i}`,
+      text: String(q.question || ''),
+      options: Array.isArray(q.options) ? q.options.map(String) : [],
+    }))
+    .filter((q) => q.text && q.options.length >= 2);
+}
+
 // ── Subscription quiz (same engine, subscription wording) ─────────
 function subscriptionQuizPrompt(names, isCompare, language) {
   const langName = languageName(language);
@@ -242,11 +296,12 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
 function enhancedAnalysisPrompt(language) {
   const langName = languageName(language);
   const isTr = String(language || '').slice(0, 2) === 'tr';
-  const usageFit = isTr ? 'Kullanım Uyumu' : 'Usage Fit';
-  const budgetMatch = isTr ? 'Bütçe Uyumu' : 'Budget Match';
-  const qualityFit = isTr ? 'Kalite Uyumu' : 'Quality Fit';
-  const futureProofing = isTr ? 'Uzun Vadeli Değer' : 'Long-term Value';
-  const lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : 'Lifestyle Match';
+  const isDe = String(language || '').slice(0, 2) === 'de';
+  const usageFit = isTr ? 'Kullanım Uyumu' : isDe ? 'Nutzungsfit' : 'Usage Fit';
+  const budgetMatch = isTr ? 'Bütçe Uyumu' : isDe ? 'Budget-Fit' : 'Budget Match';
+  const qualityFit = isTr ? 'Kalite Uyumu' : isDe ? 'Qualitätsfit' : 'Quality Fit';
+  const futureProofing = isTr ? 'Uzun Vadeli Değer' : isDe ? 'Langzeitwert' : 'Long-term Value';
+  const lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : isDe ? 'Lifestyle-Fit' : 'Lifestyle Match';
   return `You are Qor AI's senior product analyst. Given a product, quiz answers, and user profile, produce a comprehensive, professional, highly detailed personalized match report.
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
@@ -343,6 +398,79 @@ export async function enhancedAnalysis({ base, answers, language, userProfile = 
     communityAnalysis: res.communityAnalysis ? String(res.communityAnalysis) : '',
     overallVerdict: res.overallVerdict ? String(res.overallVerdict) : '',
   };
+}
+
+function compareAnalysisPrompt(language) {
+  const langName = languageName(language);
+  const lang = String(language || 'en').slice(0, 2).toLowerCase();
+  const headings = lang === 'tr'
+    ? [
+      'Ürünler belirlendi',
+      'Quiz bazlı uyum',
+      'Kafa kafaya performans ve özellikler',
+      'Güçlü ve zayıf yönler',
+      'Topluluk ve sahiplik riskleri',
+      'Nihai Qor AI önerisi',
+    ]
+    : lang === 'de'
+      ? [
+        'Erkannte Produkte',
+        'Quizbasierte Passung',
+        'Direkter Vergleich von Leistung und Ausstattung',
+        'Stärken und Schwächen',
+        'Community- und Besitzrisiken',
+        'Abschließende Qor AI Empfehlung',
+      ]
+      : [
+        'Products identified',
+        'Quiz-based fit',
+        'Head-to-head performance and specs',
+        'Strengths and weaknesses',
+        'Community and ownership risks',
+        'Final Qor AI recommendation',
+      ];
+  return `You are Qor AI's senior product comparison analyst.
+
+LANGUAGE: Write ALL output in ${langName}. Do not use English headings unless ${langName} is English.
+
+You will receive exact products identified from pasted URLs and the user's comparison quiz answers.
+
+Rules:
+- Never replace the products with nearby models.
+- Use the exact product titles and URLs given to you.
+- Give a detailed, app-style comparison; do not write a short chat answer.
+- Blend quiz answers into the recommendation.
+- If one product is clearly better for a certain user type, say that directly.
+- Do not invent live prices.
+
+Output in Markdown with exactly these bold headings, in this order:
+${headings.map((h, i) => `${i + 1}. **${h}**`).join('\n')}
+
+Under each heading write detailed paragraphs and concrete bullets where useful.`;
+}
+
+export async function compareAnalysis({ bases, answers, language, userProfile = {} }) {
+  const qaPairs = (answers || [])
+    .filter((a) => a.answer != null)
+    .map((a) => ({ question: a.question, answer: a.answer }));
+  return askQorAiRaw({
+    system: compareAnalysisPrompt(language),
+    user: JSON.stringify({
+      products: (bases || []).map((p, i) => ({
+        index: i + 1,
+        url: p.url,
+        title: p.title,
+        category: p.category,
+        siteName: p.siteName,
+        initialScore: p.score,
+        initialAnalysis: p.analysis,
+      })),
+      quizAnswers: qaPairs,
+      userProfile,
+    }),
+    maxOutputTokens: 8192,
+    temperature: 0.55,
+  });
 }
 
 // ── Subscription analysis ─────────────────────────────────────────

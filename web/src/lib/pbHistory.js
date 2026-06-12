@@ -25,6 +25,12 @@ async function appendAnalyzedProduct(entry) {
   }
 }
 
+function sameUrlSet(a = [], b = []) {
+  const aa = uniq(a.map((x) => String(x || '').trim())).sort();
+  const bb = uniq(b.map((x) => String(x || '').trim())).sort();
+  return aa.length === bb.length && aa.every((x, i) => x === bb[i]);
+}
+
 export async function saveSearchHistory(query, productId = '') {
   const user = currentUser();
   const term = String(query || '').trim();
@@ -111,7 +117,7 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single',
   if (!user || !list.length || !analysis) return;
   const now = new Date().toISOString();
   try {
-    await pb.collection('saved_analyses').create({
+    const created = await pb.collection('saved_analyses').create({
       userId: user.id,
       url: list[0] || '',
       title: list.length > 1 ? list.join(' vs ') : list[0],
@@ -128,7 +134,8 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single',
       aiSummary: String(analysis).slice(0, 5000),
       savedAt: now,
     });
-    appendAnalyzedProduct({
+    await appendAnalyzedProduct({
+      savedAnalysisId: created.id,
       title: list.length > 1 ? list.join(' vs ') : list[0],
       category: 'link',
       mode: type,
@@ -137,8 +144,10 @@ export async function saveLinkAnalysisHistory({ urls, analysis, type = 'single',
       score: 0,
       verdict: String(analysis).slice(0, 200),
     });
+    return created;
   } catch {
     // Best effort shared history.
+    return null;
   }
 }
 
@@ -219,7 +228,7 @@ export async function saveSubscriptionHistory({ services, analysis, quiz = {}, s
   if (!user || list.length < 1 || !analysis) return;
   const now = new Date().toISOString();
   try {
-    await pb.collection('saved_analyses').create({
+    const created = await pb.collection('saved_analyses').create({
       userId: user.id,
       title: list.join(' vs '),
       category: 'subscription_history',
@@ -236,17 +245,20 @@ export async function saveSubscriptionHistory({ services, analysis, quiz = {}, s
       aiSummary: String(analysis).slice(0, 5000),
       savedAt: now,
     });
-    list.forEach((service) => {
-      appendAnalyzedProduct({
+    for (const service of list) {
+      await appendAnalyzedProduct({
+        savedAnalysisId: created.id,
         title: service,
         category: 'subscription',
         mode: 'subscription',
         score: Number(scores?.[service]) || 0,
         verdict: String(analysis).slice(0, 200),
       });
-    });
+    }
+    return created;
   } catch {
     // Best effort shared history.
+    return null;
   }
 }
 
@@ -309,11 +321,56 @@ export async function getSavedAnalyses(limit = 40) {
           productIds: Array.isArray(d.productIds) ? d.productIds : [],
           productId: d.productId || '',
           at: a.savedAt || d.timestamp || a.created,
+          category: a.category,
         };
       });
   } catch {
     return [];
   }
+}
+
+export async function deleteSavedAnalysisHistory(itemOrId) {
+  const user = currentUser();
+  const item = typeof itemOrId === 'string' ? { id: itemOrId } : (itemOrId || {});
+  if (!user || !item.id) return false;
+  let record = null;
+  try {
+    record = await pb.collection('saved_analyses').getOne(item.id);
+  } catch {
+    record = null;
+  }
+
+  try { await pb.collection('saved_analyses').delete(item.id); } catch { /* already gone or blocked */ }
+
+  try {
+    const latest = await pb.collection('users').getOne(user.id);
+    const history = Array.isArray(latest.analyzedProducts) ? latest.analyzedProducts : [];
+    const data = record?.analysisData && typeof record.analysisData === 'object' ? record.analysisData : {};
+    const urls = Array.isArray(item.urls) && item.urls.length ? item.urls : (Array.isArray(data.urls) ? data.urls : []);
+    const services = Array.isArray(item.services) && item.services.length ? item.services : (Array.isArray(data.services) ? data.services : []);
+    const title = item.title || record?.title || '';
+    const kind = item.kind || (record?.category === 'subscription_history' ? 'subscription' : 'link');
+    const next = history.filter((entry) => {
+      if (!entry) return false;
+      if (entry.savedAnalysisId === item.id) return false;
+      if (kind === 'link' && urls.length) {
+        const entryUrls = Array.isArray(entry.urls) ? entry.urls : (entry.url ? [entry.url] : []);
+        if (sameUrlSet(entryUrls, urls)) return false;
+        if (entry.url && urls.includes(entry.url)) return false;
+      }
+      if (kind === 'subscription' && services.length) {
+        if (services.includes(entry.title)) return false;
+      }
+      if (title && entry.title === title) return false;
+      return true;
+    });
+    if (next.length !== history.length) {
+      await pb.collection('users').update(user.id, { analyzedProducts: next });
+    }
+  } catch {
+    // saved_analyses deletion is the source of truth; profile mirror cleanup is best effort.
+  }
+  return true;
 }
 
 // Reviews written by the signed-in user.

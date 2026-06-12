@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
-import { askQorAi } from '../lib/ai';
-import { analyzeLink, generateQuiz, enhancedAnalysis } from '../lib/linkAnalysis';
+import { useEffect, useRef, useState } from 'react';
 import { trackEvent } from '../lib/analytics';
-import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import {
+  clearLinkAnalysisJob,
+  startCompareLinkAnalysisJob,
+  startSingleLinkAnalysisJob,
+  submitLinkAnalysisJobAnswers,
+  subscribeLinkAnalysisJob,
+} from '../lib/linkAnalysisJobs';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -19,30 +23,6 @@ import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
 const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
-
-// Compare mode keeps the app's "identify the exact product, never substitute"
-// rule but runs as a single combined verdict (no per-link quiz).
-function comparePrompt(urls, lang, userProfile = {}) {
-  const profile = Object.keys(userProfile || {}).length
-    ? `\n\nUser profile context:\n${JSON.stringify(userProfile)}`
-    : '';
-  return (
-    "You are Qor AI's product comparison engine.\n" +
-    'Analyze these product URLs exactly:\n' +
-    urls.map((u, i) => `${i + 1}. ${u}`).join('\n') +
-    '\n\nRules:\n' +
-    '- Identify each exact product from its URL/domain/slug. Do not substitute nearby models.\n' +
-    '- If any product is uncertain, keep it in the comparison and mark it uncertain.\n' +
-    '- Compare only what can be reasonably inferred; do not invent live prices.\n' +
-    '- End with a clear recommendation for different user types.\n' +
-    '- Write a long-form report, not a short summary. Cover exact product identification, category fit, technical/practical differences, ownership risks, durability, community sentiment, value and final decision.\n' +
-    profile +
-    '\n\n' +
-    'Output with **bold** headings: Products identified, Head-to-head, Strengths and weaknesses, Community/reviewer signal, Best fit scenarios, Qor AI verdict. ' +
-    'Use several paragraphs under each heading and specific bullets where useful. ' +
-    `Use "-" bullets. Reply ONLY in the language with ISO code: ${lang}.`
-  );
-}
 
 function bandLabel(s, L) {
   return s >= 85 ? L('Excellent match', 'Mükemmel uyum', 'Exzellent')
@@ -66,23 +46,6 @@ function FactorBars({ factors = [] }) {
       ))}
     </div>
   );
-}
-
-function fallbackEnhancedResult(base) {
-  return {
-    base,
-    enhancedScore: Number(base?.score) || 60,
-    factors: [],
-    verdict: String(base?.analysis || ''),
-    prosForUser: [],
-    consForUser: [],
-    alternatives: [],
-    personaScore: null,
-    personaAnalysis: '',
-    communityScore: null,
-    communityAnalysis: '',
-    overallVerdict: '',
-  };
 }
 
 function LoadingWorkboard({ phase, isCompare, L, t }) {
@@ -265,11 +228,39 @@ export default function LinkAnalysis() {
   // phase: input | identifying | quizLoading | quiz | analyzing | result
   const [phase, setPhase] = useState('input');
   const [base, setBase] = useState(null);
+  const [compareBases, setCompareBases] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [enhanced, setEnhanced] = useState(null);
   const [compareText, setCompareText] = useState('');
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
+  const [activeJobId, setActiveJobId] = useState('');
+  const [activeJobType, setActiveJobType] = useState('');
+  const seenSavedJobRef = useRef('');
+
+  useEffect(() => subscribeLinkAnalysisJob((job) => {
+    if (!job) return;
+    setActiveJobId(job.id || '');
+    setActiveJobType(job.type || '');
+    if (Array.isArray(job.urls) && job.urls.length) {
+      setUrls(job.urls.length < MAX_LINKS ? [...job.urls, ''] : job.urls.slice(0, MAX_LINKS));
+    }
+    setPhase(job.phase || 'input');
+    setBase(job.base || null);
+    setCompareBases(Array.isArray(job.bases) ? job.bases : []);
+    setQuestions(Array.isArray(job.questions) ? job.questions : []);
+    setEnhanced(job.enhanced || null);
+    setCompareText(job.compareText || '');
+    if (job.error === 'ANALYSIS_FAILED' || job.error === 'COMPARE_FAILED' || job.error === 'NOT_PRODUCT') {
+      setErr(t('la.errFail'));
+    } else {
+      setErr(job.error || '');
+    }
+    if (job.savedAt && seenSavedJobRef.current !== `${job.id}:${job.savedAt}`) {
+      seenSavedJobRef.current = `${job.id}:${job.savedAt}`;
+      setHistRefresh((n) => n + 1);
+    }
+  }), [t]);
 
   // One link → analysis, two+ → comparison. Fields auto-grow as links are
   // pasted (a fresh empty row appears), so there is no single/compare toggle.
@@ -291,7 +282,8 @@ export default function LinkAnalysis() {
   }
 
   function resetFlow() {
-    setPhase('input'); setBase(null); setQuestions([]); setEnhanced(null); setCompareText(''); setErr('');
+    clearLinkAnalysisJob(activeJobId);
+    setPhase('input'); setBase(null); setCompareBases([]); setQuestions([]); setEnhanced(null); setCompareText(''); setErr(''); setActiveJobId(''); setActiveJobType('');
   }
 
   function savePending(list) {
@@ -301,60 +293,25 @@ export default function LinkAnalysis() {
   // ── Single-link flow: identify → quiz → enhanced analysis ────────
   async function startSingle(url) {
     setErr(''); setEnhanced(null); setCompareText('');
-    setPhase('identifying');
     trackEvent('link_analysis', { count: 1 });
     try {
       const access = await requireAiAccess('link_analysis', { onMessage: setErr, requireQuiz: false });
       if (!access.ok) { setPhase('input'); return; }
       const profile = aiUserProfile(user);
-      const result = await analyzeLink(url, lang, profile);
-      setBase(result);
-      if (result.isProduct === false && !result.title) {
-        setErr(t('la.errFail')); setPhase('input'); return;
-      }
-      let qs = [];
-      setPhase('quizLoading');
-      try {
-        qs = await generateQuiz({ category: result.category, productTitle: result.title, url, language: lang, userProfile: profile });
-      } catch { qs = []; }
-      if (qs.length) { setQuestions(qs); setPhase('quiz'); }
-      else { await runEnhanced(result, []); } // no quiz available → analyze directly
+      startSingleLinkAnalysisJob({ url, language: lang, userProfile: profile });
     } catch {
       setErr(t('la.errFail')); setPhase('input');
     }
   }
 
-  async function runEnhanced(baseResult, answers) {
-    setPhase('analyzing');
-    try {
-      const data = await enhancedAnalysis({ base: baseResult, answers, language: lang, userProfile: aiUserProfile(user) });
-      setEnhanced(data);
-      setPhase('result');
-      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single', result: data });
-      setHistRefresh((n) => n + 1);
-    } catch {
-      const fallback = fallbackEnhancedResult(baseResult);
-      setEnhanced(fallback);
-      setErr('');
-      setPhase('result');
-      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: fallback.verdict, type: 'single', result: fallback });
-      setHistRefresh((n) => n + 1);
-    }
-  }
-
-  // ── Compare flow: combined verdict, no quiz ──────────────────────
+  // ── Compare flow: identify → comparison quiz → detailed verdict ──
   async function runCompare(list) {
     setErr(''); setEnhanced(null); setCompareText('');
-    setPhase('analyzing');
     trackEvent('link_analysis', { count: list.length });
     try {
       const access = await requireAiAccess('link_compare', { onMessage: setErr, requireQuiz: false });
       if (!access.ok) { setPhase('input'); return; }
-      const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang, aiUserProfile(user)) }]);
-      setCompareText(text);
-      setPhase('result');
-      await saveLinkAnalysisHistory({ urls: list, analysis: text, type: 'compare' });
-      setHistRefresh((n) => n + 1);
+      startCompareLinkAnalysisJob({ urls: list, language: lang, userProfile: aiUserProfile(user) });
     } catch {
       setErr(t('la.errFail')); setPhase('input');
     }
@@ -422,12 +379,16 @@ export default function LinkAnalysis() {
         subtitle={t('la.subtitle')}
         icon={(
           <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="10.8" cy="10.8" r="5.7" />
-            <path d="m15 15 4.4 4.4" />
-            <path d="M18.2 3.4v3.2" />
-            <path d="M16.6 5h3.2" />
-            <path d="M5.2 18.2v2.4" />
-            <path d="M4 19.4h2.4" />
+            <path d="M4 7.5h5" />
+            <path d="M15 7.5h5" />
+            <path d="M7 10.2v3.6" />
+            <path d="M17 10.2v3.6" />
+            <path d="M8.7 15.8h6.6" />
+            <circle cx="7" cy="7.5" r="2.4" />
+            <circle cx="17" cy="7.5" r="2.4" />
+            <path d="m9.3 17.2 1.7 1.7 3.7-4.1" />
+            <path d="M19.2 15.1v2.7" />
+            <path d="M17.85 16.45h2.7" />
           </svg>
         )}
       />
@@ -508,8 +469,27 @@ export default function LinkAnalysis() {
             subtitle={L('Tell Qor AI how you would use it for a match score made for you.',
               'Qor AI’ya nasıl kullanacağını söyle, sana özel uyum skoru çıksın.',
               'Sag Qor AI, wie du es nutzt — für einen Score, der zu dir passt.')}
-            onSubmit={(answers) => runEnhanced(base, answers)}
-            onSkip={() => runEnhanced(base, [])}
+            onSubmit={(answers) => submitLinkAnalysisJobAnswers(activeJobId, answers, aiUserProfile(user))}
+            onSkip={() => submitLinkAnalysisJobAnswers(activeJobId, [], aiUserProfile(user))}
+          />
+        </>
+      )}
+
+      {phase === 'quiz' && activeJobType === 'compare' && compareBases.length > 0 && questions.length > 0 && (
+        <>
+          <div className="la-identified la-identified-compare">
+            <span className="la-identified-tag">{L('Compare', 'Karşılaştırma', 'Vergleich')}</span>
+            <strong>{compareBases.map((p) => p.title || p.siteName || L('Product', 'Ürün', 'Produkt')).join(' vs ')}</strong>
+          </div>
+          <QuizFlow
+            questions={questions}
+            busy={false}
+            title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir', 'Vergleich anpassen')}
+            subtitle={L('Answer a few questions so Qor AI weighs these products like the app flow.',
+              'Birkaç soruyu yanıtla; Qor AI bu ürünleri uygulamadaki akış gibi detaylı tartacak.',
+              'Beantworte ein paar Fragen, damit Qor AI diese Produkte wie in der App detailliert gewichtet.')}
+            onSubmit={(answers) => submitLinkAnalysisJobAnswers(activeJobId, answers, aiUserProfile(user))}
+            onSkip={() => submitLinkAnalysisJobAnswers(activeJobId, [], aiUserProfile(user))}
           />
         </>
       )}

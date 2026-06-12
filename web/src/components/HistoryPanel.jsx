@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { pb } from '../lib/pocketbase';
-import { getSavedAnalyses } from '../lib/pbHistory';
+import { deleteSavedAnalysisHistory, getSavedAnalyses } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import SubLogo from './SubLogo.jsx';
 import './HistoryPanel.css';
@@ -38,10 +37,10 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
 
   if (!user || !items || items.length === 0) return null;
 
-  async function remove(e, id) {
+  async function remove(e, item) {
     e.stopPropagation();
-    setItems((list) => list.filter((x) => x.id !== id));
-    try { await pb.collection('saved_analyses').delete(id); } catch { /* best effort */ }
+    setItems((list) => list.filter((x) => x.id !== item.id));
+    try { await deleteSavedAnalysisHistory(item); } catch { /* best effort */ }
   }
 
   return (
@@ -73,7 +72,7 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
                 </span>
                 <span className="hist-del" role="button" tabIndex={-1}
                   title={L('Delete', 'Sil', 'Löschen')}
-                  onClick={(e) => remove(e, it.id)}>×</span>
+                  onClick={(e) => remove(e, it)}>×</span>
               </button>
             );
           })}
