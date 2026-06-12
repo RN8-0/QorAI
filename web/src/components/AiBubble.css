@@ -75,7 +75,25 @@
 }
 .aib-msg.model {
   align-self: flex-start; background: var(--bg3); color: var(--text);
+  max-width: 91%;
   border: 1px solid var(--border); border-bottom-left-radius: 4px;
+}
+.aib-msg.model .ai-line {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.58;
+}
+.aib-msg.model .ai-line strong { color: var(--text); font-weight: 850; }
+.aib-msg.model .ai-bullet {
+  padding-left: 16px;
+  position: relative;
+}
+.aib-msg.model .ai-bullet::before {
+  content: '•';
+  position: absolute;
+  left: 3px;
+  color: var(--accent);
+  font-weight: 900;
 }
 .aib-typing { display: flex; gap: 4px; align-items: center; }
 .aib-typing span {

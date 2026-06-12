@@ -14,14 +14,20 @@ function PlayGlyph({ size = 22 }) {
 }
 
 // variant: 'full' (icon + GET IT ON / Google Play) · 'compact' (icon + text)
-export default function PlayBadge({ getItOn = 'GET IT ON', label = 'Google Play', size = 'full', style, className = '' }) {
+export default function PlayBadge({ getItOn = 'GET IT ON', label = 'Google Play', size = 'full', iconOnly = false, style, className = '' }) {
+  const cls = 'play-badge'
+    + (size === 'sm' ? ' play-badge-sm' : '')
+    + (iconOnly ? ' play-badge-icon' : '')
+    + (className ? ` ${className}` : '');
   return (
-    <a className={'play-badge' + (size === 'sm' ? ' play-badge-sm' : '') + (className ? ` ${className}` : '')} href={PLAY_URL} target="_blank" rel="noopener" style={style}>
+    <a className={cls} href={PLAY_URL} target="_blank" rel="noopener" style={style} aria-label={label}>
       <PlayGlyph size={size === 'sm' ? 20 : 24} />
-      <span className="play-badge-txt">
-        <small>{getItOn}</small>
-        <b>{label}</b>
-      </span>
+      {!iconOnly && (
+        <span className="play-badge-txt">
+          <small>{getItOn}</small>
+          <b>{label}</b>
+        </span>
+      )}
     </a>
   );
 }

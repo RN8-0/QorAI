@@ -248,7 +248,9 @@ Rules:
 - Choose 8 questions for simple products, 9-10 for complex/high-consideration products
 - Cover use case, environment, performance/content expectations, quality tolerance, ownership risk, ergonomics, community/review sensitivity, and long-term value
 - Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use everyday-life context (after work, weekend plans, commuting, family use, a quiet evening, travel, shared home situations) instead of abstract labels
+- Use varied everyday-life contexts chosen from the product category and user profile instead of abstract labels
+- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
+- Each question must reveal one concrete trade-off that matters for this category, such as comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, or privacy vs convenience
 - Do NOT repeat the exact product name in every question. Mention the product name at most once across the whole quiz; otherwise use "this product" or the category naturally
 - Avoid short generic prompts such as "What do you expect from this product?"
 - Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
@@ -296,7 +298,9 @@ Rules:
 - Choose 8 questions for two simple products, 9-10 for complex categories or 3+ products
 - Cover usage intent, performance expectations, quality, portability/ergonomics, durability, risk tolerance, community/review sensitivity, must-have features, and long-term ownership
 - Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use everyday-life context (after work, Friday evening at home, travel, study/work pressure, shared household, long sessions, noisy rooms) so the user can picture the choice
+- Use varied everyday-life contexts chosen from the compared product category and user profile so the user can picture the choice
+- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
+- Each question must expose a real decision trade-off between the listed options, not just ask which product sounds nicer
 - Do NOT repeat exact product names in every question. Use neutral wording like "the first option", "the lighter option", "the stronger option", or the category unless a direct contrast is necessary
 - Avoid short generic prompts such as "Which one do you prefer?"
 - Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
@@ -357,7 +361,9 @@ Rules:
 - Choose 8 questions for one simple service, 9-10 when comparing multiple services or broad ecosystems
 - Cover habits, content/use-case priorities, device/ecosystem, discovery needs, quality expectations, family/shared use, offline/mobile use, community/review sensitivity, churn risk, and long-term retention
 - Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use everyday-life moments (Friday night at home, cooking, showering, commuting, working late, friends visiting, relaxing after school/work, gym, travel) so the user answers from real behavior
+- Use varied everyday-life moments chosen from the service category and user profile so the user answers from real behavior
+- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
+- Each question must reveal one concrete subscription trade-off, such as discovery vs control, catalog depth vs interface comfort, offline use vs cross-device sync, family sharing vs personal recommendations, or novelty vs retention
 - Do NOT repeat exact service names in every question. Mention each service name only when a direct comparison truly needs it; otherwise say "the music service", "the streaming app", "this subscription", or "the selected services"
 - Avoid short generic prompts such as "What do you expect from a music service?"
 - Do not use markdown, bold markers, quotation marks around service names, or headline-style labels

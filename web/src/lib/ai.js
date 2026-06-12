@@ -19,19 +19,34 @@ const DEEPSEEK_URL = `${PB_URL}/api/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat';
 const DEEPSEEK_MAX_OUTPUT = 8192; // deepseek-chat (V3) output cap
 
+function languageLabel(code = 'en') {
+  if (code === 'tr') return 'Turkish';
+  if (code === 'de') return 'German';
+  return 'English';
+}
+
 // Mirrors the mobile app's Qor AI chat persona so the web gives the same voice,
 // scope and rules as the app.
-const SYSTEM_PROMPT =
+const BASE_CHAT_PROMPT =
   'You are Qor AI — a knowledgeable, friendly shopping and product advisor for ALL product ' +
   'categories (technology, audio, photo, home, fashion and more) on qorai.net.\n' +
-  '- Warm and conversational, but honest about product weaknesses; concise (max 3-4 short paragraphs).\n' +
+  '- Warm and conversational, but honest about product weaknesses. Give rich, practical answers with clear sections when the question needs detail.\n' +
   '- Treat any product, comparison, page or link context you are given as the live, current Qor ' +
   'catalog state and the strongest source — trust it over older knowledge, and never claim a product ' +
   'does not exist or has not launched when it appears in that context.\n' +
-  '- Give clear recommendations with short reasoning and real trade-offs (specs, value, who it is for).\n' +
+  '- For product questions, first use Qor catalog context when provided: mention matched products, explain the relevant specs, compare trade-offs, and include product/store links from context when useful.\n' +
+  '- If catalog context is missing or weak, answer from general public product knowledge without inventing exact live prices or availability. Say what should be verified on the official/store page.\n' +
+  '- Give clear recommendations with reasoning and real trade-offs: specs, value, who it is for, who should avoid it, alternatives, and what to check before buying.\n' +
   '- Never mention backend providers, model names or internal tooling; if asked what powers you, answer as Qor AI.\n' +
-  '- Address the person directly ("you" / "sen" / "siz"), never "the user".\n' +
-  '- ALWAYS reply in the exact same language the user writes in.';
+  '- Address the person directly ("you" / "sen" / "siz"), never "the user".';
+
+function chatSystemPrompt(language = 'en', groundingContext = '') {
+  const langName = languageLabel(language);
+  return `${BASE_CHAT_PROMPT}
+- SITE LANGUAGE: Reply only in ${langName}. Keep official product and brand names as-is.
+- If the person writes in another language, still answer in ${langName} because the site language is ${langName}.
+${groundingContext ? `\nQOR CATALOG / PAGE CONTEXT:\n${groundingContext}` : ''}`;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -123,12 +138,17 @@ async function aiRequest({ system, messages, maxOutputTokens = 4096, temperature
 }
 
 // history: [{ role: 'user' | 'model', text: string }]
-export async function askQorAi(history) {
+export async function askQorAi(history, opts = {}) {
   const messages = history.map((m) => ({
     role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
     content: m.text,
   }));
-  return aiRequest({ system: SYSTEM_PROMPT, messages, maxOutputTokens: 2048, temperature: 0.7 });
+  return aiRequest({
+    system: chatSystemPrompt(opts.language || opts.lang || 'en', opts.context || ''),
+    messages,
+    maxOutputTokens: 4096,
+    temperature: 0.68,
+  });
 }
 
 // Custom system + user — used by the quiz / link / subscription engines.

@@ -206,7 +206,9 @@ function domainFor(name, website = '') {
 
 export default function SubLogo({ name, website = '', logo = '', size = 40, radius = 10 }) {
   const wordmark = wordmarkFor(name);
+  const useLocalWordmark = Boolean(wordmark && !logo);
   const urls = useMemo(() => {
+    if (useLocalWordmark) return [];
     const domain = domainFor(name, website);
     const iconSlug = simpleIconSlug(name);
     const list = [];
@@ -219,14 +221,14 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
       list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     }
     return list;
-  }, [name, website, logo, size]);
+  }, [name, website, logo, size, useLocalWordmark]);
   const [idx, setIdx] = useState(0);
   useEffect(() => { setIdx(0); }, [name, website, logo]);
 
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
-  if (idx >= urls.length && wordmark) {
+  if (useLocalWordmark || (idx >= urls.length && wordmark)) {
     const textLen = wordmark.text.length;
     const fontSize = Math.max(9, Math.min(size * 0.42, size / Math.max(1.7, textLen * 0.72)));
     return (

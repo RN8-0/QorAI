@@ -51,7 +51,9 @@ export default function Header() {
         <div className="container appbar-inner">
           <Link to="/" className="brand" onClick={() => setDrawer(false)}>
             <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" />
-            <span className="wm">Qor<b className="grad-text"> AI</b></span>
+            {isPremium
+              ? <span className="wm wm-premium">Premium</span>
+              : <span className="wm">Qor<b className="grad-text"> AI</b></span>}
           </Link>
 
           <nav className="nav" onMouseLeave={closeCatSoon}>
@@ -118,12 +120,11 @@ export default function Header() {
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>}
           </button>
 
-          <PlayBadge size="sm" className="desk-only"
+          <PlayBadge size="sm" className="desk-only" iconOnly={isPremium}
             getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
 
           {user ? (
             <div className="hd-user">
-              {isPremium && <span className="hd-pro" title={t('header.premium')}>PRO</span>}
               <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} title={isPremium ? coinWord : t('header.coins')}><span className="coin-dot">Q</span>{coinDisplay}</span>
               <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>{displayName[0]?.toUpperCase() || 'U'}</button>
               {menu && (
@@ -131,7 +132,7 @@ export default function Header() {
                   <div className="hd-menu-backdrop" onClick={() => setMenu(false)} />
                   <div className="hd-menu fade-up">
                     <div className="hd-menu-head">
-                      <strong>{displayName}{isPremium && <span className="hd-pro hd-pro-sm">PRO</span>}</strong>
+                      <strong>{displayName}</strong>
                       <span>{user.email}</span>
                     </div>
                     <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coinDisplay}</b> {coinWord}</div>

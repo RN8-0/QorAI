@@ -4,8 +4,56 @@ import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import { productPath } from '../lib/routes';
+import { searchProducts } from '../lib/typesense';
 import { useI18n } from '../i18n/index.jsx';
+import AiText from './AiText.jsx';
 import './AiBubble.css';
+
+function productUrl(product) {
+  try {
+    return new URL(productPath(product), window.location.origin).toString();
+  } catch {
+    return productPath(product);
+  }
+}
+
+function compactSpecs(product) {
+  const raw = String(product?.keySpecsText || '').replace(/\s+/g, ' ').trim();
+  if (raw) return raw.slice(0, 260);
+  const specs = [];
+  if (product?.screenSizeValue) specs.push(`screen ${product.screenSizeValue}"`);
+  if (product?.batteryCapacityValue) specs.push(`battery ${product.batteryCapacityValue} mAh`);
+  if (product?.weightValueKg) specs.push(`weight ${product.weightValueKg} kg`);
+  return specs.join(', ');
+}
+
+function buildCatalogContext(results = [], lang = 'en') {
+  const items = results.filter((p) => p?.id && p?.name).slice(0, 5);
+  if (!items.length) {
+    return [
+      'Qor catalog search returned no strong product match for this message.',
+      'If the question is about a product, answer with careful public product knowledge and say live prices/availability should be verified.',
+    ].join('\n');
+  }
+  return [
+    `Site language code: ${lang}`,
+    'Relevant Qor catalog matches. Prefer these when answering product questions:',
+    ...items.map((p, i) => {
+      const bits = [
+        `${i + 1}. ${p.name}`,
+        p.brand ? `Brand: ${p.brand}` : '',
+        p.category ? `Category: ${p.category}` : '',
+        p.techScore ? `Qor AI score: ${Math.round(Number(p.techScore) || 0)}` : '',
+        compactSpecs(p) ? `Specs: ${compactSpecs(p)}` : '',
+        `Qor link: ${productUrl(p)}`,
+        p.lowestOfferUrl ? `Store link: ${p.lowestOfferUrl}` : '',
+        p.sourceUrl ? `Source link: ${p.sourceUrl}` : '',
+      ].filter(Boolean);
+      return bits.join(' | ');
+    }),
+  ].join('\n');
+}
 
 export default function AiBubble() {
   const { t, lang } = useI18n();
@@ -60,10 +108,12 @@ export default function AiBubble() {
           text: `Use this Qor AI profile context silently when advising, without listing it back:\n${JSON.stringify(profile)}`,
         }]
         : [];
+      const catalogResults = await searchProducts(q, 5).catch(() => []);
+      const catalogContext = buildCatalogContext(catalogResults, lang);
       const reply = await askQorAi([
         ...profileContext,
         ...next.filter((m, i) => !(i === 0 && m === greetingRef.current)),
-      ]);
+      ], { language: lang, context: catalogContext });
       setMsgs((m) => [...m, { role: 'model', text: reply }]);
     } catch {
       setMsgs((m) => [...m, { role: 'model', text: t('ai.errReply') }]);
@@ -99,7 +149,9 @@ export default function AiBubble() {
 
           <div className="aib-msgs" ref={scrollRef}>
             {msgs.map((m, i) => (
-              <div key={i} className={'aib-msg ' + m.role}>{m.text}</div>
+              <div key={i} className={'aib-msg ' + m.role}>
+                {m.role === 'model' ? <AiText text={m.text} /> : m.text}
+              </div>
             ))}
             {busy && (
               <div className="aib-msg model aib-typing"><span /><span /><span /></div>

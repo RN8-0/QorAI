@@ -230,7 +230,7 @@
 .la-load-steps {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
   gap: 9px;
 }
 .la-load-step {
@@ -266,6 +266,8 @@
   font-size: 12px;
   line-height: 1.25;
   font-weight: 800;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .la-load-step.active {
   color: var(--text);

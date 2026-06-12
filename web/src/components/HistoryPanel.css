@@ -100,10 +100,13 @@
   letter-spacing: 0;
   line-height: 1;
   text-align: center;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 .sub-logo-wordmark span {
   display: block;
   max-width: calc(100% - 4px);
   white-space: nowrap;
   overflow: visible;
+  transform: translateY(-0.5px);
 }
