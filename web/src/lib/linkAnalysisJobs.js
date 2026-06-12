@@ -57,6 +57,7 @@ function newJob({ type, urls, language, userProfile }) {
     base: null,
     questions: [],
     enhanced: null,
+    compareResult: null,
     compareText: '',
     error: '',
     startedAt: new Date().toISOString(),
@@ -125,21 +126,21 @@ async function completeCompare(job, answers = []) {
       language: job.language,
       userProfile: job.userProfile,
     });
+    const comparisonSummary = text.recommendation
+      || text?.winner?.reason
+      || text?.products?.map((p) => p.name).filter(Boolean).join(' vs ')
+      || 'Qor AI comparison';
     const saved = await saveLinkAnalysisHistory({
       urls: job.urls,
-      analysis: text,
+      analysis: comparisonSummary,
       type: 'compare',
-      result: {
-        type: 'compare',
-        bases,
-        answers,
-        text,
-      },
+      result: text,
     });
     setJob({
       phase: 'result',
       enhanced: null,
-      compareText: text,
+      compareResult: text,
+      compareText: '',
       savedAt: new Date().toISOString(),
       savedId: saved?.id || '',
     });

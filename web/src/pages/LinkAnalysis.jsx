@@ -217,6 +217,212 @@ function EnhancedResult({ data, L }) {
   );
 }
 
+function list(v) {
+  return Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()) : [];
+}
+
+function CompareScoreChart({ products = [], L }) {
+  if (!products.length) return null;
+  const max = Math.max(100, ...products.map((p) => Math.round(p.score || 0)));
+  return (
+    <section className="la-cmp-chart">
+      <div className="la-cmp-section-title">📊 {L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
+      <div className="la-cmp-chart-rows">
+        {products.map((p, i) => {
+          const score = Math.round(p.score || 0);
+          const color = techColor(score);
+          return (
+            <div className="la-cmp-chart-row" key={`${p.name}-${i}`}>
+              <span className="la-cmp-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
+              <span className="la-cmp-chart-name">{p.name}</span>
+              <div className="la-cmp-chart-track">
+                <i style={{ width: `${Math.max(4, (score / max) * 100)}%`, background: color }} />
+              </div>
+              <b style={{ color }}>{score}</b>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function CompareFactorMatrix({ products = [], L }) {
+  const labels = [...new Set(products.flatMap((p) => list(p.factors).map((f) => f.label)))];
+  if (!labels.length || !products.length) return null;
+  return (
+    <section className="la-cmp-matrix">
+      <div className="la-cmp-section-title">🧭 {L('Factor breakdown', 'Faktör kırılımı', 'Faktorvergleich')}</div>
+      {labels.map((label) => (
+        <div className="la-cmp-matrix-row" key={label}>
+          <div className="la-cmp-matrix-label">{label}</div>
+          <div className="la-cmp-matrix-bars">
+            {products.map((p) => {
+              const f = list(p.factors).find((x) => x.label === label);
+              const score = Math.round(f?.score || 0);
+              const color = techColor(score);
+              return (
+                <div className="la-cmp-mini" key={`${p.name}-${label}`}>
+                  <span>{p.name}</span>
+                  <div><i style={{ width: `${Math.max(4, score)}%`, background: color }} /></div>
+                  <b style={{ color }}>{score}</b>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function CompareProductCard({ product, isWinner, L }) {
+  const score = Math.round(product.score || 0);
+  const pros = list(product.pros);
+  const cons = list(product.cons);
+  const risks = list(product.risks);
+  const factors = list(product.factors);
+  const specs = list(product.specHighlights);
+  return (
+    <article className={'la-cmp-card' + (isWinner ? ' winner' : '')}>
+      {isWinner && <span className="la-cmp-win-pill">★ {L('Best fit', 'En iyi eşleşme', 'Beste Wahl')}</span>}
+      <div className="la-cmp-card-top">
+        <Gauge value={score} size={66} stroke={6} color={techColor(score)} fontSize={18} />
+        <div className="la-cmp-card-id">
+          <strong>{product.name}</strong>
+          <span>{product.siteName || L('Product link', 'Ürün linki', 'Produktlink')}</span>
+        </div>
+      </div>
+      {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun', 'Ideal für')}:</b> {product.bestFor}</p>}
+      {product.summary && <div className="la-prose la-cmp-summary"><AiText text={product.summary} /></div>}
+
+      {factors.length > 0 && (
+        <div className="la-cmp-factors">
+          {factors.map((f) => (
+            <div className="la-cmp-factor" key={f.label}>
+              <div className="la-cmp-factor-top">
+                <span>{f.emoji} {f.label}</span>
+                <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
+              </div>
+              <div className="la-factor-bar"><i style={{ width: `${Math.max(4, Math.min(100, f.score || 0))}%`, background: techColor(f.score) }} /></div>
+              {f.detail && <small>{f.detail}</small>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {specs.length > 0 && (
+        <div className="la-cmp-specs">
+          {specs.slice(0, 6).map((s, i) => (
+            <span key={i}><b>{s.label}</b>{s.value}</span>
+          ))}
+        </div>
+      )}
+
+      {(pros.length > 0 || cons.length > 0) && (
+        <div className="la-poncons">
+          {pros.length > 0 && (
+            <div className="la-pc la-pc-pro">
+              <h4>✓ {L('Strengths', 'Güçlü yanlar', 'Stärken')}</h4>
+              <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          )}
+          {cons.length > 0 && (
+            <div className="la-pc la-pc-con">
+              <h4>⚠ {L('Trade-offs', 'Eksiler', 'Nachteile')}</h4>
+              <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {risks.length > 0 && (
+        <div className="la-cmp-risks">
+          <h4>🛠 {L('Ownership risks', 'Sahiplik riskleri', 'Besitzrisiken')}</h4>
+          <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </div>
+      )}
+
+      {product.community && (
+        <section className="la-sec">
+          <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
+          <div className="la-prose"><AiText text={product.community} /></div>
+        </section>
+      )}
+    </article>
+  );
+}
+
+function CompareResult({ data, L }) {
+  const products = list(data?.products)
+    .map((p) => ({ ...p, score: Number(p.score) || 0 }))
+    .sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.score - a.score);
+  if (!products.length) return null;
+  const winnerName = data?.winner?.best || products[0]?.name || '';
+  const best = products.find((p) => p.name === winnerName) || products[0];
+  const gap = data?.winner?.scoreGap || (products.length > 1 ? Math.round((products[0].score || 0) - (products[products.length - 1].score || 0)) : 0);
+  const detailed = data?.detailed || {};
+  return (
+    <div className="la-result la-cmp-result fade-up">
+      <div className="la-result-head">
+        <span>{L('Qor AI Comparison', 'Qor AI Karşılaştırması', 'Qor AI Vergleich')}</span>
+        <span className="la-result-title">{products.map((p) => p.name).join(' vs ')}</span>
+      </div>
+      <div className="la-result-body">
+        <section className="la-cmp-hero">
+          <div className="la-cmp-trophy">🏆</div>
+          <div className="la-cmp-hero-copy">
+            <span>{L('Best match', 'En iyi eşleşme', 'Beste Wahl')}</span>
+            <strong>{best.name}</strong>
+            {(data?.winner?.reason || data?.recommendation) && (
+              <div className="la-prose"><AiText text={data.winner?.reason || data.recommendation} /></div>
+            )}
+          </div>
+          <Gauge value={best.score} size={92} stroke={8} color={techColor(best.score)} fontSize={26} />
+        </section>
+
+        <CompareScoreChart products={products} L={L} />
+        <CompareFactorMatrix products={products} L={L} />
+
+        <div className="la-cmp-grid">
+          {products.map((p) => <CompareProductCard key={p.name} product={p} isWinner={p.name === best.name} L={L} />)}
+        </div>
+
+        {gap > 0 && (
+          <div className="la-cmp-gap">
+            {L('Score difference between best and weakest match', 'En iyi ve en zayıf eşleşme arasındaki puan farkı', 'Punktedifferenz zwischen bester und schwächster Wahl')}: <b>{gap}</b>
+          </div>
+        )}
+
+        {detailed.fit && (
+          <section className="la-sec">
+            <h4>🎯 {L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}</h4>
+            <div className="la-prose"><AiText text={detailed.fit} /></div>
+          </section>
+        )}
+        {detailed.performance && (
+          <section className="la-sec">
+            <h4>⚡ {L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}</h4>
+            <div className="la-prose"><AiText text={detailed.performance} /></div>
+          </section>
+        )}
+        {detailed.ownership && (
+          <section className="la-sec">
+            <h4>🛡 {L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}</h4>
+            <div className="la-prose"><AiText text={detailed.ownership} /></div>
+          </section>
+        )}
+        {(detailed.recommendation || data?.recommendation) && (
+          <section className="la-sec la-sec-final">
+            <h4>🏁 {L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')}</h4>
+            <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
@@ -231,6 +437,7 @@ export default function LinkAnalysis() {
   const [compareBases, setCompareBases] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [enhanced, setEnhanced] = useState(null);
+  const [compareResult, setCompareResult] = useState(null);
   const [compareText, setCompareText] = useState('');
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
@@ -250,6 +457,7 @@ export default function LinkAnalysis() {
     setCompareBases(Array.isArray(job.bases) ? job.bases : []);
     setQuestions(Array.isArray(job.questions) ? job.questions : []);
     setEnhanced(job.enhanced || null);
+    setCompareResult(job.compareResult || null);
     setCompareText(job.compareText || '');
     if (job.error === 'ANALYSIS_FAILED' || job.error === 'COMPARE_FAILED' || job.error === 'NOT_PRODUCT') {
       setErr(t('la.errFail'));
@@ -283,7 +491,7 @@ export default function LinkAnalysis() {
 
   function resetFlow() {
     clearLinkAnalysisJob(activeJobId);
-    setPhase('input'); setBase(null); setCompareBases([]); setQuestions([]); setEnhanced(null); setCompareText(''); setErr(''); setActiveJobId(''); setActiveJobType('');
+    setPhase('input'); setBase(null); setCompareBases([]); setQuestions([]); setEnhanced(null); setCompareResult(null); setCompareText(''); setErr(''); setActiveJobId(''); setActiveJobType('');
   }
 
   function savePending(list) {
@@ -292,7 +500,7 @@ export default function LinkAnalysis() {
 
   // ── Single-link flow: identify → quiz → enhanced analysis ────────
   async function startSingle(url) {
-    setErr(''); setEnhanced(null); setCompareText('');
+    setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: 1 });
     try {
       const access = await requireAiAccess('link_analysis', { onMessage: setErr, requireQuiz: false });
@@ -306,7 +514,7 @@ export default function LinkAnalysis() {
 
   // ── Compare flow: identify → comparison quiz → detailed verdict ──
   async function runCompare(list) {
-    setErr(''); setEnhanced(null); setCompareText('');
+    setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: list.length });
     try {
       const access = await requireAiAccess('link_compare', { onMessage: setErr, requireQuiz: false });
@@ -425,9 +633,15 @@ export default function LinkAnalysis() {
                   setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
                   if (it.result && it.result.base) {
                     setEnhanced(it.result);
+                    setCompareResult(null);
+                    setCompareText('');
+                  } else if (it.result && (it.result.type === 'compare_structured' || Array.isArray(it.result.products))) {
+                    setEnhanced(null);
+                    setCompareResult(it.result);
                     setCompareText('');
                   } else {
                     setEnhanced(null);
+                    setCompareResult(null);
                     setCompareText(String(it.analysis || ''));
                   }
                   setErr('');
@@ -484,6 +698,8 @@ export default function LinkAnalysis() {
       )}
 
       {phase === 'result' && enhanced && <EnhancedResult data={enhanced} L={L} />}
+
+      {phase === 'result' && compareResult && <CompareResult data={compareResult} L={L} />}
 
       {phase === 'result' && compareText && (
         <div className="la-result fade-up">

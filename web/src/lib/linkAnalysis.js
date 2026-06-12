@@ -10,7 +10,7 @@
 //  wording is identical even though the model differs.
 // ═══════════════════════════════════════════════════════════════
 
-import { askQorAiJson, askQorAiRaw } from './ai';
+import { askQorAiJson } from './ai';
 
 const LANG_NAMES = {
   en: 'English', tr: 'Turkish', de: 'German', fr: 'French', es: 'Spanish',
@@ -19,6 +19,17 @@ const LANG_NAMES = {
 };
 export function languageName(code) {
   return LANG_NAMES[String(code || 'en').slice(0, 2).toLowerCase()] || 'English';
+}
+
+function compareFactorLabels(language) {
+  const lang = String(language || 'en').slice(0, 2).toLowerCase();
+  if (lang === 'tr') {
+    return ['Kullanım Uyumu', 'Performans', 'Ekran Kalitesi', 'Soğutma ve Ses', 'Uzun Vadeli Değer'];
+  }
+  if (lang === 'de') {
+    return ['Nutzungsfit', 'Leistung', 'Displayqualität', 'Kühlung und Lautstärke', 'Langzeitwert'];
+  }
+  return ['Usage Fit', 'Performance', 'Display Quality', 'Cooling and Noise', 'Long-term Value'];
 }
 
 // ── Step 1: product identification + base analysis ────────────────
@@ -402,36 +413,10 @@ export async function enhancedAnalysis({ base, answers, language, userProfile = 
 
 function compareAnalysisPrompt(language) {
   const langName = languageName(language);
-  const lang = String(language || 'en').slice(0, 2).toLowerCase();
-  const headings = lang === 'tr'
-    ? [
-      'Ürünler belirlendi',
-      'Quiz bazlı uyum',
-      'Kafa kafaya performans ve özellikler',
-      'Güçlü ve zayıf yönler',
-      'Topluluk ve sahiplik riskleri',
-      'Nihai Qor AI önerisi',
-    ]
-    : lang === 'de'
-      ? [
-        'Erkannte Produkte',
-        'Quizbasierte Passung',
-        'Direkter Vergleich von Leistung und Ausstattung',
-        'Stärken und Schwächen',
-        'Community- und Besitzrisiken',
-        'Abschließende Qor AI Empfehlung',
-      ]
-      : [
-        'Products identified',
-        'Quiz-based fit',
-        'Head-to-head performance and specs',
-        'Strengths and weaknesses',
-        'Community and ownership risks',
-        'Final Qor AI recommendation',
-      ];
+  const factorLabels = compareFactorLabels(language);
   return `You are Qor AI's senior product comparison analyst.
 
-LANGUAGE: Write ALL output in ${langName}. Do not use English headings unless ${langName} is English.
+LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
 
 You will receive exact products identified from pasted URLs and the user's comparison quiz answers.
 
@@ -442,18 +427,59 @@ Rules:
 - Blend quiz answers into the recommendation.
 - If one product is clearly better for a certain user type, say that directly.
 - Do not invent live prices.
+- NEVER paste raw long URLs in text fields. Use product names and site domains only.
+- Scores must be realistic, varied, and based on THIS user's quiz answers.
+- Every product must have factor scores for: ${factorLabels.join(', ')}.
 
-Output in Markdown with exactly these bold headings, in this order:
-${headings.map((h, i) => `${i + 1}. **${h}**`).join('\n')}
-
-Under each heading write detailed paragraphs and concrete bullets where useful.`;
+Return ONLY valid JSON with this exact structure:
+{
+  "winner": {
+    "best": "exact product title",
+    "reason": "2-3 detailed sentences in ${langName}",
+    "scoreGap": 0
+  },
+  "products": [
+    {
+      "name": "exact product title",
+      "url": "exact input url",
+      "siteName": "domain or store",
+      "score": 0,
+      "rank": 1,
+      "bestFor": "2 sentences in ${langName}",
+      "summary": "4-6 detailed sentences in ${langName}",
+      "pros": ["4 detailed bullets in ${langName}"],
+      "cons": ["3 detailed bullets in ${langName}"],
+      "risks": ["3 ownership/community risks in ${langName}"],
+      "factors": [
+        {"label": "${factorLabels[0]}", "score": 0, "emoji": "🎯", "detail": "1 sentence"},
+        {"label": "${factorLabels[1]}", "score": 0, "emoji": "⚡", "detail": "1 sentence"},
+        {"label": "${factorLabels[2]}", "score": 0, "emoji": "🖥️", "detail": "1 sentence"},
+        {"label": "${factorLabels[3]}", "score": 0, "emoji": "❄️", "detail": "1 sentence"},
+        {"label": "${factorLabels[4]}", "score": 0, "emoji": "🚀", "detail": "1 sentence"}
+      ],
+      "specHighlights": [
+        {"label": "short spec label in ${langName}", "value": "short known/inferred value or uncertainty note"}
+      ],
+      "community": "2 short paragraphs in ${langName}"
+    }
+  ],
+  "detailed": {
+    "fit": "3-4 paragraphs in ${langName} comparing quiz-based fit",
+    "performance": "3-4 paragraphs in ${langName} comparing performance/specs",
+    "ownership": "3-4 paragraphs in ${langName} comparing durability, support, community risk",
+    "recommendation": "4-6 paragraphs in ${langName} with clear final decision and alternatives"
+  },
+  "recommendation": "2-3 sentence final summary in ${langName}"
+}`;
 }
 
 export async function compareAnalysis({ bases, answers, language, userProfile = {} }) {
+  const factorLabels = compareFactorLabels(language);
+  const factorEmojis = ['🎯', '⚡', '🖥️', '❄️', '🚀'];
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  return askQorAiRaw({
+  const res = await askQorAiJson({
     system: compareAnalysisPrompt(language),
     user: JSON.stringify({
       products: (bases || []).map((p, i) => ({
@@ -468,9 +494,71 @@ export async function compareAnalysis({ bases, answers, language, userProfile = 
       quizAnswers: qaPairs,
       userProfile,
     }),
-    maxOutputTokens: 8192,
-    temperature: 0.55,
+    maxOutputTokens: 12288,
   });
+  const rawProducts = Array.isArray(res.products) ? res.products : [];
+  const sourceProducts = (bases || []).length
+    ? (bases || []).map((base, i) => rawProducts.find((p) => p?.url && p.url === base.url) || rawProducts[i] || {})
+    : rawProducts;
+  const products = sourceProducts
+    .map((p, i) => {
+      const base = (bases || [])[i] || {};
+      const score = num(p.score) || num(base.score) || 50;
+      const rawFactors = Array.isArray(p.factors) ? p.factors.map((f) => ({
+        label: String(f?.label || ''),
+        score: num(f?.score ?? f?.value),
+        emoji: String(f?.emoji || '📊'),
+        detail: String(f?.detail || ''),
+      })).filter((f) => f.label) : [];
+      const factors = rawFactors.length ? rawFactors : factorLabels.map((label, j) => ({
+        label,
+        score,
+        emoji: factorEmojis[j] || '📊',
+        detail: '',
+      }));
+      const specHighlights = Array.isArray(p.specHighlights) ? p.specHighlights.map((s) => ({
+        label: String(s?.label || ''),
+        value: String(s?.value || ''),
+      })).filter((s) => s.label || s.value) : [];
+      return {
+        name: String(p.name || base.title || `Product ${i + 1}`),
+        url: String(p.url || base.url || ''),
+        siteName: String(p.siteName || base.siteName || ''),
+        score,
+        rank: num(p.rank) || i + 1,
+        bestFor: String(p.bestFor || ''),
+        summary: String(p.summary || base.analysis || ''),
+        pros: Array.isArray(p.pros) ? p.pros.map(String) : [],
+        cons: Array.isArray(p.cons) ? p.cons.map(String) : [],
+        risks: Array.isArray(p.risks) ? p.risks.map(String) : [],
+        factors,
+        specHighlights,
+        community: String(p.community || ''),
+      };
+    });
+  products.sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  const winner = res.winner && typeof res.winner === 'object' ? {
+    best: String(res.winner.best || products[0]?.name || ''),
+    reason: String(res.winner.reason || ''),
+    scoreGap: num(res.winner.scoreGap),
+  } : { best: products[0]?.name || '', reason: '', scoreGap: 0 };
+  const detailed = res.detailed && typeof res.detailed === 'object' ? {
+    fit: String(res.detailed.fit || ''),
+    performance: String(res.detailed.performance || ''),
+    ownership: String(res.detailed.ownership || ''),
+    recommendation: String(res.detailed.recommendation || ''),
+  } : null;
+  return {
+    type: 'compare_structured',
+    isCompare: true,
+    bases,
+    answers,
+    winner,
+    products,
+    scores: Object.fromEntries(products.map((p) => [p.name, p.score])),
+    detailed,
+    recommendation: String(res.recommendation || detailed?.recommendation || winner.reason || ''),
+  };
 }
 
 // ── Subscription analysis ─────────────────────────────────────────
@@ -566,7 +654,7 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  // askQorAiRaw already backs off and retries on 429/5xx internally.
+  // The AI request helper already backs off and retries on 429/5xx internally.
   const res = await askQorAiJson({
     system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
