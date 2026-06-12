@@ -87,5 +87,10 @@
   overflow: hidden;
   flex: none;
 }
-.sub-logo img { object-fit: contain; }
+.sub-logo img {
+  object-fit: contain;
+  image-rendering: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
 .sub-logo-fallback { color: #fff; font-weight: 800; }

@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { subscriptionAnalysis, subscriptionsMixCategories, generateSubscriptionQuiz } from '../lib/linkAnalysis';
+import { subscriptionsMixCategories } from '../lib/linkAnalysis';
+import {
+  clearSubscriptionAnalysisJob,
+  startSubscriptionAnalysisJob,
+  submitSubscriptionAnalysisJobAnswers,
+  subscribeSubscriptionAnalysisJob,
+} from '../lib/subscriptionAnalysisJobs';
 import { trackEvent } from '../lib/analytics';
-import { saveSubscriptionHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
@@ -51,21 +56,26 @@ const TOP20 = [
 ];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
 
+function list(v) {
+  return Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()) : [];
+}
+
 // Horizontal bar chart comparing each service's overall compatibility score —
 // the "graph" the app shows above the per-service breakdown.
 function ScoreChart({ services, L }) {
-  const rows = (services || []).filter((s) => s && s.name).slice(0, 8);
+  const rows = (services || []).filter((s) => s && s.name).slice(0, 10);
   if (rows.length < 1) return null;
   const max = Math.max(100, ...rows.map((s) => Math.round(s.score || 0)));
   return (
     <div className="subs-chart">
-      <div className="subs-chart-head">{L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
+      <div className="subs-chart-head">📊 {L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
       <div className="subs-chart-rows">
-        {rows.map((s) => {
+        {rows.map((s, i) => {
           const v = Math.round(s.score || 0);
           const col = techColor(v);
           return (
             <div className="subs-chart-row" key={s.name}>
+              <span className="subs-chart-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
               <span className="subs-chart-label"><SubLogo name={s.name} size={20} radius={6} />{s.name}</span>
               <div className="subs-chart-track">
                 <i style={{ width: `${Math.max(3, (v / max) * 100)}%`, background: col }} />
@@ -79,12 +89,43 @@ function ScoreChart({ services, L }) {
   );
 }
 
+function FactorMatrix({ services, L }) {
+  const labels = [...new Set((services || []).flatMap((s) => list(s.factors).map((f) => f.label)))];
+  if (!labels.length || !services?.length) return null;
+  return (
+    <div className="subs-matrix">
+      <div className="subs-chart-head">🧭 {L('Factor breakdown', 'Faktör kırılımı', 'Faktorvergleich')}</div>
+      {labels.map((label) => (
+        <div className="subs-matrix-row" key={label}>
+          <div className="subs-matrix-label">{label}</div>
+          <div className="subs-matrix-bars">
+            {services.map((s) => {
+              const f = list(s.factors).find((x) => x.label === label);
+              const score = Math.round(f?.score || 0);
+              const color = techColor(score);
+              return (
+                <div className="subs-mini" key={`${s.name}-${label}`}>
+                  <span><SubLogo name={s.name} size={18} radius={5} />{s.name}</span>
+                  <div><i style={{ width: `${Math.max(4, Math.min(100, score))}%`, background: color }} /></div>
+                  <b style={{ color }}>{score}</b>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ServiceCard({ s, isWinner, L }) {
   const score = Math.round(s.score || 0);
   // History entries saved by older builds may miss the array fields.
-  const factors = Array.isArray(s.factors) ? s.factors : [];
-  const pros = Array.isArray(s.pros) ? s.pros : [];
-  const cons = Array.isArray(s.cons) ? s.cons : [];
+  const factors = list(s.factors);
+  const pros = list(s.pros);
+  const cons = list(s.cons);
+  const risks = list(s.risks);
+  const features = list(s.features);
   return (
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
@@ -101,22 +142,110 @@ function ServiceCard({ s, isWinner, L }) {
         <div className="subs-svc-factors">
           {factors.map((f) => (
             <div className="subs-svc-factor" key={f.label}>
-              <span>{f.label.replace(/_/g, ' ')}</span>
+              <span>{f.emoji ? `${f.emoji} ` : ''}{f.label.replace(/_/g, ' ')}</span>
+              <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
               <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
             </div>
           ))}
         </div>
       )}
+      {features.length > 0 && (
+        <div className="subs-svc-features">
+          {features.slice(0, 6).map((x, i) => (
+            <span key={i}><b>{x.label}</b>{x.value}</span>
+          ))}
+        </div>
+      )}
       <div className="subs-svc-pc">
         {pros.length > 0 && (
-          <ul className="subs-svc-pros">{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <div className="subs-svc-list subs-svc-pros">
+            <h4>✓ {L('Strengths', 'Güçlü yanlar', 'Stärken')}</h4>
+            <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </div>
         )}
         {cons.length > 0 && (
-          <ul className="subs-svc-cons">{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <div className="subs-svc-list subs-svc-cons">
+            <h4>⚠ {L('Trade-offs', 'Eksiler', 'Nachteile')}</h4>
+            <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </div>
         )}
       </div>
-      {s.community && <p className="subs-svc-comm">🌐 {s.community}</p>}
+      {risks.length > 0 && (
+        <div className="subs-svc-risks">
+          <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
+          <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </div>
+      )}
+      {s.community && (
+        <section className="subs-svc-section">
+          <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
+          <AiText text={s.community} />
+        </section>
+      )}
       {s.bestFor && <p className="subs-svc-best">🎯 {s.bestFor}</p>}
+    </div>
+  );
+}
+
+function SubsLoadingWorkboard({ phase, count, L, t }) {
+  const [step, setStep] = useState(0);
+  const copy = (() => {
+    if (phase === 'quizLoading') {
+      return {
+        title: L('Preparing your subscription quiz', 'Abonelik quizin hazırlanıyor', 'Abo-Quiz wird vorbereitet'),
+        detail: L('Qor AI is adapting the questions to the selected service type.',
+          'Qor AI soruları seçilen abonelik türüne göre uyarlıyor.',
+          'Qor AI passt die Fragen an den ausgewählten Diensttyp an.'),
+        steps: [
+          L('Reading selected services', 'Seçilen abonelikler okunuyor', 'Ausgewählte Dienste werden gelesen'),
+          L('Detecting service category', 'Servis kategorisi algılanıyor', 'Dienstkategorie wird erkannt'),
+          L('Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'),
+          L('Writing 8-10 targeted questions', '8-10 hedefli soru yazılıyor', '8-10 gezielte Fragen werden erstellt'),
+          L('Balancing answer choices', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'),
+        ],
+      };
+    }
+    return {
+      title: count > 1
+        ? L('Comparing subscriptions', 'Abonelikler karşılaştırılıyor', 'Abos werden verglichen')
+        : L('Analyzing subscription', 'Abonelik analiz ediliyor', 'Abo wird analysiert'),
+      detail: L('Qor AI is turning your quiz answers into a detailed match report.',
+        'Qor AI quiz cevaplarını detaylı eşleşme raporuna çeviriyor.',
+        'Qor AI macht aus deinen Antworten einen detaillierten Match-Bericht.'),
+      steps: [
+        L('Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'),
+        L('Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor', 'Inhalts- und Funktionsfit wird bewertet'),
+        L('Reviewing community signals', 'İnternet yorum sinyalleri değerlendiriliyor', 'Community-Signale werden bewertet'),
+        L('Scoring retention and risk factors', 'Tutma değeri ve risk faktörleri puanlanıyor', 'Bindung und Risiken werden bewertet'),
+        L('Building the final recommendation', 'Nihai öneri hazırlanıyor', 'Empfehlung wird erstellt'),
+      ],
+    };
+  })();
+
+  useEffect(() => {
+    setStep(0);
+    const timer = setInterval(() => setStep((n) => (n + 1) % copy.steps.length), 1350);
+    return () => clearInterval(timer);
+  }, [phase, copy.steps.length]);
+
+  return (
+    <div className="subs-loading-board fade-up" role="status" aria-live="polite">
+      <div className="subs-load-orb" aria-hidden="true">
+        <span className="subs-load-ring" />
+        <span className="subs-load-core" />
+      </div>
+      <div className="subs-load-copy">
+        <strong>{copy.title || t('subs.loading')}</strong>
+        <span>{copy.detail}</span>
+      </div>
+      <div className="subs-load-steps">
+        {copy.steps.map((label, i) => (
+          <div key={label} className={'subs-load-step' + (i === step ? ' active' : '') + (i < step ? ' done' : '')}>
+            <i aria-hidden="true">{i < step ? '✓' : i + 1}</i>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -139,11 +268,22 @@ export default function Subscriptions() {
   const [histEntry, setHistEntry] = useState(null);
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
+  const [activeJobId, setActiveJobId] = useState('');
+  const lastSavedAt = useRef('');
 
   function profile() {
     return { ...aiUserProfile(user), recentlyViewed: browsingSignal() };
   }
-  function resetAnalysis() { setPhase('select'); setResult(null); setHistEntry(null); setQuestions([]); setErr(''); }
+  function resetAnalysis() {
+    if (activeJobId) clearSubscriptionAnalysisJob(activeJobId);
+    setActiveJobId('');
+    setPhase('select');
+    setResult(null);
+    setHistEntry(null);
+    setQuestions([]);
+    setPendingItems([]);
+    setErr('');
+  }
   function toggle(name) {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
     resetAnalysis();
@@ -186,39 +326,35 @@ export default function Subscriptions() {
     try {
       const access = await requireAiAccess('subscription_analysis', { onMessage: setErr });
       if (!access.ok) { setPhase('select'); return; }
-      // App parity: select → personalized quiz → analysis. If the quiz can't be
-      // generated, fall straight through to the analysis.
       setPendingItems(items);
-      setPhase('quizLoading');
-      let qs = [];
-      try {
-        qs = await generateSubscriptionQuiz({ subscriptionNames: items, language: lang, userProfile: profile() });
-      } catch { qs = []; }
-      if (qs.length) { setQuestions(qs); setPhase('quiz'); }
-      else { await runAnalysis(items, []); }
+      trackEvent('subscription_compare', { count: items.length });
+      const job = startSubscriptionAnalysisJob({ services: items, language: lang, userProfile: profile() });
+      setActiveJobId(job?.id || '');
     } catch {
       setErr(t('la.errFail'));
       setPhase('select');
     }
   }
 
-  // Step 2: structured subscription analysis (scores / winner / recommendation),
-  // blending profile + browsing history + quiz answers.
-  async function runAnalysis(items, answers, failPhase = 'select') {
-    setPhase('analyzing');
-    trackEvent('subscription_compare', { count: items.length });
-    try {
-      const data = await subscriptionAnalysis({ subscriptionNames: items, answers, language: lang, userProfile: profile() });
-      if (!data.services.length) throw new Error('empty analysis');
-      setResult(data);
-      setPhase('result');
-      await saveSubscriptionHistory({ services: items, quiz: answers, analysis: data.recommendation, scores: data.scores, result: data });
-      setHistRefresh((n) => n + 1);
-    } catch {
+  useEffect(() => subscribeSubscriptionAnalysisJob((job) => {
+    if (!job) return;
+    setActiveJobId(job.id || '');
+    setPendingItems(job.services || []);
+    if (job.services?.length) setSelected(job.services);
+    setQuestions(job.questions || []);
+    setResult(job.result || null);
+    setHistEntry(null);
+    setPhase(job.phase || 'select');
+    if (job.error === 'ANALYSIS_FAILED' || job.error === 'QUIZ_FAILED') {
       setErr(t('la.errFail'));
-      setPhase(failPhase);
+    } else {
+      setErr('');
     }
-  }
+    if (job.savedAt && job.savedAt !== lastSavedAt.current) {
+      lastSavedAt.current = job.savedAt;
+      setHistRefresh((n) => n + 1);
+    }
+  }), [t]);
 
   useEffect(() => {
     if (!user || !hasCompletedQuiz(user)) return;
@@ -321,6 +457,8 @@ export default function Subscriptions() {
             <Reveal delay={140} className="subs-history">
               <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
+                  if (activeJobId) clearSubscriptionAnalysisJob(activeJobId);
+                  setActiveJobId('');
                   if (it.result && Array.isArray(it.result.services)) {
                     setSelected(it.services.length ? it.services : it.result.services.map((s) => s.name).filter(Boolean));
                     setResult(it.result);
@@ -337,10 +475,7 @@ export default function Subscriptions() {
       )}
 
       {phase === 'quizLoading' && (
-        <div className="subs-loading fade-up">
-          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
-          <span className="soft-pulse">{L('Preparing your quiz…', 'Quiz hazırlanıyor…', 'Quiz wird vorbereitet…')}</span>
-        </div>
+        <SubsLoadingWorkboard phase={phase} count={pendingItems.length || selected.length} L={L} t={t} />
       )}
 
       {phase === 'quiz' && questions.length > 0 && (
@@ -359,8 +494,8 @@ export default function Subscriptions() {
             subtitle={L('A few quick questions so Qor AI weighs the services for how you actually use them.',
               'Birkaç kısa soru — Qor AI servisleri senin gerçek kullanımına göre tartsın.',
               'Ein paar kurze Fragen, damit Qor AI die Dienste nach deiner Nutzung gewichtet.')}
-            onSubmit={(answers) => runAnalysis(pendingItems, answers)}
-            onSkip={() => runAnalysis(pendingItems, [])}
+            onSubmit={(answers) => submitSubscriptionAnalysisJobAnswers(activeJobId, answers, profile())}
+            onSkip={() => submitSubscriptionAnalysisJobAnswers(activeJobId, [], profile())}
           />
         </>
       )}
@@ -401,27 +536,73 @@ export default function Subscriptions() {
       )}
 
       {phase === 'analyzing' && (
-        <div className="subs-loading fade-up">
-          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
-          <span className="soft-pulse">{t('subs.loading')}</span>
-        </div>
+        <SubsLoadingWorkboard phase={phase} count={pendingItems.length || selected.length} L={L} t={t} />
       )}
 
       {phase === 'result' && result && (
         <div className="subs-result fade-up">
+          {(() => {
+            const services = result.services || [];
+            const best = services.find((s) => s.name === winnerName) || [...services].sort((a, b) => b.score - a.score)[0];
+            if (!best) return null;
+            return (
+              <section className="subs-result-hero">
+                <div className="subs-hero-logo"><SubLogo name={best.name} size={56} radius={14} /></div>
+                <div className="subs-hero-copy">
+                  <span>{L('Best match', 'En iyi eşleşme', 'Beste Wahl')}</span>
+                  <strong>{best.name}</strong>
+                  {(result?.winner?.reason || result?.winner?.recommendation || result?.recommendation) && (
+                    <div className="subs-hero-text">
+                      <AiText text={result.winner?.reason || result.winner?.recommendation || result.recommendation} />
+                    </div>
+                  )}
+                </div>
+                <Gauge value={best.score} size={90} stroke={8} color={techColor(best.score)} fontSize={25} />
+              </section>
+            );
+          })()}
+
           {(result.services || []).length > 1 && <ScoreChart services={result.services} L={L} />}
+          <FactorMatrix services={result.services || []} L={L} />
 
           <div className="subs-svc-grid">
             {(result.services || []).map((s) => (
-              <ServiceCard key={s.name} s={s} isWinner={result.isCompare && s.name === winnerName} L={L} />
+              <ServiceCard key={s.name} s={s} isWinner={s.name === winnerName || (!result.isCompare && (result.services || []).length === 1)} L={L} />
             ))}
           </div>
 
           {result.detailed && (
             <div className="subs-detailed">
-              {result.detailed.fit && <p><b>{L('Overall fit', 'Genel uyum', 'Gesamtpassung')}:</b> {result.detailed.fit}</p>}
-              {result.detailed.features && <p><b>{L('Features', 'Özellikler', 'Funktionen')}:</b> {result.detailed.features}</p>}
-              {result.detailed.ux && <p><b>{L('Experience', 'Deneyim', 'Erlebnis')}:</b> {result.detailed.ux}</p>}
+              {result.detailed.fit && (
+                <section>
+                  <h4>🎯 {L('Overall fit', 'Genel uyum', 'Gesamtpassung')}</h4>
+                  <AiText text={result.detailed.fit} />
+                </section>
+              )}
+              {result.detailed.features && (
+                <section>
+                  <h4>🧩 {L('Features and content', 'Özellikler ve içerik', 'Funktionen und Inhalte')}</h4>
+                  <AiText text={result.detailed.features} />
+                </section>
+              )}
+              {result.detailed.ux && (
+                <section>
+                  <h4>✨ {L('Experience', 'Deneyim', 'Erlebnis')}</h4>
+                  <AiText text={result.detailed.ux} />
+                </section>
+              )}
+              {result.detailed.community && (
+                <section>
+                  <h4>🌐 {L('Community and risk', 'Topluluk ve risk', 'Community und Risiko')}</h4>
+                  <AiText text={result.detailed.community} />
+                </section>
+              )}
+              {result.detailed.plan && (
+                <section>
+                  <h4>🗺 {L('Usage plan', 'Kullanım planı', 'Nutzungsplan')}</h4>
+                  <AiText text={result.detailed.plan} />
+                </section>
+              )}
             </div>
           )}
 

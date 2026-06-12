@@ -35,7 +35,7 @@ const KNOWN_DOMAINS = {
   'airtable': 'airtable.com', 'loom': 'loom.com', 'miro': 'miro.com', 'framer': 'framer.com',
   'webflow': 'webflow.com', 'squarespace': 'squarespace.com', 'wix': 'wix.com',
   'shopify': 'shopify.com', 'cloudflare': 'cloudflare.com', 'hostinger': 'hostinger.com',
-  'godaddy': 'godaddy.com', 'namecheap': 'namecheap.com', 'adobe creative cloud': 'adobe.com',
+  'godaddy': 'godaddy.com', 'namecheap': 'namecheap.com',
   // Turkish services
   'blutv': 'blutv.com', 'blu tv': 'blutv.com', 'exxen': 'exxen.com', 'gain': 'gain.tv',
   'mubi': 'mubi.com', 'tabii': 'tabii.com', 'puhutv': 'puhutv.com', 'puhu tv': 'puhutv.com',
@@ -84,13 +84,15 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
   const urls = useMemo(() => {
     const domain = domainFor(name, website);
     const list = [];
+    const hiRes = Math.max(96, Math.ceil(size * 2.5));
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
     if (domain) {
-      list.push(`https://logo.clearbit.com/${domain}`);
+      list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
+      list.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=${hiRes}`);
       list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     }
     return list;
-  }, [name, website, logo]);
+  }, [name, website, logo, size]);
   const [idx, setIdx] = useState(0);
   useEffect(() => { setIdx(0); }, [name, website, logo]);
 
@@ -107,7 +109,9 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
   }
   return (
     <span className="sub-logo" style={{ width: size, height: size, borderRadius: radius }}>
-      <img src={urls[idx]} alt={name} loading="lazy" width={size - 8} height={size - 8}
+      <img src={urls[idx]} alt={name} loading="lazy" width={Math.max(16, size - 8)} height={Math.max(16, size - 8)}
+        referrerPolicy="no-referrer"
+        style={{ width: Math.max(16, size - 8), height: Math.max(16, size - 8) }}
         onError={() => setIdx((i) => i + 1)} />
     </span>
   );

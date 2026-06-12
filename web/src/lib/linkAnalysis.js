@@ -24,12 +24,77 @@ export function languageName(code) {
 function compareFactorLabels(language) {
   const lang = String(language || 'en').slice(0, 2).toLowerCase();
   if (lang === 'tr') {
-    return ['Kullanım Uyumu', 'Performans', 'Ekran Kalitesi', 'Soğutma ve Ses', 'Uzun Vadeli Değer'];
+    return [
+      'Kullanım Uyumu',
+      'Performans',
+      'Kalite Uyumu',
+      'Özellik Seti',
+      'Ergonomi ve Taşınabilirlik',
+      'Güvenilirlik ve Risk',
+      'Topluluk Sinyali',
+      'Uzun Vadeli Değer',
+    ];
   }
   if (lang === 'de') {
-    return ['Nutzungsfit', 'Leistung', 'Displayqualität', 'Kühlung und Lautstärke', 'Langzeitwert'];
+    return [
+      'Nutzungsfit',
+      'Leistung',
+      'Qualitätsfit',
+      'Funktionsumfang',
+      'Ergonomie und Mobilität',
+      'Zuverlässigkeit und Risiko',
+      'Community-Signal',
+      'Langzeitwert',
+    ];
   }
-  return ['Usage Fit', 'Performance', 'Display Quality', 'Cooling and Noise', 'Long-term Value'];
+  return [
+    'Usage Fit',
+    'Performance',
+    'Quality Fit',
+    'Feature Set',
+    'Ergonomics and Portability',
+    'Reliability and Risk',
+    'Community Signal',
+    'Long-term Value',
+  ];
+}
+
+function subscriptionFactorDefinitions(language) {
+  const lang = String(language || 'en').slice(0, 2).toLowerCase();
+  if (lang === 'tr') {
+    return [
+      { key: 'usage_fit', label: 'Kullanım Uyumu', emoji: '🎯' },
+      { key: 'content_match', label: 'İçerik Uyumu', emoji: '🎬' },
+      { key: 'feature_depth', label: 'Özellik Derinliği', emoji: '🧩' },
+      { key: 'ecosystem_fit', label: 'Ekosistem Uyumu', emoji: '🔗' },
+      { key: 'lifestyle_match', label: 'Yaşam Tarzı Uyumu', emoji: '🏠' },
+      { key: 'community_signal', label: 'Topluluk Sinyali', emoji: '🌐' },
+      { key: 'retention_value', label: 'Uzun Vadeli Tutma Değeri', emoji: '🚀' },
+      { key: 'risk_balance', label: 'Risk Dengesi', emoji: '🛡' },
+    ];
+  }
+  if (lang === 'de') {
+    return [
+      { key: 'usage_fit', label: 'Nutzungsfit', emoji: '🎯' },
+      { key: 'content_match', label: 'Inhaltsfit', emoji: '🎬' },
+      { key: 'feature_depth', label: 'Funktionstiefe', emoji: '🧩' },
+      { key: 'ecosystem_fit', label: 'Ökosystem-Fit', emoji: '🔗' },
+      { key: 'lifestyle_match', label: 'Lifestyle-Fit', emoji: '🏠' },
+      { key: 'community_signal', label: 'Community-Signal', emoji: '🌐' },
+      { key: 'retention_value', label: 'Langzeitbindung', emoji: '🚀' },
+      { key: 'risk_balance', label: 'Risikobalance', emoji: '🛡' },
+    ];
+  }
+  return [
+    { key: 'usage_fit', label: 'Usage Fit', emoji: '🎯' },
+    { key: 'content_match', label: 'Content Match', emoji: '🎬' },
+    { key: 'feature_depth', label: 'Feature Depth', emoji: '🧩' },
+    { key: 'ecosystem_fit', label: 'Ecosystem Fit', emoji: '🔗' },
+    { key: 'lifestyle_match', label: 'Lifestyle Match', emoji: '🏠' },
+    { key: 'community_signal', label: 'Community Signal', emoji: '🌐' },
+    { key: 'retention_value', label: 'Long-term Retention', emoji: '🚀' },
+    { key: 'risk_balance', label: 'Risk Balance', emoji: '🛡' },
+  ];
 }
 
 // ── Step 1: product identification + base analysis ────────────────
@@ -173,13 +238,15 @@ export async function analyzeLink(url, language, userProfile = {}) {
 // ── Step 2: personalized quiz ─────────────────────────────────────
 function quizGenerationPrompt(language) {
   const langName = languageName(language);
-  return `You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
-(4-6 questions) to understand the user's needs for a specific product category.
+  return `You are Qor AI's product quiz engine. Generate a focused personalized quiz
+(8-10 questions) to understand the user's needs for a specific product category.
 
 LANGUAGE: Generate ALL questions and options in ${langName}.
 
 Rules:
 - Questions must be relevant to the product CATEGORY
+- Choose 8 questions for simple products, 9-10 for complex/high-consideration products
+- Cover use case, environment, performance/content expectations, quality tolerance, ownership risk, ergonomics, community/review sensitivity, and long-term value
 - Each question has exactly 4 options
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
@@ -198,7 +265,7 @@ export async function generateQuiz({ category, productTitle, url, language, user
   const res = await askQorAiJson({
     system: quizGenerationPrompt(language),
     user: JSON.stringify({ category, productTitle, url, userProfile }),
-    maxOutputTokens: 1536,
+    maxOutputTokens: 3072,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({
@@ -206,20 +273,22 @@ export async function generateQuiz({ category, productTitle, url, language, user
       text: String(q.question || ''),
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
-    .filter((q) => q.text && q.options.length >= 2);
+    .filter((q) => q.text && q.options.length >= 2)
+    .slice(0, 10);
   return questions;
 }
 
 function compareQuizGenerationPrompt(language) {
   const langName = languageName(language);
-  return `You are Qor AI's comparison quiz engine. Generate a SHORT but high-signal quiz
-(5-6 questions) that helps choose between multiple product links.
+  return `You are Qor AI's comparison quiz engine. Generate a focused, high-signal quiz
+(8-10 questions) that helps choose between multiple product links.
 
 LANGUAGE: Generate ALL questions and options in ${langName}.
 
 Rules:
 - Questions must compare the listed products, not ask generic shopping questions
-- Cover usage intent, performance expectations, portability/durability, risk tolerance, and must-have features
+- Choose 8 questions for two simple products, 9-10 for complex categories or 3+ products
+- Cover usage intent, performance expectations, quality, portability/ergonomics, durability, risk tolerance, community/review sensitivity, must-have features, and long-term ownership
 - Each question has exactly 4 options
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
@@ -247,7 +316,7 @@ export async function generateCompareQuiz({ products, language, userProfile = {}
       })),
       userProfile,
     }),
-    maxOutputTokens: 2048,
+    maxOutputTokens: 8192,
   });
   return (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({
@@ -255,14 +324,15 @@ export async function generateCompareQuiz({ products, language, userProfile = {}
       text: String(q.question || ''),
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
-    .filter((q) => q.text && q.options.length >= 2);
+    .filter((q) => q.text && q.options.length >= 2)
+    .slice(0, 10);
 }
 
 // ── Subscription quiz (same engine, subscription wording) ─────────
 function subscriptionQuizPrompt(names, isCompare, language) {
   const langName = languageName(language);
-  return `You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
-(4-5 questions) to understand the user's needs for: ${names}.
+  return `You are Qor AI's subscription quiz engine. Generate a focused personalized quiz
+(8-10 questions) to understand the user's needs for: ${names}.
 
 LANGUAGE: Generate ALL questions and options in ${langName}.
 
@@ -272,6 +342,8 @@ their specific habits, preferences, and expectations.
 Rules:
 - Questions must be directly relevant to the specific service type
   (e.g. streaming: genres/frequency; music: genres/offline; AI tools: use-cases)
+- Choose 8 questions for one simple service, 9-10 when comparing multiple services or broad ecosystems
+- Cover habits, content/use-case priorities, device/ecosystem, discovery needs, quality expectations, family/shared use, offline/mobile use, community/review sensitivity, churn risk, and long-term retention
 - Each question has exactly 4 options
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
@@ -291,7 +363,7 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
   const res = await askQorAiJson({
     system: subscriptionQuizPrompt(subscriptionNames.join(', '), isCompare, language),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
-    maxOutputTokens: 1536,
+    maxOutputTokens: 8192,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({
@@ -299,7 +371,8 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
       text: String(q.question || ''),
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
-    .filter((q) => q.text && q.options.length >= 2);
+    .filter((q) => q.text && q.options.length >= 2)
+    .slice(0, 10);
   return questions;
 }
 
@@ -313,6 +386,9 @@ function enhancedAnalysisPrompt(language) {
   const qualityFit = isTr ? 'Kalite Uyumu' : isDe ? 'Qualitätsfit' : 'Quality Fit';
   const futureProofing = isTr ? 'Uzun Vadeli Değer' : isDe ? 'Langzeitwert' : 'Long-term Value';
   const lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : isDe ? 'Lifestyle-Fit' : 'Lifestyle Match';
+  const featureFit = isTr ? 'Özellik Seti' : isDe ? 'Funktionsumfang' : 'Feature Set';
+  const reliabilityRisk = isTr ? 'Güvenilirlik ve Risk' : isDe ? 'Zuverlässigkeit und Risiko' : 'Reliability and Risk';
+  const communitySignal = isTr ? 'Topluluk Sinyali' : isDe ? 'Community-Signal' : 'Community Signal';
   return `You are Qor AI's senior product analyst. Given a product, quiz answers, and user profile, produce a comprehensive, professional, highly detailed personalized match report.
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
@@ -347,6 +423,9 @@ Return valid JSON (all text in ${langName}):
     {"label": "${usageFit}", "score": <0-100>, "emoji": "🎯"},
     {"label": "${budgetMatch}", "score": <0-100>, "emoji": "💰"},
     {"label": "${qualityFit}", "score": <0-100>, "emoji": "⭐"},
+    {"label": "${featureFit}", "score": <0-100>, "emoji": "🧩"},
+    {"label": "${reliabilityRisk}", "score": <0-100>, "emoji": "🛡"},
+    {"label": "${communitySignal}", "score": <0-100>, "emoji": "🌐"},
     {"label": "${futureProofing}", "score": <0-100>, "emoji": "🚀"},
     {"label": "${lifestyleMatch}", "score": <0-100>, "emoji": "🏠"}
   ],
@@ -385,7 +464,7 @@ export async function enhancedAnalysis({ base, answers, language, userProfile = 
       quizAnswers: qaPairs,
       userProfile,
     }),
-    maxOutputTokens: 4096,
+    maxOutputTokens: 8192,
   });
   const factors = (Array.isArray(res.factors) ? res.factors : [])
     .map((f) => ({
@@ -414,6 +493,10 @@ export async function enhancedAnalysis({ base, answers, language, userProfile = 
 function compareAnalysisPrompt(language) {
   const langName = languageName(language);
   const factorLabels = compareFactorLabels(language);
+  const factorEmojis = ['🎯', '⚡', '⭐', '🧩', '🧭', '🛡', '🌐', '🚀'];
+  const factorSchema = factorLabels
+    .map((label, i) => `        {"label": "${label}", "score": 0, "emoji": "${factorEmojis[i] || '📊'}", "detail": "1 sentence"}`)
+    .join(',\n');
   return `You are Qor AI's senior product comparison analyst.
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
@@ -451,11 +534,7 @@ Return ONLY valid JSON with this exact structure:
       "cons": ["3 detailed bullets in ${langName}"],
       "risks": ["3 ownership/community risks in ${langName}"],
       "factors": [
-        {"label": "${factorLabels[0]}", "score": 0, "emoji": "🎯", "detail": "1 sentence"},
-        {"label": "${factorLabels[1]}", "score": 0, "emoji": "⚡", "detail": "1 sentence"},
-        {"label": "${factorLabels[2]}", "score": 0, "emoji": "🖥️", "detail": "1 sentence"},
-        {"label": "${factorLabels[3]}", "score": 0, "emoji": "❄️", "detail": "1 sentence"},
-        {"label": "${factorLabels[4]}", "score": 0, "emoji": "🚀", "detail": "1 sentence"}
+${factorSchema}
       ],
       "specHighlights": [
         {"label": "short spec label in ${langName}", "value": "short known/inferred value or uncertainty note"}
@@ -475,7 +554,7 @@ Return ONLY valid JSON with this exact structure:
 
 export async function compareAnalysis({ bases, answers, language, userProfile = {} }) {
   const factorLabels = compareFactorLabels(language);
-  const factorEmojis = ['🎯', '⚡', '🖥️', '❄️', '🚀'];
+  const factorEmojis = ['🎯', '⚡', '⭐', '🧩', '🧭', '🛡', '🌐', '🚀'];
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
@@ -568,55 +647,72 @@ export async function compareAnalysis({ bases, answers, language, userProfile = 
 // let the model lean on its own knowledge.
 function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) {
   const langName = languageName(language);
+  const factorDefs = subscriptionFactorDefinitions(language);
+  const factorSchema = factorDefs
+    .map((f) => `        "${f.key}": "integer 0-100 - ${f.label}"`)
+    .join(',\n');
   const schema = isCompare
     ? `{
   "subscriptions": {
     "<service_name>": {
       "category": "string - shared subscription category label",
+      "rank": "integer starting at 1",
       "compatibility_score": "integer 0-100",
       "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to quiz answers",
       "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
       "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "risks": ["ownership/churn risk string", "risk string", "risk string"],
+      "notable_features": [
+        {"label": "short feature label", "value": "short feature detail"}
+      ],
       "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
       "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
-        "usage_fit": "integer 0-100",
-        "value_match": "integer 0-100",
-        "content_match": "integer 0-100",
-        "ecosystem_fit": "integer 0-100",
-        "lifestyle_match": "integer 0-100"
+${factorSchema}
       }
     }
   },
   "winner": {
     "best_content": "string - service name",
     "overall": "string - service name",
+    "reason": "string - 2-3 detailed sentences",
+    "score_gap": "integer score gap between strongest and weakest",
     "recommendation": "string - 5-7 paragraph personalized recommendation explaining WHY, trade-offs, best use cases and final decision"
   },
   "detailed_comparison": {
     "service_fit_summary": "string - 3-4 paragraphs comparing overall fit",
     "feature_comparison": "string - 3-4 paragraphs about feature differences",
-    "user_experience": "string - 3-4 paragraphs about UX differences"
+    "user_experience": "string - 3-4 paragraphs about UX differences",
+    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction",
+    "final_plan": "string - 3-4 paragraphs explaining how the user should use the winning service or combination"
   }
 }`
     : `{
   "subscriptions": {
     "${names}": {
       "category": "string - service category label",
+      "rank": 1,
       "compatibility_score": "integer 0-100",
       "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to quiz answers",
       "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
       "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "risks": ["ownership/churn risk string", "risk string", "risk string"],
+      "notable_features": [
+        {"label": "short feature label", "value": "short feature detail"}
+      ],
       "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
       "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
-        "usage_fit": "integer 0-100",
-        "value_match": "integer 0-100",
-        "content_match": "integer 0-100",
-        "ecosystem_fit": "integer 0-100",
-        "lifestyle_match": "integer 0-100"
+${factorSchema}
       }
     }
+  },
+  "detailed_comparison": {
+    "service_fit_summary": "string - 3-4 paragraphs about overall fit",
+    "feature_comparison": "string - 3-4 paragraphs about features and content/use cases",
+    "user_experience": "string - 3-4 paragraphs about UX and everyday usage",
+    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction",
+    "final_plan": "string - 3-4 paragraphs explaining how the user should use or evaluate the service"
   },
   "recommendation": "string - 5-7 paragraph personalized recommendation explaining fit, trade-offs, usage scenarios and final decision"
 }`;
@@ -634,12 +730,13 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 items, cons exactly 4 items — each item one concise sentence
-- factors are 0-100 integers
+- pros must have exactly 5 items, cons exactly 4 items, risks exactly 3 items — each item one concise sentence
+- notable_features must have 4-6 concise items
+- factors are 0-100 integers and MUST include every factor key shown in the schema
 - Be specific and personalized to the quiz answers and the user profile, not generic
 - Blend the user's profile, browsing history and quiz answers when scoring
 - compatibility_explanation: 3-4 sentences. community_sentiment: 2 short paragraphs.
-  best_for: 2 sentences. recommendation / detailed_comparison fields: 2-3 short
+  best_for: 2 sentences. recommendation / detailed_comparison fields: 3-4 short
   paragraphs each. Keep it substantial but DO NOT pad — finishing the full JSON
   for ALL services matters more than length.
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
@@ -651,6 +748,8 @@ ${schema}`;
 export async function subscriptionAnalysis({ subscriptionNames, answers, language, userProfile = {} }) {
   const isCompare = subscriptionNames.length > 1;
   const names = subscriptionNames.join(', ');
+  const factorDefs = subscriptionFactorDefinitions(language);
+  const factorByKey = Object.fromEntries(factorDefs.map((f) => [f.key, f]));
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
@@ -661,34 +760,69 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
     maxOutputTokens: 12288,
   });
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
-  const services = Object.entries(subsRaw).map(([name, d]) => ({
-    name,
-    category: String(d?.category || ''),
-    score: num(d?.compatibility_score),
-    explanation: String(d?.compatibility_explanation || ''),
-    pros: Array.isArray(d?.pros) ? d.pros.map(String) : [],
-    cons: Array.isArray(d?.cons) ? d.cons.map(String) : [],
-    community: String(d?.community_sentiment || ''),
-    bestFor: String(d?.best_for || ''),
-    factors: d?.factors && typeof d.factors === 'object'
-      ? Object.entries(d.factors).map(([label, v]) => ({ label, score: num(v) }))
-      : [],
-  }));
+  const lookup = new Map(Object.entries(subsRaw).map(([name, d]) => [String(name).toLowerCase(), { name, d }]));
+  const services = (subscriptionNames || []).map((inputName, i) => {
+    const found = lookup.get(String(inputName).toLowerCase())
+      || [...lookup.values()].find((x) => String(x.name).toLowerCase().includes(String(inputName).toLowerCase()))
+      || { name: inputName, d: {} };
+    const d = found.d || {};
+    const score = num(d?.compatibility_score) || 55;
+    const rawFactors = d?.factors && typeof d.factors === 'object'
+      ? Object.entries(d.factors).map(([key, v]) => {
+        const def = factorByKey[key] || {};
+        return {
+          key,
+          label: def.label || String(key).replace(/_/g, ' '),
+          emoji: def.emoji || '📊',
+          score: num(v) || score,
+        };
+      })
+      : [];
+    const factors = rawFactors.length ? rawFactors : factorDefs.map((f) => ({
+      key: f.key,
+      label: f.label,
+      emoji: f.emoji,
+      score,
+    }));
+    const features = Array.isArray(d?.notable_features) ? d.notable_features.map((x) => ({
+      label: String(x?.label || ''),
+      value: String(x?.value || ''),
+    })).filter((x) => x.label || x.value) : [];
+    return {
+      name: String(found.name || inputName),
+      category: String(d?.category || ''),
+      score,
+      rank: num(d?.rank) || i + 1,
+      explanation: String(d?.compatibility_explanation || ''),
+      pros: Array.isArray(d?.pros) ? d.pros.map(String) : [],
+      cons: Array.isArray(d?.cons) ? d.cons.map(String) : [],
+      risks: Array.isArray(d?.risks) ? d.risks.map(String) : [],
+      features,
+      community: String(d?.community_sentiment || ''),
+      bestFor: String(d?.best_for || ''),
+      factors,
+    };
+  }).sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.score - a.score);
   const scores = {};
   services.forEach((s) => { scores[s.name] = s.score; });
+  const bestByScore = [...services].sort((a, b) => b.score - a.score)[0]?.name || '';
   return {
     isCompare,
     services,
     scores,
     winner: res.winner && typeof res.winner === 'object' ? {
-      best: String(res.winner.best_content || res.winner.overall || ''),
+      best: String(res.winner.best_content || res.winner.overall || bestByScore || ''),
       overall: String(res.winner.overall || ''),
+      reason: String(res.winner.reason || ''),
+      scoreGap: num(res.winner.score_gap ?? res.winner.scoreGap),
       recommendation: String(res.winner.recommendation || ''),
-    } : null,
+    } : { best: bestByScore, overall: bestByScore, reason: '', scoreGap: 0, recommendation: '' },
     detailed: res.detailed_comparison && typeof res.detailed_comparison === 'object' ? {
       fit: String(res.detailed_comparison.service_fit_summary || ''),
       features: String(res.detailed_comparison.feature_comparison || ''),
       ux: String(res.detailed_comparison.user_experience || ''),
+      community: String(res.detailed_comparison.community_and_risk || ''),
+      plan: String(res.detailed_comparison.final_plan || ''),
     } : null,
     recommendation: String(res.recommendation || res?.winner?.recommendation || ''),
   };
