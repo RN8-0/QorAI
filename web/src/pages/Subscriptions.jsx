@@ -200,7 +200,7 @@ function SubsLoadingWorkboard({ phase, count, L, t }) {
           L('Reading selected services', 'Seçilen abonelikler okunuyor', 'Ausgewählte Dienste werden gelesen'),
           L('Detecting service category', 'Servis kategorisi algılanıyor', 'Dienstkategorie wird erkannt'),
           L('Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'),
-          L('Writing 8-10 targeted questions', '8-10 hedefli soru yazılıyor', '8-10 gezielte Fragen werden erstellt'),
+          L('Writing targeted questions', 'Hedefli sorular yazılıyor', 'Gezielte Fragen werden erstellt'),
           L('Balancing answer choices', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'),
         ],
       };
@@ -398,11 +398,7 @@ export default function Subscriptions() {
         title={t('subs.title')}
         subtitle={t('subs.subtitle')}
         icon={(
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="13" rx="2" />
-            <path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-            <path d="M10 12l4 2.5-4 2.5z" fill="currentColor" stroke="none" />
-          </svg>
+          <img className="subs-hero-logo-img" src="/assets/qor_logo_512.png?v=20260605a" alt="" />
         )}
       />
 

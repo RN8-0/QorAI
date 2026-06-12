@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 // Port of the app's SubscriptionLogoWidget (lib/presentation/widgets/
-// subscription_logo_widget.dart): known service → domain → clearbit logo,
-// duckduckgo favicon fallback, letter-avatar last resort.
+// subscription_logo_widget.dart): known service → crisp SVG logo,
+// high-res favicon fallback, letter-avatar last resort.
 
 const KNOWN_DOMAINS = {
   'netflix': 'netflix.com', 'spotify': 'spotify.com', 'apple music': 'music.apple.com',
@@ -66,6 +66,122 @@ const KNOWN_DOMAINS = {
 
 const AVATAR_COLORS = ['#6c5ce7', '#0984e3', '#00b894', '#e17055', '#d63031', '#e84393', '#fdcb6e', '#00cec9'];
 
+const WORDMARKS = {
+  'netflix': { text: 'N', color: '#E50914', bg: '#FFFFFF' },
+  'disney+': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
+  'disney plus': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
+  'amazon prime': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'amazon prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'apple tv+': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
+  'apple tv': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
+  'hbo max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
+  'max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
+  'youtube premium': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
+  'youtube': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
+  'blutv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
+  'blu tv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
+  'exxen': { text: 'EXXEN', color: '#0D0D0D', bg: '#FFD400' },
+  'gain': { text: 'GAIN', color: '#111827', bg: '#FFFFFF' },
+  'mubi': { text: 'MUBI', color: '#FFFFFF', bg: '#111827' },
+  'crunchyroll': { text: 'C', color: '#F47521', bg: '#FFFFFF' },
+  'spotify': { text: 'S', color: '#1DB954', bg: '#FFFFFF' },
+  'apple music': { text: '♪', color: '#FA243C', bg: '#FFFFFF' },
+  'youtube music': { text: 'YT', color: '#FF0033', bg: '#FFFFFF' },
+  'tidal': { text: '◆', color: '#FFFFFF', bg: '#111827' },
+  'chatgpt': { text: 'AI', color: '#111827', bg: '#FFFFFF' },
+  'chatgpt plus': { text: 'AI', color: '#111827', bg: '#FFFFFF' },
+  'claude': { text: 'AI', color: '#C15F3C', bg: '#FFF8F3' },
+  'claude pro': { text: 'AI', color: '#C15F3C', bg: '#FFF8F3' },
+  'gemini': { text: '✦', color: '#4285F4', bg: '#FFFFFF' },
+  'gemini advanced': { text: '✦', color: '#4285F4', bg: '#FFFFFF' },
+  'perplexity': { text: 'P', color: '#111827', bg: '#FFFFFF' },
+  'midjourney': { text: 'MJ', color: '#FFFFFF', bg: '#111827' },
+  'xbox game pass': { text: 'X', color: '#107C10', bg: '#FFFFFF' },
+  'xbox': { text: 'X', color: '#107C10', bg: '#FFFFFF' },
+  'playstation plus': { text: 'PS', color: '#003791', bg: '#FFFFFF' },
+  'playstation': { text: 'PS', color: '#003791', bg: '#FFFFFF' },
+  'bein sports': { text: 'beIN', color: '#5C2D91', bg: '#FFFFFF' },
+  'beinsports': { text: 'beIN', color: '#5C2D91', bg: '#FFFFFF' },
+  'tod': { text: 'TOD', color: '#111827', bg: '#FFFFFF' },
+  'tabii': { text: 'tabii', color: '#10B981', bg: '#F5FFFB' },
+  'microsoft 365': { text: 'M365', color: '#2563EB', bg: '#F8FBFF' },
+  'google one': { text: 'One', color: '#4285F4', bg: '#FFFFFF' },
+  'icloud+': { text: 'iCloud', color: '#111827', bg: '#FFFFFF' },
+  'icloud': { text: 'iCloud', color: '#111827', bg: '#FFFFFF' },
+  'adobe creative cloud': { text: 'Adobe', color: '#FA0F00', bg: '#FFFFFF' },
+  'notion': { text: 'N', color: '#111827', bg: '#FFFFFF' },
+  'canva': { text: 'C', color: '#7D2AE8', bg: '#FFFFFF' },
+  'hostinger': { text: 'H', color: '#673DE6', bg: '#FFFFFF' },
+};
+
+const SIMPLE_ICON_SLUGS = {
+  'netflix': 'netflix',
+  'disney+': 'disneyplus',
+  'disney plus': 'disneyplus',
+  'amazon prime': 'amazonprime',
+  'amazon prime video': 'amazonprime',
+  'prime video': 'amazonprime',
+  'apple tv+': 'appletv',
+  'apple tv': 'appletv',
+  'hbo max': 'max',
+  'max': 'max',
+  'youtube': 'youtube',
+  'youtube music': 'youtubemusic',
+  'youtube premium': 'youtube',
+  'crunchyroll': 'crunchyroll',
+  'spotify': 'spotify',
+  'apple music': 'applemusic',
+  'tidal': 'tidal',
+  'deezer': 'deezer',
+  'soundcloud': 'soundcloud',
+  'chatgpt': 'openai',
+  'chatgpt plus': 'openai',
+  'openai': 'openai',
+  'claude': 'anthropic',
+  'claude pro': 'anthropic',
+  'anthropic': 'anthropic',
+  'gemini': 'googlegemini',
+  'google gemini': 'googlegemini',
+  'gemini advanced': 'googlegemini',
+  'perplexity': 'perplexity',
+  'microsoft copilot': 'microsoftcopilot',
+  'copilot': 'microsoftcopilot',
+  'midjourney': 'midjourney',
+  'deepseek': 'deepseek',
+  'xbox game pass': 'xbox',
+  'xbox': 'xbox',
+  'playstation plus': 'playstation',
+  'playstation': 'playstation',
+  'nintendo switch online': 'nintendo',
+  'nintendo': 'nintendo',
+  'geforce now': 'nvidia',
+  'nvidia geforce now': 'nvidia',
+  'ea play': 'ea',
+  'ubisoft+': 'ubisoft',
+  'ubisoft': 'ubisoft',
+  'microsoft 365': 'microsoft365',
+  'microsoft': 'microsoft',
+  'google one': 'googleone',
+  'icloud+': 'icloud',
+  'icloud': 'icloud',
+  'dropbox': 'dropbox',
+  'adobe creative cloud': 'adobecreativecloud',
+  'adobe': 'adobe',
+  'notion': 'notion',
+  'canva': 'canva',
+  'hostinger': 'hostinger',
+  'mubi': 'mubi',
+};
+
+function simpleIconSlug(name) {
+  return SIMPLE_ICON_SLUGS[String(name || '').toLowerCase().trim()] || '';
+}
+
+function wordmarkFor(name) {
+  return WORDMARKS[String(name || '').toLowerCase().trim()] || null;
+}
+
 function domainFor(name, website = '') {
   const lower = String(name || '').toLowerCase().trim();
   if (KNOWN_DOMAINS[lower]) return KNOWN_DOMAINS[lower];
@@ -81,14 +197,17 @@ function domainFor(name, website = '') {
 }
 
 export default function SubLogo({ name, website = '', logo = '', size = 40, radius = 10 }) {
+  const wordmark = wordmarkFor(name);
   const urls = useMemo(() => {
     const domain = domainFor(name, website);
+    const iconSlug = simpleIconSlug(name);
     const list = [];
     const hiRes = Math.max(96, Math.ceil(size * 2.5));
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
+    if (iconSlug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
     if (domain) {
-      list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
       list.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=${hiRes}`);
+      list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
       list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     }
     return list;
@@ -98,6 +217,23 @@ export default function SubLogo({ name, website = '', logo = '', size = 40, radi
 
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
+  if (wordmark && !logo) {
+    const textLen = wordmark.text.length;
+    const fontSize = Math.max(8, Math.min(size * 0.38, size / Math.max(1.8, textLen * 0.48)));
+    return (
+      <span className="sub-logo sub-logo-wordmark" style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        background: wordmark.bg,
+        color: wordmark.color,
+        fontSize,
+      }}>
+        <span>{wordmark.text}</span>
+      </span>
+    );
+  }
 
   if (idx >= urls.length) {
     return (

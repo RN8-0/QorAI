@@ -247,7 +247,13 @@ Rules:
 - Questions must be relevant to the product CATEGORY
 - Choose 8 questions for simple products, 9-10 for complex/high-consideration products
 - Cover use case, environment, performance/content expectations, quality tolerance, ownership risk, ergonomics, community/review sensitivity, and long-term value
+- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
+- Use everyday-life context (after work, weekend plans, commuting, family use, a quiet evening, travel, shared home situations) instead of abstract labels
+- Do NOT repeat the exact product name in every question. Mention the product name at most once across the whole quiz; otherwise use "this product" or the category naturally
+- Avoid short generic prompts such as "What do you expect from this product?"
+- Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
 - Each question has exactly 4 options
+- Options should be concrete and situational, not one-word labels
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in ${langName}
@@ -289,7 +295,13 @@ Rules:
 - Questions must compare the listed products, not ask generic shopping questions
 - Choose 8 questions for two simple products, 9-10 for complex categories or 3+ products
 - Cover usage intent, performance expectations, quality, portability/ergonomics, durability, risk tolerance, community/review sensitivity, must-have features, and long-term ownership
+- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
+- Use everyday-life context (after work, Friday evening at home, travel, study/work pressure, shared household, long sessions, noisy rooms) so the user can picture the choice
+- Do NOT repeat exact product names in every question. Use neutral wording like "the first option", "the lighter option", "the stronger option", or the category unless a direct contrast is necessary
+- Avoid short generic prompts such as "Which one do you prefer?"
+- Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
 - Each question has exactly 4 options
+- Options should describe realistic behavior or priority trade-offs, not one-word labels
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in ${langName}
@@ -344,7 +356,13 @@ Rules:
   (e.g. streaming: genres/frequency; music: genres/offline; AI tools: use-cases)
 - Choose 8 questions for one simple service, 9-10 when comparing multiple services or broad ecosystems
 - Cover habits, content/use-case priorities, device/ecosystem, discovery needs, quality expectations, family/shared use, offline/mobile use, community/review sensitivity, churn risk, and long-term retention
+- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
+- Use everyday-life moments (Friday night at home, cooking, showering, commuting, working late, friends visiting, relaxing after school/work, gym, travel) so the user answers from real behavior
+- Do NOT repeat exact service names in every question. Mention each service name only when a direct comparison truly needs it; otherwise say "the music service", "the streaming app", "this subscription", or "the selected services"
+- Avoid short generic prompts such as "What do you expect from a music service?"
+- Do not use markdown, bold markers, quotation marks around service names, or headline-style labels
 - Each question has exactly 4 options
+- Options should be concrete situational choices, not one-word labels
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in ${langName}
