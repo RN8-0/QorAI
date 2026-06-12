@@ -212,6 +212,34 @@ async function searchDocs(params) {
   return tsGet(SEARCH_PATH, params);
 }
 
+export async function getCategoryVisuals(categories = []) {
+  const cats = [...new Set(
+    (categories || []).map((cat) => String(cat || '').toLowerCase()).filter(Boolean),
+  )];
+  if (!cats.length) return {};
+  try {
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      sort_by: 'techScore:desc,trendScore:desc,updatedAtTs:desc',
+      filter_by: `category:[${cats.map(lit).join(',')}]`,
+      per_page: Math.min(Math.max(cats.length * 6, 80), 250),
+      include_fields: LIST_FIELDS,
+    });
+    const out = {};
+    for (const product of docs(data).map(docToProduct)) {
+      const cat = String(product.category || '').toLowerCase();
+      if (!cat || out[cat] || !product.imageUrl || !cats.includes(cat)) continue;
+      if (!productMatchesRequestedCategory(product, cat)) continue;
+      out[cat] = product.imageUrl;
+    }
+    return out;
+  } catch (err) {
+    console.warn('[catalog] quiz visuals failed', err);
+    return {};
+  }
+}
+
 export async function getHomeFeed(prefCats = []) {
   const preferred = (prefCats || [])
     .map((cat) => String(cat || '').toLowerCase())

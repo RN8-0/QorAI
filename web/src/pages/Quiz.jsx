@@ -4,6 +4,8 @@ import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
 import { markQuizCompletedLocal } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
+import { getCategoryVisuals } from '../lib/typesense';
+import SubLogo from '../components/SubLogo.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import './Quiz.css';
@@ -78,6 +80,135 @@ function categoryOptions(list) {
     return [id, label[0], label[1], label[2]];
   });
 }
+
+const VISUAL_CATEGORY_ALIASES = {
+  gpus: 'graphics_cards',
+  consoles: 'gaming_consoles',
+  'media-players': 'media_players',
+  'smart-rings': 'smart_rings',
+  'action-cameras': 'action_cameras',
+  'security-cameras': 'security_cameras',
+  'ip-cameras': 'ip_cameras',
+  'vr-headsets': 'vr_headsets',
+  'robot-vacuums': 'robot_vacuums',
+  'e-readers': 'e_readers',
+  psu: 'psu',
+  cases: 'pc_cases',
+  coolers: 'cpu_coolers',
+};
+
+const OPTION_ART = {
+  smartphones: '📱',
+  tablets: '▣',
+  laptops: '💻',
+  desktops: '🖥',
+  cpus: 'CPU',
+  gpus: 'GPU',
+  ram: 'RAM',
+  ssd: 'SSD',
+  motherboards: 'MB',
+  psu: 'PSU',
+  cases: 'PC',
+  coolers: '❄',
+  monitors: '▭',
+  keyboards: '⌨',
+  mice: '🖱',
+  webcams: 'CAM',
+  printers: '▤',
+  tvs: 'TV',
+  projectors: '▰',
+  'media-players': '▶',
+  headphones: '🎧',
+  speakers: '♪',
+  soundbars: '▬',
+  microphones: 'MIC',
+  smartwatches: '⌚',
+  'smart-rings': '○',
+  cameras: '📷',
+  'action-cameras': '◉',
+  'security-cameras': '◌',
+  'ip-cameras': 'IP',
+  dashcams: '🚘',
+  gimbals: '↕',
+  tripods: '△',
+  lenses: '◍',
+  consoles: '🎮',
+  gamepads: '🎮',
+  'vr-headsets': 'VR',
+  routers: 'Wi-Fi',
+  'robot-vacuums': '◎',
+  powerbanks: '⚡',
+  'e-readers': 'E',
+  drones: '✈',
+  apple: 'A',
+  android: 'A',
+  windows: '⊞',
+  samsung: 'S',
+  google: 'G',
+  xiaomi: 'Mi',
+  huawei: 'H',
+  mixed: '∞',
+  low: '$',
+  mid: '$$',
+  high: '$$$',
+  premium: 'P',
+  any: '∞',
+  price: '$',
+  quality: '★',
+  design: '◆',
+  ecosystem: '∞',
+  performance: '↯',
+  durability: '⬢',
+  battery: '🔋',
+  camera: '📷',
+  portability: '↔',
+  gaming: '🎮',
+  creator: '✦',
+  productivity: '✓',
+  gaming_setup: '🎮',
+  creator_setup: '✦',
+  productivity_setup: '⌘',
+  entertainment_setup: '▶',
+  price_tracking: '$',
+  all: '∞',
+  student: '🎓',
+  engineer: '⚙',
+  designer: '✎',
+  developer: '</>',
+  content_creator: 'REC',
+  video_editor: 'CUT',
+  photographer: '📷',
+  gamer: '🎮',
+  manager: '▦',
+  product_manager: 'PM',
+  entrepreneur: '↗',
+  healthcare: '+',
+  teacher: 'ABC',
+  finance: '$',
+  other: '?',
+  none: '—',
+};
+
+function visualCategory(value) {
+  return VISUAL_CATEGORY_ALIASES[value] || value;
+}
+
+function optionText(option, lang) {
+  return lang === 'tr' ? option[2] : lang === 'de' ? option[3] : option[1];
+}
+
+function optionArtwork(step, value, visuals) {
+  if (step.field !== 'interestCategories' && step.field !== 'currentDevices') return '';
+  return visuals[visualCategory(value)] || '';
+}
+
+function fallbackArt(value, label) {
+  return OPTION_ART[value] || String(label || value || '?').trim().slice(0, 2).toUpperCase();
+}
+
+const QUIZ_VISUAL_CATEGORIES = [...new Set(
+  [...QUIZ_CATEGORY_UNIVERSE, ...DEVICE_CATEGORY_UNIVERSE].map(visualCategory),
+)];
 
 const STEPS = [
   {
@@ -290,15 +421,26 @@ export default function Quiz() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const [summary, setSummary] = useState('');
+  const [visuals, setVisuals] = useState({});
+  const [brokenImages, setBrokenImages] = useState({});
 
   useEffect(() => {
     if (!user) openAuth();
     else setAnswers(emptyAnswers(user));
   }, [openAuth, user]);
 
+  useEffect(() => {
+    let live = true;
+    getCategoryVisuals(QUIZ_VISUAL_CATEGORIES).then((map) => {
+      if (live) setVisuals(map || {});
+    });
+    return () => { live = false; };
+  }, []);
+
   const current = STEPS[step];
   const total = STEPS.length;
   const selected = answers[current.field];
+  const selectedCount = Array.isArray(selected) ? selected.length : (selected ? 1 : 0);
 
   const canContinue = useMemo(() => {
     const value = answers[current.field];
@@ -476,15 +618,46 @@ export default function Quiz() {
           <div className="quiz-step-no">{t('quiz.step', { n: step + 1, total })}</div>
           <h2 className="quiz-q">{tx(lang, current.title)}</h2>
           {current.subtitle && <p className="quiz-sub">{tx(lang, current.subtitle)}</p>}
-          <div className="quiz-opts">
+          {current.multiple && (
+            <div className={'quiz-select-hint' + (canContinue ? ' ok' : '')}>
+              {L('Multiple choices are allowed.', 'Birden fazla seçim yapabilirsin.', 'Mehrfachauswahl ist möglich.')}
+              <span>{selectedCount}/{current.min || 1}</span>
+            </div>
+          )}
+          <div className={'quiz-opts quiz-opts-grid' + (current.options.length > 14 ? ' dense' : '') + (current.field === 'subscriptions' ? ' subs' : '')}>
             {current.options.map((o) => {
               const value = o[0];
+              const label = optionText(o, lang);
               const on = current.multiple
                 ? Array.isArray(selected) && selected.includes(value)
                 : selected === value;
+              const imageKey = `${current.field}:${value}`;
+              const image = optionArtwork(current, value, visuals);
+              const showImage = image && !brokenImages[imageKey];
               return (
-                <button key={value} className={'quiz-opt' + (on ? ' on' : '')} onClick={() => pick(value)}>
-                  {lang === 'tr' ? o[2] : lang === 'de' ? o[3] : o[1]}
+                <button
+                  key={value}
+                  type="button"
+                  className={'quiz-choice' + (on ? ' on' : '') + (current.multiple ? ' multi' : ' single')}
+                  onClick={() => pick(value)}
+                  aria-pressed={on}
+                >
+                  <span className="quiz-choice-art" aria-hidden="true">
+                    {current.field === 'subscriptions' && value !== 'none' ? (
+                      <SubLogo name={label} size={72} radius={28} />
+                    ) : showImage ? (
+                      <img
+                        src={image}
+                        alt=""
+                        loading="lazy"
+                        onError={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
+                      />
+                    ) : (
+                      <span className="quiz-choice-fallback">{fallbackArt(value, label)}</span>
+                    )}
+                    <span className="quiz-choice-check">{current.multiple ? '✓' : '●'}</span>
+                  </span>
+                  <span className="quiz-choice-label">{label}</span>
                 </button>
               );
             })}
