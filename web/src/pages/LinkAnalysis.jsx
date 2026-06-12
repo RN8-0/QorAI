@@ -548,7 +548,7 @@ export default function LinkAnalysis() {
     setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: 1 });
     try {
-      const access = await requireAiAccess('link_analysis', { onMessage: setErr, requireQuiz: false });
+      const access = await requireAiAccess('link_analysis', { onMessage: setErr });
       if (!access.ok) { setPhase('input'); return; }
       const profile = aiUserProfile(user);
       startSingleLinkAnalysisJob({ url, language: lang, userProfile: profile });
@@ -562,7 +562,7 @@ export default function LinkAnalysis() {
     setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: list.length });
     try {
-      const access = await requireAiAccess('link_compare', { onMessage: setErr, requireQuiz: false });
+      const access = await requireAiAccess('link_compare', { onMessage: setErr });
       if (!access.ok) { setPhase('input'); return; }
       startCompareLinkAnalysisJob({ urls: list, language: lang, userProfile: aiUserProfile(user) });
     } catch {

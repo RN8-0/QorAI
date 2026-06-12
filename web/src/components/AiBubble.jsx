@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { askQorAi } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../lib/auth';
@@ -58,6 +59,8 @@ function buildCatalogContext(results = [], lang = 'en') {
 export default function AiBubble() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const requireAiAccess = useAiAccess(lang);
   const [open, setOpen] = useState(false);
   const greetingRef = useRef(null);
@@ -72,6 +75,12 @@ export default function AiBubble() {
 
   const suggestions = [t('ai.s1'), t('ai.s2'), t('ai.s3')];
 
+  function goQuiz() {
+    const next = `${location.pathname}${location.search}${location.hash}`;
+    setOpen(false);
+    navigate(`/quiz?required=1&next=${encodeURIComponent(next)}`);
+  }
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, busy, open]);
@@ -79,16 +88,18 @@ export default function AiBubble() {
   useEffect(() => {
     const onOpen = (e) => {
       if (!userRef.current) { openAuth(); return; }
+      if (!hasCompletedQuiz(userRef.current)) { goQuiz(); return; }
       setOpen(true);
       const q = e.detail;
       if (q && typeof q === 'string') setTimeout(() => sendRef.current?.(q), 120);
     };
     window.addEventListener('qor-open-ai', onOpen);
     return () => window.removeEventListener('qor-open-ai', onOpen);
-  }, [openAuth]);
+  }, [location.hash, location.pathname, location.search, navigate, openAuth]);
 
   async function send(text) {
     if (!userRef.current) { setOpen(false); openAuth(); return; }
+    if (!hasCompletedQuiz(userRef.current)) { goQuiz(); return; }
     const q = (text ?? input).trim();
     if (!q || busy) return;
     setInput('');
@@ -127,7 +138,11 @@ export default function AiBubble() {
     <>
       <button
         className={'aib-fab' + (open ? ' open' : '')}
-        onClick={() => { if (!open && !user) { openAuth(); return; } setOpen((o) => !o); }}
+        onClick={() => {
+          if (!open && !user) { openAuth(); return; }
+          if (!open && user && !hasCompletedQuiz(user)) { goQuiz(); return; }
+          setOpen((o) => !o);
+        }}
         aria-label="Qor AI"
       >
         {open ? '✕' : <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />}

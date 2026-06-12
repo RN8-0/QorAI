@@ -63,7 +63,7 @@ export function hasCompletedQuiz(user) {
 export function aiUserProfile(user) {
   if (!user) return {};
   return {
-    quizCompleted: user.quizCompleted === true,
+    quizCompleted: hasCompletedQuiz(user),
     ageRange: user.ageRange || '',
     gender: user.gender || '',
     ecosystem: user.ecosystem || 'mixed',
