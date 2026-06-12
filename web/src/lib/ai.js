@@ -142,16 +142,47 @@ export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temper
   });
 }
 
-// Tolerant JSON extraction — strips ```json fences and pulls the first balanced
-// object out (Gemini wraps JSON in fences; DeepSeek json_object mode is clean).
+function cleanupJsonText(text) {
+  return String(text || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, '$1')
+    .trim();
+}
+
+function firstBalancedJsonObject(text) {
+  const src = String(text || '');
+  const start = src.indexOf('{');
+  if (start < 0) return '';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < src.length; i++) {
+    const ch = src[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  return '';
+}
+
+// Tolerant JSON extraction — strips ```json fences, repairs common model
+// formatting drift, and pulls the first balanced object out.
 export function parseJsonLoose(text) {
-  let t = String(text || '').trim();
-  t = t.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  let t = cleanupJsonText(text);
   try { return JSON.parse(t); } catch { /* fall through */ }
-  const start = t.indexOf('{');
-  const end = t.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(t.slice(start, end + 1)); } catch { /* fall through */ }
+  const balanced = cleanupJsonText(firstBalancedJsonObject(t));
+  if (balanced) {
+    try { return JSON.parse(balanced); } catch { /* fall through */ }
   }
   throw new Error('AI JSON parse failed');
 }

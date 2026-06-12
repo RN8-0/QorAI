@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { askQorAi } from '../lib/ai';
 import { analyzeLink, generateQuiz, enhancedAnalysis } from '../lib/linkAnalysis';
 import { trackEvent } from '../lib/analytics';
 import { saveLinkAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
-import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
+import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
@@ -65,6 +64,110 @@ function FactorBars({ factors = [] }) {
           <div className="la-factor-bar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function fallbackEnhancedResult(base) {
+  return {
+    base,
+    enhancedScore: Number(base?.score) || 60,
+    factors: [],
+    verdict: String(base?.analysis || ''),
+    prosForUser: [],
+    consForUser: [],
+    alternatives: [],
+    personaScore: null,
+    personaAnalysis: '',
+    communityScore: null,
+    communityAnalysis: '',
+    overallVerdict: '',
+  };
+}
+
+function LoadingWorkboard({ phase, isCompare, L, t }) {
+  const [step, setStep] = useState(0);
+  const copy = (() => {
+    if (isCompare && phase === 'analyzing') {
+      return {
+        title: L('Comparing links', 'Linkler karşılaştırılıyor', 'Links werden verglichen'),
+        detail: L('Qor AI is weighing each product side by side.',
+          'Qor AI her ürünü yan yana tartıyor.',
+          'Qor AI gewichtet jedes Produkt nebeneinander.'),
+        steps: [
+          L('Validating product links', 'Ürün linkleri doğrulanıyor', 'Produktlinks werden geprüft'),
+          L('Identifying each exact product', 'Her ürün tek tek tanınıyor', 'Jedes Produkt wird erkannt'),
+          L('Weighing strengths and trade-offs', 'Artılar, eksiler ve farklar tartılıyor', 'Stärken und Kompromisse werden abgewogen'),
+          L('Writing the final recommendation', 'Nihai öneri yazılıyor', 'Empfehlung wird geschrieben'),
+        ],
+      };
+    }
+    if (phase === 'identifying') {
+      return {
+        title: L('Identifying the product', 'Ürün tanımlanıyor', 'Produkt wird erkannt'),
+        detail: L('Qor AI reads the URL, store signal, and product slug first.',
+          'Qor AI önce URL, mağaza ve ürün adı sinyallerini okuyor.',
+          'Qor AI liest zuerst URL, Shop-Signal und Produktslug.'),
+        steps: [
+          L('Checking the link format', 'Bağlantı formatı kontrol ediliyor', 'Linkformat wird geprüft'),
+          L('Reading store and product signals', 'Mağaza ve ürün sinyalleri okunuyor', 'Shop- und Produktsignale werden gelesen'),
+          L('Detecting the category', 'Kategori algılanıyor', 'Kategorie wird erkannt'),
+          L('Preparing the base analysis', 'Baz analiz hazırlanıyor', 'Basisanalyse wird vorbereitet'),
+        ],
+      };
+    }
+    if (phase === 'quizLoading') {
+      return {
+        title: L('Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'),
+        detail: L('Questions are tuned to this product, not a generic profile form.',
+          'Sorular genel profil formu değil, bu ürüne göre hazırlanıyor.',
+          'Die Fragen werden auf dieses Produkt zugeschnitten.'),
+        steps: [
+          L('Product context is locked', 'Ürün bağlamı sabitlendi', 'Produktkontext ist fixiert'),
+          L('Usage scenarios are mapped', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'),
+          L('Category-specific questions are written', 'Kategoriye özel sorular yazılıyor', 'Kategoriespezifische Fragen werden erstellt'),
+          L('Answer choices are balanced', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'),
+        ],
+      };
+    }
+    return {
+      title: t('la.loading'),
+      detail: L('Qor AI turns your answers into a personal match report.',
+        'Qor AI cevaplarını kişisel eşleşme raporuna çeviriyor.',
+        'Qor AI macht aus deinen Antworten einen persönlichen Match-Bericht.'),
+      steps: [
+        L('Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'),
+        L('Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'),
+        L('Summarizing reviews and risks', 'Yorumlar ve riskler özetleniyor', 'Bewertungen und Risiken werden zusammengefasst'),
+        L('Building the final verdict', 'Son karar hazırlanıyor', 'Endgültiges Fazit wird erstellt'),
+      ],
+    };
+  })();
+
+  useEffect(() => {
+    setStep(0);
+    const timer = setInterval(() => setStep((n) => (n + 1) % copy.steps.length), 1350);
+    return () => clearInterval(timer);
+  }, [phase, isCompare, copy.steps.length]);
+
+  return (
+    <div className="la-loading fade-up" role="status" aria-live="polite">
+      <div className="la-load-orb" aria-hidden="true">
+        <span className="la-load-ring" />
+        <span className="la-load-core" />
+      </div>
+      <div className="la-load-copy">
+        <strong>{copy.title}</strong>
+        <span>{copy.detail}</span>
+      </div>
+      <div className="la-load-steps">
+        {copy.steps.map((label, i) => (
+          <div key={label} className={'la-load-step' + (i === step ? ' active' : '') + (i < step ? ' done' : '')}>
+            <i aria-hidden="true">{i < step ? '✓' : i + 1}</i>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -154,7 +257,6 @@ function EnhancedResult({ data, L }) {
 export default function LinkAnalysis() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
-  const nav = useNavigate();
   const requireAiAccess = useAiAccess(lang);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
@@ -196,33 +298,19 @@ export default function LinkAnalysis() {
     localStorage.setItem(PENDING_LINK_KEY, JSON.stringify({ urls: list, ts: Date.now() }));
   }
 
-  function needsQuiz(list) {
-    if (hasCompletedQuiz(user)) return false;
-    savePending(list);
-    setErr(L('Complete the profile quiz first. Your links are saved.',
-      'Önce profil quizini tamamla. Linklerin kaydedildi.',
-      'Schließe zuerst das Profil-Quiz ab. Deine Links bleiben gespeichert.'));
-    nav(`/quiz?required=1&next=${encodeURIComponent('/link-analysis')}`);
-    return true;
-  }
-
   // ── Single-link flow: identify → quiz → enhanced analysis ────────
   async function startSingle(url) {
     setErr(''); setEnhanced(null); setCompareText('');
     setPhase('identifying');
     trackEvent('link_analysis', { count: 1 });
     try {
-      const access = await requireAiAccess('link_analysis', { onMessage: setErr });
+      const access = await requireAiAccess('link_analysis', { onMessage: setErr, requireQuiz: false });
       if (!access.ok) { setPhase('input'); return; }
       const profile = aiUserProfile(user);
       const result = await analyzeLink(url, lang, profile);
       setBase(result);
       if (result.isProduct === false && !result.title) {
         setErr(t('la.errFail')); setPhase('input'); return;
-      }
-      if (hasCompletedQuiz(user)) {
-        await runEnhanced(result, []);
-        return;
       }
       let qs = [];
       setPhase('quizLoading');
@@ -245,10 +333,12 @@ export default function LinkAnalysis() {
       await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: data.verdict, type: 'single', result: data });
       setHistRefresh((n) => n + 1);
     } catch {
-      setErr(t('la.errFail'));
-      // Only fall back to the quiz when there actually IS a quiz to show —
-      // otherwise an empty quiz rendered as a dead-end blank screen.
-      setPhase(questions.length ? 'quiz' : 'input');
+      const fallback = fallbackEnhancedResult(baseResult);
+      setEnhanced(fallback);
+      setErr('');
+      setPhase('result');
+      await saveLinkAnalysisHistory({ urls: [baseResult.url], analysis: fallback.verdict, type: 'single', result: fallback });
+      setHistRefresh((n) => n + 1);
     }
   }
 
@@ -258,7 +348,7 @@ export default function LinkAnalysis() {
     setPhase('analyzing');
     trackEvent('link_analysis', { count: list.length });
     try {
-      const access = await requireAiAccess('link_compare', { onMessage: setErr });
+      const access = await requireAiAccess('link_compare', { onMessage: setErr, requireQuiz: false });
       if (!access.ok) { setPhase('input'); return; }
       const text = await askQorAi([{ role: 'user', text: comparePrompt(list, lang, aiUserProfile(user)) }]);
       setCompareText(text);
@@ -281,13 +371,12 @@ export default function LinkAnalysis() {
       openAuth();
       return;
     }
-    if (needsQuiz(list)) return;
     if (list.length > 1) runCompare(list);
     else startSingle(list[0]);
   }
 
   useEffect(() => {
-    if (!user || !hasCompletedQuiz(user)) return;
+    if (!user) return;
     const raw = localStorage.getItem(PENDING_LINK_KEY);
     if (!raw) return;
     localStorage.removeItem(PENDING_LINK_KEY);
@@ -332,9 +421,13 @@ export default function LinkAnalysis() {
         title={t('la.title')}
         subtitle={t('la.subtitle')}
         icon={(
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="10.8" cy="10.8" r="5.7" />
+            <path d="m15 15 4.4 4.4" />
+            <path d="M18.2 3.4v3.2" />
+            <path d="M16.6 5h3.2" />
+            <path d="M5.2 18.2v2.4" />
+            <path d="M4 19.4h2.4" />
           </svg>
         )}
       />
@@ -398,14 +491,7 @@ export default function LinkAnalysis() {
       {err && <div className="la-err">{err}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
-        <div className="la-loading fade-up">
-          <span className="ai-dots" aria-hidden="true"><i /><i /><i /></span>
-          <span className="soft-pulse">{phase === 'identifying'
-            ? L('Identifying the product…', 'Ürün tanımlanıyor…', 'Produkt wird erkannt…')
-            : phase === 'quizLoading'
-              ? L('Preparing your quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')
-            : t('la.loading')}</span>
-        </div>
+        <LoadingWorkboard phase={phase} isCompare={filled > 1} L={L} t={t} />
       )}
 
       {phase === 'quiz' && base && questions.length > 0 && (

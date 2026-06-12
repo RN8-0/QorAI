@@ -73,7 +73,10 @@ export function titleFromUrl(url) {
   try {
     const u = new URL(url);
     const segs = u.pathname.split('/').map((s) => s.trim()).filter(Boolean);
-    let slug = segs.reverse().find((s) => /[a-z]/i.test(s) && !/^\d+$/.test(s)) || '';
+    const ignore = /^(p|dp|pd|gp|aw|d|product|urun|item)$/i;
+    const idLike = /^(?:[a-z0-9]{10}|[a-f0-9]{16,}|[0-9]{8,})$/i;
+    let slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s) && !idLike.test(s)) || '';
+    if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s)) || '';
     slug = slug.replace(/\.(html?|php|aspx?)$/i, '').replace(/[-_]+/g, ' ');
     slug = slug.replace(/\b(p|dp|pd|product|urun|item)\b/gi, ' ').replace(/\s+/g, ' ').trim();
     if (slug.length < 3) return '';
@@ -83,27 +86,67 @@ export function titleFromUrl(url) {
   }
 }
 
+function inferCategoryFromUrl(url, title) {
+  const haystack = `${url || ''} ${title || ''}`.toLowerCase();
+  if (/(laptop|notebook|macbook|thinkpad|vivobook|zenbook|legion|rog|tuf|omen|victus|ideapad|nebula)/.test(haystack)) return 'laptops';
+  if (/(headphone|headset|kulaklik|earbud|airpods|buds|wh-|quietcomfort)/.test(haystack)) return 'headphones';
+  if (/(phone|iphone|galaxy|pixel|xiaomi|redmi|smartphone)/.test(haystack)) return 'smartphones';
+  if (/(monitor|display|oled|qled|ultrawide)/.test(haystack)) return 'monitors';
+  if (/(keyboard|mouse|klavye|fare)/.test(haystack)) return 'keyboards';
+  if (/(book|isbn|kindle|kitap)/.test(haystack)) return 'books';
+  if (/(shoe|shirt|dress|jacket|pantolon|ayakkabi|giyim)/.test(haystack)) return 'clothing';
+  if (/(kitchen|vacuum|robot|coffee|airfryer|home|mutfak|ev)/.test(haystack)) return 'home-appliances';
+  if (/(game|gaming|ps5|xbox|switch)/.test(haystack)) return 'gaming';
+  return 'general';
+}
+
+function fallbackBaseAnalysis({ url, title, siteName, language }) {
+  const lang = String(language || 'en').slice(0, 2).toLowerCase();
+  const name = title || siteName || url;
+  if (lang === 'tr') {
+    return `"${name}" bağlantısı ürün sayfası olarak işlendi. Qor AI ürün adını bağlantı ve site bilgisinden çıkardı; canlı sayfa verisi alınamadığında değerlendirme, ürün adı/kategori sinyalleri ve profil cevapların üzerinden hazırlanır. Satın almadan önce satıcı sayfasındaki güncel fiyat, garanti ve teknik özellikleri de kontrol et.`;
+  }
+  if (lang === 'de') {
+    return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
+  }
+  return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
+}
+
 export async function analyzeLink(url, language, userProfile = {}) {
   const fallbackTitle = titleFromUrl(url);
   let siteName = '';
   try { siteName = new URL(url).hostname.replace(/^www\./, ''); } catch { /* ignore */ }
-  const res = await askQorAiJson({
-    system: linkAnalysisSystemPrompt(language),
-    user: JSON.stringify({
-      url,
-      productMetadata: fallbackTitle ? { title: fallbackTitle, siteName } : { siteName },
-      userProfile,
-    }),
-    maxOutputTokens: 1536,
-  });
+  let res = null;
+  try {
+    res = await askQorAiJson({
+      system: linkAnalysisSystemPrompt(language),
+      user: JSON.stringify({
+        url,
+        productMetadata: fallbackTitle ? { title: fallbackTitle, siteName } : { siteName },
+        userProfile,
+      }),
+      maxOutputTokens: 1536,
+    });
+  } catch {
+    res = {
+      title: fallbackTitle || siteName || url,
+      score: 60,
+      analysis: fallbackBaseAnalysis({ url, title: fallbackTitle, siteName, language }),
+      category: inferCategoryFromUrl(url, fallbackTitle),
+      site_name: siteName,
+      price: null,
+      is_product: true,
+    };
+  }
   const aiTitle = String(res.title || '').trim();
   const bad = !aiTitle || /erişim|hata|error|unknown|bilinmeyen/i.test(aiTitle);
+  const title = bad ? (fallbackTitle || aiTitle || siteName || url) : aiTitle;
   return {
     url,
-    title: bad ? (fallbackTitle || aiTitle) : aiTitle,
+    title,
     score: Number(res.score) || 0,
-    analysis: String(res.analysis || ''),
-    category: String(res.category || '').toLowerCase(),
+    analysis: String(res.analysis || fallbackBaseAnalysis({ url, title, siteName, language })),
+    category: String(res.category || inferCategoryFromUrl(url, title)).toLowerCase(),
     siteName: String(res.site_name || siteName || ''),
     price: res.price || null,
     isProduct: res.is_product !== false,
