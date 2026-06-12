@@ -68,20 +68,20 @@ const AVATAR_COLORS = ['#6c5ce7', '#0984e3', '#00b894', '#e17055', '#d63031', '#
 
 const WORDMARKS = {
   'netflix': { text: 'N', color: '#E50914', bg: '#FFFFFF' },
-  'disney+': { text: 'D+', color: '#113CCF', bg: '#F7FAFF' },
-  'disney plus': { text: 'D+', color: '#113CCF', bg: '#F7FAFF' },
-  'amazon prime': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
-  'amazon prime video': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
-  'prime video': { text: 'PR', color: '#00A8E1', bg: '#F4FBFF' },
+  'disney+': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
+  'disney plus': { text: 'Disney+', color: '#113CCF', bg: '#F7FAFF' },
+  'amazon prime': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'amazon prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'prime video': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
   'apple tv+': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
   'apple tv': { text: 'tv+', color: '#111827', bg: '#FFFFFF' },
   'hbo max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
   'max': { text: 'max', color: '#FFFFFF', bg: '#111827' },
   'youtube premium': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
   'youtube': { text: '▶', color: '#FF0033', bg: '#FFFFFF' },
-  'blutv': { text: 'BLU', color: '#0B5CFF', bg: '#F4F8FF' },
-  'blu tv': { text: 'BLU', color: '#0B5CFF', bg: '#F4F8FF' },
-  'exxen': { text: 'EX', color: '#0D0D0D', bg: '#FFD400' },
+  'blutv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
+  'blu tv': { text: 'BluTV', color: '#0B5CFF', bg: '#F4F8FF' },
+  'exxen': { text: 'EXXEN', color: '#0D0D0D', bg: '#FFD400' },
   'gain': { text: 'G', color: '#111827', bg: '#FFFFFF' },
   'mubi': { text: 'M', color: '#FFFFFF', bg: '#111827' },
   'crunchyroll': { text: 'C', color: '#F47521', bg: '#FFFFFF' },
@@ -89,14 +89,14 @@ const WORDMARKS = {
   'apple music': { text: '♪', color: '#FA243C', bg: '#FFFFFF' },
   'youtube music': { text: 'YT', color: '#FF0033', bg: '#FFFFFF' },
   'tidal': { text: '◆', color: '#FFFFFF', bg: '#111827' },
-  'chatgpt': { text: 'AI', color: '#111827', bg: '#FFFFFF' },
-  'chatgpt plus': { text: 'AI', color: '#111827', bg: '#FFFFFF' },
+  'chatgpt': { text: 'ChatGPT', color: '#111827', bg: '#FFFFFF' },
+  'chatgpt plus': { text: 'ChatGPT', color: '#111827', bg: '#FFFFFF' },
   'claude': { text: 'AI', color: '#C15F3C', bg: '#FFF8F3' },
   'claude pro': { text: 'AI', color: '#C15F3C', bg: '#FFF8F3' },
   'gemini': { text: '✦', color: '#4285F4', bg: '#FFFFFF' },
   'gemini advanced': { text: '✦', color: '#4285F4', bg: '#FFFFFF' },
   'perplexity': { text: 'P', color: '#111827', bg: '#FFFFFF' },
-  'midjourney': { text: 'MJ', color: '#FFFFFF', bg: '#111827' },
+  'midjourney': { text: 'Mid', color: '#FFFFFF', bg: '#111827' },
   'xbox game pass': { text: 'X', color: '#107C10', bg: '#FFFFFF' },
   'xbox': { text: 'X', color: '#107C10', bg: '#FFFFFF' },
   'playstation plus': { text: 'PS', color: '#003791', bg: '#FFFFFF' },
@@ -106,13 +106,53 @@ const WORDMARKS = {
   'tod': { text: 'TOD', color: '#111827', bg: '#FFFFFF' },
   'tabii': { text: 'tabii', color: '#10B981', bg: '#F5FFFB' },
   'microsoft 365': { text: '365', color: '#2563EB', bg: '#F8FBFF' },
-  'google one': { text: 'One', color: '#4285F4', bg: '#FFFFFF' },
+  'google one': { text: 'Google', color: '#4285F4', bg: '#FFFFFF' },
   'icloud+': { text: 'iC', color: '#111827', bg: '#FFFFFF' },
   'icloud': { text: 'iC', color: '#111827', bg: '#FFFFFF' },
   'adobe creative cloud': { text: 'A', color: '#FA0F00', bg: '#FFFFFF' },
   'notion': { text: 'N', color: '#111827', bg: '#FFFFFF' },
   'canva': { text: 'C', color: '#7D2AE8', bg: '#FFFFFF' },
   'hostinger': { text: 'H', color: '#673DE6', bg: '#FFFFFF' },
+};
+
+const LOCAL_LOGOS = {
+  'netflix': 'netflix.svg',
+  'disney+': 'disney_plus.png',
+  'disney plus': 'disney_plus.png',
+  'amazon prime': 'prime_video.png',
+  'amazon prime video': 'prime_video.png',
+  'prime video': 'prime_video.png',
+  'apple tv+': 'apple_tv_plus.svg',
+  'apple tv': 'apple_tv_plus.svg',
+  'hbo max': 'max.svg',
+  'max': 'max.svg',
+  'youtube premium': 'youtube_premium.svg',
+  'youtube': 'youtube_premium.svg',
+  'crunchyroll': 'crunchyroll.svg',
+  'spotify': 'spotify.svg',
+  'apple music': 'apple_music.svg',
+  'youtube music': 'youtube_music.svg',
+  'tidal': 'tidal.svg',
+  'chatgpt': 'chatgpt_plus.png',
+  'chatgpt plus': 'chatgpt_plus.png',
+  'claude': 'claude.svg',
+  'claude pro': 'claude.svg',
+  'gemini': 'gemini.svg',
+  'gemini advanced': 'gemini.svg',
+  'perplexity': 'perplexity.svg',
+  'midjourney': 'midjourney.png',
+  'xbox game pass': 'game_pass.png',
+  'xbox': 'game_pass.png',
+  'playstation plus': 'ps_plus.svg',
+  'playstation': 'ps_plus.svg',
+  'microsoft 365': 'microsoft_365.png',
+  'google one': 'google_one.png',
+  'icloud+': 'icloud.svg',
+  'icloud': 'icloud.svg',
+  'adobe creative cloud': 'adobe_cc.png',
+  'adobe': 'adobe_cc.png',
+  'notion': 'notion.svg',
+  'canva': 'canva.png',
 };
 
 const SIMPLE_ICON_SLUGS = {
@@ -190,6 +230,11 @@ function wordmarkFor(name) {
   return WORDMARKS[String(name || '').toLowerCase().trim()] || null;
 }
 
+function localLogoFor(name) {
+  const file = LOCAL_LOGOS[String(name || '').toLowerCase().trim()];
+  return file ? `/assets/subscriptions/${file}` : '';
+}
+
 function domainFor(name, website = '') {
   const lower = String(name || '').toLowerCase().trim();
   if (KNOWN_DOMAINS[lower]) return KNOWN_DOMAINS[lower];
@@ -206,29 +251,27 @@ function domainFor(name, website = '') {
 
 export default function SubLogo({ name, website = '', logo = '', size = 40, radius = 10 }) {
   const wordmark = wordmarkFor(name);
-  const useLocalWordmark = Boolean(wordmark && !logo);
   const urls = useMemo(() => {
-    if (useLocalWordmark) return [];
     const domain = domainFor(name, website);
     const iconSlug = simpleIconSlug(name);
+    const localLogo = localLogoFor(name);
     const list = [];
-    const hiRes = Math.max(96, Math.ceil(size * 2.5));
+    const hiRes = Math.max(160, Math.ceil(size * 4));
+    if (localLogo) list.push(localLogo);
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
     if (iconSlug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
     if (domain) {
       list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
-      list.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=${hiRes}`);
-      list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     }
     return list;
-  }, [name, website, logo, size, useLocalWordmark]);
+  }, [name, website, logo, size]);
   const [idx, setIdx] = useState(0);
   useEffect(() => { setIdx(0); }, [name, website, logo]);
 
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
-  if (useLocalWordmark || (idx >= urls.length && wordmark)) {
+  if (idx >= urls.length && wordmark) {
     const textLen = wordmark.text.length;
     const fontSize = Math.max(9, Math.min(size * 0.42, size / Math.max(1.7, textLen * 0.72)));
     return (

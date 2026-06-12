@@ -12,6 +12,7 @@ import {
   subscribeLinkAnalysisJob,
 } from '../lib/linkAnalysisJobs';
 import AiText from '../components/AiText.jsx';
+import AmazonLogo from '../components/AmazonLogo.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
@@ -19,10 +20,52 @@ import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
+import { amazonStorefrontsForLang, localizeAmazonUrl, safeExternalUrl } from '../lib/format';
 import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
 const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
+
+function amazonCtaForUrl(url, lang) {
+  const raw = safeExternalUrl(url);
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (!/(^|\.)amazon\./i.test(u.hostname)) return null;
+  } catch {
+    return null;
+  }
+  const storefronts = amazonStorefrontsForLang(raw, lang);
+  const primary = storefronts[0] || { market: '', flag: '', url: localizeAmazonUrl(raw, lang) };
+  return { primary, extras: storefronts.slice(1) };
+}
+
+function StoreCta({ url, lang, L, compact = false }) {
+  const cta = amazonCtaForUrl(url, lang);
+  if (!cta?.primary?.url) return null;
+  const label = L('View on Amazon', 'Amazon’da gör', 'Bei Amazon ansehen');
+  const click = (market) => trackEvent('affiliate_click', {
+    source: 'link_analysis_result',
+    store: 'amazon',
+    market: market || String(lang || 'en').slice(0, 2),
+  });
+  return (
+    <div className={'la-store-ctas' + (compact ? ' compact' : '')}>
+      <a className="la-store-cta" href={cta.primary.url} target="_blank" rel="sponsored noopener"
+        onClick={() => click(cta.primary.market)}>
+        <AmazonLogo height={compact ? 14 : 16} className="la-store-logo" />
+        <span>{label}</span>
+        {cta.primary.flag && <i>{cta.primary.flag}</i>}
+      </a>
+      {cta.extras.map((s) => (
+        <a key={`${s.market}-${s.url}`} className="la-store-flag" href={s.url} target="_blank"
+          rel="sponsored noopener" aria-label={`${label} ${s.market}`} onClick={() => click(s.market)}>
+          {s.flag || s.market}
+        </a>
+      ))}
+    </div>
+  );
+}
 
 function bandLabel(s, L) {
   return s >= 85 ? L('Excellent match', 'Mükemmel uyum', 'Exzellent')
@@ -135,7 +178,7 @@ function LoadingWorkboard({ phase, isCompare, L, t }) {
   );
 }
 
-function EnhancedResult({ data, L }) {
+function EnhancedResult({ data, L, lang }) {
   const score = Math.round(data.enhancedScore || 0);
   // History entries saved by older builds may miss the array fields — guard so
   // opening them never crashes the page.
@@ -157,6 +200,7 @@ function EnhancedResult({ data, L }) {
             <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
             {base.siteName && <div className="la-score-site">{base.siteName}</div>}
           </div>
+          <StoreCta url={base.url || data.url} lang={lang} L={L} />
         </div>
 
         <FactorBars factors={data.factors} />
@@ -276,7 +320,7 @@ function CompareFactorMatrix({ products = [], L }) {
   );
 }
 
-function CompareProductCard({ product, isWinner, L }) {
+function CompareProductCard({ product, isWinner, L, lang }) {
   const score = Math.round(product.score || 0);
   const pros = list(product.pros);
   const cons = list(product.cons);
@@ -293,6 +337,7 @@ function CompareProductCard({ product, isWinner, L }) {
           <span>{product.siteName || L('Product link', 'Ürün linki', 'Produktlink')}</span>
         </div>
       </div>
+      <StoreCta url={product.url || product.link} lang={lang} L={L} compact />
       {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun', 'Ideal für')}:</b> {product.bestFor}</p>}
       {product.summary && <div className="la-prose la-cmp-summary"><AiText text={product.summary} /></div>}
 
@@ -353,7 +398,7 @@ function CompareProductCard({ product, isWinner, L }) {
   );
 }
 
-function CompareResult({ data, L }) {
+function CompareResult({ data, L, lang }) {
   const products = list(data?.products)
     .map((p) => ({ ...p, score: Number(p.score) || 0 }))
     .sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.score - a.score);
@@ -385,7 +430,7 @@ function CompareResult({ data, L }) {
         <CompareFactorMatrix products={products} L={L} />
 
         <div className="la-cmp-grid">
-          {products.map((p) => <CompareProductCard key={p.name} product={p} isWinner={p.name === best.name} L={L} />)}
+          {products.map((p) => <CompareProductCard key={p.name} product={p} isWinner={p.name === best.name} L={L} lang={lang} />)}
         </div>
 
         {gap > 0 && (
@@ -697,9 +742,9 @@ export default function LinkAnalysis() {
         </>
       )}
 
-      {phase === 'result' && enhanced && <EnhancedResult data={enhanced} L={L} />}
+      {phase === 'result' && enhanced && <EnhancedResult data={enhanced} L={L} lang={lang} />}
 
-      {phase === 'result' && compareResult && <CompareResult data={compareResult} L={L} />}
+      {phase === 'result' && compareResult && <CompareResult data={compareResult} L={L} lang={lang} />}
 
       {phase === 'result' && compareText && (
         <div className="la-result fade-up">

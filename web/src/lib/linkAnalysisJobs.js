@@ -10,6 +10,7 @@ import { saveLinkAnalysisHistory } from './pbHistory';
 const STORAGE_KEY = 'qor.linkAnalysis.activeJob';
 const listeners = new Set();
 let activeJob = null;
+const RESTORABLE_PHASES = new Set(['quiz', 'result']);
 
 function cloneJob(job = activeJob) {
   if (!job) return null;
@@ -28,6 +29,19 @@ function persist() {
     else localStorage.setItem(STORAGE_KEY, JSON.stringify(cloneJob()));
   } catch {
     // Storage is only for UI restore; the running promise lives in memory.
+  }
+}
+
+function hydrateFromStorage() {
+  if (activeJob || typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const job = JSON.parse(raw);
+    if (!job?.id || !RESTORABLE_PHASES.has(job.phase)) return;
+    activeJob = { ...job, promise: null };
+  } catch {
+    // Ignore corrupt persisted UI state; a fresh analysis can overwrite it.
   }
 }
 
@@ -150,12 +164,14 @@ async function completeCompare(job, answers = []) {
 }
 
 export function subscribeLinkAnalysisJob(cb) {
+  hydrateFromStorage();
   listeners.add(cb);
   cb(cloneJob());
   return () => listeners.delete(cb);
 }
 
 export function getActiveLinkAnalysisJob() {
+  hydrateFromStorage();
   return cloneJob();
 }
 

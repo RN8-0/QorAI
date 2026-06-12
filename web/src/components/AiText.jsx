@@ -1,9 +1,16 @@
-// Renders AI plain-text output with light markup: **bold**, bullet
-// lines (-, •, *) and blank-line spacing.
+// Renders AI plain-text output with light markup while hiding model-side
+// Markdown noise such as "###" headings and ``` fences.
 export default function AiText({ text }) {
-  return text.split('\n').map((line, i) => {
-    const trimmed = line.trim();
+  return String(text || '').split('\n').map((line, i) => {
+    let trimmed = line.trim();
     if (!trimmed) return <div key={i} style={{ height: 8 }} />;
+    if (/^```(?:json|javascript|js|ts)?\s*$/i.test(trimmed)) return null;
+
+    const heading = /^#{1,6}\s+/.test(trimmed);
+    trimmed = trimmed
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/^>\s+/, '')
+      .replace(/^["']?([A-Za-zÇĞİÖŞÜçğıöşü0-9 _-]{2,32})["']?\s*:\s*$/, '$1');
 
     const bullet = /^[-•*]\s+/.test(trimmed);
     const body = bullet ? trimmed.replace(/^[-•*]\s+/, '') : trimmed;
@@ -13,7 +20,7 @@ export default function AiText({ text }) {
         : seg,
     );
     return (
-      <p key={i} className={'ai-line' + (bullet ? ' ai-bullet' : '')}>
+      <p key={i} className={'ai-line' + (heading ? ' ai-heading' : '') + (bullet ? ' ai-bullet' : '')}>
         {parts}
       </p>
     );
