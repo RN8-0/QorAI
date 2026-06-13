@@ -10,6 +10,85 @@ import { productPath } from '../lib/routes';
 
 const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
+const CURRENT_REPORT_DATE = new Date().toISOString().slice(0, 10);
+
+function compactDate(value) {
+  if (!value) return '';
+  const n = typeof value === 'number' ? value : Date.parse(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return new Date(n).toISOString().slice(0, 10);
+}
+
+function availabilityContextForProduct(p, offers = []) {
+  const bits = [
+    `Current date: ${CURRENT_REPORT_DATE}`,
+    `Qor catalog record exists: ${p?.id ? 'yes' : 'unknown'}`,
+  ];
+  if (p?.sourceUrl) bits.push(`Catalog source URL: ${p.sourceUrl}`);
+  if (p?.gtin) bits.push(`GTIN: ${p.gtin}`);
+  if (p?.mpn) bits.push(`MPN: ${p.mpn}`);
+  if (p?.created || p?.createdAt) bits.push(`Catalog first seen: ${compactDate(p.created || p.createdAt)}`);
+  if (p?.updated || p?.lastUpdated) bits.push(`Catalog updated: ${compactDate(p.updated || p.lastUpdated)}`);
+  if (p?.scrapedAtTs) bits.push(`Search index scraped: ${compactDate(Number(p.scrapedAtTs) * 1000)}`);
+  if (p?.updatedAtTs) bits.push(`Search index updated: ${compactDate(Number(p.updatedAtTs) * 1000)}`);
+  if (Number(p?.offerCount) > 0 || Number(p?.pricedOfferCount) > 0) {
+    bits.push(`Catalog offer rollup: ${Number(p.offerCount) || 0} links, ${Number(p.pricedOfferCount) || 0} priced offers`);
+  }
+  if (p?.bestOfferCheckedAt) bits.push(`Best offer checked: ${compactDate(p.bestOfferCheckedAt)}`);
+  if (p?.bestOfferExpiresAt) bits.push(`Best offer freshness expires: ${compactDate(p.bestOfferExpiresAt)}`);
+  const freshOfferRows = (Array.isArray(offers) ? offers : [])
+    .filter((o) => o?.url)
+    .slice(0, 8)
+    .map((o) => {
+      const price = o?.hasExactPrice && Number(o?.price) > 0
+        ? `${o.price} ${o.currency || ''}`.trim()
+        : 'price link only';
+      return `${o.store || o.network || 'store'} ${o.country || ''}: ${price}`;
+    });
+  if (freshOfferRows.length) bits.push(`Live/store offer context: ${freshOfferRows.join(' | ')}`);
+  return bits.filter(Boolean).join('\n');
+}
+
+function freshnessRules() {
+  return (
+    `Freshness rules (current date: ${CURRENT_REPORT_DATE}):\n` +
+    '- Prefer current web research and official/store evidence over model memory.\n' +
+    '- Never say a product is unannounced, not released, not on the market, or only an estimate if current research, official pages, retailer pages, or the Qor catalog indicate it exists.\n' +
+    '- If current web research is unavailable or weak, say the evidence is limited; do not fill the gap with old launch-status assumptions.\n' +
+    '- Do not base a current-generation product on the previous generation unless explicitly framed as a comparison.\n' +
+    '- Do not treat a laptop fan as a real weakness by itself. Mention fan noise only if research reports it as recurring, or phrase it as sustained-load behavior.\n' +
+    '- Judge portability against the same class. Around 2.1 kg is normal/acceptable for a 16-inch workstation laptop, not a severe flaw by default.'
+  );
+}
+
+const STALE_AVAILABILITY_PATTERNS = [
+  /hen[üu]z\s+(?:duyurulmam[ıi]ş|tan[ıi]t[ıi]lmam[ıi]ş|piyasada\s+de[ğg]il|sat[ıi]şa\s+[çc][ıi]kmam[ıi]ş|[çc][ıi]kmad[ıi])/i,
+  /(?:daha|hen[üu]z)\s+(?:piyasada|sat[ıi]şta)\s+(?:de[ğg]il|yok)/i,
+  /performans\s+tahmin(?:i|leri).{0,90}(?:M4|[öo]nceki\s+nesil|previous generation)/i,
+  /M4\s+Max.{0,90}(?:dayan|baz|temel|based)/i,
+  /\b(?:unannounced|not yet announced|not yet released|not yet launched|not yet available)\b/i,
+  /\bnot\s+(?:yet\s+)?(?:on the market|released|launched)\b/i,
+  /performance\s+estimates?.{0,90}(?:M4|previous generation)/i,
+];
+
+export function hasStaleAvailabilityClaims(raw) {
+  const text = String(raw || '');
+  return STALE_AVAILABILITY_PATTERNS.some((re) => re.test(text));
+}
+
+export function withFreshnessRetryInstruction(prompt, productNames = []) {
+  const names = (Array.isArray(productNames) ? productNames : [productNames])
+    .map((x) => String(x || '').trim())
+    .filter(Boolean)
+    .join(', ');
+  return (
+    `${prompt}\n\nQUALITY GATE RETRY:\n` +
+    'The previous answer was rejected because it contained stale release/availability claims. Rewrite the JSON from scratch.\n' +
+    (names ? `Products that must keep exact names: ${names}\n` : '') +
+    freshnessRules() +
+    '\nForbidden stale wording includes: unannounced, not on the market, not released, not yet available, based on M4 Max estimates, or equivalent Turkish/German wording unless current web research explicitly proves it.'
+  );
+}
 
 function productSpecsContext(p, limit = 40) {
   const rows = [];
@@ -77,6 +156,8 @@ function promptContext({ quizAnswers = [], research = '', similarProducts = [], 
       store: o?.store || o?.network || '',
       price: o?.hasExactPrice ? `${o.price || ''} ${o.currency || ''}`.trim() : '',
       country: o?.country || '',
+      checkedAt: o?.lastCheckedAt || '',
+      fresh: o?.hasExactPrice === true,
     }));
   return {
     quizAnswers: quizLines(quizAnswers),
@@ -167,8 +248,10 @@ export function buildProductResearchPrompt(p, lang, context = {}) {
   return (
     `Research the product "${name}" by ${brand || 'unknown'} for a Qor AI purchase report.\n` +
     `Category: ${category || '-'}\nTech score in catalog: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\n\n` +
-    'Use current web search if available. Focus on public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, official spec pages, and recent market/price-cycle signals. ' +
-    'Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
+    `MARKET STATUS CONTEXT:\n${availabilityContextForProduct(p)}\n\n` +
+    `${freshnessRules()}\n\n` +
+    'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. ' +
+    'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
     `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
   );
@@ -182,7 +265,9 @@ export function buildCompareResearchPrompt(products, lang, context = {}) {
   return (
     'Research these products for a Qor AI comparison report.\n\n' +
     `${lines}\n\n` +
-    'Use current web search if available. For each product, gather public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle/availability signals. ' +
+    `MARKET STATUS CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
+    `${freshnessRules()}\n\n` +
+    'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. ' +
     'Then note the decisive differences that matter for a buyer choosing one. Do not invent quotes, exact counts, or exact live prices.\n\n' +
     `Comparison quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
@@ -201,6 +286,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     'Use the product name exactly as given. Do not replace it with a similar model.\n\n' +
     `LANGUAGE: Every user-facing text field must be fully written in ${langName(lang)}. Keep official product/model names as-is.\n\n` +
     'CRITICAL OUTPUT ORDER: one single continuous report: match/advisor/deep analysis first, internet/community sentiment second, smart alternatives third, price forecast last.\n' +
+    `${freshnessRules()}\n` +
     'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n' +
     'Write like a professional buyer lab report: concrete, decisive, and detailed. Avoid generic praise. Mention exact catalog specs, compatibility constraints, who benefits, who should avoid it, and why.\n\n' +
     'Return ONLY one valid JSON object with this exact structure:\n' +
@@ -235,6 +321,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
+    `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +
     `PRODUCT-SPECIFIC QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
@@ -258,6 +345,7 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
   return (
     'You are Qor AI\'s senior product comparison analyst. Evaluate every listed product separately using the same system as product detail, then give a final recommendation.\n\n' +
     `LANGUAGE: Every user-facing text field must be fully written in ${langName(lang)}. Keep official product/model names as-is.\n\n` +
+    `${freshnessRules()}\n\n` +
     'Return ONLY one valid JSON object with this exact structure:\n' +
     '{\n' +
     '  "type": "compare_full_report",\n' +
@@ -267,6 +355,7 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
     '  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["6 detailed differences"], "headToHead": "6-8 substantial paragraphs", "recommendation": "6-9 substantial paragraphs explaining which one to buy and why"}\n' +
     '}\n\n' +
     'Rules:\n- Include one products[] entry for EVERY product. Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
+    `MARKET / AVAILABILITY CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
     `PRODUCTS:\n${lines}\n\nPRODUCT PAYLOAD:\n${JSON.stringify(productPayload, null, 2)}\n\n` +
     `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +

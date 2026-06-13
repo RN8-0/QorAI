@@ -13,12 +13,18 @@ import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
-import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
+import { bestOfferForLang, fetchProductOffers, fetchProductPriceSnapshots, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
-import AiAnalysisView, { buildFullPrompt, buildProductResearchPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import AiAnalysisView, {
+  buildFullPrompt,
+  buildProductResearchPrompt,
+  hasStaleAvailabilityClaims,
+  parseAiJson,
+  withFreshnessRetryInstruction,
+} from '../components/AiAnalysis.jsx';
 import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
@@ -523,6 +529,8 @@ export default function ProductDetail() {
   const [dictReady, setDictReady] = useState(false);
   const [offers, setOffers] = useState([]);
   const [offersLoading, setOffersLoading] = useState(false);
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
   const [compareBase, setCompareBase] = useState(null);
   const [compareMsg, setCompareMsg] = useState('');
   // Ship-to country for the price list. Defaults to the IP-detected country but
@@ -601,6 +609,21 @@ export default function ProductDetail() {
 
   useEffect(() => {
     let live = true;
+    const cc = String(priceCountry || geoCountry || 'US').toUpperCase();
+    if (!p?.id || !cc) {
+      setPriceHistory([]);
+      return () => { live = false; };
+    }
+    setPriceHistoryLoading(true);
+    fetchProductPriceSnapshots(p.id, { country: cc, limit: 120 })
+      .then((items) => { if (live) setPriceHistory(items); })
+      .catch(() => { if (live) setPriceHistory([]); })
+      .finally(() => { if (live) setPriceHistoryLoading(false); });
+    return () => { live = false; };
+  }, [p?.id, priceCountry, geoCountry]);
+
+  useEffect(() => {
+    let live = true;
     if (lang === 'tr') {
       setDictReady(true);
       return () => { live = false; };
@@ -665,15 +688,30 @@ export default function ProductDetail() {
         similarProducts: similar,
         offers,
       });
-      const txt = await askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in ${lang}.`,
+      let txt = await askQorAiRaw({
+        system: `You are Qor AI. Return only valid JSON in ${lang}. Use current research and Qor catalog context over stale model memory.`,
         user: prompt,
         maxOutputTokens: 8192,
         temperature: 0.45,
         jsonMode: true,
       });
-      const data = parseAiJson(txt);
+      let data = parseAiJson(txt);
       if (!data || typeof data !== 'object') throw new Error('parse');
+      if (hasStaleAvailabilityClaims(txt)) {
+        const retry = await askQorAiRaw({
+          system: `You are Qor AI. Return only valid JSON in ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions.`,
+          user: withFreshnessRetryInstruction(prompt, [localizedProductName(p, lang)]),
+          maxOutputTokens: 8192,
+          temperature: 0.25,
+          jsonMode: true,
+        });
+        const retryData = parseAiJson(retry);
+        if (!retryData || typeof retryData !== 'object' || hasStaleAvailabilityClaims(retry)) {
+          throw new Error('stale-report');
+        }
+        txt = retry;
+        data = retryData;
+      }
       setAiFull({ phase: 'result', busy: false, notice: '', data, questions: [] });
       saveProductAnalysisHistory({ product: p, analysis: txt });
     } catch {
@@ -1016,6 +1054,13 @@ export default function ProductDetail() {
                     </a>
                   ))}
                 </div>
+                <PriceHistoryChart
+                  points={priceHistory}
+                  loading={priceHistoryLoading}
+                  lang={lang}
+                  country={sel}
+                  L={L}
+                />
               </section>
             );
           })()}
@@ -1102,7 +1147,7 @@ export default function ProductDetail() {
                       {aiFull.busy ? (
                         aiFull.phase === 'analyzing'
                           ? <AiLoadingSteps lang={lang} mode="product" />
-                          : <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
+                          : <AiLoadingSteps lang={lang} mode="quizProduct" />
                       ) : (
                         <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={startFullAnalysisQuiz}>
                           {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
@@ -1203,6 +1248,130 @@ function ScrollRail({ children }) {
       {edges.left && <button type="button" className="pd-rail-arr pd-rail-prev" aria-label="‹" onClick={() => scroll(-1)}>‹</button>}
       <div className="rail" ref={ref}>{children}</div>
       {edges.right && <button type="button" className="pd-rail-arr pd-rail-next" aria-label="›" onClick={() => scroll(1)}>›</button>}
+    </div>
+  );
+}
+
+function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
+  const daily = (() => {
+    const byDay = new Map();
+    for (const item of points || []) {
+      const ts = Date.parse(item.checkedAt || '');
+      if (!Number.isFinite(ts) || !(Number(item.price) > 0)) continue;
+      const day = new Date(ts).toISOString().slice(0, 10);
+      const existing = byDay.get(day);
+      if (!existing || Number(item.price) < existing.price) {
+        byDay.set(day, {
+          date: day,
+          ts,
+          price: Number(item.price),
+          currency: item.currency || existing?.currency || 'USD',
+          store: item.store || '',
+        });
+      }
+    }
+    return [...byDay.values()].sort((a, b) => a.ts - b.ts).slice(-60);
+  })();
+
+  const fmt = (value, currency) => {
+    try {
+      return new Intl.NumberFormat(lang, {
+        style: 'currency',
+        currency: currency || 'USD',
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${currency || ''} ${Math.round(value).toLocaleString(lang)}`.trim();
+    }
+  };
+  const fmtDate = (day) => {
+    try {
+      return new Intl.DateTimeFormat(lang, { day: '2-digit', month: 'short' }).format(new Date(`${day}T12:00:00Z`));
+    } catch {
+      return day;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="pd-price-history pd-price-history-loading">
+        <div className="spinner" />
+        <span>{L('Loading price history...', 'Fiyat geçmişi yükleniyor...', 'Preisverlauf wird geladen...')}</span>
+      </div>
+    );
+  }
+
+  if (daily.length < 2) {
+    return (
+      <div className="pd-price-history pd-price-history-empty">
+        <b>{L('Price history', 'Fiyat geçmişi', 'Preisverlauf')}</b>
+        <span>{L(
+          'Not enough fresh snapshots yet for this delivery market. The chart appears automatically as tracked offers update.',
+          'Bu teslimat pazarı için henüz yeterli güncel snapshot yok. Takip edilen teklifler güncellendikçe grafik otomatik oluşur.',
+          'Für diesen Liefermarkt gibt es noch nicht genug aktuelle Snapshots. Der Verlauf erscheint automatisch, sobald Angebote aktualisiert werden.',
+        )}</span>
+      </div>
+    );
+  }
+
+  const min = Math.min(...daily.map((x) => x.price));
+  const max = Math.max(...daily.map((x) => x.price));
+  const pad = max === min ? Math.max(1, max * 0.04) : (max - min) * 0.12;
+  const low = min - pad;
+  const high = max + pad;
+  const width = 640;
+  const height = 172;
+  const left = 18;
+  const right = width - 18;
+  const top = 18;
+  const bottom = height - 28;
+  const xFor = (i) => daily.length === 1 ? (left + right) / 2 : left + ((right - left) * i) / (daily.length - 1);
+  const yFor = (price) => bottom - ((price - low) / Math.max(1, high - low)) * (bottom - top);
+  const coords = daily.map((pnt, i) => [xFor(i), yFor(pnt.price)]);
+  const line = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)} ${bottom} L${coords[0][0].toFixed(1)} ${bottom} Z`;
+  const first = daily[0];
+  const last = daily[daily.length - 1];
+  const diff = last.price - first.price;
+  const diffPct = first.price > 0 ? (diff / first.price) * 100 : 0;
+  const trendClass = diff < 0 ? 'down' : diff > 0 ? 'up' : 'flat';
+
+  return (
+    <div className="pd-price-history">
+      <div className="pd-price-history-head">
+        <div>
+          <b>{L('Price history', 'Fiyat geçmişi', 'Preisverlauf')}</b>
+          <span>{country ? country.toUpperCase() : L('Selected market', 'Seçili pazar', 'Ausgewählter Markt')}</span>
+        </div>
+        <div className="pd-price-history-now">
+          <strong>{fmt(last.price, last.currency)}</strong>
+          <small className={trendClass}>
+            {diff === 0 ? '0%' : `${diff > 0 ? '+' : ''}${diffPct.toFixed(1)}%`}
+          </small>
+        </div>
+      </div>
+      <svg className="pd-price-history-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={L('Price history chart', 'Fiyat geçmişi grafiği', 'Preisverlaufsdiagramm')}>
+        <defs>
+          <linearGradient id="pdPriceFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map((t) => {
+          const y = top + (bottom - top) * t;
+          return <line key={t} x1={left} x2={right} y1={y} y2={y} />;
+        })}
+        <path d={area} className="pd-price-history-area" />
+        <path d={line} className="pd-price-history-line" />
+        {coords.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={i === coords.length - 1 ? 4 : 2.6} />
+        ))}
+      </svg>
+      <div className="pd-price-history-foot">
+        <span>{fmtDate(first.date)} · {fmt(first.price, first.currency)}</span>
+        <span>{daily.length} {L('snapshots', 'snapshot', 'Snapshots')}</span>
+        <span>{fmtDate(last.date)} · {last.store || L('latest', 'son', 'neueste')}</span>
+      </div>
     </div>
   );
 }

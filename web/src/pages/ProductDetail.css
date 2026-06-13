@@ -728,6 +728,94 @@
    the right instead of a number — still no arrow, whole row clickable. */
 .pd-price-amt-link { color: var(--accent); font-size: 14px; font-weight: 800; }
 
+.pd-price-history {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+}
+.pd-price-history-head,
+.pd-price-history-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pd-price-history-head b { display: block; font-size: 15px; font-weight: 850; color: var(--text); }
+.pd-price-history-head span,
+.pd-price-history-foot {
+  color: var(--text3);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.pd-price-history-now {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  white-space: nowrap;
+}
+.pd-price-history-now strong { font-size: 18px; color: var(--text); }
+.pd-price-history-now small {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--bg3);
+  color: var(--text2);
+}
+.pd-price-history-now small.down {
+  color: #16a34a;
+  background: color-mix(in srgb, #22c55e 12%, var(--bg3));
+}
+.pd-price-history-now small.up {
+  color: #e11d48;
+  background: color-mix(in srgb, #f43f5e 10%, var(--bg3));
+}
+.pd-price-history-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 10px 0 4px;
+  overflow: visible;
+}
+.pd-price-history-svg line {
+  stroke: color-mix(in srgb, var(--border) 75%, transparent);
+  stroke-width: 1;
+}
+.pd-price-history-area { fill: url(#pdPriceFill); }
+.pd-price-history-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pd-price-history-svg circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.pd-price-history-empty,
+.pd-price-history-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.pd-price-history-empty {
+  flex-direction: column;
+  text-align: center;
+}
+.pd-price-history-empty b { color: var(--text); font-size: 15px; }
+.pd-price-history-empty span { max-width: 620px; }
+@media (max-width: 560px) {
+  .pd-price-history-head,
+  .pd-price-history-foot { align-items: flex-start; flex-direction: column; }
+  .pd-price-history-now { width: 100%; justify-content: space-between; }
+}
+
 .pd-variants-list { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 .pd-variant-card {
   display: grid; grid-template-columns: 100px minmax(0, 1fr);
@@ -771,29 +859,21 @@
 .pd-variant-spec b { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pd-variant-spec small { font-size: 11px; font-weight: 600; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Centered segmented control — the two tabs sit apart with a gap, each
-   centered in its own pill, instead of meeting cramped in the middle. */
 .pd-tabs2 {
-  display: flex; gap: 6px; justify-content: center;
-  width: max-content; max-width: 100%; margin: 0 auto 24px;
-  padding: 5px; border-radius: 999px;
-  background: var(--surface-2); border: 1px solid var(--border);
+  display: flex; gap: 0; justify-content: stretch; margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
 }
 .pd-tabs2 button {
-  flex: 0 0 auto; text-align: center;
-  padding: 10px 30px; border-radius: 999px;
-  border: none; background: transparent; color: var(--text2);
-  font-weight: 800; font-size: 14.5px; cursor: pointer;
-  transition: color .15s, background .15s, box-shadow .15s;
+  flex: 1 1 0; text-align: center;
+  padding: 12px 16px; border-radius: 0;
+  border: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  background: transparent; color: var(--text2);
+  font-weight: 800; font-size: 15px; cursor: pointer;
+  transition: color .15s, border-bottom-color .15s;
   letter-spacing: 0.01em; white-space: nowrap;
 }
 .pd-tabs2 button:hover { color: var(--text); }
-.pd-tabs2 button.on {
-  color: #fff; background: var(--accent);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 32%, transparent);
-}
-/* center the segmented control within its row */
-.pd-tab-wrap, .pd-tabs2-row { text-align: center; }
+.pd-tabs2 button.on { color: var(--accent); border-bottom-color: var(--accent); }
 .pd-tab-body { }
 .pd-crumbs a { color: var(--text2); }
 .pd-crumbs a:hover { color: var(--accent); }

@@ -148,6 +148,33 @@ async function aiRequest({
   throw lastErr || new Error('AI failed');
 }
 
+async function groundedGeminiRequest({
+  system,
+  user,
+  maxOutputTokens = 4096,
+  temperature = 0.2,
+}) {
+  let lastErr;
+  const messages = [{ role: 'user', content: user }];
+  for (let i = 0; i < 2; i++) {
+    if (i > 0) await sleep(2000);
+    try {
+      return await geminiOnce({
+        system,
+        messages,
+        maxOutputTokens,
+        temperature,
+        tools: [{ googleSearch: {} }],
+        jsonMode: false,
+      });
+    } catch (e) {
+      lastErr = e;
+      if (!e.transient) break;
+    }
+  }
+  throw lastErr || new Error('grounded search failed');
+}
+
 // history: [{ role: 'user' | 'model', text: string }]
 export async function askQorAi(history, opts = {}) {
   const messages = history.map((m) => ({
@@ -183,15 +210,17 @@ export async function askQorAiRaw({
 
 export async function askQorAiGrounded(prompt, opts = {}) {
   const lang = opts.language || opts.lang || 'en';
-  return askQorAiRaw({
+  const today = new Date().toISOString().slice(0, 10);
+  return groundedGeminiRequest({
     system:
-      `You are Qor AI's web research assistant. Use current web search when available. ` +
-      `Reply in ${languageLabel(lang)}. Summarize evidence, source types, and uncertainty. ` +
+      `You are Qor AI's web research assistant. Current date: ${today}. ` +
+      'You MUST use the provided Google Search grounding tool for product status, official specs, market availability, review/community sentiment, and price-cycle signals. ' +
+      'Do not answer from model memory for launch status or availability. If search evidence is thin, say exactly what is uncertain instead of guessing. ' +
+      `Reply in ${languageLabel(lang)}. Summarize evidence, source types, current market status, and uncertainty. ` +
       'Do not invent quotes, exact prices, or review counts.',
     user: prompt,
     maxOutputTokens: opts.maxOutputTokens || 4096,
-    temperature: 0.25,
-    tools: [{ googleSearch: {} }],
+    temperature: 0.2,
   });
 }
 

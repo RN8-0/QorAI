@@ -42,7 +42,7 @@
   border-radius: 999px;
   background: var(--bg3);
   overflow: hidden;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 .quiz-progress i {
   display: block;
@@ -51,12 +51,37 @@
   background: var(--brand-grad);
   transition: width .25s ease;
 }
+.quiz-step-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.quiz-step-map span {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg3);
+  transition: background .2s ease, transform .2s ease;
+}
+.quiz-step-map span.done { background: color-mix(in srgb, var(--accent) 72%, #22c55e); }
+.quiz-step-map span.active {
+  background: var(--accent);
+  transform: scaleY(1.7);
+}
 .quiz-list { display: grid; grid-template-columns: 1fr; gap: 18px; }
 .quiz-q {
   padding: 16px;
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface) 78%, transparent);
   border: 1px solid var(--border);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.quiz-q.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.quiz-q.done {
+  background: color-mix(in srgb, #22c55e 5%, var(--surface));
 }
 .quiz-q h3 {
   display: flex;
@@ -99,6 +124,19 @@
   transition: border-color .13s ease, background .13s ease, transform .13s ease;
 }
 .quiz-option:hover { border-color: var(--accent-ring); transform: translateY(-1px); }
+.quiz-option-letter {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 900;
+}
 .quiz-option-tick {
   flex-shrink: 0;
   width: 18px; height: 18px;
@@ -110,6 +148,10 @@
 .quiz-option.on {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+.quiz-option.on .quiz-option-letter {
+  background: var(--accent);
+  color: #fff;
 }
 .quiz-option.on .quiz-option-tick {
   border-color: var(--accent);

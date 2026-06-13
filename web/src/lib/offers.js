@@ -101,6 +101,45 @@ export async function fetchProductOffers(productId) {
   }
 }
 
+export async function fetchProductPriceSnapshots(productId, { country = '', limit = 120 } = {}) {
+  if (!productId) return [];
+  try {
+    const filters = [`productId="${escFilter(productId)}"`];
+    const cc = String(country || '').toUpperCase();
+    if (cc) filters.push(`country="${escFilter(cc)}"`);
+    const records = await pb.collection('price_snapshots').getFullList({
+      filter: filters.join(' && '),
+      sort: '-checkedAt,-created',
+      fields: [
+        'id', 'offerId', 'productId', 'store', 'network', 'country',
+        'price', 'shipping', 'totalPrice', 'currency', 'availability',
+        'condition', 'source', 'checkedAt', 'created',
+      ].join(','),
+      batch: Math.min(Math.max(limit, 20), 200),
+    });
+    return records
+      .map((record) => {
+        const total = Number(record.totalPrice) || Number(record.price) + Number(record.shipping || 0);
+        return {
+          id: record.id || '',
+          offerId: record.offerId || '',
+          store: record.store || record.network || '',
+          country: String(record.country || '').toUpperCase(),
+          price: Math.round(total * 100) / 100,
+          currency: String(record.currency || CURRENCY_BY_COUNTRY[String(record.country || '').toUpperCase()] || 'USD').toUpperCase(),
+          checkedAt: record.checkedAt || record.created || '',
+          source: record.source || '',
+        };
+      })
+      .filter((x) => x.price > 0 && x.checkedAt)
+      .sort((a, b) => Date.parse(a.checkedAt) - Date.parse(b.checkedAt))
+      .slice(-Math.min(Math.max(limit, 20), 200));
+  } catch (err) {
+    console.warn('[offers] price snapshots fetch failed', err);
+    return [];
+  }
+}
+
 function countryRank(country, countries) {
   const i = countries.indexOf(String(country || '').toUpperCase());
   return i === -1 ? countries.length + 1 : i;

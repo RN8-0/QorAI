@@ -16,6 +16,8 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
     [answers, questions],
   );
   const allAnswered = answeredCount === questions.length && questions.length > 0;
+  const nextQuestionIndex = Math.max(0, questions.findIndex((q) => answers[q.id] == null));
+  const activeQuestionIndex = allAnswered ? questions.length - 1 : nextQuestionIndex;
 
   function pick(qid, option) {
     setAnswers((a) => ({ ...a, [qid]: option }));
@@ -42,16 +44,25 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
         <span className="quiz-progress-pill">{answeredCount}/{questions.length}</span>
       </div>
       <div className="quiz-progress"><i style={{ width: `${(answeredCount / Math.max(1, questions.length)) * 100}%` }} /></div>
+      <div className="quiz-step-map" aria-hidden="true">
+        {questions.map((q, i) => (
+          <span
+            key={q.id}
+            className={(answers[q.id] != null ? 'done ' : '') + (i === activeQuestionIndex ? 'active' : '')}
+          />
+        ))}
+      </div>
 
       <div className="quiz-list">
         {questions.map((q, i) => (
-          <div className="quiz-q" key={q.id}>
+          <div className={'quiz-q' + (answers[q.id] != null ? ' done' : i === activeQuestionIndex ? ' active' : '')} key={q.id}>
             <h3><span className="quiz-q-no">{i + 1}</span>{q.text}</h3>
             <div className="quiz-options">
-              {q.options.map((option) => (
+              {q.options.map((option, optionIndex) => (
                 <button type="button" key={option}
                   className={'quiz-option' + (answers[q.id] === option ? ' on' : '')}
                   onClick={() => pick(q.id, option)} disabled={busy}>
+                  <span className="quiz-option-letter">{String.fromCharCode(65 + optionIndex)}</span>
                   <span className="quiz-option-tick" aria-hidden="true" />
                   <span>{option}</span>
                 </button>

@@ -17,7 +17,13 @@ import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { useGeoCountry } from '../lib/geo';
-import AiAnalysisView, { buildComparePrompt, buildCompareResearchPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import AiAnalysisView, {
+  buildComparePrompt,
+  buildCompareResearchPrompt,
+  hasStaleAvailabilityClaims,
+  parseAiJson,
+  withFreshnessRetryInstruction,
+} from '../components/AiAnalysis.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
@@ -331,8 +337,8 @@ export default function Compare() {
       } catch {
         research = '';
       }
-      const text = await askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in ${lang}.`,
+      let text = await askQorAiRaw({
+        system: `You are Qor AI. Return only valid JSON in ${lang}. Use current research and Qor catalog context over stale model memory.`,
         user: buildAiComparePrompt(answers, research),
         maxOutputTokens: 8192,
         temperature: 0.45,
@@ -341,6 +347,20 @@ export default function Compare() {
       // Never surface a raw/truncated JSON blob — treat unparseable output as a
       // failure the user can retry.
       if (!parseAiJson(text)) throw new Error('parse');
+      if (hasStaleAvailabilityClaims(text)) {
+        const retry = await askQorAiRaw({
+          system: `You are Qor AI. Return only valid JSON in ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions.`,
+          user: withFreshnessRetryInstruction(
+            buildAiComparePrompt(answers, research),
+            products.map((p) => p.name),
+          ),
+          maxOutputTokens: 8192,
+          temperature: 0.25,
+          jsonMode: true,
+        });
+        if (!parseAiJson(retry) || hasStaleAvailabilityClaims(retry)) throw new Error('stale-report');
+        text = retry;
+      }
       setAiText(text);
       setAiPhase('result');
       await saveComparisonAnalysisHistory({ products, analysis: text });
@@ -507,7 +527,7 @@ export default function Compare() {
             </section>
 
             {/* tabs — Specs · AI (centered) */}
-            <div className="tabs cmp-tabs2">
+            <div className="cmp-tabs2">
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
                 {L('Specs', 'Özellikler', 'Eigenschaften')}
               </button>
@@ -582,7 +602,7 @@ export default function Compare() {
                       </button>
                     )}
                     {!aiText && aiPhase === 'quizLoading' && (
-                      <div className="cmp-ai-loading"><div className="spinner" /> {L('Preparing quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')}</div>
+                      <AiLoadingSteps lang={lang} mode="quizCompare" />
                     )}
                     {!aiText && aiPhase === 'quiz' && aiQuestions.length > 0 && (
                       <QuizFlow
