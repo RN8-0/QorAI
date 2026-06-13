@@ -13,7 +13,7 @@ import { saveProductAnalysisHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
-import { bestOfferForLang, fetchProductOffers, fetchProductPriceSnapshots, formatOfferPrice, offerClickPath } from '../lib/offers';
+import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
@@ -34,6 +34,8 @@ import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
 import { extractProductId, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
+import { cleanProductName, displayProductName } from '../lib/productNames';
+import Reviews from '../components/Reviews.jsx';
 import './ProductDetail.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
@@ -68,36 +70,59 @@ const HERO_SPEC_PRIORITY = [
 
 // Short label for a variant chip — RAM / storage when available, otherwise the
 // trailing "(1 TB)" / "(512 GB)" from the name, otherwise the full name.
-function variantLabel(v) {
-  const ks = (v && v.keySpecs) || {};
-  const ram = ks['spec.ram'] || ks.ram || '';
-  const storage = ks['spec.storage'] || ks.storage || '';
-  if (ram && storage) return `${ram} / ${storage}`;
-  if (storage) return storage;
-  const m = String(v?.name || '').match(/\(([^)]+)\)\s*$/);
-  if (m) return m[1].trim();
-  return v?.name || '';
+function variantSpecKind(label, value = '') {
+  const text = `${label || ''} ${value || ''}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (/\bram\b|bellek|memory|arbeitsspeicher/.test(text)) return 'ram';
+  if (/storage|depolama|ssd|hdd|speicher|kapasite/.test(text) && !/battery|batarya|pil|akku/.test(text)) return 'storage';
+  if (/processor|islemci|işlemci|cpu|gpu|graphics|grafik|chip/.test(text)) return 'processor';
+  if (/screen|display|ekran|bildschirm|inch|inç|zoll/.test(text)) return 'screen';
+  if (/battery|batarya|pil|akku|wh|mah/.test(text)) return 'battery';
+  if (/color|renk|farbe/.test(text)) return 'color';
+  return '';
 }
 
-// Picks up to 2 spec keys that vary across the variant list — the SAME keys for
-// every card so the chips line up (e.g. all cards show "Storage / RAM" even
-// when one variant only differs by one of them). Priority list is the user-
-// recognisable axes; we drop a key if every variant has the same value.
-function pickVariantDiffKeys(variants) {
-  if (!Array.isArray(variants) || variants.length < 2) return [];
-  const priority = ['spec.storage', 'spec.ram', 'spec.battery', 'spec.screen', 'spec.camera', 'spec.cpu'];
+function variantSpecValue(v, kind) {
+  const ks = (v && v.keySpecs) || {};
+  for (const [key, value] of Object.entries(ks)) {
+    if (variantSpecKind(key, value) === kind) return String(value || '').trim();
+  }
+  return '';
+}
+
+function variantModelLabel(v, lang) {
+  const processor = variantSpecValue(v, 'processor');
+  if (processor) return localizedSpecValue(processor, lang);
+  return displayProductName(v, lang) || cleanProductName(v?.name || '');
+}
+
+function pickVariantDiffKinds(products) {
+  const priority = ['ram', 'storage', 'processor', 'screen', 'battery', 'color'];
   const out = [];
-  for (const k of priority) {
+  for (const kind of priority) {
     const vals = new Set();
-    for (const v of variants) {
-      const ks = (v && v.keySpecs) || {};
-      const val = String(ks[k] || '').trim();
-      if (val) vals.add(val);
+    for (const v of products || []) {
+      const val = variantSpecValue(v, kind);
+      if (val) vals.add(val.toLowerCase());
     }
-    if (vals.size >= 2) out.push(k);
-    if (out.length >= 2) break;
+    if (vals.size >= 2) out.push(kind);
+    if (out.length >= 3) break;
   }
   return out;
+}
+
+function variantKindLabel(kind, lang) {
+  const labels = {
+    ram: 'RAM',
+    storage: 'Storage',
+    processor: 'Processor/GPU',
+    screen: 'Screen',
+    battery: 'Battery',
+    color: 'Color',
+  };
+  return localizedSpecLabel(labels[kind] || kind, lang);
 }
 
 function normHeroSpecText(value) {
@@ -216,9 +241,8 @@ function fallbackProductQuiz(lang, productName) {
 
 function localizedProductName(product, lang) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
-  const translated = product?.nameTranslated?.[code];
-  if (translated && String(translated).trim()) return translated;
-  return trSpec(product?.name || '', code);
+  const named = displayProductName(product, code);
+  return code === 'tr' ? named : cleanProductName(trSpec(named, code));
 }
 
 // Per-product spec translator. The product carries a COMPLETE Turkish→target
@@ -529,8 +553,6 @@ export default function ProductDetail() {
   const [dictReady, setDictReady] = useState(false);
   const [offers, setOffers] = useState([]);
   const [offersLoading, setOffersLoading] = useState(false);
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
   const [compareBase, setCompareBase] = useState(null);
   const [compareMsg, setCompareMsg] = useState('');
   // Ship-to country for the price list. Defaults to the IP-detected country but
@@ -609,21 +631,6 @@ export default function ProductDetail() {
 
   useEffect(() => {
     let live = true;
-    const cc = String(priceCountry || geoCountry || 'US').toUpperCase();
-    if (!p?.id || !cc) {
-      setPriceHistory([]);
-      return () => { live = false; };
-    }
-    setPriceHistoryLoading(true);
-    fetchProductPriceSnapshots(p.id, { country: cc, limit: 120 })
-      .then((items) => { if (live) setPriceHistory(items); })
-      .catch(() => { if (live) setPriceHistory([]); })
-      .finally(() => { if (live) setPriceHistoryLoading(false); });
-    return () => { live = false; };
-  }, [p?.id, priceCountry, geoCountry]);
-
-  useEffect(() => {
-    let live = true;
     if (lang === 'tr') {
       setDictReady(true);
       return () => { live = false; };
@@ -689,7 +696,7 @@ export default function ProductDetail() {
         offers,
       });
       let txt = await askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in ${lang}. Use current research and Qor catalog context over stale model memory.`,
+        system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
         user: prompt,
         maxOutputTokens: 8192,
         temperature: 0.45,
@@ -699,7 +706,7 @@ export default function ProductDetail() {
       if (!data || typeof data !== 'object') throw new Error('parse');
       if (hasStaleAvailabilityClaims(txt)) {
         const retry = await askQorAiRaw({
-          system: `You are Qor AI. Return only valid JSON in ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions.`,
+          system: `You are Qor AI. Return only valid JSON in language code ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions. Every user-facing text field must be in the requested language.`,
           user: withFreshnessRetryInstruction(prompt, [localizedProductName(p, lang)]),
           maxOutputTokens: 8192,
           temperature: 0.25,
@@ -1054,44 +1061,37 @@ export default function ProductDetail() {
                     </a>
                   ))}
                 </div>
-                <PriceHistoryChart
-                  points={priceHistory}
-                  loading={priceHistoryLoading}
-                  lang={lang}
-                  country={sel}
-                  L={L}
-                />
               </section>
             );
           })()}
 
           {variants.length > 0 && (() => {
-            const diffKeys = pickVariantDiffKeys(variants);
+            const diffKinds = pickVariantDiffKinds([p, ...variants]);
             return (
               <section className="pd-block">
                 <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
                 <div className="pd-variants-list">
                   {variants.map((v) => {
-                    const vks = (v && v.keySpecs) || {};
+                    const variantName = variantModelLabel(v, lang);
                     return (
                       <Link key={v.id} to={productPath(v)}
                         className={'pd-variant-card' + (v.id === p.id ? ' on' : '')}>
                         <div className="pd-variant-media">
                           <div className="pd-variant-img">
-                            <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={v.name} size="card" />
+                            <ProductImg src={v.imageUrl || (v.images && v.images[0])} alt={variantName} size="card" />
                           </div>
                         </div>
                         <div className="pd-variant-body">
                           {v.brand && <span className="pd-variant-brand">{v.brand}</span>}
-                          <span className="pd-variant-name">{variantLabel(v)}</span>
-                          {diffKeys.length > 0 && (
+                          <span className="pd-variant-name">{variantName}</span>
+                          {diffKinds.length > 0 && (
                             <div className="pd-variant-specs">
-                              {diffKeys.map((k) => {
-                                const raw = String(vks[k] || '').trim();
+                              {diffKinds.map((kind) => {
+                                const raw = variantSpecValue(v, kind);
                                 return (
-                                  <span className="pd-variant-spec" key={k}>
+                                  <span className="pd-variant-spec" key={kind}>
                                     <b>{raw ? localizedSpecValue(raw, lang) : '—'}</b>
-                                    <small>{localizedSpecLabel(specTr(k), lang)}</small>
+                                    <small>{variantKindLabel(kind, lang)}</small>
                                   </span>
                                 );
                               })}
@@ -1160,6 +1160,8 @@ export default function ProductDetail() {
               )}
             </div>
           </section>
+
+          <Reviews productId={p.id} productName={displayName} lang={lang} />
         </div>
 
         {/* SIMILAR */}
@@ -1245,9 +1247,17 @@ function ScrollRail({ children }) {
   const scroll = (dir) => ref.current?.scrollBy({ left: dir * Math.max(320, ref.current.clientWidth * 0.85), behavior: 'smooth' });
   return (
     <div className="pd-rail-wrap">
-      {edges.left && <button type="button" className="pd-rail-arr pd-rail-prev" aria-label="‹" onClick={() => scroll(-1)}>‹</button>}
+      {edges.left && (
+        <button type="button" className="pd-rail-arr pd-rail-prev" aria-label="‹" onClick={() => scroll(-1)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg>
+        </button>
+      )}
       <div className="rail" ref={ref}>{children}</div>
-      {edges.right && <button type="button" className="pd-rail-arr pd-rail-next" aria-label="›" onClick={() => scroll(1)}>›</button>}
+      {edges.right && (
+        <button type="button" className="pd-rail-arr pd-rail-next" aria-label="›" onClick={() => scroll(1)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg>
+        </button>
+      )}
     </div>
   );
 }

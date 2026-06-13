@@ -6,6 +6,7 @@ import { useGeoCountry } from '../lib/geo';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import { displayProductName, cleanProductName } from '../lib/productNames';
 import Gauge, { techColor } from './Gauge.jsx';
 import ProductImg from './ProductImg.jsx';
 import './ProductCard.css';
@@ -177,10 +178,11 @@ function productSpecs(product, t, lang) {
 
 function ProductImage({ p }) {
   const meta = catMeta(p.category);
+  const imageName = cleanProductName(p.name);
   if (p.imageUrl) {
     return (
       <div className="q-product-card-img">
-        <ProductImg src={p.imageUrl} alt={p.name} size="card" />
+        <ProductImg src={p.imageUrl} alt={imageName} size="card" />
       </div>
     );
   }
@@ -214,6 +216,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
   const cardPrice = priceForCountry(p, geoCountry);
   const inCompare = has(p.id);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const cardName = displayProductName(p, lang);
 
   const onCompareClick = (e) => {
     e.preventDefault();
@@ -228,7 +231,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
 
   return (
     <Link to={productPath(p)} onClick={onClick}
-      className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={p.name}>
+      className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={cardName}>
       <button type="button"
         className={'q-product-card-cmp' + (inCompare ? ' on' : '')}
         onClick={onCompareClick}
@@ -247,14 +250,14 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
             <Gauge value={p.techScore} size={28} stroke={2.1} color={techColor(p.techScore)} fontSize={10} />
           </span>
         )}
-        <ProductImage p={p} />
+        <ProductImage p={{ ...p, name: cardName }} />
       </div>
       <div className="q-product-card-body">
         <div className="q-product-card-head">
           {p.brand && <span className="q-product-card-brand">{p.brand}</span>}
           {!p.brand && <span className="q-product-card-brand">{categoryLabel(p.category, lang)}</span>}
         </div>
-        <span className="q-product-card-name">{p.name}</span>
+        <span className="q-product-card-name">{cardName}</span>
         {cardPrice && (
           <span className="q-product-card-price">{formatPriceAmount(cardPrice.price, cardPrice.currency, lang)}</span>
         )}

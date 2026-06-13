@@ -7,6 +7,7 @@
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
+import { displayProductName, cleanProductName } from '../lib/productNames';
 
 const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
@@ -122,12 +123,12 @@ function productLine(p, lang) {
     : priceFresh && Number(p?.lowestPrice) > 0
       ? `${Number(p.lowestPrice)} ${p.lowestPriceCurrency || ''}`
       : '-';
-  const name = p?.nameTranslated?.[String(lang).slice(0, 2)] || p?.name || '';
+  const name = displayProductName(p, lang);
   return { name, brand: p?.brand || '', category: p?.category || '', score: p?.techScore || '-', price, ks };
 }
 
 function cleanProductForPrompt(p, lang) {
-  const name = p?.nameTranslated?.[String(lang).slice(0, 2)] || p?.name || '';
+  const name = displayProductName(p, lang);
   return {
     name,
     brand: p?.brand || '',
@@ -137,6 +138,38 @@ function cleanProductForPrompt(p, lang) {
     imageUrl: p?.imageUrl || (Array.isArray(p?.images) ? p.images[0] : ''),
     specs: productSpecsContext(p, 18),
   };
+}
+
+function languageGate(lang) {
+  return (
+    `LANGUAGE HARD GATE: Every user-facing sentence, label, list item, source description, button-like value, and explanation must be fully written in ${langName(lang)}. ` +
+    'Only brand names, official product/model names, source names such as Reddit/YouTube/Amazon, and technical standards such as Thunderbolt, Wi-Fi, RTX, macOS may remain as-is. ' +
+    'Do not output English UI labels such as "quiz answers", "similar products", "retailer reviews", "buy", "wait", "source types", "best time", or "community/review research" when the requested language is not English.'
+  );
+}
+
+function localizeAiText(value, L) {
+  const raw = String(value || '').trim();
+  const key = raw.toLowerCase();
+  const exact = {
+    'quiz answers': L('quiz answers', 'quiz cevapları', 'Quiz-Antworten'),
+    'qor catalog specs': L('Qor catalog specs', 'Qor katalog özellikleri', 'Qor-Katalogdaten'),
+    'community/review research': L('community/review research', 'topluluk ve yorum araştırması', 'Community- und Review-Recherche'),
+    'similar products': L('similar products', 'benzer ürünler', 'ähnliche Produkte'),
+    'reddit': 'Reddit',
+    'youtube reviews': L('YouTube reviews', 'YouTube incelemeleri', 'YouTube-Reviews'),
+    'retailer reviews': L('retailer reviews', 'mağaza yorumları', 'Händlerbewertungen'),
+    'specialist sources': L('specialist sources', 'uzman kaynaklar', 'Fachquellen'),
+    'source types': L('source types', 'kaynak türleri', 'Quellentypen'),
+    buy: L('buy', 'satın al', 'kaufen'),
+    wait: L('wait', 'bekle', 'warten'),
+    watch: L('watch', 'takip et', 'beobachten'),
+  };
+  return exact[key] || cleanProductName(raw);
+}
+
+function localizedAiList(items, L) {
+  return arr(items).map((x) => localizeAiText(x, L));
 }
 
 function quizLines(answers = []) {
@@ -249,7 +282,7 @@ export function buildProductResearchPrompt(p, lang, context = {}) {
     `Research the product "${name}" by ${brand || 'unknown'} for a Qor AI purchase report.\n` +
     `Category: ${category || '-'}\nTech score in catalog: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\n\n` +
     `MARKET STATUS CONTEXT:\n${availabilityContextForProduct(p)}\n\n` +
-    `${freshnessRules()}\n\n` +
+    `${freshnessRules()}\n${languageGate(lang)}\n\n` +
     'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. ' +
     'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
     `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
@@ -266,7 +299,7 @@ export function buildCompareResearchPrompt(products, lang, context = {}) {
     'Research these products for a Qor AI comparison report.\n\n' +
     `${lines}\n\n` +
     `MARKET STATUS CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
-    `${freshnessRules()}\n\n` +
+    `${freshnessRules()}\n${languageGate(lang)}\n\n` +
     'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. ' +
     'Then note the decisive differences that matter for a buyer choosing one. Do not invent quotes, exact counts, or exact live prices.\n\n' +
     `Comparison quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
@@ -284,7 +317,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
   return (
     `You are Qor AI's senior product analyst and product advisor. Analyse "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
     'Use the product name exactly as given. Do not replace it with a similar model.\n\n' +
-    `LANGUAGE: Every user-facing text field must be fully written in ${langName(lang)}. Keep official product/model names as-is.\n\n` +
+    `${languageGate(lang)}\n\n` +
     'CRITICAL OUTPUT ORDER: one single continuous report: match/advisor/deep analysis first, internet/community sentiment second, smart alternatives third, price forecast last.\n' +
     `${freshnessRules()}\n` +
     'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n' +
@@ -296,7 +329,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "name": "exact product name",\n' +
     '    "matchScore": <0-100>,\n' +
     '    "matchComment": "5-7 detailed sentences explaining quiz/profile fit, trade-offs, and who should care",\n' +
-    '    "reviewedInputs": ["quiz answers", "Qor catalog specs", "community/review research", "similar products"],\n' +
+    '    "reviewedInputs": ["<input/source label in requested language>", "<input/source label in requested language>"],\n' +
     '    "factors": [{"label": "Usage fit", "score": <0-100>, "detail": "2 detailed sentences with evidence"}],\n' +
     '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 detailed sentences with evidence"}],\n' +
     '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n' +
@@ -308,7 +341,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums, and specialist reviews; include uncertainty where needed",\n' +
     '    "pros": ["6 recurring positive themes"],\n' +
     '    "cons": ["5 recurring negative themes"],\n' +
-    '    "sources": ["Reddit", "YouTube reviews", "retailer reviews"],\n' +
+    '    "sources": ["Reddit", "<source type in requested language>", "<source type in requested language>"],\n' +
     '    "verificationNotes": ["what is directly grounded", "what remains uncertain"]\n' +
     '  },\n' +
     '  "alternatives": [\n' +
@@ -344,7 +377,7 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
     .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`).slice(0, 18).join('; ');
   return (
     'You are Qor AI\'s senior product comparison analyst. Evaluate every listed product separately using the same system as product detail, then give a final recommendation.\n\n' +
-    `LANGUAGE: Every user-facing text field must be fully written in ${langName(lang)}. Keep official product/model names as-is.\n\n` +
+    `${languageGate(lang)}\n\n` +
     `${freshnessRules()}\n\n` +
     'Return ONLY one valid JSON object with this exact structure:\n' +
     '{\n' +
@@ -476,7 +509,7 @@ function AltView({ data, L }) {
     <div className="ai-alts">
       {alts.map((a, i) => (
         <div className="ai-alt" key={i}>
-          <div className="ai-alt-name">{a.name}</div>
+          <div className="ai-alt-name">{cleanProductName(a.name)}</div>
           {a.whyBetter && <div className="ai-alt-why">★ {a.whyBetter}</div>}
           <div className="ai-alt-grid">
             {a.advantage && <div className="ai-alt-cell ai-alt-adv"><b>{L('Advantage', 'Avantaj', 'Vorteil')}</b><span>{a.advantage}</span></div>}
@@ -550,9 +583,9 @@ function PredictionView({ data, L }) {
 
 // ─── COMPARE ────────────────────────────────────────────────────────────────
 function CompareView({ data, L }) {
-  const winner = String(data.winner || '').trim();
+  const winner = cleanProductName(data.winner || '');
   const products = arr(data.products).map((p) => ({
-    name: p.name || '', score: toInt(p.score), bestFor: p.bestFor || '',
+    name: cleanProductName(p.name || ''), score: toInt(p.score), bestFor: p.bestFor || '',
     pros: arr(p.pros).map(String), cons: arr(p.cons).map(String),
   }));
   if (!products.length) return null;
@@ -599,7 +632,7 @@ function ForumView({ data, L }) {
   const sat = toInt(data.satisfaction);
   const praise = arr(data.praise).map(String);
   const complaints = arr(data.complaints).map(String);
-  const sources = arr(data.sources).map(String);
+  const sources = localizedAiList(data.sources, L);
   return (
     <div className="ai-forum">
       {sat > 0 && (
@@ -721,7 +754,7 @@ function FeatureMatches({ items = [], L }) {
 function CommunityBlock({ data = {}, L }) {
   if (!data || typeof data !== 'object') return null;
   const sat = toInt(data.satisfaction);
-  const sources = arr(data.sources).map(String);
+  const sources = localizedAiList(data.sources, L);
   const notes = arr(data.verificationNotes).map(String);
   return (
     <div className="ai-community-full">
@@ -758,11 +791,11 @@ function AlternativeCards({ alternatives = [], L }) {
         const content = (
           <article className="ai-alt-card">
             <div className="ai-alt-media">
-              {a.imageUrl ? <ProductImg src={a.imageUrl} alt={a.name || ''} size="thumb" /> : <span>{i + 1}</span>}
+              {a.imageUrl ? <ProductImg src={a.imageUrl} alt={cleanProductName(a.name || '')} size="thumb" /> : <span>{i + 1}</span>}
             </div>
             <div className="ai-alt-copy">
               <div className="ai-alt-card-top">
-                <b>{a.name}</b>
+                <b>{cleanProductName(a.name)}</b>
                 <small>{a.source === 'qor_catalog' ? L('Qor catalog', 'Qor kataloğu', 'Qor-Katalog') : L('External', 'Harici', 'Extern')}</small>
               </div>
               {a.shortComment && <p>{a.shortComment}</p>}
@@ -799,7 +832,7 @@ function PriceForecastBlock({ data = {}, L }) {
           <b>{label}</b>
           {toInt(data.confidence) > 0 && <span>{L('Confidence', 'Güven', 'Sicherheit')}: {toInt(data.confidence)}%</span>}
         </div>
-        {data.buyOrWait && <strong>{String(data.buyOrWait).toUpperCase()}</strong>}
+        {data.buyOrWait && <strong>{localizeAiText(data.buyOrWait, L)}</strong>}
       </div>
       <div className="ai-price-grid">
         {data.expectedChange && <span><small>{L('Expected change', 'Beklenen değişim', 'Erwartete Änderung')}</small><b>{data.expectedChange}</b></span>}
@@ -820,7 +853,7 @@ function ProductFullReport({ data, L }) {
         <div className="ai-report-hero">
           {match > 0 && <ScoreRing value={match} />}
           <div>
-            <h3>{product.name || data.name || L('Product report', 'Ürün raporu', 'Produktbericht')}</h3>
+            <h3>{cleanProductName(product.name || data.name || L('Product report', 'Ürün raporu', 'Produktbericht'))}</h3>
             <Paragraphs text={product.matchComment} />
           </div>
         </div>
@@ -831,7 +864,7 @@ function ProductFullReport({ data, L }) {
           <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={arr(product.strengths).map(String)} color="#22c55e" />
           <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={arr(product.weaknesses).map(String)} color="#f43f5e" />
         </div>
-        <BulletList items={product.reviewedInputs} tone="notes" />
+        <BulletList items={localizedAiList(product.reviewedInputs, L)} tone="notes" />
       </ReportSection>
 
       <ReportSection eyebrow="02" title={L('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet', 'Internet-Kommentare und Zufriedenheit')}>
@@ -850,7 +883,7 @@ function ProductFullReport({ data, L }) {
 }
 
 function CompareScoreChartFull({ chart = [], L }) {
-  const rows = arr(chart).map((x) => ({ name: x.name || '', score: toInt(x.score), reason: x.reason || '' })).filter((x) => x.name);
+  const rows = arr(chart).map((x) => ({ name: cleanProductName(x.name || ''), score: toInt(x.score), reason: x.reason || '' })).filter((x) => x.name);
   if (!rows.length) return null;
   const max = Math.max(1, ...rows.map((r) => r.score));
   return (
@@ -882,7 +915,7 @@ function FactorMatrix({ rows = [] }) {
           <div>
             {row.scores.map((s, j) => {
               const score = toInt(s.score);
-              return <span key={`${s.name}-${j}`}><small>{s.name}</small><i style={{ width: `${Math.max(4, score)}%`, background: scoreColor(score) }} /><strong>{score}</strong></span>;
+              return <span key={`${s.name}-${j}`}><small>{cleanProductName(s.name)}</small><i style={{ width: `${Math.max(4, score)}%`, background: scoreColor(score) }} /><strong>{score}</strong></span>;
             })}
           </div>
         </div>
@@ -897,9 +930,9 @@ function CompareFullReport({ data, L }) {
   return (
     <div className="ai-report ai-report-compare">
       {products.map((p, i) => (
-        <ReportSection key={`${p.name}-${i}`} eyebrow={`0${i + 1}`} title={p.name}>
+        <ReportSection key={`${p.name}-${i}`} eyebrow={`0${i + 1}`} title={cleanProductName(p.name)}>
           <div className="ai-compare-product-head">
-            {p.imageUrl && <ProductImg src={p.imageUrl} alt={p.name || ''} size="thumb" />}
+            {p.imageUrl && <ProductImg src={p.imageUrl} alt={cleanProductName(p.name || '')} size="thumb" />}
             <div>
               {toInt(p.matchScore) > 0 && <ScoreRing value={toInt(p.matchScore)} />}
             </div>
@@ -921,7 +954,7 @@ function CompareFullReport({ data, L }) {
         {cmp.winner && (
           <div className="ai-cmp-winner">
             <span>★</span>
-            <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cmp.winner}</b></div>
+            <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cleanProductName(cmp.winner)}</b></div>
             {toInt(cmp.winnerScore) > 0 && <strong>{toInt(cmp.winnerScore)}</strong>}
           </div>
         )}

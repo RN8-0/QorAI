@@ -92,14 +92,29 @@
 }
 
 /* ─── Product header cards (dual rings — app parity) ─────────── */
+.cmp-product-scroll {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.cmp-scroll-spacer {
+  flex: 0 0 200px;
+}
 .cmp-cards {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 14px; margin-bottom: 20px;
+  display: flex;
+  gap: 14px;
+  min-width: max-content;
+  margin-bottom: 20px;
 }
 .cmp-card {
   position: relative; background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 16px 14px 14px; text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex: 0 0 270px;
+  scroll-snap-align: start;
 }
 .cmp-card.best {
   border-color: color-mix(in srgb, var(--score-excellent) 40%, var(--border));
@@ -137,11 +152,14 @@
 .cmp-prices-block { margin-top: 22px; }
 .cmp-block-title { text-align: center; font-size: 18px; font-weight: 850; margin: 0 0 14px; }
 .cmp-prices {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px;
+  display: flex; gap: 14px; min-width: max-content;
 }
 .cmp-price-card {
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
   padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
+  flex: 0 0 270px;
+  min-height: 140px;
+  scroll-snap-align: start;
 }
 .cmp-price-row-link {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 2px;
@@ -157,8 +175,7 @@
   display: flex;
   gap: 0;
   justify-content: stretch;
-  max-width: 560px;
-  margin: 26px auto 20px;
+  margin: 26px 0 24px;
   border-bottom: 2px solid var(--border);
 }
 .cmp-tabs2 button {
@@ -396,7 +413,7 @@
 /* ─── Comparison table ───────────────────────────────────────── */
 .cmp-table-wrap { overflow-x: auto; padding-bottom: 30px; }
 .cmp-table {
-  width: 100%; border-collapse: collapse;
+  width: max-content; min-width: 100%; border-collapse: collapse;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden;
 }
@@ -414,7 +431,7 @@
   position: sticky; left: 0; z-index: 1;
 }
 .cmp-th-prod {
-  position: relative; min-width: 190px; text-align: center; vertical-align: top;
+  position: relative; width: 270px; min-width: 270px; text-align: center; vertical-align: top;
   padding-top: 16px;
 }
 .cmp-remove {
@@ -478,4 +495,8 @@
   .cmp-th-spec, .cmp-td-spec { width: 130px; min-width: 120px; font-size: 11.5px; }
   .cmp-table th, .cmp-table td { padding: 10px; }
   .cmp-picks .card-grid { grid-template-columns: 1fr; }
+  .cmp-scroll-spacer { flex-basis: 120px; }
+  .cmp-card,
+  .cmp-price-card,
+  .cmp-th-prod { width: 230px; min-width: 230px; flex-basis: 230px; }
 }

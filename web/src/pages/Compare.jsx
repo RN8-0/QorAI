@@ -29,6 +29,8 @@ import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import { displayProductName } from '../lib/productNames';
+import CompareReviews from '../components/CompareReviews.jsx';
 import './Compare.css';
 
 function flatSpecs(p) {
@@ -163,18 +165,19 @@ export default function Compare() {
   const [picking, setPicking] = useState(false);
   const [popular, setPopular] = useState([]);
   const [popularLoading, setPopularLoading] = useState(true);
-  const [popularLimit, setPopularLimit] = useState(18);
+  const [popularLimit, setPopularLimit] = useState(6);
   const [pickError, setPickError] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
   const [aiPhase, setAiPhase] = useState('idle');
   const [aiQuestions, setAiQuestions] = useState([]);
+  const [aiAnswers, setAiAnswers] = useState([]);
   const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
   const compareCategory = products[0]?.category || '';
   const showMatchScore = hasProfileMatch(user);
-  const ytQuery = products.map((p) => p.name).filter(Boolean).join(' vs ');
+  const ytQuery = products.map((p) => displayProductName(p, lang)).filter(Boolean).join(' vs ');
   const ytUrl = ytQuery
     ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ytQuery} ${lang === 'tr' ? 'karşılaştırma' : lang === 'de' ? 'Vergleich' : 'comparison'}`)}`
     : '';
@@ -201,12 +204,26 @@ export default function Compare() {
   useEffect(() => {
     let live = true;
     setPopularLoading(true);
-    popularProducts(popularLimit, { category: compareCategory })
-      .then((list) => { if (live) setPopular(list); })
+    const targetScore = products.length
+      ? products.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / products.length
+      : 0;
+    const poolLimit = Math.max(popularLimit + ids.length + 24, 24);
+    popularProducts(poolLimit, { category: compareCategory })
+      .then((list) => {
+        if (!live) return;
+        const ordered = targetScore > 0
+          ? [...list].sort((a, b) => {
+            const da = Math.abs((Number(a.techScore) || 0) - targetScore);
+            const db = Math.abs((Number(b.techScore) || 0) - targetScore);
+            return da - db || (Number(b.techScore) || 0) - (Number(a.techScore) || 0);
+          })
+          : list;
+        setPopular(ordered);
+      })
       .catch(() => {})
       .finally(() => { if (live) setPopularLoading(false); });
     return () => { live = false; };
-  }, [popularLimit, compareCategory]);
+  }, [popularLimit, compareCategory, ids.join(','), products.map((p) => p.techScore).join(',')]);
 
   useEffect(() => {
     if (products.length < 2) return;
@@ -220,6 +237,7 @@ export default function Compare() {
     setAiNotice('');
     setAiPhase('idle');
     setAiQuestions([]);
+    setAiAnswers([]);
   }, [ids.join(',')]); // eslint-disable-line
 
   useEffect(() => {
@@ -298,7 +316,7 @@ export default function Compare() {
     try {
       let questions = await generateCompareQuiz({
         products: products.map((p) => ({
-          title: p.name,
+          title: displayProductName(p, lang),
           url: productPath(p),
           category: p.category,
           score: p.techScore,
@@ -321,6 +339,7 @@ export default function Compare() {
   // Already paid for at startAiCompareQuiz — no second charge here.
   async function runAiCompare(answers = []) {
     setAiNotice('');
+    setAiAnswers(Array.isArray(answers) ? answers : []);
     if (products.length < 2) {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
       return;
@@ -337,27 +356,21 @@ export default function Compare() {
       } catch {
         research = '';
       }
-      let text = await askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in ${lang}. Use current research and Qor catalog context over stale model memory.`,
-        user: buildAiComparePrompt(answers, research),
-        maxOutputTokens: 8192,
-        temperature: 0.45,
+      const basePrompt = buildAiComparePrompt(answers, research);
+      const askReport = (userPrompt, temperature = 0.42) => askQorAiRaw({
+        system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
+        user: userPrompt,
+        maxOutputTokens: 12000,
+        temperature,
         jsonMode: true,
       });
-      // Never surface a raw/truncated JSON blob — treat unparseable output as a
-      // failure the user can retry.
-      if (!parseAiJson(text)) throw new Error('parse');
-      if (hasStaleAvailabilityClaims(text)) {
-        const retry = await askQorAiRaw({
-          system: `You are Qor AI. Return only valid JSON in ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions.`,
-          user: withFreshnessRetryInstruction(
-            buildAiComparePrompt(answers, research),
-            products.map((p) => p.name),
-          ),
-          maxOutputTokens: 8192,
-          temperature: 0.25,
-          jsonMode: true,
-        });
+      let text = await askReport(basePrompt);
+      if (!parseAiJson(text) || hasStaleAvailabilityClaims(text)) {
+        const repairPrompt = withFreshnessRetryInstruction(
+          `${basePrompt}\n\nJSON REPAIR / LENGTH CONTROL:\nReturn the same schema, but keep each long paragraph to 2-3 focused sentences so the JSON is complete. Do not omit any product. Do not include markdown.`,
+          products.map((p) => displayProductName(p, lang)),
+        );
+        const retry = await askReport(repairPrompt, 0.2);
         if (!parseAiJson(retry) || hasStaleAvailabilityClaims(retry)) throw new Error('stale-report');
         text = retry;
       }
@@ -366,7 +379,7 @@ export default function Compare() {
       await saveComparisonAnalysisHistory({ products, analysis: text });
     } catch (e) {
       setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
-      setAiPhase('quiz');
+      setAiPhase('error');
     } finally {
       setAiBusy(false);
     }
@@ -374,6 +387,9 @@ export default function Compare() {
 
   const slots = [...products];
   const canAdd = slots.length < COMPARE_MAX;
+  const popularCandidates = popular.filter((p) => !ids.includes(p.id));
+  const visiblePopular = popularCandidates.slice(0, popularLimit);
+  const showMorePopular = !popularLoading && popularCandidates.length > 0;
 
   // The standalone Compare page was removed from navigation — it's only reached
   // via the compare tray once products are queued. With nothing queued there is
@@ -412,7 +428,7 @@ export default function Compare() {
                 <button key={r.id} className="cmp-result" onClick={() => pick(r)}
                   disabled={ids.includes(r.id)}>
                   <ProductImg src={r.imageUrl} alt="" size="thumb" />
-                  <span className="cmp-result-name">{r.name}</span>
+                  <span className="cmp-result-name">{displayProductName(r, lang)}</span>
                   <span className={`score ${scoreClass(r.techScore)}`}>⚡ {scoreLabel(r.techScore)}</span>
                   {ids.includes(r.id) && <span className="cmp-result-in">{t('cmp.added')}</span>}
                 </button>
@@ -439,13 +455,13 @@ export default function Compare() {
               <div className="card-grid">
                 {popularLoading
                   ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-                  : popular.map((p) => (
+                  : visiblePopular.map((p) => (
                     <ProductCard key={p.id} product={p}
                       onClick={(e) => { e.preventDefault(); pick(p); }} />
                   ))}
               </div>
-              {!popularLoading && popular.length >= popularLimit && (
-                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 18)}>
+              {showMorePopular && (
+                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 6)}>
                   {t('cmp.loadMore')}
                 </button>
               )}
@@ -454,41 +470,45 @@ export default function Compare() {
         ) : (
           <>
             {/* product header cards with dual rings — app parity */}
-            <div className="cmp-cards">
-              {slots.map((p) => {
-                const m = catMeta(p.category);
-                const tech = Number(p.techScore) || 0;
-                const match = matchScores[p.id] || 0;
-                const isBest = bestScore != null && tech === bestScore;
-                return (
-                  <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
-                    <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
-                    {isBest && products.length > 1 && (
-                      <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
-                    )}
-                    <Link to={productPath(p)} className="img-tile cmp-card-img">
-                      <ProductImg src={p.imageUrl} alt={p.name} size="card" />
-                    </Link>
-                    {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
-                    <Link to={productPath(p)} className="cmp-card-name">{p.name}</Link>
-                    <div className="cmp-card-cat">{m.icon} {categoryLabel(p.category, lang)}</div>
-                    <div className="cmp-rings">
-                      {showMatchScore && match > 0 && (
-                        <span className="cmp-ring">
-                          <Gauge value={match} size={46} stroke={4} color="var(--score-average)" fontSize={14} />
-                          <small>{L('Match', 'Uyum', 'Match')}</small>
-                        </span>
+            <div className="cmp-product-scroll">
+              <div className="cmp-scroll-spacer" aria-hidden="true" />
+              <div className="cmp-cards">
+                {slots.map((p) => {
+                  const m = catMeta(p.category);
+                  const tech = Number(p.techScore) || 0;
+                  const match = matchScores[p.id] || 0;
+                  const isBest = bestScore != null && tech === bestScore;
+                  const name = displayProductName(p, lang);
+                  return (
+                    <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
+                      <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
+                      {isBest && products.length > 1 && (
+                        <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
                       )}
-                      {tech > 0 && (
-                        <span className="cmp-ring">
-                          <Gauge value={tech} size={46} stroke={4} color={techColor(tech)} fontSize={14} />
-                          <small>{L('Tech', 'Tech', 'Tech')}</small>
-                        </span>
-                      )}
+                      <Link to={productPath(p)} className="img-tile cmp-card-img">
+                        <ProductImg src={p.imageUrl} alt={name} size="card" />
+                      </Link>
+                      {p.brand && <div className="cmp-card-brand">{p.brand}</div>}
+                      <Link to={productPath(p)} className="cmp-card-name">{name}</Link>
+                      <div className="cmp-card-cat">{m.icon} {categoryLabel(p.category, lang)}</div>
+                      <div className="cmp-rings">
+                        {showMatchScore && match > 0 && (
+                          <span className="cmp-ring">
+                            <Gauge value={match} size={46} stroke={4} color="var(--score-average)" fontSize={14} />
+                            <small>{L('Match', 'Uyum', 'Match')}</small>
+                          </span>
+                        )}
+                        {tech > 0 && (
+                          <span className="cmp-ring">
+                            <Gauge value={tech} size={46} stroke={4} color={techColor(tech)} fontSize={14} />
+                            <small>{L('Tech', 'Tech', 'Tech')}</small>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             {ytUrl && products.length >= 2 && (
@@ -506,23 +526,27 @@ export default function Compare() {
                 column, country-aware (visitor's detected market). */}
             <section className="cmp-prices-block">
               <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
-              <div className="cmp-prices" style={{ gridTemplateColumns: `repeat(${slots.length}, minmax(0, 1fr))` }}>
-                {slots.map((p) => {
-                  const cp = priceForCountry(p, geoCountry);
-                  const amz = amazonUrlForProduct(p, (geoCountry || 'US'));
-                  return (
-                    <div className="cmp-price-card" key={p.id}>
-                      <Link to={productPath(p)} className="cmp-price-name">{p.name}</Link>
-                      {cp ? <div className="cmp-price-amt">{formatPriceAmount(cp.price, cp.currency, lang)}</div>
-                        : <div className="cmp-price-none">{L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}</div>}
-                      {amz && (
-                        <a className="cmp-price-row-link" href={amz} target="_blank" rel="sponsored noopener">
-                          <AmazonLogo height={20} /><span>{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="cmp-product-scroll">
+                <div className="cmp-scroll-spacer" aria-hidden="true" />
+                <div className="cmp-prices">
+                  {slots.map((p) => {
+                    const cp = priceForCountry(p, geoCountry);
+                    const amz = amazonUrlForProduct(p, (geoCountry || 'US'));
+                    const name = displayProductName(p, lang);
+                    return (
+                      <div className="cmp-price-card" key={p.id}>
+                        <Link to={productPath(p)} className="cmp-price-name">{name}</Link>
+                        {cp ? <div className="cmp-price-amt">{formatPriceAmount(cp.price, cp.currency, lang)}</div>
+                          : <div className="cmp-price-none">{L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}</div>}
+                        {amz && (
+                          <a className="cmp-price-row-link" href={amz} target="_blank" rel="sponsored noopener">
+                            <AmazonLogo height={20} /><span>{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </section>
 
@@ -545,7 +569,7 @@ export default function Compare() {
                         <th className="cmp-th-spec">{t('cmp.specCol')}</th>
                         {slots.map((p) => (
                           <th key={p.id} className="cmp-th-prod cmp-th-compact">
-                            <Link to={productPath(p)} className="cmp-th-name">{p.name}</Link>
+                            <Link to={productPath(p)} className="cmp-th-name">{displayProductName(p, lang)}</Link>
                           </th>
                         ))}
                       </tr>
@@ -620,6 +644,11 @@ export default function Compare() {
                     {!aiText && aiPhase === 'analyzing' && (
                       <AiLoadingSteps lang={lang} mode="compare" />
                     )}
+                    {!aiText && aiPhase === 'error' && (
+                      <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy || !aiAnswers.length}>
+                        {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
+                      </button>
+                    )}
                     {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
                     {aiText && (
                       parseAiJson(aiText)
@@ -631,6 +660,11 @@ export default function Compare() {
               )}
             </div>
 
+            <CompareReviews
+              productIds={slots.map((p) => p.id)}
+              productNames={slots.map((p) => displayProductName(p, lang)).join(' vs ')}
+            />
+
             <section className="cmp-picks cmp-picks-after">
               <div className="cmp-picks-head">
                 <h2>{t('cmp.popularTitle')}</h2>
@@ -641,13 +675,13 @@ export default function Compare() {
               <div className="card-grid">
                 {popularLoading
                   ? Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-                  : popular.filter((p) => !ids.includes(p.id)).map((p) => (
+                  : visiblePopular.map((p) => (
                     <ProductCard key={p.id} product={p}
                       onClick={(e) => { e.preventDefault(); pick(p); }} />
                   ))}
               </div>
-              {!popularLoading && popular.length >= popularLimit && (
-                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 18)}>
+              {showMorePopular && (
+                <button className="btn btn-ghost cmp-more" onClick={() => setPopularLimit((n) => n + 6)}>
                   {t('cmp.loadMore')}
                 </button>
               )}

@@ -476,7 +476,7 @@ export async function popularProducts(limit = 12, opts = {}) {
         query_by: 'name',
         sort_by: 'trendScore:desc,techScore:desc,updatedAtTs:desc',
         filter_by: `category:=${lit(category)}`,
-        per_page: Math.min(Math.max(limit + 8, 16), 40),
+        per_page: Math.min(Math.max(limit + 8, 16), 250),
         include_fields: LIST_FIELDS,
       });
       return docs(data)
@@ -492,7 +492,7 @@ export async function popularProducts(limit = 12, opts = {}) {
       query_by: 'name',
       sort_by: 'trendScore:desc,techScore:desc,updatedAtTs:desc',
       filter_by: `category:[${preferredCategories.map(lit).join(',')}]`,
-      per_page: Math.min(Math.max(limit + 8, 18), 40),
+      per_page: Math.min(Math.max(limit + 8, 18), 250),
       include_fields: LIST_FIELDS,
     });
     const ranked = uniqueProducts(docs(data).map(docToProduct))
