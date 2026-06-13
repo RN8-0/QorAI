@@ -263,6 +263,33 @@
    mobile SharedPremiumFeaturesSection so users moving between web and app see
    the same set of premium AI tools. */
 .pd-ai-grid { display: flex; flex-direction: column; gap: 12px; }
+
+/* Single consolidated-analysis CTA (replaces the five separate cards) */
+.pd-ai-intro {
+  text-align: center;
+  padding: 32px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(440px 200px at 50% 0%, color-mix(in srgb, var(--brand-cyan) 10%, transparent), transparent 70%),
+    var(--surface-2);
+}
+.pd-ai-intro-ic {
+  width: 62px; height: 62px; margin: 0 auto 14px;
+  display: grid; place-items: center; border-radius: 18px; font-size: 30px;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  box-shadow: 0 12px 28px color-mix(in srgb, #6366f1 36%, transparent);
+}
+.pd-ai-intro h3 { font-size: 19px; font-weight: 900; color: var(--text); }
+.pd-ai-intro p { margin: 8px auto 18px; max-width: 470px; font-size: 13.5px; line-height: 1.55; color: var(--text2); }
+.pd-ai-run { min-width: 220px; }
+.pd-ai-cost { display: block; margin-top: 10px; font-size: 12px; font-weight: 750; color: var(--text3); }
+.pd-ai-notice {
+  margin: 14px auto 0; max-width: 470px;
+  font-size: 13.5px; line-height: 1.55; font-weight: 650; color: var(--text2);
+}
+/* The section header is no longer a button in the consolidated view. */
+.pd-ai-card .pd-ai-card-head { cursor: default; }
 .pd-ai-card {
   border: 1px solid var(--border); border-radius: 14px;
   background: var(--surface-2); overflow: hidden;

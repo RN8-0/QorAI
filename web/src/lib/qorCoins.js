@@ -6,6 +6,9 @@ export const AI_FEATURE_COSTS = {
   ai_chat: 0.5,
   compare_ai: 2,
   detail_ai: 1,
+  // Consolidated product analysis: all five AI sections (deep, alternatives,
+  // advisor, price prediction, forum) computed in a single API call.
+  detail_ai_full: 3,
   detail_match_ai: 1,
   detail_match: 1,
   link_paste: 2,

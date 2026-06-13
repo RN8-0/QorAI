@@ -93,6 +93,38 @@ export function buildForumPrompt(p, lang) {
   );
 }
 
+// Consolidated single-call prompt: returns ALL five product analyses (deep,
+// alternatives, advisor, price prediction, forum satisfaction) in ONE JSON
+// object, so the detail page can run a single low-cost API request instead of
+// five. Each sub-object matches the schema its individual builder used, so the
+// same chart/symbol views render unchanged.
+export function buildFullPrompt(p, lang, profile = {}) {
+  const { name, brand, category, score, price, ks } = productLine(p, lang);
+  const prof = Object.entries(profile).filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`).slice(0, 14).join('; ');
+  return (
+    `You are Qor AI, a senior tech product analyst. Analyse "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
+    'Use the product name exactly as given; do NOT assume a typo.\n\n' +
+    `IMPORTANT: Return ONLY one valid JSON object. ALL text fields, list items and verdicts MUST be fully written in ${langName(lang)} (keep official product/model names as-is).\n\n` +
+    'Return a JSON object with this EXACT structure (all five sections present):\n' +
+    '{\n' +
+    '  "deep": {"overallScore": <0-100>, "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}], "weaknesses": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}], "pros": ["<p1>","<p2>","<p3>"], "cons": ["<c1>","<c2>","<c3>"], "verdict": "<2-3 sentences>"},\n' +
+    '  "alts": {"alternatives": [{"name": "<product>", "advantage": "<why better>", "tradeoff": "<what you give up>", "priceComparison": "<cheaper/similar/pricier + note>", "bestFor": "<who>", "whyBetter": "<1 spec-based reason>"}]},\n' +
+    '  "advisor": {"whoShouldBuy": "<2-3 sentences>", "whoShouldAvoid": "<2-3 sentences>", "reasonsToBuy": ["<r1>","<r2>","<r3>"], "reasonsToSkip": ["<r1>","<r2>"], "proTips": ["<t1>","<t2>"], "valueRating": <0-10 one decimal>, "ratingExplanation": "<1-2 sentences>"},\n' +
+    '  "pred": {"trend": "<up|down|stable>", "trendPercentage": <0-100>, "bestTimeToBuy": "<short phrase>", "expectedDrop": "<% range within 6 months>", "buyOrWait": "<buy|wait>", "reasoning": "<2-3 sentences>"},\n' +
+    '  "forum": {"satisfaction": <0-100>, "summary": "<2-3 sentences>", "praise": ["<p1>","<p2>","<p3>"], "complaints": ["<c1>","<c2>"], "sources": ["<community 1>","<community 2>"], "verdict": "<1 sentence>"}\n' +
+    '}\n\n' +
+    'Rules:\n' +
+    '- deep: 3-5 strengths, 2-4 weaknesses, realistic varied scores (not all 80-90), 3 pros & 3 cons (8-18 words each).\n' +
+    '- alts: EXACTLY 3 real, currently-available models in the same category/segment.\n' +
+    '- advisor: valueRating reflects price/performance honestly; ground advice in the specs and the user profile.\n' +
+    '- pred: base on product age, category cycle, supply/demand and successor timing.\n' +
+    '- forum: satisfaction realistic (not always 90+), 3-5 praise, 2-4 complaints; cite the kinds of communities (Reddit, XDA, enthusiast forums, retailer reviews) — do NOT invent quotes.\n' +
+    '- Be specific, honest, and grounded in the given specs.\n\n' +
+    `Context: techScore=${score}/100, approx price=${price}, key specs: ${ks || '-'}` + (prof ? `\nUser profile: ${prof}` : '')
+  );
+}
+
 // Compare prompt — structured JSON so the result renders as graphs (winner
 // banner + per-product score bars + pros/cons) rather than a wall of text.
 export function buildComparePrompt(products, lang, profile = {}) {
@@ -384,8 +416,8 @@ function ForumView({ data, L }) {
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 // kind: 'deep' | 'alts' | 'advisor' | 'pred'. Returns null when JSON is unusable
 // so the caller can fall back to plain text.
-export default function AiAnalysisView({ kind, raw, lang }) {
-  const data = parseAiJson(raw);
+export default function AiAnalysisView({ kind, raw, data: dataProp, lang }) {
+  const data = dataProp && typeof dataProp === 'object' ? dataProp : parseAiJson(raw);
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);

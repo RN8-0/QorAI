@@ -17,10 +17,7 @@ import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
-import AiText from '../components/AiText.jsx';
-import AiAnalysisView, {
-  buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt, buildForumPrompt, parseAiJson,
-} from '../components/AiAnalysis.jsx';
+import AiAnalysisView, { buildFullPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
 import Reviews from '../components/Reviews.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
@@ -589,16 +586,10 @@ export default function ProductDetail() {
   const [priceCountry, setPriceCountry] = useState('');
   const priceCountryTouched = useRef(false);
 
-  // Four separate AI cards (deep, alternatives, advisor, prediction) — each
-  // tracks its own busy / notice / text / expanded flag so the user can open
-  // one without it kicking off all four (Qor coin costs add up otherwise).
-  const [aiCards, setAiCards] = useState({
-    deep: { text: '', busy: false, notice: '', expanded: false },
-    alts: { text: '', busy: false, notice: '', expanded: false },
-    advisor: { text: '', busy: false, notice: '', expanded: false },
-    pred: { text: '', busy: false, notice: '', expanded: false },
-    forum: { text: '', busy: false, notice: '', expanded: false },
-  });
+  // One consolidated AI analysis: a single API call returns all five sections
+  // (deep, alternatives, advisor, prediction, forum). The user is charged once
+  // (detail_ai_full = 3 Qor Coins, free/unlimited on Premium).
+  const [aiFull, setAiFull] = useState({ busy: false, notice: '', data: null });
   const aiUserKeyRef = useRef('');
 
   // Seed the ship-to country from the detected geo once it resolves, unless the
@@ -615,13 +606,7 @@ export default function ProductDetail() {
   useEffect(() => {
     const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
     if (aiUserKeyRef.current && aiUserKeyRef.current !== key) {
-      setAiCards({
-        deep: { text: '', busy: false, notice: '', expanded: false },
-        alts: { text: '', busy: false, notice: '', expanded: false },
-        advisor: { text: '', busy: false, notice: '', expanded: false },
-        pred: { text: '', busy: false, notice: '', expanded: false },
-        forum: { text: '', busy: false, notice: '', expanded: false },
-      });
+      setAiFull({ busy: false, notice: '', data: null });
     }
     aiUserKeyRef.current = key;
   }, [user?.id, user?.quizCompleted]);
@@ -629,13 +614,7 @@ export default function ProductDetail() {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiCards({
-      deep: { text: '', busy: false, notice: '', expanded: false },
-      alts: { text: '', busy: false, notice: '', expanded: false },
-      advisor: { text: '', busy: false, notice: '', expanded: false },
-      pred: { text: '', busy: false, notice: '', expanded: false },
-      forum: { text: '', busy: false, notice: '', expanded: false },
-    });
+    setAiFull({ busy: false, notice: '', data: null });
     setSimilar([]); setVariants([]);
     getProduct(id)
       .then((prod) => {
@@ -685,38 +664,30 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [lang]);
 
-  // Click handler shared by the four AI cards in the AI tab. Each card is
-  // independent: the user pays a detail_ai cost only for the card they open,
-  // and re-opening a card that already has content just toggles the expand
-  // state (no second charge).
-  const runAiCard = useCallback(async (key, promptBuilder) => {
-    if (!p) return;
-    setAiCards((prev) => {
-      const cur = prev[key] || { text: '', busy: false, notice: '', expanded: false };
-      if (cur.text) {
-        return { ...prev, [key]: { ...cur, expanded: !cur.expanded } };
-      }
-      return prev;
-    });
-    const cur = aiCards[key];
-    if (cur && (cur.text || cur.busy)) return;
-    setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: true, notice: '', expanded: true } }));
-    const access = await requireAiAccess('detail_ai', {
-      onMessage: (message) => setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], notice: message } })),
+  // One tap → one API call → all five AI sections. The user is charged a single
+  // detail_ai_full cost (3 Qor Coins; unlimited on Premium) instead of paying
+  // per card. Re-running is blocked once a result exists.
+  const runFullAnalysis = useCallback(async () => {
+    if (!p || aiFull.busy || aiFull.data) return;
+    setAiFull((s) => ({ ...s, busy: true, notice: '' }));
+    const access = await requireAiAccess('detail_ai_full', {
+      onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
     });
     if (!access.ok) {
-      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false } }));
+      setAiFull((s) => ({ ...s, busy: false }));
       return;
     }
     try {
-      const prompt = promptBuilder(p, lang, aiUserProfile(user));
+      const prompt = buildFullPrompt(p, lang, aiUserProfile(user));
       const txt = await askQorAi([{ role: 'user', text: prompt }]);
-      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false, text: txt, expanded: true } }));
-      if (key === 'deep') saveProductAnalysisHistory({ product: p, analysis: txt });
+      const data = parseAiJson(txt);
+      if (!data || typeof data !== 'object') throw new Error('parse');
+      setAiFull({ busy: false, notice: '', data });
+      saveProductAnalysisHistory({ product: p, analysis: txt });
     } catch {
-      setAiCards((prev) => ({ ...prev, [key]: { ...prev[key], busy: false, notice: t('pd.aiError') } }));
+      setAiFull((s) => ({ ...s, busy: false, notice: t('pd.aiError') }));
     }
-  }, [p, lang, requireAiAccess, t, user, aiCards]);
+  }, [p, lang, requireAiAccess, t, user, aiFull.busy, aiFull.data]);
 
   useEffect(() => {
     let live = true;
@@ -1097,61 +1068,46 @@ export default function ProductDetail() {
               )}
               {tab === 'premium' && (
                 <div className="fade-up pd-ai-grid">
-                  <AiAnalysisCard
-                    icon="🧠"
-                    kind="deep"
-                    lang={lang}
-                    gradient="grad-violet"
-                    title={L('AI Deep Analysis', 'AI Derin Analiz', 'KI-Tiefenanalyse')}
-                    subtitle={L('Comprehensive AI product evaluation', 'Kapsamlı AI ürün değerlendirmesi', 'Umfassende KI-Produktbewertung')}
-                    state={aiCards.deep}
-                    onOpen={() => runAiCard('deep', buildDeepPrompt)}
-                    loadingLabel={t('pd.aiLoading')}
-                  />
-                  <AiAnalysisCard
-                    icon="🔁"
-                    gradient="grad-orange"
-                    title={L('Smart Alternatives', 'Akıllı Alternatifler', 'Intelligente Alternativen')}
-                    subtitle={L('AI-curated similar products', 'AI tarafından seçilmiş benzer ürünler', 'KI-kuratierte ähnliche Produkte')}
-                    state={aiCards.alts}
-                    kind="alts"
-                    lang={lang}
-                    onOpen={() => runAiCard('alts', buildAltPrompt)}
-                    loadingLabel={t('pd.aiLoading')}
-                  />
-                  <AiAnalysisCard
-                    icon="🎯"
-                    gradient="grad-cyan"
-                    title={L('AI Product Advisor', 'AI Ürün Danışmanı', 'KI-Produktberater')}
-                    subtitle={L('Buying advice tailored to your profile', 'Profiline göre satın alma tavsiyeleri', 'Maßgeschneiderte Kaufberatung')}
-                    state={aiCards.advisor}
-                    kind="advisor"
-                    lang={lang}
-                    onOpen={() => runAiCard('advisor', buildAdvisorPrompt)}
-                    loadingLabel={t('pd.aiLoading')}
-                  />
-                  <AiAnalysisCard
-                    icon="📉"
-                    gradient="grad-green"
-                    title={L('Price Prediction', 'Fiyat Tahmini', 'Preisvorhersage')}
-                    subtitle={L('AI price trend & best time to buy', 'AI fiyat trendi ve en iyi alım zamanı', 'KI-Preistrend & beste Kaufzeit')}
-                    state={aiCards.pred}
-                    kind="pred"
-                    lang={lang}
-                    onOpen={() => runAiCard('pred', buildPredictionPrompt)}
-                    loadingLabel={t('pd.aiLoading')}
-                  />
-                  <AiAnalysisCard
-                    icon="👥"
-                    kind="forum"
-                    lang={lang}
-                    gradient="grad-pink"
-                    title={L('Forum Satisfaction', 'Forum Memnuniyeti', 'Forum-Zufriedenheit')}
-                    subtitle={L('What communities (Reddit, forums…) really think', 'Toplulukların (Reddit, forumlar…) gerçek görüşü', 'Was Communities (Reddit, Foren…) wirklich denken')}
-                    state={aiCards.forum}
-                    onOpen={() => runAiCard('forum', buildForumPrompt)}
-                    loadingLabel={t('pd.aiLoading')}
-                  />
+                  {aiFull.data ? (
+                    <>
+                      <AiFullSection icon="🧠" gradient="grad-violet" kind="deep" lang={lang} data={aiFull.data.deep}
+                        title={L('AI Deep Analysis', 'AI Derin Analiz', 'KI-Tiefenanalyse')}
+                        subtitle={L('Comprehensive AI product evaluation', 'Kapsamlı AI ürün değerlendirmesi', 'Umfassende KI-Produktbewertung')} />
+                      <AiFullSection icon="🔁" gradient="grad-orange" kind="alts" lang={lang} data={aiFull.data.alts}
+                        title={L('Smart Alternatives', 'Akıllı Alternatifler', 'Intelligente Alternativen')}
+                        subtitle={L('AI-curated similar products', 'AI tarafından seçilmiş benzer ürünler', 'KI-kuratierte ähnliche Produkte')} />
+                      <AiFullSection icon="🎯" gradient="grad-cyan" kind="advisor" lang={lang} data={aiFull.data.advisor}
+                        title={L('AI Product Advisor', 'AI Ürün Danışmanı', 'KI-Produktberater')}
+                        subtitle={L('Buying advice tailored to your profile', 'Profiline göre satın alma tavsiyeleri', 'Maßgeschneiderte Kaufberatung')} />
+                      <AiFullSection icon="📉" gradient="grad-green" kind="pred" lang={lang} data={aiFull.data.pred}
+                        title={L('Price Prediction', 'Fiyat Tahmini', 'Preisvorhersage')}
+                        subtitle={L('AI price trend & best time to buy', 'AI fiyat trendi ve en iyi alım zamanı', 'KI-Preistrend & beste Kaufzeit')} />
+                      <AiFullSection icon="👥" gradient="grad-pink" kind="forum" lang={lang} data={aiFull.data.forum}
+                        title={L('Forum Satisfaction', 'Forum Memnuniyeti', 'Forum-Zufriedenheit')}
+                        subtitle={L('What communities (Reddit, forums…) really think', 'Toplulukların (Reddit, forumlar…) gerçek görüşü', 'Was Communities (Reddit, Foren…) wirklich denken')} />
+                    </>
+                  ) : (
+                    <div className="pd-ai-intro">
+                      <div className="pd-ai-intro-ic">🤖</div>
+                      <h3>{L('AI Analysis', 'AI Analizi', 'KI-Analyse')}</h3>
+                      <p>{L(
+                        'Deep analysis, smart alternatives, buying advice, price prediction and community satisfaction — generated together in a single pass.',
+                        'Derin analiz, akıllı alternatifler, satın alma tavsiyesi, fiyat tahmini ve forum memnuniyeti — hepsi tek seferde üretilir.',
+                        'Tiefenanalyse, Alternativen, Kaufberatung, Preisprognose und Community-Zufriedenheit — in einem Durchgang.',
+                      )}</p>
+                      {aiFull.busy ? (
+                        <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
+                      ) : (
+                        <>
+                          <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={runFullAnalysis}>
+                            ✨ {L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}
+                          </button>
+                          <span className="pd-ai-cost">{L('3 Qor Coins · unlimited on Premium', '3 Qor Coin · Premium’da sınırsız', '3 Qor Coins · mit Premium unbegrenzt')}</span>
+                        </>
+                      )}
+                      {aiFull.notice && <div className="pd-ai-notice">{aiFull.notice}</div>}
+                    </div>
+                  )}
                   {(pros.length > 0 || cons.length > 0) && (
                     <div className="pd-ai-procon">
                       {pros.length > 0 && (
@@ -1245,37 +1201,22 @@ export default function ProductDetail() {
 // SharedPremiumFeaturesSection style: gradient header with icon + title +
 // chevron, body either shows a spinner, a notice (auth / insufficient coins)
 // or a fully rendered markdown analysis.
-function AiAnalysisCard({ icon, gradient, title, subtitle, state, onOpen, loadingLabel, kind, lang }) {
-  const { text, busy, notice, expanded } = state || {};
-  const open = !!expanded;
-  // Prefer the app-style structured visual; if the model returned non-JSON,
-  // fall back to plain markdown so the user still sees something useful.
-  const structured = !busy && text && kind ? <AiAnalysisView kind={kind} raw={text} lang={lang} /> : null;
-  const showText = !busy && text && (!kind || !parseAiJson(text));
+// One section of the consolidated analysis — always open (the single API call
+// already produced every section), rendered with the same chart/symbol views.
+function AiFullSection({ icon, gradient, title, subtitle, kind, data, lang }) {
+  if (!data || typeof data !== 'object') return null;
   return (
-    <div className={'pd-ai-card' + (open ? ' on' : '')}>
-      <button type="button" className={'pd-ai-card-head ' + gradient} onClick={onOpen} disabled={busy}>
+    <div className="pd-ai-card on">
+      <div className={'pd-ai-card-head ' + gradient}>
         <span className="pd-ai-card-ic">{icon}</span>
         <span className="pd-ai-card-h">
           <b>{title}</b>
           <small>{subtitle}</small>
         </span>
-        <span className="pd-ai-card-arr" aria-hidden="true">{open ? '▾' : '▸'}</span>
-      </button>
-      {open && (
-        <div className="pd-ai-card-body fade-up">
-          {busy && (
-            <div className="pd-ai-loading"><div className="spinner" /><span>{loadingLabel}</span></div>
-          )}
-          {!busy && notice && (
-            <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{notice}</div>
-          )}
-          {structured}
-          {showText && (
-            <div style={{ fontSize: 14.5, lineHeight: 1.65 }}><AiText text={text} /></div>
-          )}
-        </div>
-      )}
+      </div>
+      <div className="pd-ai-card-body fade-up">
+        <AiAnalysisView kind={kind} data={data} lang={lang} />
+      </div>
     </div>
   );
 }
