@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar, getVariants } from '../lib/typesense';
-import { askQorAi } from '../lib/ai';
+import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
+import { generateQuiz } from '../lib/linkAnalysis';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
 import { useFavorites } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
@@ -17,8 +18,9 @@ import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
-import AiAnalysisView, { buildFullPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
-import Reviews from '../components/Reviews.jsx';
+import AiAnalysisView, { buildFullPrompt, buildProductResearchPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
+import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -38,6 +40,25 @@ function bandLabel(s, L) {
     : L('Weak', 'Zayıf', 'Schwach');
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
+const HERO_SPEC_PRIORITY = [
+  { re: /(capacity|kapasite|\b\d+\s*(gb|tb)\b)/i, icon: '💾', rank: 10 },
+  { re: /(speed|hız|hizi|mhz|mt\/s|ghz|clock|frekans)/i, icon: '⚡', rank: 20 },
+  { re: /(type|tip|ddr|lpddr|gddr|standard|teknoloji|technology)/i, icon: '🧬', rank: 30 },
+  { re: /(kit|kiti|count|sayı|sayısı|1x|2x|4x|8x)/i, icon: '🧩', rank: 40 },
+  { re: /(form|modül|modul|module|dimm|sodimm|so-dimm|udimm|rdimm|layout)/i, icon: '📐', rank: 50 },
+  { re: /(pin|pins|yuva|slot|socket|interface|arayüz|arabirim|pcie|sata|m\.2)/i, icon: '🔌', rank: 60 },
+  { re: /(platform|dizüstü|dizustu|laptop|notebook|masaüstü|masaustu|desktop)/i, icon: '💻', rank: 70 },
+  { re: /(ecc|registered|buffered|hata düzeltme|hata duzeltme|correction)/i, icon: '🛡️', rank: 80 },
+  { re: /(latency|gecikme|cl\b|cas|timing|tepki|response)/i, icon: '⏱️', rank: 90 },
+  { re: /(voltage|voltaj|gerilim|power|güç|tdp|watt|mah|wh)/i, icon: '🔋', rank: 100 },
+  { re: /(xmp|expo|rgb|ışıklandırma|isiklandirma|lighting|heatsink|soğut|sogut|cool)/i, icon: '🧊', rank: 110 },
+  { re: /(processor|işlemci|islemci|cpu|gpu|chipset|core|çekirdek|cekirdek)/i, icon: '🧠', rank: 120 },
+  { re: /(screen|display|ekran|resolution|çözünürlük|cozunurluk|refresh|hz|inch|inç)/i, icon: '🖥️', rank: 130 },
+  { re: /(storage|depolama|ssd|hdd|disk)/i, icon: '💽', rank: 140 },
+  { re: /(camera|kamera|mp|lens|video)/i, icon: '📷', rank: 150 },
+  { re: /(weight|ağırlık|agirlik|dimension|boyut|ölçü|olcu|height|width|depth)/i, icon: '📏', rank: 160 },
+  { re: /(wireless|wi-?fi|bluetooth|nfc|ethernet|network|bağlantı|baglanti)/i, icon: '📡', rank: 170 },
+];
 
 // Short label for a variant chip — RAM / storage when available, otherwise the
 // trailing "(1 TB)" / "(512 GB)" from the name, otherwise the full name.
@@ -146,121 +167,45 @@ function sectionIcon(name) {
   return '📋';
 }
 
-// Shared product fingerprint used by every AI prompt below — keeps the spec
-// context identical across the four AI features (deep / alternatives / advisor
-// / prediction) so the model has the same grounding regardless of which card
-// the user opens first.
-function productFingerprint(p, lang) {
-  const productName = localizedProductName(p, lang);
-  const ks = p.keySpecs && typeof p.keySpecs === 'object'
-    ? Object.entries(p.keySpecs).slice(0, 18).map(([k, v]) => `${k}: ${v}`).join(', ')
-    : '';
-  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
-  const price = priceFresh && Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
-  return { productName, ks, price };
-}
-
-function aiDeepPrompt(p, lang) {
-  const { productName, ks, price } = productFingerprint(p, lang);
-  return (
-    'You are Qor AI, a senior tech product analyst. Produce a deep technical analysis ' +
-    `of the product below. Reply ONLY in language ISO=${lang}, valid markdown, no preamble.\n\n` +
-    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
-    `Qor AI Tech Score: ${p.techScore || '-'}/100\nApprox. price: ${price}\n` +
-    `Key specs: ${ks || '-'}\n\n` +
-    '## OUTPUT\n' +
-    '**Genel Değerlendirme / Overall** — 2-3 paragraphs.\n' +
-    '**Güçlü Yönler / Strengths** — 5-7 "-" bullets with real-world impact.\n' +
-    '**Zayıf Yönler / Weaknesses** — 4-6 honest "-" bullets.\n' +
-    '**Performans Skoru** — give a short table of 4 axes (Performance, Design, Value, Longevity) each scored 0-100.\n'
-  );
-}
-function aiAlternativesPrompt(p, lang) {
-  const { productName, ks, price } = productFingerprint(p, lang);
-  return (
-    'You are Qor AI. List the 3 strongest competing alternatives to the product below. ' +
-    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
-    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
-    `Approx. price: ${price}\nKey specs: ${ks || '-'}\n\n` +
-    '## OUTPUT\nFor EACH of the 3 alternatives, give a section:\n' +
-    '### <Product name>\n' +
-    '**Neden bu? / Why this?** 1-2 sentences.\n' +
-    '**Avantaj / Pros:** 2-3 "-" bullets vs the target.\n' +
-    '**Dezavantaj / Cons:** 2-3 "-" bullets vs the target.\n' +
-    '**Kime uygun / Who it fits:** 1 sentence.\n'
-  );
-}
-function aiAdvisorPrompt(p, lang, userProfile = {}) {
-  const { productName, ks, price } = productFingerprint(p, lang);
-  const profile = Object.entries(userProfile)
-    .filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
-    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`)
-    .slice(0, 14).join('\n');
-  return (
-    'You are Qor AI Product Advisor. Give tailored buying advice based on the user profile. ' +
-    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
-    `Product: ${productName} (${p.brand || '-'} / ${p.category || '-'})\n` +
-    `Approx. price: ${price}\nKey specs: ${ks || '-'}\n` +
-    (profile ? `\nUser profile:\n${profile}\n` : '') +
-    '\n## OUTPUT\n' +
-    '**Senin için uygun mu? / Is it right for you?** 2-3 paragraphs grounded in the profile.\n' +
-    '**Dikkat Etmen Gerekenler / Watch out for** — 3-5 "-" bullets.\n' +
-    '**Karar / Verdict** — 1 sentence, blunt: AL / DÜŞÜN / ALMA (BUY / CONSIDER / SKIP).\n'
-  );
-}
-function aiPredictionPrompt(p, lang) {
-  const { productName, ks, price } = productFingerprint(p, lang);
-  return (
-    'You are Qor AI Price Forecaster. Predict near-term price trend for the product. ' +
-    `Reply ONLY in language ISO=${lang}, markdown, no preamble.\n\n` +
-    `Product: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
-    `Approx. current price: ${price}\nKey specs: ${ks || '-'}\n\n` +
-    '## OUTPUT\n' +
-    '**Fiyat Trendi / Trend** — short paragraph (Will it drop, hold, or rise in the next 3-6 months and why).\n' +
-    '**En İyi Alım Zamanı / Best time to buy** — 1-2 sentences with a target month / season.\n' +
-    '**Risk Faktörleri / Risks** — 3-4 "-" bullets (new model coming, supply, demand cycle, etc.).\n' +
-    '**Tahmini İndirim / Expected discount** — give a rough % range expected within 6 months.\n'
-  );
-}
-
-// Mirrors the mobile app's senior-analyst (PRO) product analysis: a grounded,
-// professional report with a verdict, strengths, weaknesses, community
-// reception and a buyer fit — driven by the product's real catalog data.
-function aiPrompt(p, lang, userProfile = {}) {
-  const productName = localizedProductName(p, lang);
-  const ks = p.keySpecs && typeof p.keySpecs === 'object'
-    ? Object.entries(p.keySpecs).slice(0, 18).map(([k, v]) => `${k}: ${v}`).join(', ')
-    : '';
-  const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean).slice(0, 6).join('; ') : '';
-  const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean).slice(0, 6).join('; ') : '';
-  const priceFresh = Date.parse(p.bestOfferExpiresAt || '') > Date.now();
-  const price = priceFresh && Number(p.lowestPriceUSD) > 0 ? `${Number(p.lowestPriceUSD).toFixed(0)} USD` : '-';
-  const profile = Object.entries(userProfile)
-    .filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
-    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`)
-    .slice(0, 14)
-    .join('\n');
-  return (
-    'You are Qor AI, a senior product analyst. Produce a professional, in-depth analysis ' +
-    'of the product below. Treat it as a real, current item in the Qor catalog.\n\n' +
-    '## PRODUCT\n' +
-    `Name: ${productName}\nBrand: ${p.brand || '-'}\nCategory: ${p.category || '-'}\n` +
-    `Qor AI Tech Score: ${p.techScore || '-'}/100\nApprox. price: ${price}\n` +
-    `Key specs: ${ks || '-'}\n` +
-    (pros ? `Known strengths: ${pros}\n` : '') +
-    (cons ? `Known weaknesses: ${cons}\n` : '') +
-    (profile ? `\n## USER PROFILE\n${profile}\n` : '') +
-    '\n## OUTPUT (markdown only, no preamble)\n' +
-    '**Verdict** — 4-6 rich paragraphs with the product story, category context, value, durability and long-term ownership outlook.\n' +
-    '**Strengths** — 5-7 detailed "-" bullets grounded in the specs above; each bullet should explain the real-world impact.\n' +
-    '**Weaknesses** — 4-6 honest "-" bullets with severity and who should care.\n' +
-    '**Community reception** — 3-4 paragraphs synthesising how reviewers and owners generally regard it, including praise, recurring criticisms and long-term reports.\n' +
-    '**Who it is for** — 2-3 paragraphs on the ideal buyer, edge cases, and who should skip it.\n' +
-    '**Final recommendation** — 2-3 paragraphs with buy/consider/skip guidance and concrete alternatives if it is not ideal.\n\n' +
-    'Be specific and reference real spec values; do not invent specs not implied above. ' +
-    'Never mention being an AI model or any backend provider. ' +
-    `Reply ONLY in the language with ISO code: ${lang}.`
-  );
+function fallbackProductQuiz(lang, productName) {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const copy = code === 'tr'
+    ? [
+        ['Bu ürünü en çok hangi senaryoda kullanacaksın?', ['Günlük kullanım ve uzun ömür', 'Yoğun iş/üretkenlik', 'Oyun veya yüksek performans', 'Yedek parça/yükseltme odaklı']],
+        ['Performans tarafında senin için en kritik nokta hangisi?', ['Anlık hız ve tepki', 'Ağır yükte stabilite', 'Sessiz/serin çalışma', 'Benim kullanımım hafif kalır']],
+        ['Uyumluluk konusunda ne kadar risk almak istersin?', ['Sadece kesin uyumlu ürün isterim', 'Küçük araştırma yapabilirim', 'Gerekirse ayar/BIOS güncellerim', 'Uyumluluk benim için kritik değil']],
+        ['Uzun vadede seni en çok ne rahatsız eder?', ['Performansın erken eskimesi', 'Garanti/servis belirsizliği', 'Fiyatın kısa sürede düşmesi', 'Toplulukta sorun raporları']],
+        ['Ürün seçiminde kullanıcı yorumlarının ağırlığı ne olsun?', ['Çok yüksek, sorun yaşayanları önemserim', 'Dengeli bakarım', 'Teknik veriler daha önemli', 'Yorumlara az bakarım']],
+        ['Alternatiflere bakarken hangi fark seni ikna eder?', ['Daha iyi performans', 'Daha güvenilir marka/servis', 'Daha iyi fiyat/performans', 'Daha yeni teknoloji']],
+        ['Satın alma zamanlamanda ne kadar esneksin?', ['Hemen almam gerekiyor', 'İndirim bekleyebilirim', 'Yeni model bekleyebilirim', 'Fiyat sabitse alırım']],
+        ['Bu ürün beklentini karşılamazsa en büyük problem ne olur?', ['Para boşa gitmiş gibi hissetmek', 'Sisteme/cihaza uymaması', 'Performansın düşük kalması', 'İade/değişimle uğraşmak']],
+      ]
+    : code === 'de'
+      ? [
+          ['What will you mainly use this product for?', ['Everyday use and longevity', 'Heavy work/productivity', 'Gaming or high performance', 'Upgrade or spare-part focused']],
+          ['Which performance aspect matters most?', ['Snappy response', 'Stability under load', 'Quiet/cool operation', 'My usage is light']],
+          ['How much compatibility risk is acceptable?', ['Only proven compatibility', 'I can do some research', 'I can update settings/BIOS', 'Compatibility is not critical']],
+          ['What would bother you most long term?', ['Performance aging quickly', 'Warranty/service uncertainty', 'Price dropping soon', 'Community issue reports']],
+          ['How much should user reviews affect the decision?', ['Very much', 'Balanced', 'Specs matter more', 'Only a little']],
+          ['What alternative would convince you?', ['Better performance', 'Better reliability/service', 'Better value', 'Newer technology']],
+          ['How flexible is your timing?', ['I need it now', 'I can wait for discounts', 'I can wait for a successor', 'I buy if price is stable']],
+          ['If it disappoints, what is the biggest problem?', ['Feeling money was wasted', 'Not fitting my system/device', 'Underwhelming performance', 'Return hassle']],
+        ]
+      : [
+          ['What will you mainly use this product for?', ['Everyday use and longevity', 'Heavy work/productivity', 'Gaming or high performance', 'Upgrade or spare-part focused']],
+          ['Which performance aspect matters most?', ['Snappy response', 'Stability under load', 'Quiet/cool operation', 'My usage is light']],
+          ['How much compatibility risk is acceptable?', ['Only proven compatibility', 'I can do some research', 'I can update settings/BIOS', 'Compatibility is not critical']],
+          ['What would bother you most long term?', ['Performance aging quickly', 'Warranty/service uncertainty', 'Price dropping soon', 'Community issue reports']],
+          ['How much should user reviews affect the decision?', ['Very much', 'Balanced', 'Specs matter more', 'Only a little']],
+          ['What alternative would convince you?', ['Better performance', 'Better reliability/service', 'Better value', 'Newer technology']],
+          ['How flexible is your timing?', ['I need it now', 'I can wait for discounts', 'I can wait for a successor', 'I buy if price is stable']],
+          ['If it disappoints, what is the biggest problem?', ['Feeling money was wasted', 'Not fitting my system/device', 'Underwhelming performance', 'Return hassle']],
+        ];
+  return copy.map(([text, options], i) => ({
+    id: `fallback-${i}`,
+    text: i === 0 && productName ? text.replace('this product', productName) : text,
+    options,
+  }));
 }
 
 function localizedProductName(product, lang) {
@@ -589,7 +534,7 @@ export default function ProductDetail() {
   // One consolidated AI analysis: a single API call returns all five sections
   // (deep, alternatives, advisor, prediction, forum). The user is charged once
   // (detail_ai_full = 3 Qor Coins, free/unlimited on Premium).
-  const [aiFull, setAiFull] = useState({ busy: false, notice: '', data: null });
+  const [aiFull, setAiFull] = useState({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
   const aiUserKeyRef = useRef('');
 
   // Seed the ship-to country from the detected geo once it resolves, unless the
@@ -606,7 +551,7 @@ export default function ProductDetail() {
   useEffect(() => {
     const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
     if (aiUserKeyRef.current && aiUserKeyRef.current !== key) {
-      setAiFull({ busy: false, notice: '', data: null });
+      setAiFull({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
     }
     aiUserKeyRef.current = key;
   }, [user?.id, user?.quizCompleted]);
@@ -614,7 +559,7 @@ export default function ProductDetail() {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    setAiFull({ busy: false, notice: '', data: null });
+    setAiFull({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
     setSimilar([]); setVariants([]);
     getProduct(id)
       .then((prod) => {
@@ -664,30 +609,72 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [lang]);
 
-  // One tap → one API call → all five AI sections. The user is charged a single
-  // detail_ai_full cost (3 Qor Coins; unlimited on Premium) instead of paying
-  // per card. Re-running is blocked once a result exists.
-  const runFullAnalysis = useCallback(async () => {
+  const startFullAnalysisQuiz = useCallback(async () => {
     if (!p || aiFull.busy || aiFull.data) return;
-    setAiFull((s) => ({ ...s, busy: true, notice: '' }));
+    setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, notice: '', questions: [] }));
+    try {
+      let questions = await generateQuiz({
+        category: p.category,
+        productTitle: localizedProductName(p, lang),
+        url: productPath(p),
+        language: lang,
+        userProfile: aiUserProfile(user),
+      });
+      if (!questions.length) questions = fallbackProductQuiz(lang, localizedProductName(p, lang));
+      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, questions }));
+    } catch {
+      setAiFull((s) => ({
+        ...s,
+        phase: 'quiz',
+        busy: false,
+        questions: fallbackProductQuiz(lang, localizedProductName(p, lang)),
+      }));
+    }
+  }, [p, lang, user, aiFull.busy, aiFull.data]);
+
+  // Quiz answers → one researched, consolidated report. The user is charged a
+  // single detail_ai_full cost (3 Qor Coins; unlimited on Premium).
+  const runFullAnalysis = useCallback(async (answers = []) => {
+    if (!p || aiFull.busy || aiFull.data) return;
+    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '' }));
     const access = await requireAiAccess('detail_ai_full', {
       onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
     });
     if (!access.ok) {
-      setAiFull((s) => ({ ...s, busy: false }));
+      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false }));
       return;
     }
     try {
-      const prompt = buildFullPrompt(p, lang, aiUserProfile(user));
-      const txt = await askQorAi([{ role: 'user', text: prompt }]);
+      let research = '';
+      try {
+        research = await askQorAiGrounded(buildProductResearchPrompt(p, lang, { quizAnswers: answers }), {
+          language: lang,
+          maxOutputTokens: 4096,
+        });
+      } catch {
+        research = '';
+      }
+      const prompt = buildFullPrompt(p, lang, aiUserProfile(user), {
+        quizAnswers: answers,
+        research,
+        similarProducts: similar,
+        offers,
+      });
+      const txt = await askQorAiRaw({
+        system: `You are Qor AI. Return only valid JSON in ${lang}.`,
+        user: prompt,
+        maxOutputTokens: 12288,
+        temperature: 0.45,
+        jsonMode: true,
+      });
       const data = parseAiJson(txt);
       if (!data || typeof data !== 'object') throw new Error('parse');
-      setAiFull({ busy: false, notice: '', data });
+      setAiFull({ phase: 'result', busy: false, notice: '', data, questions: [] });
       saveProductAnalysisHistory({ product: p, analysis: txt });
     } catch {
-      setAiFull((s) => ({ ...s, busy: false, notice: t('pd.aiError') }));
+      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, notice: t('pd.aiError') }));
     }
-  }, [p, lang, requireAiAccess, t, user, aiFull.busy, aiFull.data]);
+  }, [p, lang, requireAiAccess, t, user, aiFull.busy, aiFull.data, similar, offers]);
 
   useEffect(() => {
     let live = true;
@@ -744,41 +731,62 @@ export default function ProductDetail() {
   // The raw techSubscores (Engine/AnchorKey/Tier/…) are internal scoring-engine
   // diagnostics and are intentionally NOT shown to users.
   const chips = keySpecChips(p).slice(0, 6);
-  const pros = Array.isArray(p.pros) ? p.pros.filter(Boolean) : [];
-  const cons = Array.isArray(p.cons) ? p.cons.filter(Boolean) : [];
   const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
   const specTr = buildSpecTranslator(p, lang);
   const displayName = localizedProductName(p, lang);
 
-  // Hero key specs: the structured screen/RAM/storage/battery chips first, then
-  // topped up with measurable rows from the spec sheet to at least ~10 so the
-  // column fills the height beside the photo (no empty space). Booleans
-  // (Var/Yok), sponsored/ad rows and label-less values are skipped.
+  // Hero key specs: show only real catalog specs, ranked by buyer importance.
+  // Metadata such as category, brand, model name and Qor scores belongs outside
+  // this grid.
   const heroSpecs = (() => {
-    const out = [];
+    const candidates = [];
     const seen = new Set();
-    const push = (s) => {
+    const rankFor = (label, value, fallback = 999) => {
+      const text = `${label} ${value}`;
+      const hit = HERO_SPEC_PRIORITY.find((r) => r.re.test(text));
+      return hit ? hit.rank : fallback;
+    };
+    const iconFor = (label, value, fallback = '•') => {
+      const text = `${label} ${value}`;
+      const hit = HERO_SPEC_PRIORITY.find((r) => r.re.test(text));
+      return hit?.icon || fallback;
+    };
+    const push = (s, fallbackRank = 999) => {
       const label = String(s.label || '').trim();
       const value = String(s.value || '').trim();
       if (!label || !value) return;
-      const concept = heroSpecConcept(label, value);
-      if (!concept || seen.has(concept)) return;
-      seen.add(concept); out.push({ ...s, label, value });
+      if (/sponsor|reklam|advert|affiliate/i.test(`${label} ${value}`)) return;
+      if (/^(brand|marka|category|kategori|model|qor|tech score|teknik skor)$/i.test(label)) return;
+      const sig = normHeroSpecText(label).replace(/[^a-z0-9]+/g, '_');
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      candidates.push({
+        ...s,
+        icon: s.icon && s.icon !== '•' ? s.icon : iconFor(label, value, sectionIcon(label)),
+        label,
+        value,
+        rank: rankFor(label, value, fallbackRank),
+      });
     };
-    chips.forEach((c) => push({
+    chips.forEach((c, i) => push({
       key: c.labelKey,
       icon: SPEC_EMOJI[c.labelKey] || '•',
       value: localizedSpecValue(c.value, lang),
       label: localizedSpecLabel(t(c.labelKey), lang),
-    }));
+    }, i * 5));
     bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {
       const value = localizedSpecValue(specTr(String(v).split(/\r?\n/)[0].trim()), lang);
       const label = localizedSpecLabel(specTr(k), lang).replace(/\s*:\s*$/, '');
-      if (/\d/.test(value) && value.length <= 24 && !/sponsor|reklam|advert/i.test(`${label} ${value}`)) {
+      const compact = value.length <= 34 && label.length <= 34;
+      const informative = /\d/.test(value) || !/^(yes|no|var|yok|evet|hayır|hayir|true|false)$/i.test(value) || candidates.length < 8;
+      if (compact && informative) {
         push({ key: k, icon: sectionIcon(k), value, label });
       }
     });
-    return out.slice(0, 10);
+    return candidates
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 10)
+      .map(({ rank, ...rest }) => rest);
   })();
 
   const tech = Number(p.techScore) || 0;
@@ -1069,69 +1077,38 @@ export default function ProductDetail() {
               {tab === 'premium' && (
                 <div className="fade-up pd-ai-grid">
                   {aiFull.data ? (
-                    <>
-                      <AiFullSection icon="🧠" gradient="grad-violet" kind="deep" lang={lang} data={aiFull.data.deep}
-                        title={L('AI Deep Analysis', 'AI Derin Analiz', 'KI-Tiefenanalyse')}
-                        subtitle={L('Comprehensive AI product evaluation', 'Kapsamlı AI ürün değerlendirmesi', 'Umfassende KI-Produktbewertung')} />
-                      <AiFullSection icon="🔁" gradient="grad-orange" kind="alts" lang={lang} data={aiFull.data.alts}
-                        title={L('Smart Alternatives', 'Akıllı Alternatifler', 'Intelligente Alternativen')}
-                        subtitle={L('AI-curated similar products', 'AI tarafından seçilmiş benzer ürünler', 'KI-kuratierte ähnliche Produkte')} />
-                      <AiFullSection icon="🎯" gradient="grad-cyan" kind="advisor" lang={lang} data={aiFull.data.advisor}
-                        title={L('AI Product Advisor', 'AI Ürün Danışmanı', 'KI-Produktberater')}
-                        subtitle={L('Buying advice tailored to your profile', 'Profiline göre satın alma tavsiyeleri', 'Maßgeschneiderte Kaufberatung')} />
-                      <AiFullSection icon="📉" gradient="grad-green" kind="pred" lang={lang} data={aiFull.data.pred}
-                        title={L('Price Prediction', 'Fiyat Tahmini', 'Preisvorhersage')}
-                        subtitle={L('AI price trend & best time to buy', 'AI fiyat trendi ve en iyi alım zamanı', 'KI-Preistrend & beste Kaufzeit')} />
-                      <AiFullSection icon="👥" gradient="grad-pink" kind="forum" lang={lang} data={aiFull.data.forum}
-                        title={L('Forum Satisfaction', 'Forum Memnuniyeti', 'Forum-Zufriedenheit')}
-                        subtitle={L('What communities (Reddit, forums…) really think', 'Toplulukların (Reddit, forumlar…) gerçek görüşü', 'Was Communities (Reddit, Foren…) wirklich denken')} />
-                    </>
+                    <div className="pd-ai-report">
+                      <AiAnalysisView kind="productFull" data={aiFull.data} lang={lang} />
+                    </div>
+                  ) : aiFull.phase === 'quiz' && aiFull.questions.length > 0 ? (
+                    <QuizFlow
+                      questions={aiFull.questions}
+                      busy={aiFull.busy}
+                      title={L('Tune the analysis', 'Analizi kişiselleştir', 'Analyse anpassen')}
+                      subtitle={L(
+                        'Answer these before the report so the match score reflects your real use.',
+                        'Rapor öncesi cevapla; uyum puanı gerçek kullanımına göre hesaplansın.',
+                        'Beantworte dies vor dem Bericht, damit der Match-Score zu deiner Nutzung passt.',
+                      )}
+                      onSubmit={runFullAnalysis}
+                    />
                   ) : (
                     <div className="pd-ai-intro">
-                      <div className="pd-ai-intro-ic">🤖</div>
-                      <h3>{L('AI Analysis', 'AI Analizi', 'KI-Analyse')}</h3>
-                      <p>{L(
-                        'Deep analysis, smart alternatives, buying advice, price prediction and community satisfaction — generated together in a single pass.',
-                        'Derin analiz, akıllı alternatifler, satın alma tavsiyesi, fiyat tahmini ve forum memnuniyeti — hepsi tek seferde üretilir.',
-                        'Tiefenanalyse, Alternativen, Kaufberatung, Preisprognose und Community-Zufriedenheit — in einem Durchgang.',
-                      )}</p>
                       {aiFull.busy ? (
-                        <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
+                        aiFull.phase === 'analyzing'
+                          ? <AiLoadingSteps lang={lang} mode="product" />
+                          : <div className="pd-ai-loading"><div className="spinner" /><span>{t('pd.aiLoading')}</span></div>
                       ) : (
-                        <>
-                          <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={runFullAnalysis}>
-                            ✨ {L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}
-                          </button>
-                          <span className="pd-ai-cost">{L('3 Qor Coins · unlimited on Premium', '3 Qor Coin · Premium’da sınırsız', '3 Qor Coins · mit Premium unbegrenzt')}</span>
-                        </>
+                        <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={startFullAnalysisQuiz}>
+                          {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                        </button>
                       )}
                       {aiFull.notice && <div className="pd-ai-notice">{aiFull.notice}</div>}
-                    </div>
-                  )}
-                  {(pros.length > 0 || cons.length > 0) && (
-                    <div className="pd-ai-procon">
-                      {pros.length > 0 && (
-                        <div className="ad-card ad-pos">
-                          <h4>✓ {t('pd.pros').toUpperCase()}</h4>
-                          <ul>{pros.map((x, i) => <li key={i}><span>✓</span><span>{x}</span></li>)}</ul>
-                        </div>
-                      )}
-                      {cons.length > 0 && (
-                        <div className="ad-card ad-neg">
-                          <h4>⚠ {t('pd.cons').toUpperCase()}</h4>
-                          <ul>{cons.map((x, i) => <li key={i}><span>✕</span><span>{x}</span></li>)}</ul>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
               )}
             </div>
-          </section>
-
-          <section className="pd-block">
-            <h2 className="pd-block-title">💬 {L('Reviews', 'Yorumlar', 'Bewertungen')}</h2>
-            <Reviews productId={p.id} productName={displayName} lang={lang} />
           </section>
         </div>
 
@@ -1193,30 +1170,6 @@ export default function ProductDetail() {
         </div>,
         document.body,
       )}
-    </div>
-  );
-}
-
-// Collapsible AI analysis card used in the AI tab. Mirrors the mobile app's
-// SharedPremiumFeaturesSection style: gradient header with icon + title +
-// chevron, body either shows a spinner, a notice (auth / insufficient coins)
-// or a fully rendered markdown analysis.
-// One section of the consolidated analysis — always open (the single API call
-// already produced every section), rendered with the same chart/symbol views.
-function AiFullSection({ icon, gradient, title, subtitle, kind, data, lang }) {
-  if (!data || typeof data !== 'object') return null;
-  return (
-    <div className="pd-ai-card on">
-      <div className={'pd-ai-card-head ' + gradient}>
-        <span className="pd-ai-card-ic">{icon}</span>
-        <span className="pd-ai-card-h">
-          <b>{title}</b>
-          <small>{subtitle}</small>
-        </span>
-      </div>
-      <div className="pd-ai-card-body fade-up">
-        <AiAnalysisView kind={kind} data={data} lang={lang} />
-      </div>
     </div>
   );
 }

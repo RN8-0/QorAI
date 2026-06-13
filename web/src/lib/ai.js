@@ -73,7 +73,9 @@ async function fetchJson(url, body, timeoutMs = 90000) {
 }
 
 // ── Gemini proxy (app's primary for link / subscription analysis) ──
-async function geminiOnce({ system, messages, maxOutputTokens, temperature }) {
+async function geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode }) {
+  const generationConfig = { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } };
+  if (jsonMode) generationConfig.responseMimeType = 'application/json';
   const body = {
     model: GEMINI_MODEL,
     systemInstruction: { parts: [{ text: system }] },
@@ -81,8 +83,9 @@ async function geminiOnce({ system, messages, maxOutputTokens, temperature }) {
       role: m.role === 'assistant' ? 'model' : m.role,
       parts: [{ text: m.content }],
     })),
-    generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
+    generationConfig,
   };
+  if (Array.isArray(tools) && tools.length) body.tools = tools;
   const res = await fetchJson(GEMINI_URL, body);
   if (!res.ok) {
     const err = new Error(`gemini ${res.status}`);
@@ -123,11 +126,18 @@ async function deepseekOnce({ system, messages, maxOutputTokens, temperature, js
 
 // App-parity routing: Gemini first (2 tries with a short backoff, like the app's
 // retry loop), then DeepSeek (2 tries). Throws only when both providers fail.
-async function aiRequest({ system, messages, maxOutputTokens = 4096, temperature = 0.7, jsonMode = false }) {
+async function aiRequest({
+  system,
+  messages,
+  maxOutputTokens = 4096,
+  temperature = 0.7,
+  jsonMode = false,
+  tools = null,
+}) {
   let lastErr;
   for (let i = 0; i < 2; i++) {
     if (i > 0) await sleep(2000);
-    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature }); }
+    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode }); }
     catch (e) { lastErr = e; if (!e.transient) break; }
   }
   for (let i = 0; i < 2; i++) {
@@ -153,13 +163,35 @@ export async function askQorAi(history, opts = {}) {
 }
 
 // Custom system + user — used by the quiz / link / subscription engines.
-export async function askQorAiRaw({ system, user, maxOutputTokens = 4096, temperature = 0.7, jsonMode = false }) {
+export async function askQorAiRaw({
+  system,
+  user,
+  maxOutputTokens = 4096,
+  temperature = 0.7,
+  jsonMode = false,
+  tools = null,
+}) {
   return aiRequest({
     system,
     messages: [{ role: 'user', content: user }],
     maxOutputTokens,
     temperature,
     jsonMode,
+    tools,
+  });
+}
+
+export async function askQorAiGrounded(prompt, opts = {}) {
+  const lang = opts.language || opts.lang || 'en';
+  return askQorAiRaw({
+    system:
+      `You are Qor AI's web research assistant. Use current web search when available. ` +
+      `Reply in ${languageLabel(lang)}. Summarize evidence, source types, and uncertainty. ` +
+      'Do not invent quotes, exact prices, or review counts.',
+    user: prompt,
+    maxOutputTokens: opts.maxOutputTokens || 4096,
+    temperature: 0.25,
+    tools: [{ googleSearch: {} }],
   });
 }
 

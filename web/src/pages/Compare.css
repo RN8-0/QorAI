@@ -185,8 +185,15 @@
 
 /* ─── AI tab ─────────────────────────────────────────────────── */
 .cmp-ai-layout { display: flex; flex-direction: column; gap: 14px; }
-.cmp-ai { text-align: center; max-width: 540px; margin: 0 auto; align-items: center; gap: 12px; }
+.cmp-ai { text-align: center; max-width: 1100px; margin: 0 auto; align-items: center; gap: 12px; }
 .cmp-ai, .cmp-ai.card { display: flex; flex-direction: column; }
+.cmp-ai.card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 28px 0;
+}
+.cmp-ai > .btn { align-self: center; min-width: 220px; }
 .cmp-ai-icon {
   width: 64px; height: 64px; border-radius: 20px; background: var(--grad-violet);
   display: grid; place-items: center; font-size: 32px;
@@ -203,14 +210,24 @@
   border-radius: var(--radius-sm);
   background: var(--bg3);
 }
+.cmp-ai-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 750;
+}
 .cmp-ai-result {
   width: 100%;
   text-align: left;
   color: var(--text);
   line-height: 1.65;
   font-size: 14.5px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
+  border-top: 0;
 }
 .cmp-ai-result p { margin: 0 0 10px; color: inherit; }
 .cmp-youtube { max-width: 980px; margin: 0 auto; }

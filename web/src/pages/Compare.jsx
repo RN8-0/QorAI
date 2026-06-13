@@ -11,13 +11,15 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import { productPath } from '../lib/routes';
-import { askQorAi } from '../lib/ai';
+import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
+import { generateCompareQuiz } from '../lib/linkAnalysis';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { useGeoCountry } from '../lib/geo';
-import CompareReviews from '../components/CompareReviews.jsx';
-import AiAnalysisView, { buildComparePrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import AiAnalysisView, { buildComparePrompt, buildCompareResearchPrompt, parseAiJson } from '../components/AiAnalysis.jsx';
+import QuizFlow from '../components/QuizFlow.jsx';
+import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
@@ -99,6 +101,32 @@ function PlainAiText({ text }) {
     .map((part, i) => <p key={i}>{part}</p>);
 }
 
+function fallbackCompareQuiz(lang) {
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const rows = code === 'tr'
+    ? [
+        ['Bu ürünler arasında ana kullanım senaryon hangisi?', ['Günlük ve uzun ömürlü kullanım', 'Yoğun iş/üretkenlik', 'Performans odaklı kullanım', 'En risksiz seçim']],
+        ['Karar verirken hangi fark daha önemli?', ['Ham performans farkı', 'Uyumluluk ve stabilite', 'Fiyat/performans dengesi', 'Marka/servis güveni']],
+        ['Eksik veya zayıf bir özellik seni ne kadar etkiler?', ['Çok etkiler, sorun istemem', 'Kullanımıma bağlı', 'Güçlü taraflar telafi eder', 'Fark etmem muhtemel değil']],
+        ['Topluluk yorumları seçiminde nasıl rol oynasın?', ['Belirleyici olsun', 'Dengeli değerlendirilsin', 'Teknik specs daha önemli', 'Az etkilesin']],
+        ['Satın alma zamanında ne kadar esneksin?', ['Hemen almalıyım', 'İndirim beklerim', 'Yeni model beklerim', 'Fiyat sabitse alırım']],
+        ['Uzun vadede en çok neyi önemserdin?', ['Performansın eskimemesi', 'Garanti/servis rahatlığı', 'Düşük sorun riski', 'Yükseltme/uyumluluk']],
+        ['İki ürün yakın çıkarsa hangisi kazansın?', ['Daha güçlü olan', 'Daha güvenilir olan', 'Daha iyi fiyatlı olan', 'Daha yeni/gelecek odaklı olan']],
+        ['Yanlış seçim yaparsan en büyük problem ne olur?', ['Para boşa gider', 'Cihazıma/sisteme uymaz', 'Beklediğim performansı vermez', 'İade/değişim uğraştırır']],
+      ]
+    : [
+        ['What is your main use case between these products?', ['Everyday long-term use', 'Heavy work/productivity', 'Performance-focused use', 'Lowest-risk choice']],
+        ['Which difference matters most?', ['Raw performance', 'Compatibility and stability', 'Value for money', 'Brand/service trust']],
+        ['How much would a weak feature affect you?', ['A lot, I want no issues', 'Depends on the feature', 'Strengths can compensate', 'Probably not much']],
+        ['How should community feedback influence the choice?', ['It should be decisive', 'Balanced with specs', 'Specs matter more', 'Only a little']],
+        ['How flexible is your purchase timing?', ['I need it now', 'I can wait for a discount', 'I can wait for a successor', 'I buy if price is stable']],
+        ['What matters most long term?', ['Performance aging well', 'Warranty/service comfort', 'Low issue risk', 'Upgrade/compatibility']],
+        ['If the products are close, what wins?', ['More power', 'More reliability', 'Better price', 'Newer/future-proof design']],
+        ['If you choose wrong, what is the biggest problem?', ['Wasted money', 'It will not fit my device/system', 'It will underperform', 'Returns will be annoying']],
+      ];
+  return rows.map(([text, options], i) => ({ id: `compare-fallback-${i}`, text, options }));
+}
+
 // Returns a boolean per cell — true marks the winning value(s) for the row.
 function rowWinners(key, values) {
   const nums = values.map(parseNum);
@@ -134,6 +162,8 @@ export default function Compare() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
+  const [aiPhase, setAiPhase] = useState('idle');
+  const [aiQuestions, setAiQuestions] = useState([]);
   const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
   const compareCategory = products[0]?.category || '';
@@ -177,6 +207,14 @@ export default function Compare() {
     const tm = setTimeout(() => saveComparisonHistory(ids, products), 600);
     return () => clearTimeout(tm);
   }, [ids.join(','), products.length]); // eslint-disable-line
+
+  useEffect(() => {
+    setAiBusy(false);
+    setAiText('');
+    setAiNotice('');
+    setAiPhase('idle');
+    setAiQuestions([]);
+  }, [ids.join(',')]); // eslint-disable-line
 
   useEffect(() => {
     const q = term.trim();
@@ -235,11 +273,42 @@ export default function Compare() {
     setTerm(''); setResults([]); setPicking(false);
   }
 
-  function buildAiComparePrompt() {
-    return buildComparePrompt(products, lang, aiUserProfile(user));
+  function buildAiComparePrompt(answers = [], research = '') {
+    return buildComparePrompt(products, lang, aiUserProfile(user), { quizAnswers: answers, research });
   }
 
-  async function runAiCompare() {
+  async function startAiCompareQuiz() {
+    setAiNotice('');
+    if (products.length < 2) {
+      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
+      return;
+    }
+    setAiPhase('quizLoading');
+    setAiBusy(true);
+    try {
+      let questions = await generateCompareQuiz({
+        products: products.map((p) => ({
+          title: p.name,
+          url: productPath(p),
+          category: p.category,
+          score: p.techScore,
+          analysis: p.description || '',
+        })),
+        language: lang,
+        userProfile: aiUserProfile(user),
+      });
+      if (!questions.length) questions = fallbackCompareQuiz(lang);
+      setAiQuestions(questions);
+      setAiPhase('quiz');
+    } catch {
+      setAiQuestions(fallbackCompareQuiz(lang));
+      setAiPhase('quiz');
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function runAiCompare(answers = []) {
     setAiNotice('');
     if (products.length < 2) {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
@@ -250,12 +319,30 @@ export default function Compare() {
     });
     if (!access.ok) return;
     setAiBusy(true);
+    setAiPhase('analyzing');
     try {
-      const text = await askQorAi([{ role: 'user', text: buildAiComparePrompt() }]);
+      let research = '';
+      try {
+        research = await askQorAiGrounded(buildCompareResearchPrompt(products, lang, { quizAnswers: answers }), {
+          language: lang,
+          maxOutputTokens: 4096,
+        });
+      } catch {
+        research = '';
+      }
+      const text = await askQorAiRaw({
+        system: `You are Qor AI. Return only valid JSON in ${lang}.`,
+        user: buildAiComparePrompt(answers, research),
+        maxOutputTokens: 12288,
+        temperature: 0.45,
+        jsonMode: true,
+      });
       setAiText(text);
+      setAiPhase('result');
       await saveComparisonAnalysisHistory({ products, analysis: text });
     } catch (e) {
       setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
+      setAiPhase('quiz');
     } finally {
       setAiBusy(false);
     }
@@ -485,36 +572,40 @@ export default function Compare() {
               {tab === 'ai' && (
                 <div className="cmp-ai-layout fade-up">
                   <div className="card pad-lg cmp-ai">
-                    {!aiText && (
-                      <>
-                        <div className="cmp-ai-icon">🤖</div>
-                        <h3>{L('AI comparison analysis', 'AI karşılaştırma analizi', 'KI-Vergleichsanalyse')}</h3>
-                        <p>{L(
-                          'Let Qor AI weigh these products against each other and recommend the best fit for you.',
-                          'Qor AI bu ürünleri birbirine karşı tartsın ve sana en uygun olanı önersin.',
-                          'Lass Qor AI diese Produkte gegeneinander abwägen und das Beste empfehlen.',
-                        )}</p>
-                      </>
-                    )}
-                    {!aiText && (
-                      <button className="btn btn-grad btn-lg" onClick={runAiCompare} disabled={aiBusy}>
-                        {aiBusy ? L('Analyzing...', 'Analiz ediliyor...', 'Analyse läuft...') : `✨ ${L('Analyze with AI', 'AI ile analiz et', 'Mit KI analysieren')}`}
+                    {!aiText && aiPhase === 'idle' && (
+                      <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy}>
+                        {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
                       </button>
+                    )}
+                    {!aiText && aiPhase === 'quizLoading' && (
+                      <div className="cmp-ai-loading"><div className="spinner" /> {L('Preparing quiz...', 'Quiz hazırlanıyor...', 'Quiz wird vorbereitet...')}</div>
+                    )}
+                    {!aiText && aiPhase === 'quiz' && aiQuestions.length > 0 && (
+                      <QuizFlow
+                        questions={aiQuestions}
+                        busy={aiBusy}
+                        title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir', 'Vergleich anpassen')}
+                        subtitle={L(
+                          'Answer these before the report so each product is scored for your real use.',
+                          'Rapor öncesi cevapla; her ürün gerçek kullanımına göre puanlansın.',
+                          'Beantworte dies vor dem Bericht, damit jedes Produkt passend bewertet wird.',
+                        )}
+                        onSubmit={runAiCompare}
+                      />
+                    )}
+                    {!aiText && aiPhase === 'analyzing' && (
+                      <AiLoadingSteps lang={lang} mode="compare" />
                     )}
                     {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
                     {aiText && (
                       parseAiJson(aiText)
-                        ? <div className="cmp-ai-result"><AiAnalysisView kind="compare" raw={aiText} lang={lang} /></div>
+                        ? <div className="cmp-ai-result"><AiAnalysisView kind="compareFull" raw={aiText} lang={lang} /></div>
                         : <div className="cmp-ai-result"><PlainAiText text={aiText} /></div>
                     )}
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Unified comparison reviews — one thread for this exact set of
-                products, shared with the app, independent of the tabs. */}
-            <CompareReviews productIds={products.map((p) => p.id)} productNames={products.map((p) => p.name).join('  ·  ')} />
 
             <section className="cmp-picks cmp-picks-after">
               <div className="cmp-picks-head">
