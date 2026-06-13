@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
-import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
+import { catMeta, categoryLabel } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
-import Gauge, { techColor } from '../components/Gauge.jsx';
-import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -16,6 +15,54 @@ import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
 import { productPath } from '../lib/routes';
 import Reveal from '../components/Reveal.jsx';
 import './Home.css';
+
+function StatItem({ n, l }) {
+  return (
+    <div className="stat">
+      <div className="n"><span className="grad">{n}</span></div>
+      <div className="l">{l}</div>
+    </div>
+  );
+}
+
+function HeroSpotlight({ products, lang, L }) {
+  const safe = (products || []).filter(Boolean).slice(0, 10);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (safe.length <= 1) return undefined;
+    const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4200);
+    return () => clearInterval(id);
+  }, [safe.length]);
+
+  if (!safe.length) return null;
+  const active = index % safe.length;
+  return (
+    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi', 'Top-Kategorie-Auswahl')}>
+      <div className="hero-carousel-head">
+        <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
+        <b>{categoryLabel(safe[active]?.category, lang)}</b>
+      </div>
+      <div className="hero-carousel-viewport">
+        <div className="hero-carousel-track" style={{ transform: `translateX(-${active * 100}%)` }}>
+          {safe.map((p) => (
+            <div className="hero-carousel-slide" key={p.id}>
+              <ProductCard product={p} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {safe.length > 1 && (
+        <div className="hero-carousel-dots" aria-hidden="true">
+          {safe.map((p, i) => (
+            <button key={p.id} type="button" className={i === active ? 'on' : ''}
+              onClick={() => setIndex(i)} tabIndex={-1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SearchSuggestionList({ products, searching, onOpen, L }) {
   if (searching) {
@@ -56,210 +103,29 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
   );
 }
 
-// Rotating product showcase — the hero's right-hand hero element. Big image,
-// score ring, brand/name and a couple of key specs, so the top of the page has
-// a real visual anchor instead of a small floating card.
-function HeroShowcase({ products, lang, L, t }) {
-  const safe = (products || []).filter(Boolean).slice(0, 8);
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (safe.length <= 1) return undefined;
-    const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4600);
-    return () => clearInterval(id);
-  }, [safe.length]);
-  if (!safe.length) return null;
-  const active = index % safe.length;
-  const p = safe[active];
-  const score = Number(p.techScore) || 0;
-  // Headline specs: prefer the canonical chips; for components (RAM, SSD…) that
-  // have no generic chips, fall back to their real numeric keySpecs so the
-  // showcase never looks empty.
-  const specs = keySpecChips(p).slice(0, 4).map((c) => ({ value: c.value, label: t(c.labelKey) }));
-  if (specs.length < 3 && p.keySpecs && typeof p.keySpecs === 'object') {
-    for (const [k, v] of Object.entries(p.keySpecs)) {
-      if (specs.length >= 4) break;
-      const val = String(v).split(/\r?\n/)[0].trim();
-      const display = localizedSpecValue(val, lang);
-      if (val && /\d/.test(val) && val.length <= 18 && !specs.some((s) => s.value === display)) {
-        specs.push({ value: display, label: localizedSpecLabel(k, lang).replace(/\s*:\s*$/, '') });
-      }
-    }
-  }
-  return (
-    <div className="home-showcase">
-      <div className="home-showcase-head">
-        <span>{L('Spotlight', 'Vitrin', 'Vitrine')}</span>
-        <b>{categoryLabel(p.category, lang)}</b>
-      </div>
-      <Link to={productPath(p)} className="home-showcase-card" key={p.id}>
-        <div className="home-showcase-media">
-          {p.imageUrl
-            ? <ProductImg src={p.imageUrl} alt={p.name} size="card" />
-            : <span className="home-showcase-ph">{catMeta(p.category).icon}</span>}
-          {score > 0 && (
-            <span className="home-showcase-score">
-              <Gauge value={score} size={48} stroke={3} color={techColor(score)} fontSize={15} />
-            </span>
-          )}
-        </div>
-        <div className="home-showcase-info">
-          {p.brand && <span className="home-showcase-brand">{p.brand}</span>}
-          <h3 className="home-showcase-name">{p.name}</h3>
-          {specs.length > 0 && (
-            <div className="home-showcase-specs">
-              {specs.map((s, i) => (
-                <span key={`${s.label}-${i}`}>
-                  <b>{s.value}</b>
-                  <small>{s.label}</small>
-                </span>
-              ))}
-            </div>
-          )}
-          <span className="home-showcase-cta">{L('View product', 'Ürünü incele', 'Produkt ansehen')} →</span>
-        </div>
-      </Link>
-      {safe.length > 1 && (
-        <div className="home-showcase-dots" aria-hidden="true">
-          {safe.map((x, i) => (
-            <button key={x.id} type="button" className={i === active ? 'on' : ''}
-              onClick={() => setIndex(i)} tabIndex={-1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Quick category chips built from the live Typesense facet counts.
-function CategoryStrip({ categories, lang, L }) {
-  const cats = (categories || [])
-    .map((c) => ({ value: String(c.value || '').toLowerCase(), count: Number(c.count) || 0 }))
-    .filter((c) => c.value)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 14);
-  if (cats.length < 4) return null;
-  return (
-    <Reveal>
-      <div className="home-chips" role="navigation" aria-label={L('Browse categories', 'Kategorilere göz at', 'Kategorien')}>
-        {cats.map((c) => {
-          const meta = catMeta(c.value);
-          return (
-            <Link key={c.value} to={`/category?cat=${encodeURIComponent(c.value)}`} className="home-chip">
-              <span className="home-chip-ic">{meta.icon}</span>
-              {categoryLabel(c.value, lang)}
-            </Link>
-          );
-        })}
-      </div>
-    </Reveal>
-  );
-}
-
-function StatsBand({ total, catCount, L, lang }) {
-  const fmt = (n) => new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US').format(n);
-  const stats = [
-    { n: total > 0 ? `${fmt(total)}+` : '—', l: L('scored products', 'puanlı ürün', 'bewertete Produkte') },
-    { n: catCount > 0 ? `${catCount}` : '—', l: L('categories', 'kategori', 'Kategorien') },
-    { n: '5', l: L('AI tools', 'AI aracı', 'KI-Tools') },
-    { n: L('Free', 'Ücretsiz', 'Gratis'), l: L('to compare', 'karşılaştırma', 'Vergleich') },
-  ];
-  return (
-    <Reveal>
-      <div className="home-stats">
-        {stats.map((s) => (
-          <div className="home-stat" key={s.l}>
-            <span className="home-stat-n grad">{s.n}</span>
-            <span className="home-stat-l">{s.l}</span>
-          </div>
-        ))}
-      </div>
-    </Reveal>
-  );
-}
-
-// Horizontal, rank-numbered rail — a different rhythm from the grid sections.
-function TrendingRail({ title, products, loading, seeAllTo, t }) {
-  const list = (products || []).filter(Boolean).slice(0, 12);
-  if (!loading && list.length === 0) return null;
-  return (
-    <Reveal>
-      <div className="sec-head">
-        <h2><span className="bar" /> {title}</h2>
-        {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
-      </div>
-      <div className="home-rail">
-        {loading
-          ? Array.from({ length: 6 }).map((_, i) => <div className="home-rail-item" key={i}><ProductCardSkeleton /></div>)
-          : list.map((p, i) => (
-            <div className="home-rail-item" key={p.id}>
-              <span className="home-rail-rank">{i + 1}</span>
-              <ProductCard product={p} />
-            </div>
-          ))}
-      </div>
-    </Reveal>
-  );
-}
-
-function ValueProps({ L }) {
-  const items = [
-    {
-      to: '/compare', tone: 'a',
-      title: L('Side-by-side compare', 'Yan yana karşılaştır', 'Direktvergleich'),
-      desc: L('Specs, scores and prices, lined up.', 'Özellik, puan ve fiyat tek ekranda.', 'Specs, Scores und Preise nebeneinander.'),
-      icon: (<><rect x="3" y="4" width="7.5" height="16" rx="2" /><rect x="13.5" y="4" width="7.5" height="16" rx="2" /></>),
-    },
-    {
-      to: '/link-analysis', tone: 'b',
-      title: L('Paste any link', 'Linki yapıştır', 'Link einfügen'),
-      desc: L('Drop a product URL, get an instant AI read.', 'Ürün linkini yapıştır, anında AI analizi al.', 'Produkt-URL einfügen, sofortige KI-Analyse.'),
-      icon: (<><path d="M9 15l6-6" /><path d="M11 6.5 12.5 5a4 4 0 0 1 5.7 5.7L16.5 12" /><path d="M13 17.5 11.5 19a4 4 0 0 1-5.7-5.7L7.5 12" /></>),
-    },
-    {
-      to: '/quiz', tone: 'c',
-      title: L('Personal AI picks', 'Sana özel AI seçimi', 'Persönliche KI-Tipps'),
-      desc: L('Take the quiz once — Qor AI tailors everything.', 'Quizi bir kez çöz — Qor AI her şeyi sana göre ayarlar.', 'Quiz einmal machen — alles personalisiert.'),
-      icon: (<><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" fill="currentColor" /></>),
-    },
-  ];
-  return (
-    <Reveal>
-      <div className="home-values">
-        {items.map((it) => (
-          <Link key={it.to} to={it.to} className={`home-value tone-${it.tone}`}>
-            <span className="home-value-ic">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{it.icon}</svg>
-            </span>
-            <span className="home-value-tx">
-              <strong>{it.title}</strong>
-              <span>{it.desc}</span>
-            </span>
-            <span className="home-value-go" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-            </span>
-          </Link>
-        ))}
-      </div>
-    </Reveal>
-  );
-}
-
-function GridSection({ title, products, loading, seeAllTo, t, dense = false }) {
+// A product section — title + optional "see all" + a rail / grid / list layout.
+function fullRows(products, columns = 3) {
   const list = Array.isArray(products) ? products.filter(Boolean) : [];
-  const cols = 3;
-  const keep = Math.floor(list.length / cols) * cols;
-  const visible = keep >= cols ? list.slice(0, keep) : [];
-  if (!loading && visible.length === 0) return null;
+  const keep = Math.floor(list.length / columns) * columns;
+  return keep >= columns ? list.slice(0, keep) : [];
+}
+
+function Section({ title, products, loading, seeAllTo, t, dense = false }) {
+  const visibleProducts = fullRows(products);
+  if (!loading && visibleProducts.length === 0) return null;
   const items = loading
-    ? Array.from({ length: dense ? 6 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-    : visible.map((p) => <ProductCard key={p.id} product={p} />);
+    ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+    : visibleProducts.map((p) => <ProductCard key={p.id} product={p} />);
+  const cls = `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
     <Reveal>
       <div className="sec-head">
         <h2><span className="bar" /> {title}</h2>
         {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
       </div>
-      <div className={`card-grid${dense ? ' card-grid-compact' : ''}`}>{items}</div>
+      <div className={cls}>
+        {items}
+      </div>
     </Reveal>
   );
 }
@@ -272,6 +138,7 @@ export default function Home() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const searchRef = useRef(null);
 
+  // Time-of-day greeting for signed-in users (app parity).
   const hour = new Date().getHours();
   const greetWord = hour < 6 ? L('Good night', 'İyi geceler', 'Gute Nacht')
     : hour < 12 ? L('Good morning', 'Günaydın', 'Guten Morgen')
@@ -353,6 +220,8 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
+  // Sync from the ?q query param so the header search works even when the
+  // user is already on the home page (navigating to /?q=… won't remount).
   useEffect(() => {
     const qp = (params.get('q') || '').trim();
     setQ(qp);
@@ -375,6 +244,14 @@ export default function Home() {
     nav(productPath(product));
   }
 
+  function clearSearch() {
+    setQ('');
+    setSubmitted('');
+    setSearchResults([]);
+  }
+
+  // Spotlight = the highest tech-scored smartphone from Typesense. If that
+  // query ever fails, fall back to the best image-backed product from the feed.
   const spotlight = useMemo(() => {
     if (feed.spotlight) return feed.spotlight;
     const pool = [...(feed.forYou || []), ...(feed.trending || []), ...(feed.newArrivals || [])];
@@ -388,32 +265,38 @@ export default function Home() {
   }, [feed]);
 
   const searchMode = submitted.length > 0;
-  const heroProducts = feed.heroPicks?.length ? feed.heroPicks : spotlight ? [spotlight] : [];
-  const catCount = (feed.categories || []).filter((c) => Number(c.count) > 0).length;
+  const heroProducts = feed.heroPicks?.length
+    ? feed.heroPicks
+    : spotlight
+      ? [spotlight]
+      : [];
 
   return (
     <div className="page">
       <div className="container">
-        {/* HERO */}
-        <section className="hero card glow aurora home-hero">
+        {/* HERO — two columns: copy + spotlight (design parity) */}
+        <section className="hero card glow aurora" style={{ padding: 'clamp(28px,5vw,56px)' }}>
           <div className="hero-glow" />
-          <div className="between wrap home-hero-inner">
-            <div className="home-hero-copy">
+          <div className="between wrap" style={{ position: 'relative', gap: 40, alignItems: 'center' }}>
+            <div style={{ flex: '1 1 460px', minWidth: 0 }}>
               {user && (
-                <div className="home-greet">{greetWord}, {displayName} 👋</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', marginBottom: 12 }}>
+                  {greetWord}, {displayName} 👋
+                </div>
               )}
-              <span className="home-hero-badge">{L('AI-scored tech catalog', 'AI puanlı teknoloji kataloğu', 'KI-bewerteter Katalog')}</span>
               <h1>
                 {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
                 <span className="grad grad-anim">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
               </h1>
-              <p className="sub">
+              <p className="sub" style={{ marginTop: 16 }}>
                 {L(
                   'Real products scored by AI. Compare specs side by side, paste any link, and find the product that fits you.',
-                  'Gerçek ürünler yapay zekâ ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve sana en uygun ürünü bul.',
+                  'Gerçek ürünler yapay zekâ ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve ihtiyacına en uygun ürünü bul.',
                   'Echte Produkte mit KI bewertet. Vergleiche Specs, füge einen Link ein und finde das passende Produkt.',
                 )}
               </p>
+
+              {/* product search */}
               <div className="hero-search-wrap" ref={searchRef}>
                 <form className="searchbox hero-search" onSubmit={search}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -435,46 +318,53 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            {/* spotlight — highest-scored product from the live feed */}
             {heroProducts.length > 0 && (
-              <div className="home-hero-spot">
-                <HeroShowcase products={heroProducts} lang={lang} L={L} t={t} />
+              <div style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
+                <HeroSpotlight products={heroProducts} lang={lang} L={L} />
               </div>
             )}
           </div>
         </section>
 
-        {searchMode ? (
+        {/* SEARCH RESULTS */}
+        {searchMode && (
           <>
             <div className="sec-head"><h2><span className="bar" /> {t('catalog.searchTag', { q: submitted })}</h2></div>
             {searching ? (
-              <div className="card-grid">{Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}</div>
+              <div className="card-grid">
+                {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
             ) : searchResults.length > 0 ? (
-              <div className="card-grid">{searchResults.map((p) => <ProductCard key={p.id} product={p} />)}</div>
+              <div className="card-grid">
+                {searchResults.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
             ) : (
               <div className="card pad" style={{ textAlign: 'center', color: 'var(--text-2)' }}>
                 {t('catalog.emptySearch', { q: submitted })}
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {!searchMode && (
           <>
-            <CategoryStrip categories={feed.categories} lang={lang} L={L} />
-            <StatsBand total={feed.total} catCount={catCount} L={L} lang={lang} />
+            {/* FOR YOU */}
+            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
-            <TrendingRail title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t}
-              seeAllTo="/category?cat=smartphones&sort=trend" />
+            {/* TRENDING */}
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} seeAllTo="/category?cat=smartphones&sort=trend" />
 
-            <GridSection title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
+            <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 
-            <ValueProps L={L} />
-
-            <div className="home-ad"><AdSlot slot={AD_SLOTS.home} /></div>
-
+            {/* RECENTLY VIEWED */}
             {recent.length > 0 && (
-              <GridSection title={t('home.recent')} products={recent} loading={false} t={t} />
+              <Section title={t('home.recent')} products={recent} loading={false} t={t} />
             )}
 
-            <GridSection title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
+            {/* NEW ARRIVALS */}
+            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
           </>
         )}
       </div>
