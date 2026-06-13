@@ -392,8 +392,23 @@ const clamp = (n) => Math.max(6, Math.min(100, Math.round(n)));
 // Pulls the four headline specs (screen / RAM / storage / battery) from a
 // product's Typesense fields — used for the epey-style inline spec rows.
 // Each chip carries a 0–100 `pct` so cards can draw a relative mini bar.
+// Categories where a generic "system RAM" / "system storage" chip is a real,
+// meaningful spec. For COMPONENTS (a RAM module, an SSD, a CPU/GPU…) the
+// filterToken-derived ram/storage chip is either nonsensical or wrong — e.g. a
+// 48 GB RAM module was showing a bogus "1 GB RAM" chip — so we suppress it and
+// let the product's real specs (Bellek Kapasitesi, Bellek Hızı…) show instead.
+const RAM_CHIP_CATEGORIES = new Set([
+  'smartphones', 'tablets', 'laptops', 'desktops', 'gaming_consoles', 'consoles',
+  'smartwatches', 'e_readers', 'e-readers',
+]);
+const STORAGE_CHIP_CATEGORIES = new Set([
+  'smartphones', 'tablets', 'laptops', 'desktops', 'gaming_consoles', 'consoles',
+  'e_readers', 'e-readers', 'ssd', 'flash_drives',
+]);
+
 export function keySpecChips(p) {
   const tokens = Array.isArray(p.filterTokens) ? p.filterTokens : [];
+  const category = String(p.category || '').toLowerCase();
   const tokenVal = (prefix) => {
     const t = tokens.find((x) => x.startsWith(prefix));
     return t ? t.slice(prefix.length) : null;
@@ -406,17 +421,17 @@ export function keySpecChips(p) {
   }
 
   const ram = tokenVal('ram:'); // e.g. "8_gb"
-  if (ram) {
+  if (ram && RAM_CHIP_CATEGORIES.has(category)) {
     const n = parseInt(ram, 10) || 0;
-    chips.push({ labelKey: 'spec.ram', value: `${n} GB`, pct: clamp((n / 24) * 100) });
+    if (n > 0) chips.push({ labelKey: 'spec.ram', value: `${n} GB`, pct: clamp((n / 24) * 100) });
   }
 
   const storage = tokenVal('storage:'); // "256_gb" | "1_tb"
-  if (storage) {
+  if (storage && STORAGE_CHIP_CATEGORIES.has(category)) {
     const isTb = storage.includes('tb');
     const n = parseInt(storage, 10) || 0;
     const gb = isTb ? n * 1024 : n;
-    chips.push({ labelKey: 'spec.storage', value: isTb ? `${n} TB` : `${n} GB`, pct: clamp((gb / 1024) * 100) });
+    if (n > 0) chips.push({ labelKey: 'spec.storage', value: isTb ? `${n} TB` : `${n} GB`, pct: clamp((gb / 1024) * 100) });
   }
 
   if (p.batteryCapacityValue > 0) {
