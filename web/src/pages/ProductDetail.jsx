@@ -609,8 +609,19 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [lang]);
 
+  // Charge + gate UP FRONT (2 Qor Coins; unlimited on Premium). With no balance
+  // we never even prepare the quiz (the quiz generator is an AI call too) and
+  // send the user to Premium. The analysis run below is NOT charged again.
   const startFullAnalysisQuiz = useCallback(async () => {
     if (!p || aiFull.busy || aiFull.data) return;
+    setAiFull((s) => ({ ...s, busy: true, notice: '' }));
+    const access = await requireAiAccess('detail_ai_full', {
+      onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
+    });
+    if (!access.ok) {
+      setAiFull((s) => ({ ...s, phase: 'idle', busy: false }));
+      return;
+    }
     setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, notice: '', questions: [] }));
     try {
       let questions = await generateQuiz({
@@ -630,26 +641,20 @@ export default function ProductDetail() {
         questions: fallbackProductQuiz(lang, localizedProductName(p, lang)),
       }));
     }
-  }, [p, lang, user, aiFull.busy, aiFull.data]);
+  }, [p, lang, user, aiFull.busy, aiFull.data, requireAiAccess]);
 
-  // Quiz answers → one researched, consolidated report. The user is charged a
-  // single detail_ai_full cost (3 Qor Coins; unlimited on Premium).
+  // Quiz answers → one researched, consolidated report. Already paid for at
+  // startFullAnalysisQuiz, so no second charge here (this is why answering the
+  // quiz then continuing no longer bounces back to the quiz).
   const runFullAnalysis = useCallback(async (answers = []) => {
-    if (!p || aiFull.busy || aiFull.data) return;
+    if (!p || aiFull.data) return;
     setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '' }));
-    const access = await requireAiAccess('detail_ai_full', {
-      onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
-    });
-    if (!access.ok) {
-      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false }));
-      return;
-    }
     try {
       let research = '';
       try {
         research = await askQorAiGrounded(buildProductResearchPrompt(p, lang, { quizAnswers: answers }), {
           language: lang,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 2048,
         });
       } catch {
         research = '';
@@ -663,7 +668,7 @@ export default function ProductDetail() {
       const txt = await askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in ${lang}.`,
         user: prompt,
-        maxOutputTokens: 12288,
+        maxOutputTokens: 8192,
         temperature: 0.45,
         jsonMode: true,
       });
@@ -674,7 +679,7 @@ export default function ProductDetail() {
     } catch {
       setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, notice: t('pd.aiError') }));
     }
-  }, [p, lang, requireAiAccess, t, user, aiFull.busy, aiFull.data, similar, offers]);
+  }, [p, lang, t, user, aiFull.data, similar, offers]);
 
   useEffect(() => {
     let live = true;

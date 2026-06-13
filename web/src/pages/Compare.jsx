@@ -283,8 +283,12 @@ export default function Compare() {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
       return;
     }
-    setAiPhase('quizLoading');
+    // Charge + gate UP FRONT (2 Qor Coins; unlimited on Premium). No balance →
+    // Premium redirect; we never even prepare the quiz. Not charged again on run.
     setAiBusy(true);
+    const access = await guardAiAccess('compare_ai', { onMessage: setAiNotice });
+    if (!access.ok) { setAiBusy(false); setAiPhase('idle'); return; }
+    setAiPhase('quizLoading');
     try {
       let questions = await generateCompareQuiz({
         products: products.map((p) => ({
@@ -308,16 +312,13 @@ export default function Compare() {
     }
   }
 
+  // Already paid for at startAiCompareQuiz — no second charge here.
   async function runAiCompare(answers = []) {
     setAiNotice('');
     if (products.length < 2) {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
       return;
     }
-    const access = await guardAiAccess('compare_ai', {
-      onMessage: (message) => setAiNotice(message),
-    });
-    if (!access.ok) return;
     setAiBusy(true);
     setAiPhase('analyzing');
     try {
@@ -325,7 +326,7 @@ export default function Compare() {
       try {
         research = await askQorAiGrounded(buildCompareResearchPrompt(products, lang, { quizAnswers: answers }), {
           language: lang,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 2048,
         });
       } catch {
         research = '';
@@ -333,10 +334,13 @@ export default function Compare() {
       const text = await askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in ${lang}.`,
         user: buildAiComparePrompt(answers, research),
-        maxOutputTokens: 12288,
+        maxOutputTokens: 8192,
         temperature: 0.45,
         jsonMode: true,
       });
+      // Never surface a raw/truncated JSON blob — treat unparseable output as a
+      // failure the user can retry.
+      if (!parseAiJson(text)) throw new Error('parse');
       setAiText(text);
       setAiPhase('result');
       await saveComparisonAnalysisHistory({ products, analysis: text });

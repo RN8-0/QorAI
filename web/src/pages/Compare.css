@@ -151,8 +151,25 @@
 }
 .cmp-price-row-link:hover { border-color: var(--accent-ring); box-shadow: 0 4px 12px color-mix(in srgb, #020617 8%, transparent); }
 
-/* Centered Specs / AI tabs */
-.cmp-tabs2 { justify-content: center !important; }
+/* Centered segmented Specs / AI tabs (matches product detail) — the two tabs
+   sit apart with a gap instead of meeting cramped in the middle. */
+.cmp-tabs2 {
+  display: flex !important; gap: 6px; justify-content: center;
+  width: max-content; max-width: 100%; margin: 0 auto 20px;
+  padding: 5px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-2);
+}
+.cmp-tabs2 button {
+  flex: 0 0 auto; padding: 10px 30px; border: none; border-radius: 999px;
+  background: transparent; color: var(--text2);
+  font-weight: 800; font-size: 14.5px; cursor: pointer; white-space: nowrap;
+  transition: color .15s, background .15s, box-shadow .15s;
+}
+.cmp-tabs2 button:hover { color: var(--text); }
+.cmp-tabs2 button.on {
+  color: #fff; background: var(--accent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 32%, transparent);
+}
 
 /* YouTube comparison button */
 .cmp-yt-row { display: flex; justify-content: center; margin-top: 18px; }

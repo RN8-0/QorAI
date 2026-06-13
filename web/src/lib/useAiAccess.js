@@ -71,6 +71,10 @@ export function useAiAccess(lang = 'en') {
       const code = e?.code || 'AI_ACCESS_ERROR';
       const message = sendMessage(code, e);
       if (code === 'AUTH_REQUIRED') openAuth();
+      // Out of Qor Coins → send the user to Premium (unlimited AI).
+      if (code === 'INSUFFICIENT_QOR_COINS') {
+        setTimeout(() => navigate('/premium'), 900);
+      }
       return { ok: false, reason: code, message };
     }
   }, [lang, location.hash, location.pathname, location.search, navigate, openAuth, user]);
