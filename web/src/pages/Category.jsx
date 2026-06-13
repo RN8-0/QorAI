@@ -8,6 +8,18 @@ import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx'
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { SITE_URL, useSeo } from '../lib/seo';
+import {
+  compareTokenValues,
+  featureFiltersForCategory,
+  filterGroupsForCategory,
+  formatRangeValue,
+  lbl,
+  prettyTokenValue,
+  rangeInputSuffix,
+  rangeMetaForTokens,
+  rangeTokens,
+  tokenValue,
+} from '../lib/categoryFilters';
 import './Category.css';
 
 // Price sorts are intentionally gone — the site does not surface prices.
@@ -23,47 +35,6 @@ const SCORES = [
 ];
 const PER_PAGE = 24;
 const COLLAPSED = 8;
-
-// filterTokens look like "ram:8_gb" — the prefix drives the filter group.
-// Multi-value groups render as checkbox lists in this order; only groups that
-// actually have values in the category are shown, so each category surfaces its
-// own relevant filters (epey-style) with no price filter.
-const TOKEN_GROUPS = [
-  { prefix: 'ram', label: ['RAM', 'RAM', 'RAM'] },
-  { prefix: 'storage', label: ['Storage', 'Depolama', 'Speicher'] },
-  { prefix: 'screen_tech', label: ['Panel type', 'Panel tipi', 'Panel'] },
-  { prefix: 'refresh_rate', label: ['Refresh rate', 'Yenileme hızı', 'Bildrate'] },
-  { prefix: 'os', label: ['Operating system', 'İşletim sistemi', 'Betriebssystem'] },
-  { prefix: 'processor_brand', label: ['Processor', 'İşlemci', 'Prozessor'] },
-  { prefix: 'gpu_type', label: ['Graphics', 'Ekran kartı', 'Grafik'] },
-  { prefix: 'socket', label: ['Socket', 'Soket', 'Sockel'] },
-  { prefix: 'connectivity', label: ['Connectivity', 'Bağlantı', 'Konnektivität'] },
-];
-const FEATURE_TOKENS = [
-  { token: 'five_g:true', label: ['5G', '5G', '5G'] },
-  { token: 'nfc:true', label: ['NFC', 'NFC', 'NFC'] },
-  { token: 'wireless_charging:true', label: ['Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'] },
-  { token: 'fast_charging:true', label: ['Fast charging', 'Hızlı şarj', 'Schnellladen'] },
-  { token: 'fingerprint:true', label: ['Fingerprint', 'Parmak izi', 'Fingerabdruck'] },
-  { token: 'water_resistance:true', label: ['Water resistant', 'Suya dayanıklı', 'Wasserfest'] },
-];
-const TOKEN_VALUE_LABEL = {
-  amoled: 'AMOLED', super_amoled: 'Super AMOLED', dynamic_amoled: 'Dynamic AMOLED', oled: 'OLED', ltpo: 'LTPO', ips: 'IPS', lcd: 'LCD', va: 'VA', tn: 'TN',
-  windows: 'Windows', macos: 'macOS', ios: 'iOS', ipados: 'iPadOS', android: 'Android', chromeos: 'ChromeOS', linux: 'Linux',
-  intel: 'Intel', amd: 'AMD', apple: 'Apple', qualcomm: 'Qualcomm', mediatek: 'MediaTek', exynos: 'Exynos',
-  dedicated: ['Dedicated', 'Harici', 'Dediziert'], integrated: ['Integrated', 'Dahili', 'Integriert'],
-  'wi-fi': 'Wi-Fi', '5g': '5G', '4g': '4G',
-};
-function prettyTokenValue(v, lang) {
-  const key = String(v || '').toLowerCase();
-  const mapped = TOKEN_VALUE_LABEL[key];
-  if (mapped) return Array.isArray(mapped) ? (lang === 'tr' ? mapped[1] : lang === 'de' ? mapped[2] : mapped[0]) : mapped;
-  return String(v || '')
-    .replace(/_/g, ' ')
-    .replace(/\bgb\b/i, 'GB').replace(/\btb\b/i, 'TB').replace(/\bmah\b/i, 'mAh')
-    .replace(/\binch\b/i, '"').replace(/\bhz\b/i, 'Hz')
-    .trim();
-}
 
 function facetCounts(facets, field) {
   const f = (facets || []).find((x) => x.field_name === field);
@@ -121,6 +92,7 @@ export default function Category() {
   const [brands, setBrands] = useState([]);
   const [segments, setSegments] = useState([]);
   const [tokens, setTokens] = useState([]);
+  const [rangeFilters, setRangeFilters] = useState({});
   const [brandQuery, setBrandQuery] = useState('');
   const [brandsOpen, setBrandsOpen] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -135,7 +107,69 @@ export default function Category() {
   // Live facet counts for the current filter selection.
   const [liveFacets, setLiveFacets] = useState([]);
 
-  const filterKey = [q, score, sort, brands.join(','), segments.join(','), tokens.join(',')].join('|');
+  // ── Facet option lists (stable universe + live counts) ──────────
+  const countMap = (field) => {
+    const m = {};
+    facetCounts(liveFacets, field).forEach((c) => { m[c.value] = c.count; });
+    return m;
+  };
+  const brandCounts = useMemo(() => countMap('brand'), [liveFacets]);
+  const tokenCounts = useMemo(() => countMap('filterTokens'), [liveFacets]);
+
+  const brandList = useMemo(
+    () => facetCounts(universe, 'brand').map((c) => c.value).sort((a, b) => a.localeCompare(b)),
+    [universe],
+  );
+  // filterTokens grouped by prefix -> { ram: [...], storage: [...], five_g: [...] }.
+  // The category schema removes dirty cross-category tokens from the visible UI.
+  const tokenGroups = useMemo(() => {
+    const allowed = new Set(filterGroupsForCategory(cat).map((g) => g.prefix));
+    featureFiltersForCategory(cat).forEach((f) => allowed.add(f.token.split(':')[0]));
+    const groups = {};
+    facetCounts(universe, 'filterTokens').forEach((c) => {
+      const value = String(c.value || '');
+      const i = value.indexOf(':');
+      if (i < 1) return;
+      const prefix = value.slice(0, i);
+      if (!allowed.has(prefix)) return;
+      (groups[prefix] = groups[prefix] || []).push(value);
+    });
+    Object.keys(groups).forEach((prefix) => {
+      groups[prefix].sort((a, b) => compareTokenValues(prefix, a, b));
+    });
+    return groups;
+  }, [cat, universe]);
+  const filterGroups = useMemo(
+    () => filterGroupsForCategory(cat).filter((g) => (tokenGroups[g.prefix] || []).length > 0),
+    [cat, tokenGroups],
+  );
+  const availableFeatures = featureFiltersForCategory(cat)
+    .filter((f) => (tokenGroups[f.token.split(':')[0]] || []).includes(f.token));
+  const rangeFilterTokens = useMemo(() => (
+    filterGroups.flatMap((g) => (
+      g.kind === 'range'
+        ? rangeTokens(tokenGroups[g.prefix] || [], g.prefix, rangeFilters[g.prefix], g.unit)
+        : []
+    ))
+  ), [filterGroups, rangeFilters, tokenGroups]);
+  const apiTokens = useMemo(
+    () => [...new Set([...tokens, ...rangeFilterTokens])],
+    [tokens, rangeFilterTokens],
+  );
+  const hasActiveRange = filterGroups.some((g) => {
+    if (g.kind !== 'range') return false;
+    const meta = rangeMetaForTokens(tokenGroups[g.prefix] || [], g.prefix, g.unit);
+    const selected = rangeFilters[g.prefix];
+    if (!meta || !selected) return false;
+    const min = Math.max(meta.min, Math.min(Number(selected.min) || meta.min, Number(selected.max) || meta.max));
+    const max = Math.min(meta.max, Math.max(Number(selected.min) || meta.min, Number(selected.max) || meta.max));
+    return min > meta.min || max < meta.max;
+  });
+
+  const filterKey = [
+    q, score, sort, brands.join(','), segments.join(','), apiTokens.join(','),
+    JSON.stringify(rangeFilters),
+  ].join('|');
 
   // Load the stable facet universe whenever the category changes.
   useEffect(() => {
@@ -146,6 +180,21 @@ export default function Category() {
       .catch(() => {});
     return () => { live = false; };
   }, [cat]);
+
+  useEffect(() => {
+    setQ('');
+    setBrands([]);
+    setSegments([]);
+    setTokens([]);
+    setRangeFilters({});
+    setBrandQuery('');
+    setBrandsOpen(false);
+  }, [cat]);
+
+  useEffect(() => {
+    const visible = new Set(Object.values(tokenGroups).flat());
+    setTokens((prev) => prev.filter((tk) => visible.has(tk)));
+  }, [tokenGroups]);
 
   useEffect(() => {
     const next = params.get('sort') || '';
@@ -159,7 +208,7 @@ export default function Category() {
     setLoading(true);
     setPage(1);
     getCategoryPage({
-      category: cat, q: q.trim(), brands, segment: segments[0], tokens,
+      category: cat, q: q.trim(), brands, segment: segments[0], tokens: apiTokens,
       score, sort, page: 1, perPage: PER_PAGE, facets: true,
     })
       .then((r) => {
@@ -179,7 +228,7 @@ export default function Category() {
     setMore(true);
     try {
       const r = await getCategoryPage({
-        category: cat, q: q.trim(), brands, segment: segments[0], tokens,
+        category: cat, q: q.trim(), brands, segment: segments[0], tokens: apiTokens,
         score, sort, page: next, perPage: PER_PAGE,
       });
       setItems((prev) => [...prev, ...r.hits]);
@@ -189,44 +238,81 @@ export default function Category() {
     finally { setMore(false); }
   }
 
-  // ── Facet option lists (stable universe + live counts) ──────────
-  const countMap = (field) => {
-    const m = {};
-    facetCounts(liveFacets, field).forEach((c) => { m[c.value] = c.count; });
-    return m;
-  };
-  const brandCounts = useMemo(() => countMap('brand'), [liveFacets]);
-  const segCounts = useMemo(() => countMap('price_segment'), [liveFacets]);
-  const tokenCounts = useMemo(() => countMap('filterTokens'), [liveFacets]);
-
-  const brandList = useMemo(
-    () => facetCounts(universe, 'brand').map((c) => c.value).sort((a, b) => a.localeCompare(b)),
-    [universe],
-  );
-  const segmentList = useMemo(
-    () => facetCounts(universe, 'price_segment').map((c) => c.value),
-    [universe],
-  );
-  const lbl = (arr) => (lang === 'tr' ? arr[1] : lang === 'de' ? arr[2] : arr[0]);
-  // filterTokens grouped by prefix → { ram: [...], storage: [...], five_g: [...] }
-  const tokenGroups = useMemo(() => {
-    const groups = {};
-    facetCounts(universe, 'filterTokens').forEach((c) => {
-      const i = String(c.value).indexOf(':');
-      if (i < 1) return;
-      const prefix = c.value.slice(0, i);
-      (groups[prefix] = groups[prefix] || []).push(c.value);
-    });
-    return groups;
-  }, [universe]);
-  const availableFeatures = FEATURE_TOKENS.filter((f) => (tokenGroups[f.token.split(':')[0]] || []).includes(f.token));
-
-  const hasFilters = q.trim() || brands.length || segments.length || tokens.length || score !== 'all';
+  const hasFilters = q.trim() || brands.length || segments.length || tokens.length || hasActiveRange || score !== 'all';
   function clearFilters() {
-    setQ(''); setBrands([]); setSegments([]); setTokens([]); setScore('all'); setBrandQuery('');
+    setQ(''); setBrands([]); setSegments([]); setTokens([]); setRangeFilters({}); setScore('all'); setBrandQuery('');
   }
   const toggle = (list, set, v) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+  const setRangeValue = (prefix, meta, next) => {
+    setRangeFilters((prev) => {
+      const current = prev[prefix] || { min: meta.min, max: meta.max };
+      let min = Number(next.min ?? current.min);
+      let max = Number(next.max ?? current.max);
+      if (!Number.isFinite(min)) min = meta.min;
+      if (!Number.isFinite(max)) max = meta.max;
+      min = Math.max(meta.min, Math.min(meta.max, min));
+      max = Math.max(meta.min, Math.min(meta.max, max));
+      if (min > max) [min, max] = [max, min];
+      if (min <= meta.min && max >= meta.max) {
+        const copy = { ...prev };
+        delete copy[prefix];
+        return copy;
+      }
+      return { ...prev, [prefix]: { min, max } };
+    });
+  };
+
+  const nearestRangeIndex = (values, value) => {
+    const n = Number(value);
+    let best = 0;
+    values.forEach((candidate, index) => {
+      if (Math.abs(candidate - n) < Math.abs(values[best] - n)) best = index;
+    });
+    return best;
+  };
+
+  const renderRangeGroup = (g) => {
+    const groupTokens = tokenGroups[g.prefix] || [];
+    const meta = rangeMetaForTokens(groupTokens, g.prefix, g.unit);
+    if (!meta) return null;
+    const selected = rangeFilters[g.prefix] || { min: meta.min, max: meta.max };
+    const min = Math.max(meta.min, Math.min(Number(selected.min) || meta.min, Number(selected.max) || meta.max));
+    const max = Math.min(meta.max, Math.max(Number(selected.min) || meta.min, Number(selected.max) || meta.max));
+    const minIndex = nearestRangeIndex(meta.values, min);
+    const maxIndex = nearestRangeIndex(meta.values, max);
+    const selectedTokens = rangeTokens(groupTokens, g.prefix, { min, max }, g.unit);
+    const effectiveTokens = selectedTokens.length ? selectedTokens : groupTokens;
+    const count = effectiveTokens.reduce((sum, tk) => sum + (Number(tokenCounts[tk]) || 0), 0);
+    return (
+      <div className="cat-fgroup" key={g.prefix}>
+        <h4>{lbl(g.label, lang)}</h4>
+        <div className="cat-range-values">
+          <strong>{formatRangeValue(min, g.unit)}</strong>
+          <span>{formatRangeValue(max, g.unit)}</span>
+          {count > 0 && <em>{count}</em>}
+        </div>
+        <div className="cat-range-slider">
+          <input type="range" min="0" max={meta.values.length - 1} value={minIndex}
+            onChange={(e) => setRangeValue(g.prefix, meta, { min: meta.values[Number(e.target.value)] })} />
+          <input type="range" min="0" max={meta.values.length - 1} value={maxIndex}
+            onChange={(e) => setRangeValue(g.prefix, meta, { max: meta.values[Number(e.target.value)] })} />
+        </div>
+        <div className="cat-range-inputs">
+          <label>
+            <input type="number" min={meta.min} max={meta.max} value={Math.round(min)}
+              onChange={(e) => setRangeValue(g.prefix, meta, { min: e.target.value })} />
+            <span>{rangeInputSuffix(g.unit)}</span>
+          </label>
+          <label>
+            <input type="number" min={meta.min} max={meta.max} value={Math.round(max)}
+              onChange={(e) => setRangeValue(g.prefix, meta, { max: e.target.value })} />
+            <span>{rangeInputSuffix(g.unit)}</span>
+          </label>
+        </div>
+      </div>
+    );
+  };
 
   const filteredBrands = brandList.filter(
     (b) => !brandQuery || b.toLowerCase().includes(brandQuery.toLowerCase()),
@@ -266,22 +352,25 @@ export default function Category() {
         ))}
       </div>
 
-      {TOKEN_GROUPS.filter((g) => (tokenGroups[g.prefix] || []).length > 0).map((g) => (
-        <div className="cat-fgroup" key={g.prefix}>
-          <h4>{lbl(g.label)}</h4>
-          {tokenGroups[g.prefix]
-            .slice()
-            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-            .map((tk) => (
+      {filterGroups.map((g) => {
+        const groupTokens = tokenGroups[g.prefix] || [];
+        if (g.kind === 'range' && rangeMetaForTokens(groupTokens, g.prefix, g.unit)) {
+          return renderRangeGroup(g);
+        }
+        return (
+          <div className="cat-fgroup" key={g.prefix}>
+            <h4>{lbl(g.label, lang)}</h4>
+            {groupTokens.map((tk) => (
               <label key={tk} className={'cat-check' + (tokens.includes(tk) ? ' on' : '')}>
                 <input type="checkbox" checked={tokens.includes(tk)}
                   onChange={() => toggle(tokens, setTokens, tk)} />
-                <span>{prettyTokenValue(tk.slice(g.prefix.length + 1), lang)}</span>
+                <span>{prettyTokenValue(tokenValue(tk, g.prefix), lang)}</span>
                 {tokenCounts[tk] != null && <em>{tokenCounts[tk]}</em>}
               </label>
             ))}
-        </div>
-      ))}
+          </div>
+        );
+      })}
 
       {availableFeatures.length > 0 && (
         <div className="cat-fgroup">
@@ -290,7 +379,7 @@ export default function Category() {
             <label key={f.token} className={'cat-check' + (tokens.includes(f.token) ? ' on' : '')}>
               <input type="checkbox" checked={tokens.includes(f.token)}
                 onChange={() => toggle(tokens, setTokens, f.token)} />
-              <span>{lbl(f.label)}</span>
+              <span>{lbl(f.label, lang)}</span>
               {tokenCounts[f.token] != null && <em>{tokenCounts[f.token]}</em>}
             </label>
           ))}

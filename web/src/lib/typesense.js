@@ -358,11 +358,12 @@ export async function getCategoryPage(opts = {}) {
       filters.push(`brand:[${opts.brands.slice(0, 12).map(lit).join(',')}]`);
     }
     if (opts.segment) filters.push(`price_segment:=${lit(opts.segment)}`);
-    if (opts.tokens && opts.tokens.length) {
+    const selectedTokens = [...new Set((opts.tokens || []).map((tk) => String(tk || '').trim()).filter(Boolean))];
+    if (selectedTokens.length) {
       // Group tokens by prefix so it's OR within a group (RAM 8 or 16) and AND
       // across groups (RAM 8 AND Storage 256) — the expected filter behaviour.
       const byPrefix = {};
-      opts.tokens.slice(0, 24).forEach((tk) => {
+      selectedTokens.slice(0, 96).forEach((tk) => {
         const p = String(tk).split(':')[0];
         (byPrefix[p] = byPrefix[p] || []).push(tk);
       });
