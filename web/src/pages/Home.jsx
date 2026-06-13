@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
-import { catMeta, categoryLabel } from '../lib/format';
+import { catMeta, categoryLabel, keySpecChips } from '../lib/format';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
-import { techColor } from '../components/Gauge.jsx';
+import Gauge, { techColor } from '../components/Gauge.jsx';
+import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
@@ -55,34 +56,72 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
   );
 }
 
-// Rotating spotlight of the strongest products — the hero's right-hand showcase.
-function HeroSpotlight({ products, lang, L }) {
+// Rotating product showcase — the hero's right-hand hero element. Big image,
+// score ring, brand/name and a couple of key specs, so the top of the page has
+// a real visual anchor instead of a small floating card.
+function HeroShowcase({ products, lang, L, t }) {
   const safe = (products || []).filter(Boolean).slice(0, 8);
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (safe.length <= 1) return undefined;
-    const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4200);
+    const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4600);
     return () => clearInterval(id);
   }, [safe.length]);
   if (!safe.length) return null;
   const active = index % safe.length;
+  const p = safe[active];
+  const score = Number(p.techScore) || 0;
+  // Headline specs: prefer the canonical chips; for components (RAM, SSD…) that
+  // have no generic chips, fall back to their real numeric keySpecs so the
+  // showcase never looks empty.
+  const specs = keySpecChips(p).slice(0, 4).map((c) => ({ value: c.value, label: t(c.labelKey) }));
+  if (specs.length < 3 && p.keySpecs && typeof p.keySpecs === 'object') {
+    for (const [k, v] of Object.entries(p.keySpecs)) {
+      if (specs.length >= 4) break;
+      const val = String(v).split(/\r?\n/)[0].trim();
+      const display = localizedSpecValue(val, lang);
+      if (val && /\d/.test(val) && val.length <= 18 && !specs.some((s) => s.value === display)) {
+        specs.push({ value: display, label: localizedSpecLabel(k, lang).replace(/\s*:\s*$/, '') });
+      }
+    }
+  }
   return (
-    <div className="hero-carousel" aria-label={L('Top picks', 'Öne çıkanlar', 'Top-Auswahl')}>
-      <div className="hero-carousel-head">
+    <div className="home-showcase">
+      <div className="home-showcase-head">
         <span>{L('Spotlight', 'Vitrin', 'Vitrine')}</span>
-        <b>{categoryLabel(safe[active]?.category, lang)}</b>
+        <b>{categoryLabel(p.category, lang)}</b>
       </div>
-      <div className="hero-carousel-viewport">
-        <div className="hero-carousel-track" style={{ transform: `translateX(-${active * 100}%)` }}>
-          {safe.map((p) => (
-            <div className="hero-carousel-slide" key={p.id}><ProductCard product={p} /></div>
-          ))}
+      <Link to={productPath(p)} className="home-showcase-card" key={p.id}>
+        <div className="home-showcase-media">
+          {p.imageUrl
+            ? <ProductImg src={p.imageUrl} alt={p.name} size="card" />
+            : <span className="home-showcase-ph">{catMeta(p.category).icon}</span>}
+          {score > 0 && (
+            <span className="home-showcase-score">
+              <Gauge value={score} size={48} stroke={3} color={techColor(score)} fontSize={15} />
+            </span>
+          )}
         </div>
-      </div>
+        <div className="home-showcase-info">
+          {p.brand && <span className="home-showcase-brand">{p.brand}</span>}
+          <h3 className="home-showcase-name">{p.name}</h3>
+          {specs.length > 0 && (
+            <div className="home-showcase-specs">
+              {specs.map((s, i) => (
+                <span key={`${s.label}-${i}`}>
+                  <b>{s.value}</b>
+                  <small>{s.label}</small>
+                </span>
+              ))}
+            </div>
+          )}
+          <span className="home-showcase-cta">{L('View product', 'Ürünü incele', 'Produkt ansehen')} →</span>
+        </div>
+      </Link>
       {safe.length > 1 && (
-        <div className="hero-carousel-dots" aria-hidden="true">
-          {safe.map((p, i) => (
-            <button key={p.id} type="button" className={i === active ? 'on' : ''}
+        <div className="home-showcase-dots" aria-hidden="true">
+          {safe.map((x, i) => (
+            <button key={x.id} type="button" className={i === active ? 'on' : ''}
               onClick={() => setIndex(i)} tabIndex={-1} />
           ))}
         </div>
@@ -398,7 +437,7 @@ export default function Home() {
             </div>
             {heroProducts.length > 0 && (
               <div className="home-hero-spot">
-                <HeroSpotlight products={heroProducts} lang={lang} L={L} />
+                <HeroShowcase products={heroProducts} lang={lang} L={L} t={t} />
               </div>
             )}
           </div>
