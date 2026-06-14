@@ -177,6 +177,7 @@ export default function Compare() {
   const [aiAnswers, setAiAnswers] = useState([]);
   const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
+  const cmpRef = useRef(null);
   const compareCategory = products[0]?.category || '';
   const showMatchScore = hasProfileMatch(user);
   const ytQuery = products.map((p) => displayProductName(p, lang)).filter(Boolean).join(' vs ');
@@ -232,6 +233,26 @@ export default function Compare() {
     const tm = setTimeout(() => saveComparisonHistory(ids, products), 600);
     return () => clearTimeout(tm);
   }, [ids.join(','), products.length]); // eslint-disable-line
+
+  // Keep the product header cards, price cards and spec table scrolling together
+  // horizontally so column N always lines up across all three rows — otherwise
+  // the 4th+ product gets cut off in one row but not the others.
+  useEffect(() => {
+    const root = cmpRef.current;
+    if (!root) return undefined;
+    const scrollers = [...root.querySelectorAll('.cmp-hscroll')];
+    if (scrollers.length < 2) return undefined;
+    let syncing = false;
+    const onScroll = (e) => {
+      if (syncing) return;
+      syncing = true;
+      const x = e.currentTarget.scrollLeft;
+      for (const s of scrollers) if (s !== e.currentTarget && s.scrollLeft !== x) s.scrollLeft = x;
+      requestAnimationFrame(() => { syncing = false; });
+    };
+    scrollers.forEach((s) => s.addEventListener('scroll', onScroll, { passive: true }));
+    return () => scrollers.forEach((s) => s.removeEventListener('scroll', onScroll));
+  }, [products.length, tab, aiPhase]);
 
   useEffect(() => {
     setAiBusy(false);
@@ -407,7 +428,7 @@ export default function Compare() {
   if (!ids.length) return <Navigate to="/" replace />;
 
   return (
-    <div className="cmp">
+    <div className="cmp" ref={cmpRef}>
       <div className="cmp-hero">
         <div className="container">
           <h1>{t('cmp.title')}</h1>
@@ -491,7 +512,7 @@ export default function Compare() {
         ) : (
           <>
             {/* product header cards with dual rings — app parity */}
-            <div className="cmp-product-scroll">
+            <div className="cmp-product-scroll cmp-hscroll">
               <div className="cmp-product-row">
               <div className="cmp-scroll-spacer" aria-hidden="true" />
               <div className="cmp-cards">
@@ -538,7 +559,7 @@ export default function Compare() {
                 column, country-aware (visitor's detected market). */}
             <section className="cmp-prices-block">
               <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
-              <div className="cmp-product-scroll">
+              <div className="cmp-product-scroll cmp-hscroll">
                 <div className="cmp-product-row">
                 <div className="cmp-scroll-spacer" aria-hidden="true" />
                 <div className="cmp-prices">
@@ -576,7 +597,7 @@ export default function Compare() {
 
             <div style={{ marginTop: 18 }}>
               {tab === 'specs' && (
-                <div className="cmp-table-wrap fade-up">
+                <div className="cmp-table-wrap cmp-hscroll fade-up">
                   <table className="cmp-table">
                     <thead>
                       <tr>

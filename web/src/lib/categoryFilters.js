@@ -15,6 +15,7 @@ export const TOKEN_GROUPS = [
   { prefix: 'ram', kind: 'range', unit: 'capacity', label: label('RAM', 'RAM', 'RAM'), categories: [...COMPUTING_CATS, 'ram'] },
   { prefix: 'ram_speed', kind: 'range', unit: 'mt', label: label('Memory speed', 'Bellek hızı', 'Speichertakt'), categories: ['ram'] },
   { prefix: 'ram_latency', kind: 'range', unit: 'cl', label: label('CL latency', 'CL gecikme', 'CL-Latenz'), categories: ['ram'] },
+  { prefix: 'screen_size', kind: 'range', unit: 'inch', label: label('Screen size', 'Ekran boyutu', 'Bildschirmgröße'), categories: DISPLAY_CATS },
   { prefix: 'refresh_rate', kind: 'range', unit: 'hz', label: label('Refresh rate', 'Yenileme hızı', 'Bildrate'), categories: DISPLAY_CATS },
   { prefix: 'screen_tech', label: label('Panel type', 'Panel tipi', 'Panel'), categories: DISPLAY_CATS },
   { prefix: 'resolution', label: label('Resolution', 'Çözünürlük', 'Auflösung'), categories: ['monitors', 'tvs', 'projectors', 'laptops', 'tablets', 'smartphones'] },
@@ -46,7 +47,8 @@ export const FEATURE_TOKENS = [
 ];
 
 const TOKEN_VALUE_LABEL = {
-  amoled: 'AMOLED', super_amoled: 'Super AMOLED', dynamic_amoled: 'Dynamic AMOLED', oled: 'OLED', ltpo: 'LTPO', ips: 'IPS', lcd: 'LCD', va: 'VA', tn: 'TN',
+  amoled: 'AMOLED', super_amoled: 'Super AMOLED', dynamic_amoled: 'Dynamic AMOLED', oled: 'OLED', qd_oled: 'QD-OLED', qled: 'QLED', mini_led: 'Mini LED', micro_led: 'Micro LED', ltpo: 'LTPO', ips: 'IPS', lcd: 'LCD', va: 'VA', tn: 'TN', retina: 'Retina', eink: 'E-Ink',
+  google: 'Google Tensor', kirin: 'Kirin', unisoc: 'UNISOC',
   fhd: 'Full HD', qhd: 'QHD', wqhd: 'WQHD', uwqhd: 'UWQHD', '4k': '4K', '5k': '5K', '8k': '8K', hd: 'HD',
   hdmi: 'HDMI', displayport: 'DisplayPort', usb_c: 'USB-C', thunderbolt: 'Thunderbolt', dvi: 'DVI', vga: 'VGA',
   windows: 'Windows', macos: 'macOS', ios: 'iOS', ipados: 'iPadOS', android: 'Android', chromeos: 'ChromeOS', linux: 'Linux',
@@ -111,6 +113,12 @@ export function rangeNumberFromTokenValue(value, unit = 'capacity') {
     const n = Number(cl[1]);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
+  if (unit === 'inch') {
+    const inch = raw.match(/^(\d+(?:\.\d+)?)_in$/);
+    if (!inch) return null;
+    const n = Number(inch[1]);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
   const match = raw.match(/^(\d+(?:\.\d+)?)_(hz|mhz|mt|cl)$/);
   if (!match) return null;
   if (unit === 'hz' && match[2] !== 'hz') return null;
@@ -135,6 +143,7 @@ export function formatRangeValue(value, unit = 'capacity') {
   if (unit === 'hz') return `${Math.round(n)} Hz`;
   if (unit === 'mt') return `${Math.round(n)} MT/s`;
   if (unit === 'cl') return `CL ${Math.round(n)}`;
+  if (unit === 'inch') return `${n % 1 === 0 ? n : n.toFixed(1)}"`;
   return String(Math.round(n));
 }
 
@@ -142,6 +151,7 @@ export function rangeInputSuffix(unit = 'capacity') {
   if (unit === 'hz') return 'Hz';
   if (unit === 'mt') return 'MT/s';
   if (unit === 'cl') return 'CL';
+  if (unit === 'inch') return '"';
   return 'GB';
 }
 
@@ -182,6 +192,7 @@ export function prettyTokenValue(value, lang) {
   const frequency = key.match(/^(\d+(?:\.\d+)?)_(hz|mhz|mt)$/);
   if (frequency) return `${Math.round(Number(frequency[1]))} ${frequency[2] === 'hz' ? 'Hz' : 'MT/s'}`;
   if (/^\d+(?:\.\d+)?_cl$/.test(key)) return formatRangeValue(parseFloat(key), 'cl');
+  if (/^\d+(?:\.\d+)?_in$/.test(key)) return formatRangeValue(parseFloat(key), 'inch');
   const mapped = TOKEN_VALUE_LABEL[key];
   if (mapped) return Array.isArray(mapped) ? lbl(mapped, lang) : mapped;
   return String(value || '')

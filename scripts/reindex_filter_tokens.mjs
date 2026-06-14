@@ -186,7 +186,20 @@ function _batteryMah(v) {
   return Math.round(x);
 }
 function _osToken(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('chrome os') || n.includes('chromeos')) return 'chromeos'; if (n.includes('ipad os') || n.includes('ipados')) return 'ipados'; if (n.includes('mac os') || n.includes('macos') || n.includes('os x')) return 'macos'; if (n.includes('windows')) return 'windows'; if (n.includes('android')) return 'android'; if (n.includes('linux')) return 'linux'; if (n.includes('ios') || n.includes('iphone os')) return 'ios'; return null; }
-function _cpuBrand(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (n.includes('intel')) return 'intel'; if (n.includes('amd')) return 'amd'; if (n.includes('apple')) return 'apple'; if (n.includes('qualcomm') || n.includes('snapdragon')) return 'qualcomm'; if (n.includes('mediatek')) return 'mediatek'; if (n.includes('exynos')) return 'exynos'; return null; }
+function _cpuBrand(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (n.includes('intel') || /\b(core i[3579]|celeron|pentium|xeon|core ultra)\b/.test(n)) return 'intel';
+  if (n.includes('amd') || /\b(ryzen|athlon|threadripper|epyc)\b/.test(n)) return 'amd';
+  if (n.includes('apple') || n.includes('bionic') || /\bm[1-5](\s*(pro|max|ultra))?\b/.test(n) || /\ba1[0-9]\b/.test(n)) return 'apple';
+  if (n.includes('qualcomm') || n.includes('snapdragon')) return 'qualcomm';
+  if (n.includes('mediatek') || n.includes('dimensity') || n.includes('helio')) return 'mediatek';
+  if (n.includes('exynos') || n.includes('samsung')) return 'exynos';
+  if (n.includes('tensor') || n.includes('google')) return 'google';
+  if (n.includes('kirin') || n.includes('hisilicon')) return 'kirin';
+  if (n.includes('unisoc') || n.includes('spreadtrum')) return 'unisoc';
+  return null;
+}
 function _gpuType(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['rtx', 'gtx', 'geforce', 'radeon', 'arc', 'dedicated', 'discrete'].some((x) => n.includes(x))) return 'dedicated'; if (['integrated', 'shared', 'iris', 'uhd', 'intel hd', 'apple gpu'].some((x) => n.includes(x))) return 'integrated'; return null; }
 function _connTokens(v) { const n = _normalizeBrowseText(v); const t = []; if (n.includes('wi fi') || n.includes('wifi')) t.push('wi-fi'); if (n.includes('5g')) t.push('5g'); if (n.includes('4g') || n.includes('cellular') || n.includes('lte')) t.push('4g'); return t; }
 function _weightKg(v) { const n = _normalizeBrowseText(v), x = _num(v); if (x === null) return null; if (n.includes('kg')) return x; if (n.includes('g')) return x / 1000; return x; }
@@ -282,6 +295,17 @@ function extractBrowse(pb) {
     for (const key of keys) if (flat[key] != null && flat[key] !== '') return String(flat[key]);
     return first(keys);
   };
+  // Try the parser against EVERY spec value the keys fuzzy-match, returning the
+  // first non-empty result. Fixes "wrong value first" — e.g. "Resolution" also
+  // matches "Rear Camera Resolution", and "CPU" also matches "CPU cores", so
+  // first() alone grabbed "48 MP" / "8" and the real token never got built.
+  const firstValid = (keys, parse) => {
+    for (const v of _findBrowseSpecValues(keys, flat)) {
+      const r = parse(String(v));
+      if (r) return r;
+    }
+    return null;
+  };
   const category = cat(pb);
   const ramCapacityKeys = category === 'ram'
     ? ['Bellek Kapasitesi', 'Memory Capacity', 'RAM Capacity', 'Capacity', 'Kapasite', 'Speicherkapazitat', 'Speicherkapazität', 'Arbeitsspeicher Kapazitat', 'Arbeitsspeicher Kapazität']
@@ -328,7 +352,8 @@ function extractBrowse(pb) {
     if (os) addT('os:' + os);
   }
   if (allow(pb, 'cpu')) {
-    const cpu = _cpuBrand(first(['Processor Brand', 'Processor', 'CPU', 'Chip', 'Chipset', 'İşlemci', 'Islemci', 'İşlemci Markası', 'Yonga Seti', 'Prozessor']));
+    const cpu = firstValid(['Processor Brand', 'Processor Model', 'Processor', 'Ana İşlemci', 'Ana İşlemci (CPU)', 'SoC', 'Chipset', 'Chip Set', 'Yonga Seti (Chipset)', 'İşlemci Markası', 'İşlemci Modeli', 'İşlemci Tipi', 'İşlemci Ailesi', 'İşlemci', 'Islemci', 'Yonga Seti', 'Yonga (SoC)', 'Yonga', 'CPU', 'Chip', 'Prozessor', 'Prozessormodell'], _cpuBrand)
+      || (category === 'cpus' ? _cpuBrand(pb.name) : null);
     if (cpu) addT('processor_brand:' + cpu);
   }
   if (allow(pb, 'socket')) {
@@ -336,18 +361,32 @@ function extractBrowse(pb) {
     socketTexts.forEach((v) => _socketFromText(v).forEach((tk) => addT('socket:' + tk.toLowerCase())));
   }
   if (allow(pb, 'gpu')) {
-    const gpu = _gpuType(first(['GPU Model', 'Graphics Card', 'Graphics Card Type', 'External Graphics Processor (GPU)', 'Integrated Graphics Model', 'Video Card', 'Ekran Kartı', 'Grafik İşlemci', 'Grafik']));
+    const gpu = firstValid(['GPU Model', 'Graphics Card', 'Graphics Card Type', 'External Graphics Processor (GPU)', 'Integrated Graphics Model', 'Dedicated Graphics Model', 'Video Card', 'GPU', 'Ekran Kartı', 'Harici Ekran Kartı', 'Dahili Ekran Kartı', 'Grafik İşlemci', 'Grafik Kartı', 'Grafik', 'Grafikkarte'], _gpuType);
     if (gpu) addT('gpu_type:' + gpu);
   }
+  const PANEL_PAIRS = [['qd oled', 'qd_oled'], ['qd-oled', 'qd_oled'], ['mini led', 'mini_led'], ['miniled', 'mini_led'], ['micro led', 'micro_led'], ['microled', 'micro_led'],
+    ['dynamic amoled', 'dynamic_amoled'], ['super amoled', 'super_amoled'], ['amoled', 'amoled'], ['ltpo', 'ltpo'], ['qled', 'qled'], ['woled', 'oled'], ['oled', 'oled'],
+    ['nano ips', 'ips'], ['ips black', 'ips'], ['fast ips', 'ips'], ['ips', 'ips'], ['pls', 'ips'], ['va', 'va'], ['tn', 'tn'], ['retina', 'retina'], ['e ink', 'eink'], ['eink', 'eink'], ['lcd', 'lcd'], ['led', 'lcd']];
   if (allow(pb, 'display')) {
-    const panel = _matchBucket(first(['Screen Technology', 'Display Type', 'Panel Type', 'Display Technology', 'Display', 'Ekran Teknolojisi', 'Panel Tipi', 'Paneltyp', 'Bildschirmtechnologie']), [['dynamic amoled', 'dynamic_amoled'], ['super amoled', 'super_amoled'], ['amoled', 'amoled'], ['ltpo', 'ltpo'], ['oled', 'oled'], ['ips', 'ips'], ['va', 'va'], ['tn', 'tn'], ['lcd', 'lcd']]);
+    const panel = firstValid(['Screen Technology', 'Display Type', 'Panel Type', 'Panel Technology', 'Display Technology', 'Display Teknolojisi', 'Ekran Teknolojisi', 'Ekran Tipi', 'Panel Tipi', 'Panel Teknolojisi', 'Ekran Paneli', 'Display', 'Paneltyp', 'Bildschirmtechnologie', 'Display-Technologie'], (v) => _matchBucket(v, PANEL_PAIRS));
     if (panel) addT('screen_tech:' + panel);
-    const rr = _num(first(['Screen Refresh Rate', 'Refresh Rate', 'Display Refresh Rate', 'Ekran Yenileme Hızı', 'Yenileme Hızı', 'Bildwiederholfrequenz', 'Bildwiederholrate']));
-    if (rr !== null) { const hz = Math.round(rr); if ([60, 75, 90, 100, 120, 144, 165, 180, 200, 240, 360, 480].includes(hz)) addT('refresh_rate:' + hz + '_hz'); }
+    const rr = _num(first(['Screen Refresh Rate', 'Refresh Rate', 'Display Refresh Rate', 'Display Yenileme Hızı', 'Maximum Refresh Rate', 'Max Refresh Rate', 'Ekran Yenileme Hızı', 'Yenileme Hızı', 'Maksimum Yenileme Hızı', 'Bildwiederholfrequenz', 'Bildwiederholrate']));
+    if (rr !== null) { const hz = Math.round(rr); if ([60, 75, 90, 100, 120, 144, 160, 165, 170, 175, 180, 200, 240, 280, 300, 360, 480, 500].includes(hz)) addT('refresh_rate:' + hz + '_hz'); }
     if (allow(pb, 'resolution')) {
-      const res = _resolutionToken(first(['Resolution', 'Screen Resolution', 'Display Resolution', 'Çözünürlük', 'Cozunurluk', 'Auflösung', 'Aufloesung']));
+      // Exclude camera resolution keys so we never tag a phone's "48 MP" as a screen res.
+      const resKeys = ['Display Resolution', 'Screen Resolution', 'Native Resolution', 'Panel Resolution', 'Ekran Çözünürlüğü', 'Çözünürlük Standardı', 'Maksimum Çözünürlük', 'Maximum Resolution', 'Max Resolution', 'Resolution', 'Çözünürlük', 'Cozunurluk', 'Auflösung', 'Aufloesung', 'Bildauflösung'];
+      let res = null;
+      for (const [k, v] of Object.entries(flat)) {
+        if (/camera|kamera|webcam/i.test(k)) continue;
+        if (!resKeys.some((rk) => _normalizeBrowseText(k).includes(_normalizeBrowseText(rk)) || _normalizeBrowseText(rk).includes(_normalizeBrowseText(k)))) continue;
+        const r = _resolutionToken(v);
+        if (r) { res = r; break; }
+      }
       if (res) addT('resolution:' + res);
     }
+    // Screen size as a range filter — the most-used display filter on epey.
+    const inch = _screenSizeFromFlat(flat);
+    if (inch && inch >= 1 && inch <= 120) addT('screen_size:' + (Math.round(inch * 10) / 10) + '_in');
   }
   if (allow(pb, 'displayInput')) {
     _displayInputTokens(flat).forEach((tk) => addT('display_input:' + tk));
