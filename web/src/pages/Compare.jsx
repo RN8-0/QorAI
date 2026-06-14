@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
@@ -287,6 +287,29 @@ export default function Compare() {
       fhead.classList.remove('show');
     };
   }, [tab, products.length]);
+
+  // Size the comparison columns to the product count: with 2 products they fill
+  // the width (wide cards, no big empty gap); as more are added they shrink to a
+  // readable minimum and then scroll horizontally. One source of truth (CSS vars)
+  // keeps the header cards, price cards and spec table all the same width.
+  useLayoutEffect(() => {
+    const root = cmpRef.current;
+    if (!root || products.length < 1) return undefined;
+    const apply = () => {
+      const scroller = root.querySelector('.cmp-product-scroll');
+      const availW = (scroller ? scroller.clientWidth : root.clientWidth) || 0;
+      if (!availW) return;
+      const n = products.length;
+      const labelW = availW < 680 ? 116 : 184;
+      const minCol = availW < 680 ? 200 : 230;
+      const col = Math.max(minCol, Math.floor((availW - labelW) / n));
+      root.style.setProperty('--cmp-label', `${labelW}px`);
+      root.style.setProperty('--cmp-col', `${col}px`);
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [products.length]);
 
   useEffect(() => {
     setAiBusy(false);
