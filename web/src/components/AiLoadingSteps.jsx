@@ -103,22 +103,38 @@ const STEP_SETS = {
   ],
 };
 
-export default function AiLoadingSteps({ lang = 'en', mode = 'product' }) {
+// Maps the parent's coarse pipeline phase to the furthest step the list may
+// reach. The list steps UP to this ceiling and then HOLDS there — so it stays
+// on the operation that is genuinely running (web research is the long one)
+// rather than racing to the end and idling, or restarting on a re-render.
+const STAGE_CEIL = { prep: 1, research: 2, report: 99 };
+
+export default function AiLoadingSteps({ lang = 'en', mode = 'product', stage = null }) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (s) => (code === 'tr' ? s[1] : code === 'de' ? s[2] : s[0]);
   const steps = STEP_SETS[mode] || STEP_SETS.product;
+  const lastIdx = steps.length - 1;
+  // With a real stage, cap progress at that phase so the highlighted step is
+  // the actual current operation. Without one (quiz prep), fall back to timed
+  // pacing that fills to the end.
+  const ceil = stage == null ? lastIdx : Math.min(lastIdx, STAGE_CEIL[stage] ?? lastIdx);
   const [active, setActive] = useState(0);
   const progress = Math.round(((active + 1) / steps.length) * 100);
 
+  // Reset only when the step SET changes (quiz prep → analysis), never on an
+  // ordinary re-render — that reset is what made the list look like it "loops
+  // back to the start".
   useEffect(() => {
     setActive(0);
   }, [mode]);
 
+  // Step up toward the current ceiling; never move backwards. When the parent
+  // advances to the next phase the ceiling rises and stepping resumes.
   useEffect(() => {
-    if (active >= steps.length - 1) return undefined;
-    const id = setTimeout(() => setActive((i) => Math.min(steps.length - 1, i + 1)), active === 0 ? 650 : 1650);
+    if (active >= ceil) return undefined;
+    const id = setTimeout(() => setActive((i) => Math.min(ceil, i + 1)), active === 0 ? 600 : 1400);
     return () => clearTimeout(id);
-  }, [active, steps.length]);
+  }, [active, ceil]);
 
   return (
     <div className="ai-steps" role="status" aria-live="polite">

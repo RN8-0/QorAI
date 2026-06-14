@@ -260,6 +260,12 @@ Rules:
 - NEVER ask about budget or brand preference
 - ALL text must be in ${langName}
 
+PERSONALIZATION (read the userProfile JSON in the user message):
+- Tailor every scenario to the user's real life: weave their profession and hobbies into the situations naturally — a doctor pictured on long hospital shifts, a gamer in late-night sessions, a photographer on a weekend shoot. If profession/hobbies are empty, stay category-generic.
+- Ground scenarios in what they actually shop for: lean on recentlyViewed products/categories and interestCategories when choosing contexts and examples.
+- NEVER state or hint at what we already know about them. Do not write "as a doctor", "since you love gaming", or name their profession, hobby, budget or ecosystem. Infer silently and ask a question that UNCOVERS the trade-off — the user must never feel told about their own profile.
+- Do NOT ask anything already listed in userProfile.pastQuizQuestions, and do not re-ask facts we already hold (ecosystem, budgetRange, priorities, currentDevices, usageIntent). Spend the questions only on what is still unknown for THIS specific product decision.
+
 Return valid JSON:
 {
   "questions": [
@@ -309,6 +315,12 @@ Rules:
 - Keep questions conversational with emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in ${langName}
+
+PERSONALIZATION (read the userProfile JSON in the user message):
+- Tailor every scenario to the user's real life: weave their profession and hobbies into the comparison contexts naturally. If profession/hobbies are empty, stay category-generic.
+- Ground contexts in what they actually shop for: lean on recentlyViewed products/categories and interestCategories.
+- NEVER state or hint at what we already know about them. Do not name their profession, hobby, budget or ecosystem in the text. Infer silently and ask a question that UNCOVERS which trade-off wins for them.
+- Do NOT ask anything already listed in userProfile.pastQuizQuestions, and do not re-ask facts we already hold (ecosystem, budgetRange, priorities, currentDevices, usageIntent). Spend the questions only on what is still unknown for THIS comparison.
 
 Return valid JSON:
 {

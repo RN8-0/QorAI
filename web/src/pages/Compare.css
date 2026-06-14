@@ -8,6 +8,20 @@
 
 /* ─── Add bar ────────────────────────────────────────────────── */
 .cmp-addbar { position: relative; margin: 22px 0 18px; }
+.cmp-addbar-row { display: flex; align-items: stretch; gap: 10px; }
+.cmp-addbar-row .cmp-add-input { flex: 1; min-width: 0; }
+/* YouTube shortcut — logo only, sits at the right edge of the search bar */
+.cmp-yt-icon {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 50px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, #ff0033 12%, var(--bg2));
+  border: 1px solid color-mix(in srgb, #ff0033 32%, var(--border));
+  color: #ff0033;
+  transition: border-color .15s, transform .05s, box-shadow .15s;
+}
+.cmp-yt-icon:hover { border-color: #ff0033; transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, #ff0033 18%, transparent); }
 .cmp-add-input {
   display: flex; align-items: center; gap: 10px;
   background: var(--bg2); border: 1px solid var(--border);
@@ -84,29 +98,39 @@
   margin-top: 34px;
   padding-bottom: 48px;
 }
-.cmp-more {
-  display: block;
+/* `button.` beats global `.btn { display:inline-flex }` so the auto margins
+   actually centre the button instead of letting it stick to the left. */
+button.cmp-more {
+  display: flex;
   width: fit-content;
-  margin: 18px auto 0;
+  margin: 22px auto 0;
   padding-inline: 22px;
 }
 
 /* ─── Product header cards (dual rings — app parity) ─────────── */
 .cmp-product-scroll {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
   overflow-x: auto;
   padding-bottom: 8px;
   scroll-snap-type: x proximity;
+}
+/* Spacer + product columns reuse the spec table's exact column geometry
+   (200px label slot + 270px columns, NO gaps) so the header cards, price cards
+   and spec rows line up vertically. Centred when narrow, scrolls when wide —
+   the spec table below uses the same width:max-content + margin:auto, so all
+   three rows share one origin and one column pitch. */
+.cmp-product-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  width: max-content;
+  margin-inline: auto;
 }
 .cmp-scroll-spacer {
   flex: 0 0 200px;
 }
 .cmp-cards {
   display: flex;
-  gap: 14px;
-  min-width: max-content;
+  gap: 0;
   margin-bottom: 20px;
 }
 .cmp-card {
@@ -152,7 +176,7 @@
 .cmp-prices-block { margin-top: 22px; }
 .cmp-block-title { text-align: center; font-size: 18px; font-weight: 850; margin: 0 0 14px; }
 .cmp-prices {
-  display: flex; gap: 14px; min-width: max-content;
+  display: flex; gap: 0;
 }
 .cmp-price-card {
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
@@ -196,17 +220,6 @@
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
-
-/* YouTube comparison button */
-.cmp-yt-row { display: flex; justify-content: center; margin-top: 18px; }
-.cmp-yt-btn {
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 10px 18px; border-radius: 12px; text-decoration: none;
-  background: color-mix(in srgb, #ff0033 10%, var(--surface-2)); border: 1px solid color-mix(in srgb, #ff0033 30%, var(--border));
-  color: #ff0033; font-weight: 800; font-size: 13.5px;
-  transition: border-color .15s, transform .05s, box-shadow .15s;
-}
-.cmp-yt-btn:hover { border-color: #ff0033; transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, #ff0033 18%, transparent); }
 
 /* Unified comparison reviews */
 .cmp-reviews { margin-top: 36px; }
@@ -413,7 +426,7 @@
 /* ─── Comparison table ───────────────────────────────────────── */
 .cmp-table-wrap { overflow-x: auto; padding-bottom: 30px; }
 .cmp-table {
-  width: max-content; min-width: 100%; border-collapse: collapse;
+  width: max-content; table-layout: fixed; margin-inline: auto; border-collapse: collapse;
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden;
 }

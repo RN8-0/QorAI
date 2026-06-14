@@ -271,6 +271,31 @@ const STEPS = [
     ],
   },
   {
+    field: 'hobbies',
+    multiple: true,
+    min: 1,
+    title: { en: 'What are you into outside of work?', tr: 'İş dışında nelerle ilgilenirsin?', de: 'Was machst du in deiner Freizeit?' },
+    subtitle: { en: 'Your hobbies sharpen which questions and picks Qor AI gives you.', tr: 'Hobilerin, Qor AI’ın sana soracağı soruları ve önerileri keskinleştirir.', de: 'Deine Hobbys schärfen die Fragen und Empfehlungen von Qor AI.' },
+    options: [
+      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
+      ['photography', 'Photography', 'Fotoğrafçılık', 'Fotografie'],
+      ['video', 'Video & filmmaking', 'Video & film', 'Video & Film'],
+      ['music', 'Music & audio', 'Müzik & ses', 'Musik & Audio'],
+      ['coding', 'Coding', 'Kodlama', 'Programmieren'],
+      ['pc_building', 'PC building', 'PC toplama', 'PC-Bau'],
+      ['design', 'Design & art', 'Tasarım & sanat', 'Design & Kunst'],
+      ['streaming', 'Movies & series', 'Film & dizi', 'Filme & Serien'],
+      ['fitness', 'Fitness & sports', 'Fitness & spor', 'Fitness & Sport'],
+      ['travel', 'Travel', 'Seyahat', 'Reisen'],
+      ['reading', 'Reading', 'Okuma', 'Lesen'],
+      ['smart_home', 'Smart home', 'Akıllı ev', 'Smart Home'],
+      ['drones', 'Drones & RC', 'Drone & RC', 'Drohnen & RC'],
+      ['diy', 'DIY & making', 'DIY & üretim', 'DIY & Basteln'],
+      ['cooking', 'Cooking', 'Yemek', 'Kochen'],
+      ['other', 'Other', 'Diğer', 'Andere'],
+    ],
+  },
+  {
     field: 'subscriptions',
     multiple: true,
     min: 1,
@@ -367,6 +392,7 @@ function emptyAnswers(user) {
     usageIntent: user?.usageIntent || '',
     ageRange: user?.ageRange || '',
     profession: user?.profession || '',
+    hobbies: fromArray(user?.hobbies),
     subscriptions: fromArray(user?.subscriptions).length ? fromArray(user?.subscriptions) : ['none'],
   };
 }
@@ -392,6 +418,7 @@ function buildVector(answers, primaryCategory) {
   answers.subscriptions.filter((s) => s !== 'none').forEach((s) => { vector[`subscription_${s}`] = 1; });
   if (answers.usageIntent) vector[`usage_${answers.usageIntent}`] = 1;
   if (answers.profession) vector[`profession_${answers.profession}`] = 1;
+  (answers.hobbies || []).filter((h) => h !== 'other').forEach((h) => { vector[`hobby_${h}`] = 1; });
   if (answers.ageRange) vector[`age_${answers.ageRange}`] = 1;
   return vector;
 }
@@ -550,6 +577,7 @@ export default function Quiz() {
       usageIntent: 'profile',
       ageRange: 'profile',
       profession: 'profile',
+      hobbies: 'profile',
       priorities: 'preferences',
       currentDevices: 'devices',
       subscriptions: 'subscriptions',
@@ -602,6 +630,7 @@ export default function Quiz() {
         interestCategories: answers.interestCategories,
         usageIntent: answers.usageIntent || 'all',
         profession: answers.profession,
+        hobbies: answers.hobbies,
         primaryCategory,
         profileVector: buildVector(answers, primaryCategory),
         quizCompleted: true,
@@ -631,6 +660,7 @@ export default function Quiz() {
     const budget = answers.budgetRange ? optionLabel(STEPS[2], answers.budgetRange, lang) : '';
     const usage = answers.usageIntent ? optionLabel(STEPS[5], answers.usageIntent, lang) : '';
     const prof = answers.profession ? optionLabel(STEPS[7], answers.profession, lang) : '';
+    const hobbyLabels = (answers.hobbies || []).filter((x) => x !== 'other').map((v) => optionLabel(STEPS[8], v, lang));
     const age = answers.ageRange || '';
     const dash = (arr) => arr.filter(Boolean).join(' · ') || '—';
     const chips = [eco, budget, prof, usage, ...catLabels.slice(0, 3)].filter(Boolean);
@@ -639,11 +669,12 @@ export default function Quiz() {
       { tone: 'c', icon: 'all', title: L('Discovery profile', 'Keşif profili', 'Entdeckungsprofil'), body: dash(catLabels) },
       { tone: 'v', icon: 'mixed', title: L('Current setup', 'Mevcut kurulum', 'Aktuelles Setup'), body: dash([eco, ...devLabels]) },
       { tone: 'g', icon: 'quality', title: L('Decision priorities', 'Karar öncelikleri', 'Prioritäten'), body: dash(prioLabels) },
-      { tone: 'a', icon: 'productivity', title: L('Usage & profile', 'Kullanım & profil', 'Nutzung & Profil'), body: dash([usage, prof, age]) },
+      { tone: 'a', icon: 'productivity', title: L('Usage & profile', 'Kullanım & profil', 'Nutzung & Profil'), body: dash([prof, usage, age]) },
+      { tone: 'g', icon: 'gaming', title: L('Hobbies & interests', 'Hobiler & ilgi alanları', 'Hobbys & Interessen'), body: dash(hobbyLabels) },
       {
         tone: 'b', icon: 'ecosystem', title: L('Services', 'Servisler', 'Dienste'),
         body: subs.length
-          ? `${subs.length} ${L('services', 'servis', 'Dienste')} · ${subs.slice(0, 4).map((s) => optionLabel(STEPS[8], s, lang)).join(', ')}`
+          ? `${subs.length} ${L('services', 'servis', 'Dienste')} · ${subs.slice(0, 4).map((s) => optionLabel(STEPS[9], s, lang)).join(', ')}`
           : L('No subscriptions', 'Abonelik yok', 'Keine Abos'),
       },
     ];

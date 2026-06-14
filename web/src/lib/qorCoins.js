@@ -72,6 +72,25 @@ export function hasCompletedQuiz(user) {
 
 export function aiUserProfile(user) {
   if (!user) return {};
+  const vector = user.profileVector && typeof user.profileVector === 'object' ? user.profileVector : {};
+  // Hobbies feed quiz/AI personalization. Prefer the dedicated field; fall back
+  // to the `hobby_*` keys captured in the onboarding profile vector so it still
+  // works even if the PB column has not been provisioned yet.
+  const hobbies = Array.isArray(user.hobbies) && user.hobbies.length
+    ? user.hobbies
+    : Object.keys(vector).filter((k) => k.startsWith('hobby_')).map((k) => k.slice(6));
+  // Question texts the user has already answered in earlier quizzes, so the
+  // generator can skip what we already know instead of re-asking it.
+  const pastQuizQuestions = [];
+  if (Array.isArray(user.quizHistory)) {
+    for (const entry of user.quizHistory.slice(0, 8)) {
+      const ans = Array.isArray(entry?.answers) ? entry.answers : [];
+      for (const a of ans) {
+        const q = String(a?.question || '').trim();
+        if (q && !pastQuizQuestions.includes(q)) pastQuizQuestions.push(q);
+      }
+    }
+  }
   return {
     quizCompleted: hasCompletedQuiz(user),
     ageRange: user.ageRange || '',
@@ -87,10 +106,10 @@ export function aiUserProfile(user) {
     interestCategories: Array.isArray(user.interestCategories) ? user.interestCategories : [],
     usageIntent: user.usageIntent || user.usageReason || '',
     profession: user.profession || '',
+    hobbies,
+    pastQuizQuestions: pastQuizQuestions.slice(0, 24),
     primaryCategory: user.primaryCategory || '',
-    profileVector: user.profileVector && typeof user.profileVector === 'object'
-      ? user.profileVector
-      : {},
+    profileVector: vector,
   };
 }
 

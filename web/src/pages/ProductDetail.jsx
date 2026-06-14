@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { saveProductAnalysisHistory } from '../lib/pbHistory';
+import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
 import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
@@ -67,6 +68,38 @@ const HERO_SPEC_PRIORITY = [
   { re: /(weight|ağırlık|agirlik|dimension|boyut|ölçü|olcu|height|width|depth)/i, icon: '📏', rank: 160 },
   { re: /(wireless|wi-?fi|bluetooth|nfc|ethernet|network|bağlantı|baglanti)/i, icon: '📡', rank: 170 },
 ];
+
+// Per-category ordering of the hero key-spec grid, expressed as a concept order
+// (concepts come from heroSpecConcept). The grid shows ONE row per concept
+// (deduped), laid out the way a buyer in that category ranks specs — e.g. a
+// laptop leads with storage → RAM → CPU → GPU → screen. Concepts not listed for
+// a category fall after these, ordered by the generic HERO_SPEC_PRIORITY.
+const CATEGORY_SPEC_ORDER = {
+  laptops:        ['storage', 'ram', 'cpu', 'gpu', 'screen', 'resolution', 'battery', 'weight', 'network', 'os'],
+  desktops:       ['cpu', 'gpu', 'ram', 'storage', 'network', 'os'],
+  smartphones:    ['screen', 'camera', 'storage', 'ram', 'battery', 'cpu', 'resolution', 'network', 'os'],
+  feature_phones: ['screen', 'battery', 'camera', 'storage', 'network'],
+  tablets:        ['screen', 'storage', 'ram', 'cpu', 'battery', 'camera', 'resolution', 'network', 'os'],
+  e_readers:      ['screen', 'storage', 'battery', 'resolution', 'weight', 'network'],
+  vr_headsets:    ['screen', 'resolution', 'cpu', 'storage', 'ram', 'network', 'weight'],
+  tvs:            ['screen', 'resolution', 'cpu', 'os', 'network'],
+  monitors:       ['screen', 'resolution', 'network'],
+  projectors:     ['resolution', 'screen', 'network'],
+  smartwatches:   ['screen', 'battery', 'storage', 'network', 'weight'],
+  smart_rings:    ['battery', 'weight', 'network'],
+  headphones:     ['battery', 'network', 'weight'],
+  earbuds:        ['battery', 'network', 'weight'],
+  earphones:      ['battery', 'network', 'weight'],
+  speakers:       ['network', 'battery', 'weight'],
+  soundbars:      ['network', 'weight'],
+  powerbanks:     ['battery', 'network', 'weight'],
+  cameras:        ['camera', 'resolution', 'screen', 'storage', 'battery', 'weight'],
+  action_cameras: ['camera', 'resolution', 'battery', 'screen', 'weight'],
+  graphics_cards: ['gpu', 'ram', 'cpu', 'network', 'weight'],
+  gpus:           ['gpu', 'ram', 'cpu', 'network', 'weight'],
+  cpus:           ['cpu', 'gpu', 'ram'],
+  default:        ['cpu', 'gpu', 'ram', 'storage', 'screen', 'resolution', 'camera', 'battery', 'network', 'weight', 'os'],
+};
 
 // Short label for a variant chip — RAM / storage when available, otherwise the
 // trailing "(1 TB)" / "(512 GB)" from the name, otherwise the full name.
@@ -659,7 +692,12 @@ export default function ProductDetail() {
         productTitle: localizedProductName(p, lang),
         url: productPath(p),
         language: lang,
-        userProfile: aiUserProfile(user),
+        userProfile: {
+          ...aiUserProfile(user),
+          recentlyViewed: getRecentProducts().slice(0, 8)
+            .map((rp) => ({ name: rp.name, category: rp.category, brand: rp.brand }))
+            .filter((x) => x.name),
+        },
       });
       if (!questions.length) questions = fallbackProductQuiz(lang, localizedProductName(p, lang));
       setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, questions }));
@@ -678,10 +716,11 @@ export default function ProductDetail() {
   // quiz then continuing no longer bounces back to the quiz).
   const runFullAnalysis = useCallback(async (answers = []) => {
     if (!p || aiFull.data) return;
-    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '' }));
+    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '', stage: 'prep' }));
     try {
       let research = '';
       try {
+        setAiFull((s) => ({ ...s, stage: 'research' }));
         research = await askQorAiGrounded(buildProductResearchPrompt(p, lang, { quizAnswers: answers }), {
           language: lang,
           maxOutputTokens: 2048,
@@ -689,6 +728,7 @@ export default function ProductDetail() {
       } catch {
         research = '';
       }
+      setAiFull((s) => ({ ...s, stage: 'report' }));
       const prompt = buildFullPrompt(p, lang, aiUserProfile(user), {
         quizAnswers: answers,
         research,
@@ -807,14 +847,22 @@ export default function ProductDetail() {
       if (!label || !value) return;
       if (/sponsor|reklam|advert|affiliate/i.test(`${label} ${value}`)) return;
       if (/^(brand|marka|category|kategori|model|qor|tech score|teknik skor)$/i.test(label)) return;
-      const sig = normHeroSpecText(label).replace(/[^a-z0-9]+/g, '_');
-      if (seen.has(sig)) return;
-      seen.add(sig);
+      // Dedup by CONCEPT, not by label text — otherwise the same fact slips in
+      // multiple times under different wordings ("24 GB RAM" / "24 GB Bellek
+      // (RAM)" / "Tümleşik 24 GB Mevcut Bellek Düzeni" are all the RAM concept).
+      // Unrecognised specs (concept '') fall back to a label signature so they
+      // are not all collapsed together.
+      const concept = heroSpecConcept(label, value)
+        || `lbl:${normHeroSpecText(label).replace(/[^a-z0-9]+/g, '_')}`;
+      if (seen.has(concept)) return;
+      seen.add(concept);
       candidates.push({
         ...s,
         icon: s.icon && s.icon !== '•' ? s.icon : iconFor(label, value, sectionIcon(label)),
         label,
         value,
+        concept,
+        order: candidates.length,
         rank: rankFor(label, value, fallbackRank),
       });
     };
@@ -833,10 +881,20 @@ export default function ProductDetail() {
         push({ key: k, icon: sectionIcon(k), value, label });
       }
     });
+    // Order by the category's concept sequence first (storage→ram→cpu→… for a
+    // laptop), then by the generic priority, then by insertion order so the
+    // curated chips win ties over raw catalog rows.
+    const catOrder = CATEGORY_SPEC_ORDER[String(p.category || '').toLowerCase()] || CATEGORY_SPEC_ORDER.default;
+    const conceptRank = (concept) => {
+      const i = catOrder.indexOf(concept);
+      return i >= 0 ? i : 100;
+    };
     return candidates
-      .sort((a, b) => a.rank - b.rank)
+      .sort((a, b) => (conceptRank(a.concept) - conceptRank(b.concept))
+        || (a.rank - b.rank)
+        || (a.order - b.order))
       .slice(0, 10)
-      .map(({ rank, ...rest }) => rest);
+      .map(({ rank, concept, order, ...rest }) => rest);
   })();
 
   const tech = Number(p.techScore) || 0;
@@ -1146,7 +1204,7 @@ export default function ProductDetail() {
                     <div className="pd-ai-intro">
                       {aiFull.busy ? (
                         aiFull.phase === 'analyzing'
-                          ? <AiLoadingSteps lang={lang} mode="product" />
+                          ? <AiLoadingSteps lang={lang} mode="product" stage={aiFull.stage} />
                           : <AiLoadingSteps lang={lang} mode="quizProduct" />
                       ) : (
                         <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={startFullAnalysisQuiz}>

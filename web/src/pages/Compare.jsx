@@ -13,6 +13,7 @@ import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import { productPath } from '../lib/routes';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
 import { generateCompareQuiz } from '../lib/linkAnalysis';
+import { getRecentProducts } from '../lib/recentViewed';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
@@ -171,6 +172,7 @@ export default function Compare() {
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
   const [aiPhase, setAiPhase] = useState('idle');
+  const [aiStage, setAiStage] = useState(null);
   const [aiQuestions, setAiQuestions] = useState([]);
   const [aiAnswers, setAiAnswers] = useState([]);
   const geoCountry = useGeoCountry();
@@ -323,7 +325,12 @@ export default function Compare() {
           analysis: p.description || '',
         })),
         language: lang,
-        userProfile: aiUserProfile(user),
+        userProfile: {
+          ...aiUserProfile(user),
+          recentlyViewed: getRecentProducts().slice(0, 8)
+            .map((rp) => ({ name: rp.name, category: rp.category, brand: rp.brand }))
+            .filter((x) => x.name),
+        },
       });
       if (!questions.length) questions = fallbackCompareQuiz(lang);
       setAiQuestions(questions);
@@ -346,9 +353,11 @@ export default function Compare() {
     }
     setAiBusy(true);
     setAiPhase('analyzing');
+    setAiStage('prep');
     try {
       let research = '';
       try {
+        setAiStage('research');
         research = await askQorAiGrounded(buildCompareResearchPrompt(products, lang, { quizAnswers: answers }), {
           language: lang,
           maxOutputTokens: 2048,
@@ -356,6 +365,7 @@ export default function Compare() {
       } catch {
         research = '';
       }
+      setAiStage('report');
       const basePrompt = buildAiComparePrompt(answers, research);
       const askReport = (userPrompt, temperature = 0.42) => askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
@@ -407,19 +417,30 @@ export default function Compare() {
 
       <div className="container">
         <div className="cmp-addbar" ref={boxRef}>
-          <div className="cmp-add-input">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              value={term}
-              onChange={(e) => { setTerm(e.target.value); setPicking(true); }}
-              onFocus={() => setPicking(true)}
-              placeholder={canAdd ? t('cmp.addPlaceholder') : t('cmp.addFull', { max: COMPARE_MAX })}
-              disabled={!canAdd}
-            />
-            {products.length > 0 && (
-              <button className="cmp-clear" onClick={clear}>{t('cmp.clearAll')}</button>
+          <div className="cmp-addbar-row">
+            <div className="cmp-add-input">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                value={term}
+                onChange={(e) => { setTerm(e.target.value); setPicking(true); }}
+                onFocus={() => setPicking(true)}
+                placeholder={canAdd ? t('cmp.addPlaceholder') : t('cmp.addFull', { max: COMPARE_MAX })}
+                disabled={!canAdd}
+              />
+              {products.length > 0 && (
+                <button className="cmp-clear" onClick={clear}>{t('cmp.clearAll')}</button>
+              )}
+            </div>
+            {ytUrl && products.length >= 2 && (
+              <a className="cmp-yt-icon" href={ytUrl} target="_blank" rel="noopener"
+                aria-label="YouTube"
+                title={L('Watch this comparison on YouTube', 'Bu karşılaştırmayı YouTube\'da izle', 'Diesen Vergleich auf YouTube ansehen')}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
+                </svg>
+              </a>
             )}
           </div>
           {picking && results.length > 0 && (
@@ -471,6 +492,7 @@ export default function Compare() {
           <>
             {/* product header cards with dual rings — app parity */}
             <div className="cmp-product-scroll">
+              <div className="cmp-product-row">
               <div className="cmp-scroll-spacer" aria-hidden="true" />
               <div className="cmp-cards">
                 {slots.map((p) => {
@@ -509,24 +531,15 @@ export default function Compare() {
                   );
                 })}
               </div>
-            </div>
-
-            {ytUrl && products.length >= 2 && (
-              <div className="cmp-yt-row">
-                <a className="cmp-yt-btn" href={ytUrl} target="_blank" rel="noopener">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
-                  </svg>
-                  {L('Watch this comparison on YouTube', 'Bu karşılaştırmayı YouTube\'da izle', 'Diesen Vergleich auf YouTube ansehen')}
-                </a>
               </div>
-            )}
+            </div>
 
             {/* Prices — independent block ABOVE the tabs, one card per product
                 column, country-aware (visitor's detected market). */}
             <section className="cmp-prices-block">
               <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
               <div className="cmp-product-scroll">
+                <div className="cmp-product-row">
                 <div className="cmp-scroll-spacer" aria-hidden="true" />
                 <div className="cmp-prices">
                   {slots.map((p) => {
@@ -546,6 +559,7 @@ export default function Compare() {
                       </div>
                     );
                   })}
+                </div>
                 </div>
               </div>
             </section>
@@ -642,7 +656,7 @@ export default function Compare() {
                       />
                     )}
                     {!aiText && aiPhase === 'analyzing' && (
-                      <AiLoadingSteps lang={lang} mode="compare" />
+                      <AiLoadingSteps lang={lang} mode="compare" stage={aiStage} />
                     )}
                     {!aiText && aiPhase === 'error' && (
                       <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy || !aiAnswers.length}>
