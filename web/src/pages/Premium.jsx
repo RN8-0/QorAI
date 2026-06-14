@@ -1,37 +1,21 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import { premiumStatus } from '../lib/premium';
-import { formatQorCoins } from '../lib/qorCoins';
-import PlayBadge, { PlayGlyph } from '../components/PlayBadge.jsx';
 import Reveal from '../components/Reveal.jsx';
 import './Premium.css';
 
-const PACKAGE_ID = 'com.compair.app';
-const PLAY_URL = `https://play.google.com/store/apps/details?id=${PACKAGE_ID}`;
-const PLAY_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions';
-
+const CONTACT_EMAIL = 'contact@arain.digital';
 const TRIAL_DAYS = 3;
-const WELCOME_Q_COINS = 20;
-const FREE_COMPARISON_LIMIT = 5;
-const FREE_COLLECTION_LIMIT = 10;
-const FREE_PRICE_HISTORY_DAYS = 7;
-const PRO_PRICE_HISTORY_DAYS = 90;
 const MONTHLY_PRICE = 3.99;
 const YEARLY_PRICE = 19.99;
-const MONTHLY_PRODUCT_ID = 'aylik_abonelik';
-const YEARLY_PRODUCT_ID = 'yillik_abonelik';
 
-const COSTS = {
-  chat: 0.5,
-  compareAi: 2,
-  detailAi: 1,
-  matchAi: 1,
-  linkAnalysis: 2,
-  linkCompare: 3,
-  subscriptionAnalysis: 2,
-  productScan: 3,
+const CHECKOUT_URLS = {
+  monthly: import.meta.env.VITE_PADDLE_MONTHLY_CHECKOUT_URL || '',
+  yearly: import.meta.env.VITE_PADDLE_YEARLY_CHECKOUT_URL || '',
+  fallback: import.meta.env.VITE_PADDLE_CHECKOUT_URL || '',
 };
 
 function price(value) {
@@ -62,30 +46,22 @@ function productPlan(productId) {
   return 'premium';
 }
 
-function manageUrl(productId) {
-  const url = new URL(PLAY_SUBSCRIPTIONS_URL);
-  url.searchParams.set('package', PACKAGE_ID);
-  const id = String(productId || '').trim();
-  if (id) url.searchParams.set('sku', id);
-  return url.toString();
-}
-
-function playUrl(planId) {
-  const url = new URL(PLAY_URL);
-  url.searchParams.set('utm_source', 'qorai_web');
-  url.searchParams.set('utm_medium', 'premium_page');
-  url.searchParams.set('selected_plan', planId);
-  return url.toString();
-}
-
-function qAmount(value, lang) {
-  return `${formatQorCoins(value, lang)} Q`;
+function planCheckoutUrl(planId) {
+  const raw = CHECKOUT_URLS[planId] || CHECKOUT_URLS.fallback;
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (!CHECKOUT_URLS[planId]) url.searchParams.set('plan', planId);
+    return url.toString();
+  } catch {
+    return raw;
+  }
 }
 
 function activePlanLabel(plan, L) {
-  if (plan === 'yearly') return L('You are a yearly subscriber', 'Yıllık abonesiniz', 'Sie sind Jahresabonnent');
-  if (plan === 'monthly') return L('You are a monthly subscriber', 'Aylık abonesiniz', 'Sie sind Monatsabonnent');
-  return L('You are a premium subscriber', 'Premium abonesiniz', 'Sie sind Premium-Abonnent');
+  if (plan === 'yearly') return L('Yearly Premium', 'Yıllık Premium', 'Premium jährlich');
+  if (plan === 'monthly') return L('Monthly Premium', 'Aylık Premium', 'Premium monatlich');
+  return L('Premium', 'Premium', 'Premium');
 }
 
 export default function Premium() {
@@ -93,6 +69,7 @@ export default function Premium() {
   const { user, openAuth, refresh } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState('yearly');
   const [refreshing, setRefreshing] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState('');
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
   const status = useMemo(() => premiumStatus(user), [user]);
@@ -101,26 +78,36 @@ export default function Premium() {
   const monthlyEquivalent = YEARLY_PRICE / 12;
   const savingsPct = Math.round(((MONTHLY_PRICE * 12 - YEARLY_PRICE) / (MONTHLY_PRICE * 12)) * 100);
   const selected = selectedPlan === 'yearly'
-    ? { id: 'yearly', productId: YEARLY_PRODUCT_ID, amount: YEARLY_PRICE, suffix: L('/yr', '/yıl', '/Jahr') }
-    : { id: 'monthly', productId: MONTHLY_PRODUCT_ID, amount: MONTHLY_PRICE, suffix: L('/mo', '/ay', '/Monat') };
-  const userCoins = user ? qAmount(user.bonusQCoins || 0, lang) : qAmount(WELCOME_Q_COINS, lang);
+    ? { id: 'yearly', name: L('Yearly', 'Yıllık', 'Jährlich'), amount: YEARLY_PRICE, suffix: L('/year', '/yıl', '/Jahr') }
+    : { id: 'monthly', name: L('Monthly', 'Aylık', 'Monatlich'), amount: MONTHLY_PRICE, suffix: L('/month', '/ay', '/Monat') };
+  const checkoutReady = Boolean(planCheckoutUrl(selected.id));
 
   useSeo({
     title: `${L('Premium', 'Premium', 'Premium')} - Qor AI`,
     description: L(
-      'Unlock the full Qor AI experience with unlimited AI chat, visual scanner, link analysis and premium recommendations.',
-      'Sınırsız Qor AI Chat, görsel tarayıcı, link analizi ve premium önerilerle tüm Qor AI deneyiminin kilidini aç.',
-      'Schalte das volle Qor AI Erlebnis mit unbegrenztem KI-Chat, visuellem Scanner, Link-Analyse und Premium-Empfehlungen frei.',
+      'Qor AI Premium pricing for AI product research, product link analysis, visual scanning, comparisons and smarter buying decisions.',
+      'AI ürün araştırması, ürün link analizi, görsel tarama, karşılaştırma ve daha isabetli satın alma kararları için Qor AI Premium fiyatlandırması.',
+      'Qor AI Premium Preise für KI-Produktrecherche, Linkanalyse, visuellen Scanner, Vergleiche und bessere Kaufentscheidungen.',
     ),
     path: '/premium',
   });
 
-  function startPremium(planId = selectedPlan) {
+  function startCheckout(planId = selectedPlan) {
+    setCheckoutMessage('');
     if (!user) {
       openAuth();
       return;
     }
-    window.open(playUrl(planId), '_blank', 'noopener,noreferrer');
+    const url = planCheckoutUrl(planId);
+    if (!url) {
+      setCheckoutMessage(L(
+        'Secure web checkout is being connected. Card payments will be processed by Paddle after account approval.',
+        'Güvenli web checkout bağlanıyor. Kart ödemeleri hesap onayından sonra Paddle üzerinden işlenecek.',
+        'Der sichere Web-Checkout wird verbunden. Kartenzahlungen werden nach der Kontofreigabe über Paddle verarbeitet.',
+      ));
+      return;
+    }
+    window.location.assign(url);
   }
 
   async function refreshSubscription() {
@@ -133,108 +120,86 @@ export default function Premium() {
     }
   }
 
-  const momentum = [
+  const heroPoints = [
+    L('AI product analysis', 'AI ürün analizi', 'KI-Produktanalyse'),
+    L('Product link analysis', 'Ürün link analizi', 'Produktlink-Analyse'),
+    L('Visual product scanner', 'Görsel ürün tarayıcı', 'Visueller Produktscanner'),
+    L('Subscription analysis', 'Abonelik analizi', 'Abo-Analyse'),
+  ];
+
+  const valueCards = [
     {
-      title: L('Decide faster', 'Daha hızlı karar ver', 'Schneller entscheiden'),
+      title: L('Research without friction', 'Akışı kesmeden araştır', 'Ohne Reibung recherchieren'),
       body: L(
-        'See the critical product insight in one flow instead of hopping between tabs.',
-        'Tek tek sekmeler arasında kaybolmadan, tüm kritik içgörüleri tek akışta görün.',
-        'Sieh die wichtigsten Produkt-Insights in einem Ablauf, ohne zwischen Tabs zu springen.',
+        'Run product analysis, link checks and comparisons without stopping at basic usage limits.',
+        'Ürün analizi, link kontrolü ve karşılaştırmaları temel kullanım sınırlarına takılmadan çalıştırın.',
+        'Produktanalysen, Linkchecks und Vergleiche ohne Unterbrechung durch Basislimits nutzen.',
       ),
     },
     {
-      title: L('Feel speed, not limits', 'Sınır değil hız hissi', 'Tempo statt Limits'),
-      body: status.isPremium
-        ? L(
-          'Premium is active, so every AI flow stays open and unlimited.',
-          'Premium aktif olduğu için tüm AI akışları doğrudan açık ve limitsiz.',
-          'Premium ist aktiv, daher bleiben alle KI-Abläufe offen und unbegrenzt.',
-        )
-        : L(
-          'Premium removes Q limits so heavy usage never cuts you off mid-flow.',
-          'Premium, Q limitlerini kaldırır ve yoğun kullanımda sizi yarıda bırakmaz.',
-          'Premium entfernt Q-Limits, damit intensive Nutzung nicht mitten im Ablauf stoppt.',
-        ),
+      title: L('Clearer buying decisions', 'Daha net satın alma kararı', 'Klarere Kaufentscheidungen'),
+      body: L(
+        'See practical tradeoffs, alternatives, price timing and fit signals before you buy.',
+        'Satın almadan önce farkları, alternatifleri, fiyat zamanlamasını ve kişisel uyumu daha net görün.',
+        'Praktische Abwägungen, Alternativen, Preis-Timing und Fit-Signale vor dem Kauf sehen.',
+      ),
     },
     {
-      title: L('More tailored to you', 'Size göre daha isabetli', 'Passender für dich'),
+      title: L('Designed for serious shoppers', 'Ciddi araştırma için tasarlandı', 'Für ernsthafte Recherche gebaut'),
       body: L(
-        'Your profile, interests, and ecosystem shape stronger recommendations.',
-        'Profiliniz, ilgi alanlarınız ve cihaz ekosisteminiz önerilere daha güçlü yansır.',
-        'Profil, Interessen und Geräte-Ökosystem machen Empfehlungen genauer.',
+        'Premium is for users comparing several products, brands and subscriptions before spending money.',
+        'Premium, para harcamadan önce birden fazla ürün, marka ve aboneliği karşılaştıran kullanıcılar içindir.',
+        'Premium ist für Nutzer gedacht, die mehrere Produkte, Marken und Abos vor dem Kauf vergleichen.',
       ),
     },
   ];
 
-  const premiumModules = [
-    L('Review Sentiment', 'Yorum Memnuniyeti', 'Bewertungsstimmung'),
-    L('Technical Priorities', 'Teknik Öncelikler', 'Technische Prioritäten'),
-    L('Buying Decision', 'Satın Alma Kararı', 'Kaufentscheidung'),
-    L('Better Alternatives', 'Daha Mantıklı Alternatifler', 'Bessere Alternativen'),
-    L('Price Timing', 'Fiyat Zamanlaması', 'Preis-Timing'),
-    L('Personalized Match', 'Kişisel Eşleşme', 'Persönliche Übereinstimmung'),
+  const included = [
+    L('Unlimited AI product research', 'Sınırsız AI ürün araştırması', 'Unbegrenzte KI-Produktrecherche'),
+    L('Unlimited product link analysis', 'Sınırsız ürün link analizi', 'Unbegrenzte Produktlink-Analyse'),
+    L('Unlimited product comparisons', 'Sınırsız ürün karşılaştırma', 'Unbegrenzte Produktvergleiche'),
+    L('Advanced visual scanner', 'Gelişmiş görsel tarayıcı', 'Erweiterter visueller Scanner'),
+    L('Subscription value analysis', 'Abonelik değer analizi', 'Abo-Wertanalyse'),
+    L('90-day price history', '90 günlük fiyat geçmişi', '90 Tage Preisverlauf'),
+    L('Personalized recommendations', 'Kişiselleştirilmiş öneriler', 'Personalisierte Empfehlungen'),
+    L('Priority support', 'Öncelikli destek', 'Priorisierter Support'),
   ];
 
   const rows = [
     {
-      feature: L('Qor AI Chat', 'Qor AI Chat', 'Qor AI Chat'),
-      free: L(`${userCoins} balance, ${qAmount(COSTS.chat, lang)} per question`, `${userCoins} bakiye, soru başı ${qAmount(COSTS.chat, lang)}`, `${userCoins} Guthaben, ${qAmount(COSTS.chat, lang)} pro Frage`),
-      premium: L('Unlimited Q', 'Sınırsız Q', 'Unbegrenzt Q'),
+      feature: L('AI product analysis', 'AI ürün analizi', 'KI-Produktanalyse'),
+      free: L('Limited access', 'Sınırlı erişim', 'Begrenzter Zugriff'),
+      premium: L('Unlimited access', 'Sınırsız erişim', 'Unbegrenzter Zugriff'),
     },
     {
-      feature: L('Visual Scanner', 'Görsel Tarayıcı', 'Visueller Scanner'),
-      free: L(`${qAmount(COSTS.productScan, lang)} per scan`, `Tarama başı ${qAmount(COSTS.productScan, lang)}`, `${qAmount(COSTS.productScan, lang)} pro Scan`),
+      feature: L('Product link analysis', 'Ürün link analizi', 'Produktlink-Analyse'),
+      free: L('Limited', 'Sınırlı', 'Begrenzt'),
       premium: L('Unlimited', 'Sınırsız', 'Unbegrenzt'),
     },
     {
-      feature: L('Smart Link Analysis', 'Akıllı Link Analizi', 'Smarte Link-Analyse'),
-      free: L(`${qAmount(COSTS.linkAnalysis, lang)} per product URL`, `Ürün linki başı ${qAmount(COSTS.linkAnalysis, lang)}`, `${qAmount(COSTS.linkAnalysis, lang)} pro Produkt-URL`),
+      feature: L('Visual product scanner', 'Görsel ürün tarayıcı', 'Visueller Produktscanner'),
+      free: L('Basic preview', 'Temel önizleme', 'Basisvorschau'),
+      premium: L('Advanced scanner', 'Gelişmiş tarayıcı', 'Erweiterter Scanner'),
+    },
+    {
+      feature: L('Product comparisons', 'Ürün karşılaştırmaları', 'Produktvergleiche'),
+      free: L('Daily limit', 'Günlük limit', 'Tageslimit'),
       premium: L('Unlimited', 'Sınırsız', 'Unbegrenzt'),
-    },
-    {
-      feature: L('Side-by-Side Compare', 'Karşılıklı Karşılaştırma', 'Direkter Vergleich'),
-      free: L(`${qAmount(COSTS.linkCompare, lang)} per link compare`, `Link karşılaştırma başı ${qAmount(COSTS.linkCompare, lang)}`, `${qAmount(COSTS.linkCompare, lang)} pro Link-Vergleich`),
-      premium: L('Unlimited', 'Sınırsız', 'Unbegrenzt'),
-    },
-    {
-      feature: L('Premium Recommendations', 'Premium Öneriler', 'Premium-Empfehlungen'),
-      free: L('Standard', 'Standart', 'Standard'),
-      premium: L('Deeper personalization', 'Daha derin kişiselleştirme', 'Tiefere Personalisierung'),
-    },
-    {
-      feature: L('Product Comparisons', 'Ürün Karşılaştırmaları', 'Produktvergleiche'),
-      free: L(`${FREE_COMPARISON_LIMIT} per day`, `Günde ${FREE_COMPARISON_LIMIT}`, `${FREE_COMPARISON_LIMIT} pro Tag`),
-      premium: L('Unlimited', 'Sınırsız', 'Unbegrenzt'),
-    },
-    {
-      feature: L('Product Search', 'Ürün Arama', 'Produktsuche'),
-      free: true,
-      premium: true,
-    },
-    {
-      feature: L('Categories', 'Kategoriler', 'Kategorien'),
-      free: true,
-      premium: true,
-    },
-    {
-      feature: L('YouTube Reviews', 'YouTube İncelemeleri', 'YouTube-Bewertungen'),
-      free: true,
-      premium: true,
     },
     {
       feature: L('Price history', 'Fiyat geçmişi', 'Preisverlauf'),
-      free: L(`${FREE_PRICE_HISTORY_DAYS} days`, `${FREE_PRICE_HISTORY_DAYS} gün`, `${FREE_PRICE_HISTORY_DAYS} Tage`),
-      premium: L(`${PRO_PRICE_HISTORY_DAYS} days`, `${PRO_PRICE_HISTORY_DAYS} gün`, `${PRO_PRICE_HISTORY_DAYS} Tage`),
+      free: L('7 days', '7 gün', '7 Tage'),
+      premium: L('90 days', '90 gün', '90 Tage'),
     },
     {
-      feature: L('Saved products', 'Ürün Kaydetme', 'Gespeicherte Produkte'),
-      free: L(`${FREE_COLLECTION_LIMIT} products`, `${FREE_COLLECTION_LIMIT} ürün`, `${FREE_COLLECTION_LIMIT} Produkte`),
+      feature: L('Saved products', 'Kayıtlı ürünler', 'Gespeicherte Produkte'),
+      free: L('Limited', 'Sınırlı', 'Begrenzt'),
       premium: L('Unlimited', 'Sınırsız', 'Unbegrenzt'),
     },
     {
-      feature: L('Priority Support', 'Öncelikli Destek', 'Priorisierter Support'),
-      free: false,
-      premium: true,
+      feature: L('Support', 'Destek', 'Support'),
+      free: L('Standard', 'Standart', 'Standard'),
+      premium: L('Priority', 'Öncelikli', 'Priorisiert'),
     },
   ];
 
@@ -244,46 +209,65 @@ export default function Premium() {
         <div className="container premium-hero-inner fade-up">
           <div className="premium-hero-copy">
             <span className="premium-kicker">QOR AI PREMIUM</span>
-            <h1>{L('Unlock the Full Experience', 'Tüm Deneyimin Kilidini Aç', 'Erleben Sie das Volle')}</h1>
+            <h1>{L('Make better product decisions with Premium.', 'Premium ile daha iyi ürün kararları verin.', 'Treffen Sie bessere Produktentscheidungen mit Premium.')}</h1>
             <p>
               {L(
-                'Premium removes the cap across every AI flow so you can compare, scan, and ask without slowing down.',
-                'Qor AI Premium ile tüm AI akışlarında sınır kalkar; daha hızlı karar verir, ürünleri daha net tarar ve her öneriyi kendi profilinize göre alırsınız.',
-                'Premium hebt Limits in allen KI-Abläufen auf, damit du ohne Unterbrechung vergleichen, scannen und fragen kannst.',
+                'AI-powered product research, link analysis, visual scanning and comparisons for people who want a clear answer before they buy.',
+                'Satın almadan önce net cevap isteyen kullanıcılar için AI destekli ürün araştırması, link analizi, görsel tarama ve karşılaştırma.',
+                'KI-gestützte Produktrecherche, Linkanalyse, visueller Scan und Vergleiche für klare Antworten vor dem Kauf.',
               )}
             </p>
             <div className="premium-hero-pills" aria-label={L('Premium features', 'Premium özellikleri', 'Premium-Funktionen')}>
-              <span>{L('Unlimited Qor AI Chat', 'Sınırsız Qor AI Chat', 'Unbegrenzter Qor AI Chat')}</span>
-              <span>{L('Advanced visual scanner', 'Gelişmiş görsel tarayıcı', 'Erweiterter visueller Scanner')}</span>
-              <span>{L('Smarter recommendations', 'Daha akıllı öneriler', 'Klügere Empfehlungen')}</span>
+              {heroPoints.map((point) => <span key={point}>{point}</span>)}
             </div>
           </div>
-          <div className="premium-hero-visual" aria-hidden="true">
-            <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />
-            <div>
-              <strong>{L('AI Analysis', 'AI Analizi', 'KI-Analyse')}</strong>
-              <span>{L('Reviews, specs, advice and price prediction', 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini', 'Reviews, Specs, Empfehlung und Preisprognose')}</span>
+
+          <aside className="premium-checkout-card" aria-label={L('Selected Premium plan', 'Seçili Premium plan', 'Ausgewählter Premium-Plan')}>
+            <span className="premium-card-label">{L('Most popular', 'En popüler', 'Am beliebtesten')}</span>
+            <h2>{selected.name} Premium</h2>
+            <div className="premium-price-line">
+              <strong>{price(selected.amount)}</strong>
+              <span>{selected.suffix}</span>
             </div>
-          </div>
+            <p>
+              {selected.id === 'yearly'
+                ? L(`${TRIAL_DAYS}-day free trial, then ${price(YEARLY_PRICE)} per year.`, `${TRIAL_DAYS} günlük ücretsiz deneme, ardından yıllık ${price(YEARLY_PRICE)}.`, `${TRIAL_DAYS} Tage gratis, danach ${price(YEARLY_PRICE)} pro Jahr.`)
+                : L(`${TRIAL_DAYS}-day free trial, then ${price(MONTHLY_PRICE)} per month.`, `${TRIAL_DAYS} günlük ücretsiz deneme, ardından aylık ${price(MONTHLY_PRICE)}.`, `${TRIAL_DAYS} Tage gratis, danach ${price(MONTHLY_PRICE)} pro Monat.`)}
+            </p>
+            <button className="btn premium-btn primary" type="button" onClick={() => startCheckout(selected.id)}>
+              {user
+                ? L('Continue to secure checkout', 'Güvenli checkout’a devam et', 'Zum sicheren Checkout')
+                : L('Create account and continue', 'Hesap oluştur ve devam et', 'Konto erstellen und fortfahren')}
+            </button>
+            <p className="premium-payment-note">
+              {checkoutReady
+                ? L('Card payments are processed securely by Paddle. Qor AI does not store card details.',
+                  'Kart ödemeleri güvenli şekilde Paddle tarafından işlenir. Qor AI kart bilgisi saklamaz.',
+                  'Kartenzahlungen werden sicher über Paddle verarbeitet. Qor AI speichert keine Kartendaten.')
+                : L('Paddle checkout is being prepared for Visa and Mastercard payments.',
+                  'Visa ve Mastercard ödemeleri için Paddle checkout hazırlanıyor.',
+                  'Paddle Checkout für Visa- und Mastercard-Zahlungen wird vorbereitet.')}
+            </p>
+          </aside>
         </div>
       </section>
 
       <section className="container premium-main" aria-label={L('Premium subscription', 'Premium abonelik', 'Premium-Abonnement')}>
-        {status.isPremium ? (
+        {status.isPremium && (
           <Reveal>
             <article className="premium-active-panel">
               <span className="premium-kicker">{L('Active subscription', 'Aktif abonelik', 'Aktives Abonnement')}</span>
               <h2>{activePlanLabel(activePlan, L)}</h2>
               <p>
                 {L(
-                  'Qor AI Chat, visual scanner, link analysis, and premium recommendations are fully unlocked.',
-                  'Qor AI Chat, görsel tarayıcı, link analizi ve premium öneriler artık tamamen açık.',
-                  'Qor AI Chat, visueller Scanner, Link-Analyse und Premium-Empfehlungen sind vollständig freigeschaltet.',
+                  'Your Premium access is active. AI product research, product link analysis, comparisons and advanced recommendations are unlocked.',
+                  'Premium erişiminiz aktif. AI ürün araştırması, ürün link analizi, karşılaştırmalar ve gelişmiş öneriler açık.',
+                  'Ihr Premium-Zugang ist aktiv. KI-Produktrecherche, Linkanalyse, Vergleiche und erweiterte Empfehlungen sind freigeschaltet.',
                 )}
               </p>
               <div className="premium-active-meta">
                 <span>
-                  <b>{L('Active plan', 'Aktif plan', 'Aktiver Plan')}</b>
+                  <b>{L('Plan', 'Plan', 'Plan')}</b>
                   {activePlanLabel(activePlan, L)}
                 </span>
                 {premiumUntil && (
@@ -293,117 +277,120 @@ export default function Premium() {
                   </span>
                 )}
                 <span>
-                  <b>Google Play</b>
-                  {L(
-                    'Your subscription is active. You can manage it from Google Play anytime.',
-                    'Aboneliğiniz aktif. Google Play üzerinden istediğiniz zaman yönetebilirsiniz.',
-                    'Dein Abonnement ist aktiv. Du kannst es jederzeit über Google Play verwalten.',
-                  )}
+                  <b>{L('Billing support', 'Fatura desteği', 'Abrechnungssupport')}</b>
+                  {CONTACT_EMAIL}
                 </span>
               </div>
-              <div className="premium-actions">
-                <a className="btn premium-btn primary" href={manageUrl(status.productId)} target="_blank" rel="noopener noreferrer">
-                  <PlayGlyph size={19} />
-                  {L('Manage on Google Play', 'Google Play üzerinden yönet', 'In Google Play verwalten')}
-                </a>
-                <button className="btn premium-btn secondary" type="button" onClick={refreshSubscription} disabled={refreshing}>
-                  {refreshing
-                    ? L('Refreshing...', 'Yenileniyor...', 'Wird aktualisiert...')
-                    : L('Refresh subscription status', 'Abonelik durumunu yenile', 'Abonnementstatus aktualisieren')}
-                </button>
-              </div>
+              <button className="btn premium-btn secondary" type="button" onClick={refreshSubscription} disabled={refreshing}>
+                {refreshing
+                  ? L('Refreshing...', 'Yenileniyor...', 'Wird aktualisiert...')
+                  : L('Refresh subscription status', 'Abonelik durumunu yenile', 'Abonnementstatus aktualisieren')}
+              </button>
             </article>
           </Reveal>
-        ) : (
-          <>
-            <Reveal>
-              <div className="premium-trial">
-                <strong>{L(`${TRIAL_DAYS}-day free trial`, `${TRIAL_DAYS} günlük ücretsiz deneme`, `${TRIAL_DAYS}-Tage-Gratisprobe`)}</strong>
-                <span>
-                  {L(
-                    `No charge for ${TRIAL_DAYS} days, then your selected plan starts.`,
-                    `${TRIAL_DAYS} gün ücretsiz, ardından seçtiğiniz plan devreye girer.`,
-                    `${TRIAL_DAYS} Tage ohne Kosten, danach startet dein gewählter Plan.`,
-                  )}
-                </span>
-              </div>
-            </Reveal>
-
-            <section className="premium-plans" aria-label={L('Choose a Premium plan', 'Premium plan seç', 'Premium-Plan wählen')}>
-              <Reveal delay={80}>
-                <button
-                  type="button"
-                  className={'premium-plan-card' + (selectedPlan === 'yearly' ? ' selected' : '')}
-                  onClick={() => setSelectedPlan('yearly')}
-                >
-                  <span className="premium-plan-save">{L(`SAVE ${savingsPct}%`, `%${savingsPct} TASARRUF`, `${savingsPct}% SPAREN`)}</span>
-                  <span className="premium-plan-name">{L('Yearly', 'Yıllık', 'Jährlich')}</span>
-                  <strong>{price(YEARLY_PRICE)}</strong>
-                  <em>{L(`${price(monthlyEquivalent)} / mo`, `Ayda ${price(monthlyEquivalent)}`, `${price(monthlyEquivalent)} / Monat`)}</em>
-                  <small>{L('Best value for heavy AI use', 'Yoğun AI kullanımı için en avantajlı plan', 'Bester Wert für intensive KI-Nutzung')}</small>
-                </button>
-              </Reveal>
-              <Reveal delay={140}>
-                <button
-                  type="button"
-                  className={'premium-plan-card' + (selectedPlan === 'monthly' ? ' selected' : '')}
-                  onClick={() => setSelectedPlan('monthly')}
-                >
-                  <span className="premium-plan-space" />
-                  <span className="premium-plan-name">{L('Monthly', 'Aylık', 'Monatlich')}</span>
-                  <strong>{price(MONTHLY_PRICE)}</strong>
-                  <em>{L('billed monthly', 'aylık ödenir', 'monatlich abgerechnet')}</em>
-                  <small>{L('Flexible Premium access', 'Esnek Premium erişimi', 'Flexibler Premium-Zugang')}</small>
-                </button>
-              </Reveal>
-            </section>
-
-            <Reveal delay={180}>
-              <div className="premium-cta-panel">
-                <button className="btn premium-btn primary" type="button" onClick={() => startPremium(selected.id)}>
-                  <PlayGlyph size={20} />
-                  {L(
-                    `Start Free Trial - ${price(selected.amount)}${selected.suffix}`,
-                    `Premium'u başlat - ${price(selected.amount)}${selected.suffix}`,
-                    `Gratisprobe starten - ${price(selected.amount)}${selected.suffix}`,
-                  )}
-                </button>
-                <PlayBadge className="premium-play" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')}
-                  label={L('Google Play', "Google Play'den indir", 'Google Play')} />
-                <p>
-                  {L(
-                    'Purchase is completed in the Android app through Google Play. Auto-renews and can be cancelled anytime from Play Store settings.',
-                    'Satın alma Android uygulamasında Google Play üzerinden tamamlanır. Otomatik yenilenir ve Play Store ayarlarından istediğiniz zaman iptal edebilirsiniz.',
-                    'Der Kauf wird in der Android-App über Google Play abgeschlossen. Verlängert sich automatisch und ist jederzeit in den Play Store Einstellungen kündbar.',
-                  )}
-                </p>
-              </div>
-            </Reveal>
-          </>
         )}
 
-        <section className="premium-momentum" aria-label={L('Premium benefits', 'Premium avantajları', 'Premium-Vorteile')}>
-          {momentum.map((item, index) => (
+        <Reveal>
+          <div className="premium-trial">
+            <strong>{L(`${TRIAL_DAYS}-day free trial`, `${TRIAL_DAYS} günlük ücretsiz deneme`, `${TRIAL_DAYS}-Tage-Gratisprobe`)}</strong>
+            <span>
+              {L(
+                'Try Premium first. Cancel before the trial ends if it is not right for you.',
+                'Önce Premium’u deneyin. Size uygun değilse deneme bitmeden iptal edin.',
+                'Premium zuerst testen. Vor Ablauf der Probe kündigen, wenn es nicht passt.',
+              )}
+            </span>
+          </div>
+        </Reveal>
+
+        <section className="premium-plans" aria-label={L('Choose a Premium plan', 'Premium plan seç', 'Premium-Plan wählen')}>
+          <Reveal delay={80}>
+            <button
+              type="button"
+              className={'premium-plan-card' + (selectedPlan === 'yearly' ? ' selected' : '')}
+              onClick={() => {
+                setSelectedPlan('yearly');
+                setCheckoutMessage('');
+              }}
+            >
+              <span className="premium-plan-save">{L(`SAVE ${savingsPct}%`, `%${savingsPct} TASARRUF`, `${savingsPct}% SPAREN`)}</span>
+              <span className="premium-plan-name">{L('Yearly', 'Yıllık', 'Jährlich')}</span>
+              <strong>{price(YEARLY_PRICE)}</strong>
+              <em>{L(`${price(monthlyEquivalent)} / month equivalent`, `Aylık ${price(monthlyEquivalent)} denk gelir`, `${price(monthlyEquivalent)} / Monat effektiv`)}</em>
+              <small>{L('Best value for regular product research.', 'Düzenli ürün araştırması için en avantajlı plan.', 'Bester Wert für regelmäßige Produktrecherche.')}</small>
+            </button>
+          </Reveal>
+          <Reveal delay={140}>
+            <button
+              type="button"
+              className={'premium-plan-card' + (selectedPlan === 'monthly' ? ' selected' : '')}
+              onClick={() => {
+                setSelectedPlan('monthly');
+                setCheckoutMessage('');
+              }}
+            >
+              <span className="premium-plan-space" />
+              <span className="premium-plan-name">{L('Monthly', 'Aylık', 'Monatlich')}</span>
+              <strong>{price(MONTHLY_PRICE)}</strong>
+              <em>{L('Billed monthly', 'Aylık ödenir', 'Monatlich abgerechnet')}</em>
+              <small>{L('Flexible access for short research periods.', 'Kısa araştırma dönemleri için esnek erişim.', 'Flexibler Zugang für kurze Recherchephasen.')}</small>
+            </button>
+          </Reveal>
+        </section>
+
+        <Reveal delay={180}>
+          <div className="premium-cta-panel">
+            <div>
+              <strong>{L('Ready for Premium?', 'Premium’a hazır mısınız?', 'Bereit für Premium?')}</strong>
+              <p>
+                {L(
+                  'Checkout opens after account sign-in so Premium can be attached to the correct Qor AI account.',
+                  'Checkout, Premium’un doğru Qor AI hesabına tanımlanması için hesap girişinden sonra açılır.',
+                  'Der Checkout öffnet nach dem Login, damit Premium dem richtigen Qor AI Konto zugeordnet wird.',
+                )}
+              </p>
+            </div>
+            <button className="btn premium-btn primary" type="button" onClick={() => startCheckout(selected.id)}>
+              {L(`Continue - ${price(selected.amount)}${selected.suffix}`, `Devam et - ${price(selected.amount)}${selected.suffix}`, `Weiter - ${price(selected.amount)}${selected.suffix}`)}
+            </button>
+            {checkoutMessage && <p className="premium-checkout-message">{checkoutMessage}</p>}
+            <p className="premium-legal-line">
+              {L(
+                'Prices are shown in USD. Taxes may be calculated during checkout. Subscriptions renew automatically until cancelled.',
+                'Fiyatlar USD olarak gösterilir. Vergiler checkout sırasında hesaplanabilir. Abonelikler iptal edilene kadar otomatik yenilenir.',
+                'Preise werden in USD angezeigt. Steuern können im Checkout berechnet werden. Abos verlängern sich automatisch bis zur Kündigung.',
+              )}
+            </p>
+          </div>
+        </Reveal>
+
+        <section className="premium-value-grid" aria-label={L('Premium value', 'Premium değeri', 'Premium-Wert')}>
+          {valueCards.map((item, index) => (
             <Reveal key={item.title} delay={index * 70}>
               <article>
-                <span>{index + 1}</span>
-                <div>
-                  <h2>{item.title}</h2>
-                  <p>{item.body}</p>
-                </div>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <h2>{item.title}</h2>
+                <p>{item.body}</p>
               </article>
             </Reveal>
           ))}
         </section>
 
-        <section className="premium-ai-modules" aria-label={L('Premium AI analysis modules', 'Premium AI analiz modülleri', 'Premium KI-Analyse-Module')}>
+        <section className="premium-included" aria-label={L('Included in Premium', 'Premium dahilindeki özellikler', 'In Premium enthalten')}>
           <div>
-            <span className="premium-kicker">{L('AI Analysis', 'AI Analizi', 'KI-Analyse')}</span>
-            <h2>{L('Reviews, specs, advice and price prediction', 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini', 'Reviews, Specs, Empfehlung und Preisprognose')}</h2>
+            <span className="premium-kicker">{L('Included', 'Dahil', 'Enthalten')}</span>
+            <h2>{L('Everything needed for a clearer buying decision.', 'Daha net satın alma kararı için gereken her şey.', 'Alles für eine klarere Kaufentscheidung.')}</h2>
+            <p>
+              {L(
+                'Premium focuses on the product research workflow: analyze, compare, scan, save and decide with less friction.',
+                'Premium ürün araştırma akışına odaklanır: analiz edin, karşılaştırın, tarayın, kaydedin ve daha az sürtünmeyle karar verin.',
+                'Premium konzentriert sich auf den Rechercheablauf: analysieren, vergleichen, scannen, speichern und leichter entscheiden.',
+              )}
+            </p>
           </div>
-          <div className="premium-module-grid">
-            {premiumModules.map((module) => (
-              <span key={module}>{module}</span>
+          <div className="premium-included-grid">
+            {included.map((item) => (
+              <span key={item}>{item}</span>
             ))}
           </div>
         </section>
@@ -417,19 +404,20 @@ export default function Premium() {
           {rows.map((row) => (
             <div className="premium-table-row" key={row.feature}>
               <strong>{row.feature}</strong>
-              <PremiumCell value={row.free} />
-              <PremiumCell value={row.premium} featured />
+              <span className="premium-cell">{row.free}</span>
+              <span className="premium-cell featured">{row.premium}</span>
             </div>
           ))}
+        </section>
+
+        <section className="premium-policy-strip" aria-label={L('Premium policies', 'Premium politikaları', 'Premium-Richtlinien')}>
+          <span>{L('Secure web checkout prepared for Paddle.', 'Paddle için güvenli web checkout hazırlandı.', 'Sicherer Web-Checkout für Paddle vorbereitet.')}</span>
+          <Link to="/terms">{L('Terms', 'Koşullar', 'Bedingungen')}</Link>
+          <Link to="/privacy">{L('Privacy', 'Gizlilik', 'Datenschutz')}</Link>
+          <Link to="/refund">{L('Refund policy', 'İade politikası', 'Erstattung')}</Link>
+          <a href={`mailto:${CONTACT_EMAIL}`}>{L('Contact', 'İletişim', 'Kontakt')}</a>
         </section>
       </section>
     </div>
   );
-}
-
-function PremiumCell({ value, featured = false }) {
-  if (typeof value === 'boolean') {
-    return <span className={'premium-check' + (value ? ' yes' : ' no')}>{value ? '✓' : '-'}</span>;
-  }
-  return <span className={featured ? 'premium-cell featured' : 'premium-cell'}>{value}</span>;
 }

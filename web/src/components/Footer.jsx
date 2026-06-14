@@ -1,11 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
 import PlayBadge from './PlayBadge.jsx';
 
 export default function Footer() {
   const { t, lang } = useI18n();
+  const loc = useLocation();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const year = new Date().getFullYear();
+  const isPremiumRoute = loc.pathname === '/premium';
 
   return (
     <footer className="footer">
@@ -20,9 +22,11 @@ export default function Footer() {
               </span>
             </Link>
             <p className="muted" style={{ marginTop: 14, fontSize: 14, lineHeight: 1.6 }}>{t('footer.tagline')}</p>
-            <div style={{ marginTop: 16 }}>
-              <PlayBadge size="sm" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
-            </div>
+            {!isPremiumRoute && (
+              <div style={{ marginTop: 16 }}>
+                <PlayBadge size="sm" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
+              </div>
+            )}
           </div>
 
           {/* Link columns */}
