@@ -4,6 +4,8 @@
 //  strength/weakness bars, pros/cons cards, verdict, smart alternatives,
 //  advisor and price prediction. Shared by the product detail + compare pages.
 // ─────────────────────────────────────────────────────────────────────────
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
@@ -413,6 +415,14 @@ export function parseAiJson(raw) {
 const toInt = (v) => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? Math.round(n) : 0; };
 const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.').replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : 0; };
 const arr = (v) => (Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()) : []);
+// First N sentences of a longer text — used for the compact per-product summary
+// on the compare columns (the full text lives in the detail modal).
+function firstSentences(text, n = 2) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const parts = raw.split(/(?<=[.!?])\s+/).filter(Boolean);
+  return parts.length ? parts.slice(0, n).join(' ') : raw;
+}
 
 // ─── Shared visual atoms ────────────────────────────────────────────────────
 function scoreColor(n) { return n >= 80 ? '#22c55e' : n >= 60 ? '#f59e0b' : '#f43f5e'; }
@@ -924,46 +934,156 @@ function FactorMatrix({ rows = [] }) {
   );
 }
 
-function CompareFullReport({ data, L }) {
-  const products = arr(data.products);
+// ── Compare report — the AI overall comparison is shown first, then one
+// clickable evaluation column per product (aligned with the spec-table columns).
+// Each column opens a full-screen modal with that product's complete review, so
+// the long per-product report stays out of the way until the user asks for it.
+function ComparisonOverview({ cmp = {}, L }) {
+  const hasContent = cmp.winner || arr(cmp.chart).length || arr(cmp.factorMatrix).length
+    || arr(cmp.decisiveDifferences).length || String(cmp.headToHead || '').trim()
+    || String(cmp.recommendation || '').trim();
+  if (!hasContent) return null;
+  return (
+    <section className="ai-report-section ai-cmp-overview">
+      <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma', 'KI-Gesamtvergleich')}</div>
+      <h4>{L('Which one wins for you', 'Senin için hangisi kazanıyor', 'Was für dich gewinnt')}</h4>
+      {cmp.winner && (
+        <div className="ai-cmp-winner">
+          <span>★</span>
+          <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cleanProductName(cmp.winner)}</b></div>
+          {toInt(cmp.winnerScore) > 0 && <strong>{toInt(cmp.winnerScore)}</strong>}
+        </div>
+      )}
+      <CompareScoreChartFull chart={cmp.chart} L={L} />
+      <FactorMatrix rows={cmp.factorMatrix} />
+      <BulletList items={cmp.decisiveDifferences} tone="notes" />
+      <Paragraphs text={cmp.headToHead} />
+      {String(cmp.recommendation || '').trim() && (
+        <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} /></div></div>
+      )}
+    </section>
+  );
+}
+
+// One product's complete review — the same blocks the product-detail report
+// uses, rendered inside the compare detail modal.
+function CompareProductDetail({ data = {}, L }) {
+  return (
+    <div className="ai-report">
+      <div className="ai-compare-product-head">
+        {data.imageUrl && <ProductImg src={data.imageUrl} alt={cleanProductName(data.name || '')} size="thumb" />}
+        <div>{toInt(data.matchScore) > 0 && <ScoreRing value={toInt(data.matchScore)} />}</div>
+        <Paragraphs text={data.matchComment} />
+      </div>
+      <ReportFactors factors={data.factors} L={L} />
+      <FeatureMatches items={data.featureMatches} L={L} />
+      <Paragraphs text={data.analysis} />
+      <div className="ai-procon-row">
+        <ProCon icon="✓" title={L('Pros', 'Artılar', 'Pro')} items={arr(data.pros).map(String)} color="#22c55e" />
+        <ProCon icon="✕" title={L('Cons', 'Eksiler', 'Contra')} items={arr(data.cons).map(String)} color="#f43f5e" />
+      </div>
+      <CommunityBlock data={data.community} L={L} />
+      <PriceForecastBlock data={data.priceForecast} L={L} />
+    </div>
+  );
+}
+
+// Full-screen modal — portaled to <body> so a transformed/filtered ancestor
+// can't collapse the fixed overlay (a known web-app pitfall). Holds one
+// product's complete review; Esc / backdrop / ✕ all close it.
+function CompareProductModal({ column, onClose, L }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+  if (!column) return null;
+  return createPortal(
+    <div className="ai-cmp-modal-backdrop" onClick={onClose}>
+      <div className="ai-cmp-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <header className="ai-cmp-modal-head">
+          <div className="ai-cmp-modal-title">
+            {column.image && <ProductImg src={column.image} alt={column.name} size="thumb" />}
+            <div>
+              <small>{L('Full AI review', 'Detaylı AI incelemesi', 'Vollständige KI-Analyse')}</small>
+              <b>{column.name}</b>
+            </div>
+          </div>
+          <button type="button" className="ai-cmp-modal-close" onClick={onClose} aria-label={L('Close', 'Kapat', 'Schließen')}>✕</button>
+        </header>
+        <div className="ai-cmp-modal-body">
+          <CompareProductDetail data={column.ai} L={L} />
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function CompareFullReport({ data, L, lang, products = [] }) {
+  const aiProducts = arr(data.products);
   const cmp = data.comparison || {};
+  const [openIdx, setOpenIdx] = useState(-1);
+
+  const norm = (s) => cleanProductName(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+  // Align columns with the spec-table order: iterate the real products and pair
+  // each with its AI entry by name (fallback to index) so column N here is the
+  // same product as column N in the spec table. Without the real product list
+  // (e.g. a history view) fall back to the AI products and their copied images.
+  const columns = (products.length ? products : aiProducts).map((item, i) => {
+    if (products.length) {
+      const name = displayProductName(item, lang);
+      const ai = aiProducts.find((ap) => norm(ap.name) === norm(name)) || aiProducts[i] || {};
+      return { ai, image: item.imageUrl || ai.imageUrl || '', name, key: item.id || `${name}-${i}` };
+    }
+    const name = cleanProductName(item.name || '');
+    return { ai: item, image: item.imageUrl || '', name, key: `${name}-${i}` };
+  }).filter((c) => c.name || (c.ai && Object.keys(c.ai).length));
+
+  const winnerNorm = norm(cmp.winner || '');
+  const active = openIdx >= 0 && openIdx < columns.length ? columns[openIdx] : null;
+
   return (
     <div className="ai-report ai-report-compare">
-      {products.map((p, i) => (
-        <ReportSection key={`${p.name}-${i}`} eyebrow={`0${i + 1}`} title={cleanProductName(p.name)}>
-          <div className="ai-compare-product-head">
-            {p.imageUrl && <ProductImg src={p.imageUrl} alt={cleanProductName(p.name || '')} size="thumb" />}
-            <div>
-              {toInt(p.matchScore) > 0 && <ScoreRing value={toInt(p.matchScore)} />}
-            </div>
-            <Paragraphs text={p.matchComment} />
-          </div>
-          <ReportFactors factors={p.factors} L={L} />
-          <FeatureMatches items={p.featureMatches} L={L} />
-          <Paragraphs text={p.analysis} />
-          <div className="ai-procon-row">
-            <ProCon icon="✓" title={L('Pros', 'Artılar', 'Pro')} items={arr(p.pros).map(String)} color="#22c55e" />
-            <ProCon icon="✕" title={L('Cons', 'Eksiler', 'Contra')} items={arr(p.cons).map(String)} color="#f43f5e" />
-          </div>
-          <CommunityBlock data={p.community} L={L} />
-          <PriceForecastBlock data={p.priceForecast} L={L} />
-        </ReportSection>
-      ))}
+      <ComparisonOverview cmp={cmp} L={L} />
 
-      <ReportSection eyebrow={String(products.length + 1).padStart(2, '0')} title={L('Final comparison', 'Final karşılaştırma', 'Finaler Vergleich')}>
-        {cmp.winner && (
-          <div className="ai-cmp-winner">
-            <span>★</span>
-            <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cleanProductName(cmp.winner)}</b></div>
-            {toInt(cmp.winnerScore) > 0 && <strong>{toInt(cmp.winnerScore)}</strong>}
+      {columns.length > 0 && (
+        <section className="ai-report-section ai-cmp-eval">
+          <div className="ai-report-eyebrow">{L('Per-product analysis', 'Ürün ürün analiz', 'Analyse je Produkt')}</div>
+          <h4>{L('Open each detailed review', 'Her ürünün detaylı incelemesini aç', 'Jede Detailanalyse öffnen')}</h4>
+          <p className="ai-cmp-eval-hint">{L('Tap a product to open its full AI review in detail.', 'Tam AI incelemesini görmek için bir ürüne dokun.', 'Tippe ein Produkt für die vollständige KI-Analyse.')}</p>
+          <div className="ai-cmp-cols" style={{ '--ai-cmp-n': columns.length }}>
+            {columns.map((c, i) => {
+              const score = toInt(c.ai.matchScore);
+              const isWin = winnerNorm && norm(c.name) === winnerNorm;
+              const summary = firstSentences(c.ai.matchComment, 2);
+              return (
+                <button type="button" className={'ai-cmp-col' + (isWin ? ' win' : '')} key={c.key} onClick={() => setOpenIdx(i)}>
+                  {isWin && <span className="ai-cmp-col-badge">★ {L('AI pick', 'AI seçimi', 'KI-Wahl')}</span>}
+                  <div className="ai-cmp-col-media">
+                    {c.image ? <ProductImg src={c.image} alt={c.name} size="card" /> : <span>{i + 1}</span>}
+                  </div>
+                  <div className="ai-cmp-col-name">{c.name}</div>
+                  {score > 0 && (
+                    <div className="ai-cmp-col-score" style={{ color: scoreColor(score) }}>
+                      {score}<small>/100</small>
+                    </div>
+                  )}
+                  {summary && <p className="ai-cmp-col-sum">{summary}</p>}
+                  <span className="ai-cmp-col-cta">{L('View full review', 'Detaylı incele', 'Vollständige Analyse')} →</span>
+                </button>
+              );
+            })}
           </div>
-        )}
-        <CompareScoreChartFull chart={cmp.chart} L={L} />
-        <FactorMatrix rows={cmp.factorMatrix} />
-        <BulletList items={cmp.decisiveDifferences} tone="notes" />
-        <Paragraphs text={cmp.headToHead} />
-        <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} /></div></div>
-      </ReportSection>
+        </section>
+      )}
+
+      {active && <CompareProductModal column={active} onClose={() => setOpenIdx(-1)} L={L} />}
     </div>
   );
 }
@@ -971,13 +1091,13 @@ function CompareFullReport({ data, L }) {
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 // kind: 'deep' | 'alts' | 'advisor' | 'pred'. Returns null when JSON is unusable
 // so the caller can fall back to plain text.
-export default function AiAnalysisView({ kind, raw, data: dataProp, lang }) {
+export default function AiAnalysisView({ kind, raw, data: dataProp, lang, products }) {
   const data = dataProp && typeof dataProp === 'object' ? dataProp : parseAiJson(raw);
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);
   if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} />;
-  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} />;
+  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} />;
   if (kind === 'deep') return <DeepView data={data} L={L} />;
   if (kind === 'alts') return <AltView data={data} L={L} />;
   if (kind === 'advisor') return <AdvisorView data={data} L={L} />;

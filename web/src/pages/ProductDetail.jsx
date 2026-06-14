@@ -747,6 +747,7 @@ export default function ProductDetail() {
   const runFullAnalysis = useCallback(async (answers = []) => {
     if (!p || aiFull.data) return;
     setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '', stage: 'prep', answers }));
+    const startedAt = Date.now();
     try {
       let research = '';
       try {
@@ -773,8 +774,10 @@ export default function ProductDetail() {
         jsonMode: true,
       });
       let data = parseAiJson(txt);
-      if (!data || typeof data !== 'object') throw new Error('parse');
-      if (hasStaleAvailabilityClaims(txt)) {
+      // Freshness/repair retry only while time remains; a parseable (even if
+      // slightly stale) report beats erroring out, so we keep the first usable
+      // result and only hard-fail when nothing parseable came back.
+      if ((!data || typeof data !== 'object' || hasStaleAvailabilityClaims(txt)) && Date.now() - startedAt < 95000) {
         const retry = await askQorAiRaw({
           system: `You are Qor AI. Return only valid JSON in language code ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions. Every user-facing text field must be in the requested language.`,
           user: withFreshnessRetryInstruction(prompt, [localizedProductName(p, lang)]),
@@ -783,12 +786,12 @@ export default function ProductDetail() {
           jsonMode: true,
         });
         const retryData = parseAiJson(retry);
-        if (!retryData || typeof retryData !== 'object' || hasStaleAvailabilityClaims(retry)) {
-          throw new Error('stale-report');
+        if (retryData && typeof retryData === 'object' && !hasStaleAvailabilityClaims(retry)) {
+          txt = retry;
+          data = retryData;
         }
-        txt = retry;
-        data = retryData;
       }
+      if (!data || typeof data !== 'object') throw new Error('parse');
       setAiFull({ phase: 'result', busy: false, notice: '', data, questions: [] });
       saveProductAnalysisHistory({ product: p, analysis: txt });
     } catch {

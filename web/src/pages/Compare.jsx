@@ -432,6 +432,7 @@ export default function Compare() {
     setAiBusy(true);
     setAiPhase('analyzing');
     setAiStage('prep');
+    const startedAt = Date.now();
     try {
       let research = '';
       try {
@@ -453,15 +454,20 @@ export default function Compare() {
         jsonMode: true,
       });
       let text = await askReport(basePrompt);
-      if (!parseAiJson(text) || hasStaleAvailabilityClaims(text)) {
+      let parsed = parseAiJson(text);
+      // Repair/freshness retry only when there's still time in the budget; a
+      // parseable (even if slightly stale) report beats stranding the user, so
+      // we only hard-fail when nothing usable came back at all.
+      if ((!parsed || hasStaleAvailabilityClaims(text)) && Date.now() - startedAt < 95000) {
         const repairPrompt = withFreshnessRetryInstruction(
           `${basePrompt}\n\nJSON REPAIR / LENGTH CONTROL:\nReturn the same schema, but keep each long paragraph to 2-3 focused sentences so the JSON is complete. Do not omit any product. Do not include markdown.`,
           products.map((p) => displayProductName(p, lang)),
         );
         const retry = await askReport(repairPrompt, 0.2);
-        if (!parseAiJson(retry) || hasStaleAvailabilityClaims(retry)) throw new Error('stale-report');
-        text = retry;
+        const retryParsed = parseAiJson(retry);
+        if (retryParsed && !hasStaleAvailabilityClaims(retry)) { text = retry; parsed = retryParsed; }
       }
+      if (!parsed) throw new Error('unusable-report');
       setAiText(text);
       setAiPhase('result');
       await saveComparisonAnalysisHistory({ products, analysis: text });
@@ -754,7 +760,7 @@ export default function Compare() {
                     {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
                     {aiText && (
                       parseAiJson(aiText)
-                        ? <div className="cmp-ai-result"><AiAnalysisView kind="compareFull" raw={aiText} lang={lang} /></div>
+                        ? <div className="cmp-ai-result"><AiAnalysisView kind="compareFull" raw={aiText} lang={lang} products={products} /></div>
                         : <div className="cmp-ai-result"><PlainAiText text={aiText} /></div>
                     )}
                   </div>

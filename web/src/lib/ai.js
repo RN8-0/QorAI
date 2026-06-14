@@ -73,7 +73,7 @@ async function fetchJson(url, body, timeoutMs = 90000) {
 }
 
 // ── Gemini proxy (app's primary for link / subscription analysis) ──
-async function geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode }) {
+async function geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode, timeoutMs }) {
   const generationConfig = { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } };
   if (jsonMode) generationConfig.responseMimeType = 'application/json';
   const body = {
@@ -86,7 +86,7 @@ async function geminiOnce({ system, messages, maxOutputTokens, temperature, tool
     generationConfig,
   };
   if (Array.isArray(tools) && tools.length) body.tools = tools;
-  const res = await fetchJson(GEMINI_URL, body);
+  const res = await fetchJson(GEMINI_URL, body, timeoutMs);
   if (!res.ok) {
     const err = new Error(`gemini ${res.status}`);
     err.transient = transientStatus(res.status);
@@ -99,7 +99,7 @@ async function geminiOnce({ system, messages, maxOutputTokens, temperature, tool
 }
 
 // ── DeepSeek proxy (app's "primary text intelligence" — our fallback) ──
-async function deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode }) {
+async function deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode, timeoutMs }) {
   const body = {
     model: DEEPSEEK_MODEL,
     messages: [{ role: 'system', content: system }, ...messages],
@@ -107,7 +107,7 @@ async function deepseekOnce({ system, messages, maxOutputTokens, temperature, js
     temperature,
   };
   if (jsonMode) body.response_format = { type: 'json_object' };
-  const res = await fetchJson(DEEPSEEK_URL, body);
+  const res = await fetchJson(DEEPSEEK_URL, body, timeoutMs);
   if (!res.ok) {
     const err = new Error(`deepseek ${res.status}`);
     err.transient = transientStatus(res.status);
@@ -133,16 +133,17 @@ async function aiRequest({
   temperature = 0.7,
   jsonMode = false,
   tools = null,
+  timeoutMs = 90000,
 }) {
   let lastErr;
   for (let i = 0; i < 2; i++) {
     if (i > 0) await sleep(2000);
-    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode }); }
+    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode, timeoutMs }); }
     catch (e) { lastErr = e; if (!e.transient) break; }
   }
   for (let i = 0; i < 2; i++) {
     if (i > 0) await sleep(2500);
-    try { return await deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode }); }
+    try { return await deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode, timeoutMs }); }
     catch (e) { lastErr = e; if (!e.transient) break; }
   }
   throw lastErr || new Error('AI failed');
@@ -153,6 +154,7 @@ async function groundedGeminiRequest({
   user,
   maxOutputTokens = 4096,
   temperature = 0.2,
+  timeoutMs = 35000,
 }) {
   let lastErr;
   const messages = [{ role: 'user', content: user }];
@@ -166,6 +168,7 @@ async function groundedGeminiRequest({
         temperature,
         tools: [{ googleSearch: {} }],
         jsonMode: false,
+        timeoutMs,
       });
     } catch (e) {
       lastErr = e;
@@ -197,6 +200,7 @@ export async function askQorAiRaw({
   temperature = 0.7,
   jsonMode = false,
   tools = null,
+  timeoutMs,
 }) {
   return aiRequest({
     system,
@@ -205,6 +209,7 @@ export async function askQorAiRaw({
     temperature,
     jsonMode,
     tools,
+    timeoutMs,
   });
 }
 
@@ -221,6 +226,11 @@ export async function askQorAiGrounded(prompt, opts = {}) {
     user: prompt,
     maxOutputTokens: opts.maxOutputTokens || 4096,
     temperature: 0.2,
+    // Web research is optional context — the caller proceeds without it on
+    // failure. Cap it tight so a slow/hanging grounded search can't strand the
+    // user on the "running web research" step; the report stage keeps the full
+    // timeout. Caller may override.
+    timeoutMs: opts.timeoutMs || 35000,
   });
 }
 
