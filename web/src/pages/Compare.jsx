@@ -178,6 +178,7 @@ export default function Compare() {
   const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
   const cmpRef = useRef(null);
+  const fheadRef = useRef(null);
   const compareCategory = products[0]?.category || '';
   const showMatchScore = hasProfileMatch(user);
   const ytQuery = products.map((p) => displayProductName(p, lang)).filter(Boolean).join(' vs ');
@@ -253,6 +254,39 @@ export default function Compare() {
     scrollers.forEach((s) => s.addEventListener('scroll', onScroll, { passive: true }));
     return () => scrollers.forEach((s) => s.removeEventListener('scroll', onScroll));
   }, [products.length, tab, aiPhase]);
+
+  // Floating product-name header: a compact bar that pins below the navbar once
+  // the spec table's own header scrolls out of view, so you always know which
+  // column is which. No inner scrollbox — the page scrolls normally; the bar
+  // just mirrors the table's horizontal position (it shares cmp-hscroll sync).
+  useEffect(() => {
+    if (tab !== 'specs') return undefined;
+    const fhead = fheadRef.current;
+    const root = cmpRef.current;
+    const wrap = root && root.querySelector('.cmp-table-wrap');
+    if (!fhead || !wrap) return undefined;
+    const onScroll = () => {
+      const appbar = document.querySelector('.appbar');
+      const top = appbar ? Math.max(0, Math.round(appbar.getBoundingClientRect().bottom)) : 56;
+      const r = wrap.getBoundingClientRect();
+      const show = r.top < top && r.bottom > top + 52;
+      // Overlay the table box exactly (same left/width) so columns line up in
+      // both the centered (few products) and scrolled (many) cases.
+      fhead.style.top = `${top}px`;
+      fhead.style.left = `${Math.round(r.left)}px`;
+      fhead.style.width = `${Math.round(r.width)}px`;
+      fhead.classList.toggle('show', show);
+      if (show) fhead.scrollLeft = wrap.scrollLeft;
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      fhead.classList.remove('show');
+    };
+  }, [tab, products.length]);
 
   useEffect(() => {
     setAiBusy(false);
@@ -597,6 +631,15 @@ export default function Compare() {
 
             <div style={{ marginTop: 18 }}>
               {tab === 'specs' && (
+                <>
+                <div className="cmp-fhead cmp-hscroll" ref={fheadRef} aria-hidden="true">
+                  <div className="cmp-fhead-row">
+                    <div className="cmp-scroll-spacer" />
+                    {slots.map((p) => (
+                      <div className="cmp-fhead-cell" key={p.id}>{displayProductName(p, lang)}</div>
+                    ))}
+                  </div>
+                </div>
                 <div className="cmp-table-wrap cmp-hscroll fade-up">
                   <table className="cmp-table">
                     <thead>
@@ -650,6 +693,7 @@ export default function Compare() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
 
               {tab === 'ai' && (

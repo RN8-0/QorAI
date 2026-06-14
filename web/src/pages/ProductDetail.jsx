@@ -746,7 +746,7 @@ export default function ProductDetail() {
   // quiz then continuing no longer bounces back to the quiz).
   const runFullAnalysis = useCallback(async (answers = []) => {
     if (!p || aiFull.data) return;
-    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '', stage: 'prep' }));
+    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '', stage: 'prep', answers }));
     try {
       let research = '';
       try {
@@ -792,7 +792,10 @@ export default function ProductDetail() {
       setAiFull({ phase: 'result', busy: false, notice: '', data, questions: [] });
       saveProductAnalysisHistory({ product: p, analysis: txt });
     } catch {
-      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, notice: t('pd.aiError') }));
+      // Failure must NOT bounce back to the quiz (the "answered the quiz, hit
+      // analyze, quiz comes again" bug). Show an error + retry that re-runs with
+      // the same answers — no re-quiz, no second charge.
+      setAiFull((s) => ({ ...s, phase: 'error', busy: false, notice: t('pd.aiError') }));
     }
   }, [p, lang, t, user, aiFull.data, similar, offers]);
 
@@ -1237,6 +1240,14 @@ export default function ProductDetail() {
                       )}
                       onSubmit={runFullAnalysis}
                     />
+                  ) : aiFull.phase === 'error' ? (
+                    <div className="pd-ai-intro">
+                      <button type="button" className="btn btn-grad btn-shine pd-ai-run"
+                        onClick={() => runFullAnalysis(aiFull.answers || [])} disabled={aiFull.busy}>
+                        {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
+                      </button>
+                      {aiFull.notice && <div className="pd-ai-notice">{aiFull.notice}</div>}
+                    </div>
                   ) : (
                     <div className="pd-ai-intro">
                       {aiFull.busy ? (
