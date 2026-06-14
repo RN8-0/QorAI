@@ -101,6 +101,20 @@ const CATEGORY_SPEC_ORDER = {
   default:        ['cpu', 'gpu', 'ram', 'storage', 'screen', 'resolution', 'camera', 'battery', 'network', 'weight', 'os'],
 };
 
+// For a component product the category IS one concept, so its hero grid should
+// show that concept's many FACETS (a RAM stick: capacity, speed, type, form),
+// deduped only on identical values. For everything else a concept is a single
+// headline attribute (a laptop shows one CPU row, not its clock/brand/cores/
+// year as six rows), so it collapses by concept. This maps a category to the
+// concept it "is" — when a spec matches it we dedup by concept+value, otherwise
+// by concept alone.
+const CATEGORY_SELF_CONCEPT = {
+  ram: 'ram',
+  ssd: 'storage', ssds: 'storage', storage: 'storage', flash_drives: 'storage',
+  cpus: 'cpu',
+  gpus: 'gpu', graphics_cards: 'gpu',
+};
+
 // Short label for a variant chip — RAM / storage when available, otherwise the
 // trailing "(1 TB)" / "(512 GB)" from the name, otherwise the full name.
 function variantSpecKind(label, value = '') {
@@ -208,6 +222,22 @@ function heroSpecConcept(label, value) {
   if (/(resolution|cozunurluk|çözünürlük|auflosung|auflösung|pixel|piksel)/.test(key)) return 'resolution';
   if (/(weight|agirlik|ağırlık|gewicht)/.test(key)) return 'weight';
   return `misc:${key.replace(/[^a-z0-9]+/g, '_')}`;
+}
+
+// Compact signature of a spec's VALUE, used so two specs collapse only when they
+// state the same fact. Dedup keys combine concept + this signature: three
+// "24 GB" RAM rows on a laptop all reduce to ram|24gb (collapse), while a RAM
+// stick's distinct facets — 16 GB, 5600 MT/s, DDR5, SO DIMM — keep different
+// signatures and all survive. "1×16 GB" reduces to 16gb so it merges with the
+// "16 GB" capacity row instead of repeating it. Prefers a data-size figure,
+// then the first number+unit, then the normalised text.
+function heroValueSig(value) {
+  const s = String(value || '').toLowerCase();
+  const cap = s.match(/(\d+(?:[.,]\d+)?)\s*(tb|gb|mb)\b/);
+  if (cap) return cap[1].replace(',', '.') + cap[2];
+  const any = s.match(/(\d+(?:[.,]\d+)?)\s*([a-z%"″]+)/);
+  if (any) return any[1].replace(',', '.') + any[2];
+  return s.replace(/[^a-z0-9]+/g, '').slice(0, 24);
 }
 
 function sectionIcon(name) {
@@ -831,6 +861,7 @@ export default function ProductDetail() {
   const heroSpecs = (() => {
     const candidates = [];
     const seen = new Set();
+    const selfConcept = CATEGORY_SELF_CONCEPT[String(p.category || '').toLowerCase()] || '';
     const rankFor = (label, value, fallback = 999) => {
       const text = `${label} ${value}`;
       const hit = HERO_SPEC_PRIORITY.find((r) => r.re.test(text));
@@ -847,21 +878,27 @@ export default function ProductDetail() {
       if (!label || !value) return;
       if (/sponsor|reklam|advert|affiliate/i.test(`${label} ${value}`)) return;
       if (/^(brand|marka|category|kategori|model|qor|tech score|teknik skor)$/i.test(label)) return;
-      // Dedup by CONCEPT, not by label text — otherwise the same fact slips in
-      // multiple times under different wordings ("24 GB RAM" / "24 GB Bellek
-      // (RAM)" / "Tümleşik 24 GB Mevcut Bellek Düzeni" are all the RAM concept).
-      // Unrecognised specs (concept '') fall back to a label signature so they
-      // are not all collapsed together.
-      const concept = heroSpecConcept(label, value)
+      // Dedup strategy depends on whether the spec is the product's "self"
+      // concept (see CATEGORY_SELF_CONCEPT). For a laptop, cpu/ram/gpu are single
+      // headline attributes, so collapse by concept — one CPU row, not its
+      // clock/brand/cores as six rows, and the triple "24 GB RAM / Bellek (RAM) /
+      // Mevcut Bellek Düzeni" becomes one. For a RAM stick, 'ram' IS the product,
+      // so keep its distinct facets (16 GB, 5600 MT/s, DDR5, SO DIMM) by deduping
+      // on concept+value — only identical values merge (capacity "16 GB" and
+      // count "1×16 GB" → one row). Unrecognised specs fall back to a label key.
+      const baseConcept = heroSpecConcept(label, value)
         || `lbl:${normHeroSpecText(label).replace(/[^a-z0-9]+/g, '_')}`;
-      if (seen.has(concept)) return;
-      seen.add(concept);
+      const sig = baseConcept === selfConcept
+        ? `${baseConcept}|${heroValueSig(value)}`
+        : baseConcept;
+      if (seen.has(sig)) return;
+      seen.add(sig);
       candidates.push({
         ...s,
         icon: s.icon && s.icon !== '•' ? s.icon : iconFor(label, value, sectionIcon(label)),
         label,
         value,
-        concept,
+        concept: baseConcept,
         order: candidates.length,
         rank: rankFor(label, value, fallbackRank),
       });
