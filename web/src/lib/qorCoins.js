@@ -2,20 +2,19 @@ import { currentUser, pb } from './pocketbase';
 import { premiumStatus } from './premium';
 
 export const AI_FEATURE_COSTS = {
-  // Chat: every Qor AI reply costs 1 Qor Coin.
-  ai_question: 1,
-  ai_chat: 1,
-  // Analysis actions cost 2 Qor Coins each (product detail, compare, link, subs).
+  // Keep these in sync with lib/core/constants.dart.
+  ai_question: 0.5,
+  ai_chat: 0.5,
   compare_ai: 2,
-  detail_ai: 2,
-  detail_ai_full: 2,
-  detail_match_ai: 2,
-  detail_match: 2,
+  detail_ai: 1,
+  detail_ai_full: 1,
+  detail_match_ai: 1,
+  detail_match: 1,
   link_paste: 2,
   link_analysis: 2,
-  link_compare: 2,
+  link_compare: 3,
   subscription_analysis: 2,
-  product_scan: 2,
+  product_scan: 3,
 };
 
 function err(code, extra = {}) {
