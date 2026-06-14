@@ -10,16 +10,16 @@ const META = {
   terms: {
     path: '/terms',
     icon: '§',
-    en: ['Terms of Service', 'Rules for using Qor AI, Premium subscriptions, AI outputs, acceptable use, cancellation and service limits.'],
-    tr: ['Kullanım Koşulları', 'Qor AI kullanımı, Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal ve hizmet sınırları.'],
-    de: ['Nutzungsbedingungen', 'Regeln für die Nutzung von Qor AI, Premium-Abonnements, KI-Ausgaben, zulässige Nutzung, Kündigung und Servicegrenzen.'],
+    en: ['Terms of Service', 'Rules for using Qor AI, Premium subscriptions, AI outputs, acceptable use, cancellation, account deletion and service limits.'],
+    tr: ['Kullanım Koşulları', 'Qor AI kullanımı, Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal, hesap silme ve hizmet sınırları.'],
+    de: ['Nutzungsbedingungen', 'Regeln für Qor AI, Premium-Abos, KI-Ausgaben, zulässige Nutzung, Kündigung, Kontolöschung und Servicegrenzen.'],
   },
   privacy: {
     path: '/privacy',
     icon: '◎',
-    en: ['Privacy Policy', 'How Qor AI collects, uses, protects and shares data for accounts, AI analysis, subscriptions, analytics and support.'],
-    tr: ['Gizlilik Politikası', 'Qor AI hesaplar, AI analizi, abonelikler, analizler ve destek için verileri nasıl toplar, kullanır, korur ve paylaşır.'],
-    de: ['Datenschutzerklärung', 'Wie Qor AI Daten für Konten, KI-Analysen, Abonnements, Analytik und Support erhebt, nutzt, schützt und weitergibt.'],
+    en: ['Privacy Policy', 'How Qor AI collects, uses, protects, deletes and shares data for accounts, AI analysis, subscriptions, analytics and support.'],
+    tr: ['Gizlilik Politikası', 'Qor AI hesaplar, AI analizi, abonelikler, analizler, destek ve hesap silme için verileri nasıl toplar, kullanır, korur ve siler.'],
+    de: ['Datenschutzerklärung', 'Wie Qor AI Daten für Konten, KI-Analysen, Abos, Analytik, Support und Kontolöschung erhebt, nutzt, schützt und löscht.'],
   },
   refund: {
     path: '/refund',
@@ -38,16 +38,16 @@ const META = {
   contact: {
     path: '/contact',
     icon: '@',
-    en: ['Contact Qor AI', 'Support, billing questions, privacy requests, missing product reports and partnership messages.'],
-    tr: ['Qor AI ile İletişim', 'Destek, fatura soruları, gizlilik talepleri, eksik ürün bildirimleri ve iş birliği mesajları.'],
-    de: ['Qor AI kontaktieren', 'Support, Zahlungsfragen, Datenschutzanfragen, fehlende Produkte und Partnerschaften.'],
+    en: ['Contact Qor AI', 'The only official contact address for Qor AI support, billing, refunds, privacy, account deletion, product data and partnerships.'],
+    tr: ['Qor AI ile İletişim', 'Qor AI destek, ödeme, iade, gizlilik, hesap silme, ürün verisi ve iş birliği için tek resmi iletişim adresi.'],
+    de: ['Qor AI kontaktieren', 'Die einzige offizielle Kontaktadresse für Qor AI Support, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten und Partnerschaften.'],
   },
   about: {
     path: '/about',
     icon: 'Q',
-    en: ['About Qor AI', 'What Qor AI is, what it sells, how Premium works and how product recommendations stay independent.'],
-    tr: ['Qor AI Hakkında', 'Qor AI nedir, ne satar, Premium nasıl çalışır ve ürün önerileri nasıl bağımsız kalır.'],
-    de: ['Über Qor AI', 'Was Qor AI ist, was verkauft wird, wie Premium funktioniert und wie Empfehlungen unabhängig bleiben.'],
+    en: ['About Qor AI', 'What Qor AI is, what it sells, who it is for, how Premium works, account deletion and independent recommendations.'],
+    tr: ['Qor AI Hakkında', 'Qor AI nedir, ne satar, kimler içindir, Premium nasıl çalışır, hesap silme ve bağımsız öneriler.'],
+    de: ['Über Qor AI', 'Was Qor AI ist, was verkauft wird, für wen es gedacht ist, wie Premium funktioniert, Kontolöschung und unabhängige Empfehlungen.'],
   },
   faq: {
     path: '/faq',
@@ -68,12 +68,12 @@ const COPY = {
       email: CONTACT_EMAIL,
       home: 'Home',
       premium: 'Premium pricing',
-      legalBrand: 'Qor AI is operated under the Qor AI sole proprietor brand. If a formal legal name is required for a specific transaction or verification process, it can be provided to the payment processor during onboarding.',
+      legalBrand: `Qor AI is the AI-powered shopping assistant available on qorai.net and in the Qor AI mobile app. The service helps people compare products, analyse links, review subscriptions, build PC configurations and ask product questions before they buy. The only official public contact address for Qor AI support, legal, privacy, account deletion and billing requests is ${CONTACT_EMAIL}.`,
     },
     terms: [
       ['Who We Are', [
         'Qor AI is an AI-powered product advisory service available through qorai.net and the Qor AI mobile app. The service helps users search technology products, compare specifications, paste product links for AI analysis, scan product images, evaluate subscriptions and ask product-related questions.',
-        'These Terms apply to the Qor AI website, mobile application, Premium subscription, account features, AI chat, link analysis, product comparison tools and any related support services. Qor AI is offered under the Qor AI sole proprietor brand.',
+        `These Terms apply to the Qor AI website, mobile application, Premium subscription, account features, AI chat, link analysis, product comparison tools and any related support services. For all support, legal, privacy, account deletion and billing requests, the only official public contact address is ${CONTACT_EMAIL}.`,
       ]],
       ['Acceptance of These Terms', [
         'By accessing Qor AI, creating an account, starting a free trial, buying Premium or continuing to use the service, you agree to these Terms and to our Privacy Policy. If you do not agree, you should not use the service.',
@@ -86,6 +86,11 @@ const COPY = {
       ['Accounts and Security', [
         'Some features require an account. You agree to provide accurate information, keep your login details secure and notify us if you suspect unauthorized access. You are responsible for activity under your account unless the activity was caused by our failure to protect the service.',
         'Creating multiple accounts to bypass Qor Coin limits, trial limits, abuse checks, Premium restrictions or usage controls is not allowed. We may suspend or close accounts that appear fraudulent, automated or abusive.',
+      ]],
+      ['Account Deletion and Data Requests', [
+        `You can delete your Qor AI account at any time from the Profile area by starting the Delete my account flow. The service may send a confirmation link to the email address attached to your account so that accidental or unauthorized deletion requests are not completed.`,
+        `If you cannot access Profile, you may also request deletion by emailing ${CONTACT_EMAIL}. Include the email address connected to your Qor AI account and clearly state that you are requesting account deletion. We may need to verify account ownership before processing the request, and you should never send passwords, card numbers or sensitive documents by email.`,
+        'After deletion is confirmed, account data, favorites, comparisons, saved analyses, notifications and user-linked support messages are processed for deletion where technically and legally possible. Public community content such as reviews may be anonymized instead of removed. Limited records may remain for tax, accounting, payment, fraud prevention, security and legal compliance purposes.',
       ]],
       ['Premium, Trials and Billing', [
         'Qor AI Premium unlocks broader AI usage across Qor AI Chat, visual scanner, product analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history. The current public pricing page is available at /premium.',
@@ -153,6 +158,11 @@ const COPY = {
         'We keep account data while your account is active. We keep subscription and transaction records as long as needed for accounting, tax, fraud prevention, chargeback handling and legal compliance.',
         'If you delete your account, we aim to remove active account data within 30 days. Backups, logs and payment records may remain for a limited period where needed for security, legal or operational reasons.',
       ]],
+      ['Account Deletion Process', [
+        `Account deletion can be started in the Profile area of the app or website through Delete my account. The flow may require email confirmation before the account is permanently removed.`,
+        `If you cannot sign in, email ${CONTACT_EMAIL} with the subject "Account deletion request" and include the email address used for your Qor AI account. Qor AI does not use any other public support address for account deletion or privacy requests.`,
+        'When deletion is completed, active profile data, recommendation signals, favorites, comparisons, saved analyses, support messages and notifications are removed where possible. Records that must be retained for payment, tax, security, abuse prevention or legal compliance may remain for a limited period.',
+      ]],
       ['Security', [
         'We use HTTPS, access controls, token-based authentication, server-side permission rules and operational monitoring to protect data. No online service can be guaranteed perfectly secure, but we take reasonable measures to reduce risk.',
       ]],
@@ -182,6 +192,10 @@ const COPY = {
       ['Mobile App Purchases', [
         'Purchases made through Google Play or Apple App Store are controlled by the relevant app store. If the store requires the customer to request the refund directly, we may not be able to issue it from our side.',
         'If you contact us about a mobile purchase, include your app-store order ID, Qor AI account email and the reason for the request. We will tell you the right next step.',
+      ]],
+      ['Deletion, Cancellation and Refunds Are Separate', [
+        'Deleting your Qor AI account, cancelling a subscription and requesting a refund are separate actions. Account deletion removes account data; app-store subscriptions may still need to be cancelled from Google Play or Apple App Store account settings.',
+        `For refund review, Premium access problems or account deletion help, contact ${CONTACT_EMAIL}. Refund eligibility depends on the purchase channel, timing, usage and payment-provider rules.`,
       ]],
       ['When Refunds May Be Declined', [
         'Refunds may be declined for abuse, fraud, repeated refund requests, account sharing, attempts to bypass usage limits, chargeback abuse, violations of the Terms or requests made outside the applicable refund window.',
@@ -220,43 +234,56 @@ const COPY = {
       ]],
     ],
     contact: [
-      ['Email Support', [
-        `For support, billing, refund, privacy, product data, partnership or press questions, email ${CONTACT_EMAIL}.`,
-        'Include your Qor AI account email, relevant product link or transaction ID and a concise description of the issue. This helps us respond faster.',
+      ['Only Official Contact Address', [
+        `The only official public contact address for Qor AI support, account, billing, refund, privacy, account deletion, product data, security, press and partnership requests is ${CONTACT_EMAIL}. Qor AI does not publish or operate another general support email address.`,
+        'Include the email address connected to your Qor AI account, the subject of your request and useful context such as a product link, screenshot, payment provider or transaction reference. Do not send passwords, full card numbers, CVV codes, government IDs or unnecessary sensitive files.',
       ]],
-      ['What to Include', [
-        'For billing or refund requests, include the payment provider, transaction ID, purchase date, plan name and the account email used in Qor AI. For product data issues, include the product link and the field that looks incorrect.',
-        'For privacy requests, clearly state whether you want access, correction, deletion or another privacy action. We may ask for account verification before making account-level changes.',
+      ['Account Deletion Requests', [
+        'The fastest way to delete your account is to open Profile in the app or on the website and start Delete my account. The flow may send an email confirmation link to verify the account owner before deletion.',
+        `If you cannot access Profile, email ${CONTACT_EMAIL} with the subject "Account deletion request" and include the email address used for your Qor AI account. Requests that cannot be verified may be delayed or declined for account security.`,
       ]],
-      ['Response Times', [
-        'We aim to respond to most messages within a few business days. Billing, refund and privacy requests are prioritized because they may involve account access or payment deadlines.',
+      ['Billing, Premium and Refund Help', [
+        'For Premium access issues, unexpected charges or refund requests, include the payment provider, purchase date, plan name, transaction ID or app-store order number. Web payments and mobile app-store purchases may follow different rules.',
+        'Cancellation stops future renewal; refund review is handled separately under the Refund Policy and the rules of the payment provider.',
       ]],
-      ['What We Can Help With', [
-        'We can help with account access, Premium status, Paddle checkout questions, app-store subscription questions, refund requests, product data corrections, link analysis issues and privacy requests.',
+      ['Product Data, Link Analysis and AI Results', [
+        'If a product price, stock status, specification, image or comparison result looks wrong, send the product link and the field that appears incorrect. Reports help improve catalog quality, link analysis and AI comparison behavior.',
+        'AI output can be outdated or incomplete. Always verify important details with the retailer or manufacturer before making a purchase.',
+      ]],
+      ['Response Times and Priority', [
+        'We aim to answer most messages within a few business days. Account access, security, billing, refund and privacy requests are prioritized; product data corrections may depend on catalog refresh cycles.',
       ]],
       ['Security and Abuse Reports', [
-        'If you believe your account was accessed without permission, you found a security issue or you see suspicious usage, contact us with as much context as possible. Do not send passwords, card numbers or sensitive documents in plain email.',
+        `If you suspect unauthorized access, find a security issue, notice suspicious billing or see abuse, contact ${CONTACT_EMAIL} with clear context and safe screenshots where useful.`,
       ]],
     ],
     about: [
       ['What Qor AI Does', [
-        'Qor AI is a product research and decision assistant. It combines product catalog data, specifications, AI analysis, link analysis, comparisons, personal profile signals and subscription intelligence to help users make better buying decisions.',
+        'Qor AI is an AI-powered product research and decision assistant for people who compare before they buy. It helps users understand phones, laptops, GPUs, headphones, cameras, tablets, TVs, smartwatches, PC components and digital subscriptions without jumping between dozens of store pages and spec sheets.',
+        'The service combines catalog search, side-by-side comparison, AI product analysis, link analysis, visual scanning, PC Builder compatibility guidance, subscription review and AI Chat follow-up questions into one workflow.',
       ]],
       ['What Qor AI Sells', [
-        'Qor AI sells Premium access to software features. Premium unlocks broader AI usage, visual scanner, link analysis, product analysis, subscription analysis, extended price history and more personalized recommendations.',
+        'Qor AI is not the seller of the third-party physical products shown in the catalog. Retailers, marketplaces and manufacturers remain responsible for product sales, shipping, returns, warranty terms, stock and final prices.',
+        'Qor AI sells Premium access to software features. Premium may unlock broader AI usage, product AI analysis, link analysis, link comparison, visual scanner, subscription analysis, premium recommendations, deeper comparison output and extended price history.',
       ]],
-      ['Independence', [
-        'Qor AI may earn affiliate commissions from some outbound store links, but commissions do not determine product scores, Premium recommendations or AI conclusions. Product fit and user context matter more than commercial relationships.',
+      ['Who It Is For', [
+        'Qor AI is built for users asking questions like whether a product is worth buying, which laptop fits a budget, which phone is the better choice, which subscription offers more value or whether PC parts are compatible.',
+        'It is useful for students, creators, gamers, work laptop buyers, price-performance shoppers, people managing subscriptions and anyone comparing several product links before making a decision.',
+      ]],
+      ['Independence and Affiliate Links', [
+        'Qor AI may earn affiliate commissions from some outbound store links, but commissions do not determine product scores, Premium recommendations or AI conclusions. Product fit, technical context, value and the user’s needs matter more than commercial relationships.',
+        'A store redirect does not mean Qor AI is the seller. The retailer or marketplace is responsible for checkout, delivery, warranty, return conditions, stock and price changes.',
       ]],
       ['Data Sources and AI Limits', [
         'Product information can come from public retailer pages, marketplace pages, manufacturer information, partner feeds, user interactions and AI enrichment. This makes discovery faster, but it also means some prices, stock states or specifications can change before Qor AI refreshes them.',
         'AI analysis is designed to explain tradeoffs and surface useful questions. It should not be treated as a warranty, retailer promise, legal advice or final compatibility guarantee.',
       ]],
-      ['Payments', [
-        'Web payments may be processed by Paddle as merchant of record. Mobile purchases may be handled by Google Play or Apple App Store depending on platform availability.',
+      ['Accounts, Profile and Deletion', [
+        'Some Qor AI features use an account so favorites, comparisons, personal recommendation signals, Premium status, Qor Coin usage and saved analysis history can stay consistent across sessions.',
+        `Users can delete their accounts from Profile by starting Delete my account. Users who cannot access Profile may send an account deletion request to ${CONTACT_EMAIL}. Qor AI does not use another public contact email for account deletion or privacy requests.`,
       ]],
-      ['Who Qor AI Is For', [
-        'Qor AI is built for people comparing technology products, subscriptions and buying options before they spend money. It is also useful when a user has several product links and wants a clearer summary before deciding.',
+      ['Contact', [
+        `For support, privacy, account deletion, refund, billing, product data, press or partnership questions, contact Qor AI only at ${CONTACT_EMAIL}. Include your Qor AI account email and a clear subject so we can route the request properly.`,
       ]],
     ],
     faq: [
@@ -271,6 +298,14 @@ const COPY = {
       ]],
       ['How do I cancel Premium?', [
         'Web subscriptions can be canceled through the billing portal provided after purchase or by contacting support. App-store subscriptions must usually be managed inside Google Play or Apple App Store account settings.',
+      ]],
+      ['How do I delete my account?', [
+        'Open Profile in the Qor AI app or website and use Delete my account. The deletion flow may send a confirmation link to your account email before the account is permanently removed.',
+        `If you cannot access Profile, email ${CONTACT_EMAIL} with the subject "Account deletion request" and include the email address connected to your Qor AI account. There is no other official public email address for Qor AI account deletion or privacy requests.`,
+      ]],
+      ['How do I contact Qor AI?', [
+        `The only official public contact address for support, billing, refunds, privacy, account deletion, product data and partnerships is ${CONTACT_EMAIL}.`,
+        'Include your account email, product link, transaction reference or a short issue description where relevant. Do not send passwords or card details.',
       ]],
       ['Does Qor AI store my card details?', [
         'No. Web card details are handled by Paddle, and app-store payments are handled by the relevant store. Qor AI stores only limited subscription status data needed to unlock Premium.',
@@ -300,12 +335,12 @@ COPY.tr = {
     email: CONTACT_EMAIL,
     home: 'Ana Sayfa',
     premium: 'Premium fiyatlandırma',
-    legalBrand: 'Qor AI, Qor AI şahıs/sole proprietor markası altında işletilir. Belirli bir işlem veya doğrulama süreci için resmi yasal ad gerekirse ödeme sağlayıcısına onboarding sırasında sağlanabilir.',
+    legalBrand: `Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine, PC yapılandırması oluşturmasına ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir.`,
   },
   terms: [
     ['Biz Kimiz', [
       'Qor AI; qorai.net ve Qor AI mobil uygulaması üzerinden çalışan AI destekli ürün danışmanı hizmetidir. Kullanıcıların teknoloji ürünlerini aramasına, özellikleri karşılaştırmasına, ürün linklerini AI ile analiz etmesine, ürün görsellerini taramasına, abonelikleri değerlendirmesine ve ürün odaklı sorular sormasına yardımcı olur.',
-      'Bu Koşullar; Qor AI web sitesi, mobil uygulama, Premium abonelik, hesap özellikleri, AI sohbet, link analizi, ürün karşılaştırma araçları ve ilgili destek hizmetleri için geçerlidir. Qor AI, Qor AI şahıs/sole proprietor markası altında sunulur.',
+      `Bu Koşullar; Qor AI web sitesi, mobil uygulama, Premium abonelik, hesap özellikleri, AI sohbet, link analizi, ürün karşılaştırma araçları ve ilgili destek hizmetleri için geçerlidir. Destek, yasal bildirim, gizlilik, hesap silme ve ödeme talepleri için tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir.`,
     ]],
     ['Koşulların Kabulü', [
       'Qor AI’a erişerek, hesap oluşturarak, ücretsiz deneme başlatarak, Premium satın alarak veya hizmeti kullanmaya devam ederek bu Koşulları ve Gizlilik Politikamızı kabul etmiş olursunuz. Kabul etmiyorsanız hizmeti kullanmamalısınız.',
@@ -318,6 +353,11 @@ COPY.tr = {
     ['Hesaplar ve Güvenlik', [
       'Bazı özellikler hesap gerektirir. Doğru bilgi sağlamayı, giriş bilgilerinizi güvenli tutmayı ve yetkisiz erişim şüpheniz varsa bize bildirmeyi kabul edersiniz. Hesabınızdaki işlemlerden, işlem bizim güvenlik eksikliğimizden kaynaklanmadıkça siz sorumlusunuz.',
       'Qor Coin limitlerini, deneme sınırlarını, kötüye kullanım kontrollerini, Premium kısıtlarını veya kullanım kontrollerini aşmak için birden fazla hesap oluşturmak yasaktır. Dolandırıcı, otomatik veya kötüye kullanım görünen hesapları askıya alabilir ya da kapatabiliriz.',
+    ]],
+    ['Hesap Silme ve Veri Talepleri', [
+      `Qor AI hesabınızı dilediğiniz zaman silebilirsiniz. Uygulamada veya web profilinde Profilim bölümüne girip Hesabımı sil seçeneğini başlatabilirsiniz; sistem, kötü niyetli veya yanlışlıkla silmeleri önlemek için hesabınıza bağlı e-posta adresine onay bağlantısı gönderebilir. Onay bağlantısı kullanılmadan hesap silme işlemi tamamlanmayabilir.`,
+      `Aynı talebi ${CONTACT_EMAIL} adresine e-posta göndererek de iletebilirsiniz. E-postada Qor AI hesabınıza bağlı e-posta adresini, talebinizin hesap silme olduğunu ve mümkünse hesabınıza giriş yaptığınız yöntemi belirtin. Güvenlik nedeniyle kimliğinizi doğrulamamız gerekebilir; parolanızı, kart bilginizi veya hassas belgelerinizi e-postaya yazmayın.`,
+      'Hesap silme tamamlandığında hesap kaydı, favoriler, karşılaştırmalar, kayıtlı analizler, bildirimler ve kullanıcıya bağlı destek mesajları silinmek üzere işlenir. Topluluk düzenini korumak için daha önce yazılmış herkese açık yorumlar kişisel kimlikten ayrılarak anonimleştirilebilir. Ödeme, fatura, vergi, dolandırıcılık önleme, güvenlik logları ve yasal uyumluluk için saklanması gereken sınırlı kayıtlar mevzuatın izin verdiği süre boyunca tutulabilir.',
     ]],
     ['Premium, Denemeler ve Ödeme', [
       'Qor AI Premium; Qor AI Chat, görsel tarayıcı, ürün analizi, link analizi, link karşılaştırma, abonelik analizi, premium öneriler ve genişletilmiş fiyat geçmişi dahil daha kapsamlı AI kullanımını açar. Güncel herkese açık fiyatlandırma sayfası /premium adresindedir.',
@@ -385,6 +425,11 @@ COPY.tr = {
       'Hesabınız aktif olduğu sürece hesap verilerini saklarız. Abonelik ve işlem kayıtlarını muhasebe, vergi, dolandırıcılık önleme, chargeback yönetimi ve yasal uyumluluk için gerekli olduğu sürece saklarız.',
       'Hesabınızı silerseniz aktif hesap verilerini 30 gün içinde kaldırmayı hedefleriz. Yedekler, loglar ve ödeme kayıtları güvenlik, yasal veya operasyonel nedenlerle sınırlı süre kalabilir.',
     ]],
+    ['Hesap Silme Süreci', [
+      `Hesap silme işlemi uygulama ve web tarafında Profilim bölümündeki Hesabımı sil akışıyla başlatılabilir. Bu akış, talebin gerçekten hesap sahibinden geldiğini doğrulamak için hesabınıza bağlı e-posta adresine onay bağlantısı gönderebilir. Onaylandıktan sonra kullanıcı hesabınız ve hesabınıza bağlı kişisel veriler silme kuyruğuna alınır.`,
+      `Profilim ekranına erişemiyorsanız veya hesabınıza giriş yapamıyorsanız ${CONTACT_EMAIL} adresine e-posta göndererek hesap silme talebi oluşturabilirsiniz. Talebinizde Qor AI hesabınızda kullandığınız e-posta adresini ve "hesap silme talebi" ifadesini açıkça yazın. Güvenlik için ek doğrulama isteyebiliriz; başka bir iletişim adresi üzerinden hesap silme veya gizlilik talebi kabul edilmez.`,
+      'Silme talebi tamamlandığında aktif kullanıcı profiliniz, kişisel öneri sinyalleriniz, favorileriniz, karşılaştırmalarınız, kayıtlı analizleriniz, destek görüşmeleriniz ve bildirim kayıtlarınız mümkün olan ölçüde kaldırılır. Kanunen tutulması gereken ödeme/fatura kayıtları, kötüye kullanım ve güvenlik kayıtları veya yedeklerde kalan geçici kopyalar sınırlı süreyle saklanabilir ve rutin sistem döngüleriyle temizlenir.',
+    ]],
     ['Güvenlik', [
       'Verileri korumak için HTTPS, erişim kontrolleri, token tabanlı kimlik doğrulama, sunucu tarafı izin kuralları ve operasyonel izleme kullanırız. Hiçbir çevrimiçi hizmet kusursuz güvenli garanti edilemez; ancak riski azaltmak için makul önlemler alırız.',
     ]],
@@ -414,6 +459,10 @@ COPY.tr = {
     ['Mobil Uygulama Satın Almaları', [
       'Google Play veya Apple App Store üzerinden yapılan satın almalar ilgili uygulama mağazası tarafından kontrol edilir. Mağaza müşterinin iadeyi doğrudan talep etmesini gerektiriyorsa bizim taraftan iade yapamayabiliriz.',
       'Mobil satın alma için bize ulaşırsanız uygulama mağazası sipariş ID’nizi, Qor AI hesap e-postanızı ve talep nedeninizi ekleyin. Size doğru sonraki adımı söyleriz.',
+    ]],
+    ['Hesap Silme, İptal ve İade Farkı', [
+      'Hesap silme, abonelik iptali ve iade aynı işlem değildir. Hesabınızı silmek Qor AI hesabınızı ve ilişkili verilerinizi kaldırmaya yöneliktir; aktif mağaza abonelikleri bazı durumlarda Google Play veya Apple App Store hesabınız üzerinden ayrıca iptal edilmelidir.',
+      `İade talebi, Premium erişim sorunu veya ödeme incelemesi için ${CONTACT_EMAIL} adresine yazın. Hesap silme talebi de aynı adrese gönderilebilir, ancak iade değerlendirmesi ödeme sağlayıcısının kurallarına ve satın alma kanalına göre ayrıca yapılır.`,
     ]],
     ['İadenin Reddedilebileceği Durumlar', [
       'Kötüye kullanım, dolandırıcılık, tekrarlayan iade talepleri, hesap paylaşımı, kullanım limitlerini aşma girişimi, chargeback kötüye kullanımı, Koşulların ihlali veya geçerli iade süresi dışındaki taleplerde iade reddedilebilir.',
@@ -452,43 +501,58 @@ COPY.tr = {
     ]],
   ],
   contact: [
-    ['E-posta Desteği', [
-      `Destek, ödeme, iade, gizlilik, ürün verisi, iş birliği veya basın soruları için ${CONTACT_EMAIL} adresine yazın.`,
-      'Qor AI hesap e-postanızı, ilgili ürün linkini veya işlem ID’sini ve sorunun kısa açıklamasını ekleyin. Bu daha hızlı yanıt vermemizi sağlar.',
+    ['Tek Resmi İletişim Adresi', [
+      `Qor AI için destek, hesap, ödeme, iade, gizlilik, hesap silme, ürün verisi, güvenlik bildirimi, basın ve iş birliği taleplerinde kullanılan tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir. Qor AI web sitesinde veya uygulamasında başka bir destek e-posta adresi kullanılmaz; farklı adreslerden gelen yönlendirmeler resmi destek kanalı olarak kabul edilmemelidir.`,
+      'Mesaj gönderirken Qor AI hesabınıza bağlı e-posta adresini, talebinizin konusunu ve mümkünse ilgili ekran görüntüsü, ürün linki, ödeme sağlayıcısı veya işlem bilgisini ekleyin. Parola, tam kart numarası, CVV, kimlik belgesi, sağlık verisi veya gereksiz hassas belge paylaşmayın.',
     ]],
-    ['Neleri Eklemelisiniz', [
-      'Ödeme veya iade taleplerinde ödeme sağlayıcısını, işlem ID’sini, satın alma tarihini, plan adını ve Qor AI’da kullanılan hesap e-postasını ekleyin. Ürün verisi sorunlarında ürün linkini ve yanlış görünen alanı yazın.',
-      'Gizlilik taleplerinde erişim, düzeltme, silme veya başka bir gizlilik işlemi mi istediğinizi açıkça belirtin. Hesap seviyesinde işlem yapmadan önce hesap doğrulaması isteyebiliriz.',
+    ['Hesap Silme Talebi', [
+      `Hesabınızı silmek için en hızlı yöntem uygulama veya web profilindeki Profilim bölümünden Hesabımı sil akışını başlatmaktır. Bu akış hesap sahibini doğrulamak için e-posta onayı isteyebilir ve onaydan sonra hesabınıza bağlı verileri silme sürecine alır.`,
+      `Profilim bölümüne erişemiyorsanız aynı talebi ${CONTACT_EMAIL} adresine e-posta ile gönderebilirsiniz. E-postanın konu kısmına "Hesap silme talebi" yazın; mesajda Qor AI hesabınızda kullandığınız e-posta adresini belirtin. Talep hesap sahibine ait görünmüyorsa veya doğrulama tamamlanamazsa güvenliğiniz için işlem gecikebilir.`,
     ]],
-    ['Yanıt Süreleri', [
-      'Çoğu mesaja birkaç iş günü içinde yanıt vermeyi hedefleriz. Hesap erişimi veya ödeme süresi içerebileceği için fatura, iade ve gizlilik taleplerine öncelik verilir.',
+    ['Ödeme, Premium ve İade Yardımı', [
+      'Premium erişimi görünmüyorsa, aboneliğiniz yanlış hesapta açıldıysa, ödeme başarılı olduğu halde özellikler aktif değilse veya iade talebiniz varsa ödeme sağlayıcısını, satın alma tarihini, plan adını, işlem ID’sini veya mağaza sipariş numarasını ekleyin. Web ödemelerinde Paddle, mobil satın almalarda Google Play veya Apple App Store süreçleri farklı çalışabilir.',
+      'İptal işlemi gelecekteki yenilemeyi durdurur; iade talebi ayrıca değerlendirilir. İade ve abonelik yönetimiyle ilgili ayrıntılar İade Politikası ve Kullanım Koşulları sayfalarında açıklanır.',
     ]],
-    ['Hangi Konularda Yardım Ederiz', [
-      'Hesap erişimi, Premium durumu, Paddle checkout soruları, uygulama mağazası abonelikleri, iade talepleri, ürün verisi düzeltmeleri, link analizi sorunları ve gizlilik taleplerinde yardımcı olabiliriz.',
+    ['Ürün Verisi, Link Analizi ve AI Sonuçları', [
+      'Qor AI ürün katalogları, satıcı sayfaları, üretici bilgileri, partner verileri ve AI zenginleştirmesiyle çalışır. Bir ürünün fiyatı, stok durumu, teknik özelliği, görseli veya karşılaştırma sonucu hatalı görünüyorsa ilgili ürün linkini ve yanlış olduğunu düşündüğünüz alanı gönderin.',
+      'AI yanıtları bazen eski, eksik veya hatalı olabilir. Bildirimleriniz katalog kalitesini, link analizini ve ürün karşılaştırma mantığını iyileştirmek için kullanılır; ancak satın alma kararından önce önemli bilgileri satıcı veya üretici kaynağından doğrulamanız gerekir.',
+    ]],
+    ['Yanıt Süreleri ve Öncelik', [
+      'Mesajlara genellikle birkaç iş günü içinde yanıt vermeyi hedefleriz. Hesap erişimi, güvenlik, ödeme, iade ve gizlilik talepleri öncelikli değerlendirilir; ürün verisi düzeltmeleri katalog güncelleme döngüsüne göre işlenebilir.',
+      'Aynı konu için birden fazla e-posta göndermek süreci hızlandırmayabilir. En hızlı yardım için tek e-postada açık konu, hesap e-postası ve gerekli bağlamı paylaşın.',
     ]],
     ['Güvenlik ve Kötüye Kullanım Bildirimleri', [
-      'Hesabınıza izinsiz erişildiğini düşünüyorsanız, güvenlik sorunu bulduysanız veya şüpheli kullanım görüyorsanız mümkün olduğunca bağlam ekleyerek bize yazın. Şifre, kart numarası veya hassas belgeyi düz e-posta içinde göndermeyin.',
+      `Hesabınıza izinsiz erişildiğini düşünüyorsanız, güvenlik açığı bulduysanız, şüpheli ödeme veya kötüye kullanım fark ettiyseniz ${CONTACT_EMAIL} adresine mümkün olduğunca net bilgiyle yazın.`,
+      'Güvenlik bildirimlerinde yeniden üretme adımlarını, tarih/saat bilgisini, etkilenen sayfa veya özellik adını ve varsa güvenli ekran görüntülerini paylaşabilirsiniz. Başka kullanıcıların kişisel verilerini, parolaları veya gizli anahtarları gereksiz yere göndermeyin.',
     ]],
   ],
   about: [
     ['Qor AI Ne Yapar', [
-      'Qor AI bir ürün araştırma ve karar asistanıdır. Ürün katalog verisi, teknik özellikler, AI analizi, link analizi, karşılaştırmalar, kişisel profil sinyalleri ve abonelik zekasını birleştirerek kullanıcıların daha iyi satın alma kararları vermesine yardımcı olur.',
+      'Qor AI, satın almadan önce araştırma yapan kullanıcılar için tasarlanmış yapay zeka destekli ürün karar asistanıdır. Telefon, laptop, ekran kartı, kulaklık, kamera, tablet, televizyon, akıllı saat, bilgisayar bileşenleri ve dijital abonelikler gibi çok sayıda kategoride ürünleri tek ekranda anlamayı kolaylaştırır.',
+      'Amaç, kullanıcıyı onlarca satıcı sayfası, teknik özellik tablosu, inceleme videosu ve forum yorumu arasında kaybettirmeden daha temiz bir karar akışına taşımaktır. Qor AI ürünleri yan yana karşılaştırır, güçlü ve zayıf yönleri açıklar, teknik değerleri sadeleştirir, link analizi yapar, PC Builder ile uyumluluk risklerini gösterir ve AI Chat üzerinden takip sorularına yanıt verir.',
     ]],
     ['Qor AI Ne Satar', [
-      'Qor AI yazılım özelliklerine Premium erişim satar. Premium daha kapsamlı AI kullanımı, görsel tarayıcı, link analizi, ürün analizi, abonelik analizi, genişletilmiş fiyat geçmişi ve daha kişisel öneriler sunar.',
+      'Qor AI fiziksel ürün satıcısı değildir; katalogda görünen telefon, laptop, kulaklık, PC parçası veya başka ürünlerin satışı ilgili mağaza, pazar yeri veya perakendeci tarafından yapılır. Qor AI, ürün kararını kolaylaştıran yazılım özellikleri ve Premium erişim sunar.',
+      'Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açabilir. Web ödemeleri Paddle, mobil satın almalar ise platforma göre Google Play veya Apple App Store üzerinden yönetilebilir.',
     ]],
-    ['Bağımsızlık', [
-      'Qor AI bazı dış mağaza linklerinden affiliate komisyonu kazanabilir; ancak komisyonlar ürün skorlarını, Premium önerileri veya AI sonuçlarını belirlemez. Ürün uyumu ve kullanıcı bağlamı ticari ilişkilerden daha önemlidir.',
+    ['Kimler İçin Tasarlandı', [
+      'Qor AI; "bu ürün alınır mı", "bu laptop bütçeme uygun mu", "bu telefon diğer modele göre mantıklı mı", "hangi abonelik bana daha çok değer sağlar" veya "bu PC parçaları uyumlu mu" gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.',
+      'Öğrenciler, içerik üreticileri, oyuncular, iş için laptop arayanlar, fiyat/performans ürün kovalayanlar, aboneliklerini sadeleştirmek isteyenler ve aynı anda birden fazla linki karşılaştırmak isteyen herkes Qor AI akışından faydalanabilir.',
+    ]],
+    ['Bağımsızlık ve Affiliate İlkesi', [
+      'Qor AI bazı dış mağaza linklerinden affiliate komisyonu kazanabilir; ancak komisyonlar ürün skorlarını, Premium önerileri veya AI sonuçlarını belirlemez. Ürün uyumu, teknik bağlam, fiyat/performans sinyali ve kullanıcının ihtiyacı ticari ilişkilerden daha önemlidir.',
+      'Bir mağazaya yönlendirme yapılması, Qor AI’ın o mağazadaki ürünün satıcısı olduğu anlamına gelmez. Satın alma, teslimat, garanti, iade, stok ve fiyat sorumluluğu ilgili satıcı veya pazar yerine aittir.',
     ]],
     ['Veri Kaynakları ve AI Sınırları', [
       'Ürün bilgileri herkese açık perakendeci sayfaları, pazar yeri sayfaları, üretici bilgileri, partner feed’leri, kullanıcı etkileşimleri ve AI zenginleştirmesinden gelebilir. Bu keşfi hızlandırır; ancak bazı fiyat, stok veya teknik özellikler Qor AI yenilemeden önce değişebilir.',
       'AI analizi, alternatifleri açıklamak ve doğru soruları görünür yapmak için tasarlanmıştır. Garanti, satıcı taahhüdü, hukuki tavsiye veya nihai uyumluluk güvencesi olarak görülmemelidir.',
     ]],
-    ['Ödemeler', [
-      'Web ödemeleri merchant of record olarak Paddle tarafından işlenebilir. Mobil satın almalar platform uygunluğuna göre Google Play veya Apple App Store tarafından yönetilebilir.',
+    ['Hesaplar, Profil ve Hesap Silme', [
+      'Bazı Qor AI özellikleri hesapla çalışır; bu sayede favoriler, karşılaştırmalar, kişisel profil sinyalleri, Premium durumu, Qor Coin kullanımı ve geçmiş analizler daha tutarlı yönetilir. Kişisel profil, satın alma tercihlerinizi ve kullanım amacınızı daha iyi anlamaya yardımcı olur.',
+      `Kullanıcılar hesaplarını Profilim bölümünden Hesabımı sil akışını başlatarak silebilir. Profilim bölümüne erişemeyen kullanıcılar hesap silme taleplerini ${CONTACT_EMAIL} adresine e-posta ile gönderebilir. Hesap silme ve gizlilik talepleri için Qor AI’ın başka bir resmi iletişim adresi yoktur.`,
     ]],
-    ['Qor AI Kimler İçin', [
-      'Qor AI teknoloji ürünlerini, abonelikleri ve satın alma seçeneklerini para harcamadan önce karşılaştıran kullanıcılar için tasarlanır. Birkaç ürün linki olup karar öncesi daha net özet isteyen kullanıcılar için de uygundur.',
+    ['Bize Ulaşma', [
+      `Destek, gizlilik, hesap silme, iade, ödeme, ürün verisi, basın veya iş birliği konularında Qor AI’a yalnızca ${CONTACT_EMAIL} adresinden ulaşabilirsiniz. Mesajınızda Qor AI hesap e-postanızı ve talebinizin açık konusunu yazmanız daha hızlı yanıt almaya yardımcı olur.`,
     ]],
   ],
   faq: [
@@ -503,6 +567,14 @@ COPY.tr = {
     ]],
     ['Premium’u nasıl iptal ederim?', [
       'Web abonelikleri satın alma sonrası sağlanan fatura portalından veya destekle iletişime geçilerek iptal edilebilir. Uygulama mağazası abonelikleri genellikle Google Play veya Apple App Store hesap ayarlarından yönetilmelidir.',
+    ]],
+    ['Hesabımı nasıl silerim?', [
+      `Hesabınızı uygulama veya web tarafındaki Profilim bölümünden Hesabımı sil seçeneğini kullanarak silebilirsiniz. Bu işlem hesabınıza bağlı e-posta adresine onay bağlantısı gönderebilir; güvenlik için onay tamamlanmadan hesap kalıcı olarak silinmeyebilir.`,
+      `Profilim bölümüne erişemiyorsanız ${CONTACT_EMAIL} adresine "Hesap silme talebi" konulu bir e-posta gönderin. Mesajda Qor AI hesabınıza bağlı e-posta adresini yazın. Qor AI hesap silme ve gizlilik talepleri için başka bir resmi iletişim adresi kullanmaz.`,
+    ]],
+    ['Qor AI ile nasıl iletişime geçerim?', [
+      `Qor AI’ın destek, ödeme, iade, gizlilik, hesap silme, ürün verisi ve iş birliği talepleri için tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir. Başka bir iletişim e-postası yoktur.`,
+      'Daha hızlı destek için hesap e-postanızı, ilgili ürün linkini, ödeme işlem numarasını veya yaşadığınız sorunun kısa açıklamasını ekleyin; parola ya da kart bilgisi göndermeyin.',
     ]],
     ['Qor AI kart bilgilerimi saklar mı?', [
       'Hayır. Web kart bilgileri Paddle tarafından, uygulama mağazası ödemeleri ilgili mağaza tarafından yönetilir. Qor AI yalnızca Premium’u açmak için gereken sınırlı abonelik durumu verisini saklar.',
@@ -531,12 +603,12 @@ COPY.de = {
     email: CONTACT_EMAIL,
     home: 'Startseite',
     premium: 'Premium-Preise',
-    legalBrand: 'Qor AI wird unter der Qor AI Einzelunternehmer-/Sole-Proprietor-Marke betrieben. Falls für eine bestimmte Transaktion oder Verifizierung ein formeller rechtlicher Name erforderlich ist, kann er dem Zahlungsanbieter während des Onboardings bereitgestellt werden.',
+    legalBrand: `Qor AI ist der KI-gestützte Shopping-Assistent auf qorai.net und in der Qor AI Mobile-App. Der Dienst hilft beim Vergleichen von Produkten, Analysieren von Links, Prüfen von Abonnements, Erstellen von PC-Konfigurationen und bei Produktfragen vor dem Kauf. Die einzige offizielle öffentliche Kontaktadresse für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist ${CONTACT_EMAIL}.`,
   },
   terms: [
     ['Wer wir sind', [
       'Qor AI ist ein KI-gestützter Produktberater über qorai.net und die Qor AI Mobil-App. Der Dienst hilft bei Produktsuche, Spezifikationsvergleich, KI-Linkanalyse, visueller Produktsuche, Abo-Bewertung und produktbezogenen Fragen.',
-      'Diese Bedingungen gelten für Website, App, Premium-Abonnement, Kontofunktionen, KI-Chat, Linkanalyse, Produktvergleiche und Support. Qor AI wird unter der Qor AI Sole-Proprietor-Marke angeboten.',
+      `Diese Bedingungen gelten für Website, App, Premium-Abonnement, Kontofunktionen, KI-Chat, Linkanalyse, Produktvergleiche und Support. Für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist die einzige offizielle öffentliche Kontaktadresse ${CONTACT_EMAIL}.`,
     ]],
     ['Annahme der Bedingungen', [
       'Durch Zugriff, Kontoerstellung, Start einer Testphase, Kauf von Premium oder weitere Nutzung akzeptieren Sie diese Bedingungen und unsere Datenschutzerklärung. Wenn Sie nicht zustimmen, dürfen Sie den Dienst nicht nutzen.',
@@ -549,6 +621,11 @@ COPY.de = {
     ['Konten und Sicherheit', [
       'Einige Funktionen erfordern ein Konto. Sie müssen korrekte Angaben machen, Zugangsdaten schützen und uns bei Verdacht auf unbefugten Zugriff informieren.',
       'Mehrfachkonten zur Umgehung von Qor-Coin-Limits, Testlimits, Missbrauchsprüfungen oder Premium-Beschränkungen sind untersagt.',
+    ]],
+    ['Kontolöschung und Datenanfragen', [
+      'Sie können Ihr Qor AI Konto jederzeit im Profilbereich über Mein Konto löschen anstoßen. Zur Sicherheit kann Qor AI einen Bestätigungslink an die mit dem Konto verbundene E-Mail-Adresse senden.',
+      `Wenn Sie nicht auf Ihr Profil zugreifen können, senden Sie eine Anfrage zur Kontolöschung an ${CONTACT_EMAIL}. Nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos und senden Sie keine Passwörter, Kartendaten oder sensiblen Dokumente per E-Mail.`,
+      'Nach bestätigter Löschung werden Kontodaten, Favoriten, Vergleiche, gespeicherte Analysen, Benachrichtigungen und nutzerbezogene Supportnachrichten gelöscht, soweit technisch und rechtlich möglich. Öffentliche Community-Inhalte wie Bewertungen können anonymisiert werden; begrenzte Zahlungs-, Steuer-, Sicherheits- und Compliance-Daten können befristet aufbewahrt werden.',
     ]],
     ['Premium, Testphasen und Abrechnung', [
       'Qor AI Premium schaltet umfangreichere KI-Nutzung für Chat, visuellen Scanner, Produktanalyse, Linkanalyse, Linkvergleich, Abo-Analyse, Premium-Empfehlungen und erweiterten Preisverlauf frei. Die öffentliche Preisseite ist /premium.',
@@ -613,6 +690,11 @@ COPY.de = {
       'Kontodaten bleiben während aktiver Konten gespeichert. Abo- und Transaktionsdaten bleiben so lange gespeichert, wie es für Buchhaltung, Steuern, Betrugsprävention, Chargebacks und Compliance nötig ist.',
       'Nach Kontolöschung entfernen wir aktive Kontodaten nach Möglichkeit innerhalb von 30 Tagen. Backups, Logs und Zahlungsdaten können begrenzt weiterbestehen.',
     ]],
+    ['Ablauf der Kontolöschung', [
+      'Die Kontolöschung kann im Profilbereich der App oder Website über Mein Konto löschen gestartet werden. Der Ablauf kann eine E-Mail-Bestätigung verlangen, bevor das Konto endgültig entfernt wird.',
+      `Wenn Sie sich nicht anmelden können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos. Qor AI nutzt keine andere öffentliche Kontaktadresse für Kontolöschung oder Datenschutzanfragen.`,
+      'Nach Abschluss werden aktives Profil, Empfehlungssignale, Favoriten, Vergleiche, gespeicherte Analysen, Supportnachrichten und Benachrichtigungen soweit möglich entfernt. Erforderliche Zahlungs-, Steuer-, Sicherheits- oder Missbrauchspräventionsdaten können begrenzt aufbewahrt werden.',
+    ]],
     ['Sicherheit', [
       'Wir nutzen HTTPS, Zugriffskontrollen, tokenbasierte Authentifizierung, serverseitige Berechtigungen und Monitoring. Kein Onlinedienst ist perfekt sicher, aber wir reduzieren Risiken mit angemessenen Maßnahmen.',
     ]],
@@ -642,6 +724,10 @@ COPY.de = {
     ['Mobile App-Käufe', [
       'Käufe über Google Play oder Apple App Store werden vom jeweiligen Store kontrolliert. In manchen Fällen muss die Erstattung direkt dort beantragt werden.',
       'Bitte senden Sie Store-Bestell-ID, Qor AI Konto-E-Mail und Grund der Anfrage, damit wir den richtigen nächsten Schritt nennen können.',
+    ]],
+    ['Löschung, Kündigung und Erstattung sind getrennt', [
+      'Kontolöschung, Abo-Kündigung und Erstattung sind getrennte Vorgänge. Kontolöschung entfernt Kontodaten; App-Store-Abos müssen je nach Plattform weiterhin in Google Play oder Apple App Store gekündigt werden.',
+      `Für Erstattungsprüfung, Premium-Probleme oder Hilfe bei Kontolöschung kontaktieren Sie ${CONTACT_EMAIL}. Die Erstattungsfähigkeit hängt von Kaufkanal, Zeitpunkt, Nutzung und Zahlungsanbieter ab.`,
     ]],
     ['Wann Erstattungen abgelehnt werden können', [
       'Erstattungen können bei Missbrauch, Betrug, wiederholten Anfragen, Account-Sharing, Limitumgehung, Chargeback-Missbrauch, Verstoß gegen Bedingungen oder verspäteten Anfragen abgelehnt werden.',
@@ -680,43 +766,56 @@ COPY.de = {
     ]],
   ],
   contact: [
-    ['E-Mail-Support', [
-      `Für Support, Abrechnung, Erstattung, Datenschutz, Produktdaten, Partnerschaften oder Presse schreiben Sie an ${CONTACT_EMAIL}.`,
-      'Bitte nennen Sie Konto-E-Mail, relevanten Produktlink oder Transaktions-ID und eine kurze Beschreibung.',
+    ['Einzige offizielle Kontaktadresse', [
+      `Die einzige offizielle öffentliche Kontaktadresse für Qor AI Support, Konto, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten, Sicherheit, Presse und Partnerschaften ist ${CONTACT_EMAIL}. Qor AI betreibt keine andere allgemeine Support-E-Mail-Adresse.`,
+      'Nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos, den Betreff Ihrer Anfrage und hilfreichen Kontext wie Produktlink, Screenshot, Zahlungsanbieter oder Transaktionsreferenz. Senden Sie keine Passwörter, vollständigen Kartennummern, CVV-Codes, Ausweise oder unnötigen sensiblen Dateien.',
     ]],
-    ['Was Sie angeben sollten', [
-      'Bei Zahlungs- oder Erstattungsfragen nennen Sie Zahlungsanbieter, Transaktions-ID, Kaufdatum, Planname und die in Qor AI verwendete Konto-E-Mail. Bei Produktdatenproblemen senden Sie den Produktlink und das falsch wirkende Feld.',
-      'Bei Datenschutzanfragen geben Sie klar an, ob Sie Auskunft, Berichtigung, Löschung oder eine andere Datenschutzmaßnahme wünschen. Vor Kontomaßnahmen kann eine Verifizierung erforderlich sein.',
+    ['Anfragen zur Kontolöschung', [
+      'Am schnellsten löschen Sie Ihr Konto im Profilbereich der App oder Website über Mein Konto löschen. Der Ablauf kann einen E-Mail-Bestätigungslink senden, um die Kontoinhaberschaft zu prüfen.',
+      `Wenn Sie nicht auf Ihr Profil zugreifen können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos. Nicht verifizierbare Anfragen können aus Sicherheitsgründen verzögert oder abgelehnt werden.`,
     ]],
-    ['Antwortzeiten', [
-      'Wir versuchen, die meisten Nachrichten innerhalb weniger Werktage zu beantworten. Abrechnung, Erstattung und Datenschutz werden priorisiert.',
+    ['Abrechnung, Premium und Erstattung', [
+      'Bei Premium-Problemen, unerwarteten Abbuchungen oder Erstattungsanfragen nennen Sie Zahlungsanbieter, Kaufdatum, Plan, Transaktions-ID oder App-Store-Bestellnummer. Webzahlungen und mobile App-Store-Käufe können unterschiedlichen Regeln folgen.',
+      'Kündigung stoppt zukünftige Verlängerungen; Erstattung wird separat nach der Rückerstattungsrichtlinie und den Regeln des Zahlungsanbieters geprüft.',
     ]],
-    ['Wobei wir helfen', [
-      'Wir helfen bei Kontozugriff, Premium-Status, Paddle-Checkout, App-Store-Abos, Erstattungen, Produktdatenkorrekturen, Linkanalyse und Datenschutzanfragen.',
+    ['Produktdaten, Linkanalyse und KI-Ergebnisse', [
+      'Wenn Preis, Lagerbestand, Spezifikation, Bild oder Vergleichsergebnis eines Produkts falsch wirkt, senden Sie den Produktlink und das betroffene Feld. Meldungen helfen, Katalogqualität, Linkanalyse und KI-Vergleiche zu verbessern.',
+      'KI-Ausgaben können veraltet oder unvollständig sein. Prüfen Sie wichtige Informationen vor dem Kauf immer beim Händler oder Hersteller.',
     ]],
-    ['Sicherheits- und Missbrauchsmeldungen', [
-      'Wenn Sie unbefugten Kontozugriff vermuten, ein Sicherheitsproblem gefunden haben oder verdächtige Nutzung sehen, kontaktieren Sie uns mit möglichst viel Kontext. Senden Sie keine Passwörter, Kartennummern oder sensiblen Dokumente per normaler E-Mail.',
+    ['Antwortzeiten und Priorität', [
+      'Wir bemühen uns, die meisten Nachrichten innerhalb weniger Werktage zu beantworten. Konto, Sicherheit, Abrechnung, Erstattung und Datenschutz haben Priorität; Produktdatenkorrekturen können vom Katalogzyklus abhängen.',
+    ]],
+    ['Sicherheit und Missbrauch', [
+      `Wenn Sie unbefugten Zugriff, eine Sicherheitslücke, verdächtige Abrechnung oder Missbrauch bemerken, kontaktieren Sie ${CONTACT_EMAIL} mit klarer Beschreibung und sicheren Screenshots, falls hilfreich.`,
     ]],
   ],
   about: [
     ['Was Qor AI macht', [
-      'Qor AI ist ein Produktrecherche- und Entscheidungsassistent. Produktdaten, Spezifikationen, KI-Analyse, Linkanalyse, Vergleiche, Profilsignale und Abo-Intelligenz helfen bei besseren Kaufentscheidungen.',
+      'Qor AI ist ein KI-gestützter Recherche- und Entscheidungsassistent für Menschen, die vor dem Kauf vergleichen. Der Dienst hilft bei Telefonen, Laptops, GPUs, Kopfhörern, Kameras, Tablets, Fernsehern, Smartwatches, PC-Komponenten und digitalen Abonnements.',
+      'Qor AI bündelt Katalogsuche, Produktvergleiche, KI-Produktanalyse, Linkanalyse, visuellen Scanner, PC-Builder-Kompatibilität, Abo-Bewertung und KI-Chat in einem Arbeitsablauf.',
     ]],
     ['Was Qor AI verkauft', [
-      'Qor AI verkauft Premium-Zugang zu Softwarefunktionen: mehr KI-Nutzung, visueller Scanner, Linkanalyse, Produktanalyse, Abo-Analyse, erweiterter Preisverlauf und persönlichere Empfehlungen.',
+      'Qor AI ist nicht Verkäufer der im Katalog gezeigten Drittprodukte. Händler, Marktplätze und Hersteller bleiben verantwortlich für Verkauf, Versand, Rückgaben, Garantie, Bestand und Endpreise.',
+      'Qor AI verkauft Premium-Zugang zu Softwarefunktionen: umfangreichere KI-Nutzung, Produktanalyse, Linkanalyse, Linkvergleich, visueller Scanner, Abo-Analyse, Premium-Empfehlungen, tiefere Vergleichsausgaben und erweiterter Preisverlauf.',
     ]],
-    ['Unabhängigkeit', [
-      'Qor AI kann Affiliate-Provisionen aus externen Shoplinks erhalten. Provisionen bestimmen jedoch keine Scores, Premium-Empfehlungen oder KI-Ergebnisse.',
+    ['Für wen Qor AI gedacht ist', [
+      'Qor AI ist für Nutzer gedacht, die wissen möchten, ob ein Produkt den Kauf wert ist, welcher Laptop zum Budget passt, welches Telefon sinnvoller ist, welches Abo mehr Wert bietet oder ob PC-Teile kompatibel sind.',
+      'Es hilft Studierenden, Kreativen, Gamern, Berufsnutzern, Preis-Leistungs-Käufern, Menschen mit vielen Abos und allen, die mehrere Produktlinks vor einer Entscheidung vergleichen möchten.',
+    ]],
+    ['Unabhängigkeit und Affiliate', [
+      'Qor AI kann Affiliate-Provisionen aus externen Shoplinks erhalten. Provisionen bestimmen jedoch keine Scores, Premium-Empfehlungen oder KI-Ergebnisse. Produktfit, technischer Kontext, Wert und Nutzerbedarf sind wichtiger als kommerzielle Beziehungen.',
+      'Eine Weiterleitung zu einem Shop bedeutet nicht, dass Qor AI Verkäufer ist. Der Händler oder Marktplatz verantwortet Checkout, Lieferung, Garantie, Rückgabe, Bestand und Preisänderungen.',
     ]],
     ['Datenquellen und KI-Grenzen', [
       'Produktinformationen können aus öffentlichen Händlerseiten, Marktplätzen, Herstellerinformationen, Partnerfeeds, Nutzerinteraktionen und KI-Anreicherung stammen. Das beschleunigt Recherche, bedeutet aber auch, dass Preise, Verfügbarkeit oder Spezifikationen sich vor der nächsten Aktualisierung ändern können.',
       'KI-Analyse soll Abwägungen erklären und nützliche Fragen sichtbar machen. Sie ist keine Garantie, kein Händler-Versprechen, keine Rechtsberatung und keine endgültige Kompatibilitätszusage.',
     ]],
-    ['Zahlungen', [
-      'Webzahlungen können von Paddle als Merchant of Record verarbeitet werden. Mobile Käufe können je nach Plattform über Google Play oder Apple App Store laufen.',
+    ['Konten, Profil und Löschung', [
+      'Einige Qor AI Funktionen nutzen ein Konto, damit Favoriten, Vergleiche, persönliche Empfehlungssignale, Premium-Status, Qor-Coin-Nutzung und gespeicherte Analysen konsistent bleiben.',
+      `Nutzer können ihr Konto im Profilbereich über Mein Konto löschen entfernen. Wer keinen Profilzugriff hat, kann eine Anfrage zur Kontolöschung an ${CONTACT_EMAIL} senden. Qor AI nutzt keine andere öffentliche E-Mail-Adresse für Kontolöschung oder Datenschutzanfragen.`,
     ]],
-    ['Für wen Qor AI gedacht ist', [
-      'Qor AI ist für Menschen gedacht, die Technologieprodukte, Abonnements und Kaufoptionen vergleichen, bevor sie Geld ausgeben. Es hilft auch, wenn mehrere Produktlinks vorliegen und eine klarere Zusammenfassung vor der Entscheidung benötigt wird.',
+    ['Kontakt', [
+      `Für Support, Datenschutz, Kontolöschung, Erstattung, Abrechnung, Produktdaten, Presse oder Partnerschaften kontaktieren Sie Qor AI ausschließlich unter ${CONTACT_EMAIL}. Nennen Sie Ihre Qor AI Konto-E-Mail und einen klaren Betreff.`,
     ]],
   ],
   faq: [
@@ -731,6 +830,14 @@ COPY.de = {
     ]],
     ['Wie kündige ich Premium?', [
       'Web-Abonnements können über das nach dem Kauf bereitgestellte Abrechnungsportal oder über den Support gekündigt werden. App-Store-Abos müssen in der Regel in den Google Play oder Apple App Store Kontoeinstellungen verwaltet werden.',
+    ]],
+    ['Wie lösche ich mein Konto?', [
+      'Öffnen Sie in der Qor AI App oder Website den Profilbereich und wählen Sie Mein Konto löschen. Der Löschablauf kann einen Bestätigungslink an Ihre Konto-E-Mail senden.',
+      `Wenn Sie nicht auf Ihr Profil zugreifen können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die mit Qor AI verbundene E-Mail-Adresse. Es gibt keine andere offizielle öffentliche E-Mail-Adresse für Kontolöschung oder Datenschutzanfragen.`,
+    ]],
+    ['Wie kontaktiere ich Qor AI?', [
+      `Die einzige offizielle öffentliche Kontaktadresse für Support, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten und Partnerschaften ist ${CONTACT_EMAIL}.`,
+      'Nennen Sie je nach Thema Konto-E-Mail, Produktlink, Transaktionsreferenz oder kurze Problembeschreibung. Senden Sie keine Passwörter oder Kartendaten.',
     ]],
     ['Speichert Qor AI Kartendaten?', [
       'Nein. Web-Kartendaten verarbeitet Paddle, App-Store-Zahlungen verarbeitet der jeweilige Store. Qor AI speichert nur begrenzte Statusdaten zur Premium-Freischaltung.',
@@ -772,21 +879,6 @@ export default function LegalPage({ kind }) {
 
   return (
     <div className="legal-page">
-      <section className="legal-hero">
-        <div className="container legal-hero-inner">
-          <span className="legal-mark">{meta.icon}</span>
-          <div>
-            <p className="legal-kicker">QOR AI</p>
-            <h1>{title}</h1>
-            <p>{desc}</p>
-            <div className="legal-meta">
-              <span>{common.updated}</span>
-              <span>qorai.net{meta.path}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="container legal-shell">
         <aside className="legal-toc">
           <strong>{common.onThisPage}</strong>
@@ -796,6 +888,12 @@ export default function LegalPage({ kind }) {
         </aside>
 
         <article className="legal-doc">
+          <header className="legal-doc-head">
+            <h1>{title}</h1>
+            <p>{desc}</p>
+            <span className="legal-updated">{common.updated}</span>
+          </header>
+
           <div className="legal-note">
             <strong>Qor AI</strong>
             <p>{common.legalBrand}</p>
@@ -824,6 +922,8 @@ export default function LegalPage({ kind }) {
           <Link to="/privacy">{textFor(lang, 'privacy')[0]}</Link>
           <Link to="/refund">{textFor(lang, 'refund')[0]}</Link>
           <Link to="/cookies">{textFor(lang, 'cookies')[0]}</Link>
+          <Link to="/about">{textFor(lang, 'about')[0]}</Link>
+          <Link to="/faq">{textFor(lang, 'faq')[0]}</Link>
           <Link to="/contact">{textFor(lang, 'contact')[0]}</Link>
         </aside>
       </section>
