@@ -14,6 +14,7 @@ import {
 import AiText from '../components/AiText.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
+import AiWorkboard from '../components/AiWorkboard.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
@@ -700,7 +701,12 @@ export default function LinkAnalysis() {
       {err && <div className="la-err">{err}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
-        <LoadingWorkboard phase={phase} isCompare={filled > 1} L={L} t={t} />
+        <AiWorkboard
+          lang={lang}
+          mode={phase === 'identifying' ? 'linkIdentify'
+            : phase === 'quizLoading' ? 'linkQuiz'
+              : filled > 1 ? 'linkCompare' : 'linkAnalyze'}
+        />
       )}
 
       {phase === 'quiz' && base && questions.length > 0 && (

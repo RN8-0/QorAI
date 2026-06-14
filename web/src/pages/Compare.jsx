@@ -26,7 +26,7 @@ import AiAnalysisView, {
   withFreshnessRetryInstruction,
 } from '../components/AiAnalysis.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
-import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
+import AiWorkboard from '../components/AiWorkboard.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
@@ -734,7 +734,7 @@ export default function Compare() {
                       </button>
                     )}
                     {!aiText && aiPhase === 'quizLoading' && (
-                      <AiLoadingSteps lang={lang} mode="quizCompare" />
+                      <AiWorkboard lang={lang} mode="quizCompare" />
                     )}
                     {!aiText && aiPhase === 'quiz' && aiQuestions.length > 0 && (
                       <QuizFlow
@@ -750,7 +750,7 @@ export default function Compare() {
                       />
                     )}
                     {!aiText && aiPhase === 'analyzing' && (
-                      <AiLoadingSteps lang={lang} mode="compare" stage={aiStage} />
+                      <AiWorkboard lang={lang} mode="compare" stage={aiStage} />
                     )}
                     {!aiText && aiPhase === 'error' && (
                       <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy || !aiAnswers.length}>

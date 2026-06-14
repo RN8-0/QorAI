@@ -19,6 +19,7 @@ import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
+import AiWorkboard from '../components/AiWorkboard.jsx';
 import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
@@ -471,7 +472,7 @@ export default function Subscriptions() {
       )}
 
       {phase === 'quizLoading' && (
-        <SubsLoadingWorkboard phase={phase} count={pendingItems.length || selected.length} L={L} t={t} />
+        <AiWorkboard lang={lang} mode="subQuiz" />
       )}
 
       {phase === 'quiz' && questions.length > 0 && (
@@ -532,7 +533,7 @@ export default function Subscriptions() {
       )}
 
       {phase === 'analyzing' && (
-        <SubsLoadingWorkboard phase={phase} count={pendingItems.length || selected.length} L={L} t={t} />
+        <AiWorkboard lang={lang} mode={(pendingItems.length || selected.length) > 1 ? 'subCompare' : 'subAnalyze'} />
       )}
 
       {phase === 'result' && result && (

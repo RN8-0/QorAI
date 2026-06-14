@@ -97,6 +97,20 @@ const ICONS = {
   finance: (<><path d="M4 20h16" /><path d="M6 18v-5.5M11 18V9M16 18V6" /><path d="M5 13l4-3.5 3 2 5-5" /></>),
   other: (<><circle cx="12" cy="12" r="8.4" /><path d="M3.6 12h16.8M12 3.6c2.5 2.6 2.5 14.2 0 16.8M12 3.6c-2.5 2.6-2.5 14.2 0 16.8" /></>),
 
+  // ── hobbies (each a distinct glyph — no repeated stars) ───────────────────────
+  photography: CAMERA,
+  video: CLAPPER,
+  music: (<><circle cx="7" cy="17" r="2.4" /><circle cx="17.4" cy="15" r="2.4" /><path d="M9.4 17V6l10-2v11" /></>),
+  coding: (<><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.4 5l-3 14" /></>),
+  pc_building: (<><path d="M15.6 7.6a3.4 3.4 0 0 1-4.6 4.2L5 17.8 6.2 19l5.9-5.9a3.4 3.4 0 0 0 4.2-4.6l-2.1 2.1-1.6-.4-.3-1.6z" /></>),
+  streaming: PLAY,
+  fitness: (<><path d="M6.4 6.4v11M17.6 6.4v11M3.8 9v5M20.2 9v5M6.4 12h11.2" /></>),
+  travel: (<><path d="M21 5 3 11.4l6.2 2 2 6.2 3.2-5.2z" /><path d="M9.2 13.4 14.4 9.8" /></>),
+  reading: BOOK,
+  smart_home: (<><path d="M4 11l8-6.6 8 6.6" /><path d="M6 9.6V20h12V9.6" /><path d="M9.8 13.9a3.2 3.2 0 0 1 4.4 0" /><circle cx="12" cy="16.7" r="1" fill="currentColor" stroke="none" /></>),
+  diy: (<><path d="M14.2 7.2 17.4 4l2.6 2.6-3.2 3.2-1.3-1.3-7.6 7.6-1.4-1.4 7.6-7.6z" /><path d="M4.6 16.8 7 19.2" /></>),
+  cooking: (<><path d="M4 12h12a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" /><path d="M16 12h2.4a2 2 0 1 0 0-4H18" /><path d="M7.6 8.6c0-1.4 1-2 1-3.2M11 8.6c0-1.4 1-2 1-3.2" /></>),
+
   // ── category fallbacks (only when a product image is missing) ────────────────
   smartphones: (<><rect x="7" y="3" width="10" height="18" rx="2.6" /><path d="M11 18h2" /></>),
   tablets: (<><rect x="5" y="3" width="14" height="18" rx="2.4" /><path d="M11 18h2" /></>),

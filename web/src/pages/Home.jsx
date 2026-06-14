@@ -12,7 +12,19 @@ import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
+import { aiUserProfile } from '../lib/qorCoins';
 import { productPath } from '../lib/routes';
+
+// Onboarding category slugs whose Typesense `category` value differs, so the
+// home "For You" feed actually finds products for them. Mirrors the quiz visuals.
+const FEED_CAT_ALIAS = {
+  gpus: 'graphics_cards', consoles: 'gaming_consoles', 'media-players': 'media_players',
+  'smart-rings': 'smart_rings', 'action-cameras': 'dashcams', 'security-cameras': 'ip_cameras',
+  'ip-cameras': 'ip_cameras', 'vr-headsets': 'vr_headsets', 'robot-vacuums': 'robot_vacuums',
+  'e-readers': 'e_readers', cases: 'pc_cases', coolers: 'cpu_coolers', speakers: 'audio_systems',
+  soundbars: 'audio_systems', cameras: 'camera_lenses', lenses: 'camera_lenses', tripods: 'gimbals',
+};
+const feedCategory = (c) => FEED_CAT_ALIAS[c] || c;
 import Reveal from '../components/Reveal.jsx';
 import './Home.css';
 
@@ -177,14 +189,25 @@ export default function Home() {
     },
   });
 
+  // "For You" must reflect THIS account, not just this browser. Recent
+  // categories live in shared localStorage (so a second account on the same
+  // browser saw the first account's feed) — lead with the signed-in user's
+  // onboarding profile (rebuilt from the persisted profileVector) so the feed
+  // is personalized and refreshes when the account changes.
   useEffect(() => {
     let live = true;
-    getHomeFeed(getRecentCategories())
+    setLoading(true);
+    const prof = aiUserProfile(user);
+    const profileCats = [prof.primaryCategory, ...(prof.interestCategories || [])]
+      .filter(Boolean)
+      .map(feedCategory);
+    const prefCats = [...new Set([...profileCats, ...getRecentCategories().map(feedCategory)])];
+    getHomeFeed(prefCats)
       .then((f) => { if (live) setFeed(f); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
-  }, []);
+  }, [user?.id, user?.profileVector]);
 
   useEffect(() => {
     const refreshRecent = () => setRecent(getRecentProducts());

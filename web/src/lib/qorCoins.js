@@ -72,12 +72,19 @@ export function hasCompletedQuiz(user) {
 export function aiUserProfile(user) {
   if (!user) return {};
   const vector = user.profileVector && typeof user.profileVector === 'object' ? user.profileVector : {};
-  // Hobbies feed quiz/AI personalization. Prefer the dedicated field; fall back
-  // to the `hobby_*` keys captured in the onboarding profile vector so it still
-  // works even if the PB column has not been provisioned yet.
-  const hobbies = Array.isArray(user.hobbies) && user.hobbies.length
-    ? user.hobbies
-    : Object.keys(vector).filter((k) => k.startsWith('hobby_')).map((k) => k.slice(6));
+  // The onboarding signals (profession, hobbies, priorities, categories…) drive
+  // how the AI quizzes are personalized. Some PocketBase deployments don't have
+  // every column and silently drop those fields on save, so the dedicated field
+  // comes back empty and the AI falls back to generic (often software-leaning)
+  // questions even for, say, a teacher. The profileVector JSON *does* persist
+  // and encodes every signal, so reconstruct any empty field from it.
+  const vecVals = (prefix) => Object.keys(vector)
+    .filter((k) => k.startsWith(prefix) && vector[k])
+    .map((k) => k.slice(prefix.length))
+    .filter(Boolean);
+  const arrField = (val, prefix) => (Array.isArray(val) && val.length ? val : vecVals(prefix));
+  const strField = (val, prefix) => (val || vecVals(prefix)[0] || '');
+  const hobbies = arrField(user.hobbies, 'hobby_');
   // Question texts the user has already answered in earlier quizzes, so the
   // generator can skip what we already know instead of re-asking it.
   const pastQuizQuestions = [];
@@ -96,15 +103,15 @@ export function aiUserProfile(user) {
     gender: user.gender || '',
     ecosystem: user.ecosystem || 'mixed',
     budgetRange: user.budgetRange || user.budgetPreference || '',
-    priorities: Array.isArray(user.priorities) ? user.priorities : [],
-    currentDevices: Array.isArray(user.currentDevices) ? user.currentDevices : [],
-    subscriptions: Array.isArray(user.subscriptions) ? user.subscriptions : [],
+    priorities: arrField(user.priorities, 'priority_'),
+    currentDevices: arrField(user.currentDevices, 'device_'),
+    subscriptions: arrField(user.subscriptions, 'subscription_'),
     country: user.country || '',
     language: user.language || '',
     currency: user.currency || '',
-    interestCategories: Array.isArray(user.interestCategories) ? user.interestCategories : [],
-    usageIntent: user.usageIntent || user.usageReason || '',
-    profession: user.profession || '',
+    interestCategories: arrField(user.interestCategories, 'category_'),
+    usageIntent: strField(user.usageIntent || user.usageReason, 'usage_'),
+    profession: strField(user.profession, 'profession_'),
     hobbies,
     pastQuizQuestions: pastQuizQuestions.slice(0, 24),
     primaryCategory: user.primaryCategory || '',

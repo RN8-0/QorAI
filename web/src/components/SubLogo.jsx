@@ -113,6 +113,16 @@ const WORDMARKS = {
   'notion': { text: 'N', color: '#111827', bg: '#FFFFFF' },
   'canva': { text: 'C', color: '#7D2AE8', bg: '#FFFFFF' },
   'hostinger': { text: 'H', color: '#673DE6', bg: '#FFFFFF' },
+  // Brands Simple Icons removed (no slug) — keep a crisp branded wordmark so the
+  // quiz circle is never empty.
+  'adobe cc': { text: 'Ai', color: '#FFFFFF', bg: '#FA0F00' },
+  'adobe': { text: 'A', color: '#FA0F00', bg: '#FFFFFF' },
+  'slack': { text: '#', color: '#FFFFFF', bg: '#4A154B' },
+  'nintendo online': { text: 'NS', color: '#FFFFFF', bg: '#E60012' },
+  'amazon prime': { text: 'prime', color: '#00A8E1', bg: '#F4FBFF' },
+  'xbox game pass': { text: 'X', color: '#107C10', bg: '#FFFFFF' },
+  'midjourney': { text: 'MJ', color: '#FFFFFF', bg: '#111827' },
+  'chatgpt plus': { text: 'GPT', color: '#111827', bg: '#FFFFFF' },
 };
 
 const LOCAL_LOGOS = {
@@ -252,7 +262,6 @@ function domainFor(name, website = '') {
 export default function SubLogo({ name, website = '', logo = '', slug = '', size = 40, radius = 10 }) {
   const wordmark = wordmarkFor(name);
   const urls = useMemo(() => {
-    const domain = domainFor(name, website);
     const iconSlug = slug || simpleIconSlug(name);
     const localLogo = localLogoFor(name);
     const list = [];
@@ -263,8 +272,13 @@ export default function SubLogo({ name, website = '', logo = '', slug = '', size
     if (localLogo) list.push(localLogo);
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
     if (iconSlug && iconSlug !== slug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
-    if (domain) {
-      list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
+    // Clearbit serves a gray PLACEHOLDER image for unknown domains — a
+    // "successful" load that never fires onError, which left some quiz circles
+    // looking empty. Only fall back to it when the quiz didn't give us an
+    // explicit Simple Icons slug; otherwise drop straight to the wordmark/letter.
+    if (!slug) {
+      const domain = domainFor(name, website);
+      if (domain) list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
     }
     return [...new Set(list)];
   }, [name, website, logo, slug, size]);

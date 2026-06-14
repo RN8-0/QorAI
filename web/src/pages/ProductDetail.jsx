@@ -26,7 +26,7 @@ import AiAnalysisView, {
   parseAiJson,
   withFreshnessRetryInstruction,
 } from '../components/AiAnalysis.jsx';
-import AiLoadingSteps from '../components/AiLoadingSteps.jsx';
+import AiWorkboard from '../components/AiWorkboard.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
@@ -1255,8 +1255,8 @@ export default function ProductDetail() {
                     <div className="pd-ai-intro">
                       {aiFull.busy ? (
                         aiFull.phase === 'analyzing'
-                          ? <AiLoadingSteps lang={lang} mode="product" stage={aiFull.stage} />
-                          : <AiLoadingSteps lang={lang} mode="quizProduct" />
+                          ? <AiWorkboard lang={lang} mode="product" stage={aiFull.stage} />
+                          : <AiWorkboard lang={lang} mode="quizProduct" />
                       ) : (
                         <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={startFullAnalysisQuiz}>
                           {L('Start analysis', 'Analizi başlat', 'Analyse starten')}

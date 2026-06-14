@@ -397,6 +397,45 @@ function emptyAnswers(user) {
   };
 }
 
+// Some PocketBase deployments don't have every onboarding column (schema drift
+// vs. the app), so they silently drop fields like interestCategories / hobbies /
+// profession on save and echo them back empty — which made the summary show
+// "—" everywhere. The profileVector JSON *does* persist and encodes every
+// signal, so we rebuild the answers from it whenever a dedicated field is empty.
+function valuesFromVector(vector, prefix) {
+  return Object.keys(vector || {})
+    .filter((k) => k.startsWith(prefix) && vector[k])
+    .map((k) => k.slice(prefix.length))
+    .filter(Boolean);
+}
+
+function profileAnswers(user) {
+  const base = emptyAnswers(user);
+  const vector = user?.profileVector && typeof user.profileVector === 'object' ? user.profileVector : {};
+  if (!base.interestCategories.length) base.interestCategories = valuesFromVector(vector, 'category_');
+  if (!base.priorities.length) base.priorities = valuesFromVector(vector, 'priority_');
+  if (!base.currentDevices.length) base.currentDevices = valuesFromVector(vector, 'device_');
+  if (!base.hobbies.length) base.hobbies = valuesFromVector(vector, 'hobby_');
+  if (!base.profession) base.profession = valuesFromVector(vector, 'profession_')[0] || '';
+  if (!base.usageIntent) base.usageIntent = valuesFromVector(vector, 'usage_')[0] || '';
+  if (!base.ageRange) base.ageRange = valuesFromVector(vector, 'age_')[0] || '';
+  if (!base.ecosystem) {
+    base.ecosystem = vector.apple_affinity ? 'apple'
+      : vector.windows_affinity ? 'windows'
+        : vector.google_affinity ? 'google'
+          : vector.android_affinity ? 'android' : '';
+  }
+  if (!base.budgetRange && typeof vector.budget_score === 'number') {
+    const b = vector.budget_score;
+    base.budgetRange = b <= 0.25 ? 'low' : b <= 0.55 ? 'mid' : b <= 0.75 ? 'high' : 'premium';
+  }
+  const subsFromVec = valuesFromVector(vector, 'subscription_');
+  if ((!base.subscriptions.length || (base.subscriptions.length === 1 && base.subscriptions[0] === 'none')) && subsFromVec.length) {
+    base.subscriptions = subsFromVec;
+  }
+  return base;
+}
+
 // Mirrors the app's onboarding profile vector (lib/.../quiz_screen.dart) so the
 // same personalization signals feed the AI/algorithm on web and mobile.
 function buildVector(answers, primaryCategory) {
@@ -456,13 +495,22 @@ export default function Quiz() {
   const { user, openAuth } = useAuth();
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const nextPath = params.get('next') || '/';
+  // Where to send the user once the quiz is done. The onboarding gate captures
+  // whatever page they were on, but landing them on Terms / a policy page (or
+  // back on the quiz) after finishing feels broken — fall back to Home for those.
+  const POST_QUIZ_BLOCKED = ['/quiz', '/terms', '/privacy', '/refund', '/cookies', '/contact', '/about', '/faq'];
+  const rawNext = params.get('next') || '/';
+  const nextPath = POST_QUIZ_BLOCKED.some((p) => rawNext === p || rawNext.startsWith(`${p}?`) || rawNext.startsWith(`${p}/`)) ? '/' : rawNext;
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
 
   useSeo({ title: `${t('quiz.title')} — Qor AI`, description: t('quiz.subtitle'), path: '/quiz' });
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(() => emptyAnswers(user));
+  // The exact selections the user submitted — kept so the completion summary
+  // always shows what they picked, even if PocketBase drops some columns and
+  // the refreshed `user` (which re-seeds `answers`) comes back sparse.
+  const [finalAnswers, setFinalAnswers] = useState(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
@@ -594,6 +642,7 @@ export default function Quiz() {
     if (busy) return;
     setBusy(true);
     setErr('');
+    setFinalAnswers({ ...answers });
     const primaryCategory = answers.interestCategories[0] || 'smartphones';
     const submittedAt = new Date().toISOString();
     const answersList = snapshot();
@@ -650,18 +699,21 @@ export default function Quiz() {
   // Quiz is once-only: a freshly-finished (done) OR previously-completed user
   // sees the profile summary instead of the questions — no "retake".
   if (done || hasCompletedQuiz(user)) {
-    const heroCat = answers.interestCategories[0] || 'smartphones';
+    // Prefer exactly what was just submitted; otherwise rebuild from the saved
+    // profile (+ vector) so a returning user still sees a full recap.
+    const view = finalAnswers || profileAnswers(user);
+    const heroCat = view.interestCategories[0] || 'smartphones';
     const heroImg = coverMap[heroCat] || '';
-    const catLabels = (answers.interestCategories || []).slice(0, 6).map((v) => optionLabel(STEPS[0], v, lang));
-    const devLabels = (answers.currentDevices || []).filter((x) => x !== 'none').slice(0, 5).map((v) => optionLabel(STEPS[4], v, lang));
-    const prioLabels = (answers.priorities || []).map((v) => optionLabel(STEPS[3], v, lang));
-    const subs = (answers.subscriptions || []).filter((x) => x !== 'none');
-    const eco = answers.ecosystem ? optionLabel(STEPS[1], answers.ecosystem, lang) : '';
-    const budget = answers.budgetRange ? optionLabel(STEPS[2], answers.budgetRange, lang) : '';
-    const usage = answers.usageIntent ? optionLabel(STEPS[5], answers.usageIntent, lang) : '';
-    const prof = answers.profession ? optionLabel(STEPS[7], answers.profession, lang) : '';
-    const hobbyLabels = (answers.hobbies || []).filter((x) => x !== 'other').map((v) => optionLabel(STEPS[8], v, lang));
-    const age = answers.ageRange || '';
+    const catLabels = (view.interestCategories || []).slice(0, 6).map((v) => optionLabel(STEPS[0], v, lang));
+    const devLabels = (view.currentDevices || []).filter((x) => x !== 'none').slice(0, 5).map((v) => optionLabel(STEPS[4], v, lang));
+    const prioLabels = (view.priorities || []).map((v) => optionLabel(STEPS[3], v, lang));
+    const subs = (view.subscriptions || []).filter((x) => x !== 'none');
+    const eco = view.ecosystem ? optionLabel(STEPS[1], view.ecosystem, lang) : '';
+    const budget = view.budgetRange ? optionLabel(STEPS[2], view.budgetRange, lang) : '';
+    const usage = view.usageIntent ? optionLabel(STEPS[5], view.usageIntent, lang) : '';
+    const prof = view.profession ? optionLabel(STEPS[7], view.profession, lang) : '';
+    const hobbyLabels = (view.hobbies || []).filter((x) => x !== 'other').map((v) => optionLabel(STEPS[8], v, lang));
+    const age = view.ageRange || '';
     const dash = (arr) => arr.filter(Boolean).join(' · ') || '—';
     const chips = [eco, budget, prof, usage, ...catLabels.slice(0, 3)].filter(Boolean);
     const headline = catLabels.slice(0, 2).join(' · ') || t('quiz.title');
@@ -776,13 +828,15 @@ export default function Quiz() {
                   style={{ '--i': idx % REVEAL_BATCH }}
                 >
                   <span className="oq-art">
-                    <OptionVisual
-                      step={current}
-                      option={o}
-                      coverMap={coverMap}
-                      broken={brokenImages[imageKey]}
-                      onBroken={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
-                    />
+                    <span className="oq-art-media">
+                      <OptionVisual
+                        step={current}
+                        option={o}
+                        coverMap={coverMap}
+                        broken={brokenImages[imageKey]}
+                        onBroken={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
+                      />
+                    </span>
                     <span className="oq-check">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
                     </span>

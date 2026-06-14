@@ -241,7 +241,7 @@ function quizGenerationPrompt(language) {
   return `You are Qor AI's product quiz engine. Generate a focused personalized quiz
 (8-10 questions) to understand the user's needs for a specific product category.
 
-LANGUAGE: Generate ALL questions and options in ${langName}.
+OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
 - Questions must be relevant to the product CATEGORY
@@ -297,7 +297,7 @@ function compareQuizGenerationPrompt(language) {
   return `You are Qor AI's comparison quiz engine. Generate a focused, high-signal quiz
 (8-10 questions) that helps choose between multiple product links.
 
-LANGUAGE: Generate ALL questions and options in ${langName}.
+OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
 - Questions must compare the listed products, not ask generic shopping questions
@@ -362,7 +362,7 @@ function subscriptionQuizPrompt(names, isCompare, language) {
   return `You are Qor AI's subscription quiz engine. Generate a focused personalized quiz
 (8-10 questions) to understand the user's needs for: ${names}.
 
-LANGUAGE: Generate ALL questions and options in ${langName}.
+OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the service names or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the context. Only official brand/service names may stay as-is.
 
 The goal: understand how the user uses ${isCompare ? 'these services' : 'this service'},
 their specific habits, preferences, and expectations.
