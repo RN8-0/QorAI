@@ -231,7 +231,56 @@ const STATIC_ROUTES = [
     dir: 'premium', path: '/premium', changefreq: 'weekly', priority: '0.8',
     seo: {
       title: 'Premium — Qor AI',
-      description: 'Qor AI Premium planlarını karşılaştır: ücretsiz kullanım, Pro aylık ve Pro yıllık AI analiz özellikleri.',
+      description: 'Qor AI Premium fiyatlarını ve özelliklerini incele: AI Chat, görsel tarayıcı, link analizi, abonelik analizi ve premium öneriler.',
+    },
+  },
+  {
+    dir: 'terms', path: '/terms', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'Kullanım Koşulları — Qor AI',
+      description: 'Qor AI kullanım koşulları: Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal, ödeme ve hizmet sınırları.',
+    },
+  },
+  {
+    dir: 'privacy', path: '/privacy', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'Gizlilik Politikası — Qor AI',
+      description: 'Qor AI gizlilik politikası: hesap verileri, AI girdileri, ödeme ve abonelik verileri, çerezler, analizler, saklama ve kullanıcı hakları.',
+    },
+  },
+  {
+    dir: 'refund', path: '/refund', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'İade Politikası — Qor AI',
+      description: 'Qor AI iade politikası: Paddle web satın almaları, yenilemeler, mobil uygulama mağazası satın almaları ve iade talep süreci.',
+    },
+  },
+  {
+    dir: 'cookies', path: '/cookies', changefreq: 'monthly', priority: '0.4',
+    seo: {
+      title: 'Çerez Politikası — Qor AI',
+      description: 'Qor AI çerez politikası: zorunlu depolama, tarayıcı dili, analiz, performans ve affiliate atıf çerezleri.',
+    },
+  },
+  {
+    dir: 'contact', path: '/contact', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'Bize Ulaşın — Qor AI',
+      description: 'Qor AI destek, ödeme, iade, gizlilik, ürün verisi, iş birliği ve basın talepleri için iletişim bilgileri.',
+    },
+  },
+  {
+    dir: 'about', path: '/about', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'Qor AI Hakkında',
+      description: 'Qor AI nedir, Premium ne satar, ürün önerileri nasıl çalışır ve ödeme akışları nasıl yönetilir.',
+    },
+  },
+  {
+    dir: 'faq', path: '/faq', changefreq: 'monthly', priority: '0.5',
+    seo: {
+      title: 'SSS — Qor AI',
+      description: 'Qor AI Premium, ödeme, iade, gizlilik, AI doğruluğu ve ürün verileri hakkında sık sorulan sorular.',
     },
   },
   {

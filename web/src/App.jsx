@@ -23,6 +23,7 @@ import Quiz from './pages/Quiz.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
 import Go from './pages/Go.jsx';
+import LegalPage from './pages/Legal.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -64,6 +65,13 @@ export default function App() {
           <Route path="/go" element={<Go />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/terms" element={<LegalPage kind="terms" />} />
+          <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+          <Route path="/refund" element={<LegalPage kind="refund" />} />
+          <Route path="/cookies" element={<LegalPage kind="cookies" />} />
+          <Route path="/contact" element={<LegalPage kind="contact" />} />
+          <Route path="/about" element={<LegalPage kind="about" />} />
+          <Route path="/faq" element={<LegalPage kind="faq" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -8,17 +8,12 @@ export const LANGS = [
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
 
-// Only languages that actually have a string table are offered in the
-// picker — the rest get added incrementally without showing half-empty.
+// Only languages that actually have a string table are enabled. There is no
+// manual language picker on the site: the active language follows the browser.
 const AVAILABLE = LANGS.filter((l) => STRINGS[l.code]);
 const CODES = AVAILABLE.map((l) => l.code);
 const RTL = new Set(['ar']);
 function detectLang() {
-  try {
-    const stored = localStorage.getItem('lang');
-    if (stored && CODES.includes(stored)) return stored;
-  } catch (e) {}
-
   const nav = (navigator.languages || [navigator.language || 'en'])
     .map((l) => String(l).slice(0, 2).toLowerCase());
   
@@ -41,10 +36,14 @@ export function LangProvider({ children }) {
   const [lang, setLangState] = useState(detectLang);
 
   useEffect(() => { applyDocLang(lang); }, [lang]);
+  useEffect(() => {
+    const onLanguageChange = () => setLangState(detectLang());
+    window.addEventListener('languagechange', onLanguageChange);
+    return () => window.removeEventListener('languagechange', onLanguageChange);
+  }, []);
 
   const setLang = useCallback((code) => {
     if (!CODES.includes(code)) return;
-    try { localStorage.setItem('lang', code); } catch (e) {}
     setLangState(code);
   }, []);
 

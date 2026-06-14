@@ -7,8 +7,9 @@ import './Settings.css';
 
 export default function Settings() {
   const { theme, set: setTheme } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user, openAuth, logout } = useAuth();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('settings.title')} — Qor AI`, noindex: true });
 
   return (
@@ -58,9 +59,10 @@ export default function Settings() {
       <section className="st-card fade-up">
         <h2>{t('settings.links')}</h2>
         <div className="st-links">
-          <a href="/privacy.html">🔒 {t('footer.privacy')}</a>
-          <a href="/terms.html">📄 {t('footer.terms')}</a>
-          <a href="/faq.html">❓ {t('settings.faq')}</a>
+          <Link to="/privacy">🔒 {t('footer.privacy')}</Link>
+          <Link to="/terms">📄 {t('footer.terms')}</Link>
+          <Link to="/refund">↩ {L('Refund Policy', 'İade Politikası', 'Rückerstattung')}</Link>
+          <Link to="/faq">❓ {t('settings.faq')}</Link>
           <a href="https://play.google.com/store/apps/details?id=com.compair.app"
             target="_blank" rel="noopener">▶️ {t('header.googlePlay')}</a>
         </div>

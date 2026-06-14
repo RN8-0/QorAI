@@ -35,15 +35,16 @@ export default function Footer() {
             </div>
             <div>
               <h5>{L('Company', 'Şirket', 'Unternehmen')}</h5>
-              <a href="/about.html">{L('About us', 'Hakkımızda', 'Über uns')}</a>
-              <a href="/faq.html">{L('FAQ', 'SSS', 'FAQ')}</a>
-              <a href="/contact.html">{L('Contact us', 'Bize ulaşın', 'Kontaktieren')}</a>
+              <Link to="/about">{L('About us', 'Hakkımızda', 'Über uns')}</Link>
+              <Link to="/faq">{L('FAQ', 'SSS', 'FAQ')}</Link>
+              <Link to="/contact">{L('Contact us', 'Bize ulaşın', 'Kontaktieren')}</Link>
             </div>
             <div>
               <h5>{t('footer.legal')}</h5>
-              <a href="/privacy.html">{t('footer.privacy')}</a>
-              <a href="/terms.html">{t('footer.terms')}</a>
-              <a href="/cookies.html">{L('Cookies', 'Çerezler', 'Cookies')}</a>
+              <Link to="/privacy">{t('footer.privacy')}</Link>
+              <Link to="/terms">{t('footer.terms')}</Link>
+              <Link to="/refund">{L('Refund Policy', 'İade Politikası', 'Rückerstattung')}</Link>
+              <Link to="/cookies">{L('Cookies', 'Çerezler', 'Cookies')}</Link>
             </div>
           </div>
         </div>

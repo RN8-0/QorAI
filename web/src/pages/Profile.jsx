@@ -203,8 +203,8 @@ function Overview({ user, ids, t }) {
         <div className="pf-link-row">
           <Link to="/">📦 {t('nav.home')}</Link>
           <Link to="/compare">⚖️ {t('nav.compare')}</Link>
-          <a href="/privacy.html">🔒 {t('footer.privacy')}</a>
-          <a href="/terms.html">📄 {t('footer.terms')}</a>
+          <Link to="/privacy">🔒 {t('footer.privacy')}</Link>
+          <Link to="/terms">📄 {t('footer.terms')}</Link>
         </div>
       </div>
 

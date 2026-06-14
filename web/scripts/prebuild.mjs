@@ -1,7 +1,7 @@
 // Pre-build: clear the previous SPA output from website/ so stale hashed
-// chunks and route shells don't pile up. The static pages we must keep
-// (privacy.html, terms.html, email-verify.html, reset-password.html,
-// css/, assets/) are never touched.
+// chunks and route shells don't pile up. Legacy root legal pages are removed
+// because clean routes like /privacy must resolve to the generated SPA route
+// shell, not to stale privacy.html files.
 
 import { rmSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
@@ -12,6 +12,7 @@ const site = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'website'
 const wipe = [
   'spa', 'catalog', 'compare', 'ai-chat', 'pc-builder',
   'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'settings', 'product',
+  'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
 ];
 
 // product/ holds 100k+ tiny html files. Node's recursive rmSync is flaky on
@@ -46,5 +47,9 @@ function nukeDir(dir) {
 
 for (const dir of wipe) {
   nukeDir(join(site, dir));
+}
+
+for (const file of ['terms.html', 'privacy.html', 'cookies.html', 'contact.html', 'about.html', 'faq.html']) {
+  rmSync(join(site, file), { force: true });
 }
 console.log('[prebuild] cleared previous SPA output');
