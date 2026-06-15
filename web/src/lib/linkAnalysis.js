@@ -244,7 +244,7 @@ function quizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
+- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
 - Questions must be relevant to the product CATEGORY.
 - Choose 8 questions for simple products, 9-10 for complex/high-consideration products.
 - Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
@@ -298,7 +298,7 @@ function compareQuizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
+- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
 - The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
 - Choose 8 questions for two products, 9-10 for complex categories or 3+ products.
 - Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
@@ -365,7 +365,7 @@ The goal: understand how the user uses ${isCompare ? 'these services' : 'this se
 their specific habits, preferences, and expectations.
 
 Rules:
-- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
+- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
 - Choose 8 questions for one service, 9-10 when comparing multiple services.
 - Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
 - HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
