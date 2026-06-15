@@ -158,7 +158,7 @@ export default function Home() {
         : L('Good evening', 'İyi akşamlar', 'Guten Abend');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
-  const [feed, setFeed] = useState({ popularPicks: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
+  const [feed, setFeed] = useState({ categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [recent, setRecent] = useState(() => getRecentProducts());
 
@@ -383,24 +383,30 @@ export default function Home() {
 
         {!searchMode && (
           <>
-            {/* POPULAR CATEGORIES — top picks from phone / tablet / laptop / monitor */}
-            <Section title={L('Popular categories', 'Popüler kategoriler', 'Beliebte Kategorien')}
-              products={feed.popularPicks} loading={loading} t={t} />
+            {/* PER-CATEGORY POPULAR RAILS — own title each, 3×2 = 6 products */}
+            {(feed.categorySections || []).map((sec) => (
+              <Section key={sec.category}
+                title={categoryLabel(sec.category, lang)}
+                products={sec.products}
+                loading={loading}
+                t={t}
+                seeAllTo={`/category?cat=${encodeURIComponent(sec.category)}`} />
+            ))}
 
-            {/* FOR YOU */}
+            {/* FOR YOU — 3×3 */}
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
-            {/* TRENDING */}
-            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} seeAllTo="/category?cat=smartphones&sort=trend" />
+            {/* TRENDING — 3×3 */}
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category?cat=smartphones&sort=trend" />
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 
-            {/* RECENTLY VIEWED */}
+            {/* RECENTLY VIEWED — 3×3 */}
             {recent.length > 0 && (
-              <Section title={t('home.recent')} products={recent} loading={false} t={t} />
+              <Section title={t('home.recent')} products={recent.slice(0, 9)} loading={false} t={t} dense />
             )}
 
-            {/* NEW ARRIVALS */}
+            {/* NEW ARRIVALS — 3×3 */}
             <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
           </>
         )}

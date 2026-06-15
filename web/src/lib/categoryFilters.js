@@ -11,6 +11,9 @@ const DISPLAY_CATS = [
 const MOBILE_CATS = ['smartphones', 'tablets', 'smartwatches'];
 
 export const TOKEN_GROUPS = [
+  // Smart vs feature phones live in one `smartphones` category — this toggle
+  // splits them back apart (every phone is tagged phone_type:smart|feature).
+  { prefix: 'phone_type', label: label('Phone type', 'Telefon tipi', 'Telefontyp'), categories: ['smartphones'] },
   { prefix: 'storage', kind: 'range', unit: 'capacity', label: label('Storage', 'Depolama', 'Speicher'), categories: [...COMPUTING_CATS, 'ssd', 'ssds', 'storage', 'flash_drives'] },
   { prefix: 'ram', kind: 'range', unit: 'capacity', label: label('RAM', 'RAM', 'RAM'), categories: [...COMPUTING_CATS, 'ram'] },
   { prefix: 'ram_speed', kind: 'range', unit: 'mt', label: label('Memory speed', 'Bellek hızı', 'Speichertakt'), categories: ['ram'] },
@@ -47,6 +50,8 @@ export const FEATURE_TOKENS = [
 ];
 
 const TOKEN_VALUE_LABEL = {
+  smart: label('Smartphone', 'Akıllı telefon', 'Smartphone'),
+  feature: label('Feature phone', 'Tuşlu telefon', 'Feature Phone'),
   amoled: 'AMOLED', super_amoled: 'Super AMOLED', dynamic_amoled: 'Dynamic AMOLED', oled: 'OLED', qd_oled: 'QD-OLED', qled: 'QLED', mini_led: 'Mini LED', micro_led: 'Micro LED', ltpo: 'LTPO', ips: 'IPS', lcd: 'LCD', va: 'VA', tn: 'TN', retina: 'Retina', eink: 'E-Ink',
   google: 'Google Tensor', kirin: 'Kirin', unisoc: 'UNISOC',
   fhd: 'Full HD', qhd: 'QHD', wqhd: 'WQHD', uwqhd: 'UWQHD', '4k': '4K', '5k': '5K', '8k': '8K', hd: 'HD',

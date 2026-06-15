@@ -20,8 +20,9 @@ const LIST_FIELDS = [
   'weightValueKg', 'scrapedAtTs', 'updatedAtTs', '_raw',
 ].join(',');
 
-// The 4 categories the home "Popular" rail leads with (top, highest-scored).
-const HOME_POPULAR_CATEGORIES = ['smartphones', 'tablets', 'laptops', 'monitors'];
+// Each of these gets its OWN titled section on the home page (3×2 = 6 products,
+// highest-scored first). Separate rails — not one merged "popular" list.
+const HOME_SECTION_CATEGORIES = ['smartphones', 'tablets', 'laptops', 'monitors', 'tvs'];
 
 // Mainstream consumer electronics for the home sections. Desktops and bare PC
 // components are intentionally NOT here — full towers/boards read as "boxes" on
@@ -299,9 +300,10 @@ export async function getHomeFeed(prefCats = []) {
   // home feed instead of a wall of motherboards/towers.
   const forYouCats = [...new Set([...HOME_FEATURE_CATEGORIES, ...preferred])].slice(0, 10);
   try {
-    const [popularPicks, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
-      // Popular rail: top, most-popular products across phone/tablet/laptop/monitor.
-      categoryBalancedProducts(HOME_POPULAR_CATEGORIES, 2, 'trendScore:desc,techScore:desc', 6),
+    const [sectionLists, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
+      // One titled rail per popular category (3×2 = 6 each), highest-scored first.
+      Promise.all(HOME_SECTION_CATEGORIES.map((category) =>
+        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6))),
       // Trending: most viewed/searched first, so obscure long-tail SKUs sink.
       categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9),
       categoryBalancedProducts(forYouCats, 2, 'trendScore:desc,techScore:desc', 9),
@@ -325,11 +327,13 @@ export async function getHomeFeed(prefCats = []) {
     const categoryFacet = (facetRes.facet_counts || [])
       .find((facet) => facet.field_name === 'category');
     const categories = categoryFacet ? categoryFacet.counts : [];
-    // Hero spotlight leads with the same popular picks; fall back to a broad
-    // top-category scan only if the popular rail came back empty.
-    const heroPicks = popularPicks.length ? popularPicks : await topCategoryPicks(categories, 6);
+    const categorySections = HOME_SECTION_CATEGORIES
+      .map((category, i) => ({ category, products: sectionLists[i] || [] }))
+      .filter((section) => section.products.length);
+    // Hero spotlight rotates through the top product of each popular category.
+    const heroPicks = categorySections.map((s) => s.products[0]).filter(Boolean).slice(0, 6);
     return {
-      popularPicks,
+      categorySections,
       forYou,
       trending,
       newArrivals: uniqueProducts(docs(newRes).map(docToProduct))
@@ -342,7 +346,7 @@ export async function getHomeFeed(prefCats = []) {
     };
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
-    return { popularPicks: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
+    return { categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
   }
 }
 
