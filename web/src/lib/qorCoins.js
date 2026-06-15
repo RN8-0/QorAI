@@ -48,9 +48,31 @@ export function formatQorCoins(amount, lang = 'en') {
 // localStorage (keyed per user) so the gate never loops on this browser, no
 // matter what the server echoes back.
 const QUIZ_DONE_KEY = 'qor.quizCompleted';
+const QUIZ_ANSWERS_KEY = 'qor.quizAnswers';
 
 export function markQuizCompletedLocal(userId) {
   try { localStorage.setItem(QUIZ_DONE_KEY, String(userId || '1')); } catch { /* storage blocked */ }
+}
+
+// PocketBase drops some onboarding columns (interestCategories, priorities…) on
+// save, so the server can't always echo a full profile back. We mirror the exact
+// submitted answers into localStorage (per user) so the quiz summary and the AI
+// quiz personalization stay correct on this browser regardless of PB schema.
+export function saveQuizAnswersLocal(userId, answers) {
+  try {
+    if (answers && typeof answers === 'object') {
+      localStorage.setItem(`${QUIZ_ANSWERS_KEY}.${userId || '1'}`, JSON.stringify(answers));
+    }
+  } catch { /* storage blocked */ }
+}
+
+export function readQuizAnswersLocal(userId) {
+  try {
+    const raw = localStorage.getItem(`${QUIZ_ANSWERS_KEY}.${userId || '1'}`)
+      || localStorage.getItem(`${QUIZ_ANSWERS_KEY}.1`);
+    const v = raw ? JSON.parse(raw) : null;
+    return v && typeof v === 'object' ? v : null;
+  } catch { return null; }
 }
 
 export function hasCompletedQuiz(user) {
@@ -82,9 +104,16 @@ export function aiUserProfile(user) {
     .filter((k) => k.startsWith(prefix) && vector[k])
     .map((k) => k.slice(prefix.length))
     .filter(Boolean);
-  const arrField = (val, prefix) => (Array.isArray(val) && val.length ? val : vecVals(prefix));
-  const strField = (val, prefix) => (val || vecVals(prefix)[0] || '');
-  const hobbies = arrField(user.hobbies, 'hobby_');
+  // Locally-cached answers (this browser) are the most reliable source when PB
+  // drops columns; fall back to the dedicated field, then the profileVector.
+  const cached = readQuizAnswersLocal(user.id);
+  const arrField = (val, key, prefix) => {
+    if (Array.isArray(val) && val.length) return val;
+    if (cached && Array.isArray(cached[key]) && cached[key].length) return cached[key].filter((x) => x !== 'none');
+    return vecVals(prefix);
+  };
+  const strField = (val, key, prefix) => val || (cached && cached[key]) || vecVals(prefix)[0] || '';
+  const hobbies = arrField(user.hobbies, 'hobbies', 'hobby_');
   // Question texts the user has already answered in earlier quizzes, so the
   // generator can skip what we already know instead of re-asking it.
   const pastQuizQuestions = [];
@@ -103,15 +132,15 @@ export function aiUserProfile(user) {
     gender: user.gender || '',
     ecosystem: user.ecosystem || 'mixed',
     budgetRange: user.budgetRange || user.budgetPreference || '',
-    priorities: arrField(user.priorities, 'priority_'),
-    currentDevices: arrField(user.currentDevices, 'device_'),
-    subscriptions: arrField(user.subscriptions, 'subscription_'),
+    priorities: arrField(user.priorities, 'priorities', 'priority_'),
+    currentDevices: arrField(user.currentDevices, 'currentDevices', 'device_'),
+    subscriptions: arrField(user.subscriptions, 'subscriptions', 'subscription_'),
     country: user.country || '',
     language: user.language || '',
     currency: user.currency || '',
-    interestCategories: arrField(user.interestCategories, 'category_'),
-    usageIntent: strField(user.usageIntent || user.usageReason, 'usage_'),
-    profession: strField(user.profession, 'profession_'),
+    interestCategories: arrField(user.interestCategories, 'interestCategories', 'category_'),
+    usageIntent: strField(user.usageIntent || user.usageReason, 'usageIntent', 'usage_'),
+    profession: strField(user.profession, 'profession', 'profession_'),
     hobbies,
     pastQuizQuestions: pastQuizQuestions.slice(0, 24),
     primaryCategory: user.primaryCategory || '',

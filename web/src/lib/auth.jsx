@@ -16,7 +16,10 @@ function useUserSync(setUser) {
       inflight = true;
       try {
         const rec = await refreshUser();
-        if (live && rec) setUser({ ...rec });
+        // Merge over the previous record instead of replacing it: if a refresh
+        // response omits a field (e.g. bonusQCoins), keep the last known value
+        // rather than dropping the coin balance to 0.
+        if (live && rec) setUser((prev) => ({ ...(prev || {}), ...rec }));
       } finally {
         inflight = false;
       }
@@ -38,7 +41,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  useEffect(() => onAuthChange(setUser), []);
+  // Merge auth-store updates over the previous user (clearing only on sign-out)
+  // so a partial record never erases a known-good field like the coin balance.
+  useEffect(() => onAuthChange((u) => setUser((prev) => (u ? { ...(prev || {}), ...u } : null))), []);
   useUserSync(setUser);
 
   const openAuth = useCallback(() => setModalOpen(true), []);
@@ -46,7 +51,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => pbSignOut(), []);
   const refresh = useCallback(async () => {
     const rec = await refreshUser();
-    if (rec) setUser({ ...rec });
+    if (rec) setUser((prev) => ({ ...(prev || {}), ...rec }));
     return rec;
   }, []);
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
-import { markQuizCompletedLocal, hasCompletedQuiz } from '../lib/qorCoins';
+import { markQuizCompletedLocal, hasCompletedQuiz, saveQuizAnswersLocal, readQuizAnswersLocal } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
 import { getCategoryVisuals } from '../lib/typesense';
 import { QuizGlyph } from '../lib/quizIcons.jsx';
@@ -411,6 +411,17 @@ function valuesFromVector(vector, prefix) {
 
 function profileAnswers(user) {
   const base = emptyAnswers(user);
+  // Locally-cached submitted answers (this browser) are the most reliable when
+  // PB drops columns — overlay them first, then fill any remaining gaps from
+  // the profileVector below.
+  const cached = readQuizAnswersLocal(user?.id);
+  if (cached) {
+    for (const k of Object.keys(base)) {
+      const cv = cached[k];
+      if (Array.isArray(base[k])) { if (Array.isArray(cv) && cv.length) base[k] = cv; }
+      else if (!base[k] && cv) base[k] = cv;
+    }
+  }
   const vector = user?.profileVector && typeof user.profileVector === 'object' ? user.profileVector : {};
   if (!base.interestCategories.length) base.interestCategories = valuesFromVector(vector, 'category_');
   if (!base.priorities.length) base.priorities = valuesFromVector(vector, 'priority_');
@@ -471,7 +482,10 @@ function BackIcon({ close }) {
   );
 }
 
-function OptionVisual({ step, option, coverMap, broken, onBroken }) {
+// Every category/device option uses one consistent inline icon set (QuizGlyph),
+// not catalog product photos — so the whole quiz looks uniform and each option
+// has its own distinct glyph. Subscriptions keep their brand logos; age is text.
+function OptionVisual({ step, option }) {
   const value = option[0];
   const label = optionText(option, 'en'); // SubLogo matches by canonical English name
   if (step.field === 'subscriptions' && value !== 'none') {
@@ -479,13 +493,6 @@ function OptionVisual({ step, option, coverMap, broken, onBroken }) {
   }
   if (step.field === 'ageRange') {
     return <span className="oq-age">{value}</span>;
-  }
-  const image = optionArtwork(step, value, coverMap);
-  if (image && !broken) {
-    return (
-      <img className="oq-photo" src={image} alt="" loading="lazy"
-        onError={onBroken} />
-    );
   }
   return <span className="oq-glyph"><QuizGlyph field={step.field} value={value} /></span>;
 }
@@ -643,6 +650,7 @@ export default function Quiz() {
     setBusy(true);
     setErr('');
     setFinalAnswers({ ...answers });
+    saveQuizAnswersLocal(user.id, { ...answers });
     const primaryCategory = answers.interestCategories[0] || 'smartphones';
     const submittedAt = new Date().toISOString();
     const answersList = snapshot();
@@ -703,7 +711,6 @@ export default function Quiz() {
     // profile (+ vector) so a returning user still sees a full recap.
     const view = finalAnswers || profileAnswers(user);
     const heroCat = view.interestCategories[0] || 'smartphones';
-    const heroImg = coverMap[heroCat] || '';
     const catLabels = (view.interestCategories || []).slice(0, 6).map((v) => optionLabel(STEPS[0], v, lang));
     const devLabels = (view.currentDevices || []).filter((x) => x !== 'none').slice(0, 5).map((v) => optionLabel(STEPS[4], v, lang));
     const prioLabels = (view.priorities || []).map((v) => optionLabel(STEPS[3], v, lang));
@@ -736,7 +743,7 @@ export default function Quiz() {
           <div className="oq-summary">
             <div className="oq-sum-hero">
               <div className="oq-sum-thumb">
-                {heroImg ? <img src={heroImg} alt="" /> : <span className="oq-glyph"><QuizGlyph field="x" value={heroCat} /></span>}
+                <span className="oq-glyph"><QuizGlyph field="x" value={heroCat} /></span>
                 <span className="oq-sum-thumb-check">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
                 </span>
@@ -829,13 +836,7 @@ export default function Quiz() {
                 >
                   <span className="oq-art">
                     <span className="oq-art-media">
-                      <OptionVisual
-                        step={current}
-                        option={o}
-                        coverMap={coverMap}
-                        broken={brokenImages[imageKey]}
-                        onBroken={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
-                      />
+                      <OptionVisual step={current} option={o} />
                     </span>
                     <span className="oq-check">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg>

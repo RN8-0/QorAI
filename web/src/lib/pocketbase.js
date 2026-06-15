@@ -39,6 +39,16 @@ export async function register({ email, password, name, birthDate, gender }) {
   if (gender) body.gender = gender;
   await pb.collection('users').create(body);
   const auth = await pb.collection('users').authWithPassword(email, password);
+  // The 20-coin signup bonus must land on EVERY account. Some records came back
+  // with 0 (the create-time value didn't stick), so once we're authenticated as
+  // the owner, top the balance up to 20 if it isn't already positive. This makes
+  // the welcome bonus reliable regardless of the create path.
+  if (!(Number(auth?.record?.bonusQCoins) > 0)) {
+    try {
+      const topped = await pb.collection('users').update(auth.record.id, { bonusQCoins: 20 });
+      pb.authStore.save(pb.authStore.token, topped);
+    } catch { /* don't block sign-in on a bonus top-up */ }
+  }
   // Fire off the verification email — never block sign-in if it fails.
   try { await pb.collection('users').requestVerification(email); } catch { /* noop */ }
   return auth;
