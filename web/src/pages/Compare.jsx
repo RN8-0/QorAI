@@ -19,11 +19,10 @@ import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { useGeoCountry } from '../lib/geo';
 import AiAnalysisView, {
-  buildComparePrompt,
+  buildCompareProductPrompt,
   buildCompareResearchPrompt,
-  hasStaleAvailabilityClaims,
+  buildCompareVerdictPrompt,
   parseAiJson,
-  withFreshnessRetryInstruction,
 } from '../components/AiAnalysis.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
@@ -145,6 +144,23 @@ function rowWinners(key, values) {
   }
   const best = LOWER_BETTER.test(key) ? Math.min(...valid) : Math.max(...valid);
   return nums.map((n) => n != null && Number.isFinite(n) && n === best);
+}
+
+// Run an async mapper over items with a bounded number of in-flight calls, so a
+// many-product comparison doesn't fire dozens of AI requests at the proxy at
+// once. Preserves input order in the results array.
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const idx = next;
+      next += 1;
+      results[idx] = await fn(items[idx], idx);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 export default function Compare() {
@@ -388,10 +404,6 @@ export default function Compare() {
     setTerm(''); setResults([]); setPicking(false);
   }
 
-  function buildAiComparePrompt(answers = [], research = '') {
-    return buildComparePrompt(products, lang, aiUserProfile(user), { quizAnswers: answers, research });
-  }
-
   async function startAiCompareQuiz() {
     setAiNotice('');
     if (products.length < 2) {
@@ -433,6 +445,12 @@ export default function Compare() {
   }
 
   // Already paid for at startAiCompareQuiz — no second charge here.
+  //
+  // Chunked generation: one report per product (run with capped concurrency) +
+  // a small final verdict call, then assembled into the compare_full_report
+  // shape. A single combined call truncated at the provider's ~8k output cap and
+  // failed for 3+ products; per-product calls each finish comfortably and run in
+  // parallel, so this is both more reliable AND faster than the old one big call.
   async function runAiCompare(answers = []) {
     setAiNotice('');
     setAiAnswers(Array.isArray(answers) ? answers : []);
@@ -443,7 +461,6 @@ export default function Compare() {
     setAiBusy(true);
     setAiPhase('analyzing');
     setAiStage('prep');
-    const startedAt = Date.now();
     try {
       let research = '';
       try {
@@ -456,29 +473,44 @@ export default function Compare() {
         research = '';
       }
       setAiStage('report');
-      const basePrompt = buildAiComparePrompt(answers, research);
-      const askReport = (userPrompt, temperature = 0.42) => askQorAiRaw({
+      const profile = aiUserProfile(user);
+      const peerNames = products.map((p) => displayProductName(p, lang));
+      const askJson = (userPrompt, maxTokens, temperature = 0.42) => askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
         user: userPrompt,
-        maxOutputTokens: 12000,
+        maxOutputTokens: maxTokens,
         temperature,
         jsonMode: true,
       });
-      let text = await askReport(basePrompt);
-      let parsed = parseAiJson(text);
-      // Repair/freshness retry only when there's still time in the budget; a
-      // parseable (even if slightly stale) report beats stranding the user, so
-      // we only hard-fail when nothing usable came back at all.
-      if ((!parsed || hasStaleAvailabilityClaims(text)) && Date.now() - startedAt < 95000) {
-        const repairPrompt = withFreshnessRetryInstruction(
-          `${basePrompt}\n\nJSON REPAIR / LENGTH CONTROL:\nReturn the same schema, but keep each long paragraph to 2-3 focused sentences so the JSON is complete. Do not omit any product. Do not include markdown.`,
-          products.map((p) => displayProductName(p, lang)),
+
+      const reports = await mapWithConcurrency(products, 5, async (p) => {
+        const prompt = buildCompareProductPrompt(p, lang, profile, { quizAnswers: answers, research, peerNames });
+        let parsed = null;
+        try { parsed = parseAiJson(await askJson(prompt, 8192)); } catch { parsed = null; }
+        if (!parsed || typeof parsed !== 'object') return null;
+        return {
+          ...parsed,
+          name: parsed.name || displayProductName(p, lang),
+          imageUrl: p.imageUrl || parsed.imageUrl || '',
+          url: productPath(p),
+        };
+      });
+      const okReports = reports.filter(Boolean);
+      // Need at least two products to call it a comparison; bail to the retry UI
+      // if the provider failed on too many of them.
+      if (okReports.length < 2) throw new Error('reports-failed');
+
+      let verdict = {};
+      try {
+        const vText = await askJson(
+          buildCompareVerdictPrompt(products, okReports, lang, profile, { quizAnswers: answers, research }),
+          6144,
+          0.4,
         );
-        const retry = await askReport(repairPrompt, 0.2);
-        const retryParsed = parseAiJson(retry);
-        if (retryParsed && !hasStaleAvailabilityClaims(retry)) { text = retry; parsed = retryParsed; }
-      }
-      if (!parsed) throw new Error('unusable-report');
+        verdict = parseAiJson(vText) || {};
+      } catch { verdict = {}; }
+
+      const text = JSON.stringify({ type: 'compare_full_report', products: okReports, comparison: verdict });
       setAiText(text);
       setAiPhase('result');
       await saveComparisonAnalysisHistory({ products, analysis: text });

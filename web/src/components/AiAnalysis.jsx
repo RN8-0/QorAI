@@ -420,6 +420,82 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
   );
 }
 
+// One product's section of a comparison report, generated in its OWN call so it
+// always completes within the provider's ~8k output cap. The single combined
+// compare prompt above truncates (finish_reason=length) the moment there are 3+
+// products; the compare flow now chunks per product with this prompt + a small
+// verdict call instead, then assembles the same compare_full_report shape.
+export function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
+  const { name, brand, category, score, price, ks } = productLine(product, lang);
+  const ctx = promptContext(context, lang);
+  const peers = (context.peerNames || []).filter((nm) => nm && nm !== name);
+  const prof = Object.entries(profile).filter(([, val]) => val != null && val !== '' && (!Array.isArray(val) || val.length))
+    .map(([k, val]) => `${k}: ${Array.isArray(val) ? val.join(', ') : JSON.stringify(val)}`).slice(0, 18).join('; ');
+  return (
+    `You are Qor AI's senior product analyst. Produce ONE product's section of a multi-product comparison report. Evaluate ONLY "${name}" by ${brand || 'unknown'} (category: ${category}), but judge it in the CONTEXT of being compared against: ${peers.join(', ') || 'the other selected products'}.\n\n` +
+    `${languageGate(lang)}\n\n${freshnessRules()}\n\n` +
+    'Use catalog specs and quiz answers as verified inputs; use research notes only when they support a claim. Write like a professional buyer lab report: concrete, decisive, detailed. Never invent direct quotes, exact review counts, or exact live prices.\n\n' +
+    'Return ONLY one valid JSON object for THIS product with this exact structure:\n' +
+    '{\n' +
+    '  "name": "exact product name",\n' +
+    '  "matchScore": <0-100>,\n' +
+    '  "matchComment": "5-6 detailed sentences on fit, trade-offs and who should care, relative to the other compared products",\n' +
+    '  "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}],\n' +
+    '  "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 evidence-based sentences"}],\n' +
+    '  "analysis": "5-7 substantial paragraphs, each 45-85 words",\n' +
+    '  "pros": ["6 detailed pros"],\n' +
+    '  "cons": ["5 detailed cons"],\n' +
+    '  "community": {"satisfaction": <0-100>, "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
+    '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
+    '}\n\n' +
+    'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
+    `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(product)}\n\n` +
+    `PRODUCT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nFull payload: ${JSON.stringify(cleanProductForPrompt(product, lang))}\n\n` +
+    `COMPARED AGAINST: ${peers.join(', ') || '-'}\n\n` +
+    `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
+    `WEB RESEARCH NOTES:\n${ctx.research || 'No grounded research notes were available; rely on catalog specs and clearly label uncertainty.'}`
+  );
+}
+
+// Final cross-product verdict, generated from the already-built per-product
+// reviews (passed in as compact summaries) plus the quiz/research context.
+export function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, context = {}) {
+  const ctx = promptContext(context, lang);
+  const names = (products || []).map((p) => productLine(p, lang).name);
+  const summaries = (reports || []).map((r) => ({
+    name: r?.name,
+    matchScore: r?.matchScore,
+    summary: firstSentences(r?.matchComment, 3),
+    pros: arr(r?.pros).slice(0, 4),
+    cons: arr(r?.cons).slice(0, 4),
+    topFactors: arr(r?.factors).slice(0, 8).map((f) => ({ label: f?.label, score: f?.score })),
+  }));
+  const prof = Object.entries(profile).filter(([, val]) => val != null && val !== '' && (!Array.isArray(val) || val.length))
+    .map(([k, val]) => `${k}: ${Array.isArray(val) ? val.join(', ') : JSON.stringify(val)}`).slice(0, 18).join('; ');
+  return (
+    'You are Qor AI\'s senior comparison analyst. Each product already has its own full review (compact summaries below). Produce ONLY the final cross-product comparison verdict.\n\n' +
+    `${languageGate(lang)}\n\n${freshnessRules()}\n\n` +
+    'Return ONLY one valid JSON object with this exact structure:\n' +
+    '{\n' +
+    `  "winner": "exact product name — must be exactly one of: ${names.join(' | ')}",\n` +
+    '  "winnerScore": <0-100>,\n' +
+    '  "scoreGap": <number>,\n' +
+    '  "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}],\n' +
+    '  "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}],\n' +
+    '  "decisiveDifferences": ["5-6 detailed differences"],\n' +
+    '  "headToHead": "5-7 substantial paragraphs",\n' +
+    '  "recommendation": "5-7 substantial paragraphs explaining which one to buy and why"\n' +
+    '}\n\n' +
+    `Rules:\n- chart must include EVERY product (${names.length} total) by exact name.\n- factorMatrix: 6-8 shared factors, each scored for every product by exact name.\n- winner MUST be one of the listed names exactly.\n- Be decisive and concrete; ground it in the per-product summaries, quiz answers and research.\n- Stay within the counts so the JSON is COMPLETE and valid.\n\n` +
+    `PRODUCTS (in column order): ${names.join(', ')}\n\n` +
+    `PER-PRODUCT REVIEW SUMMARIES:\n${JSON.stringify(summaries, null, 2)}\n\n` +
+    `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
+    `WEB RESEARCH NOTES:\n${ctx.research || 'No grounded research notes were available.'}`
+  );
+}
+
 // ─── Parsing ────────────────────────────────────────────────────────────────
 export function parseAiJson(raw) {
   if (!raw) return null;
