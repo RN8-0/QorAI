@@ -57,7 +57,26 @@ export async function register({ email, password, name, birthDate, gender }) {
 // Google sign-in via PocketBase's OAuth2 (provider must be enabled in the
 // PocketBase admin → users collection → OAuth2 settings).
 export async function signInWithGoogle() {
-  return pb.collection('users').authWithOAuth2({ provider: 'google' });
+  const auth = await pb.collection('users').authWithOAuth2({ provider: 'google' });
+  // OAuth signups never go through register(), and the server-side welcome_bonus
+  // hook isn't live, so the 20-coin bonus has to be granted here too — otherwise
+  // every Google signup lands on 0 coins. Gate it on a genuinely fresh account
+  // (meta.isNew, or a record created seconds ago) so a user who has spent their
+  // balance down to 0 doesn't get re-granted every time they sign back in.
+  try {
+    const rec = auth?.record;
+    const createdMs = rec?.created ? Date.parse(rec.created) : NaN;
+    const isFresh = auth?.meta?.isNew === true
+      || (Number.isFinite(createdMs) && Date.now() - createdMs < 120000);
+    if (rec && isFresh && !(Number(rec.bonusQCoins) > 0)) {
+      const topped = await pb.collection('users').update(rec.id, {
+        bonusQCoins: 20,
+        dailyAiCreditsUsed: 0,
+      });
+      pb.authStore.save(pb.authStore.token, topped);
+    }
+  } catch { /* never block sign-in on a bonus top-up */ }
+  return auth;
 }
 
 export function signOut() {

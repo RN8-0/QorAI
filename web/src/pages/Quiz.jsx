@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
@@ -267,6 +267,18 @@ const STEPS = [
       ['healthcare', 'Healthcare', 'Sağlık', 'Gesundheit'],
       ['teacher', 'Teacher', 'Öğretmen', 'Lehrkraft'],
       ['finance', 'Finance', 'Finans', 'Finanzen'],
+      ['data_scientist', 'Data scientist', 'Veri bilimci', 'Data Scientist'],
+      ['it_admin', 'IT / sysadmin', 'IT / Sistem', 'IT / Admin'],
+      ['marketer', 'Marketing', 'Pazarlama', 'Marketing'],
+      ['sales', 'Sales', 'Satış', 'Vertrieb'],
+      ['consultant', 'Consultant', 'Danışman', 'Berater/in'],
+      ['architect', 'Architect', 'Mimar', 'Architekt/in'],
+      ['scientist', 'Scientist', 'Bilim insanı', 'Wissenschaftler/in'],
+      ['lawyer', 'Lawyer', 'Avukat', 'Jurist/in'],
+      ['writer', 'Writer', 'Yazar', 'Autor/in'],
+      ['artist', 'Artist', 'Sanatçı', 'Künstler/in'],
+      ['musician', 'Musician', 'Müzisyen', 'Musiker/in'],
+      ['streamer', 'Streamer', 'Yayıncı', 'Streamer/in'],
       ['other', 'Other', 'Diğer', 'Andere'],
     ],
   },
@@ -292,6 +304,16 @@ const STEPS = [
       ['drones', 'Drones & RC', 'Drone & RC', 'Drohnen & RC'],
       ['diy', 'DIY & making', 'DIY & üretim', 'DIY & Basteln'],
       ['cooking', 'Cooking', 'Yemek', 'Kochen'],
+      ['esports', 'Esports', 'E-spor', 'E-Sport'],
+      ['cars', 'Cars & autos', 'Araba & oto', 'Autos'],
+      ['outdoors', 'Outdoors & hiking', 'Doğa & yürüyüş', 'Outdoor & Wandern'],
+      ['cycling', 'Cycling', 'Bisiklet', 'Radfahren'],
+      ['investing', 'Investing', 'Yatırım', 'Investieren'],
+      ['anime', 'Anime & manga', 'Anime & manga', 'Anime & Manga'],
+      ['board_games', 'Board games', 'Kutu oyunları', 'Brettspiele'],
+      ['podcasting', 'Podcasting', 'Podcast', 'Podcasting'],
+      ['gardening', 'Gardening', 'Bahçe', 'Gärtnern'],
+      ['fashion', 'Fashion', 'Moda', 'Mode'],
       ['other', 'Other', 'Diğer', 'Andere'],
     ],
   },
@@ -525,9 +547,20 @@ export default function Quiz() {
   const [brokenImages, setBrokenImages] = useState({});
   const [visibleCounts, setVisibleCounts] = useState({});
 
+  // Seed the form from the saved profile only ONCE per account. The auth context
+  // hands back a brand-new `user` object every time useUserSync refreshes it (tab
+  // focus / visibility change) — and an OAuth signup fires a focus event the
+  // instant the Google popup closes, right in the middle of the quiz. Re-seeding
+  // on every `user` change wiped the early selections (categories, priorities,
+  // devices, profession), so only the last steps survived to submit and the
+  // summary came back as "—". Seeding once keeps in-progress answers intact.
+  const seededForUser = useRef(null);
   useEffect(() => {
-    if (!user) openAuth();
-    else setAnswers(emptyAnswers(user));
+    if (!user) { openAuth(); return; }
+    if (seededForUser.current !== user.id) {
+      seededForUser.current = user.id;
+      setAnswers(emptyAnswers(user));
+    }
   }, [openAuth, user]);
 
   useEffect(() => {
