@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { subscriptionsMixCategories, validateSubscriptionInput } from '../lib/linkAnalysis';
+import { subscriptionCategory, subscriptionsMixCategories, validateSubscriptionInput } from '../lib/linkAnalysis';
 import {
   clearSubscriptionAnalysisJob,
   startSubscriptionAnalysisJob,
@@ -270,6 +270,9 @@ export default function Subscriptions() {
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
   const [adding, setAdding] = useState(false);
+  // name -> category key, so we can enforce "same category only" at ADD time
+  // (app parity) even for AI-validated services that aren't in the local catalog.
+  const [catMap, setCatMap] = useState({});
   const [activeJobId, setActiveJobId] = useState('');
   const lastSavedAt = useRef('');
 
@@ -286,13 +289,38 @@ export default function Subscriptions() {
     setPendingItems([]);
     setErr('');
   }
+  function mixedCatMsg() {
+    return L('Only services of the same type can be compared (e.g. Netflix vs Disney+).',
+      'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).',
+      'Nur Dienste desselben Typs können verglichen werden (z. B. Netflix vs Disney+).');
+  }
+  // The category currently locked in by the selection (first known category).
+  function activeCategory() {
+    for (const n of selected) {
+      const c = catMap[n] || subscriptionCategory(n);
+      if (c) return c;
+    }
+    return null;
+  }
   function toggle(name) {
-    setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
+    if (selected.includes(name)) {
+      setSelected((s) => s.filter((x) => x !== name));
+      setCatMap((m) => { const next = { ...m }; delete next[name]; return next; });
+      resetAnalysis();
+      return;
+    }
+    // Adding a preset tile (always a known service) — enforce same category.
+    const cat = subscriptionCategory(name);
+    const active = activeCategory();
+    if (active && cat && cat !== active) { setErr(mixedCatMsg()); return; }
+    setSelected((s) => [...s, name]);
+    if (cat) setCatMap((m) => ({ ...m, [name]: cat }));
     resetAnalysis();
   }
   // App-parity validation: known services resolve locally; anything unknown is
   // classified by the AI so a random word / link / product is rejected instead
-  // of being added as a fake subscription.
+  // of being added as a fake subscription. Same-category is enforced here too,
+  // so you can't mix e.g. Spotify with Canva.
   async function addCustom(e) {
     e.preventDefault();
     const v = custom.trim();
@@ -307,7 +335,11 @@ export default function Subscriptions() {
         setCustom('');
         return;
       }
+      const cat = res.category || subscriptionCategory(name);
+      const active = activeCategory();
+      if (active && cat && cat !== active) { setErr(mixedCatMsg()); return; }
       setSelected((s) => [...s, name]);
+      if (cat) setCatMap((m) => ({ ...m, [name]: cat }));
       setCustom('');
       resetAnalysis();
     } finally {

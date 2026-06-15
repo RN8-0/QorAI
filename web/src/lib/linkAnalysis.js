@@ -895,6 +895,19 @@ const SUB_CATEGORY = {
 export function subscriptionCategory(name) {
   return SUB_CATEGORY[String(name || '').trim().toLowerCase()] || null;
 }
+
+// The AI validator returns app-style category labels; map them onto the local
+// short keys used by SUB_CATEGORY so same-category checks compare like-for-like
+// whether a chip came from the local catalog or the AI.
+const AI_CAT_TO_LOCAL = {
+  'video-streaming': 'video', 'music-streaming': 'music', gaming: 'gaming',
+  'ai-tools': 'ai', 'cloud-storage': 'cloud', productivity: 'productivity',
+  bundles: 'bundles', news: 'news', fitness: 'fitness', education: 'education', other: 'other',
+};
+export function normalizeSubscriptionCategoryKey(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return AI_CAT_TO_LOCAL[key] || key || null;
+}
 // Returns the conflicting category pair, or null when the selection is valid.
 export function subscriptionsMixCategories(names) {
   const cats = names.map(subscriptionCategory).filter(Boolean);
@@ -1020,7 +1033,7 @@ export async function validateSubscriptionInput(rawName, existingNames = [], lan
   }
   const isSub = res?.is_subscription === true;
   const displayName = prettySubscriptionName(res?.display_name || trimmed);
-  const category = String(res?.category || '').trim();
+  const category = normalizeSubscriptionCategoryKey(res?.category);
   if (!isSub || !displayName || !category) {
     return { error: msg.notSub };
   }
