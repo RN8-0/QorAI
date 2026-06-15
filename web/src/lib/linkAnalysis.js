@@ -244,20 +244,16 @@ function quizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Questions must be relevant to the product CATEGORY
-- Choose 8 questions for simple products, 9-10 for complex/high-consideration products
-- Cover use case, environment, performance/content expectations, quality tolerance, ownership risk, ergonomics, community/review sensitivity, and long-term value
-- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use varied everyday-life contexts chosen from the product category and user profile instead of abstract labels
-- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
-- Each question must reveal one concrete trade-off that matters for this category, such as comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, or privacy vs convenience
-- Do NOT repeat the exact product name in every question. Mention the product name at most once across the whole quiz; otherwise use "this product" or the category naturally
-- Avoid short generic prompts such as "What do you expect from this product?"
-- Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
-- Each question has exactly 4 options
-- Options should be concrete and situational, not one-word labels
-- Keep questions conversational with emoji
-- NEVER ask about budget or brand preference
+- Each question is ONE short everyday-life sentence (about 8-16 words) a normal person instantly understands. No long, layered, or technical wording.
+- Questions must be relevant to the product CATEGORY.
+- Choose 8 questions for simple products, 9-10 for complex/high-consideration products.
+- Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
+- Each question reveals one concrete trade-off (comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, privacy vs convenience).
+- HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the product name at most once in the whole quiz (otherwise say "this one" or the category). Options describe behaviors/priorities only, never a brand name.
+- Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority, not a one-word label.
+- Vary the situations; do not repeat the same day, time, place, or routine across questions.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
@@ -302,20 +298,17 @@ function compareQuizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Questions must compare the listed products, not ask generic shopping questions
-- Choose 8 questions for two simple products, 9-10 for complex categories or 3+ products
-- Cover usage intent, performance expectations, quality, portability/ergonomics, durability, risk tolerance, community/review sensitivity, must-have features, and long-term ownership
-- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use varied everyday-life contexts chosen from the compared product category and user profile so the user can picture the choice
-- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
-- Each question must expose a real decision trade-off between the listed options, not just ask which product sounds nicer
-- Do NOT repeat exact product names in every question. Use neutral wording like "the first option", "the lighter option", "the stronger option", or the category unless a direct contrast is necessary
-- Avoid short generic prompts such as "Which one do you prefer?"
-- Do not use markdown, bold markers, quotation marks around product names, or headline-style labels
-- Each question has exactly 4 options
-- Options should describe realistic behavior or priority trade-offs, not one-word labels
-- Keep questions conversational with emoji
-- NEVER ask about budget or brand preference
+- Each question is ONE short everyday-life sentence (about 8-16 words) a normal person instantly understands. No long, layered, or technical wording.
+- The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
+- Choose 8 questions for two products, 9-10 for complex categories or 3+ products.
+- Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
+- Each question exposes one real decision trade-off between the options' differing strengths.
+- HARD RULE — NEVER name, write, or hint at any of the compared products or brands in the questions OR in the options. Not even once. The user must NOT be able to tell which option maps to which product. Describe only behaviors, situations and priorities.
+- Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority (no brand names, no model names) that silently maps to a different product's strength.
+- Make the four options clearly distinct so the answer is meaningful.
+- Vary the situations; do not repeat the same day, time, place, or routine across questions.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
@@ -372,23 +365,21 @@ The goal: understand how the user uses ${isCompare ? 'these services' : 'this se
 their specific habits, preferences, and expectations.
 
 Rules:
-- Questions must be directly relevant to the specific service type
-  (e.g. streaming: genres/frequency; music: genres/offline; AI tools: use-cases)
-- Choose 8 questions for one simple service, 9-10 when comparing multiple services or broad ecosystems
-- Cover habits, content/use-case priorities, device/ecosystem, discovery needs, quality expectations, family/shared use, offline/mobile use, community/review sensitivity, churn risk, and long-term retention
-- Make questions scenario-based and specific, usually 2 sentences or one rich sentence of 18-35 words
-- Use varied everyday-life moments chosen from the service category and user profile so the user answers from real behavior
-- Do not copy any example scenario verbatim. Do not repeat the same day, time, place, or routine across questions
-- Each question must reveal one concrete subscription trade-off, such as discovery vs control, catalog depth vs interface comfort, offline use vs cross-device sync, family sharing vs personal recommendations, or novelty vs retention
-- Do NOT repeat exact service names in every question. Mention each service name only when a direct comparison truly needs it; otherwise say "the music service", "the streaming app", "this subscription", or "the selected services"
-- Avoid short generic prompts such as "What do you expect from a music service?"
-- Keep the quiz about how the user actually uses THIS SERVICE TYPE. AT MOST 1-2 questions may quietly lean on the user's profession or hobbies, and only when it genuinely fits; never force a job/hobby context into every question or combine profession and hobby in the same question. Infer silently — never name their profession, hobby, budget or ecosystem.
-- Do not use markdown, bold markers, quotation marks around service names, or headline-style labels
-- Each question has exactly 4 options
-- Options should be concrete situational choices, not one-word labels
-- Keep questions conversational with emoji
-- NEVER ask about budget or brand preference
-- ALL text must be in ${langName}
+- Each question is ONE short everyday-life sentence (about 8-16 words) that a normal person instantly understands. No long, layered, or technical wording.
+- Choose 8 questions for one service, 9-10 when comparing multiple services.
+- Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
+- HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
+- Each question has exactly 4 options. Every option is a short, concrete everyday behavior or priority — NO brand names, NO service names, NO product-specific feature jargon — that silently maps to a different service's strength.
+- Make the four options clearly distinct so the answer is meaningful, and keep each option short (a few words to one short clause).
+- Vary the situations; do not repeat the same moment, place or time across questions.
+- Do not use markdown, bold, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- NEVER ask about budget or brand preference.
+- ALL text must be in ${langName}.
+
+PERSONALIZATION (read the userProfile JSON in the user message — this is the profile the user built in the onboarding quiz):
+- Shape the everyday situations around what this person plausibly does, using interestCategories, usageIntent, priorities and recentlyViewed for relatable, real-life contexts.
+- AT MOST 1-2 questions may quietly lean on their profession or hobbies, and only when it fits naturally; never combine profession and hobby in one question, and never state or name their profession, hobby, budget or ecosystem.
+- Infer silently — the questions should feel like everyday life, never like the app is reading their profile back to them.
 
 Return valid JSON:
 {
