@@ -413,6 +413,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
     try {
       final user = ref.read(userProfileProvider).valueOrNull;
+      final existingPremium =
+          (user?.userSubscriptionDetails['premium'] as Map?) ?? const {};
+      // Keep the Play purchase token even if this particular sync didn't carry
+      // one (e.g. a status restored without it), so the backend always has a
+      // value to verify the subscription against Google Play.
+      final purchaseToken =
+          status.purchaseToken ?? existingPremium['purchaseToken'] as String?;
       final details = <String, Map<String, dynamic>>{
         ...?user?.userSubscriptionDetails,
         'premium': {
@@ -422,6 +429,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             'startedAt': status.purchaseDate!.toIso8601String(),
           if (status.expirationDate != null)
             'expiresAt': status.expirationDate!.toIso8601String(),
+          if (purchaseToken != null && purchaseToken.isNotEmpty)
+            'purchaseToken': purchaseToken,
           'source': 'google_play',
           'updatedAt': DateTime.now().toIso8601String(),
         },

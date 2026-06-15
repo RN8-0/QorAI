@@ -23,12 +23,18 @@ class SubscriptionStatus {
   final String? activeProductId;
   final DateTime? purchaseDate;
   final DateTime? expirationDate;
+  // Google Play purchase token — the only value the SERVER can verify against
+  // Google Play to prove a subscription is real (so a client can't fake
+  // isPremium). Captured on purchase, persisted, and mirrored into the user
+  // record so a backend job can validate it.
+  final String? purchaseToken;
 
   const SubscriptionStatus({
     this.isPremium = false,
     this.activeProductId,
     this.purchaseDate,
     this.expirationDate,
+    this.purchaseToken,
   });
 
   static const free = SubscriptionStatus();
@@ -360,12 +366,16 @@ class SubscriptionService extends ChangeNotifier {
       purchase.productID,
       purchaseDate,
     );
+    // For Android this is the Play purchase token; the backend uses it to verify
+    // the subscription with Google. Capturing it doesn't change activation.
+    final purchaseToken = purchase.verificationData.serverVerificationData;
 
     _status = SubscriptionStatus(
       isPremium: true,
       activeProductId: purchase.productID,
       purchaseDate: purchaseDate,
       expirationDate: expirationDate,
+      purchaseToken: purchaseToken,
     );
 
     _usage = _emptyUsage();
@@ -373,6 +383,7 @@ class SubscriptionService extends ChangeNotifier {
       productId: purchase.productID,
       purchaseDate: purchaseDate,
       expirationDate: expirationDate,
+      purchaseToken: purchaseToken,
     );
     notifyListeners();
 
@@ -389,6 +400,7 @@ class SubscriptionService extends ChangeNotifier {
     String? productId,
     required DateTime purchaseDate,
     DateTime? expirationDate,
+    String? purchaseToken,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_premium', true);
@@ -408,6 +420,9 @@ class SubscriptionService extends ChangeNotifier {
       );
     } else {
       await prefs.remove('premium_expiration_date');
+    }
+    if (purchaseToken != null && purchaseToken.isNotEmpty) {
+      await prefs.setString('premium_purchase_token', purchaseToken);
     }
     await _saveUsageToLocal();
   }
@@ -495,6 +510,7 @@ class SubscriptionService extends ChangeNotifier {
             (productId != null
                 ? _estimateExpirationDate(productId, effectivePurchaseDate)
                 : null),
+        purchaseToken: prefs.getString('premium_purchase_token'),
       );
       notifyListeners();
     }
