@@ -3,18 +3,20 @@ import { premiumStatus } from './premium';
 
 export const AI_FEATURE_COSTS = {
   // Keep these in sync with lib/core/constants.dart.
-  ai_question: 0.5,
-  ai_chat: 0.5,
+  // Pricing rule: Qor AI chat / one-off question = 1 Qor Coin; every AI
+  // analysis (product, compare, link, subscription, scan, match) = 2 Qor Coins.
+  ai_question: 1,
+  ai_chat: 1,
   compare_ai: 2,
-  detail_ai: 1,
-  detail_ai_full: 1,
-  detail_match_ai: 1,
-  detail_match: 1,
+  detail_ai: 2,
+  detail_ai_full: 2,
+  detail_match_ai: 2,
+  detail_match: 2,
   link_paste: 2,
   link_analysis: 2,
-  link_compare: 3,
+  link_compare: 2,
   subscription_analysis: 2,
-  product_scan: 3,
+  product_scan: 2,
 };
 
 function err(code, extra = {}) {

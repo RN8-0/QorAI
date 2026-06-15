@@ -68,14 +68,17 @@ class AppConstants {
   // Lifetime credit model: one-time welcome bonus granted on signup.
   // No daily refresh. Configurable via remote config `signup_bonus_q_coins`.
   static const int signupBonusQCoins = 20;
-  static const double aiChatCreditCost = 0.5;
+  // Pricing rule: Qor AI chat / one-off question = 1 Qor Coin; every AI analysis
+  // (product, compare, link, subscription, scan, match) = 2 Qor Coins.
+  // Keep in sync with web/src/lib/qorCoins.js.
+  static const double aiChatCreditCost = 1;
   static const int compareAiCreditCost = 2;
-  static const int detailAiCreditCost = 1;
-  static const int detailMatchAiCreditCost = 1;
+  static const int detailAiCreditCost = 2;
+  static const int detailMatchAiCreditCost = 2;
   static const int linkAnalysisCreditCost = 2;
-  static const int linkCompareCreditCost = 3;
+  static const int linkCompareCreditCost = 2;
   static const int subscriptionAnalysisCreditCost = 2;
-  static const int productScanCreditCost = 3;
+  static const int productScanCreditCost = 2;
   static const int freeAiQuestionLimit = 3; // per day (AI chat)
   static const int freeCompareAiLimit = 2; // per day (compare premium AI tabs)
   static const int freeDetailAiLimit =
