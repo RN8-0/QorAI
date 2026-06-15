@@ -526,7 +526,6 @@ class AppCategories {
     tech: [
       // Mobile
       'smartphones',
-      'feature_phones',
       'smartwatches',
       'smart_rings',
       'headphones',

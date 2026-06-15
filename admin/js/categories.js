@@ -154,6 +154,14 @@ const CATEGORY_ALIASES = Object.freeze({
   nas: 'nas_servers',
   network_cards: 'pcie_nic',
   mobile_phones: 'smartphones',
+  // Feature phones are merged into smartphones — one phone category everywhere
+  // (web, app, scraper, PB). Legacy feature_phones records normalize to
+  // smartphones so they show in the same dropdown/count and future scrapes land
+  // under the single canonical id.
+  feature_phones: 'smartphones',
+  feature_phone: 'smartphones',
+  dumbphones: 'smartphones',
+  keypad_phones: 'smartphones',
   // Canonical Photo & Video bucket is `camera_lenses` (post 2026-05-23 EU
   // pivot). All legacy "anything with a sensor" ids collapse into it so
   // existing PB records show up in the new dropdown + scraper count, and
@@ -335,7 +343,6 @@ const CANONICAL_EPEY_CATEGORY_GROUPS = Object.freeze([
     name: 'Mobile',
     categories: [
       { id: 'smartphones',       name: 'Smartphones',           tr: 'Akıllı Telefon',           LegacySlug: 'umtsover',    epeyPath: 'akilli-telefonlar' },
-      { id: 'feature_phones',    name: 'Feature Phones',        tr: 'Tuşlu Telefon',            LegacySlug: 'phonmob',     epeyPath: 'tuslu-telefon' },
       { id: 'smartwatches',      name: 'Smartwatches',          tr: 'Akıllı Saat',              LegacySlug: 'uhrpm',       epeyPath: 'akilli-saat' },
       { id: 'smart_rings',       name: 'Smart Rings',           tr: 'Akıllı Yüzük',             epeyPath: 'akilli-yuzuk' },
       { id: 'headphones',        name: 'Headphones',            tr: 'Kulaklık',                 LegacySlug: 'sphd',        epeyPath: 'kulaklik' },

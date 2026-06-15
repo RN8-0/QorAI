@@ -75,7 +75,7 @@ export const CATEGORY_META = {
 };
 
 export const CANONICAL_CATEGORY_GROUPS = [
-  { key: 'mobile', title: { en: 'Mobile', tr: 'Mobil', de: 'Mobil' }, cats: ['smartphones', 'feature_phones', 'smartwatches', 'smart_rings', 'headphones', 'powerbanks', 'chargers'] },
+  { key: 'mobile', title: { en: 'Mobile', tr: 'Mobil', de: 'Mobil' }, cats: ['smartphones', 'smartwatches', 'smart_rings', 'headphones', 'powerbanks', 'chargers'] },
   { key: 'computing', title: { en: 'Computing', tr: 'Bilgisayar', de: 'Computer' }, cats: ['laptops', 'desktops', 'tablets', 'e_readers', 'vr_headsets'] },
   { key: 'components', title: { en: 'Components', tr: 'Bileşenler', de: 'Komponenten' }, cats: ['graphics_cards', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'ups', 'flash_drives'] },
   { key: 'cooling', title: { en: 'Cooling', tr: 'Soğutma', de: 'Kühlung' }, cats: ['cpu_coolers', 'laptop_coolers', 'case_fans'] },

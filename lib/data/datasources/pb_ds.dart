@@ -3339,7 +3339,12 @@ class PbDataSource {
     'consoles': 'gaming_consoles',
     'game-consoles': 'gaming_consoles',
     'game consoles': 'gaming_consoles',
-    'feature-phones': 'feature_phones',
+    // Feature phones merged into smartphones — one phone category everywhere.
+    'feature-phones': 'smartphones',
+    'feature_phones': 'smartphones',
+    'feature phones': 'smartphones',
+    'tuslu-telefon': 'smartphones',
+    'tuslu telefon': 'smartphones',
     'smart-rings': 'smart_rings',
     'power_banks': 'powerbanks',
     'power-banks': 'powerbanks',
@@ -3390,7 +3395,7 @@ class PbDataSource {
 
   static const Map<String, List<String>> _legacyCategoryAliases = {
     'graphics_cards': ['gpus', 'graphics-cards'],
-    'feature_phones': ['feature-phones'],
+    'smartphones': ['feature-phones', 'feature_phones', 'tuslu-telefon'],
     'smart_rings': ['smart-rings'],
     'e_readers': ['e-readers'],
     'vr_headsets': ['vr-headsets'],

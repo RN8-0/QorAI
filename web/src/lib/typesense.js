@@ -27,12 +27,27 @@ const HOME_FEATURE_CATEGORIES = [
 
 const HOME_TREND_CATEGORIES = [
   'smartphones', 'laptops', 'tablets', 'monitors', 'tvs', 'headphones',
-  'smartwatches', 'gaming_consoles', 'graphics_cards', 'cpus', 'mice', 'keyboards',
+  'smartwatches', 'gaming_consoles', 'graphics_cards', 'cpus',
+  'motherboards', 'ram', 'ssd', 'mice', 'keyboards',
 ];
 
+// Categories kept OFF the homepage feed / popular-categories rail: low daily
+// relevance, accessory/B2B, or heavily region-dependent SKUs. They stay fully
+// browsable via the Categories menu — this only curates the home surface so it
+// leads with mainstream consumer electronics (phones, watches, tablets,
+// monitors, TVs, PC components) instead of niche items like cases or smart rings.
 const HOME_LOW_SIGNAL_CATEGORIES = new Set([
+  // accessories / components-accessories
   'flash_drives', 'chargers', 'powerbanks', 'case_fans', 'cpu_coolers',
-  'laptop_coolers', 'pc_cases', 'ups',
+  'laptop_coolers', 'pc_cases', 'ups', 'psu',
+  // niche / low daily relevance
+  'smart_rings', 'hardware_wallets', 'vr_headsets', 'e_readers', '3d_printers',
+  'robot_vacuums', 'modem_routers',
+  // niche photo & video (catalog only has lenses + specialty cameras here)
+  'camera_lenses', 'ip_cameras', 'dashcams', 'gimbals', 'drones',
+  // niche audio/video gear
+  'av_receivers', 'audio_systems', 'media_players', 'projectors',
+  'microphones', 'webcams',
 ]);
 
 function lit(v) {

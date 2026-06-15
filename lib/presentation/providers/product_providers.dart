@@ -128,8 +128,9 @@ const int _homeFeedInitialPerCategory = 28;
 /// Category aliases used by category browse providers and legacy deep links.
 /// Canonical keys and legacy deep-link keys both resolve to query variants.
 const catalogCategoryAliases = <String, List<String>>{
-  'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu'],
-  'feature_phones': ['feature_phones', 'feature-phones', 'tuslu-telefon'],
+  // Feature phones merged into smartphones — their query variants ride along so
+  // any residual feature_phones records still surface under Smartphones.
+  'smartphones': ['smartphones', 'smartphone', 'telefon', 'cep-telefonu', 'feature_phones', 'feature-phones', 'tuslu-telefon'],
   'smart_rings': ['smart_rings', 'smart-rings', 'smart rings'],
   'tablets': ['tablets', 'tablet'],
   'smartwatches': ['smartwatches', 'smartwatch', 'akıllı saat'],
@@ -1627,7 +1628,6 @@ HomeFeed _buildHomeFeed(
 // categories collection first; this is the offline/fallback order.
 const _feedCategories = [
   'smartphones',
-  'feature_phones',
   'smartwatches',
   'smart_rings',
   'headphones',

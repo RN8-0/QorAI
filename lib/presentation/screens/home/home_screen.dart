@@ -37,8 +37,10 @@ const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // Keep the first shelf payload light; users still get enough horizontal scroll
 // while image decode and item bookkeeping stay small on mid-range devices.
 const int _kHorizontalInitialItemLimit = 8;
-// card width (155) + right margin (12) = fixed item extent avoids per-frame layout calc
-const double _kCardItemExtent = 167.0;
+// card width (132) + right margin (12) = fixed item extent avoids per-frame layout calc.
+// Daraltıldı (155 → 132): kartlar artık daha kompakt, satıra ~2.8 kart sığar ve
+// görsel kutusu (132×132) kare olur → "enine geniş/şişkin" görünüm giderildi.
+const double _kCardItemExtent = 144.0;
 // ignore: unused_element
 const int _kInitialCategoryChipLimit = 18;
 // Progressive category rendering — start light, add on scroll
@@ -1215,11 +1217,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Icons.smartphone_rounded,
           ),
           item(
-            'feature_phones',
-            label(tr: 'Tuşlu Telefon', en: 'Feature Phones'),
-            Icons.dialpad_rounded,
-          ),
-          item(
             'smartwatches',
             l?.catSmartwatches ?? 'Smartwatches',
             Icons.watch_rounded,
@@ -1577,14 +1574,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildPersonalizedSectionBody(WidgetRef ref) {
+    Widget buildRow(List<ProductEntity> products) {
+      final display = products.take(_kHorizontalInitialItemLimit).toList();
+      return ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: _kHorizontalCardRowPadding,
+        physics: const BouncingScrollPhysics(),
+        itemExtent: _kCardItemExtent,
+        addAutomaticKeepAlives: false,
+        itemCount: display.length,
+        itemBuilder: (context, index) {
+          final product = display[index];
+          final price =
+              product.getPriceForCountry(ref.read(selectedCountryProvider)) ??
+              0;
+          return _WideProductCard(
+            product: product,
+            price: price,
+            onTap: () => context.push('/product/${product.id}'),
+          );
+        },
+      );
+    }
+
+    final feed = ref.watch(homeFeedProvider).valueOrNull;
+    final loadingFallback = feed == null
+        ? const <ProductEntity>[]
+        : (feed.featured.isNotEmpty ? feed.featured : feed.trending);
+
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: ref
           .watch(personalizedRecommendationsProvider)
           .when(
             skipLoadingOnReload: true,
+            skipLoadingOnRefresh: true,
             data: (products) {
               if (products.isEmpty) {
+                if (loadingFallback.isNotEmpty) {
+                  return buildRow(loadingFallback);
+                }
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1617,36 +1646,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 );
               }
-              final display = products
-                  .take(_kHorizontalInitialItemLimit)
-                  .toList();
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: _kHorizontalCardRowPadding,
-                physics: const BouncingScrollPhysics(),
-                itemExtent: _kCardItemExtent,
-                addAutomaticKeepAlives: false,
-                itemCount: display.length,
-                itemBuilder: (context, index) {
-                  final product = display[index];
-                  final price =
-                      product.getPriceForCountry(
-                        ref.read(selectedCountryProvider),
-                      ) ??
-                      0;
-                  return _WideProductCard(
-                    product: product,
-                    price: price,
-                    onTap: () => context.push('/product/${product.id}'),
-                  );
-                },
-              );
+              return buildRow(products);
             },
-            loading: () => _buildSkeletonRow(
-              height: _kHorizontalCardRowHeight,
-              cardWidth: 155,
-            ),
-            error: (error, stackTrace) => const SizedBox.shrink(),
+            loading: () => loadingFallback.isNotEmpty
+                ? buildRow(loadingFallback)
+                : _buildSkeletonRow(
+                    height: _kHorizontalCardRowHeight,
+                    cardWidth: 132,
+                  ),
+            error: (error, stackTrace) => loadingFallback.isNotEmpty
+                ? buildRow(loadingFallback)
+                : const SizedBox.shrink(),
           ),
     );
   }
@@ -1731,7 +1741,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           },
           loading: () => _buildSkeletonRow(
             height: _kHorizontalCardRowHeight,
-            cardWidth: 155,
+            cardWidth: 132,
           ),
           error: (error, stackTrace) => const SizedBox.shrink(),
         ),
@@ -1967,7 +1977,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
             loading: () => _buildSkeletonRow(
               height: _kHorizontalCardRowHeight,
-              cardWidth: 155,
+              cardWidth: 132,
             ),
             error: (error, stackTrace) => _buildRetryWidget(
               onRetry: () => ref.invalidate(newArrivalsProvider),
@@ -2040,7 +2050,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             },
             loading: () => _buildSkeletonRow(
               height: _kHorizontalCardRowHeight,
-              cardWidth: 155,
+              cardWidth: 132,
             ),
             error: (error, stackTrace) => _buildRetryWidget(
               onRetry: () => ref.invalidate(discoverProductsProvider),
@@ -2977,7 +2987,7 @@ class _WideProductCard extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            width: 155,
+            width: 132,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isDark ? context.surfaceVariantColor : Colors.white,
@@ -3003,11 +3013,11 @@ class _WideProductCard extends StatelessWidget {
                       child: AspectRatio(
                         aspectRatio: 1.0,
                         child: ProductImageBox(
-                          imageUrl: product.imageURL.isNotEmpty
-                              ? product.imageURL
-                              : null,
+                          imageUrl: product.imageUrl,
+                          fallbackUrls: product.allImages,
                           borderRadius: _kRadius10,
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
+                          imageScale: 0.76,
                         ),
                       ),
                     ),
@@ -3172,7 +3182,7 @@ class _TrendingWideCard extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            width: 155,
+            width: 132,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isDark ? context.surfaceVariantColor : Colors.white,
@@ -3203,11 +3213,11 @@ class _TrendingWideCard extends StatelessWidget {
                       child: AspectRatio(
                         aspectRatio: 1.0,
                         child: ProductImageBox(
-                          imageUrl: product.imageURL.isNotEmpty
-                              ? product.imageURL
-                              : null,
+                          imageUrl: product.imageUrl,
+                          fallbackUrls: product.allImages,
                           borderRadius: _kRadius10,
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
+                          imageScale: 0.76,
                         ),
                       ),
                     ),
