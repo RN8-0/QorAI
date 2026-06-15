@@ -158,7 +158,7 @@ export default function Home() {
         : L('Good evening', 'İyi akşamlar', 'Guten Abend');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
-  const [feed, setFeed] = useState({ forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
+  const [feed, setFeed] = useState({ popularPicks: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [recent, setRecent] = useState(() => getRecentProducts());
 
@@ -383,6 +383,10 @@ export default function Home() {
 
         {!searchMode && (
           <>
+            {/* POPULAR CATEGORIES — top picks from phone / tablet / laptop / monitor */}
+            <Section title={L('Popular categories', 'Popüler kategoriler', 'Beliebte Kategorien')}
+              products={feed.popularPicks} loading={loading} t={t} />
+
             {/* FOR YOU */}
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { subscriptionsMixCategories } from '../lib/linkAnalysis';
+import { subscriptionsMixCategories, validateSubscriptionInput } from '../lib/linkAnalysis';
 import {
   clearSubscriptionAnalysisJob,
   startSubscriptionAnalysisJob,
@@ -269,6 +269,7 @@ export default function Subscriptions() {
   const [histEntry, setHistEntry] = useState(null);
   const [histRefresh, setHistRefresh] = useState(0);
   const [err, setErr] = useState('');
+  const [adding, setAdding] = useState(false);
   const [activeJobId, setActiveJobId] = useState('');
   const lastSavedAt = useRef('');
 
@@ -289,12 +290,29 @@ export default function Subscriptions() {
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
     resetAnalysis();
   }
-  function addCustom(e) {
+  // App-parity validation: known services resolve locally; anything unknown is
+  // classified by the AI so a random word / link / product is rejected instead
+  // of being added as a fake subscription.
+  async function addCustom(e) {
     e.preventDefault();
     const v = custom.trim();
-    if (v && !selected.includes(v)) setSelected((s) => [...s, v]);
-    setCustom('');
-    resetAnalysis();
+    if (!v || adding) return;
+    setErr('');
+    setAdding(true);
+    try {
+      const res = await validateSubscriptionInput(v, selected, lang);
+      if (res.error) { setErr(res.error); return; }
+      const name = res.displayName || v;
+      if (selected.some((s) => s.trim().toLowerCase() === name.toLowerCase())) {
+        setCustom('');
+        return;
+      }
+      setSelected((s) => [...s, name]);
+      setCustom('');
+      resetAnalysis();
+    } finally {
+      setAdding(false);
+    }
   }
 
   function savePending(items) {
@@ -423,8 +441,10 @@ export default function Subscriptions() {
 
             <form className="subs-custom" onSubmit={addCustom}>
               <input value={custom} onChange={(e) => setCustom(e.target.value)}
-                placeholder={t('subs.customPlaceholder')} />
-              <button type="submit" className="btn btn-ghost">{t('subs.add')}</button>
+                placeholder={t('subs.customPlaceholder')} disabled={adding} />
+              <button type="submit" className="btn btn-ghost" disabled={adding || !custom.trim()}>
+                {adding ? L('Checking…', 'Kontrol ediliyor…', 'Wird geprüft…') : t('subs.add')}
+              </button>
             </form>
 
             {selected.length > 0 && (

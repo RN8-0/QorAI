@@ -901,3 +901,131 @@ export function subscriptionsMixCategories(names) {
   const uniq = [...new Set(cats)];
   return uniq.length > 1;
 }
+
+// ── Subscription input validation — app parity ──────────────────────────────
+// Mirrors SubQuizNotifier.validateSingleSubscriptionChip + GeminiService
+// .resolveSubscriptionSelection in the Flutter app: known services resolve
+// locally (no AI call); anything unknown is classified by the AI, so a random
+// word / link / product / profanity is rejected instead of being treated as a
+// real subscription.
+
+// Canonical display names for the locally-known catalog, so a typed "netflix"
+// becomes "Netflix" without an AI round-trip.
+const SUB_DISPLAY = {
+  netflix: 'Netflix', 'disney+': 'Disney+', 'disney plus': 'Disney+',
+  'amazon prime': 'Amazon Prime', 'prime video': 'Amazon Prime', 'amazon prime video': 'Amazon Prime',
+  hbo: 'HBO', 'hbo max': 'HBO Max', max: 'Max', hulu: 'Hulu',
+  'apple tv+': 'Apple TV+', 'apple tv plus': 'Apple TV+', blutv: 'BluTV', exxen: 'Exxen', exen: 'Exxen',
+  gain: 'Gain', mubi: 'MUBI', 'youtube premium': 'YouTube Premium', 'yt premium': 'YouTube Premium',
+  crunchyroll: 'Crunchyroll', 'bein sports': 'beIN Sports', tod: 'TOD',
+  'paramount+': 'Paramount+', 'paramount plus': 'Paramount+', peacock: 'Peacock', tabii: 'Tabii', 'tv+': 'Apple TV+',
+  spotify: 'Spotify', 'apple music': 'Apple Music', 'youtube music': 'YouTube Music', 'yt music': 'YouTube Music',
+  tidal: 'Tidal', deezer: 'Deezer', 'amazon music': 'Amazon Music', fizy: 'Fizy',
+  soundcloud: 'SoundCloud', 'soundcloud go': 'SoundCloud Go',
+  'chatgpt plus': 'ChatGPT Plus', chatgpt: 'ChatGPT Plus', 'claude pro': 'Claude Pro', claude: 'Claude Pro',
+  gemini: 'Gemini Advanced', 'gemini advanced': 'Gemini Advanced', perplexity: 'Perplexity', midjourney: 'Midjourney',
+  copilot: 'Microsoft Copilot', 'microsoft copilot': 'Microsoft Copilot', grok: 'Grok', deepseek: 'DeepSeek', poe: 'Poe',
+  icloud: 'iCloud+', 'icloud+': 'iCloud+', 'google one': 'Google One', dropbox: 'Dropbox', onedrive: 'OneDrive',
+  pcloud: 'pCloud', mega: 'MEGA',
+  'adobe creative cloud': 'Adobe Creative Cloud', canva: 'Canva', 'microsoft 365': 'Microsoft 365',
+  'office 365': 'Microsoft 365', notion: 'Notion', 'google workspace': 'Google Workspace', hostinger: 'Hostinger',
+  'xbox game pass': 'Xbox Game Pass', 'playstation plus': 'PlayStation Plus', 'ps plus': 'PlayStation Plus',
+  'ea play': 'EA Play', 'geforce now': 'GeForce Now', 'nintendo switch online': 'Nintendo Switch Online',
+  'ubisoft+': 'Ubisoft+', 'apple arcade': 'Apple Arcade',
+};
+
+export function looksLikeSubscriptionUrl(value) {
+  const lower = String(value || '').trim().toLowerCase();
+  return lower.includes('http://') || lower.includes('https://')
+    || lower.includes('www.') || /\.[a-z]{2,}(\/|$)/.test(lower);
+}
+
+function prettySubscriptionName(name) {
+  const raw = String(name || '').trim().replace(/\s+/g, ' ');
+  const known = SUB_DISPLAY[raw.toLowerCase()];
+  if (known) return known;
+  return raw.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function subValidationMessages(lang) {
+  const isTr = String(lang || '').slice(0, 2) === 'tr';
+  const isDe = String(lang || '').slice(0, 2) === 'de';
+  return {
+    empty: isTr ? 'Lütfen en az bir abonelik adı girin.'
+      : isDe ? 'Bitte gib mindestens einen Abo-Namen ein.'
+      : 'Please enter at least one subscription name.',
+    url: isTr ? 'Buraya yalnızca abonelik adı girebilirsin — link kabul edilmez.'
+      : isDe ? 'Hier sind nur Abo-Namen erlaubt — keine Links.'
+      : 'Only subscription names are accepted here — links are not allowed.',
+    notSub: isTr ? 'Bu metin bir abonelik servisine benzemiyor. Lütfen Netflix, Spotify gibi bir servis adı yaz.'
+      : isDe ? 'Das sieht nicht nach einem Abo-Dienst aus. Gib einen Namen wie Netflix oder Spotify ein.'
+      : 'This doesn\'t look like a subscription service. Please enter a name like Netflix or Spotify.',
+    failed: isTr ? 'Abonelik doğrulanırken hata oluştu. Lütfen tekrar deneyin.'
+      : isDe ? 'Abo konnte nicht geprüft werden. Bitte erneut versuchen.'
+      : 'Could not validate subscription. Please try again.',
+    dup: (n) => (isTr ? `"${n}" zaten eklendi.` : isDe ? `"${n}" ist bereits hinzugefügt.` : `"${n}" is already added.`),
+  };
+}
+
+function subValidationPrompt(lang) {
+  const langName = languageName(lang);
+  return `You are Qor AI's subscription validation engine.
+Classify whether the input below is a real subscription service.
+
+Rules:
+- Accept only real subscription-based services, memberships, or paid digital platforms.
+- Reject links, profanity, random words, products, and unrelated text.
+- If an input is a typo but clearly maps to a known subscription, normalize it.
+- Use one category only: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
+- "display_name" must be the clean branded service name.
+- "reason" must be short and in ${langName}.
+
+Return ONLY valid JSON:
+{ "is_subscription": true|false, "display_name": "string or null", "category": "string or null", "reason": "string" }`;
+}
+
+// Validate a single typed subscription name before adding it as a chip.
+// Returns { displayName, category } when valid, or { error } when not.
+export async function validateSubscriptionInput(rawName, existingNames = [], language = 'en') {
+  const msg = subValidationMessages(language);
+  const trimmed = String(rawName || '').trim();
+  if (!trimmed) return { error: msg.empty };
+  if (looksLikeSubscriptionUrl(trimmed)) return { error: msg.url };
+
+  const lower = trimmed.toLowerCase();
+  if ((existingNames || []).some((n) => String(n || '').trim().toLowerCase() === lower)) {
+    return { error: msg.dup(trimmed) };
+  }
+
+  // Known service → resolve locally, no AI call.
+  const localCategory = subscriptionCategory(trimmed);
+  if (localCategory) {
+    const displayName = prettySubscriptionName(trimmed);
+    if ((existingNames || []).some((n) => String(n || '').trim().toLowerCase() === displayName.toLowerCase())) {
+      return { error: msg.dup(displayName) };
+    }
+    return { displayName, category: localCategory };
+  }
+
+  // Unknown → ask the AI whether it's a real subscription at all.
+  let res;
+  try {
+    res = await askQorAiJson({
+      system: subValidationPrompt(language),
+      user: JSON.stringify({ input: trimmed }),
+      maxOutputTokens: 512,
+    });
+  } catch {
+    return { error: msg.failed };
+  }
+  const isSub = res?.is_subscription === true;
+  const displayName = prettySubscriptionName(res?.display_name || trimmed);
+  const category = String(res?.category || '').trim();
+  if (!isSub || !displayName || !category) {
+    return { error: msg.notSub };
+  }
+  if ((existingNames || []).some((n) => String(n || '').trim().toLowerCase() === displayName.toLowerCase())) {
+    return { error: msg.dup(displayName) };
+  }
+  return { displayName, category };
+}
