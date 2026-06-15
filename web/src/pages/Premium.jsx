@@ -16,9 +16,10 @@ function plans(L) {
       cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
       features: [
         L('20 welcome Q Coins', '20 hoş geldin Q Coin', '20 Willkommens-Q-Coins'),
-        L('3 product link analyses per day', 'Günde 3 ürün link analizi', '3 Produktlink-Analysen pro Tag'),
-        L('3 subscription analyses per day', 'Günde 3 abonelik analizi', '3 Abo-Analysen pro Tag'),
-        L('Catalog search and basic comparison', 'Katalog arama ve temel karşılaştırma', 'Katalogsuche und Basisvergleich'),
+        L('Qor AI Chat with a daily limit', 'Günlük limitli Qor AI Chat', 'Qor AI Chat mit Tageslimit'),
+        L('Visual scanner & smart link analysis (limited)', 'Görsel tarayıcı ve akıllı link analizi (limitli)', 'Visueller Scanner & smarte Link-Analyse (begrenzt)'),
+        L('Standard recommendations', 'Standart öneriler', 'Standard-Empfehlungen'),
+        L('Product comparisons, search and categories', 'Ürün karşılaştırma, arama ve kategoriler', 'Produktvergleiche, Suche und Kategorien'),
       ],
     },
     {
@@ -29,9 +30,11 @@ function plans(L) {
       featured: true,
       features: [
         L('3-day free trial', '3 gün ücretsiz deneme', '3 Tage kostenlos testen'),
-        L('Unlimited premium AI product analysis', 'Sınırsız premium AI ürün analizi', 'Unbegrenzte Premium-KI-Produktanalyse'),
-        L('Advanced link and subscription analysis', 'Gelişmiş link ve abonelik analizi', 'Erweiterte Link- und Abo-Analyse'),
-        L('90-day price history and smarter alternatives', '90 günlük fiyat geçmişi ve akıllı alternatifler', '90 Tage Preisverlauf und smarte Alternativen'),
+        L('Unlimited Qor AI Chat', 'Sınırsız Qor AI Chat', 'Unbegrenzter Qor AI Chat'),
+        L('Unlimited visual scanner', 'Sınırsız görsel tarayıcı', 'Unbegrenzter visueller Scanner'),
+        L('Unlimited smart link analysis', 'Sınırsız akıllı link analizi', 'Unbegrenzte smarte Link-Analyse'),
+        L('Deeper personalized recommendations', 'Daha derin kişiselleştirilmiş öneriler', 'Tiefere personalisierte Empfehlungen'),
+        L('Priority support', 'Öncelikli destek', 'Priorisierter Support'),
       ],
     },
     {
