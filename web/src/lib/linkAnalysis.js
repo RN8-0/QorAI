@@ -885,9 +885,12 @@ const SUB_CATEGORY = {
   'microsoft copilot': 'ai', grok: 'ai', deepseek: 'ai', poe: 'ai',
   icloud: 'cloud', 'icloud+': 'cloud', 'google one': 'cloud', dropbox: 'cloud', onedrive: 'cloud',
   pcloud: 'cloud', mega: 'cloud',
-  'adobe creative cloud': 'creative', canva: 'creative',
+  // Creative/design/professional software lives under 'productivity' (app
+  // parity — the app has no separate 'creative' bucket), so Adobe, Canva,
+  // Figma, DaVinci etc. all compare against each other.
+  'adobe creative cloud': 'productivity', canva: 'productivity', figma: 'productivity',
   'microsoft 365': 'productivity', 'office 365': 'productivity', notion: 'productivity',
-  'google workspace': 'productivity', hostinger: 'hosting',
+  'google workspace': 'productivity', hostinger: 'other',
   'xbox game pass': 'gaming', 'playstation plus': 'gaming', 'ps plus': 'gaming',
   'ea play': 'gaming', 'geforce now': 'gaming', 'nintendo switch online': 'gaming',
   'ubisoft+': 'gaming', 'apple arcade': 'gaming',
@@ -983,15 +986,21 @@ function subValidationMessages(lang) {
 function subValidationPrompt(lang) {
   const langName = languageName(lang);
   return `You are Qor AI's subscription validation engine.
-Classify whether the input below is a real subscription service.
+Decide whether the input below is a real digital subscription/service OR a real paid digital app, software or platform a person can subscribe to or pay for.
 
-Rules:
-- Accept only real subscription-based services, memberships, or paid digital platforms.
-- Reject links, profanity, random words, products, and unrelated text.
-- If an input is a typo but clearly maps to a known subscription, normalize it.
-- Use one category only: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
-- "display_name" must be the clean branded service name.
-- "reason" must be short and in ${langName}.
+ACCEPT (is_subscription = true):
+- Streaming, music, gaming, AI tools, cloud storage, news, fitness, education services.
+- Paid digital software/apps and professional/creative tools — e.g. Adobe, Photoshop, Premiere Pro, Canva, Figma, DaVinci Resolve, Final Cut, Microsoft 365, Notion, ChatGPT Plus, Xbox Game Pass.
+- If the input is an obvious typo of a known service, normalize it.
+
+REJECT (is_subscription = false):
+- Random/gibberish text, profanity, and generic everyday words.
+- Physical products and hardware (phones, cars, food, devices like IQOS).
+- Links/URLs and unrelated text.
+
+Category — choose exactly one: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
+Put ALL design / creative / video-editing / professional software under "productivity" (so Adobe, Canva, Figma, DaVinci Resolve group together).
+"display_name" must be the clean branded service name. "reason" must be short and in ${langName}.
 
 Return ONLY valid JSON:
 { "is_subscription": true|false, "display_name": "string or null", "category": "string or null", "reason": "string" }`;
