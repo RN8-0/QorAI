@@ -194,20 +194,30 @@ export default function Home() {
   // browser saw the first account's feed) — lead with the signed-in user's
   // onboarding profile (rebuilt from the persisted profileVector) so the feed
   // is personalized and refreshes when the account changes.
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
+  // Personalization key as a STABLE STRING. The auth context hands back a fresh
+  // `user` object (and a new profileVector reference) on every tab focus even
+  // when nothing changed — depending on that object made the feed refetch and
+  // visibly "reload" each time the user came back to the tab. Keying on the
+  // derived category string means we only refetch when the categories change.
+  const feedKey = useMemo(() => {
     const prof = aiUserProfile(user);
     const profileCats = [prof.primaryCategory, ...(prof.interestCategories || [])]
       .filter(Boolean)
       .map(feedCategory);
     const prefCats = [...new Set([...profileCats, ...getRecentCategories().map(feedCategory)])];
+    return prefCats.join('|');
+  }, [user?.id, user?.profileVector]);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    const prefCats = feedKey ? feedKey.split('|') : [];
     getHomeFeed(prefCats)
       .then((f) => { if (live) setFeed(f); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
-  }, [user?.id, user?.profileVector]);
+  }, [feedKey]);
 
   useEffect(() => {
     const refreshRecent = () => setRecent(getRecentProducts());
