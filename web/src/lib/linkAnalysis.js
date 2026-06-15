@@ -244,7 +244,7 @@ function quizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Each question is ONE short everyday-life sentence (about 8-16 words) a normal person instantly understands. No long, layered, or technical wording.
+- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
 - Questions must be relevant to the product CATEGORY.
 - Choose 8 questions for simple products, 9-10 for complex/high-consideration products.
 - Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
@@ -252,7 +252,7 @@ Rules:
 - HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the product name at most once in the whole quiz (otherwise say "this one" or the category). Options describe behaviors/priorities only, never a brand name.
 - Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority, not a one-word label.
 - Vary the situations; do not repeat the same day, time, place, or routine across questions.
-- Do not use markdown, bold markers, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
@@ -298,7 +298,7 @@ function compareQuizGenerationPrompt(language) {
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
-- Each question is ONE short everyday-life sentence (about 8-16 words) a normal person instantly understands. No long, layered, or technical wording.
+- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
 - The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
 - Choose 8 questions for two products, 9-10 for complex categories or 3+ products.
 - Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
@@ -307,7 +307,7 @@ Rules:
 - Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority (no brand names, no model names) that silently maps to a different product's strength.
 - Make the four options clearly distinct so the answer is meaningful.
 - Vary the situations; do not repeat the same day, time, place, or routine across questions.
-- Do not use markdown, bold markers, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
@@ -365,14 +365,14 @@ The goal: understand how the user uses ${isCompare ? 'these services' : 'this se
 their specific habits, preferences, and expectations.
 
 Rules:
-- Each question is ONE short everyday-life sentence (about 8-16 words) that a normal person instantly understands. No long, layered, or technical wording.
+- Each question is ONE everyday-life sentence of MEDIUM length (about 16-26 words) that first paints a quick, relatable real-life scene and then asks — descriptive and vivid but easy to read in one breath, never a dry one-liner and never a long paragraph.
 - Choose 8 questions for one service, 9-10 when comparing multiple services.
 - Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
 - HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
 - Each question has exactly 4 options. Every option is a short, concrete everyday behavior or priority — NO brand names, NO service names, NO product-specific feature jargon — that silently maps to a different service's strength.
 - Make the four options clearly distinct so the answer is meaningful, and keep each option short (a few words to one short clause).
 - Vary the situations; do not repeat the same moment, place or time across questions.
-- Do not use markdown, bold, quotation marks, or headline-style labels. A single light emoji at the end of a question is fine.
+- Do not use markdown, bold, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}.
 
