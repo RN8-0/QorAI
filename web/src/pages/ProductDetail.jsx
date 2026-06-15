@@ -9,7 +9,7 @@ import { useFavorites } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
-import { saveProductAnalysisHistory } from '../lib/pbHistory';
+import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
 import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
@@ -47,6 +47,13 @@ function bandLabel(s, L) {
     : s >= 75 ? L('Good', 'İyi', 'Gut')
     : s >= 55 ? L('Average', 'Orta', 'Durchschnitt')
     : L('Weak', 'Zayıf', 'Schwach');
+}
+function savedAtLabel(at, lang) {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return '';
+  const loc = lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en';
+  try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch { return d.toISOString().slice(0, 10); }
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
 const HERO_SPEC_PRIORITY = [
@@ -702,11 +709,29 @@ export default function ProductDetail() {
     return () => { live = false; };
   }, [lang]);
 
+  // Revisiting a product shows the previously saved analysis from the user's PB
+  // account — no re-run, no second charge. Only fills an idle slot so it never
+  // clobbers a running/fresh analysis. A "re-analyze" button refreshes it.
+  useEffect(() => {
+    let live = true;
+    if (!p?.id || !user) return undefined;
+    getSavedProductAnalysis(p.id).then((saved) => {
+      if (!live || !saved?.analysis) return;
+      const parsed = parseAiJson(saved.analysis);
+      if (!parsed || typeof parsed !== 'object') return;
+      setAiFull((s) => (s.data || s.busy || s.phase !== 'idle'
+        ? s
+        : { phase: 'result', busy: false, notice: '', data: parsed, questions: [], savedAt: saved.at || '' }));
+    });
+    return () => { live = false; };
+  }, [p?.id, user?.id]); // eslint-disable-line
+
   // Charge + gate UP FRONT (2 Qor Coins; unlimited on Premium). With no balance
   // we never even prepare the quiz (the quiz generator is an AI call too) and
   // send the user to Premium. The analysis run below is NOT charged again.
-  const startFullAnalysisQuiz = useCallback(async () => {
-    if (!p || aiFull.busy || aiFull.data) return;
+  const startFullAnalysisQuiz = useCallback(async (force = false) => {
+    // `force` re-runs a fresh analysis even when a saved/cached report is shown.
+    if (!p || aiFull.busy || (aiFull.data && !force)) return;
     setAiFull((s) => ({ ...s, busy: true, notice: '' }));
     const access = await requireAiAccess('detail_ai_full', {
       onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
@@ -715,7 +740,8 @@ export default function ProductDetail() {
       setAiFull((s) => ({ ...s, phase: 'idle', busy: false }));
       return;
     }
-    setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, notice: '', questions: [] }));
+    // Fresh run: drop the cached saved report so the quiz/workboard renders.
+    setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, notice: '', questions: [], data: null, savedAt: '' }));
     try {
       let questions = await generateQuiz({
         category: p.category,
@@ -1229,6 +1255,17 @@ export default function ProductDetail() {
                 <div className="fade-up pd-ai-grid">
                   {aiFull.data ? (
                     <div className="pd-ai-report">
+                      {aiFull.savedAt && (
+                        <div className="pd-ai-cached">
+                          <span>
+                            {L('Saved analysis', 'Kayıtlı analiz', 'Gespeicherte Analyse')}
+                            {savedAtLabel(aiFull.savedAt, lang) ? ` · ${savedAtLabel(aiFull.savedAt, lang)}` : ''}
+                          </span>
+                          <button type="button" className="btn btn-ghost" onClick={() => startFullAnalysisQuiz(true)} disabled={aiFull.busy}>
+                            {L('Re-analyze', 'Yeniden analiz et', 'Neu analysieren')}
+                          </button>
+                        </div>
+                      )}
                       <AiAnalysisView kind="productFull" data={aiFull.data} lang={lang} />
                     </div>
                   ) : aiFull.phase === 'quiz' && aiFull.questions.length > 0 ? (

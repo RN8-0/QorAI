@@ -263,6 +263,23 @@ button.cmp-more {
   border-radius: var(--radius-sm);
   background: var(--bg3);
 }
+.cmp-ai-cached {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 24%, var(--border));
+  background: color-mix(in srgb, var(--brand-cyan) 7%, var(--bg2));
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+}
+.cmp-ai-cached .btn { min-width: 0; padding: 7px 14px; font-size: 13px; }
 .cmp-ai-loading {
   display: flex;
   align-items: center;

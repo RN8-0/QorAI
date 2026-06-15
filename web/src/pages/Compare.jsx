@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
-import { saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
+import { getSavedComparisonAnalysis, saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -146,6 +146,14 @@ function rowWinners(key, values) {
   return nums.map((n) => n != null && Number.isFinite(n) && n === best);
 }
 
+function formatSavedAt(at, lang) {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return '';
+  const loc = lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en';
+  try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch { return d.toISOString().slice(0, 10); }
+}
+
 // Run an async mapper over items with a bounded number of in-flight calls, so a
 // many-product comparison doesn't fire dozens of AI requests at the proxy at
 // once. Preserves input order in the results array.
@@ -191,6 +199,7 @@ export default function Compare() {
   const [aiStage, setAiStage] = useState(null);
   const [aiQuestions, setAiQuestions] = useState([]);
   const [aiAnswers, setAiAnswers] = useState([]);
+  const [aiSavedAt, setAiSavedAt] = useState('');
   const geoCountry = useGeoCountry();
   const boxRef = useRef(null);
   const cmpRef = useRef(null);
@@ -345,7 +354,23 @@ export default function Compare() {
     setAiPhase('idle');
     setAiQuestions([]);
     setAiAnswers([]);
+    setAiSavedAt('');
   }, [ids.join(',')]); // eslint-disable-line
+
+  // Revisiting the same comparison shows the previously saved analysis from the
+  // user's PB account — no re-run, no second charge. A "re-analyze" button still
+  // lets them refresh it. Only fills an idle slot so it never clobbers a run.
+  useEffect(() => {
+    let live = true;
+    if (products.length < 2) return undefined;
+    getSavedComparisonAnalysis(products.map((p) => p.id)).then((saved) => {
+      if (!live || !saved?.analysis) return;
+      setAiPhase((cur) => (cur === 'idle' ? 'result' : cur));
+      setAiText((cur) => cur || saved.analysis);
+      setAiSavedAt((cur) => cur || saved.at || '');
+    });
+    return () => { live = false; };
+  }, [products.map((p) => p.id).join(','), products.length]); // eslint-disable-line
 
   useEffect(() => {
     const q = term.trim();
@@ -415,6 +440,9 @@ export default function Compare() {
     setAiBusy(true);
     const access = await guardAiAccess('compare_ai', { onMessage: setAiNotice });
     if (!access.ok) { setAiBusy(false); setAiPhase('idle'); return; }
+    // Fresh run: drop the cached saved report so the quiz/workboard renders.
+    setAiText('');
+    setAiSavedAt('');
     setAiPhase('quizLoading');
     try {
       let questions = await generateCompareQuiz({
@@ -801,6 +829,17 @@ export default function Compare() {
                       </button>
                     )}
                     {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
+                    {aiText && aiSavedAt && (
+                      <div className="cmp-ai-cached">
+                        <span>
+                          {L('Saved analysis', 'Kayıtlı analiz', 'Gespeicherte Analyse')}
+                          {formatSavedAt(aiSavedAt, lang) ? ` · ${formatSavedAt(aiSavedAt, lang)}` : ''}
+                        </span>
+                        <button type="button" className="btn btn-ghost" onClick={startAiCompareQuiz} disabled={aiBusy}>
+                          {L('Re-analyze', 'Yeniden analiz et', 'Neu analysieren')}
+                        </button>
+                      </div>
+                    )}
                     {aiText && (
                       parseAiJson(aiText)
                         ? <div className="cmp-ai-result"><AiAnalysisView kind="compareFull" raw={aiText} lang={lang} products={products} /></div>

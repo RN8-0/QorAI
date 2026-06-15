@@ -163,25 +163,62 @@ export async function saveProductAnalysisHistory({ product, analysis }) {
     score: Number(product.techScore) || 0,
     verdict: String(analysis).slice(0, 200),
   });
+  const payload = {
+    userId: user.id,
+    title: product.name || 'Product analysis',
+    category: 'product_history',
+    analysisData: {
+      type: 'product',
+      productId: product.id,
+      productName: product.name || '',
+      category: product.category || '',
+      analysis,
+      timestamp: now,
+    },
+    aiScore: Number(product.techScore) || 0,
+    aiSummary: String(analysis).slice(0, 5000),
+    savedAt: now,
+  };
+  // One canonical saved analysis per product — update it on re-analyze instead
+  // of piling up duplicates (the revisit reader returns the latest anyway).
+  // Falls back to create if the update path is unavailable, so a save never
+  // silently drops.
+  let saved = false;
   try {
-    await pb.collection('saved_analyses').create({
-      userId: user.id,
-      title: product.name || 'Product analysis',
-      category: 'product_history',
-      analysisData: {
-        type: 'product',
-        productId: product.id,
-        productName: product.name || '',
-        category: product.category || '',
-        analysis,
-        timestamp: now,
-      },
-      aiScore: Number(product.techScore) || 0,
-      aiSummary: String(analysis).slice(0, 5000),
-      savedAt: now,
+    const existing = await pb.collection('saved_analyses').getList(1, 50, {
+      filter: `userId = "${user.id}" && category = "product_history"`,
+      sort: '-created',
     });
+    const match = existing.items.find((a) => String(a?.analysisData?.productId || '') === String(product.id));
+    if (match) { await pb.collection('saved_analyses').update(match.id, payload); saved = true; }
   } catch {
-    // Best effort shared history.
+    // fall through to create
+  }
+  if (!saved) {
+    try { await pb.collection('saved_analyses').create(payload); } catch { /* best effort */ }
+  }
+}
+
+// Most recent saved single-product analysis for this product id (the JSON text
+// the report renders from), so revisiting a product shows it without re-running.
+export async function getSavedProductAnalysis(productId) {
+  const user = currentUser();
+  const pid = String(productId || '').trim();
+  if (!user || !pid) return null;
+  try {
+    const res = await pb.collection('saved_analyses').getList(1, 100, {
+      filter: `userId = "${user.id}" && category = "product_history"`,
+      sort: '-created',
+    });
+    for (const a of res.items) {
+      const d = a.analysisData && typeof a.analysisData === 'object' ? a.analysisData : {};
+      if (String(d.productId || '') === pid && d.analysis) {
+        return { id: a.id, analysis: d.analysis, at: a.savedAt || d.timestamp || a.created };
+      }
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -200,25 +237,62 @@ export async function saveComparisonAnalysisHistory({ products = [], analysis })
     score: Math.round(list.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / list.length),
     verdict: String(analysis).slice(0, 200),
   });
+  const payload = {
+    userId: user.id,
+    title,
+    category: 'comparison_history',
+    analysisData: {
+      type: 'comparison',
+      productIds,
+      productNames: list.map((p) => p.name || ''),
+      category: list[0]?.category || '',
+      analysis,
+      timestamp: now,
+    },
+    aiScore: Math.round(list.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / list.length),
+    aiSummary: String(analysis).slice(0, 5000),
+    savedAt: now,
+  };
+  // One canonical saved analysis per exact product set — update on re-run, with
+  // a create fallback so a save never silently drops.
+  let saved = false;
   try {
-    await pb.collection('saved_analyses').create({
-      userId: user.id,
-      title,
-      category: 'comparison_history',
-      analysisData: {
-        type: 'comparison',
-        productIds,
-        productNames: list.map((p) => p.name || ''),
-        category: list[0]?.category || '',
-        analysis,
-        timestamp: now,
-      },
-      aiScore: Math.round(list.reduce((sum, p) => sum + (Number(p.techScore) || 0), 0) / list.length),
-      aiSummary: String(analysis).slice(0, 5000),
-      savedAt: now,
+    const key = comparisonKey(productIds);
+    const existing = await pb.collection('saved_analyses').getList(1, 50, {
+      filter: `userId = "${user.id}" && category = "comparison_history"`,
+      sort: '-created',
     });
+    const match = existing.items.find((a) => comparisonKey(a?.analysisData?.productIds || []) === key);
+    if (match) { await pb.collection('saved_analyses').update(match.id, payload); saved = true; }
   } catch {
-    // Best effort shared history.
+    // fall through to create
+  }
+  if (!saved) {
+    try { await pb.collection('saved_analyses').create(payload); } catch { /* best effort */ }
+  }
+}
+
+// Most recent saved comparison analysis for this EXACT product-id set (order-
+// independent), so revisiting the same comparison shows it without re-running.
+export async function getSavedComparisonAnalysis(productIds) {
+  const user = currentUser();
+  const ids = uniq(productIds);
+  if (!user || ids.length < 2) return null;
+  const key = comparisonKey(ids);
+  try {
+    const res = await pb.collection('saved_analyses').getList(1, 100, {
+      filter: `userId = "${user.id}" && category = "comparison_history"`,
+      sort: '-created',
+    });
+    for (const a of res.items) {
+      const d = a.analysisData && typeof a.analysisData === 'object' ? a.analysisData : {};
+      if (comparisonKey(d.productIds || []) === key && d.analysis) {
+        return { id: a.id, analysis: d.analysis, at: a.savedAt || d.timestamp || a.created };
+      }
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
