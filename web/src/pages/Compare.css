@@ -111,7 +111,6 @@ button.cmp-more {
 .cmp-product-scroll {
   overflow-x: auto;
   padding-bottom: 8px;
-  scroll-snap-type: x proximity;
 }
 /* Spacer + product columns reuse the spec table's exact column geometry
    (200px label slot + 270px columns, NO gaps) so the header cards, price cards
@@ -138,7 +137,6 @@ button.cmp-more {
   border-radius: var(--radius); padding: 16px 14px 14px; text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   flex: 0 0 var(--cmp-col, 270px);
-  scroll-snap-align: start;
 }
 .cmp-card.best {
   border-color: color-mix(in srgb, var(--score-excellent) 40%, var(--border));
@@ -183,7 +181,6 @@ button.cmp-more {
   padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
   flex: 0 0 var(--cmp-col, 270px);
   min-height: 140px;
-  scroll-snap-align: start;
 }
 .cmp-price-row-link {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 2px;

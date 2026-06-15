@@ -261,8 +261,10 @@ Rules:
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
-- Tailor every scenario to the user's real life: weave their profession and hobbies into the situations naturally — a doctor pictured on long hospital shifts, a gamer in late-night sessions, a photographer on a weekend shoot. If profession/hobbies are empty, stay category-generic.
-- Ground scenarios in what they actually shop for: lean on recentlyViewed products/categories and interestCategories when choosing contexts and examples.
+- This quiz is about THIS PRODUCT CATEGORY first. The clear majority of questions (at least 6 of them) MUST be neutral, category-driven usage scenarios that ANY buyer of this product could relate to. Do NOT bend the scenarios around the user's job or hobby.
+- AT MOST 1-2 questions in the WHOLE quiz may quietly lean on the user's profession or hobbies for their scenario — and only when it genuinely fits the product category. Never force a profession/hobby context into a question where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
+- For every other question, use ordinary everyday contexts that come from the product category itself (commuting, travel, home, general work, leisure, family), NOT the user's specific job or hobby.
+- You may lean lightly on recentlyViewed products/categories and interestCategories to pick realistic contexts, but keep the spotlight on the product decision, not the person.
 - NEVER state or hint at what we already know about them. Do not write "as a doctor", "since you love gaming", or name their profession, hobby, budget or ecosystem. Infer silently and ask a question that UNCOVERS the trade-off — the user must never feel told about their own profile.
 - Do NOT ask anything already listed in userProfile.pastQuizQuestions, and do not re-ask facts we already hold (ecosystem, budgetRange, priorities, currentDevices, usageIntent). Spend the questions only on what is still unknown for THIS specific product decision.
 
@@ -317,8 +319,10 @@ Rules:
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
-- Tailor every scenario to the user's real life: weave their profession and hobbies into the comparison contexts naturally. If profession/hobbies are empty, stay category-generic.
-- Ground contexts in what they actually shop for: lean on recentlyViewed products/categories and interestCategories.
+- This quiz is about choosing between THESE PRODUCTS first. The clear majority of questions (at least 6 of them) MUST be neutral, category-driven trade-off scenarios that ANY buyer comparing these products could relate to. Do NOT bend the scenarios around the user's job or hobby.
+- AT MOST 1-2 questions in the WHOLE quiz may quietly lean on the user's profession or hobbies for their scenario — and only when it genuinely fits the compared category. Never force a profession/hobby context where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
+- For every other question, use ordinary everyday contexts drawn from the compared category itself, NOT the user's specific job or hobby.
+- You may lean lightly on recentlyViewed products/categories and interestCategories to pick realistic contexts, but keep the spotlight on the comparison decision.
 - NEVER state or hint at what we already know about them. Do not name their profession, hobby, budget or ecosystem in the text. Infer silently and ask a question that UNCOVERS which trade-off wins for them.
 - Do NOT ask anything already listed in userProfile.pastQuizQuestions, and do not re-ask facts we already hold (ecosystem, budgetRange, priorities, currentDevices, usageIntent). Spend the questions only on what is still unknown for THIS comparison.
 
@@ -378,6 +382,7 @@ Rules:
 - Each question must reveal one concrete subscription trade-off, such as discovery vs control, catalog depth vs interface comfort, offline use vs cross-device sync, family sharing vs personal recommendations, or novelty vs retention
 - Do NOT repeat exact service names in every question. Mention each service name only when a direct comparison truly needs it; otherwise say "the music service", "the streaming app", "this subscription", or "the selected services"
 - Avoid short generic prompts such as "What do you expect from a music service?"
+- Keep the quiz about how the user actually uses THIS SERVICE TYPE. AT MOST 1-2 questions may quietly lean on the user's profession or hobbies, and only when it genuinely fits; never force a job/hobby context into every question or combine profession and hobby in the same question. Infer silently — never name their profession, hobby, budget or ecosystem.
 - Do not use markdown, bold markers, quotation marks around service names, or headline-style labels
 - Each question has exactly 4 options
 - Options should be concrete situational choices, not one-word labels

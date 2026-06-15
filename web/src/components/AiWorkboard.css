@@ -67,8 +67,8 @@
 }
 .aiwb-steps {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 9px;
 }
 .aiwb-step {
@@ -130,9 +130,6 @@
 
 @media (max-width: 560px) {
   .aiwb { grid-template-columns: 1fr; text-align: center; justify-items: center; }
-  .aiwb-steps { grid-template-columns: 1fr; width: 100%; }
+  .aiwb-steps { width: 100%; }
   .aiwb-step { text-align: left; }
-}
-@media (min-width: 561px) and (max-width: 780px) {
-  .aiwb-steps { grid-template-columns: 1fr 1fr; }
 }

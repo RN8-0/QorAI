@@ -321,7 +321,7 @@ const en = {
   'ai.greeting': "Hi! I'm Qor AI 👋 Phone, laptop, headphones or a subscription — ask away and let's find your best match.",
   'ai.placeholder': 'Ask something…',
   'ai.errReply': "I couldn't answer just now 😕 Mind trying again shortly?",
-  'ai.s1': 'Best phone under $400',
+  'ai.s1': 'Best phone under {price}',
   'ai.s2': 'Laptop recommendation for gaming',
   'ai.s3': 'iPhone 15 or Samsung S24?',
   // placeholder / 404
@@ -646,7 +646,7 @@ const tr = {
   'ai.greeting': 'Merhaba! Ben Qor AI 👋 Telefon, laptop, kulaklık ya da abonelik — ne arıyorsan sor, sana en uygununu bulalım.',
   'ai.placeholder': 'Bir şey sor…',
   'ai.errReply': 'Şu an yanıt veremedim 😕 Birazdan tekrar dener misin?',
-  'ai.s1': '50.000 TL altı en iyi telefon',
+  'ai.s1': '{price} altı en iyi telefon',
   'ai.s2': 'Oyun için laptop önerisi',
   'ai.s3': 'iPhone 15 mi Samsung S24 mü?',
   'ph.soon': 'Bu özellik web sürümüne taşınıyor. Çok yakında burada olacak.',

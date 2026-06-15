@@ -377,6 +377,28 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
   const ctx = promptContext(context, lang);
   const prof = Object.entries(profile).filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
     .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : JSON.stringify(v)}`).slice(0, 18).join('; ');
+  // Output is one JSON object covering EVERY product. The provider that actually
+  // serves these (DeepSeek) caps output at ~8k tokens, so a fixed "7-10
+  // paragraphs per product" overflows and truncates the JSON the moment there
+  // are 3+ products — which is exactly when the report "kept failing". Scale the
+  // requested verbosity down as the product count rises so the whole object
+  // always completes; depth stays high for 2-way compares, stays readable for 5.
+  const n = (products || []).length;
+  const big = n >= 4;
+  const mid = n === 3;
+  const v = {
+    matchSent: big ? '3-4' : mid ? '4-5' : '5-7',
+    factorN: big ? '5-6' : mid ? '6-7' : '8-10',
+    featN: big ? '5-6' : mid ? '6-7' : '8-10',
+    analysisPara: big ? '2-3' : mid ? '3-4' : '6-8',
+    prosN: big ? '3' : mid ? '4' : '6',
+    consN: big ? '3' : '4-5',
+    commPara: big ? '2' : mid ? '2-3' : '4-5',
+    fcPara: big ? '1-2' : mid ? '2' : '3-4',
+    diffN: big ? '4' : mid ? '5' : '6',
+    h2hPara: big ? '2-3' : mid ? '3-4' : '5-6',
+    recPara: big ? '3' : mid ? '3-4' : '5-6',
+  };
   return (
     'You are Qor AI\'s senior product comparison analyst. Evaluate every listed product separately using the same system as product detail, then give a final recommendation.\n\n' +
     `${languageGate(lang)}\n\n` +
@@ -385,11 +407,11 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
     '{\n' +
     '  "type": "compare_full_report",\n' +
     '  "products": [\n' +
-    '    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "matchComment": "5-7 detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "7-10 substantial paragraphs, each 45-85 words", "pros": ["6 detailed pros"], "cons": ["5 detailed cons"], "community": {"satisfaction": <0-100>, "summary": "5-7 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "5-7 substantial paragraphs"}}\n' +
+    `    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "matchComment": "${v.matchSent} detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "${v.analysisPara} substantial paragraphs, each 45-85 words", "pros": ["${v.prosN} detailed pros"], "cons": ["${v.consN} detailed cons"], "community": {"satisfaction": <0-100>, "summary": "${v.commPara} substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "${v.fcPara} substantial paragraphs"}}\n` +
     '  ],\n' +
-    '  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["6 detailed differences"], "headToHead": "6-8 substantial paragraphs", "recommendation": "6-9 substantial paragraphs explaining which one to buy and why"}\n' +
+    `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
-    'Rules:\n- Include one products[] entry for EVERY product. Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
+    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must include ${v.factorN} factor scores and ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
     `PRODUCTS:\n${lines}\n\nPRODUCT PAYLOAD:\n${JSON.stringify(productPayload, null, 2)}\n\n` +
     `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +

@@ -243,16 +243,27 @@ export default function Compare() {
     if (!root) return undefined;
     const scrollers = [...root.querySelectorAll('.cmp-hscroll')];
     if (scrollers.length < 2) return undefined;
-    let syncing = false;
+    // Active-lock sync: whichever row the user is actually scrolling owns the
+    // position; the scroll events the FOLLOWERS fire when we set their
+    // scrollLeft are ignored for a short window. That's what stops the
+    // "scroll it, it springs back" bug — previously a follower that couldn't
+    // reach the same offset bounced its clamped value back onto the leader.
+    let activeEl = null;
+    let releaseTimer = 0;
     const onScroll = (e) => {
-      if (syncing) return;
-      syncing = true;
-      const x = e.currentTarget.scrollLeft;
-      for (const s of scrollers) if (s !== e.currentTarget && s.scrollLeft !== x) s.scrollLeft = x;
-      requestAnimationFrame(() => { syncing = false; });
+      const el = e.currentTarget;
+      if (activeEl && activeEl !== el) return;
+      activeEl = el;
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(() => { activeEl = null; }, 150);
+      const x = el.scrollLeft;
+      for (const s of scrollers) if (s !== el && s.scrollLeft !== x) s.scrollLeft = x;
     };
     scrollers.forEach((s) => s.addEventListener('scroll', onScroll, { passive: true }));
-    return () => scrollers.forEach((s) => s.removeEventListener('scroll', onScroll));
+    return () => {
+      clearTimeout(releaseTimer);
+      scrollers.forEach((s) => s.removeEventListener('scroll', onScroll));
+    };
   }, [products.length, tab, aiPhase]);
 
   // Floating product-name header: a compact bar that pins below the navbar once

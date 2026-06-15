@@ -301,7 +301,7 @@ export default {
   'ai.greeting': 'Hallo! Ich bin Qor AI 👋 Smartphone, Laptop, Kopfhörer oder ein Abo — frag einfach, wir finden deine beste Wahl.',
   'ai.placeholder': 'Frag etwas…',
   'ai.errReply': 'Ich konnte gerade nicht antworten 😕 Versuchst du es gleich nochmal?',
-  'ai.s1': 'Bestes Handy unter 400 €',
+  'ai.s1': 'Bestes Handy unter {price}',
   'ai.s2': 'Laptop-Empfehlung fürs Gaming',
   'ai.s3': 'iPhone 15 oder Samsung S24?',
   'ph.soon': 'Diese Funktion zieht in die Web-Version um. Sehr bald hier verfügbar.',

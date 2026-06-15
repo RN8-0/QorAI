@@ -1,5 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './AiWorkboard.css';
+
+// When a flow swaps the quiz out for the workboard (or kicks off quiz prep), the
+// page is usually scrolled down where the Submit/Start button was — leaving the
+// freshly-mounted board above the fold and the user staring at empty space. Pull
+// the board just under the fixed navbar so the live progress is always in view.
+function scrollIntoViewBelowNav(el) {
+  if (!el) return;
+  const nav = document.querySelector('.appbar');
+  const offset = (nav ? nav.getBoundingClientRect().height : 60) + 14;
+  const top = window.scrollY + el.getBoundingClientRect().top - offset;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
 
 // ── One shared "what Qor AI is doing right now" animation ────────────────────
 // Same look as the link-analysis workboard (spinning orb + lit-up step list),
@@ -145,6 +157,14 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
   // end and stops (never loops back).
   const ceil = stage == null ? lastIdx : Math.min(lastIdx, STAGE_CEIL[stage] ?? lastIdx);
   const [active, setActive] = useState(0);
+  const rootRef = useRef(null);
+
+  // Bring the board into view whenever the step SET (mode) changes — i.e. on
+  // quiz-prep start and again when the report analysis begins.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => scrollIntoViewBelowNav(rootRef.current));
+    return () => cancelAnimationFrame(id);
+  }, [mode]);
 
   // Reset only when the step SET (mode) changes, never on an ordinary re-render.
   useEffect(() => { setActive(0); }, [mode]);
@@ -157,7 +177,7 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
   }, [active, ceil]);
 
   return (
-    <div className="aiwb fade-up" role="status" aria-live="polite">
+    <div className="aiwb fade-up" role="status" aria-live="polite" ref={rootRef}>
       <div className="aiwb-orb" aria-hidden="true">
         <span className="aiwb-ring" />
         <span className="aiwb-core" />

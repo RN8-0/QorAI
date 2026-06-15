@@ -1,6 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/index.jsx';
 import './QuizFlow.css';
+
+// Pull the quiz card just under the fixed navbar on mount, so it doesn't appear
+// stranded above the fold after the user clicked "Start analysis" lower down.
+function scrollIntoViewBelowNav(el) {
+  if (!el) return;
+  const nav = document.querySelector('.appbar');
+  const offset = (nav ? nav.getBoundingClientRect().height : 60) + 14;
+  const top = window.scrollY + el.getBoundingClientRect().top - offset;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
 
 // Shared quiz UI for the link-analysis and subscription flows — mirrors the
 // app's quiz step: AI-generated questions, four tappable option cards each, a
@@ -10,6 +20,12 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
   const { lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [answers, setAnswers] = useState({});
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => scrollIntoViewBelowNav(rootRef.current));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const answeredCount = useMemo(
     () => questions.filter((q) => answers[q.id] != null).length,
@@ -33,7 +49,7 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
   if (!questions.length) return null;
 
   return (
-    <div className="quiz fade-up">
+    <div className="quiz fade-up" ref={rootRef}>
       <div className="quiz-head">
         <div className="quiz-head-text">
           <strong>{title || L('Quick quiz', 'Hızlı quiz', 'Kurzes Quiz')}</strong>

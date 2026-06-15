@@ -41,21 +41,34 @@ const BASE_CHAT_PROMPT =
   '- Never mention backend providers, model names or internal tooling; if asked what powers you, answer as Qor AI.\n' +
   '- Address the person directly ("you" / "sen" / "siz"), never "the user".';
 
-function chatSystemPrompt(language = 'en', groundingContext = '') {
+function chatSystemPrompt(language = 'en', groundingContext = '', locale = {}) {
   const langName = languageLabel(language);
+  const country = String(locale.country || '').toUpperCase();
+  const currency = String(locale.currency || '').toUpperCase();
+  const marketLine = country
+    ? `\n- LOCAL MARKET: The person is in ${country}${currency ? ` and shops in ${currency}` : ''}. Whenever you mention a price, budget or value, use ${currency || 'their local currency'} and that market's typical pricing — NEVER quote another country's currency (e.g. do not give Turkish Lira to a non-Turkish user, or USD to a Turkish user). If you don't know the local price, say it should be checked on the local store instead of guessing in the wrong currency.`
+    : '';
   return `${BASE_CHAT_PROMPT}
 - SITE LANGUAGE: Reply only in ${langName}. Keep official product and brand names as-is.
-- If the person writes in another language, still answer in ${langName} because the site language is ${langName}.
+- If the person writes in another language, still answer in ${langName} because the site language is ${langName}.${marketLine}
 ${groundingContext ? `\nQOR CATALOG / PAGE CONTEXT:\n${groundingContext}` : ''}`;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Transient failures worth retrying / falling back on — mirrors the app's
+// Transient failures worth falling back on — mirrors the app's
 // _shouldFallbackModel (404/429/5xx + quota wording).
 function transientStatus(status) {
   return status === 404 || status === 429 || status === 500
     || status === 502 || status === 503 || status === 504;
+}
+// Worth RETRYING the SAME provider: only genuine server-side hiccups (5xx).
+// A 429/404 means "this key is rate-limited / route missing" — retrying the
+// same provider just burns 2-4s before the inevitable fallback, so we move to
+// the next provider immediately instead. (The Gemini free key is frequently
+// 429, so this is what made every AI call feel slow and flaky.)
+function retryableStatus(status) {
+  return status === 500 || status === 502 || status === 503 || status === 504;
 }
 
 async function fetchJson(url, body, timeoutMs = 90000) {
@@ -90,6 +103,7 @@ async function geminiOnce({ system, messages, maxOutputTokens, temperature, tool
   if (!res.ok) {
     const err = new Error(`gemini ${res.status}`);
     err.transient = transientStatus(res.status);
+    err.retryable = retryableStatus(res.status);
     throw err;
   }
   const data = await res.json();
@@ -111,6 +125,7 @@ async function deepseekOnce({ system, messages, maxOutputTokens, temperature, js
   if (!res.ok) {
     const err = new Error(`deepseek ${res.status}`);
     err.transient = transientStatus(res.status);
+    err.retryable = retryableStatus(res.status);
     throw err;
   }
   const data = await res.json();
@@ -136,15 +151,17 @@ async function aiRequest({
   timeoutMs = 90000,
 }) {
   let lastErr;
+  // Gemini first (app parity). Retry the SAME provider only on a true 5xx; on a
+  // 429/404 (the common case for the free key) fall straight through to DeepSeek
+  // instead of sleeping 2s for nothing.
   for (let i = 0; i < 2; i++) {
-    if (i > 0) await sleep(2000);
     try { return await geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode, timeoutMs }); }
-    catch (e) { lastErr = e; if (!e.transient) break; }
+    catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
   }
+  // DeepSeek — the unlimited json_object workhorse — does the heavy lifting.
   for (let i = 0; i < 2; i++) {
-    if (i > 0) await sleep(2500);
     try { return await deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode, timeoutMs }); }
-    catch (e) { lastErr = e; if (!e.transient) break; }
+    catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
   }
   throw lastErr || new Error('AI failed');
 }
@@ -158,8 +175,10 @@ async function groundedGeminiRequest({
 }) {
   let lastErr;
   const messages = [{ role: 'user', content: user }];
+  // Grounded search is Gemini-only (DeepSeek has no Google Search tool). Retry
+  // only on a true 5xx; on a 429 give up fast so the optional research step does
+  // not strand the user on "running web research" — the report runs without it.
   for (let i = 0; i < 2; i++) {
-    if (i > 0) await sleep(2000);
     try {
       return await geminiOnce({
         system,
@@ -172,7 +191,8 @@ async function groundedGeminiRequest({
       });
     } catch (e) {
       lastErr = e;
-      if (!e.transient) break;
+      if (!e.retryable || i === 1) break;
+      await sleep(1200);
     }
   }
   throw lastErr || new Error('grounded search failed');
@@ -185,7 +205,10 @@ export async function askQorAi(history, opts = {}) {
     content: m.text,
   }));
   return aiRequest({
-    system: chatSystemPrompt(opts.language || opts.lang || 'en', opts.context || ''),
+    system: chatSystemPrompt(opts.language || opts.lang || 'en', opts.context || '', {
+      country: opts.country || '',
+      currency: opts.currency || '',
+    }),
     messages,
     maxOutputTokens: 4096,
     temperature: 0.68,

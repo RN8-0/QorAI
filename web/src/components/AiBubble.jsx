@@ -7,9 +7,19 @@ import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { productPath } from '../lib/routes';
 import { searchProducts } from '../lib/typesense';
+import { useGeoCountry } from '../lib/geo';
+import { CURRENCY_BY_COUNTRY, formatPriceAmount } from '../lib/format';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from './AiText.jsx';
 import './AiBubble.css';
+
+// A sensible mid-range phone budget per currency, so the "best phone under X"
+// quick prompt always shows the visitor's OWN currency/market — never a Turkish
+// Lira figure to a US user or vice-versa.
+const PHONE_BUDGET_BY_CURRENCY = {
+  USD: 400, EUR: 400, GBP: 350, TRY: 30000, CAD: 550, AUD: 600,
+  CHF: 400, PLN: 1800, MXN: 8000, BRL: 2500, RUB: 35000,
+};
 
 function productUrl(product) {
   try {
@@ -72,8 +82,14 @@ export default function AiBubble() {
   const sendRef = useRef(null);
   const userRef = useRef(user);
   userRef.current = user;
+  const geoCountry = useGeoCountry();
+  const currency = CURRENCY_BY_COUNTRY[String(geoCountry || '').toUpperCase()] || 'USD';
 
-  const suggestions = [t('ai.s1'), t('ai.s2'), t('ai.s3')];
+  // Quick prompts follow the SITE LANGUAGE (templates) but the user's COUNTRY
+  // for the price figure — so the budget suggestion is always in their currency.
+  const budget = PHONE_BUDGET_BY_CURRENCY[currency] || PHONE_BUDGET_BY_CURRENCY.USD;
+  const s1 = t('ai.s1', { price: formatPriceAmount(budget, currency, lang) });
+  const suggestions = [s1, t('ai.s2'), t('ai.s3')];
 
   function goQuiz() {
     const next = `${location.pathname}${location.search}${location.hash}`;
@@ -124,7 +140,7 @@ export default function AiBubble() {
       const reply = await askQorAi([
         ...profileContext,
         ...next.filter((m, i) => !(i === 0 && m === greetingRef.current)),
-      ], { language: lang, context: catalogContext });
+      ], { language: lang, context: catalogContext, country: geoCountry, currency });
       setMsgs((m) => [...m, { role: 'model', text: reply }]);
     } catch {
       setMsgs((m) => [...m, { role: 'model', text: t('ai.errReply') }]);
