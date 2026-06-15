@@ -24,6 +24,10 @@ const LIST_FIELDS = [
 // highest-scored first). Separate rails — not one merged "popular" list.
 const HOME_SECTION_CATEGORIES = ['smartphones', 'tablets', 'laptops', 'monitors', 'tvs'];
 
+// Home showcase rails never surface low-tech-score products (the catalog's
+// "60 altı" tier). Recently-viewed is the user's own history and is exempt.
+const HOME_MIN_SCORE = 60;
+
 // Mainstream consumer electronics for the home sections. Desktops and bare PC
 // components are intentionally NOT here — full towers/boards read as "boxes" on
 // the home page and crowd out the products people actually browse; they stay
@@ -114,20 +118,45 @@ function topFacetCategories(counts, limit = 10) {
     .map((c) => c.value);
 }
 
+// Collapse storage/colour variants of the same product to ONE card — the home
+// page should never show "iPhone 17 Pro (512 GB)" next to "iPhone 17 Pro (1 TB)".
+// Keeps the canonical primary variant when it's present in the list.
+function dedupeVariants(products) {
+  const chosenIndex = new Map(); // variantGroup -> index in out
+  const out = [];
+  for (const p of products || []) {
+    const grp = p?.variantGroup ? String(p.variantGroup) : '';
+    if (!grp) { out.push(p); continue; }
+    if (!chosenIndex.has(grp)) {
+      chosenIndex.set(grp, out.length);
+      out.push(p);
+    } else if (p.variantPrimary && !out[chosenIndex.get(grp)]?.variantPrimary) {
+      out[chosenIndex.get(grp)] = p; // upgrade to the canonical primary
+    }
+  }
+  return out;
+}
+
 async function categoryBalancedProducts(categories, perCategory, sortBy, limit, opts = {}) {
-  const results = await Promise.all(categories.map((category) =>
-    searchDocs({
+  const minScore = Number(opts.minScore) || 0;
+  // Over-fetch: variant de-dup + quality/score filtering can drop a lot, so pull
+  // extra per category to still fill the rail with DISTINCT products.
+  const fetchN = Math.min(Math.max(perCategory * 6, 18), 60);
+  const perCat = await Promise.all(categories.map((category) => {
+    const parts = [`category:=${lit(category)}`];
+    if (minScore > 0) parts.push(`techScore:>=${minScore}`);
+    return searchDocs({
       q: '*',
       query_by: 'name',
       sort_by: sortBy,
-      filter_by: `category:=${lit(category)}`,
-      per_page: perCategory,
+      filter_by: parts.join(' && '),
+      per_page: fetchN,
       include_fields: LIST_FIELDS,
-    }).then((res) => docs(res).map(docToProduct)).catch(() => []),
-  ));
-  return uniqueProducts(results.flat())
-    .filter((product) => homeQualityFilter(product, opts))
-    .slice(0, limit);
+    }).then((res) => dedupeVariants(
+      docs(res).map(docToProduct).filter((product) => homeQualityFilter(product, opts)),
+    ).slice(0, perCategory)).catch(() => []);
+  }));
+  return dedupeVariants(uniqueProducts(perCat.flat())).slice(0, limit);
 }
 
 async function topCategoryPicks(categoryCounts, limit = 10) {
@@ -303,15 +332,16 @@ export async function getHomeFeed(prefCats = []) {
     const [sectionLists, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
       // One titled rail per popular category (3×2 = 6 each), highest-scored first.
       Promise.all(HOME_SECTION_CATEGORIES.map((category) =>
-        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6))),
+        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6, { minScore: HOME_MIN_SCORE }))),
       // Trending: most viewed/searched first, so obscure long-tail SKUs sink.
-      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9),
-      categoryBalancedProducts(forYouCats, 2, 'trendScore:desc,techScore:desc', 9),
+      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
+      categoryBalancedProducts(forYouCats, 2, 'trendScore:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
       searchDocs({
         q: '*',
         query_by: 'name',
         sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
-        per_page: 40,
+        filter_by: `techScore:>=${HOME_MIN_SCORE}`,
+        per_page: 60,
         include_fields: LIST_FIELDS,
       }),
       searchDocs({
@@ -336,8 +366,8 @@ export async function getHomeFeed(prefCats = []) {
       categorySections,
       forYou,
       trending,
-      newArrivals: uniqueProducts(docs(newRes).map(docToProduct))
-        .filter((product) => homeQualityFilter(product))
+      newArrivals: dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
+        .filter((product) => homeQualityFilter(product)))
         .slice(0, 9),
       spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
       heroPicks,

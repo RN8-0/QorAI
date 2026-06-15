@@ -383,6 +383,12 @@ export default function Home() {
 
         {!searchMode && (
           <>
+            {/* FOR YOU — top, 3×3 */}
+            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
+
+            {/* TRENDING — top, 3×3 */}
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category?cat=smartphones&sort=trend" />
+
             {/* PER-CATEGORY POPULAR RAILS — own title each, 3×2 = 6 products */}
             {(feed.categorySections || []).map((sec) => (
               <Section key={sec.category}
@@ -392,12 +398,6 @@ export default function Home() {
                 t={t}
                 seeAllTo={`/category?cat=${encodeURIComponent(sec.category)}`} />
             ))}
-
-            {/* FOR YOU — 3×3 */}
-            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
-
-            {/* TRENDING — 3×3 */}
-            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category?cat=smartphones&sort=trend" />
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
 
