@@ -582,7 +582,7 @@
 
 /* shared AI text styles */
 .ai-line { font-size: 14px; line-height: 1.7; color: var(--text2); }
-.ai-line strong { color: var(--text); font-weight: 700; }
+.ai-line strong { color: var(--accent); font-weight: 800; }
 .ai-bullet { padding-left: 18px; position: relative; }
 .ai-bullet::before { content: '•'; position: absolute; left: 4px; color: var(--accent); font-weight: 700; }
 

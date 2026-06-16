@@ -401,6 +401,19 @@
 .la-factor-bar { height: 7px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
 .la-factor-bar i { display: block; height: 100%; border-radius: 999px; }
 
+/* Radar (spider) chart of the match factors, beside the bars. */
+.la-factor-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 26px; margin: 2px 0; }
+.la-radar { flex: 0 0 230px; width: 230px; max-width: 100%; overflow: visible; }
+.la-factor-bars-col { flex: 1 1 280px; min-width: 0; }
+.la-radar-ring { fill: none; stroke: var(--border); stroke-width: 1; opacity: 0.5; }
+.la-radar-axis { stroke: var(--border); stroke-width: 1; opacity: 0.38; }
+.la-radar-area { fill-opacity: 0.18; stroke-width: 2; stroke-linejoin: round; }
+.la-radar-emoji { font-size: 14px; }
+
+/* Colour the long prose so the wall of text is scannable. */
+.la-prose strong { color: var(--accent); font-weight: 800; }
+.la-prose .ai-heading { color: var(--accent); font-weight: 850; }
+
 .la-sec h4 {
   font-size: 15px; font-weight: 850; margin-bottom: 9px;
   display: flex; align-items: center; gap: 7px;
