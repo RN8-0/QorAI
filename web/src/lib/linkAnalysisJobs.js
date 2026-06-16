@@ -188,7 +188,7 @@ export function startSingleLinkAnalysisJob({ url, language, userProfile }) {
     try {
       const result = await analyzeLink(url, language, userProfile);
       if (!activeJob || activeJob.id !== job.id) return;
-      if (result.isProduct === false && !result.title) {
+      if (result.isProduct === false) {
         setJob({ phase: 'input', error: 'NOT_PRODUCT' });
         return;
       }
@@ -226,8 +226,12 @@ export function startCompareLinkAnalysisJob({ urls, language, userProfile }) {
       const bases = [];
       for (const url of urls) {
         const result = await analyzeLink(url, language, userProfile);
-        bases.push(result);
         if (!activeJob || activeJob.id !== job.id) return;
+        if (result.isProduct === false) {
+          setJob({ phase: 'input', error: 'NOT_PRODUCT' });
+          return;
+        }
+        bases.push(result);
         setJob({ bases: [...bases] });
       }
       if (!activeJob || activeJob.id !== job.id) return;

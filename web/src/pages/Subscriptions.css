@@ -455,10 +455,12 @@
 
 /* per-service comparison cards */
 .subs-svc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
 }
+.subs-svc-grid > .subs-svc { flex: 1 1 300px; max-width: 460px; }
 .subs-svc {
   position: relative;
   background: var(--bg2); border: 1px solid var(--border);
@@ -550,11 +552,15 @@
 .subs-detailed {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--r-lg, 18px); padding: 18px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* Flex (not grid) so an incomplete last row is CENTERED, not stuck left. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
 }
 .subs-detailed section {
+  flex: 1 1 260px;
+  max-width: 420px;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;

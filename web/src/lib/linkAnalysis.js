@@ -110,6 +110,7 @@ CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
 5. For Amazon ISBNs (all-numeric 10-digit IDs), this is a BOOK. Category = "books".
 6. For Amazon ASINs (alphanumeric starting with 'B'), you may cautiously identify but note uncertainty.
 7. If you cannot determine the product, set is_product to false. NEVER fabricate.
+8. NON-PRODUCT PAGES: if the URL is a social-media post, a forum / Q&A thread (Quora, Reddit…), a video, a news article, a blog post, search results, or a store homepage / category listing rather than ONE specific product, set is_product to false and do NOT invent a product. A real product link points to a single purchasable item.
 
 CATEGORY DETECTION:
 - Detect the REAL category: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, gaming, toys, beauty, sports, furniture, kitchen, pet-supplies, etc.
@@ -194,10 +195,39 @@ function fallbackBaseAnalysis({ url, title, siteName, language }) {
   return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
 }
 
+// Hosts that are never product pages — social, Q&A/forums, video, search,
+// encyclopedias, messaging, streaming. Pasting these should warn, not analyze.
+const NON_PRODUCT_HOSTS = [
+  'quora.com', 'reddit.com', 'youtube.com', 'youtu.be', 'twitter.com', 'x.com',
+  'facebook.com', 'fb.com', 'fb.watch', 'instagram.com', 'tiktok.com', 'threads.net',
+  'wikipedia.org', 'fandom.com', 'medium.com', 'substack.com', 'linkedin.com',
+  'pinterest.com', 'github.com', 'gitlab.com', 'stackoverflow.com', 'stackexchange.com',
+  'google.com', 'bing.com', 'duckduckgo.com', 'yahoo.com', 'yandex.com',
+  'whatsapp.com', 't.me', 'telegram.org', 'discord.com', 'discord.gg',
+  'twitch.tv', 'spotify.com', 'soundcloud.com', 'netflix.com', 'wikihow.com',
+];
+
+// True only if `url` could plausibly be a product page. A clearly non-product
+// link (social/forum/video/search) or a bare store homepage returns false; the
+// AI still makes the final call on anything that passes here.
+export function looksLikeProductUrl(url) {
+  let u;
+  try { u = new URL(url); } catch { return false; }
+  const host = u.hostname.replace(/^www\./, '').toLowerCase();
+  if (NON_PRODUCT_HOSTS.some((d) => host === d || host.endsWith('.' + d))) return false;
+  const path = u.pathname.replace(/\/+$/, '');
+  if (!path && !u.search) return false; // bare homepage, not a product
+  return true;
+}
+
 export async function analyzeLink(url, language, userProfile = {}) {
   const fallbackTitle = titleFromUrl(url);
   let siteName = '';
   try { siteName = new URL(url).hostname.replace(/^www\./, ''); } catch { /* ignore */ }
+  // Obvious non-product links never reach the AI — warn the user instead.
+  if (!looksLikeProductUrl(url)) {
+    return { url, title: fallbackTitle || siteName || url, score: 0, analysis: '', category: '', siteName, price: null, isProduct: false };
+  }
   let res = null;
   try {
     res = await askQorAiJson({
@@ -445,7 +475,7 @@ WRITING QUALITY REQUIREMENTS:
 - Cite actual specs, community observations, or market context wherever possible.
 - verdict must be 5-7 rich paragraphs covering the full product story.
 - personaAnalysis must be 3-5 paragraphs, deeply personalized to quiz answers.
-- communityAnalysis must be 3-4 paragraphs synthesizing broad community feedback.
+- communityAnalysis must be 3-4 paragraphs synthesizing broad community feedback AND must clearly call out the product's most-reported NEGATIVES and complaints — never a positives-only summary.
 - prosForUser and consForUser must be detailed, specific bullet points.
 
 Return valid JSON (all text in ${langName}):
@@ -468,7 +498,7 @@ Return valid JSON (all text in ${langName}):
   "personaScore": <0-100>,
   "personaAnalysis": "3-5 paragraphs in ${langName} — deep analysis of how this product fits the user's lifestyle, use cases, and needs from quiz answers. Reference specific quiz answers. Be concrete. NEVER list user attributes by name.",
   "communityScore": <0-100>,
-  "communityAnalysis": "3-4 paragraphs in ${langName} — professional synthesis of community opinion. Cover overall reception, specific praise, recurring criticisms, long-term ownership reports. Reference known sources (Reddit, YouTube, review sites). IGNORE user profile.",
+  "communityAnalysis": "3-4 paragraphs in ${langName} — professional synthesis of community opinion. Cover overall reception and praise, but you MUST devote at least one clear paragraph to the NEGATIVES: the most common complaints, recurring criticisms, defects and disappointments users actually report — state them plainly, do not soften or bury them. Reference known sources (Reddit, YouTube, review sites). IGNORE user profile.",
   "overallVerdict": "3-4 paragraph definitive buy/consider/skip verdict in ${langName}. Include specific reasoning and concrete alternative if recommending skip. NEVER mention user attributes by name."
 }`;
 }
@@ -697,7 +727,7 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
       "notable_features": [
         {"label": "short feature label", "value": "short feature detail"}
       ],
-      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
       "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
 ${factorSchema}
@@ -715,7 +745,7 @@ ${factorSchema}
     "service_fit_summary": "string - 3-4 paragraphs comparing overall fit",
     "feature_comparison": "string - 3-4 paragraphs about feature differences",
     "user_experience": "string - 3-4 paragraphs about UX differences",
-    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction",
+    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction. You MUST clearly state the most common COMPLAINTS and negative points users report (price hikes, missing features, reliability, support, ads) — never a positives-only summary.",
     "final_plan": "string - 3-4 paragraphs explaining how the user should use the winning service or combination"
   }
 }`
@@ -732,7 +762,7 @@ ${factorSchema}
       "notable_features": [
         {"label": "short feature label", "value": "short feature detail"}
       ],
-      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary",
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
       "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
 ${factorSchema}
@@ -743,7 +773,7 @@ ${factorSchema}
     "service_fit_summary": "string - 3-4 paragraphs about overall fit",
     "feature_comparison": "string - 3-4 paragraphs about features and content/use cases",
     "user_experience": "string - 3-4 paragraphs about UX and everyday usage",
-    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction",
+    "community_and_risk": "string - 3-4 paragraphs about review sentiment, churn risk and long-term satisfaction. You MUST clearly state the most common COMPLAINTS and negative points users report (price hikes, missing features, reliability, support, ads) — never a positives-only summary.",
     "final_plan": "string - 3-4 paragraphs explaining how the user should use or evaluate the service"
   },
   "recommendation": "string - 5-7 paragraph personalized recommendation explaining fit, trade-offs, usage scenarios and final decision"

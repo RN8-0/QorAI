@@ -505,7 +505,9 @@ export default function LinkAnalysis() {
     setEnhanced(job.enhanced || null);
     setCompareResult(job.compareResult || null);
     setCompareText(job.compareText || '');
-    if (job.error === 'ANALYSIS_FAILED' || job.error === 'COMPARE_FAILED' || job.error === 'NOT_PRODUCT') {
+    if (job.error === 'NOT_PRODUCT') {
+      setErr(t('la.errNotProduct'));
+    } else if (job.error === 'ANALYSIS_FAILED' || job.error === 'COMPARE_FAILED') {
       setErr(t('la.errFail'));
     } else {
       setErr(job.error || '');

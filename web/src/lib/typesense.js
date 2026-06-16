@@ -22,7 +22,7 @@ const LIST_FIELDS = [
 
 // Each of these gets its OWN titled section on the home page (3×2 = 6 products,
 // highest-scored first). Separate rails — not one merged "popular" list.
-const HOME_SECTION_CATEGORIES = ['smartphones', 'tablets', 'laptops', 'monitors', 'tvs'];
+const HOME_SECTION_CATEGORIES = ['smartphones', 'tablets', 'laptops', 'monitors', 'tvs', 'graphics_cards'];
 
 // Home showcase rails never surface low-tech-score products (the catalog's
 // "60 altı" tier). Recently-viewed is the user's own history and is exempt.
@@ -34,12 +34,12 @@ const HOME_MIN_SCORE = 60;
 // fully available via the Categories menu and search.
 const HOME_FEATURE_CATEGORIES = [
   'smartphones', 'tablets', 'laptops', 'monitors', 'tvs',
-  'smartwatches', 'headphones', 'gaming_consoles',
+  'graphics_cards', 'smartwatches', 'headphones', 'gaming_consoles',
 ];
 
 const HOME_TREND_CATEGORIES = [
   'smartphones', 'tablets', 'laptops', 'monitors', 'tvs',
-  'headphones', 'smartwatches', 'gaming_consoles',
+  'graphics_cards', 'headphones', 'smartwatches', 'gaming_consoles',
 ];
 
 // Categories kept OFF the homepage feed / popular-categories rail: low daily
@@ -329,19 +329,20 @@ export async function getHomeFeed(prefCats = []) {
   // home feed instead of a wall of motherboards/towers.
   const forYouCats = [...new Set([...HOME_FEATURE_CATEGORIES, ...preferred])].slice(0, 10);
   try {
-    const [sectionLists, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
-      // One titled rail per popular category (3×2 = 6 each), highest-scored first.
+    // Build OVER-SIZED candidate pools (variant-deduped within), then assign
+    // products to sections with a single global pass so the SAME product never
+    // appears twice anywhere on the page.
+    const [sectionPools, trendingPool, forYouPool, newRes, spotlightRes, facetRes] = await Promise.all([
       Promise.all(HOME_SECTION_CATEGORIES.map((category) =>
-        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6, { minScore: HOME_MIN_SCORE }))),
-      // Trending: most viewed/searched first, so obscure long-tail SKUs sink.
-      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
-      categoryBalancedProducts(forYouCats, 2, 'trendScore:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
+        categoryBalancedProducts([category], 14, 'techScore:desc,trendScore:desc', 14, { minScore: HOME_MIN_SCORE }))),
+      categoryBalancedProducts(HOME_TREND_CATEGORIES, 4, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 24, { minScore: HOME_MIN_SCORE }),
+      categoryBalancedProducts(forYouCats, 4, 'techScore:desc,trendScore:desc', 24, { minScore: HOME_MIN_SCORE }),
       searchDocs({
         q: '*',
         query_by: 'name',
         sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
         filter_by: `techScore:>=${HOME_MIN_SCORE}`,
-        per_page: 60,
+        per_page: 80,
         include_fields: LIST_FIELDS,
       }),
       searchDocs({
@@ -357,20 +358,39 @@ export async function getHomeFeed(prefCats = []) {
     const categoryFacet = (facetRes.facet_counts || [])
       .find((facet) => facet.field_name === 'category');
     const categories = categoryFacet ? categoryFacet.counts : [];
+
+    // Claim products in render order (For You → Trending → category rails → New),
+    // skipping any product whose variant group was already placed. Highest-scored
+    // products land in the top rails first.
+    const seen = new Set();
+    const claim = (list, n) => {
+      const out = [];
+      for (const p of list || []) {
+        if (!p?.id) continue;
+        const key = p.variantGroup ? `g:${p.variantGroup}` : `id:${p.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(p);
+        if (out.length >= n) break;
+      }
+      return out;
+    };
+    const forYou = claim(forYouPool, 9);
+    const trending = claim(trendingPool, 9);
     const categorySections = HOME_SECTION_CATEGORIES
-      .map((category, i) => ({ category, products: sectionLists[i] || [] }))
+      .map((category, i) => ({ category, products: claim(sectionPools[i] || [], 6) }))
       .filter((section) => section.products.length);
-    // Hero spotlight rotates through the top product of each popular category.
-    const heroPicks = categorySections.map((s) => s.products[0]).filter(Boolean).slice(0, 6);
+    const newArrivalsPool = dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
+      .filter((product) => homeQualityFilter(product)));
+    const newArrivals = claim(newArrivalsPool, 9);
+
     return {
       categorySections,
       forYou,
       trending,
-      newArrivals: dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
-        .filter((product) => homeQualityFilter(product)))
-        .slice(0, 9),
+      newArrivals,
       spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
-      heroPicks,
+      heroPicks: forYou.slice(0, 6),
       categories,
       total: Number(facetRes.found) || 0,
     };

@@ -548,10 +548,13 @@
   font-weight: 800;
 }
 .la-cmp-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* Flex so an incomplete last row of product cards is centered, not left-stuck. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
 }
+.la-cmp-grid > .la-cmp-card { flex: 1 1 300px; max-width: 460px; }
 .la-cmp-card {
   position: relative;
   min-width: 0;
