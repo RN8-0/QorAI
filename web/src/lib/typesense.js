@@ -118,30 +118,48 @@ function topFacetCategories(counts, limit = 10) {
     .map((c) => c.value);
 }
 
-// Collapse storage/colour variants of the same product to ONE card — the home
-// page should never show "iPhone 17 Pro (512 GB)" next to "iPhone 17 Pro (1 TB)".
-// Keeps the canonical primary variant when it's present in the list.
+// A coarse MODEL key so the home page shows different models — not the same
+// model in different sizes/chips/storage. "iPad Pro 11\" (M5)" and "iPad Pro 13\"
+// (M5)" collapse to one; so do "MacBook Pro 14\" M5 Pro" and "MacBook Pro 16\"
+// M5 Max". Size, Apple M-chip, storage/RAM, Wi-Fi/Cellular and parentheticals
+// are stripped; brand + the remaining model words form the key.
+function baseModelKey(p) {
+  const name = String(p?.name || '').toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')                                  // (M5), (12 GB / 256 GB), (18CPU/20GPU)
+    .replace(/\bm\d+\s*(pro|max|ultra)?\b/g, ' ')                // Apple M5 / M5 Pro / M5 Max
+    .replace(/\bwi[\s-]?fi\b/g, ' ')                              // before the SKU strip eats "wi-fi"
+    .replace(/\b[a-z0-9]*\d[a-z0-9]*(?:-[a-z0-9]+)+\b/g, ' ')     // dashed SKU codes: a2xwjg-620, g835lx-sa152w, 32ud-10
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:inç|inch|")/g, ' ')         // 11", 16.2"
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:gb|tb)\b/g, ' ')            // 256 GB, 1 TB
+    .replace(/\b(?:cellular|tablet|laptop|notebook|5g|lte)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  if (name) return name;
+  return p?.variantGroup ? `g:${p.variantGroup}` : `id:${p?.id}`;
+}
+
+// Collapse same-model entries to ONE card. Products are assumed pre-sorted by
+// score, so the FIRST (highest-scored) variant of each model is the one kept.
 function dedupeVariants(products) {
-  const chosenIndex = new Map(); // variantGroup -> index in out
+  const seen = new Set();
   const out = [];
   for (const p of products || []) {
-    const grp = p?.variantGroup ? String(p.variantGroup) : '';
-    if (!grp) { out.push(p); continue; }
-    if (!chosenIndex.has(grp)) {
-      chosenIndex.set(grp, out.length);
-      out.push(p);
-    } else if (p.variantPrimary && !out[chosenIndex.get(grp)]?.variantPrimary) {
-      out[chosenIndex.get(grp)] = p; // upgrade to the canonical primary
-    }
+    if (!p?.id) continue;
+    const bk = baseModelKey(p);
+    const vg = p.variantGroup ? `g:${p.variantGroup}` : '';
+    if (seen.has(bk) || (vg && seen.has(vg))) continue;
+    seen.add(bk);
+    if (vg) seen.add(vg);
+    out.push(p);
   }
   return out;
 }
 
 async function categoryBalancedProducts(categories, perCategory, sortBy, limit, opts = {}) {
   const minScore = Number(opts.minScore) || 0;
-  // Over-fetch: variant de-dup + quality/score filtering can drop a lot, so pull
-  // extra per category to still fill the rail with DISTINCT products.
-  const fetchN = Math.min(Math.max(perCategory * 6, 18), 60);
+  // Over-fetch hard: model de-dup collapses whole product families, so pull a lot
+  // per category to still fill the rail with DISTINCT models.
+  const fetchN = Math.min(Math.max(perCategory * 10, 40), 120);
   const perCat = await Promise.all(categories.map((category) => {
     const parts = [`category:=${lit(category)}`];
     if (minScore > 0) parts.push(`techScore:>=${minScore}`);
@@ -329,14 +347,14 @@ export async function getHomeFeed(prefCats = []) {
   // home feed instead of a wall of motherboards/towers.
   const forYouCats = [...new Set([...HOME_FEATURE_CATEGORIES, ...preferred])].slice(0, 10);
   try {
-    // Build OVER-SIZED candidate pools (variant-deduped within), then assign
-    // products to sections with a single global pass so the SAME product never
-    // appears twice anywhere on the page.
-    const [sectionPools, trendingPool, forYouPool, newRes, spotlightRes, facetRes] = await Promise.all([
+    // Each rail is de-duped to DISTINCT models on its own (categoryBalancedProducts
+    // → dedupeVariants by base model). Rails are independent: a category's best
+    // product stays in its own rail even if it also leads For You.
+    const [sectionLists, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
       Promise.all(HOME_SECTION_CATEGORIES.map((category) =>
-        categoryBalancedProducts([category], 14, 'techScore:desc,trendScore:desc', 14, { minScore: HOME_MIN_SCORE }))),
-      categoryBalancedProducts(HOME_TREND_CATEGORIES, 4, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 24, { minScore: HOME_MIN_SCORE }),
-      categoryBalancedProducts(forYouCats, 4, 'techScore:desc,trendScore:desc', 24, { minScore: HOME_MIN_SCORE }),
+        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6, { minScore: HOME_MIN_SCORE }))),
+      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
+      categoryBalancedProducts(forYouCats, 2, 'techScore:desc,trendScore:desc', 9, { minScore: HOME_MIN_SCORE }),
       searchDocs({
         q: '*',
         query_by: 'name',
@@ -359,30 +377,11 @@ export async function getHomeFeed(prefCats = []) {
       .find((facet) => facet.field_name === 'category');
     const categories = categoryFacet ? categoryFacet.counts : [];
 
-    // Claim products in render order (For You → Trending → category rails → New),
-    // skipping any product whose variant group was already placed. Highest-scored
-    // products land in the top rails first.
-    const seen = new Set();
-    const claim = (list, n) => {
-      const out = [];
-      for (const p of list || []) {
-        if (!p?.id) continue;
-        const key = p.variantGroup ? `g:${p.variantGroup}` : `id:${p.id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push(p);
-        if (out.length >= n) break;
-      }
-      return out;
-    };
-    const forYou = claim(forYouPool, 9);
-    const trending = claim(trendingPool, 9);
     const categorySections = HOME_SECTION_CATEGORIES
-      .map((category, i) => ({ category, products: claim(sectionPools[i] || [], 6) }))
+      .map((category, i) => ({ category, products: sectionLists[i] || [] }))
       .filter((section) => section.products.length);
-    const newArrivalsPool = dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
-      .filter((product) => homeQualityFilter(product)));
-    const newArrivals = claim(newArrivalsPool, 9);
+    const newArrivals = dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
+      .filter((product) => homeQualityFilter(product))).slice(0, 9);
 
     return {
       categorySections,

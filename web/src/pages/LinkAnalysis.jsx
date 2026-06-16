@@ -670,6 +670,9 @@ export default function LinkAnalysis() {
             </form>
           </Reveal>
 
+          {/* Warning shows right under the input form, where the user is looking. */}
+          {err && <div className="la-err">{err}</div>}
+
           <Reveal delay={90}>
             <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
           </Reveal>
@@ -700,7 +703,8 @@ export default function LinkAnalysis() {
         </>
       )}
 
-      {err && <div className="la-err">{err}</div>}
+      {/* Fallback for non-input phases (the in-form one above covers input). */}
+      {err && !showForm && <div className="la-err">{err}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
         <AiWorkboard
