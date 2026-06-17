@@ -13,12 +13,20 @@ const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const COLLECTION = 'products';
 const SEARCH_PATH = `/collections/${COLLECTION}/documents/search`;
-const LIST_FIELDS = [
+const LIST_FIELD_NAMES = [
   'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
   'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
   'keySpecsText', 'filterTokens', 'screenSizeValue', 'batteryCapacityValue',
-  'weightValueKg', 'scrapedAtTs', 'updatedAtTs', '_raw',
-].join(',');
+  'weightValueKg', 'scrapedAtTs', 'updatedAtTs',
+];
+// `_raw` carries the ENTIRE PocketBase record (tens of KB per doc) — docToProduct
+// needs it for prices/offers/rich specs on detail-grade surfaces. But it dominates
+// payload, and the home feed over-fetches ~1200 docs across its rails. So list
+// surfaces that only render cards use LIST_FIELDS_LEAN (no `_raw`): the card draws
+// image/name/brand/score/spec-chips from indexed fields, and these top-scored
+// products carry no usable localized price anyway. Detail still reads the full doc.
+const LIST_FIELDS = [...LIST_FIELD_NAMES, '_raw'].join(',');
+const LIST_FIELDS_LEAN = LIST_FIELD_NAMES.join(',');
 
 // Each of these gets its OWN titled section on the home page (3×2 = 6 products,
 // highest-scored first). Separate rails — not one merged "popular" list.
@@ -86,6 +94,58 @@ async function tsGet(path, params = {}) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// Batch many searches into ONE HTTP round-trip via Typesense /multi_search.
+// The home feed used to fire ~25 separate requests; over HTTP/1.1 the browser
+// only opens 6 connections per host, so against the self-hosted instance those
+// queued in waves and the whole feed sat on skeletons for seconds. One request
+// removes that head-of-line blocking. Returns the `results` array in the same
+// order as `searches`; a sub-search that errors comes back without `hits`, so
+// docs() yields [] for it (graceful per-rail degradation).
+async function multiSearch(searches) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(`${TS_URL}/multi_search`, {
+      method: 'POST',
+      headers: { 'X-TYPESENSE-API-KEY': TS_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searches: searches.map((s) => ({ collection: COLLECTION, ...s })) }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`typesense multi ${res.status}`);
+    const data = await res.json();
+    return (data && data.results) || [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Search params for one category's "balanced" rail — mirrors the over-fetch
+// math in categoryBalancedProducts so the multi_search path returns the same
+// docs. Reduction (dedupe + slice) happens in reduceBalanced.
+function balancedSearchParams(category, perCategory, sortBy, minScore = 0) {
+  const fetchN = Math.min(Math.max(perCategory * 10, 40), 120);
+  const parts = [`category:=${lit(category)}`];
+  if (minScore > 0) parts.push(`techScore:>=${minScore}`);
+  return {
+    q: '*',
+    query_by: 'name',
+    sort_by: sortBy,
+    filter_by: parts.join(' && '),
+    per_page: fetchN,
+    include_fields: LIST_FIELDS_LEAN,
+  };
+}
+
+// Reduce per-category multi_search results the same way categoryBalancedProducts
+// does: dedupe each category to distinct models, keep `perCategory`, then merge
+// and keep `limit` distinct models overall.
+function reduceBalanced(results, perCategory, limit, opts = {}) {
+  const perCat = (results || []).map((res) => dedupeVariants(
+    docs(res).map(docToProduct).filter((product) => homeQualityFilter(product, opts)),
+  ).slice(0, perCategory));
+  return dedupeVariants(uniqueProducts(perCat.flat())).slice(0, limit);
 }
 
 function docs(result) {
@@ -347,33 +407,51 @@ export async function getHomeFeed(prefCats = []) {
   // home feed instead of a wall of motherboards/towers.
   const forYouCats = [...new Set([...HOME_FEATURE_CATEGORIES, ...preferred])].slice(0, 10);
   try {
-    // Each rail is de-duped to DISTINCT models on its own (categoryBalancedProducts
-    // → dedupeVariants by base model). Rails are independent: a category's best
-    // product stays in its own rail even if it also leads For You.
-    const [sectionLists, trending, forYou, newRes, spotlightRes, facetRes] = await Promise.all([
-      Promise.all(HOME_SECTION_CATEGORIES.map((category) =>
-        categoryBalancedProducts([category], 6, 'techScore:desc,trendScore:desc', 6, { minScore: HOME_MIN_SCORE }))),
-      categoryBalancedProducts(HOME_TREND_CATEGORIES, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', 9, { minScore: HOME_MIN_SCORE }),
-      categoryBalancedProducts(forYouCats, 2, 'techScore:desc,trendScore:desc', 9, { minScore: HOME_MIN_SCORE }),
-      searchDocs({
-        q: '*',
-        query_by: 'name',
+    // Every rail's query is batched into ONE multi_search round-trip (was ~25
+    // separate requests). Each rail is still de-duped to DISTINCT models on its
+    // own (reduceBalanced → dedupeVariants by base model); rails are independent,
+    // so a category's best product stays in its own rail even if it also leads
+    // For You.
+    const sectionSearches = HOME_SECTION_CATEGORIES.map((category) =>
+      balancedSearchParams(category, 6, 'techScore:desc,trendScore:desc', HOME_MIN_SCORE));
+    const trendSearches = HOME_TREND_CATEGORIES.map((category) =>
+      balancedSearchParams(category, 2, 'trendScore:desc,updatedAtTs:desc,techScore:desc', HOME_MIN_SCORE));
+    const forYouSearches = forYouCats.map((category) =>
+      balancedSearchParams(category, 2, 'techScore:desc,trendScore:desc', HOME_MIN_SCORE));
+    const tailSearches = [
+      { // new arrivals
+        q: '*', query_by: 'name',
         sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
         filter_by: `techScore:>=${HOME_MIN_SCORE}`,
-        per_page: 80,
-        include_fields: LIST_FIELDS,
-      }),
-      searchDocs({
+        per_page: 80, include_fields: LIST_FIELDS_LEAN,
+      },
+      { // spotlight — top-trending smartphone
         q: '*', query_by: 'name', sort_by: 'trendScore:desc,techScore:desc',
-        per_page: 1, include_fields: LIST_FIELDS,
+        per_page: 1, include_fields: LIST_FIELDS_LEAN,
         filter_by: `category:=${lit('smartphones')}`,
-      }),
-      searchDocs({
+      },
+      { // category facet counts
         q: '*', query_by: 'name', per_page: 1,
         facet_by: 'category', max_facet_values: 100,
-      }),
+      },
+    ];
+
+    const results = await multiSearch([
+      ...sectionSearches, ...trendSearches, ...forYouSearches, ...tailSearches,
     ]);
-    const categoryFacet = (facetRes.facet_counts || [])
+
+    let cursor = 0;
+    const sectionResults = results.slice(cursor, cursor += sectionSearches.length);
+    const trendResults = results.slice(cursor, cursor += trendSearches.length);
+    const forYouResults = results.slice(cursor, cursor += forYouSearches.length);
+    const [newRes, spotlightRes, facetRes] = results.slice(cursor);
+
+    const sectionLists = sectionResults.map((res) =>
+      reduceBalanced([res], 6, 6, { minScore: HOME_MIN_SCORE }));
+    const trending = reduceBalanced(trendResults, 2, 9, { minScore: HOME_MIN_SCORE });
+    const forYou = reduceBalanced(forYouResults, 2, 9, { minScore: HOME_MIN_SCORE });
+
+    const categoryFacet = ((facetRes && facetRes.facet_counts) || [])
       .find((facet) => facet.field_name === 'category');
     const categories = categoryFacet ? categoryFacet.counts : [];
 
@@ -391,7 +469,7 @@ export async function getHomeFeed(prefCats = []) {
       spotlight: docs(spotlightRes).map(docToProduct)[0] || null,
       heroPicks: forYou.slice(0, 6),
       categories,
-      total: Number(facetRes.found) || 0,
+      total: Number(facetRes && facetRes.found) || 0,
     };
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
