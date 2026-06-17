@@ -11,5 +11,15 @@ export default defineConfig({
     emptyOutDir: false,
     assetsDir: 'spa',
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        // Keep the framework (react, router, pocketbase) in its own chunk so
+        // it caches across deploys and isn't re-downloaded when only app code
+        // changes. App pages are split per-route via React.lazy in App.jsx.
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', 'pocketbase'],
+        },
+      },
+    },
   },
 });

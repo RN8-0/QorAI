@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -11,20 +11,27 @@ import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
 import { hasCompletedQuiz } from './lib/qorCoins.js';
 
+// Home stays eager so the landing page paints on the first request (no extra
+// chunk round-trip on the most-visited route). Every other page is loaded on
+// demand: this is what keeps the initial JS small instead of shipping all
+// pages — ProductDetail, Compare, Quiz, Legal, etc. — in one ~900 KB bundle
+// that every visitor (especially mobile) has to download, parse and execute
+// before anything renders.
 import Home from './pages/Home.jsx';
-import Category from './pages/Category.jsx';
-import ProductDetail from './pages/ProductDetail.jsx';
-import Compare from './pages/Compare.jsx';
-import LinkAnalysis from './pages/LinkAnalysis.jsx';
-import AiChat from './pages/AiChat.jsx';
-import Subscriptions from './pages/Subscriptions.jsx';
-import Premium from './pages/Premium.jsx';
-import Quiz from './pages/Quiz.jsx';
-import Profile from './pages/Profile.jsx';
-import Settings from './pages/Settings.jsx';
-import Go from './pages/Go.jsx';
-import LegalPage from './pages/Legal.jsx';
-import NotFound from './pages/NotFound.jsx';
+
+const Category = lazy(() => import('./pages/Category.jsx'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
+const Compare = lazy(() => import('./pages/Compare.jsx'));
+const LinkAnalysis = lazy(() => import('./pages/LinkAnalysis.jsx'));
+const AiChat = lazy(() => import('./pages/AiChat.jsx'));
+const Subscriptions = lazy(() => import('./pages/Subscriptions.jsx'));
+const Premium = lazy(() => import('./pages/Premium.jsx'));
+const Quiz = lazy(() => import('./pages/Quiz.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Go = lazy(() => import('./pages/Go.jsx'));
+const LegalPage = lazy(() => import('./pages/Legal.jsx'));
+const NotFound = lazy(() => import('./pages/NotFound.jsx'));
 
 export default function App() {
   const loc = useLocation();
@@ -51,6 +58,7 @@ export default function App() {
       <SiteBackground />
       <Header />
       <main>
+        <Suspense fallback={<div className="route-fallback"><div className="spinner" /></div>}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/category" element={<Category />} />
@@ -75,6 +83,7 @@ export default function App() {
           <Route path="/faq" element={<LegalPage kind="faq" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </main>
       <Footer />
       <BottomNav />
