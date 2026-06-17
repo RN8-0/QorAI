@@ -6,6 +6,7 @@ import { premiumStatus } from '../lib/premium';
 import { formatQorCoins, hasCompletedQuiz } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
+import { categoryPath } from '../lib/routes';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 
@@ -112,7 +113,7 @@ export default function Header() {
                         <h3>{group.title[lang] || group.title.en}</h3>
                         <div className="hd-mega-links">
                           {group.cats.map((id) => (
-                            <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
+                            <Link key={id} to={categoryPath(id)}
                               onClick={closeCatNow}>
                               {categoryLabel(id, lang)}
                             </Link>
@@ -198,7 +199,7 @@ export default function Header() {
             <div className="hd-drawer-cats">
               <span className="hd-drawer-h">{L('Categories', 'Kategoriler', 'Kategorien')}</span>
               {ALL_CATEGORIES.map(({ id }) => (
-                <Link key={id} to={`/category?cat=${encodeURIComponent(id)}`}
+                <Link key={id} to={categoryPath(id)}
                   className="hd-drawer-cat" onClick={() => setDrawer(false)}>
                   {categoryLabel(id, lang)}
                 </Link>

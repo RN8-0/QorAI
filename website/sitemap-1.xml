@@ -1,65 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://qorai.net/</loc><lastmod>2026-06-16</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://qorai.net/category</loc><lastmod>2026-06-16</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://qorai.net/link-analysis</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/subscriptions</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/premium</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/terms</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/privacy</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/refund</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/cookies</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://qorai.net/contact</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/about</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/faq</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/quiz</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/ai-chat</loc><lastmod>2026-06-16</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/category?cat=3d_printers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=audio_systems</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=av_receivers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=camera_lenses</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=case_fans</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=chargers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=cpu_coolers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=cpus</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=dashcams</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=desktops</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=drones</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=e_readers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=flash_drives</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=gamepads</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=gaming_consoles</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=gimbals</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=graphics_cards</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=hardware_wallets</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=headphones</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=ip_cameras</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=keyboards</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=laptop_coolers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=laptops</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=media_players</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=mice</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=microphones</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=modem_routers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=monitors</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=motherboards</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=pc_cases</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=powerbanks</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=printers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=projectors</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=psu</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=ram</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=robot_vacuums</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=routers</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=smart_rings</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=smartphones</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=smartwatches</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=ssd</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=tablets</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=tvs</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=ups</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=vr_headsets</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category?cat=webcams</loc><lastmod>2026-06-16</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/</loc><lastmod>2026-06-17</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://qorai.net/category</loc><lastmod>2026-06-17</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://qorai.net/link-analysis</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/subscriptions</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/premium</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/terms</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/privacy</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/refund</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/cookies</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://qorai.net/contact</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/about</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/faq</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/quiz</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/ai-chat</loc><lastmod>2026-06-17</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/category/3d_printers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/audio_systems</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/av_receivers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/camera_lenses</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/case_fans</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/chargers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/cpu_coolers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/cpus</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/dashcams</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/desktops</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/drones</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/e_readers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/flash_drives</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/gamepads</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/gaming_consoles</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/gimbals</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/graphics_cards</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/hardware_wallets</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/headphones</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/ip_cameras</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/keyboards</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/laptop_coolers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/laptops</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/media_players</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/mice</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/microphones</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/modem_routers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/monitors</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/motherboards</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/pc_cases</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/powerbanks</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/printers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/projectors</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/psu</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/ram</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/robot_vacuums</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/routers</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/smart_rings</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/smartphones</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/smartwatches</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/ssd</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/tablets</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/tvs</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/ups</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/vr_headsets</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/webcams</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/product?slug=apple-watch-ultra-3-v211261&amp;id=s2a3vqn9en3ij1t</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=apple-watch-ultra-3-schwarz-mit-ocean-armband-schwarz-mf0j4qf-a3587638&amp;id=phh01c4d6xkxwts</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=sandisk-cruzer-dial-16gb&amp;id=se8uquxk0tr9pa3</loc><lastmod>2026-06-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -40229,6 +40229,7 @@
   <url><loc>https://qorai.net/product?slug=samsung-galaxy-a17-5g-4-128gb&amp;id=1e5b2xnaadpqtqv</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=samsung-galaxy-a17-5g-128gb&amp;id=utg1v6tej0t1cat</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=samsung-galaxy-a26-5g-256gb&amp;id=q9nalc1djjtu2wo</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/product?slug=honor-win-turbo&amp;id=w52qgb29pa6l030</loc><lastmod>2026-06-17</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=apple-iphone-se-2022-256gb-mitternacht-a2689382&amp;id=873v1us9oyegxqk</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=samsung-galaxy-a71-duos-128gb-prism-crush-blue-a2196708&amp;id=tyke26pk1tsklwc</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=samsung-galaxy-a26-5g-enterprise-edition-128gb-schwarz-sm-a266bzkbee-a3474898&amp;id=7fo6fcm1113cm0o</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -44999,5 +45000,4 @@
   <url><loc>https://qorai.net/product?slug=honor-200-pro&amp;id=ejjm1fssbj33el0</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=hiking-a52&amp;id=e869xe35m2ih2gt</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/product?slug=google-pixel-8&amp;id=wmzwj8mmn0jtfo6</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/product?slug=poco-f7&amp;id=sdjudmjnj6w09mu</loc><lastmod>2026-06-14</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
 </urlset>

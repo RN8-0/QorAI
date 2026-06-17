@@ -41,7 +41,7 @@ function main() {
     const xml = read(file);
     total += [...xml.matchAll(/<url>/g)].length;
     product += [...xml.matchAll(/\/product\?slug=/g)].length;
-    category += [...xml.matchAll(/\/category\?cat=/g)].length;
+    category += [...xml.matchAll(/\/category\/[a-z0-9]/g)].length;
     badAmp += [...xml.matchAll(/<loc>[^<]*&(?!(?:amp|lt|gt|quot|apos);)[^<]*<\/loc>/g)].length;
   }
 

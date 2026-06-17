@@ -33,7 +33,7 @@ import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
-import { extractProductId, productPath } from '../lib/routes';
+import { categoryPath, extractProductId, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { cleanProductName, displayProductName } from '../lib/productNames';
 import Reviews from '../components/Reviews.jsx';
@@ -555,9 +555,7 @@ function buildProductSeo(p, t, lang) {
   const image = images[0] || DEFAULT_OG_IMAGE;
   const path = productPath(p);
   const url = `${SITE_URL}${path}`;
-  const categoryUrl = p.category
-    ? `${SITE_URL}/category?cat=${encodeURIComponent(String(p.category).toLowerCase())}`
-    : `${SITE_URL}/category`;
+  const categoryUrl = `${SITE_URL}${categoryPath(p.category)}`;
   const offer = productOffer(p, url);
   const properties = productPropertyValues(p, lang);
 
@@ -1001,7 +999,7 @@ export default function ProductDetail() {
               onClick={() => (window.history.length > 1 ? window.history.back() : null)}>‹</button>
             <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
             <span aria-hidden="true">›</span>
-            <Link to={`/category?cat=${encodeURIComponent(p.category || '')}`}>{categoryLabel(p.category, lang)}</Link>
+            <Link to={categoryPath(p.category)}>{categoryLabel(p.category, lang)}</Link>
             <span aria-hidden="true">›</span>
             <b title={displayName}>{displayName}</b>
           </div>

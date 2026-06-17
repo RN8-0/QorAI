@@ -41,3 +41,13 @@ export function productPath(productOrId) {
   qs.set('id', id);
   return `/product?${qs.toString()}`;
 }
+
+// Clean, path-based category URL (e.g. /category/smartphones). Category ids are
+// already URL-safe lowercase tokens ("graphics_cards", "3d_printers"); empty cat
+// falls back to the all-categories index. The SPA serves these via the
+// /category/:cat route and seo.mjs bakes a per-category landing shell at the
+// matching folder, so the same URL is both crawlable HTML and an SPA route.
+export function categoryPath(category) {
+  const cat = String(category || '').trim().toLowerCase();
+  return cat ? `/category/${cat}` : '/category';
+}

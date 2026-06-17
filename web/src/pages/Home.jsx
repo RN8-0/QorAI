@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
+import { categoryPath } from '../lib/routes';
 import { saveSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
@@ -387,7 +388,7 @@ export default function Home() {
             <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
 
             {/* TRENDING — top, 3×3 */}
-            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category?cat=smartphones&sort=trend" />
+            <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category/smartphones?sort=trend" />
 
             {/* PER-CATEGORY POPULAR RAILS — own title each, 3×2 = 6 products */}
             {(feed.categorySections || []).map((sec) => (
@@ -396,7 +397,7 @@ export default function Home() {
                 products={sec.products}
                 loading={loading}
                 t={t}
-                seeAllTo={`/category?cat=${encodeURIComponent(sec.category)}`} />
+                seeAllTo={categoryPath(sec.category)} />
             ))}
 
             <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>

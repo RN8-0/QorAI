@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
+import { categoryPath } from '../lib/routes';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -45,10 +46,13 @@ export default function Category() {
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [params] = useSearchParams();
-  const cat = (params.get('cat') || '').toLowerCase();
+  const routeParams = useParams();
+  // Accept both the clean path URL (/category/smartphones) and the legacy query
+  // URL (/category?cat=smartphones); the canonical always points to the path one.
+  const cat = (routeParams.cat || params.get('cat') || '').toLowerCase();
   const meta = catMeta(cat);
   const catTitle = categoryLabel(cat, lang);
-  const categoryPath = cat ? `/category?cat=${encodeURIComponent(cat)}` : '/category';
+  const catPath = categoryPath(cat);
   const categoryDescription = cat
     ? t('category.seo', { cat: catTitle })
     : L('Browse every product category on Qor AI.',
@@ -57,17 +61,21 @@ export default function Category() {
 
   useSeo({
     title: cat
-      ? `${catTitle} — Qor AI`
+      ? L(
+          `Best ${catTitle} — Compare Specs & Prices | Qor AI`,
+          `${catTitle} Karşılaştırma — Fiyat & Özellik | Qor AI`,
+          `${catTitle} Vergleich — Preise & Specs | Qor AI`,
+        )
       : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
     description: categoryDescription,
-    path: categoryPath,
+    path: catPath,
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [
         {
           '@type': 'CollectionPage',
-          '@id': `${SITE_URL}${categoryPath}#webpage`,
-          url: `${SITE_URL}${categoryPath}`,
+          '@id': `${SITE_URL}${catPath}#webpage`,
+          url: `${SITE_URL}${catPath}`,
           name: cat ? `${catTitle} — Qor AI` : 'Qor AI Categories',
           description: categoryDescription,
           inLanguage: lang || 'tr',
@@ -75,10 +83,10 @@ export default function Category() {
         },
         {
           '@type': 'BreadcrumbList',
-          '@id': `${SITE_URL}${categoryPath}#breadcrumb`,
+          '@id': `${SITE_URL}${catPath}#breadcrumb`,
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE_URL}/` },
-            { '@type': 'ListItem', position: 2, name: catTitle, item: `${SITE_URL}${categoryPath}` },
+            { '@type': 'ListItem', position: 2, name: catTitle, item: `${SITE_URL}${catPath}` },
           ],
         },
       ],

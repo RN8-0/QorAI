@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { categoryLabel } from '../src/lib/format.js';
 
 const SITE = 'https://qorai.net';
 const here = dirname(fileURLToPath(import.meta.url));
@@ -69,7 +70,7 @@ function productPath(product) {
 
 function categoryPath(category) {
   const cat = String(category || '').trim().toLowerCase();
-  return cat ? `/category?cat=${encodeURIComponent(cat)}` : '';
+  return cat ? `/category/${cat}` : '';
 }
 
 function lastmodFromTs(value) {
@@ -238,14 +239,14 @@ const STATIC_ROUTES = [
     dir: 'terms', path: '/terms', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'Kullanım Koşulları — Qor AI',
-      description: 'Qor AI kullanım koşulları: Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal, ödeme ve hizmet sınırları.',
+      description: 'Qor AI kullanım koşulları: Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal, hesap silme, ödeme ve hizmet sınırları.',
     },
   },
   {
     dir: 'privacy', path: '/privacy', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'Gizlilik Politikası — Qor AI',
-      description: 'Qor AI gizlilik politikası: hesap verileri, AI girdileri, ödeme ve abonelik verileri, çerezler, analizler, saklama ve kullanıcı hakları.',
+      description: 'Qor AI gizlilik politikası: hesap verileri, AI girdileri, ödeme ve abonelik verileri, hesap silme, çerezler, saklama ve kullanıcı hakları.',
     },
   },
   {
@@ -266,21 +267,21 @@ const STATIC_ROUTES = [
     dir: 'contact', path: '/contact', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'Bize Ulaşın — Qor AI',
-      description: 'Qor AI destek, ödeme, iade, gizlilik, ürün verisi, iş birliği ve basın talepleri için iletişim bilgileri.',
+      description: 'Qor AI destek, ödeme, iade, gizlilik, hesap silme, ürün verisi, iş birliği ve basın talepleri için tek resmi iletişim adresi.',
     },
   },
   {
     dir: 'about', path: '/about', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'Qor AI Hakkında',
-      description: 'Qor AI nedir, Premium ne satar, ürün önerileri nasıl çalışır ve ödeme akışları nasıl yönetilir.',
+      description: 'Qor AI nedir, kimler içindir, Premium ne satar, hesap silme nasıl yapılır, öneriler nasıl çalışır ve ödeme akışları nasıl yönetilir.',
     },
   },
   {
     dir: 'faq', path: '/faq', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'SSS — Qor AI',
-      description: 'Qor AI Premium, ödeme, iade, gizlilik, AI doğruluğu ve ürün verileri hakkında sık sorulan sorular.',
+      description: 'Qor AI Premium, ödeme, iade, gizlilik, hesap silme, iletişim, AI doğruluğu ve ürün verileri hakkında sık sorulan sorular.',
     },
   },
   {
@@ -354,6 +355,65 @@ async function main() {
       throw new Error(`product fetch failed; refusing to publish a stripped sitemap (${err.message})`);
     }
   }
+
+  // 2b) per-category landing shells — one crawlable HTML page per category with
+  //     a keyword title, description and an ItemList of its top products. These
+  //     are the highest-intent commercial pages ("akıllı telefon karşılaştırma"
+  //     etc.), so unlike the 100k thin product pages they ARE worth baking as
+  //     static HTML and carry an ItemList so Google can surface a list result.
+  const byCategory = new Map();
+  for (const d of products) {
+    const cat = String(d?.category || '').trim().toLowerCase();
+    if (!cat) continue;
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat).push(d);
+  }
+  let categoryShells = 0;
+  for (const [cat, items] of byCategory) {
+    const path = categoryPath(cat);
+    if (!path) continue;
+    const label = categoryLabel(cat, 'tr');
+    const url = `${SITE}${path}`;
+    // fetchAllProducts sorts by techScore:desc, so items are already best-first.
+    const top = items.filter((d) => d?.id && d?.name).slice(0, 24);
+    const heroImg = String(top[0]?.imageUrl || '');
+    const itemList = {
+      '@type': 'ItemList',
+      '@id': `${url}#itemlist`,
+      name: `${label} — Qor AI`,
+      numberOfItems: top.length,
+      itemListElement: top.map((d, i) => ({
+        '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name,
+      })),
+    };
+    const collection = {
+      '@type': 'CollectionPage', '@id': `${url}#webpage`, url,
+      name: `${label} — Qor AI`,
+      isPartOf: { '@id': `${SITE}/#website` },
+      mainEntity: { '@id': `${url}#itemlist` },
+    };
+    const breadcrumb = {
+      '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+        { '@type': 'ListItem', position: 2, name: label, item: url },
+      ],
+    };
+    writeHtml(path.replace(/^\//, ''), renderPage(template, {
+      title: truncate(`${label} Karşılaştırma — Fiyat & Özellik | Qor AI`, 68),
+      description: truncate(
+        `${label} modellerini Qor AI ile karşılaştır: yapay zekâ teknik skoru, `
+        + `özellikler ve güncel fiyatlar bir arada. En iyi ${label} modellerini `
+        + 'keşfet, filtrele ve sana en uygununu saniyeler içinde seç.',
+      ),
+      url,
+      image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
+      type: 'website',
+      jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb] },
+    }));
+    categoryShells += 1;
+  }
+  console.log(`[seo] wrote ${categoryShells} per-category landing shells`);
 
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
