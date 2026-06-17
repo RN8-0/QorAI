@@ -1,3 +1,21 @@
+// Spec rows that must NEVER render anywhere (app + web): volatile benchmark
+// scores (AnTuTu / DXOMark / Geekbench / PassMark / 3DMark…) that go stale the
+// moment they are scraped, and Turkey-only availability fields ("Durum: Henüz
+// Ülkemizde Satışı Yok"). Mirrors lib/core/spec_corrections.dart isHiddenSpec()
+// and scripts/clean_benchmark_specs.js. Filtered at DISPLAY time so a re-scrape
+// can never resurface them.
+const HIDDEN_BENCH_RE = /\b(?:antutu|an\s*tu\s*tu|dxomark|dxo\s*mark|geekbench|benchmark|passmark|pcmark|3dmark|cinebench|basemark|gfxbench|ai\s*benchmark)\b/i;
+const HIDDEN_TR_RE = /(ülkemiz|ulkemiz|satış[ıi]?\s*yok|satis[ıi]?\s*yok|yurt\s*d[ıi]ş[ıi]|yurtdış)/i;
+export function isHiddenSpec(label, value) {
+  const l = String(label || '');
+  const v = String(value || '');
+  if (HIDDEN_BENCH_RE.test(`${l} ${v}`)) return true;
+  if (HIDDEN_TR_RE.test(`${l} ${v}`)) return true;
+  const cl = l.replace(/\s*:\s*$/, '').trim().toLowerCase();
+  if (cl === 'durum' || cl === 'status') return true; // Epey TR sales-status row
+  return false;
+}
+
 const LABELS = {
   tr: {
     '5G': '5G',

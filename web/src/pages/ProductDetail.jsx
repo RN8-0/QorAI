@@ -29,7 +29,7 @@ import AiAnalysisView, {
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
-import { localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import { isHiddenSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
@@ -383,6 +383,7 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
       const key = String(k || '').trim();
       const value = v == null ? '' : String(v).trim();
       if (!key || !value) return;
+      if (isHiddenSpec(key, value)) return; // benchmark / TR-only availability rows
       const sig = key.toLowerCase();
       if (seen.has(sig)) return;
       rows.push([key, v]);
@@ -481,6 +482,7 @@ function seoSpecEntries(product) {
     ? Object.entries(product.keySpecs)
     : [];
   return entries.filter(([name, value]) => {
+    if (isHiddenSpec(name, value)) return false;
     const label = String(name || '').toLowerCase();
     const val = String(value || '').toLowerCase();
     if (!label || !val || val.length > 50) return false;
@@ -906,6 +908,7 @@ export default function ProductDetail() {
       const label = String(s.label || '').trim();
       const value = String(s.value || '').trim();
       if (!label || !value) return;
+      if (isHiddenSpec(label, value)) return;
       if (/sponsor|reklam|advert|affiliate/i.test(`${label} ${value}`)) return;
       if (/^(brand|marka|category|kategori|model|qor|tech score|teknik skor)$/i.test(label)) return;
       // Dedup strategy depends on whether the spec is the product's "self"
