@@ -121,9 +121,11 @@ final pcPickerProvider = StateNotifierProvider.autoDispose
 const bool _verboseHomeFeedDiagnostics = false;
 const bool _verboseHomeFeedFetchLogs = false;
 const int _homeFeedInitialCategoryCount = 48;
-// Home feed now exposes richer shelves: each visible shelf can keep scrolling
-// without needing an immediate refetch, while ListView.builder still renders lazily.
-const int _homeFeedInitialPerCategory = 28;
+// Per-category depth for the first paint. 18 comfortably fills every home shelf
+// (each shows ≤12) while keeping the parsed-entity pool ~35% smaller than 28 —
+// less main-thread parse + memory + GC pressure on entry-level devices. The
+// "show more" paths refetch deeper on demand.
+const int _homeFeedInitialPerCategory = 18;
 
 /// Category aliases used by category browse providers and legacy deep links.
 /// Canonical keys and legacy deep-link keys both resolve to query variants.

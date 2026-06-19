@@ -36,6 +36,29 @@ String foldTr(String s) {
   return t.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
 }
 
+final RegExp _hiddenBenchRe = RegExp(
+  r'\b(?:antutu|an\s*tu\s*tu|dxomark|dxo\s*mark|geekbench|benchmark|passmark|pcmark|3dmark|cinebench|basemark|gfxbench|ai\s*benchmark)\b',
+  caseSensitive: false,
+);
+final RegExp _hiddenTrRe = RegExp(
+  r'(ülkemiz|ulkemiz|satış[ıi]?\s*yok|satis[ıi]?\s*yok|yurt\s*d[ıi]ş[ıi]|yurtdış)',
+  caseSensitive: false,
+);
+
+/// Spec rows that must NEVER be shown: volatile benchmark scores
+/// (AnTuTu / DXOMark / Geekbench / PassMark / 3DMark…) that go stale the moment
+/// they are scraped, and Turkey-only availability fields ("Durum: Henüz
+/// Ülkemizde Satışı Yok"). Mirrors web `isHiddenSpec()` in
+/// web/src/lib/specDisplay.js and scripts/clean_benchmark_specs.js. Applied at
+/// display time so a re-scrape can never resurface them.
+bool isHiddenSpec(String label, String value) {
+  final both = '$label $value';
+  if (_hiddenBenchRe.hasMatch(both)) return true;
+  if (_hiddenTrRe.hasMatch(both)) return true;
+  final folded = foldTr(label);
+  return folded == 'durum' || folded == 'status'; // Epey TR sales-status row
+}
+
 /// Curated Turkish-source → {en, de} section header glossary. Covers the full
 /// finite set of section names in the catalog (57 distinct). The map is keyed
 /// by [foldTr] of the Turkish source name.

@@ -50,7 +50,9 @@ const keyRules = [
   ['GPU', ['gpu', 'graphics processor', 'graphics card', 'gpu model', 'grafikprozessor', 'ekran karti']],
   ['RAM', ['ram', 'memory ram', 'internal memory', 'arbeitsspeicher', 'hauptspeicher', 'bellek ram', 'memory capacity']],
   ['RAM type', ['ram type', 'memory type', 'internal memory type', 'speichertyp ram']],
-  ['Storage', ['storage', 'internal storage', 'total storage capacity', 'interner speicher', 'speicherplatz', 'gesamtspeicher', 'flash speicher', 'ssd', 'sabit disk ssd boyutu', 'dahili hafiza']],
+  // NOTE: 'flash speicher' removed — the camera "Flash" spec (value "LED")
+  // word-matched it and rendered as "Storage"/"Depolama: LED".
+  ['Storage', ['storage', 'internal storage', 'total storage capacity', 'interner speicher', 'speicherplatz', 'gesamtspeicher', 'ssd', 'sabit disk ssd boyutu', 'dahili hafiza', 'dahili depolama']],
   ['Storage type', ['storage media', 'storage type', 'disk type', 'speicherart']],
   ['Main camera', ['main camera', 'main camera resolution', 'rear camera', 'camera resolution', 'kamera hinten', 'ruckkamera', 'rueckkamera', 'hauptkamera', 'arka kamera', 'ana kamera']],
   ['Front camera', ['front camera', 'front camera resolution', 'selfie camera', 'kamera vorne', 'frontkamera', 'selfie kamera', 'on kamera']],
@@ -59,8 +61,12 @@ const keyRules = [
   ['Wi-Fi', ['wi fi', 'wi fi standards', 'wifi', 'wireless', 'wlan', 'kablosuz baglanti']],
   ['Bluetooth', ['bluetooth', 'bluetooth version']],
   ['NFC', ['nfc']],
+  // 4G BEFORE 5G: "4.5G Desteği" normalizes to "4 5g destegi" and would
+  // otherwise match the 5G alias "5g destegi" → 4.5G and 5G collapsed into one
+  // "5G" row, merging a Var with a Yok ("5G: Var, Yok"). Matching 4G first via
+  // "4 5g" keeps them separate.
+  ['4G', ['4g', 'lte', '4g lte', '4 5g', '4 5g destegi', '4 5g support']],
   ['5G', ['5g', '5g support', '5g destegi']],
-  ['4G', ['4g', 'lte', '4g lte', '4 5g']],
   ['SIM', ['sim', 'sim type', 'sim card type', 'line count', 'hat sayisi']],
   ['USB', ['usb', 'usb version', 'usb versiyonu']],
   ['Operating system', ['operating system', 'os', 'betriebssystem', 'isletim sistemi', 'software']],
@@ -76,6 +82,14 @@ const keyRules = [
 ];
 
 const exact = new Map(keyRules.flatMap(([canonical, aliases]) => aliases.map((a) => [normSpec(a), canonical])));
+
+// Whole-word containment so short keys can't false-match inside longer aliases.
+// Without this, "flaş" (normSpec "flas") matched Storage's alias "flash
+// speicher" via `alias.includes(key)` → camera Flash rendered as "Storage".
+function containsWord(haystack, needle) {
+  if (!needle || !haystack) return false;
+  return new RegExp(`(^| )${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`).test(haystack);
+}
 
 function cleanValue(value) {
   return String(value == null ? '' : value).replace(/\r/g, '\n').split('\n')
@@ -111,7 +125,11 @@ export function canonicalSpecKey(key, value = '') {
   for (const [canonical, aliases] of keyRules) {
     if (aliases.some((alias) => {
       const a = normSpec(alias);
-      return a.length > 3 && (k === a || k.includes(a) || a.includes(k));
+      if (a.length <= 3) return false;
+      // Word-boundary match both ways (alias as whole-word in key, or a generic
+      // key as whole-word in alias) — never a raw substring, which mis-mapped
+      // "flas"⊂"flash speicher", "en"⊂"breite en", etc.
+      return k === a || containsWord(k, a) || (k.length >= 4 && containsWord(a, k));
     })) return canonical;
   }
   return String(key || '').replace(/:$/, '').replace(/\s+/g, ' ').trim();

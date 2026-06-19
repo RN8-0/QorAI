@@ -2214,7 +2214,9 @@ class PbDataSource {
         'drop_tokens_threshold': 0,
         'typo_tokens_threshold': 0,
         'prefix': 'true,false,true,false,false',
-        'exclude_fields': 'keySpecsText',
+        // Search results are list cards too — drop the ~68KB `_raw` blob so
+        // results return in <1s instead of multiple seconds. Detail re-fetches.
+        'exclude_fields': '_raw,keySpecsText',
         if (category != null) 'filter_by': 'category:=$category',
       };
 
@@ -2684,7 +2686,10 @@ class PbDataSource {
           'sort_by': sortBy,
           'per_page': limit,
           'page': 1,
-          'exclude_fields': 'keySpecsText',
+          // List cards only need the flat doc fields (name/brand/image/score);
+          // drop the ~68KB-per-doc `_raw` blob. The detail screen re-fetches the
+          // full record. Without this a 500-item browse pulled ~34MB.
+          'exclude_fields': '_raw,keySpecsText',
         },
       );
       sw.stop();
@@ -2726,7 +2731,11 @@ class PbDataSource {
               'sort_by': sortBy,
               'per_page': perCategory,
               'page': 1,
-              'exclude_fields': 'keySpecsText',
+              // CRITICAL home-feed fix: drop the ~68KB `_raw` blob per doc. With
+              // 48 categories × 28 products this request was ~90MB → the home
+              // page took ages to populate. Cards parse from the flat fields;
+              // the detail screen re-fetches the full record on tap.
+              'exclude_fields': '_raw,keySpecsText',
             },
           )
           .toList();

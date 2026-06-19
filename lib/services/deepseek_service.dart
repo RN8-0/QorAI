@@ -310,6 +310,7 @@ class DeepSeekService implements AIService {
     String prompt, {
     String? language,
     int maxTokens = 2048,
+    double temperature = 0.3,
   }) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
@@ -323,7 +324,7 @@ class DeepSeekService implements AIService {
         {'role': 'user', 'content': prompt},
       ],
       maxTokens: maxTokens,
-      temperature: 0.3,
+      temperature: temperature,
       jsonMode: true,
     );
   }

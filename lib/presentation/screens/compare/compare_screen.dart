@@ -22,6 +22,7 @@ import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/comparison_entity.dart';
 import 'package:qor_ai/data/models/other_models.dart';
@@ -40,9 +41,13 @@ import 'package:qor_ai/core/pb_client.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
+import 'package:qor_ai/services/ai_report_service.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:dio/dio.dart';
+import 'package:qor_ai/presentation/screens/detail/product_detail_screen.dart'
+    as detail;
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
@@ -76,6 +81,7 @@ class CompareScreen extends ConsumerStatefulWidget {
 
 class _CompareScreenState extends ConsumerState<CompareScreen> {
   bool _skipNextHistorySave = false;
+  bool _comparisonLoadInFlight = false;
   bool get _openedFromHistory => widget.initialComparison != null;
   List<String> get _selectedProductIds =>
       ref.read(compareSessionProvider).selectedProductIds;
@@ -147,10 +153,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
         .read(compareSessionProvider)
         .copyWith(selectedProductIds: globalIds);
 
-    // Ensure products are loaded, then auto-start comparison
-    if (globalIds.length >= 2) {
-      unawaited(_startComparison());
-    }
+    // Keep the user in selection mode. Compare starts only from the explicit
+    // button after the selection is complete.
   }
 
   Future<List<ProductEntity>> _loadSelectedProducts(
@@ -230,6 +234,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
   }
 
   Future<void> _startComparison() async {
+    if (_comparisonLoadInFlight) return;
     final selectedIds = _selectedProductIds.toList(growable: false);
     if (selectedIds.length < 2) {
       _showCompareNotice(
@@ -238,61 +243,75 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
       return;
     }
 
-    final products = await _loadSelectedProducts(selectedIds);
-    if (!mounted) return;
+    _comparisonLoadInFlight = true;
+    try {
+      final products = await _loadSelectedProducts(selectedIds);
+      if (!mounted) return;
 
-    if (products.length < 2) {
-      _showCompareNotice(
-        context.l10n?.couldNotLoadProduct ?? 'Could not load product data',
-      );
-      return;
-    }
-
-    // Enforce same comparable category. Sources use different labels
-    // (for example Geizhals "notebooks" vs Icecat "laptops").
-    final categories = products.map((p) {
-      final resolved = key_specs.resolveCategory(p.category);
-      return resolved.isNotEmpty ? resolved : p.category.toLowerCase();
-    }).toSet();
-    if (categories.length > 1) {
-      _showCompareNotice(
-        context.l10n?.mustBeSameCategory ??
-            'Products must be from the same category to compare',
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    ref.read(compareSessionProvider.notifier).state = ref
-        .read(compareSessionProvider)
-        .copyWith(comparedProducts: products);
-
-    // Save comparison to Firestore for history
-    final shouldPersistHistory = !_skipNextHistorySave;
-    _skipNextHistorySave = false;
-    final user = ref.read(userProfileProvider).valueOrNull;
-    if (shouldPersistHistory && user != null) {
-      final title = products.map((p) => p.name).join(' vs ');
-      try {
-        await ref
-            .read(comparisonRepositoryProvider)
-            .saveManualComparison(
-              userId: user.uid,
-              productIds: selectedIds,
-              category: products.first.category,
-              title: title,
-            );
-        if (!mounted) return;
-        // Invalidate comparisons cache so history updates
-        ref.invalidate(userComparisonsProvider);
-      } catch (e) {
-        debugPrint('Failed to save comparison: $e');
+      if (products.length < 2) {
+        ref.read(compareSessionProvider.notifier).state = CompareSessionData(
+          selectedProductIds: products.map((p) => p.id).toList(growable: false),
+        );
+        _showCompareNotice(
+          context.l10n?.couldNotLoadProduct ?? 'Could not load product data',
+        );
+        return;
       }
-    }
 
-    if (!mounted) return;
-    // Track comparison behavior
-    ref.read(behaviorTrackingProvider).trackComparison(selectedIds);
+      // Enforce same comparable category. Sources use different labels
+      // (for example Geizhals "notebooks" vs Icecat "laptops").
+      final categories = products.map((p) {
+        final resolved = key_specs.resolveCategory(p.category);
+        return resolved.isNotEmpty ? resolved : p.category.toLowerCase();
+      }).toSet();
+      if (categories.length > 1) {
+        final first = products.first;
+        ref.read(compareSessionProvider.notifier).state = CompareSessionData(
+          selectedProductIds: [first.id],
+          lockedCategory: first.category,
+          lockedSubcategory: first.subcategory,
+        );
+        _showCompareNotice(
+          context.l10n?.mustBeSameCategory ??
+              'Products must be from the same category to compare',
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      ref.read(compareSessionProvider.notifier).state = ref
+          .read(compareSessionProvider)
+          .copyWith(comparedProducts: products);
+
+      // Save comparison to Firestore for history
+      final shouldPersistHistory = !_skipNextHistorySave;
+      _skipNextHistorySave = false;
+      final user = ref.read(userProfileProvider).valueOrNull;
+      if (shouldPersistHistory && user != null) {
+        final title = products.map((p) => p.name).join(' vs ');
+        try {
+          await ref
+              .read(comparisonRepositoryProvider)
+              .saveManualComparison(
+                userId: user.uid,
+                productIds: selectedIds,
+                category: products.first.category,
+                title: title,
+              );
+          if (!mounted) return;
+          // Invalidate comparisons cache so history updates
+          ref.invalidate(userComparisonsProvider);
+        } catch (e) {
+          debugPrint('Failed to save comparison: $e');
+        }
+      }
+
+      if (!mounted) return;
+      // Track comparison behavior
+      ref.read(behaviorTrackingProvider).trackComparison(selectedIds);
+    } finally {
+      _comparisonLoadInFlight = false;
+    }
   }
 
   void _resetComparison() {
@@ -414,107 +433,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
 
   void _showCompareYouTubeSheet(List<ProductEntity> products) {
     if (products.isEmpty) return;
-    final vsQuery = products.map((p) => p.name).join(' vs ');
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      builder: (sheetCtx) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (ctx, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: context.surfaceColor,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.smart_display_rounded,
-                      size: 22,
-                      color: Color(0xFFFF0000),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        isTr ? 'Karşılaştırma Videoları' : 'Comparison Videos',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: context.textPrimary,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.close_rounded,
-                        color: context.textPrimary,
-                      ),
-                      onPressed: () => Navigator.of(sheetCtx).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: context.dividerColor),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    MediaQuery.of(context).padding.bottom + 16,
-                  ),
-                  children: [
-                    SharedYouTubeReviewsCard(
-                      product: products.first,
-                      isDark: Theme.of(context).brightness == Brightness.dark,
-                      cardBg: context.surfaceVariantColor,
-                      searchQuery: vsQuery,
-                      titleOverride:
-                          context.l10n?.comparisonVideos ??
-                              'Comparison Videos',
-                      collapsible: false,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    detail.showYouTubeBottomSheet(context, product: products.first);
   }
 
   void _showCompareReviewsSheet(List<ProductEntity> products) {
     if (products.isEmpty) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      builder: (sheetCtx) => _CompareReviewsSheet(products: products),
-    );
+    detail.showReviewsBottomSheet(context, product: products.first);
   }
 
   void _removeProductFromComparison(String productId) {
@@ -547,6 +471,16 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     ref.read(behaviorTrackingProvider).trackComparison(productIds);
   }
 
+  void _resumePendingComparisonIfNeeded({
+    required List<String> globalIds,
+    required List<ProductEntity>? products,
+  }) {
+    if (products != null || _comparisonLoadInFlight) return;
+    if (globalIds.length >= 2) {
+      _syncFromGlobalState();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Watch session state for reactivity
@@ -558,14 +492,15 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     // from "Compare now" tap to the comparison results without a flash of
     // the 0/4 selection screen.
     final globalIds = ref.watch(comparisonStateProvider).selectedProductIds;
-    final sessionIds = session.selectedProductIds;
-    final pendingPool =
-        products == null &&
-        (sessionIds.length >= 2 || globalIds.length >= 2);
+    final pendingPool = _comparisonLoadInFlight;
 
     // Hide/show nav bar based on comparison state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _resumePendingComparisonIfNeeded(
+        globalIds: globalIds,
+        products: products,
+      );
       final shouldHide =
           (products != null && products.length >= 2) || pendingPool;
       if (_hideNavBarNotifier.state != shouldHide) {
@@ -639,8 +574,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                     onRemoveProduct: _removeProductFromComparison,
                   )
                 : (pendingPool
-                    ? const _ComparePendingLoader()
-                    : _buildSelectionView()),
+                      ? const _ComparePendingLoader()
+                      : _buildSelectionView()),
           ),
         ],
       ),
@@ -745,8 +680,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                               const SizedBox(width: 5),
                               Text(
                                 count < 2
-                                    ? (context.l10n?.selectAtLeast2 ??
-                                          'Select at least 2 products')
+                                    ? (Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'tr'
+                                          ? 'En az 2 ürün seç'
+                                          : 'Select at least 2 products')
                                     : (context.l10n?.readyToCompare ??
                                           'Ready to compare!'),
                                 style: GoogleFonts.plusJakartaSans(

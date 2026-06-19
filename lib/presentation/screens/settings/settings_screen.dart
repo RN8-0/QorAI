@@ -78,19 +78,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await prefs.setBool('email_digest', value);
   }
 
+  // Sadece 3 dil desteklenir: İngilizce, Türkçe, Almanca.
   static const Map<String, String> _languageNames = {
     'en': 'English',
     'tr': 'Türkçe',
     'de': 'Deutsch',
-    'fr': 'Français',
-    'it': 'Italiano',
-    'es': 'Español',
-    'ja': '日本語',
-    'nl': 'Nederlands',
-    'sv': 'Svenska',
-    'pl': 'Polski',
-    'pt': 'Português',
-    'ar': 'العربية',
   };
 
   // Country code -> flag emoji via regional indicator symbols

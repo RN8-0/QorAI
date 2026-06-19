@@ -77,6 +77,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   int _visibleCompareFields = 1; // Unified flow: start with 1, auto-grows on paste (max 4)
   // Compare state now managed by compareAnalysisProvider (survives navigation)
 
+  // Idle "How it works" scroll view needs its OWN controller. Without it the
+  // inner SingleChildScrollView attaches to the NestedScrollView's primary
+  // controller, whose coordinator (outer physics = NeverScrollable when idle)
+  // swallows upward drags — you could scroll down but never back up. A
+  // dedicated controller + primary:false makes it scroll independently both ways.
+  final ScrollController _infoScrollController = ScrollController();
+
   // Legacy multi-link state (kept for backward compat)
   List<String> _multiLinkUrls = [];
   List<EnhancedAnalysisResult> _multiLinkResults = [];
@@ -153,6 +160,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     for (final f in _compareFocusNodes) {
       f.dispose();
     }
+    _infoScrollController.dispose();
     _pulseController.dispose();
     _orbController.dispose();
     _quizEntryController.dispose();
@@ -1183,6 +1191,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               // when several link fields are open on small screens.
               Expanded(
                 child: SingleChildScrollView(
+                  controller: _infoScrollController,
+                  primary: false,
                   physics: const BouncingScrollPhysics(),
                   child: _buildInfoCards(),
                 ),
@@ -1378,6 +1388,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               // when several link fields are open on small screens.
               Expanded(
                 child: SingleChildScrollView(
+                  controller: _infoScrollController,
+                  primary: false,
                   physics: const BouncingScrollPhysics(),
                   child: _buildInfoCards(),
                 ),
@@ -3016,7 +3028,11 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildBackgroundOrbs() {
-    return Stack(
+    // RepaintBoundary: orb her frame yeniden boyanıyor (sürekli animasyon).
+    // İzole etmezsek üstteki içerik katmanını da kirletip gereksiz repaint
+    // (jank) yaratır. Boundary ile orb kendi katmanında kalır.
+    return RepaintBoundary(
+      child: Stack(
       children: [
         Positioned(
           top: -100,
@@ -3063,6 +3079,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           ),
         ),
       ],
+      ),
     );
   }
 

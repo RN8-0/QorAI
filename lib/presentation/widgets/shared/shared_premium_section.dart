@@ -9,6 +9,8 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/services/ai_report_service.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
@@ -40,13 +42,25 @@ class SharedPremiumFeaturesSectionState
   bool _predictionExpanded = false;
   bool _unifiedAiExpanded = false;
   bool _unifiedAiRunning = false;
+  // ignore: unused_field
   bool _unifiedAiUserCollapsed = false;
   bool _unifiedAiAutoStarted = false;
+  // ignore: unused_field
   String _unifiedAiStep = '';
 
+  // Web-parity unified product report (product_full_report).
+  Map<String, dynamic>? _fullReport;
+  bool _fullReportRunning = false;
+  bool _fullReportError = false;
+  AiReportStageLite _fullReportStage = AiReportStageLite.prep;
+
+  // ignore: unused_field
   bool _deepAnalysisUserCollapsed = false;
+  // ignore: unused_field
   bool _alternativesUserCollapsed = false;
+  // ignore: unused_field
   bool _advisorUserCollapsed = false;
+  // ignore: unused_field
   bool _predictionUserCollapsed = false;
 
   bool get _isTurkish => Localizations.localeOf(context).languageCode == 'tr';
@@ -87,18 +101,13 @@ class SharedPremiumFeaturesSectionState
   @override
   void initState() {
     super.initState();
-    _scheduleUnifiedAiAutoStart();
+    // No auto-start: like the website, the AI report runs only when the user
+    // taps the explicit "Start analysis" button. This also stops opening the
+    // tab from silently spending a product-AI credit.
   }
 
-  @override
-  void didUpdateWidget(covariant SharedPremiumFeaturesSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.product.id != widget.product.id) {
-      _unifiedAiAutoStarted = false;
-      _scheduleUnifiedAiAutoStart();
-    }
-  }
-
+  // Retained for reference; the product AI is now user-triggered.
+  // ignore: unused_element
   void _scheduleUnifiedAiAutoStart() {
     if (_unifiedAiAutoStarted) return;
     _unifiedAiAutoStarted = true;
@@ -110,135 +119,235 @@ class SharedPremiumFeaturesSectionState
 
   @override
   Widget build(BuildContext context) {
-    final pid = widget.product.id;
-    final localizedKey = LocalizedProductKey(
-      productId: pid,
-      languageCode: Localizations.localeOf(context).languageCode,
-    );
-
-    final reviewAsync = ref.watch(aiReviewCacheProvider(localizedKey));
-    final reviewResult = reviewAsync.valueOrNull;
-    final isLoadingReview = reviewAsync is AsyncLoading;
-
-    final deepAnalysisAsync = ref.watch(
-      deepAnalysisCacheProvider(localizedKey),
-    );
-    final deepAnalysis = deepAnalysisAsync.valueOrNull;
-    final isLoadingAnalysis = deepAnalysisAsync is AsyncLoading;
-
-    final alternativesAsync = ref.watch(
-      alternativesCacheProvider(localizedKey),
-    );
-    final alternatives = alternativesAsync.valueOrNull;
-    final isLoadingAlternatives = alternativesAsync is AsyncLoading;
-
-    final advisorAsync = ref.watch(advisorCacheProvider(localizedKey));
-    final advisorResult = advisorAsync.valueOrNull;
-    final isLoadingAdvisor = advisorAsync is AsyncLoading;
-
-    final predictionAsync = ref.watch(predictionCacheProvider(localizedKey));
-    final predictionResult = predictionAsync.valueOrNull;
-    final isLoadingPrediction = predictionAsync is AsyncLoading;
-
-    // Step messages for each AI operation.
-    final reviewStep = ref.watch(aiOperationStepProvider('${pid}_review'));
-    final deepStep = ref.watch(aiOperationStepProvider('${pid}_deep'));
-    final altsStep = ref.watch(aiOperationStepProvider('${pid}_alts'));
-    final advisorStep = ref.watch(aiOperationStepProvider('${pid}_advisor'));
-    final predStep = ref.watch(aiOperationStepProvider('${pid}_prediction'));
-    final stepMessage = _unifiedAiStep.isNotEmpty
-        ? _unifiedAiStep
-        : [
-            reviewStep,
-            deepStep,
-            advisorStep,
-            altsStep,
-            predStep,
-          ].firstWhere((step) => step.trim().isNotEmpty, orElse: () => '');
-    final isLoading =
-        _unifiedAiRunning ||
-        isLoadingReview ||
-        isLoadingAnalysis ||
-        isLoadingAdvisor ||
-        isLoadingAlternatives ||
-        isLoadingPrediction;
-    final hasContent =
-        (reviewResult != null && !reviewResult.failed) ||
-        deepAnalysis?.hasUsableContent == true ||
-        advisorResult?.hasUsableContent == true ||
-        alternatives?.hasUsableContent == true ||
-        predictionResult?.hasUsableContent == true;
-
-    // Use ref.listen instead of addPostFrameCallback — prevents rebuild cascade.
-    ref.listen(deepAnalysisCacheProvider(localizedKey), (_, next) {
-      if (next.valueOrNull != null &&
-          !_deepAnalysisExpanded &&
-          !_deepAnalysisUserCollapsed) {
-        setState(() => _deepAnalysisExpanded = true);
-      }
-    });
-    ref.listen(alternativesCacheProvider(localizedKey), (_, next) {
-      if (next.valueOrNull != null &&
-          !_alternativesExpanded &&
-          !_alternativesUserCollapsed) {
-        setState(() => _alternativesExpanded = true);
-      }
-    });
-    ref.listen(advisorCacheProvider(localizedKey), (_, next) {
-      if (next.valueOrNull != null &&
-          !_advisorExpanded &&
-          !_advisorUserCollapsed) {
-        setState(() => _advisorExpanded = true);
-      }
-    });
-    ref.listen(predictionCacheProvider(localizedKey), (_, next) {
-      if (next.valueOrNull != null &&
-          !_predictionExpanded &&
-          !_predictionUserCollapsed) {
-        setState(() => _predictionExpanded = true);
-      }
-    });
-    ref.listen(aiReviewCacheProvider(localizedKey), (_, next) {
-      if (next.valueOrNull != null &&
-          !_unifiedAiExpanded &&
-          !_unifiedAiUserCollapsed) {
-        setState(() => _unifiedAiExpanded = true);
-      }
-    });
-
+    // Web-parity unified AI report (product_full_report). User-triggered via an
+    // explicit Start button; renders identically to the website.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RepaintBoundary(
-          child: _buildCollapsibleHeader(
-            icon: Icons.auto_awesome_rounded,
-            title: _txt(tr: 'AI Analizi', en: 'AI Analysis'),
-            subtitle: _txt(
-              tr: 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini',
-              en: 'Reviews, specs, advice and price prediction',
-            ),
-            gradient: const [AppTheme.premiumPurple, AppTheme.primaryBlue],
-            isExpanded: _unifiedAiExpanded,
-            isLoading: isLoading,
-            stepMessage: stepMessage,
-            hasContent: hasContent,
-            onTap: () => _toggleUnifiedAnalysis(),
-            expandedChild: (hasContent || isLoading)
-                ? _buildUnifiedAnalysisVisual(
-                    review: reviewResult,
-                    deepAnalysis: deepAnalysis,
-                    advisor: advisorResult,
-                    alternatives: alternatives,
-                    prediction: predictionResult,
-                    isLoading: isLoading,
-                  )
-                : null,
-          ),
-        ),
+        RepaintBoundary(child: _buildFullReportSection()),
       ],
     );
   }
 
+  String get _reportLang => Localizations.localeOf(context).languageCode;
+
+  AiReportStageLite _mapStage(AiReportStage s) => switch (s) {
+    AiReportStage.prep => AiReportStageLite.prep,
+    AiReportStage.research => AiReportStageLite.research,
+    AiReportStage.report => AiReportStageLite.report,
+  };
+
+  Map<String, dynamic> _buildAiProfile() {
+    final u = ref.read(userProfileProvider).valueOrNull;
+    if (u == null) return const {};
+    final m = <String, dynamic>{};
+    void put(String k, dynamic v) {
+      if (v == null) return;
+      if (v is String && v.trim().isEmpty) return;
+      if (v is List && v.isEmpty) return;
+      m[k] = v;
+    }
+
+    put('country', u.country);
+    put('language', u.language);
+    if (u.ecosystem != 'mixed') put('ecosystem', u.ecosystem);
+    put('budget', u.budgetRange);
+    put('priorities', u.priorities);
+    put('profession', u.profession);
+    put('interests', u.interestCategories);
+    return m;
+  }
+
+  Widget _buildFullReportSection() {
+    if (_fullReportRunning) {
+      return AiReportWorkboard(
+        lang: _reportLang,
+        mode: 'product',
+        stage: _fullReportStage,
+      );
+    }
+    if (_fullReport != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AiReportView(
+            kind: 'productFull',
+            data: _fullReport!,
+            lang: _reportLang,
+          ),
+          const SizedBox(height: 6),
+          Center(
+            child: TextButton.icon(
+              onPressed: _runProductFullReport,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(
+                _txt(tr: 'Yeniden Analiz Et', en: 'Re-run analysis'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return _buildFullReportStartCard();
+  }
+
+  Widget _buildFullReportStartCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.premiumPurple, AppTheme.primaryBlue],
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _txt(tr: 'AI Analizi', en: 'AI Analysis'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _txt(
+                        tr: 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini',
+                        en: 'Reviews, specs, advice and price prediction',
+                      ),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_fullReportError)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                _txt(
+                  tr: 'AI analizi tamamlanamadı. Lütfen tekrar dene.',
+                  en: 'AI analysis could not be completed. Please try again.',
+                ),
+                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.error),
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _runProductFullReport,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: Text(
+                _fullReportError
+                    ? _txt(tr: 'Tekrar Dene', en: 'Try Again')
+                    : _txt(tr: 'Analizi Başlat', en: 'Start Analysis'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runProductFullReport() async {
+    if (_fullReportRunning) return;
+    if (!await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
+    final lang = _reportLang;
+    setState(() {
+      _fullReportRunning = true;
+      _fullReportError = false;
+      _fullReportStage = AiReportStageLite.prep;
+    });
+    try {
+      // Fetch Qor catalog "similar products" so the AI can reuse REAL catalog
+      // products (with their image) as smart alternatives — web parity with
+      // ProductDetail.runFullAnalysis. Best-effort: the report still runs if
+      // the lookup fails or is empty.
+      List<ProductEntity> similar = const [];
+      try {
+        similar = await ref.read(
+          similarProductsProvider(widget.product).future,
+        );
+      } catch (_) {}
+      final report = await AiReportService.runProductReport(
+        ref: ref,
+        product: widget.product,
+        lang: lang,
+        profile: _buildAiProfile(),
+        similarProducts: similar,
+        onStage: (s) {
+          if (!mounted) return;
+          setState(() => _fullReportStage = _mapStage(s));
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _fullReportRunning = false;
+        if (report != null) {
+          _fullReport = report;
+          _fullReportError = false;
+        } else {
+          _fullReportError = true;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _fullReportRunning = false;
+        _fullReportError = true;
+      });
+    }
+  }
+
+  // ignore: unused_element
   Widget _buildCollapsibleHeader({
     required IconData icon,
     required String title,
@@ -386,6 +495,7 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
+  // ignore: unused_element
   Widget _buildUnifiedAnalysisVisual({
     required AIReviewResult? review,
     required DeepAnalysisResult? deepAnalysis,

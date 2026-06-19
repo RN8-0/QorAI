@@ -11,7 +11,7 @@ import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
 import { displayProductName, cleanProductName } from '../lib/productNames';
 
-const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian' };
+const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish', ja: 'Japanese', ar: 'Arabic' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
 const CURRENT_REPORT_DATE = new Date().toISOString().slice(0, 10);
 

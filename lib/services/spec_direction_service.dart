@@ -170,6 +170,38 @@ class SpecDirectionService {
     // ─ Price
     'price': SpecDirection.lower,
     'msrp': SpecDirection.lower,
+
+    // ─ Turkish spec labels — the app compare table now renders LOCALIZED
+    // labels, so direction must resolve Turkish keys directly (no English
+    // canonicalization at render time). Specific multi-word forms first so the
+    // word-boundary matcher picks the precise meaning.
+    'diyafram': SpecDirection.lower, // f-number; lower = wider = better
+    'agirlik': SpecDirection.lower,
+    'kalinlik': SpecDirection.lower,
+    'kamera sensor boyutu': SpecDirection.neutral, // "1/1.55" strings ambiguous
+    'pil kapasitesi': SpecDirection.higher,
+    'batarya kapasitesi': SpecDirection.higher,
+    'sarj sonrasi pil suresi': SpecDirection.higher,
+    'video oynatma': SpecDirection.higher,
+    'muzik dinleme': SpecDirection.higher,
+    'ekran boyutu': SpecDirection.higher,
+    'piksel yogunlugu': SpecDirection.higher,
+    'ekran yenileme hizi': SpecDirection.higher,
+    'yenileme hizi': SpecDirection.higher,
+    'parlaklik': SpecDirection.higher,
+    'ekran alani': SpecDirection.higher,
+    'ekran cozunurlugu': SpecDirection.higher,
+    'cozunurluk': SpecDirection.higher,
+    'dahili depolama': SpecDirection.higher,
+    'ram kapasitesi': SpecDirection.higher,
+    'kamera cozunurlugu': SpecDirection.higher,
+    'on kamera cozunurlugu': SpecDirection.higher,
+    'optik zoom': SpecDirection.higher,
+    'dijital zoom': SpecDirection.higher,
+    'sarj gucu': SpecDirection.higher,
+    'hizli sarj gucu': SpecDirection.higher,
+    'kablosuz sarj gucu': SpecDirection.higher,
+    'sar degeri': SpecDirection.lower,
   };
 
   // ─── Component Ranking Tables ──────────────────────────────────────────────
@@ -351,10 +383,19 @@ class SpecDirectionService {
       return _staticDirections[normalized]!;
     }
 
-    // 3. Partial match (spec key contains known keyword)
+    // 3. Partial match — WORD-BOUNDARY only. A naive `contains` made
+    // "diyafram" (aperture) match "ram" → aperture got RAM's higher-is-better
+    // and ranked F1.9 above F1.88 (wrong). "En" (width) matched "screen" the
+    // same way. Match only when the keyword appears as a whole word.
     for (final entry in _staticDirections.entries) {
-      if (normalized.contains(entry.key) || entry.key.contains(normalized)) {
-        return entry.value;
+      if (_containsWord(normalized, entry.key)) return entry.value;
+    }
+    // 3b. Reverse: a generic label ("storage") that is a whole word inside a
+    // longer key ("internal storage"). Guarded by length ≥ 4 so 2-3 char labels
+    // like "en"/"ram" can't trigger spurious matches.
+    if (normalized.length >= 4) {
+      for (final entry in _staticDirections.entries) {
+        if (_containsWord(entry.key, normalized)) return entry.value;
       }
     }
 
@@ -463,8 +504,15 @@ class SpecDirectionService {
         key.contains('chipset') ||
         key.contains('cpu') ||
         key.contains('chip') ||
-        key.contains('soc');
-    final isGpu = key.contains('gpu') || key.contains('graphics');
+        key.contains('soc') ||
+        key.contains('islemci') ||
+        key.contains('yonga') ||
+        key.contains('prozessor');
+    final isGpu =
+        key.contains('gpu') ||
+        key.contains('graphics') ||
+        key.contains('grafik') ||
+        key.contains('ekran karti');
 
     Map<String, int>? rankingTable;
     if (isProcessor) rankingTable = processorRankings;
@@ -671,6 +719,15 @@ class SpecDirectionService {
     return parts.length > 1 ? parts.length.toDouble() : null;
   }
 
+  /// Whole-word containment: true only when [needle] appears in [haystack]
+  /// bounded by string start/end or spaces. Prevents "ram" ⊂ "diyafram".
+  static bool _containsWord(String haystack, String needle) {
+    if (needle.isEmpty || haystack.isEmpty) return false;
+    return RegExp(
+      '(^| )${RegExp.escape(needle)}( |\$)',
+    ).hasMatch(haystack);
+  }
+
   static String _normalizeKey(String key) {
     return key
         .toLowerCase()
@@ -681,6 +738,7 @@ class SpecDirectionService {
         .replaceAll('ö', 'o')
         .replaceAll('ş', 's')
         .replaceAll('ü', 'u')
+        .replaceAll('\u0307', '') // İ.toLowerCase() leaves a combining dot
         .replaceAll(RegExp(r'[_\-\/]'), ' ')
         .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')

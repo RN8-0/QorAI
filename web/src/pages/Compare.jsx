@@ -10,6 +10,7 @@ import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
+import { rowWinners } from '../lib/specDirection';
 import { productPath } from '../lib/routes';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
 import { generateCompareQuiz } from '../lib/linkAnalysis';
@@ -51,14 +52,6 @@ function flatSpecs(p) {
   return flat;
 }
 
-// Specs where a smaller number is the better result.
-const LOWER_BETTER = /(ağırlık|agirlik|weight|kalınlık|kalinlik|thickness|fiyat|price|gecikme|latency|response|tepki|ping|tüketim|tuketim|consumption|emisyon)/i;
-
-function parseNum(s) {
-  if (s == null) return null;
-  const m = String(s).match(/-?\d+(?:[.,]\d+)?/);
-  return m ? parseFloat(m[0].replace(',', '.')) : null;
-}
 
 function formatOffer(offer, lang) {
   if (!offer || !Number(offer.price)) return '';
@@ -135,16 +128,6 @@ function fallbackCompareQuiz(lang) {
   return rows.map(([text, options], i) => ({ id: `compare-fallback-${i}`, text, options }));
 }
 
-// Returns a boolean per cell — true marks the winning value(s) for the row.
-function rowWinners(key, values) {
-  const nums = values.map(parseNum);
-  const valid = nums.filter((n) => n != null && Number.isFinite(n));
-  if (valid.length < 2 || valid.every((n) => n === valid[0])) {
-    return values.map(() => false);
-  }
-  const best = LOWER_BETTER.test(key) ? Math.min(...valid) : Math.max(...valid);
-  return nums.map((n) => n != null && Number.isFinite(n) && n === best);
-}
 
 function formatSavedAt(at, lang) {
   const d = new Date(at);

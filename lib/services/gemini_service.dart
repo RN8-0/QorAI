@@ -759,6 +759,7 @@ class GeminiService implements AIService {
     String? language,
     int maxTokens = 2048,
     AiTier tier = AiTier.lite,
+    double temperature = 0.3,
   }) async {
     final langCode = language ?? 'en';
     final langName = _languageName(langCode);
@@ -779,7 +780,7 @@ class GeminiService implements AIService {
         ],
       },
       'generationConfig': {
-        'temperature': 0.3,
+        'temperature': temperature,
         'maxOutputTokens': maxTokens,
         'responseMimeType': 'application/json',
       },
@@ -788,8 +789,16 @@ class GeminiService implements AIService {
   }
 
   /// Query Qor AI with web grounding for real-time factual data.
-  Future<String> groundedQuery(String prompt, {int maxTokens = 2048}) async {
-    final body = {
+  ///
+  /// [system] attaches a system instruction (web parity: the Qor AI research
+  /// assistant persona that forces grounded search over model memory).
+  Future<String> groundedQuery(
+    String prompt, {
+    int maxTokens = 2048,
+    String? system,
+    double temperature = 0.1,
+  }) async {
+    final body = <String, dynamic>{
       'contents': [
         {
           'parts': [
@@ -800,8 +809,18 @@ class GeminiService implements AIService {
       'tools': [
         {'googleSearch': {}},
       ],
-      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': maxTokens},
+      'generationConfig': {
+        'temperature': temperature,
+        'maxOutputTokens': maxTokens,
+      },
     };
+    if (system != null && system.isNotEmpty) {
+      body['systemInstruction'] = {
+        'parts': [
+          {'text': system},
+        ],
+      };
+    }
     // Grounded queries with web search need more time — use 90s timeout
     return _rawRequest(
       body,

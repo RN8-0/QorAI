@@ -270,19 +270,15 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                       // Comments (Reviews) round button → opens YouTube-style sheet
                       _RoundIconButton(
                         icon: Icons.mode_comment_outlined,
-                        onPressed: () => showReviewsBottomSheet(
-                          context,
-                          product: product,
-                        ),
+                        onPressed: () =>
+                            showReviewsBottomSheet(context, product: product),
                       ),
                       const SizedBox(width: 8),
                       // YouTube round button → opens YouTube-style sheet
                       _RoundIconButton(
                         icon: Icons.smart_display_outlined,
-                        onPressed: () => showYouTubeBottomSheet(
-                          context,
-                          product: product,
-                        ),
+                        onPressed: () =>
+                            showYouTubeBottomSheet(context, product: product),
                       ),
                       const SizedBox(width: 8),
                       // Share button

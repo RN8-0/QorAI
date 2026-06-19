@@ -10,21 +10,31 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:convert';
+import 'package:qor_ai/core/hive_bootstrap.dart';
 
 class CacheService {
   static const String _cacheBoxName = 'qor_ai_cache';
   static const String _settingsBoxName = 'qor_ai_settings';
 
-  late Box<String> _localBox;
+  LazyBox<String>? _localBox;
+  Future<LazyBox<String>>? _localBoxFuture;
   late Box _settingsBox;
 
   CacheService();
 
   /// Initialize cache
   Future<void> initialize() async {
-    await Hive.initFlutter();
-    _localBox = await Hive.openBox<String>(_cacheBoxName);
+    await HiveBootstrap.ensureInitialized();
     _settingsBox = await Hive.openBox(_settingsBoxName);
+  }
+
+  Future<LazyBox<String>> _ensureLocalBox() async {
+    final box = _localBox;
+    if (box != null && box.isOpen) return box;
+    final future = _localBoxFuture ??= Hive.openLazyBox<String>(_cacheBoxName);
+    final opened = await future;
+    _localBox = opened;
+    return opened;
   }
 
   // ─── Theme Settings ───
@@ -91,8 +101,8 @@ class CacheService {
   /// Get value (local cache only) - Section 7.4
   Future<T?> get<T>(String key) async {
     // Check Hive local cache
-    if (!_localBox.isOpen) return null;
-    final localData = _localBox.get(key);
+    final localBox = await _ensureLocalBox();
+    final localData = await localBox.get(key);
     if (localData != null) {
       final cached = jsonDecode(localData) as Map<String, dynamic>;
       final expiresAt = DateTime.parse(cached['expiresAt']);
@@ -100,7 +110,7 @@ class CacheService {
       if (DateTime.now().isBefore(expiresAt)) {
         return cached['data'] as T;
       } else {
-        await _localBox.delete(key);
+        await localBox.delete(key);
       }
     }
 
@@ -118,8 +128,8 @@ class CacheService {
   }
 
   Future<void> _setLocal<T>(String key, T value, DateTime expiresAt) async {
-    if (!_localBox.isOpen) return;
-    await _localBox.put(
+    final localBox = await _ensureLocalBox();
+    await localBox.put(
       key,
       jsonEncode({'data': value, 'expiresAt': expiresAt.toIso8601String()}),
     );
@@ -127,34 +137,20 @@ class CacheService {
 
   /// Get value from local Hive cache only (no Firestore fallback)
   T? getLocal<T>(String key) {
-    if (!_localBox.isOpen) return null;
-    final localData = _localBox.get(key);
-    if (localData == null) return null;
-    try {
-      final cached = jsonDecode(localData) as Map<String, dynamic>;
-      final expiresAt = DateTime.parse(cached['expiresAt']);
-      if (DateTime.now().isBefore(expiresAt)) {
-        return cached['data'] as T;
-      } else {
-        _localBox.delete(key);
-      }
-    } catch (_) {}
+    _localBoxFuture ??= Hive.openLazyBox<String>(_cacheBoxName).then((box) {
+      _localBox = box;
+      return box;
+    });
     return null;
   }
 
   /// Stale-While-Revalidate: Return cached data even if expired.
   /// Returns (data, isExpired) tuple. Caller should refresh in background if expired.
   ({T? data, bool isStale}) getLocalStale<T>(String key) {
-    if (!_localBox.isOpen) return (data: null, isStale: true);
-    final localData = _localBox.get(key);
-    if (localData == null) return (data: null, isStale: true);
-    try {
-      final cached = jsonDecode(localData) as Map<String, dynamic>;
-      final expiresAt = DateTime.parse(cached['expiresAt']);
-      final data = cached['data'] as T?;
-      final isStale = DateTime.now().isAfter(expiresAt);
-      return (data: data, isStale: isStale);
-    } catch (_) {}
+    _localBoxFuture ??= Hive.openLazyBox<String>(_cacheBoxName).then((box) {
+      _localBox = box;
+      return box;
+    });
     return (data: null, isStale: true);
   }
 
@@ -162,8 +158,8 @@ class CacheService {
   /// background isolate to avoid blocking the main thread for large payloads
   /// (e.g. the 1500-product home-feed cache).
   Future<({T? data, bool isStale})> getLocalStaleAsync<T>(String key) async {
-    if (!_localBox.isOpen) return (data: null, isStale: true);
-    final localData = _localBox.get(key);
+    final localBox = await _ensureLocalBox();
+    final localData = await localBox.get(key);
     if (localData == null) return (data: null, isStale: true);
     try {
       // Parse JSON off the main thread — prevents 200–400 ms jank on low-end
@@ -186,9 +182,11 @@ class CacheService {
   /// Returns null when the key is missing. `isStale` is determined by reading
   /// only the `expiresAt` portion of the payload (~tens of bytes), keeping
   /// main-thread work negligible.
-  Future<({String? raw, bool isStale})> getLocalRawStaleAsync(String key) async {
-    if (!_localBox.isOpen) return (raw: null, isStale: true);
-    final localData = _localBox.get(key);
+  Future<({String? raw, bool isStale})> getLocalRawStaleAsync(
+    String key,
+  ) async {
+    final localBox = await _ensureLocalBox();
+    final localData = await localBox.get(key);
     if (localData == null) {
       return (raw: null, isStale: true);
     }
@@ -227,17 +225,19 @@ class CacheService {
 
   /// Delete a specific key
   Future<void> delete(String key) async {
-    await _localBox.delete(key);
+    final localBox = await _ensureLocalBox();
+    await localBox.delete(key);
   }
 
   /// Clear expired cache entries (batched to avoid UI jank)
   Future<void> clearExpired() async {
+    final localBox = await _ensureLocalBox();
     final keysToDelete = <String>[];
     final now = DateTime.now();
 
-    for (final key in _localBox.keys) {
+    for (final key in localBox.keys) {
       try {
-        final data = _localBox.get(key as String);
+        final data = await localBox.get(key as String);
         if (data != null) {
           final cached = jsonDecode(data) as Map<String, dynamic>;
           if (cached['expiresAt'] != null) {
@@ -256,7 +256,7 @@ class CacheService {
     for (int i = 0; i < keysToDelete.length; i += 50) {
       final batch = keysToDelete.skip(i).take(50);
       for (final key in batch) {
-        await _localBox.delete(key);
+        await localBox.delete(key);
       }
       if (i + 50 < keysToDelete.length) {
         await Future.delayed(const Duration(milliseconds: 10));
@@ -266,7 +266,8 @@ class CacheService {
 
   /// Clear all local cache
   Future<void> clearAll() async {
-    await _localBox.clear();
+    final localBox = await _ensureLocalBox();
+    await localBox.clear();
   }
 
   /// Clear all user-specific data on account deletion / sign-out.
@@ -282,7 +283,8 @@ class CacheService {
     _settingsBox.delete('country_manually_set');
     // Clear local product/recently-viewed cache keys.
     try {
-      final keysToDelete = _localBox.keys
+      final localBox = await _ensureLocalBox();
+      final keysToDelete = localBox.keys
           .whereType<String>()
           .where(
             (k) =>
@@ -292,7 +294,7 @@ class CacheService {
           )
           .toList();
       for (final key in keysToDelete) {
-        await _localBox.delete(key);
+        await localBox.delete(key);
       }
     } catch (_) {}
   }

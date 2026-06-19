@@ -19,10 +19,18 @@ const DEEPSEEK_URL = `${PB_URL}/api/ai/deepseek`;
 const DEEPSEEK_MODEL = 'deepseek-chat';
 const DEEPSEEK_MAX_OUTPUT = 8192; // deepseek-chat (V3) output cap
 
+// Full language set (parity with the app's AiReportService._langNames and
+// AiAnalysis.jsx). Previously only tr/de were mapped and EVERY other language
+// silently collapsed to English — so es/fr/it/pt/ru/… web users got English
+// chat + grounded research even though the report honored their language.
+const LANG_NAMES = {
+  tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French',
+  it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish',
+  sv: 'Swedish', ja: 'Japanese', ar: 'Arabic',
+};
 function languageLabel(code = 'en') {
-  if (code === 'tr') return 'Turkish';
-  if (code === 'de') return 'German';
-  return 'English';
+  const key = String(code || 'en').slice(0, 2).toLowerCase();
+  return LANG_NAMES[key] || 'English';
 }
 
 // Mirrors the mobile app's Qor AI chat persona so the web gives the same voice,

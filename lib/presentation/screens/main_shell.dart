@@ -4,7 +4,6 @@
 library;
 
 import "dart:async";
-import "dart:ui";
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -450,16 +449,11 @@ class _FloatingNavBar extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppTheme.radiusXXL),
-          // Light mode bg is 96% opaque, blur is imperceptible — skip it.
-          // Dark mode keeps a cheaper 10-sigma blur for glass feel.
-          child: (isDark
-              ? BackdropFilter(
-                  // sigma 10 → 4: görsel fark minimal ama GPU maliyeti
-                  // ~6x düşer; scroll sırasında her frame yeniden kompozitlenir.
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: _navBarInner(context, items, isDark),
-                )
-              : _navBarInner(context, items, isDark)),
+          // Maks. akıcılık: BackdropFilter blur'u TAMAMEN kaldırıldı. Blur her
+          // scroll frame'inde arkadaki içeriği yeniden örnekleyip kompozitliyordu
+          // — giriş seviyesi GPU'larda (Redmi Note 11SE) sürekli jank kaynağı.
+          // Nav arka planı zaten opak/yarı-opak; cam algısı korunur, GPU sıfır.
+          child: _navBarInner(context, items, isDark),
         ),
       ),
     );

@@ -4,6 +4,7 @@ library;
 
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:qor_ai/core/hive_bootstrap.dart';
 
 class HiveDataSource {
   static const String _userBox = 'user_data';
@@ -15,7 +16,7 @@ class HiveDataSource {
   late Box<String> _recentSearchesDataBox;
 
   Future<void> initialize() async {
-    await Hive.initFlutter();
+    await HiveBootstrap.ensureInitialized();
     _userDataBox = await Hive.openBox<String>(_userBox);
     _settingsDataBox = await Hive.openBox<String>(_settingsBox);
     _recentSearchesDataBox = await Hive.openBox<String>(_recentSearchesBox);
@@ -62,10 +63,7 @@ class HiveDataSource {
     if (searches.length > 20) {
       searches.removeRange(20, searches.length);
     }
-    await _recentSearchesDataBox.put(
-      'recent',
-      jsonEncode(searches),
-    );
+    await _recentSearchesDataBox.put('recent', jsonEncode(searches));
   }
 
   List<String> getRecentSearches() {

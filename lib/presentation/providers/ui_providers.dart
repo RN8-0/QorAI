@@ -139,15 +139,12 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
 class LocaleNotifier extends StateNotifier<Locale?> {
   final CacheService _cacheService;
 
-  /// Supported language codes matching AppLocalizations.supportedLocales.
-  /// Reduced from 12 → 7 (European-market pivot). RU added; AR/IT/JA/NL/PL/SV dropped.
+  /// Supported language codes. Reduced to the only three the app ships UI
+  /// + spec translations for: German, English, Turkish. Any other device /
+  /// saved locale falls back to English.
   static const _supported = {
     'de',
     'en',
-    'es',
-    'fr',
-    'pt',
-    'ru',
     'tr',
   };
 
@@ -156,10 +153,16 @@ class LocaleNotifier extends StateNotifier<Locale?> {
   }
 
   void _load() {
-    // 1. Check if user previously saved a language preference
+    // 1. Check if user previously saved a language preference. Guard against
+    // a stale preference for a language we no longer ship (es/fr/pt/ru…).
     final saved = _cacheService.getLanguage();
     if (saved.isNotEmpty) {
-      state = Locale(saved);
+      if (_supported.contains(saved)) {
+        state = Locale(saved);
+      } else {
+        state = const Locale('en');
+        _cacheService.saveLanguage('en');
+      }
       return;
     }
     // 2. First install: auto-detect from device locale

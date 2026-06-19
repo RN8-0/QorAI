@@ -57,7 +57,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _deepAnalysisLoading = false;
   String? _deepAnalysisResult;
   Map<String, dynamic>? _deepAnalysisStructured;
+  // ignore: unused_field
   bool _deepAnalysisError = false;
+  // ignore: unused_field
   String? _deepAnalysisErrorMsg;
 
   // Smart Alternatives state
@@ -65,7 +67,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _alternativesLoading = false;
   String? _alternativesResult;
   Map<String, dynamic>? _alternativesStructured;
+  // ignore: unused_field
   bool _alternativesError = false;
+  // ignore: unused_field
   String? _alternativesErrorMsg;
 
   // AI Advisor state
@@ -73,7 +77,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _advisorLoading = false;
   String? _advisorResult;
   Map<String, dynamic>? _advisorStructured;
+  // ignore: unused_field
   bool _advisorError = false;
+  // ignore: unused_field
   String? _advisorErrorMsg;
 
   // Price Prediction state
@@ -81,7 +87,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _predictionLoading = false;
   String? _predictionResult;
   Map<String, dynamic>? _predictionStructured;
+  // ignore: unused_field
   bool _predictionError = false;
+  // ignore: unused_field
   String? _predictionErrorMsg;
 
   // Personalized Match state
@@ -91,7 +99,14 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _unifiedAiExpanded = false;
   bool _unifiedAiRunning = false;
   bool _unifiedAiAutoStarted = false;
+  // ignore: unused_field
   String _unifiedAiProgress = '';
+
+  // Web-parity unified compare report (compare_full_report).
+  Map<String, dynamic>? _fullCompareReport;
+  bool _fullCompareRunning = false;
+  bool _fullCompareError = false;
+  AiReportStageLite _fullCompareStage = AiReportStageLite.prep;
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
@@ -137,26 +152,39 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   @override
   void initState() {
     super.initState();
-    // Cache key specs synchronously (max 6 rows, fast on any device)
-    _cachedKeySpecs = _collectCompareKeySpecs();
-    // Build full spec table in a background isolate to avoid first-frame jank
+    // Full spec table is built in a background isolate to avoid first-frame
+    // jank; it is (re)computed in didChangeDependencies once a locale exists.
     _groupedSpecs = {};
-    _computeGroupedSpecsAsync();
     // Restore AI analysis from session if available
     _restoreFromSession();
   }
 
-  void _computeGroupedSpecsAsync() {
+  // Specs are rendered from the baked, per-language payloads
+  // (`localizedSpecSections`) — the exact same source the admin modal and the
+  // product-detail Specs tab use. They must therefore be (re)built once the
+  // locale is known and again whenever the user switches language. initState
+  // has no Localizations yet, so the first build happens here.
+  String? _specsLocale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode.toLowerCase();
+    if (locale == _specsLocale) return;
+    _specsLocale = locale;
+    // Highlights summary is cheap (≤6 rows) → build synchronously.
+    _cachedKeySpecs = _collectCompareKeySpecs(locale);
+    _computeGroupedSpecsAsync(locale);
+  }
+
+  void _computeGroupedSpecsAsync(String locale) {
+    // Feed the aligner the already-localized, correction-cleaned sections so the
+    // compare table is byte-for-byte the admin/detail spec data — no in-app
+    // re-translation, no NLLB hallucinations (e.g. "6.9 İnç" → "6.9 I'm not").
     final input = widget.products
-        .map(
-          (p) => <String, dynamic>{
-            'category': p.category,
-            'specSections': p.specSections,
-            'specs': p.specs,
-          },
-        )
+        .map((p) => p.localizedSpecSections(locale))
         .toList();
-    compute(_buildGroupedSpecsIsolate, input).then((grouped) {
+    compute(_alignLocalizedCompareSpecs, input).then((grouped) {
       if (!mounted) return;
       setState(() {
         _groupedSpecs = grouped;
@@ -884,6 +912,7 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
+  // ignore: unused_element
   bool get _hasAnyUnifiedCompareAiData =>
       _advisorStructured != null ||
       _deepAnalysisStructured != null ||
@@ -903,6 +932,9 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       _alternativesLoading ||
       _predictionLoading;
 
+  // Retained for reference; the compare AI is now user-triggered (explicit
+  // "Start analysis" button) instead of auto-starting on tab open.
+  // ignore: unused_element
   void _scheduleUnifiedCompareAiAutoStart() {
     if (_unifiedAiAutoStarted ||
         _unifiedAiRunning ||
@@ -4985,30 +5017,17 @@ Rules:
 
   // ─── Key Specs Side-by-Side Comparison ───
 
-  /// Build a merged spec pool for a product (keySpecs + specs + specSections).
-  Map<String, String> _buildSpecPool(ProductEntity product) {
+  /// Build a merged spec pool for a product from the localized, baked sections
+  /// (the same data the admin + detail render). Flattened to {label: value} with
+  /// first-wins on label collisions. Never reads the raw `specs`/`keySpecs`
+  /// fields, which can carry stale machine-translation artefacts.
+  Map<String, String> _buildSpecPool(ProductEntity product, String locale) {
     final pool = <String, String>{};
-    for (final e in product.keySpecs.entries) {
-      final v = e.value.trim();
-      if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
-    }
-    for (final e in product.specs.entries) {
-      if (pool.containsKey(e.key)) continue;
-      if (e.value != null && e.value is! Map) {
-        final v = e.value.toString().trim();
+    for (final section in product.localizedSpecSections(locale).values) {
+      for (final e in section.entries) {
+        if (pool.containsKey(e.key)) continue;
+        final v = e.value.trim();
         if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
-      }
-    }
-    for (final section in product.specSections.entries) {
-      if (section.value is Map) {
-        for (final spec in (section.value as Map).entries) {
-          final k = spec.key.toString();
-          if (pool.containsKey(k)) continue;
-          if (spec.value != null) {
-            final v = spec.value.toString().trim();
-            if (v.isNotEmpty && v != '-' && v != 'N/A') pool[k] = v;
-          }
-        }
       }
     }
     return pool;
@@ -5037,9 +5056,9 @@ Rules:
 
   /// Collect 6 category-aware key specs across all products for comparison.
   /// Returns list of (specLabel, [val_product0, val_product1, ...]).
-  List<_CompareSpecRow> _collectCompareKeySpecs() {
+  List<_CompareSpecRow> _collectCompareKeySpecs(String locale) {
     final products = widget.products;
-    final pools = products.map(_buildSpecPool).toList();
+    final pools = products.map((p) => _buildSpecPool(p, locale)).toList();
 
     // Resolve category
     final cat = key_specs.resolveCategory(
@@ -5358,11 +5377,16 @@ Rules:
 
   Widget _buildKeySpecsSummary() {
     final specs =
-        _cachedKeySpecs; // pre-computed in initState, not called every build
+        _cachedKeySpecs; // pre-computed in didChangeDependencies, not per build
     if (specs.isEmpty) return const SizedBox.shrink();
 
+    final title = _isTr
+        ? 'Öne Çıkanlar'
+        : _appLang == 'de'
+        ? 'Highlights'
+        : 'Highlights';
     return _buildCompareSpecBrick(
-      title: 'Öne Çıkanlar',
+      title: title,
       rows: {for (final spec in specs) spec.label: spec.values},
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
     );
@@ -5550,10 +5574,12 @@ Rules:
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  // Bölüm başlığını uygulama diline çevir (ham 'title' yalnızca
-                  // ikon eşleştirmesinde kullanılır). "Öne Çıkanlar" → "Highlights".
+                  // Section header already comes localized from
+                  // `localizedSpecSections` (curated glossary) — render it
+                  // verbatim, exactly like the admin/detail spec card. No
+                  // in-app re-translation.
                   child: Text(
-                    _localizedSpecName(context, title),
+                    title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
@@ -5600,11 +5626,11 @@ Rules:
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Satır etiketini uygulama diline çevir (ham 'label' kazanan
-          // hesaplamasında kullanılır). "Titreşim" → "Vibration",
-          // "Bağlantı Tipi" → "Connection Type" vb. Türkçe sızıntısını giderir.
+          // Row label already comes localized from `localizedSpecSections`
+          // (the baked per-language payload). Render it verbatim so the compare
+          // table matches the admin/detail spec card exactly — no re-translation.
           Text(
-            _localizedSpecName(context, label),
+            label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
@@ -5891,9 +5917,10 @@ Rules:
                     final selectedIndex =
                         controller.animation?.value.round() ?? controller.index;
                     final isAiSelected = selectedIndex == 2;
-                    if (isAiSelected) {
-                      _scheduleUnifiedCompareAiAutoStart();
-                    }
+                    // No auto-start: like the website, the compare AI report runs
+                    // only when the user taps the explicit "Start analysis"
+                    // button — this also stops opening the tab from silently
+                    // spending a compare-AI credit.
                     final activeTabColor = isAiSelected
                         ? AppTheme.premiumGold
                         : Theme.of(context).colorScheme.primary;
@@ -6218,6 +6245,7 @@ Rules:
     // detay sayfasındaki gibi benzer ürün önerileri gösteririz.
     final showSimilar = priced.length <= 3;
 
+    final n = widget.products.length;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -6226,20 +6254,103 @@ Rules:
         MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
       ),
       children: [
-        for (var i = 0; i < widget.products.length; i++) ...[
-          _buildComparePriceCard(
-            product: widget.products[i],
-            info: priceInfos[i],
-            country: country,
-            isBest:
-                bestPrice != null &&
-                priceInfos[i].amount != null &&
-                priceInfos[i].amount == bestPrice,
-            showSimilar: showSimilar,
+        // Her ürün KENDİ sütununda (Specs sekmesiyle aynı hizada), fiyatı kendi
+        // başlığının altında — alt alta yığılmıyor. IntrinsicHeight sütun
+        // yüksekliklerini eşitler.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < n; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: _buildComparePriceCard(
+                    product: widget.products[i],
+                    info: priceInfos[i],
+                    country: country,
+                    isBest:
+                        bestPrice != null &&
+                        priceInfos[i].amount != null &&
+                        priceInfos[i].amount == bestPrice,
+                    showSimilar: false,
+                  ),
+                ),
+              ],
+            ],
           ),
-          if (i != widget.products.length - 1) const SizedBox(height: 12),
-        ],
+        ),
+        // Benzer ürünler: TEK birleşik bölüm (her ürün için ayrı ayrı değil).
+        if (showSimilar) _buildCombinedSimilarRow(widget.products),
       ],
+    );
+  }
+
+  /// One merged "Similar Products" rail across all compared products
+  /// (deduplicated, excludes the compared items themselves). Replaces the old
+  /// per-product duplication that rendered the section once per product.
+  Widget _buildCombinedSimilarRow(List<ProductEntity> products) {
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final comparedIds = products.map((p) => p.id).toSet();
+    final merged = <ProductEntity>[];
+    final seen = <String>{};
+    for (final p in products) {
+      final list = ref.watch(similarProductsProvider(p)).valueOrNull ?? const [];
+      for (final s in list) {
+        if (comparedIds.contains(s.id)) continue;
+        if (seen.add(s.id)) merged.add(s);
+      }
+    }
+    if (merged.isEmpty) return const SizedBox.shrink();
+    final list = merged.take(12).toList(growable: false);
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.brandBlue, Color(0xFF7C3AED)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.widgets_rounded,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                context.l10n?.similarProducts ??
+                    (isTr ? 'Benzer Ürünler' : 'Similar Products'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: list.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, i) => SizedBox(
+                width: 150,
+                child: SharedSimilarGridCard(product: list[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -6327,79 +6438,48 @@ Rules:
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Ürün görseli üstte, kendi fiyatı hemen altında (Specs sekmesindeki
-          // ürün sütunu düzenine paralel).
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ProductImageBox(
-                  imageUrl: product.imageUrl,
-                  fallbackUrls: product.images,
-                  width: 76,
-                  height: 76,
-                  borderRadius: BorderRadius.circular(14),
-                  padding: const EdgeInsets.all(6),
+          // Ürün görseli + adı üstteki başlık kartında zaten var; burada SADECE
+          // fiyat + mağaza satırları (logo + link) gösterilir.
+          if (isBest)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.scoreExcellent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                const SizedBox(height: 8),
-                if (isBest)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.scoreExcellent.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      isTr ? 'En iyi fiyat' : 'Best price',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.scoreExcellent,
-                      ),
-                    ),
-                  ),
-                Text(
-                  hasPrice
-                      ? AppUtils.formatCurrency(displayAmount, displayCurrency)
-                      : (isTr ? 'Fiyat yok' : 'No price'),
+                child: Text(
+                  isTr ? 'En iyi fiyat' : 'Best price',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: hasPrice ? 18 : 13,
-                    fontWeight: FontWeight.w900,
-                    color: hasPrice
-                        ? AppTheme.scoreExcellent
-                        : context.textTertiaryColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  product.name,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w800,
-                    color: context.textPrimary,
+                    color: AppTheme.scoreExcellent,
                   ),
                 ),
-                if (product.brand?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    product.brand!.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: context.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
+              ),
+            ),
+          // Show the exact price when known. When there's no exact price but a
+          // store link exists, DON'T say "No price" (contradicts the link
+          // below) — show a "Check price" hint. "No price" only when there is
+          // genuinely no store/offer at all.
+          Center(
+            child: Text(
+              hasPrice
+                  ? AppUtils.formatCurrency(displayAmount, displayCurrency)
+                  : (offers.isNotEmpty || entries.isNotEmpty)
+                  ? (isTr ? 'Fiyatı gör →' : 'Check price →')
+                  : (isTr ? 'Fiyat yok' : 'No price'),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: hasPrice ? 18 : 13.5,
+                fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w700,
+                color: hasPrice
+                    ? AppTheme.scoreExcellent
+                    : (offers.isNotEmpty || entries.isNotEmpty)
+                    ? AppTheme.brandBlue
+                    : context.textTertiaryColor,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -6810,30 +6890,17 @@ Rules:
   }
 
   Widget _buildProTab() {
-    final progressText = _unifiedAiProgress.trim().isNotEmpty
-        ? _unifiedAiProgress
-        : [
-            _aiProgressText[_AiPanelType.advisor],
-            _aiProgressText[_AiPanelType.deepAnalysis],
-            _aiProgressText[_AiPanelType.alternatives],
-            _aiProgressText[_AiPanelType.prediction],
-          ].firstWhere(
-            (text) => text != null && text.trim().isNotEmpty,
-            orElse: () => '',
-          );
-    final unifiedErrorMsg =
-        [
-          _advisorErrorMsg,
-          _deepAnalysisErrorMsg,
-          _alternativesErrorMsg,
-          _predictionErrorMsg,
-        ].firstWhere(
-          (message) => message != null && message.trim().isNotEmpty,
-          orElse: () => _isTr
-              ? 'AI analizi tamamlanamadi'
-              : 'AI analysis could not be completed',
-        );
-
+    // Single unified AI report (compare_full_report) — Personalized Match is
+    // NOT a separate section; the report already includes per-product match
+    // scores. One centered "Start analysis" button runs everything.
+    if (!_fullCompareRunning && _fullCompareReport == null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: _buildAiStartButton(_runCompareFullReport, _fullCompareError),
+        ),
+      );
+    }
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -6842,37 +6909,268 @@ Rules:
         MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
       ),
       children: [
-        // 1. Personalized Match
-        _buildMatchScoreSection(),
-        const SizedBox(height: 14),
-        // 2. Unified AI Analysis
-        _buildExpandableCard(
-          icon: Icons.auto_awesome_rounded,
-          title: _compareAiAnalysesTabLabel(context),
-          subtitle: _isTr
-              ? 'Tavsiye, teknik farklar, alternatifler ve fiyat tahmini'
-              : 'Advice, technical differences, alternatives and price timing',
-          gradient: const [AppTheme.premiumPurple, AppTheme.primaryBlue],
-          isExpanded: _unifiedAiExpanded,
-          isLoading: _isAnyUnifiedCompareAiLoading,
-          content: _hasAnyUnifiedCompareAiData ? 'ready' : null,
-          contentWidget: _hasAnyUnifiedCompareAiData
-              ? _buildUnifiedCompareAiVisual()
-              : _buildUnifiedCompareAiPlaceholder(),
-          isError:
-              _advisorError &&
-              _deepAnalysisError &&
-              _alternativesError &&
-              _predictionError,
-          errorMsg: unifiedErrorMsg,
-          loadingStatusText: progressText,
-          onRetry: () => _toggleUnifiedCompareAi(),
-          onTap: () => _toggleUnifiedCompareAi(),
+        _buildCompareFullReportSection(),
+      ],
+    );
+  }
+
+  AiReportStageLite _mapStage(AiReportStage s) => switch (s) {
+    AiReportStage.prep => AiReportStageLite.prep,
+    AiReportStage.research => AiReportStageLite.research,
+    AiReportStage.report => AiReportStageLite.report,
+  };
+
+  Map<String, dynamic> _buildAiProfile() {
+    final u = ref.read(userProfileProvider).valueOrNull;
+    if (u == null) return const {};
+    final m = <String, dynamic>{};
+    void put(String k, dynamic v) {
+      if (v == null) return;
+      if (v is String && v.trim().isEmpty) return;
+      if (v is List && v.isEmpty) return;
+      m[k] = v;
+    }
+
+    put('country', u.country);
+    put('language', u.language);
+    if (u.ecosystem != 'mixed') put('ecosystem', u.ecosystem);
+    put('budget', u.budgetRange);
+    put('priorities', u.priorities);
+    put('profession', u.profession);
+    put('interests', u.interestCategories);
+    return m;
+  }
+
+  Widget _buildCompareFullReportSection() {
+    if (_fullCompareRunning) {
+      return AiReportWorkboard(
+        lang: _appLang,
+        mode: 'compare',
+        stage: _fullCompareStage,
+      );
+    }
+    if (_fullCompareReport != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AiReportView(
+            kind: 'compareFull',
+            data: _fullCompareReport!,
+            lang: _appLang,
+            products: widget.products,
+          ),
+          const SizedBox(height: 6),
+          _buildAiRerunButton(_runCompareFullReport),
+        ],
+      );
+    }
+    return Center(child: _buildAiStartButton(_runCompareFullReport, _fullCompareError));
+  }
+
+  Widget _buildAiStartButton(VoidCallback onStart, bool error) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (error) ...[
+          Text(
+            _isTr
+                ? 'AI analizi tamamlanamadı. Lütfen tekrar dene.'
+                : 'AI analysis could not be completed. Please try again.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 12.5, color: AppTheme.error),
+          ),
+          const SizedBox(height: 14),
+        ],
+        FilledButton.icon(
+          onPressed: onStart,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.brandBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          icon: const Icon(Icons.auto_awesome_rounded, size: 19),
+          label: Text(
+            error
+                ? (_isTr ? 'Tekrar Dene' : 'Try Again')
+                : (_isTr ? 'Analizi Başlat' : 'Start Analysis'),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ],
     );
   }
 
+  Future<void> _runCompareFullReport() async {
+    if (_fullCompareRunning) return;
+    if (widget.products.length < 2) return;
+    if (!requireAuth(context)) return;
+    if (!await ensureEmailVerified(context, ref)) return;
+    if (!mounted) return;
+    final sub = ref.read(subscriptionServiceProvider);
+    if (!sub.isPremium || !sub.canUseCompareAi) {
+      _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+      return;
+    }
+    sub.recordCompareAi();
+    setState(() {
+      _fullCompareRunning = true;
+      _fullCompareError = false;
+      _fullCompareStage = AiReportStageLite.prep;
+    });
+    try {
+      final report = await AiReportService.runCompareReport(
+        ref: ref,
+        products: widget.products,
+        lang: _appLang,
+        profile: _buildAiProfile(),
+        onStage: (s) {
+          if (!mounted) return;
+          setState(() => _fullCompareStage = _mapStage(s));
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _fullCompareRunning = false;
+        if (report != null) {
+          _fullCompareReport = report;
+          _fullCompareError = false;
+        } else {
+          _fullCompareError = true;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _fullCompareRunning = false;
+        _fullCompareError = true;
+      });
+    }
+  }
+
+  // ignore: unused_element
+  Widget _buildAiStartCard({
+    required String subtitle,
+    required bool error,
+    required VoidCallback onStart,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.premiumPurple, AppTheme.primaryBlue],
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _compareAiAnalysesTabLabel(context),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (error)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                _isTr
+                    ? 'AI analizi tamamlanamadı. Lütfen tekrar dene.'
+                    : 'AI analysis could not be completed. Please try again.',
+                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.error),
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onStart,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: Text(
+                error
+                    ? (_isTr ? 'Tekrar Dene' : 'Try Again')
+                    : (_isTr ? 'Analizi Başlat' : 'Start Analysis'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiRerunButton(VoidCallback onTap) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.refresh_rounded, size: 16),
+        label: Text(
+          _isTr ? 'Yeniden Analiz Et' : 'Re-run analysis',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildUnifiedCompareAiVisual() {
     final sections = <Widget>[];
     if (_advisorStructured != null) {
@@ -6999,6 +7297,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   Widget _buildMatchScoreSection() {
     final userProfile = ref.watch(userProfileProvider);
     final user = userProfile.valueOrNull;
@@ -7398,6 +7697,7 @@ Rules:
     );
   }
 
+  // ignore: unused_element
   Widget _buildExpandableCard({
     required IconData icon,
     required String title,
@@ -8728,6 +9028,61 @@ Map<String, Map<String, List<String>>> _buildComparableSpecs(
   return group.isEmpty ? {} : {'Comparable Specs': group};
 }
 
+/// Aligns the already-localized, correction-cleaned spec sections of every
+/// compared product into a single side-by-side table, WITHOUT any further
+/// translation or canonicalisation. Section order and labels are kept exactly
+/// as `ProductEntity.localizedSpecSections` produced them (i.e. identical to the
+/// admin modal / product-detail Specs tab), so the compare table can never show
+/// a stale machine-translation artefact such as "6.9 İnç" → "6.9 I'm not".
+///
+/// Input: one `{section: {label: value}}` map per product (column order).
+/// Output: `{section: {label: [valueCol0, valueCol1, ...]}}`; a column with no
+/// value for a given label gets '—'. Rows where every column is missing are
+/// dropped. Section + label order follow first-seen order across the columns.
+Map<String, Map<String, List<String>>> _alignLocalizedCompareSpecs(
+  List<Map<String, Map<String, String>>> sectionsPerProduct,
+) {
+  final productCount = sectionsPerProduct.length;
+  if (productCount == 0) return {};
+
+  // Section order: first product that has it wins; later products only add
+  // sections the earlier ones lacked.
+  final sectionOrder = <String>[];
+  for (final sections in sectionsPerProduct) {
+    for (final section in sections.keys) {
+      if (!sectionOrder.contains(section)) sectionOrder.add(section);
+    }
+  }
+
+  final result = <String, Map<String, List<String>>>{};
+  for (final section in sectionOrder) {
+    // Label order within the section: same first-seen rule across columns.
+    final labelOrder = <String>[];
+    for (final sections in sectionsPerProduct) {
+      final rows = sections[section];
+      if (rows == null) continue;
+      for (final label in rows.keys) {
+        if (!labelOrder.contains(label)) labelOrder.add(label);
+      }
+    }
+
+    final group = <String, List<String>>{};
+    for (final label in labelOrder) {
+      final values = <String>[
+        for (final sections in sectionsPerProduct)
+          () {
+            final v = sections[section]?[label]?.trim() ?? '';
+            return v.isEmpty ? '—' : v;
+          }(),
+      ];
+      if (values.any((v) => v != '—')) group[label] = values;
+    }
+    if (group.isNotEmpty) result[section] = group;
+  }
+  return result;
+}
+
+// ignore: unused_element
 Map<String, Map<String, List<String>>> _buildGroupedSpecsIsolate(
   List<Map<String, dynamic>> productsData,
 ) {

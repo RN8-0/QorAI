@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
-import 'package:qor_ai/services/spec_translation_service.dart';
 
 /// Shared key specs grid widget used by both detail and compare screens.
 /// Shows category-aware key specifications in a compact grid.
@@ -251,30 +250,18 @@ class SharedKeySpecsGrid extends StatelessWidget {
     return resolved;
   }
 
-  /// Build a merged pool of all available specs from keySpecs + specs + specSections.
-  Map<String, String> _buildSpecPool() {
+  /// Build a merged pool of all available specs from the localized, baked
+  /// sections (the exact data the admin + detail spec card render). Flattened to
+  /// {label: value}, first-wins on collisions. Never touches the raw
+  /// `specs`/`keySpecs` fields, which can still hold machine-translation
+  /// artefacts (e.g. "6.9 İnç" → "6.9 I'm not").
+  Map<String, String> _buildSpecPool(String locale) {
     final pool = <String, String>{};
-    for (final e in product.keySpecs.entries) {
-      final v = e.value.trim();
-      if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
-    }
-    for (final e in product.specs.entries) {
-      if (pool.containsKey(e.key)) continue;
-      if (e.value != null && e.value is! Map) {
-        final v = e.value.toString().trim();
+    for (final section in product.localizedSpecSections(locale).values) {
+      for (final e in section.entries) {
+        if (pool.containsKey(e.key)) continue;
+        final v = e.value.trim();
         if (v.isNotEmpty && v != '-' && v != 'N/A') pool[e.key] = v;
-      }
-    }
-    for (final section in product.specSections.entries) {
-      if (section.value is Map) {
-        for (final spec in (section.value as Map).entries) {
-          final k = spec.key.toString();
-          if (pool.containsKey(k)) continue;
-          if (spec.value != null) {
-            final v = spec.value.toString().trim();
-            if (v.isNotEmpty && v != '-' && v != 'N/A') pool[k] = v;
-          }
-        }
       }
     }
     return pool;
@@ -407,8 +394,8 @@ class SharedKeySpecsGrid extends StatelessWidget {
   }
 
   /// Collect specs: up to 10 clean, category-aware entries.
-  List<MapEntry<String, String>> collectKeySpecs() {
-    final pool = _buildSpecPool();
+  List<MapEntry<String, String>> collectKeySpecs(String locale) {
+    final pool = _buildSpecPool(locale);
     if (pool.isEmpty) return [];
 
     final result = <MapEntry<String, String>>[];
@@ -524,10 +511,9 @@ class SharedKeySpecsGrid extends StatelessWidget {
   }
 
   static Widget buildValue(BuildContext context, String value) {
-    final locale = Localizations.localeOf(context).languageCode.toLowerCase();
-    final displayValue = SpecTranslationService.instance
-        .translateValueForLocale(value, locale)
-        .trim();
+    // Value is already localized by `localizedSpecSections`; render verbatim
+    // (no in-app re-translation) — only map booleans to a check/cross icon.
+    final displayValue = value.trim();
     final v = displayValue.toLowerCase();
     final theme = Theme.of(context);
     if (v == 'true' || v == 'yes' || v == 'var' || v == 'evet' || v == '✓') {
@@ -560,13 +546,13 @@ class SharedKeySpecsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final specs = collectKeySpecs();
+    final lc = Localizations.localeOf(context).languageCode.toLowerCase();
+    final specs = collectKeySpecs(lc);
     if (specs.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     const columns = 2;
     final rows = (specs.length / columns).ceil();
-    final lc = Localizations.localeOf(context).languageCode.toLowerCase();
     final title = lc == 'tr'
         ? 'Ana Özellikler'
         : lc == 'de'
@@ -681,14 +667,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
   }
 
   static String _localizedSpecKey(BuildContext context, String rawKey) {
-    final locale = Localizations.localeOf(context).languageCode.toLowerCase();
-    final translated = SpecTranslationService.instance
-        .translateLabelForLocale(rawKey, locale)
-        .trim();
-    if (translated.isNotEmpty &&
-        translated.toLowerCase() != rawKey.toLowerCase()) {
-      return translated;
-    }
+    // Label is already localized by `localizedSpecSections` — render verbatim.
     return rawKey;
   }
 }

@@ -8,11 +8,6 @@ String _normalizeSpecText(String text) {
   return text.replaceAll('\u00A0', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
-final RegExp _turkishLeakPattern = RegExp(
-  r'[ığşçöüİĞŞÇÖÜ]|\b(adet|evet|hayir|hayır|var|yok|ekran|kamera|ses|sarj|şarj|kablosuz|hizli|hızlı|destek|destegi|desteği|cozunurluk|çözünürlük|cekirdek|çekirdek|frekans|gövde|govde|oran|sayisi|sayısı)\b',
-  caseSensitive: false,
-);
-
 String _scrubTurkishLeaks(String text, {required bool isValue}) {
   var out = _normalizeSpecText(text)
       .replaceAll(
@@ -62,8 +57,12 @@ String _scrubTurkishLeaks(String text, {required bool isValue}) {
       .replaceAll(RegExp(r'Altın|Altin', caseSensitive: false), 'Gold')
       .replaceAll(RegExp(r'Gümüş|Gumus', caseSensitive: false), 'Silver');
   out = _normalizeSpecText(out);
-  if (!_turkishLeakPattern.hasMatch(out)) return out;
-  return isValue ? '' : 'Specification';
+  // Eskiden çevrilemeyen Türkçe metin boşaltılıyordu (value → '' → özellik
+  // listeden tamamen düşüyordu) veya label "Specification" yapılıyordu.
+  // Kullanıcı PB'deki TÜM özelliklerin eksiksiz görünmesini istiyor; bu yüzden
+  // çeviri bulunamasa bile temizlenmiş metni olduğu gibi koruyoruz — veri
+  // asla kaybolmaz, jenerik placeholder gösterilmez.
+  return out;
 }
 
 /// Merges the sharded TR→multi dictionary payloads into a normalized map.
@@ -107,7 +106,7 @@ class SpecTranslationService {
 
   Map<String, String>? _enTr;
   Map<String, String>? _trEn; // Reverse lookup: TR→EN
-  final Map<String, Map<String, String>> _trLocale = {};
+  Map<String, Map<String, String>> _trLocale = {};
   bool _loading = false;
   final Map<String, String> _canonicalCache = {};
   final Map<String, String> _labelLocaleCache = {};
@@ -166,9 +165,7 @@ class SpecTranslationService {
       }
       final loaded = await compute(_parseTrDictShards, rawShards);
       if (loaded.isNotEmpty) {
-        _trLocale
-          ..clear()
-          ..addAll(loaded);
+        _trLocale = loaded;
         debugPrint(
           '=== QOR AI: Live TR spec dictionary loaded (${_trLocale.length} terms) ===',
         );
@@ -401,19 +398,55 @@ class SpecTranslationService {
     final direct = _trLocale[normalized.toLowerCase()]?[locale];
     if (direct != null && direct.trim().isNotEmpty) return direct.trim();
 
-    if (!normalized.contains('\n')) return null;
-    var changed = false;
-    final lines = text
-        .split('\n')
-        .map((line) {
-          final trimmed = line.trim();
-          final translated = _translateTurkishSegmentForLocale(trimmed, locale);
-          if (translated == null || translated == trimmed) return line;
-          changed = true;
-          return line.replaceFirst(trimmed, translated);
-        })
-        .toList(growable: false);
-    return changed ? lines.join('\n') : null;
+    if (normalized.contains('\n')) {
+      var changed = false;
+      final lines = text
+          .split('\n')
+          .map((line) {
+            final trimmed = line.trim();
+            final translated = _translateTurkishSegmentForLocale(
+              trimmed,
+              locale,
+            );
+            if (translated == null || translated == trimmed) return line;
+            changed = true;
+            return line.replaceFirst(trimmed, translated);
+          })
+          .toList(growable: false);
+      return changed ? lines.join('\n') : null;
+    }
+
+    // Word-level fallback: phrases that aren't a single dictionary key
+    // ("Değiştirilebilir Düğme") still localize by translating each TR word
+    // (3→2→1 sliding window) via the live dict, instead of leaking Turkish.
+    return _translateTurkishWordsForLocale(normalized, locale);
+  }
+
+  String? _translateTurkishWordsForLocale(String text, String locale) {
+    final words = normalize(text).split(RegExp(r'\s+'));
+    if (words.length <= 1) return null;
+    var anyHit = false;
+    final out = <String>[];
+    var i = 0;
+    while (i < words.length) {
+      var matched = false;
+      for (var win = 3; win >= 1 && !matched; win--) {
+        if (i + win > words.length) continue;
+        final phrase = words.sublist(i, i + win).join(' ').toLowerCase();
+        final t = _trLocale[phrase]?[locale];
+        if (t != null && t.trim().isNotEmpty) {
+          out.add(t.trim());
+          i += win;
+          matched = true;
+          anyHit = true;
+        }
+      }
+      if (!matched) {
+        out.add(words[i]);
+        i++;
+      }
+    }
+    return anyHit ? out.join(' ') : null;
   }
 
   String? _translateBooleanForLocale(String text, String locale) {

@@ -128,7 +128,7 @@ class ProductEntity extends Equatable {
   static String _imageIdentityKey(String raw) {
     var key = raw.trim().toLowerCase().split(RegExp(r'[?#]')).first;
     key = key.replaceFirst(RegExp(r'(resim\.epey\.com/[^/]+/)[a-z]_'), r'$1');
-    key = key.replaceFirst(RegExp(r'-(?:k|s|m|t|c|l|n)\.webp$'), '.webp');
+    key = key.replaceFirstMapped(RegExp(r'-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)$', caseSensitive: false), (match) => '${match.group(1)}.${match.group(2)}');
     return key;
   }
 
@@ -170,7 +170,25 @@ class ProductEntity extends Equatable {
   /// Locale resolution: the requested locale wins if it has baked data; any
   /// other locale (Italian, French, …) falls back to English; if even English
   /// is missing we render the untouched source language.
+  /// Per-(id, locale) memo of the (non-trivial) localized spec build. Screens
+  /// call this from `build()` — the detail Specs tab, the key-specs grid and the
+  /// compare table — so recomputing it every frame was a real source of jank.
+  /// Products are effectively immutable for a given id, so a process-wide cache
+  /// is safe; it is capped to avoid unbounded growth.
+  static final Map<String, Map<String, Map<String, String>>>
+  _localizedSectionsCache = {};
+
   Map<String, Map<String, String>> localizedSpecSections(String locale) {
+    final cacheKey = '$id|${locale.toLowerCase().trim()}';
+    final cached = _localizedSectionsCache[cacheKey];
+    if (cached != null) return cached;
+    if (_localizedSectionsCache.length > 240) _localizedSectionsCache.clear();
+    final built = _buildLocalizedSpecSections(locale);
+    _localizedSectionsCache[cacheKey] = built;
+    return built;
+  }
+
+  Map<String, Map<String, String>> _buildLocalizedSpecSections(String locale) {
     final srcSections = sourceSpecSections.isNotEmpty
         ? sourceSpecSections
         : specSections;
@@ -241,6 +259,7 @@ class ProductEntity extends Equatable {
         if (sub is Map && sub.isNotEmpty) {
           final rows = <String, String>{};
           sub.forEach((k, v) {
+            if (isHiddenSpec(k.toString(), _specSectionValueToString(v))) return;
             final value = correctValueText(_specSectionValueToString(v));
             if (value.trim().isNotEmpty) {
               rows[correctValueText(k.toString())] = value;
@@ -258,6 +277,7 @@ class ProductEntity extends Equatable {
       final secLabel = sectionLabel(entry.key.toString());
       final rows = <String, String>{};
       sub.forEach((k, v) {
+        if (isHiddenSpec(k.toString(), _specSectionValueToString(v))) return;
         final value = trValue(_specSectionValueToString(v));
         if (value.trim().isNotEmpty) rows[tr(k.toString())] = value;
       });
@@ -270,6 +290,7 @@ class ProductEntity extends Equatable {
       final flatSrc = sourceSpecs.isNotEmpty ? sourceSpecs : specs;
       final rows = <String, String>{};
       flatSrc.forEach((k, v) {
+        if (isHiddenSpec(k.toString(), _specSectionValueToString(v))) return;
         final value = trValue(_specSectionValueToString(v));
         if (value.trim().isNotEmpty) rows[tr(k.toString())] = value;
       });
