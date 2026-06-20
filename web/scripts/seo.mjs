@@ -682,15 +682,34 @@ async function main() {
   // 2e) comparison ("X vs Y") pages — the highest-intent queries for a compare
   //     site. For each category we pair the top-K blended products (flagships +
   //     trending models), one static page per pair with a real side-by-side
-  //     table + links to both products. prebuild wipes website/compare each run,
-  //     so no stale cleanup is needed here. The SPA's /compare/:pair route seeds
-  //     the pool from the URL so the same page also renders live.
+  //     table + links to both products. The SPA's /compare/:pair route seeds the
+  //     pool from the URL so the same page also renders live.
+  //     We wipe website/compare here (not only in prebuild) so this step is
+  //     self-sufficient when the scheduled CI job runs seo.mjs on its own.
+  const compareRoot = join(site, 'compare');
+  if (existsSync(compareRoot)) {
+    for (const entry of readdirSync(compareRoot, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        try { rmSync(join(compareRoot, entry.name), { recursive: true, force: true }); } catch (_) {}
+      }
+    }
+  }
   const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
   const compares = [];
   for (const [cat, picked] of curatedByCat) {
     const label = categoryLabel(cat, 'tr');
     const categoryUrl = `${SITE}${categoryPath(cat)}`;
-    const topK = picked.slice(0, COMPARE_TOP);
+    // Distinct MODELS only for pairing — never "Watch Ultra 3 vs Watch Ultra 3
+    // Milano Loop". modelKey collapses cosmetic colour/strap/storage variants.
+    const topK = [];
+    const seenModels = new Set();
+    for (const d of picked) {
+      if (topK.length >= COMPARE_TOP) break;
+      const k = modelKey(d.name);
+      if (k && seenModels.has(k)) continue;
+      if (k) seenModels.add(k);
+      topK.push(d);
+    }
     for (let i = 0; i < topK.length; i += 1) {
       for (let j = i + 1; j < topK.length; j += 1) {
         const a = topK[i]; const b = topK[j];
@@ -700,7 +719,7 @@ async function main() {
       }
     }
   }
-  console.log(`[seo] wrote ${compares.length} comparison pages (top-${COMPARE_TOP}/category pairs)`);
+  console.log(`[seo] wrote ${compares.length} comparison pages (top-${COMPARE_TOP}/category, distinct models)`);
 
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.

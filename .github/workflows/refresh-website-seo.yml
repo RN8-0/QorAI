@@ -1,35 +1,65 @@
 name: Refresh website SEO
 
+# Regenerate the public website's SEO (per-product / per-category / comparison
+# shells + sitemap.xml) from the LIVE Typesense catalogue, commit the result and
+# redeploy only the website. Coolify serves the committed website/ dir verbatim
+# (it does NOT run the build), so without this job the sitemap and shells only
+# ever change when someone builds + commits by hand. seo.mjs needs no npm deps
+# (pure fs + global fetch + a plain JS import), so we skip install entirely.
+
 on:
   schedule:
-    # Rebuild only the public website every 6 hours so newly indexed catalog
-    # products are pulled into sitemap.xml without redeploying admin/PocketBase.
-    - cron: '17 */6 * * *'
+    - cron: '17 4 * * *'   # daily, 04:17 UTC
   workflow_dispatch:
 
 concurrency:
   group: refresh-website-seo
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger website rebuild
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Regenerate SEO shells + sitemap from the live catalogue
+        run: |
+          node web/scripts/seo.mjs
+          node web/scripts/seo-audit.mjs
+
+      - name: Commit refresh and redeploy website only
         env:
           COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBSITE_UUID: ${{ secrets.COOLIFY_WEBSITE_UUID }}
         run: |
           set -euo pipefail
-          : "${COOLIFY_URL:?COOLIFY_URL secret is missing}"
-          : "${COOLIFY_TOKEN:?COOLIFY_TOKEN secret is missing}"
-          : "${COOLIFY_WEBSITE_UUID:?COOLIFY_WEBSITE_UUID secret is missing}"
-
+          git config user.name "qorai-seo-bot"
+          git config user.email "seo-bot@users.noreply.github.com"
+          git add -A website/
+          if git diff --cached --quiet; then
+            echo "No SEO changes — nothing to deploy."
+            exit 0
+          fi
+          # [skip ci] so this bot push does not re-trigger the deploy-live workflow
+          # (which would redeploy admin + PocketBase too). We deploy the website
+          # ourselves below.
+          git commit -m "chore(seo): scheduled sitemap + shell refresh [skip ci]"
+          git push origin HEAD:master
           base="${COOLIFY_URL%/}"
           curl --fail --show-error --silent \
-            --request GET \
             --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            --header "Accept: application/json" \
             "${base}/api/v1/deploy?uuid=${COOLIFY_WEBSITE_UUID}&force=true"
           echo
+          echo "Website redeployed with refreshed SEO."
