@@ -91,8 +91,10 @@ function specLi(label, value, unit) {
 
 // Lightweight, factual content block baked inside #root. React (createRoot, pure
 // CSR) wipes #root on mount, so users get the full SPA; non-JS crawlers and the
-// pre-JS snapshot get real, unique text + an internal link to the category.
-function productBody(d, label, categoryUrl) {
+// pre-JS snapshot get real, unique text + internal links (category + siblings).
+// Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
+// path and content must exist in the raw HTML, not only after the SPA renders.
+function productBody(d, label, categoryUrl, related = []) {
   const name = esc(d.name);
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
@@ -104,6 +106,11 @@ function productBody(d, label, categoryUrl) {
     specLi('Batarya', d.batteryCapacityValue, 'mAh'),
     specLi('Ağırlık', d.weightValueKg, 'kg'),
   ].filter(Boolean).join('');
+  const relLinks = related
+    .filter((r) => r && r.name && r.path)
+    .slice(0, 8)
+    .map((r) => `<li><a href="${esc(r.path)}" style="color:#2563eb">${esc(r.name)}</a></li>`)
+    .join('');
   return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
     + `<h1 style="font-size:26px;margin:12px 0 4px">${name}</h1>`
@@ -111,7 +118,30 @@ function productBody(d, label, categoryUrl) {
     + (img ? `<img src="${img}" alt="${name}" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />` : '')
     + (items ? `<ul style="margin:16px 0;line-height:1.7">${items}</ul>` : '')
     + `<p style="line-height:1.7;color:#334155">${name} özelliklerini${specs ? `, ${specs} teknik detayını` : ''} ve güncel fiyatlarını Qor AI yapay zekâ ile incele; benzer ${lbl.toLowerCase()} modelleriyle karşılaştır ve sana en uygununu seç.</p>`
-    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${lbl} karşılaştırma →</a></p>`
+    + (relLinks ? `<h2 style="font-size:18px;margin:20px 0 8px">Benzer ${lbl} modelleri</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
+    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
+    + `</main>`;
+}
+
+// Crawlable body for a category landing page: H1 + intro + a real <a> grid to
+// every curated product in the category. This is the spine of internal linking
+// (home → category → product, all within 3 clicks) and turns category pages from
+// head-only shells into content-rich hubs Google can crawl without running JS.
+function categoryBody(label, categoryUrl, items) {
+  const lbl = esc(label);
+  const links = items
+    .filter((d) => d && d.name && d.id)
+    .map((d) => {
+      const score = Number(d.techScore) || 0;
+      return `<li style="margin:4px 0"><a href="${esc(productPath(d))}" style="color:#0f172a;text-decoration:none">`
+        + `${esc(d.name)}${score ? ` <span style="color:#64748b;font-size:12px">· ${score}/100</span>` : ''}</a></li>`;
+    })
+    .join('');
+  return `<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › ${lbl}</nav>`
+    + `<h1 style="font-size:28px;margin:12px 0 6px">${lbl} Karşılaştırma</h1>`
+    + `<p style="line-height:1.7;color:#334155;max-width:680px">En iyi ${lbl.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.</p>`
+    + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
     + `</main>`;
 }
 
@@ -445,11 +475,15 @@ async function main() {
     }
   }
 
-  // 2b) per-category landing shells — one crawlable HTML page per category with
-  //     a keyword title, description and an ItemList of its top products. These
-  //     are the highest-intent commercial pages ("akıllı telefon karşılaştırma"
-  //     etc.), so unlike the 100k thin product pages they ARE worth baking as
-  //     static HTML and carry an ItemList so Google can surface a list result.
+  // 2b) curated selection — pick the top-N de-duplicated, image-bearing models
+  //     per category UP FRONT. This one list drives both the category landing
+  //     page internal links (2c) and the per-product shells (2d). We bake a
+  //     bounded, quality subset (not all 106k): a 100k-file dump of thin,
+  //     near-duplicate scraped-spec SKUs is exactly the "scaled content" Google
+  //     penalises, and a new domain's crawl budget can't absorb it anyway. The
+  //     long tail stays reachable via the SPA but is kept out of the sitemap.
+  const PER_CAT = Number(process.env.SEO_PRODUCTS_PER_CATEGORY || 150);
+  const MAX_PRODUCTS = Number(process.env.SEO_MAX_PRODUCTS || 12000);
   const byCategory = new Map();
   for (const d of products) {
     const cat = String(d?.category || '').trim().toLowerCase();
@@ -457,29 +491,45 @@ async function main() {
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat).push(d);
   }
-  let categoryShells = 0;
+  const curatedByCat = new Map();
+  let curatedTotal = 0;
   for (const [cat, items] of byCategory) {
+    if (curatedTotal >= MAX_PRODUCTS) break;
+    const seen = new Set();
+    const picked = [];
+    for (const d of items) {
+      if (picked.length >= PER_CAT || curatedTotal >= MAX_PRODUCTS) break;
+      if (!d?.id || !d?.name) continue;
+      if (!/^https?:\/\//i.test(d.imageUrl || '')) continue; // image-less = thin page, skip
+      const key = modelKey(d.name);
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      picked.push(d);
+      curatedTotal += 1;
+    }
+    if (picked.length) curatedByCat.set(cat, picked);
+  }
+
+  // 2c) per-category landing shells — content-rich hubs: keyword title +
+  //     ItemList JSON-LD + a crawlable <a> grid (categoryBody) to every curated
+  //     product, so Google reaches product pages via internal links (home →
+  //     category → product, ≤3 clicks) and the page isn't a thin head-only shell.
+  let categoryShells = 0;
+  for (const [cat, picked] of curatedByCat) {
     const path = categoryPath(cat);
     if (!path) continue;
     const label = categoryLabel(cat, 'tr');
     const url = `${SITE}${path}`;
-    // fetchAllProducts sorts by techScore:desc, so items are already best-first.
-    const top = items.filter((d) => d?.id && d?.name).slice(0, 24);
+    const top = picked.slice(0, 24);
     const heroImg = String(top[0]?.imageUrl || '');
     const itemList = {
-      '@type': 'ItemList',
-      '@id': `${url}#itemlist`,
-      name: `${label} — Qor AI`,
+      '@type': 'ItemList', '@id': `${url}#itemlist`, name: `${label} — Qor AI`,
       numberOfItems: top.length,
-      itemListElement: top.map((d, i) => ({
-        '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name,
-      })),
+      itemListElement: top.map((d, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name })),
     };
     const collection = {
-      '@type': 'CollectionPage', '@id': `${url}#webpage`, url,
-      name: `${label} — Qor AI`,
-      isPartOf: { '@id': `${SITE}/#website` },
-      mainEntity: { '@id': `${url}#itemlist` },
+      '@type': 'CollectionPage', '@id': `${url}#webpage`, url, name: `${label} — Qor AI`,
+      isPartOf: { '@id': `${SITE}/#website` }, mainEntity: { '@id': `${url}#itemlist` },
     };
     const breadcrumb = {
       '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
@@ -499,25 +549,15 @@ async function main() {
       image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
       type: 'website',
       jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb] },
-    }));
+    }, categoryBody(label, url, picked)));
     categoryShells += 1;
   }
-  console.log(`[seo] wrote ${categoryShells} per-category landing shells`);
+  console.log(`[seo] wrote ${categoryShells} per-category landing shells (with internal product links)`);
 
-  // 2c) curated per-product prerender — the highest-techScore, de-duplicated
-  //     models per category get a REAL static HTML file with a unique <head>
-  //     (title/description/canonical + Product JSON-LD) and a small content
-  //     block. This is what fixes indexing: previously every /product URL served
-  //     one identical generic shell, so Google saw 100k duplicates and indexed
-  //     none. We deliberately do NOT bake all 106k (a 100k-file git diff of thin
-  //     near-duplicate SKUs that risks a scaled-content penalty); the long tail
-  //     stays reachable via the SPA but is kept out of the sitemap.
-  const PER_CAT = Number(process.env.SEO_PRODUCTS_PER_CATEGORY || 100);
-  const MAX_PRODUCTS = Number(process.env.SEO_MAX_PRODUCTS || 8000);
-
-  // Wipe stale product subdirs from the previous build (models that dropped out
-  // of the curated set) so website/product/ never accumulates orphan shells.
-  // Keep product/index.html — the generic /product fallback shell.
+  // 2d) curated per-product prerender — real static HTML per model: unique <head>
+  //     (title/description/canonical + Product/Breadcrumb JSON-LD) + a content
+  //     body with sibling-product links. Wipe stale product subdirs first so
+  //     website/product/ never accumulates orphans. Keep product/index.html.
   const productRoot = join(site, 'product');
   if (existsSync(productRoot)) {
     for (const entry of readdirSync(productRoot, { withFileTypes: true })) {
@@ -526,28 +566,23 @@ async function main() {
       }
     }
   }
-
   const prerendered = [];
-  for (const [cat, items] of byCategory) {
+  for (const [cat, picked] of curatedByCat) {
     const label = categoryLabel(cat, 'tr');
     const categoryUrl = `${SITE}${categoryPath(cat)}`;
-    const seen = new Set();
-    let n = 0;
-    for (const d of items) {
-      if (n >= PER_CAT || prerendered.length >= MAX_PRODUCTS) break;
-      if (!d?.id || !d?.name) continue;
-      const key = modelKey(d.name);
-      if (key && seen.has(key)) continue;
-      if (key) seen.add(key);
+    picked.forEach((d, i) => {
+      const related = [];
+      for (let k = 1; k <= 8 && k < picked.length; k += 1) {
+        const r = picked[(i + k) % picked.length];
+        related.push({ name: r.name, path: productPath(r) });
+      }
       const path = productPath(d);
-      if (!path) continue;
-      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label), productBody(d, label, categoryUrl)));
+      if (!path) return;
+      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label), productBody(d, label, categoryUrl, related)));
       prerendered.push({ d, path });
-      n += 1;
-    }
-    if (prerendered.length >= MAX_PRODUCTS) break;
+    });
   }
-  console.log(`[seo] wrote ${prerendered.length} curated product shells (<=${PER_CAT}/category, deduped)`);
+  console.log(`[seo] wrote ${prerendered.length} curated product shells (<=${PER_CAT}/category, deduped, image-gated)`);
 
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
@@ -555,7 +590,9 @@ async function main() {
   const routeUrls = STATIC_ROUTES.filter((r) => r.sitemap !== false && !r.noindex && !r.seo?.noindex).map((r) => ({
     loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
   }));
-  const categoryUrls = [...new Set(products.map((d) => categoryPath(d?.category)).filter(Boolean))]
+  // Only categories we actually generated a content shell for (curatedByCat).
+  const categoryUrls = [...curatedByCat.keys()]
+    .map((cat) => categoryPath(cat)).filter(Boolean)
     .sort()
     .map((path) => ({
       loc: `${SITE}${path}`, changefreq: 'weekly', priority: '0.8',
