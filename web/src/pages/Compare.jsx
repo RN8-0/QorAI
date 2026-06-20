@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
-import { useCompare, COMPARE_MAX } from '../lib/compare';
+import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
 import { getSavedComparisonAnalysis, saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, scoreClass, scoreLabel } from '../lib/format';
@@ -11,7 +11,7 @@ import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
 import { canonicalizeSpecMaps } from '../lib/specCanonical';
 import { rowWinners } from '../lib/specDirection';
-import { productPath } from '../lib/routes';
+import { productPath, parseComparePair } from '../lib/routes';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
 import { generateCompareQuiz } from '../lib/linkAnalysis';
 import { getRecentProducts } from '../lib/recentViewed';
@@ -160,10 +160,18 @@ export default function Compare() {
   const [tab, setTab] = useState('specs');
   const { user } = useAuth();
   const guardAiAccess = useAiAccess(lang);
+  // Deep links / crawlers can land on /compare/<a>-vs-<b>. Recover the two ids
+  // from the URL and seed the (otherwise localStorage-driven) compare pool so the
+  // comparison renders for a fresh visitor instead of bouncing to home.
+  const routeParams = useParams();
+  const urlPairIds = useMemo(() => parseComparePair(routeParams.pair), [routeParams.pair]);
+  useEffect(() => {
+    if (urlPairIds.length === 2) setCompareList(urlPairIds);
+  }, [urlPairIds.join(',')]); // eslint-disable-line
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
     description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.'),
-    path: '/compare',
+    path: routeParams.pair ? `/compare/${routeParams.pair}` : '/compare',
   });
   const { ids, remove, clear, add } = useCompare();
   const [products, setProducts] = useState([]);
@@ -541,8 +549,9 @@ export default function Compare() {
 
   // The standalone Compare page was removed from navigation — it's only reached
   // via the compare tray once products are queued. With nothing queued there is
-  // no landing page to show, so send visitors home.
-  if (!ids.length) return <Navigate to="/" replace />;
+  // no landing page to show, so send visitors home. But never redirect a
+  // /compare/<a>-vs-<b> deep link: the seeding effect fills ids on the next tick.
+  if (!ids.length && urlPairIds.length < 2) return <Navigate to="/" replace />;
 
   return (
     <div className="cmp" ref={cmpRef}>

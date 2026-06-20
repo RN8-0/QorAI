@@ -66,6 +66,7 @@ export default function App() {
           <Route path="/product" element={<ProductDetail />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/compare/:pair" element={<Compare />} />
           <Route path="/ai-chat" element={<AiChat />} />
           <Route path="/link-analysis" element={<LinkAnalysis />} />
           <Route path="/subscriptions" element={<Subscriptions />} />

@@ -145,6 +145,93 @@ function categoryBody(label, categoryUrl, items) {
     + `</main>`;
 }
 
+// ── comparison ("X vs Y") pages ─────────────────────────────────
+// The clean URL is /compare/<slugA>-<idA>-vs-<slugB>-<idB>. Each id is a 15-char
+// token, so the SPA's /compare/:pair route recovers both ids (split on the first
+// "-vs-", extractProductId each side). Must mirror comparePath() in routes.js.
+function compareToken(d) {
+  // Cap the slug hard: a compare path joins TWO slugs + two 15-char ids + "-vs-",
+  // and two full 90-char slugs blow past the Windows 260-char path limit (the
+  // build writes website/compare/<token>/index.html). 40 keeps URLs clean and
+  // the id stays the trailing 15 chars so parseComparePair() still recovers it.
+  const slug = slugifyProduct(d.slug || d.name || '').slice(0, 40).replace(/-+$/, '');
+  return slug ? `${slug}-${d.id}` : String(d.id);
+}
+function comparePath(a, b) {
+  return `/compare/${compareToken(a)}-vs-${compareToken(b)}`;
+}
+
+function cmpRow(label, va, vb, unit) {
+  const fmt = (v) => {
+    const n = Number(v);
+    if (v == null || v === '' || (!Number.isNaN(n) && n === 0)) return '—';
+    return `${esc(v)}${unit ? ` ${esc(unit)}` : ''}`;
+  };
+  const fa = fmt(va); const fb = fmt(vb);
+  if (fa === '—' && fb === '—') return '';
+  return `<tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">${esc(label)}</td>`
+    + `<td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">${fa}</td>`
+    + `<td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">${fb}</td></tr>`;
+}
+
+function compareBody(a, b, label, categoryUrl) {
+  const na = esc(a.name); const nb = esc(b.name); const lbl = esc(label);
+  const pa = esc(productPath(a)); const pb = esc(productPath(b));
+  const sa = Number(a.techScore) || 0; const sb = Number(b.techScore) || 0;
+  const rows = [
+    cmpRow('Qor AI teknik skoru', sa ? `${sa}/100` : '', sb ? `${sb}/100` : ''),
+    cmpRow('Marka', a.brand, b.brand),
+    cmpRow('Ekran', a.screenSizeValue, b.screenSizeValue, 'inç'),
+    cmpRow('Batarya', a.batteryCapacityValue, b.batteryCapacityValue, 'mAh'),
+    cmpRow('Ağırlık', a.weightValueKg, b.weightValueKg, 'kg'),
+  ].filter(Boolean).join('');
+  return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
+    + `<h1 style="font-size:26px;margin:12px 0 6px">${na} <span style="color:#94a3b8">vs</span> ${nb}</h1>`
+    + `<p style="line-height:1.7;color:#334155">${na} ile ${nb} karşılaştırması: Qor AI yapay zekâ teknik skoru, özellikler ve güncel fiyatlar yan yana. Hangisi sana daha uygun, saniyeler içinde gör.</p>`
+    + `<table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px">`
+    + `<thead><tr><th></th>`
+    + `<th style="padding:8px 12px;text-align:left"><a href="${pa}" style="color:#2563eb">${na}</a></th>`
+    + `<th style="padding:8px 12px;text-align:left"><a href="${pb}" style="color:#2563eb">${nb}</a></th></tr></thead>`
+    + `<tbody>${rows}</tbody></table>`
+    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
+    + `</main>`;
+}
+
+function compareSeo(a, b, label) {
+  const url = `${SITE}${comparePath(a, b)}`;
+  const categoryUrl = `${SITE}${categoryPath(a.category)}`;
+  const imgA = /^https?:\/\//i.test(a.imageUrl || '') ? a.imageUrl : DEFAULT_IMG;
+  const title = truncate(`${a.name} vs ${b.name} — Karşılaştırma | Qor AI`, 70);
+  const description = truncate(
+    `${a.name} ile ${b.name} karşılaştırması — ${label}. `
+    + 'Qor AI teknik skoru, özellikler ve güncel fiyatlar yan yana; hangisi daha iyi?',
+  );
+  const webPage = {
+    '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
+    isPartOf: { '@id': `${SITE}/#website` },
+  };
+  const itemList = {
+    '@type': 'ItemList', '@id': `${url}#itemlist`, numberOfItems: 2,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: a.name, url: `${SITE}${productPath(a)}` },
+      { '@type': 'ListItem', position: 2, name: b.name, url: `${SITE}${productPath(b)}` },
+    ],
+  };
+  const breadcrumb = {
+    '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+      { '@type': 'ListItem', position: 2, name: label, item: categoryUrl },
+      { '@type': 'ListItem', position: 3, name: `${a.name} vs ${b.name}`, item: url },
+    ],
+  };
+  return {
+    title, description, url, image: imgA, imageAlt: `${a.name} vs ${b.name}`, type: 'website',
+    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, itemList, breadcrumb] },
+  };
+}
+
 // Per-product <head> SEO (unique title/description/canonical + Product,
 // Breadcrumb & WebPage JSON-LD). No offers: price lives only in the heavy _raw
 // field and is often stale/zero, and price markup that mismatches the page is a
@@ -272,7 +359,7 @@ function writeHtml(routeDir, html) {
 // ── Typesense: pull the whole catalogue ─────────────────────────
 async function fetchAllProducts() {
   const perPage = 250;
-  const fields = 'id,name,slug,brand,category,subcategory,imageUrl,techScore,lowestPriceUSD,specsCount,screenSizeValue,batteryCapacityValue,weightValueKg,updatedAtTs,scrapedAtTs';
+  const fields = 'id,name,slug,brand,category,subcategory,imageUrl,techScore,trendScore,lowestPriceUSD,specsCount,screenSizeValue,batteryCapacityValue,weightValueKg,updatedAtTs,scrapedAtTs';
   const page = async (p) => {
     const qs = new URLSearchParams({
       q: '*', query_by: 'name', sort_by: 'techScore:desc',
@@ -491,6 +578,14 @@ async function main() {
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat).push(d);
   }
+  // Rank within each category by a blend of technical quality (techScore, 0-100)
+  // and live demand/popularity (trendScore, 0-1). Pure techScore surfaced only
+  // spec-flagships and MISSED hugely-searched mid-rangers (e.g. Redmi Note 15:
+  // trendScore 0.98 but techScore ~54). The blend keeps flagships AND the models
+  // people actually search; categories with no trend data fall back to techScore.
+  const TREND_W = Number(process.env.SEO_TREND_WEIGHT || 60);
+  const blendedScore = (d) => (Number(d.techScore) || 0) + (Number(d.trendScore) || 0) * TREND_W;
+  for (const arr of byCategory.values()) arr.sort((a, b) => blendedScore(b) - blendedScore(a));
   const curatedByCat = new Map();
   let curatedTotal = 0;
   for (const [cat, items] of byCategory) {
@@ -584,6 +679,29 @@ async function main() {
   }
   console.log(`[seo] wrote ${prerendered.length} curated product shells (<=${PER_CAT}/category, deduped, image-gated)`);
 
+  // 2e) comparison ("X vs Y") pages — the highest-intent queries for a compare
+  //     site. For each category we pair the top-K blended products (flagships +
+  //     trending models), one static page per pair with a real side-by-side
+  //     table + links to both products. prebuild wipes website/compare each run,
+  //     so no stale cleanup is needed here. The SPA's /compare/:pair route seeds
+  //     the pool from the URL so the same page also renders live.
+  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
+  const compares = [];
+  for (const [cat, picked] of curatedByCat) {
+    const label = categoryLabel(cat, 'tr');
+    const categoryUrl = `${SITE}${categoryPath(cat)}`;
+    const topK = picked.slice(0, COMPARE_TOP);
+    for (let i = 0; i < topK.length; i += 1) {
+      for (let j = i + 1; j < topK.length; j += 1) {
+        const a = topK[i]; const b = topK[j];
+        const path = comparePath(a, b);
+        writeHtml(path.replace(/^\//, ''), renderPage(template, compareSeo(a, b, label), compareBody(a, b, label, categoryUrl)));
+        compares.push({ a, b, path });
+      }
+    }
+  }
+  console.log(`[seo] wrote ${compares.length} comparison pages (top-${COMPARE_TOP}/category pairs)`);
+
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
@@ -603,7 +721,10 @@ async function main() {
   const productUrls = prerendered.map(({ d, path }) => ({
     loc: `${SITE}${path}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
   }));
-  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls];
+  const compareUrls = compares.map(({ path }) => ({
+    loc: `${SITE}${path}`, changefreq: 'monthly', priority: '0.5',
+  }));
+  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls];
 
   const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'

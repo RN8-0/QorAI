@@ -52,3 +52,28 @@ export function categoryPath(category) {
   const cat = String(category || '').trim().toLowerCase();
   return cat ? `/category/${cat}` : '/category';
 }
+
+// Clean comparison URL: /compare/<slugA>-<idA>-vs-<slugB>-<idB>. Mirrors
+// comparePath() in web/scripts/seo.mjs so the prerendered file, its canonical
+// and the runtime canonical all agree. parseComparePair() recovers both 15-char
+// ids (split on the first "-vs-", take the trailing id of each side).
+export function comparePath(a, b) {
+  const tok = (p) => {
+    if (!p) return '';
+    if (typeof p === 'string') return p;
+    // Cap slug to 40 — must match compareToken() in web/scripts/seo.mjs so the
+    // runtime canonical equals the prerendered file path / sitemap loc.
+    const slug = productSlug(p).slice(0, 40).replace(/-+$/, '');
+    return slug ? `${slug}-${p.id}` : String(p.id || '');
+  };
+  return `/compare/${tok(a)}-vs-${tok(b)}`;
+}
+
+export function parseComparePair(pair) {
+  const s = String(pair || '');
+  const i = s.indexOf('-vs-');
+  if (i < 0) return [];
+  const a = extractProductId(s.slice(0, i));
+  const b = extractProductId(s.slice(i + 4));
+  return a && b && a !== b ? [a, b] : [];
+}
