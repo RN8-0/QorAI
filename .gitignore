@@ -1,8 +1,8 @@
-# Generated SPA product output: keep only the static route shell. Do not commit
-# per-product files here; those bloated the repo with 100k+ generated files.
-website/product/*
-!website/product/
-!website/product/index.html
+# Prerendered product pages (web/scripts/seo.mjs). These ARE committed because
+# Coolify serves the committed website/ dir verbatim. seo.mjs writes only a
+# curated, de-duplicated subset — SEO_PRODUCTS_PER_CATEGORY (default 100/cat),
+# capped at SEO_MAX_PRODUCTS (default 8000) — and wipes stale subdirs each build,
+# so this stays a few thousand real model pages, never the old 100k-SKU dump.
 
 # Miscellaneous
 *.class

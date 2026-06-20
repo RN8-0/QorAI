@@ -36,10 +36,11 @@ export function productPath(productOrId) {
   const id = String(isProduct ? productOrId.id : productOrId || '').trim();
   if (!id) return '/product';
   const slug = isProduct ? productSlug(productOrId) : '';
-  const qs = new URLSearchParams();
-  if (slug) qs.set('slug', slug);
-  qs.set('id', id);
-  return `/product?${qs.toString()}`;
+  // Clean, path-based URL: /product/<slug>-<id>. The id is the trailing
+  // 15-char token, so extractProductId() recovers it from the path (the '-'
+  // separator stops the id regex from grabbing slug characters). The SPA also
+  // still reads ?id= as a fallback, so old query-string links keep working.
+  return slug ? `/product/${slug}-${id}` : `/product/${id}`;
 }
 
 // Clean, path-based category URL (e.g. /category/smartphones). Category ids are

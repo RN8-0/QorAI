@@ -1,8 +1,9 @@
-// Post-build: Coolify's static server has no SPA fallback, so a direct
-// hit on /catalog would 404. We copy the built index.html into a real
-// <route>/index.html for every known top-level route — those now return
-// HTTP 200. Product pages use /product?slug=...&id=... for crawlable 200 responses;
-// legacy /product/:id deep links still rely on 404.html.
+// Post-build: copy the built index.html into a real <route>/index.html for
+// every known top-level route so a direct hit returns HTTP 200. seo.mjs then
+// overwrites these with per-route meta. Product detail pages are handled
+// separately by seo.mjs, which prerenders a curated set at clean
+// /product/<slug>-<id> paths; uncurated product deep links fall back to the
+// host's SPA rewrite (serves index.html, then the SPA renders the product).
 
 import { mkdirSync, copyFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';

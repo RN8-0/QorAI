@@ -4,7 +4,9 @@ import { fileURLToPath } from 'url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..', '..', 'website');
-const minProductUrls = Number(process.env.SEO_MIN_PRODUCT_URLS || 1000);
+// Floor guards against a stripped/broken sitemap. The curated prerender emits a
+// deduped subset (typically a few thousand), so 800 is a safe regression floor.
+const minProductUrls = Number(process.env.SEO_MIN_PRODUCT_URLS || 800);
 
 function read(rel) {
   const file = join(site, rel);
@@ -40,7 +42,7 @@ function main() {
   for (const file of files) {
     const xml = read(file);
     total += [...xml.matchAll(/<url>/g)].length;
-    product += [...xml.matchAll(/\/product\?slug=/g)].length;
+    product += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/product\//g)].length;
     category += [...xml.matchAll(/\/category\/[a-z0-9]/g)].length;
     badAmp += [...xml.matchAll(/<loc>[^<]*&(?!(?:amp|lt|gt|quot|apos);)[^<]*<\/loc>/g)].length;
   }

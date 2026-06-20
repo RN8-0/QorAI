@@ -62,10 +62,99 @@ function productPath(product) {
   const id = String(product?.id || '').trim();
   if (!id) return '';
   const slug = slugifyProduct(product.slug || product.name || '');
-  const qs = new URLSearchParams();
-  if (slug) qs.set('slug', slug);
-  qs.set('id', id);
-  return `/product?${qs.toString()}`;
+  // Clean, path-based URL: /product/<slug>-<id>. Must stay identical to the
+  // SPA's productPath() in web/src/lib/routes.js so the prerendered file path,
+  // its <link rel=canonical>, the runtime canonical and the sitemap <loc> all
+  // agree on one URL per product.
+  return slug ? `/product/${slug}-${id}` : `/product/${id}`;
+}
+
+// Collapses cosmetic SKU variants (colour / strap / storage, often in German
+// from Geizhals) down to one representative model so the curated prerender set
+// is real distinct models, not 50 near-identical pages of the same watch.
+function modelKey(name) {
+  let s = String(name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss');
+  s = s.replace(/\([^)]*\)/g, ' '); // drop "(512 GB)" etc.
+  // colours, materials, straps/cases and connectivity tags — the cosmetic SKU
+  // axes that produce near-identical pages of the same model (esp. watches).
+  s = s.replace(/\b(schwarz|weiss|blau|rot|gruen|grun|grau|silber|gold|rosa|pink|lila|violett|braun|beige|titan|titanium|graphit|mitternacht|sternenlicht|polarstern|polar|space|grey|gray|black|white|blue|red|green|silver|midnight|starlight|purple|yellow|orange|olive|stone|seashell|mit|ohne|und|with|armband|sportarmband|sportband|band|loop|solo|braided|gehause|gehaeuse|case|alpine|trail|ocean|milanese|sport|nike|hermes|aluminium|alu|edelstahl|stainless|keramik|ceramic|leder|leather|nylon|dual|sim|edition|version|cellular|gps|wifi)\b/g, ' ');
+  s = s.replace(/\b\d+\s?(gb|tb|mb)\b/g, ' '); // storage variants
+  s = s.replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+  return s.split(' ').slice(0, 6).join(' ');
+}
+
+function specLi(label, value, unit) {
+  const n = Number(value);
+  if (value == null || value === '' || (!Number.isNaN(n) && n === 0)) return '';
+  return `<li>${esc(label)}: ${esc(value)}${unit ? ` ${esc(unit)}` : ''}</li>`;
+}
+
+// Lightweight, factual content block baked inside #root. React (createRoot, pure
+// CSR) wipes #root on mount, so users get the full SPA; non-JS crawlers and the
+// pre-JS snapshot get real, unique text + an internal link to the category.
+function productBody(d, label, categoryUrl) {
+  const name = esc(d.name);
+  const brand = d.brand ? esc(d.brand) : '';
+  const score = Number(d.techScore) || 0;
+  const specs = Number(d.specsCount) || 0;
+  const img = /^https?:\/\//i.test(d.imageUrl || '') ? esc(d.imageUrl) : '';
+  const lbl = esc(label);
+  const items = [
+    specLi('Ekran', d.screenSizeValue, 'inç'),
+    specLi('Batarya', d.batteryCapacityValue, 'mAh'),
+    specLi('Ağırlık', d.weightValueKg, 'kg'),
+  ].filter(Boolean).join('');
+  return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
+    + `<h1 style="font-size:26px;margin:12px 0 4px">${name}</h1>`
+    + `<p style="color:#475569;margin:0 0 12px">${brand ? `${brand} · ` : ''}${lbl}${score ? ` · Qor AI teknik skoru ${score}/100` : ''}</p>`
+    + (img ? `<img src="${img}" alt="${name}" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />` : '')
+    + (items ? `<ul style="margin:16px 0;line-height:1.7">${items}</ul>` : '')
+    + `<p style="line-height:1.7;color:#334155">${name} özelliklerini${specs ? `, ${specs} teknik detayını` : ''} ve güncel fiyatlarını Qor AI yapay zekâ ile incele; benzer ${lbl.toLowerCase()} modelleriyle karşılaştır ve sana en uygununu seç.</p>`
+    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${lbl} karşılaştırma →</a></p>`
+    + `</main>`;
+}
+
+// Per-product <head> SEO (unique title/description/canonical + Product,
+// Breadcrumb & WebPage JSON-LD). No offers: price lives only in the heavy _raw
+// field and is often stale/zero, and price markup that mismatches the page is a
+// rich-result penalty — the runtime useSeo() hook adds live offers instead.
+function productSeo(d, label) {
+  const url = `${SITE}${productPath(d)}`;
+  const categoryUrl = `${SITE}${categoryPath(d.category)}`;
+  const score = Number(d.techScore) || 0;
+  const specs = Number(d.specsCount) || 0;
+  const img = /^https?:\/\//i.test(d.imageUrl || '') ? d.imageUrl : DEFAULT_IMG;
+  const title = truncate(`${d.name} — Fiyat & Özellikler | Qor AI`, 68);
+  const description = truncate(
+    `${d.name}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
+    + `${score ? `Qor AI teknik skoru ${score}/100. ` : ''}`
+    + `${specs ? `${specs} teknik özellik, ` : ''}`
+    + 'güncel fiyatlar ve benzer modellerle Qor AI karşılaştırması.',
+  );
+  const webPage = {
+    '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
+    isPartOf: { '@id': `${SITE}/#website` }, primaryImageOfPage: img,
+  };
+  const product = {
+    '@type': 'Product', '@id': `${url}#product`, name: d.name, image: [img], url,
+    mainEntityOfPage: { '@id': `${url}#webpage` },
+    ...(d.brand ? { brand: { '@type': 'Brand', name: d.brand } } : {}),
+    category: label,
+    ...(score ? { additionalProperty: [{ '@type': 'PropertyValue', name: 'Qor AI Teknik Skoru', value: `${score}/100` }] } : {}),
+  };
+  const breadcrumb = {
+    '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+      { '@type': 'ListItem', position: 2, name: label, item: categoryUrl },
+      { '@type': 'ListItem', position: 3, name: d.name, item: url },
+    ],
+  };
+  return {
+    title, description, url, image: img, imageAlt: d.name, type: 'product',
+    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, product, breadcrumb] },
+  };
 }
 
 function categoryPath(category) {
@@ -107,11 +196,14 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
   return lines.join('\n  ');
 }
 
-function renderPage(template, seo) {
-  return template.replace(
-    /<!-- seo:start -->[\s\S]*?<!-- seo:end -->/,
-    `<!-- seo:start -->\n  ${seoBlock(seo)}\n  <!-- seo:end -->`,
-  );
+function renderPage(template, seo, bodyHtml) {
+  // Function replacers, not string replacers: product names flow into the SEO
+  // block and body, and a literal "$&"/"$1" in a name would otherwise be
+  // interpreted as a String.replace special pattern and corrupt the output.
+  const block = `<!-- seo:start -->\n  ${seoBlock(seo)}\n  <!-- seo:end -->`;
+  let out = template.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/, () => block);
+  if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
+  return out;
 }
 
 function sleepSync(ms) {
@@ -150,7 +242,7 @@ function writeHtml(routeDir, html) {
 // ── Typesense: pull the whole catalogue ─────────────────────────
 async function fetchAllProducts() {
   const perPage = 250;
-  const fields = 'id,name,slug,brand,category,imageUrl,techScore,lowestPriceUSD,specsCount,updatedAtTs,scrapedAtTs';
+  const fields = 'id,name,slug,brand,category,subcategory,imageUrl,techScore,lowestPriceUSD,specsCount,screenSizeValue,batteryCapacityValue,weightValueKg,updatedAtTs,scrapedAtTs';
   const page = async (p) => {
     const qs = new URLSearchParams({
       q: '*', query_by: 'name', sort_by: 'techScore:desc',
@@ -337,13 +429,10 @@ async function main() {
     }),
   );
 
-  // 2) catalogue fetch — for sitemap discovery only.
-  //    We deliberately DO NOT prerender a static HTML file per product.
-  //    Doing so wrote 100k+ tiny files into the repo (every build = a
-  //    100k-file diff) for near-zero gain: Googlebot renders the SPA and
-  //    reads the same per-product <head> from the runtime useSeo() hook.
-  //    The sitemap below lists every product with a static-safe
-  //    /product?slug=...&id=... URL that carries the product name.
+  // 2) catalogue fetch — drives both the per-category landing shells and the
+  //    curated per-product prerender below (step 2c). We bake a bounded,
+  //    de-duplicated subset of top products (not all 106k), so the sitemap and
+  //    the prerendered HTML stay in lock-step and Google gets real pages.
   let products = [];
   try {
     products = await fetchAllProducts();
@@ -415,6 +504,51 @@ async function main() {
   }
   console.log(`[seo] wrote ${categoryShells} per-category landing shells`);
 
+  // 2c) curated per-product prerender — the highest-techScore, de-duplicated
+  //     models per category get a REAL static HTML file with a unique <head>
+  //     (title/description/canonical + Product JSON-LD) and a small content
+  //     block. This is what fixes indexing: previously every /product URL served
+  //     one identical generic shell, so Google saw 100k duplicates and indexed
+  //     none. We deliberately do NOT bake all 106k (a 100k-file git diff of thin
+  //     near-duplicate SKUs that risks a scaled-content penalty); the long tail
+  //     stays reachable via the SPA but is kept out of the sitemap.
+  const PER_CAT = Number(process.env.SEO_PRODUCTS_PER_CATEGORY || 100);
+  const MAX_PRODUCTS = Number(process.env.SEO_MAX_PRODUCTS || 8000);
+
+  // Wipe stale product subdirs from the previous build (models that dropped out
+  // of the curated set) so website/product/ never accumulates orphan shells.
+  // Keep product/index.html — the generic /product fallback shell.
+  const productRoot = join(site, 'product');
+  if (existsSync(productRoot)) {
+    for (const entry of readdirSync(productRoot, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        try { rmSync(join(productRoot, entry.name), { recursive: true, force: true }); } catch (_) {}
+      }
+    }
+  }
+
+  const prerendered = [];
+  for (const [cat, items] of byCategory) {
+    const label = categoryLabel(cat, 'tr');
+    const categoryUrl = `${SITE}${categoryPath(cat)}`;
+    const seen = new Set();
+    let n = 0;
+    for (const d of items) {
+      if (n >= PER_CAT || prerendered.length >= MAX_PRODUCTS) break;
+      if (!d?.id || !d?.name) continue;
+      const key = modelKey(d.name);
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      const path = productPath(d);
+      if (!path) continue;
+      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label), productBody(d, label, categoryUrl)));
+      prerendered.push({ d, path });
+      n += 1;
+    }
+    if (prerendered.length >= MAX_PRODUCTS) break;
+  }
+  console.log(`[seo] wrote ${prerendered.length} curated product shells (<=${PER_CAT}/category, deduped)`);
+
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
@@ -426,8 +560,11 @@ async function main() {
     .map((path) => ({
       loc: `${SITE}${path}`, changefreq: 'weekly', priority: '0.8',
     }));
-  const productUrls = products.filter((d) => d?.id && d?.name).map((d) => ({
-    loc: `${SITE}${productPath(d)}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
+  // Only the curated, prerendered products go in the sitemap. Listing all 106k
+  // (which serve the generic SPA shell with no per-product HTML) is exactly what
+  // wasted crawl budget and produced the duplicate signal that blocked indexing.
+  const productUrls = prerendered.map(({ d, path }) => ({
+    loc: `${SITE}${path}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
   }));
   const allUrls = [...routeUrls, ...categoryUrls, ...productUrls];
 
@@ -477,7 +614,7 @@ async function main() {
     ].join('\n'),
   );
 
-  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls (no per-product prerender), robots.txt`);
+  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${prerendered.length} product shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls, robots.txt`);
 }
 
 main().catch((err) => {
