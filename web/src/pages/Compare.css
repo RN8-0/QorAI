@@ -352,38 +352,38 @@ button.cmp-more {
   line-height: 1.35;
   margin-bottom: 12px;
 }
-.cmp-review-card .pd-section { margin-top: 0; }
-.cmp-review-card .pd-section-head {
+.cmp-reviews .pd-section { margin-top: 0; }
+.cmp-reviews .pd-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
-.cmp-review-card .pd-section-head h2 { font-size: 15px; font-weight: 800; }
-.cmp-review-card .pd-rev-avg,
-.cmp-review-card .stars,
-.cmp-review-card .rv-votes { display: inline-flex; align-items: center; gap: 5px; }
-.cmp-review-card .stars { color: var(--bg5); font-size: 14px; }
-.cmp-review-card .stars .on,
-.cmp-review-card .stars-pick button.on { color: #fbbf24; }
-.cmp-review-card .stars-pick button {
+.cmp-reviews .pd-section-head h2 { font-size: 15px; font-weight: 800; }
+.cmp-reviews .pd-rev-avg,
+.cmp-reviews .stars,
+.cmp-reviews .rv-votes { display: inline-flex; align-items: center; gap: 5px; }
+.cmp-reviews .stars { color: var(--bg5); font-size: 14px; }
+.cmp-reviews .stars .on,
+.cmp-reviews .stars-pick button.on { color: #fbbf24; }
+.cmp-reviews .stars-pick button {
   color: var(--bg5);
   font-size: 20px;
   line-height: 1;
   padding: 0 1px;
 }
-.cmp-review-card .pd-rev-form,
-.cmp-review-card .rv-reply-form {
+.cmp-reviews .pd-rev-form,
+.cmp-reviews .rv-reply-form {
   display: flex;
   flex-direction: column;
   gap: 9px;
   margin-bottom: 14px;
 }
-.cmp-review-card .pd-rev-form-top { display: flex; align-items: center; gap: 10px; }
-.cmp-review-card .pd-rev-label { font-size: 12.5px; font-weight: 800; color: var(--text2); }
-.cmp-review-card textarea,
-.cmp-review-card input {
+.cmp-reviews .pd-rev-form-top { display: flex; align-items: center; gap: 10px; }
+.cmp-reviews .pd-rev-label { font-size: 12.5px; font-weight: 800; color: var(--text2); }
+.cmp-reviews textarea,
+.cmp-reviews input {
   width: 100%;
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -392,23 +392,23 @@ button.cmp-more {
   padding: 9px 10px;
   font: inherit;
 }
-.cmp-review-card textarea:focus,
-.cmp-review-card input:focus { outline: none; border-color: var(--accent); }
-.cmp-review-card .pd-rev-ok { color: var(--green); font-size: 13px; font-weight: 700; }
-.cmp-review-card .pd-rev-er { color: var(--red); font-size: 13px; font-weight: 700; }
-.cmp-review-card .pd-note { color: var(--text3); font-size: 13px; }
-.cmp-review-card .pd-rev-list,
-.cmp-review-card .rv-replies { display: flex; flex-direction: column; gap: 10px; }
-.cmp-review-card .pd-rev-item,
-.cmp-review-card .rv-reply {
+.cmp-reviews textarea:focus,
+.cmp-reviews input:focus { outline: none; border-color: var(--accent); }
+.cmp-reviews .pd-rev-ok { color: var(--green); font-size: 13px; font-weight: 700; }
+.cmp-reviews .pd-rev-er { color: var(--red); font-size: 13px; font-weight: 700; }
+.cmp-reviews .pd-note { color: var(--text3); font-size: 13px; }
+.cmp-reviews .pd-rev-list,
+.cmp-reviews .rv-replies { display: flex; flex-direction: column; gap: 10px; }
+.cmp-reviews .pd-rev-item,
+.cmp-reviews .rv-reply {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg2);
 }
-.cmp-review-card .pd-rev-item-head,
-.cmp-review-card .rv-reply-head { display: flex; align-items: center; gap: 9px; }
-.cmp-review-card .pd-rev-av {
+.cmp-reviews .pd-rev-item-head,
+.cmp-reviews .rv-reply-head { display: flex; align-items: center; gap: 9px; }
+.cmp-reviews .pd-rev-av {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -419,23 +419,23 @@ button.cmp-more {
   font-size: 12px;
   font-weight: 800;
 }
-.cmp-review-card .pd-rev-meta { flex: 1; min-width: 0; }
-.cmp-review-card .pd-rev-meta strong,
-.cmp-review-card .rv-reply-head strong { font-size: 13px; }
-.cmp-review-card .pd-rev-date,
-.cmp-review-card .rv-date { color: var(--text3); font-size: 11.5px; }
-.cmp-review-card .pd-rev-text,
-.cmp-review-card .rv-reply-text { color: var(--text2); font-size: 13px; line-height: 1.55; margin-top: 7px; }
-.cmp-review-card .rv-vote,
-.cmp-review-card .rv-del {
+.cmp-reviews .pd-rev-meta { flex: 1; min-width: 0; }
+.cmp-reviews .pd-rev-meta strong,
+.cmp-reviews .rv-reply-head strong { font-size: 13px; }
+.cmp-reviews .pd-rev-date,
+.cmp-reviews .rv-date { color: var(--text3); font-size: 11.5px; }
+.cmp-reviews .pd-rev-text,
+.cmp-reviews .rv-reply-text { color: var(--text2); font-size: 13px; line-height: 1.55; margin-top: 7px; }
+.cmp-reviews .rv-vote,
+.cmp-reviews .rv-del {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 8px;
   color: var(--text2);
   font-size: 12px;
 }
-.cmp-review-card .rv-vote.on,
-.cmp-review-card .rv-vote:hover { border-color: var(--accent-ring); color: var(--accent); background: var(--accent-soft); }
+.cmp-reviews .rv-vote.on,
+.cmp-reviews .rv-vote:hover { border-color: var(--accent-ring); color: var(--accent); background: var(--accent-soft); }
 
 /* ─── Comparison table ───────────────────────────────────────── */
 /* Horizontal scroll only — the page handles vertical scroll (no inner scrollbox).
