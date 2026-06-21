@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { pb, currentUser } from '../lib/pocketbase';
+import { pb, currentUser, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { productPath, articlePath } from '../lib/routes';
@@ -140,7 +140,7 @@ export default function BlogPost() {
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
-  const cover = post?.coverFile ? pb.files.getUrl(post, post.coverFile) : (post?.cover || products[0]?.image || products[0]?.imageUrl || '');
+  const cover = post?.coverFile ? fileUrl(post, post.coverFile) : (post?.cover || products[0]?.image || products[0]?.imageUrl || '');
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
@@ -338,7 +338,7 @@ export default function BlogPost() {
             <div className="blog-simrows">
               {more.map((m) => {
                 const mp = Array.isArray(m.products) ? m.products : [];
-                const mcover = m.coverFile ? pb.files.getUrl(m, m.coverFile) : (m.cover || mp[0]?.image || mp[0]?.imageUrl || '');
+                const mcover = m.coverFile ? fileUrl(m, m.coverFile) : (m.cover || mp[0]?.image || mp[0]?.imageUrl || '');
                 return (
                   <Link key={m.slug} to={articlePath(m, lang)} className="blog-simrow">
                     {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}

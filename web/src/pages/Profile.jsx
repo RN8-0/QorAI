@@ -5,7 +5,7 @@ import { useCompare, setCompareList } from '../lib/compare';
 import {
   refreshUser, updateProfile, requestVerification, requestAccountDeletion,
 } from '../lib/pocketbase';
-import { pb } from '../lib/pocketbase';
+import { pb, fileUrl } from '../lib/pocketbase';
 import { formatQorCoins } from '../lib/qorCoins';
 import {
   getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview, getMyLikedArticles,
@@ -405,7 +405,7 @@ function LikedTab({ t }) {
   const { lang } = useI18n();
   const [items, setItems] = useState(null);
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || ''));
+  const coverOf = (a) => { const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {}; return a.coverFile ? fileUrl(a, a.coverFile) : (a.cover || p0.image || p0.imageUrl || ''); };
 
   useEffect(() => { getMyLikedArticles().then(setItems); }, []);
 

@@ -146,7 +146,10 @@ export function authErrorKey(error) {
   return 'auth.errGeneric';
 }
 
+// Build the PocketBase file URL manually — pb.files.getUrl() returned '' on this
+// SDK build, so construct the documented /api/files path directly.
 export function fileUrl(record, filename) {
   if (!record || !filename) return '';
-  return pb.files.getUrl(record, filename);
+  const coll = record.collectionId || record.collectionName || 'articles';
+  return `${PB_URL}/api/files/${coll}/${record.id}/${filename}`;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { pb } from '../lib/pocketbase';
+import { pb, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { articlePath } from '../lib/routes';
@@ -26,7 +26,7 @@ export default function Blog() {
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const firstProdImg = (a) => { const p = (Array.isArray(a.products) ? a.products : [])[0] || {}; return p.image || p.imageUrl || ''; };
   // Cover = explicit upload/URL, else default to the first product's image.
-  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || firstProdImg(a)));
+  const coverOf = (a) => (a.coverFile ? fileUrl(a, a.coverFile) : (a.cover || firstProdImg(a)));
   const viewsOf = (a) => seedCount(a.slug, 180, 520) + (stats[a.slug]?.view || 0);
   const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 
