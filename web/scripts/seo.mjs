@@ -238,10 +238,14 @@ function compareSeo(a, b, label) {
   };
 }
 
-// Per-product <head> SEO (unique title/description/canonical + Product,
-// Breadcrumb & WebPage JSON-LD). No offers: price lives only in the heavy _raw
-// field and is often stale/zero, and price markup that mismatches the page is a
-// rich-result penalty — the runtime useSeo() hook adds live offers instead.
+// Per-product <head> SEO: WebPage + Breadcrumb JSON-LD only. We deliberately do
+// NOT emit a `Product` node here: Google requires a Product to carry offers,
+// review or aggregateRating to be valid, and the static build has no reliable
+// price (it lives in the heavy _raw field, lowestPriceUSD is ~always 0) and no
+// real ratings/reviews. Emitting a Product without those just produces "invalid
+// Product snippet" errors in Search Console for zero gain. The runtime
+// useSeo() hook DOES add a valid Product+offers once the live price loads (and
+// only then), so products that actually have a price still get the rich result.
 function productSeo(d, label) {
   const url = `${SITE}${productPath(d)}`;
   const categoryUrl = `${SITE}${categoryPath(d.category)}`;
@@ -259,13 +263,6 @@ function productSeo(d, label) {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
     isPartOf: { '@id': `${SITE}/#website` }, primaryImageOfPage: img,
   };
-  const product = {
-    '@type': 'Product', '@id': `${url}#product`, name: d.name, image: [img], url,
-    mainEntityOfPage: { '@id': `${url}#webpage` },
-    ...(d.brand ? { brand: { '@type': 'Brand', name: d.brand } } : {}),
-    category: label,
-    ...(score ? { additionalProperty: [{ '@type': 'PropertyValue', name: 'Qor AI Teknik Skoru', value: `${score}/100` }] } : {}),
-  };
   const breadcrumb = {
     '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
     itemListElement: [
@@ -276,7 +273,7 @@ function productSeo(d, label) {
   };
   return {
     title, description, url, image: img, imageAlt: d.name, type: 'product',
-    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, product, breadcrumb] },
+    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, breadcrumb] },
   };
 }
 

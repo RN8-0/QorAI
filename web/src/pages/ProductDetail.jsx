@@ -584,6 +584,12 @@ function buildProductSeo(p, t, lang) {
       { '@type': 'ListItem', position: 3, name, item: url },
     ],
   };
+  // A Product node is only valid for Google when it carries offers / review /
+  // aggregateRating. We have no ratings/reviews and only a price when there's a
+  // fresh offer, so emit the Product (and point mainEntity at it) ONLY then —
+  // otherwise Search Console flags every price-less product as an invalid
+  // Product snippet. Price-less products fall back to WebPage + Breadcrumb.
+  const hasOffer = !!offer;
   const webPage = {
     '@type': 'WebPage',
     '@id': `${url}#webpage`,
@@ -594,11 +600,14 @@ function buildProductSeo(p, t, lang) {
     isPartOf: { '@id': `${SITE_URL}/#website` },
     primaryImageOfPage: { '@type': 'ImageObject', url: image },
     breadcrumb: { '@id': `${url}#breadcrumb` },
-    mainEntity: { '@id': `${url}#product` },
+    ...(hasOffer ? { mainEntity: { '@id': `${url}#product` } } : {}),
   };
   return {
     title, description, image, imageAlt: name, path, type: 'product',
-    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, product, breadcrumb] },
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@graph': hasOffer ? [webPage, product, breadcrumb] : [webPage, breadcrumb],
+    },
   };
 }
 
