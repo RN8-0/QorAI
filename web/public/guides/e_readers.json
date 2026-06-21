@@ -1,0 +1,71 @@
+{
+  "category": "e_readers",
+  "label": "E-Kitap Okuyucu",
+  "title": "E-Kitap Okuyucu Rehberi: 2026'nın En İyi Modelleri",
+  "lead": "Okuma alışkanlığınızı dijitale taşıyacak en iyi e-kitap okuyucuyu seçmek, ekran teknolojisinden pil ömrüne kadar birçok detaya bağlı. Bu rehberde, farklı ihtiyaçlara hitap eden modelleri ve dikkat etmeniz gereken püf noktaları bulacaksınız.",
+  "sections": [
+    {
+      "h": "E-Kitap Okuyucuda Nelere Dikkat Etmeli?",
+      "body": "Ekran teknolojisi en kritik faktör: E-ink Carta 1200 veya Kaleido 3 gibi güncel paneller daha yüksek kontrast ve daha iyi okuma deneyimi sunar. Çözünürlük en az 300 PPI olmalı; düşük PPI metinlerde bulanıklığa yol açar. Pil ömrü haftalarca gitmeli, çünkü sık şarj zahmetlidir. Ayrıca suya dayanıklılık, ön aydınlatma ve depolama kapasitesi de kullanım konforunu belirler."
+    },
+    {
+      "h": "Boyut ve Taşınabilirlik Dengesi",
+      "body": "6-7 inç ekranlar tek elle okuma ve çanta taşıma için ideal. 8 inç ve üzeri modeller PDF, dergi ve çizim gibi içerikler için daha kullanışlı, ancak ağırlık artar. Boyue Likebook P10 10 inçlik ekranıyla not alma ve belge okumada öne çıkarken, PocketBook Era 7 inçlik hafif yapısıyla günlük taşıma için biçilmiş kaftan."
+    },
+    {
+      "h": "Ekstra Özellikler: Not Alma ve Uygulama Desteği",
+      "body": "Bazı modeller dokunmatik kalemle not alma, Android işletim sistemi sayesinde Kindle, Google Play Kitaplar gibi uygulamaları çalıştırma imkanı sunar. Örneğin Onyx Boox Note 5 ve Lenovo Smart Paper bu alanda güçlü. Ancak saf bir okuma cihazı istiyorsanız ekstra özellikler gereksiz karmaşa yaratabilir. İhtiyacınızı netleştirin."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Boyue Likebook P10",
+      "why": "10 inç E-ink ekranı ve yüksek performansıyla çok yönlü bir iş makinesi.",
+      "id": "56dashqxeqnmoho",
+      "slug": "boyue-likebook-p10"
+    },
+    {
+      "name": "PocketBook Era (64 GB)",
+      "why": "7 inç hafif gövdesi, suya dayanıklılığı ve geniş depolamasıyla taşınabilir okumanın kralı.",
+      "id": "a9512kdxajd03d6",
+      "slug": "pocketbook-era-64-gb"
+    },
+    {
+      "name": "Onyx Boox Note 5",
+      "why": "Android desteği ve kalem hassasiyetiyle not alma ve uygulama kullanımında en iyisi.",
+      "id": "p54obhskeqn3a4r",
+      "slug": "onyx-boox-note-5"
+    },
+    {
+      "name": "Kobo Forma 8",
+      "why": "8 inç ekranı ve ergonomik tasarımıyla uzun okuma seansları için konforlu.",
+      "id": "vfrgyu9kkf84yed",
+      "slug": "kobo-forma-8"
+    },
+    {
+      "name": "Huawei MatePad Paper",
+      "why": "Mat ekranı ve zengin arayüzüyle hem okuma hem de hafif ofis işleri için ideal.",
+      "id": "wdrdlltkuzsojmu",
+      "slug": "huawei-matepad-paper"
+    }
+  ],
+  "faq": [
+    {
+      "q": "E-kitap okuyucu ile tablet arasındaki fark nedir?",
+      "a": "E-kitap okuyucular E-ink teknolojisi sayesinde göz yormaz, güneş ışığında okunabilir ve pili haftalarca gider. Tablet ise çok amaçlıdır ancak okuma deneyimi daha yorucudur."
+    },
+    {
+      "q": "Hangi e-kitap formatlarını desteklemeli?",
+      "a": "En yaygın formatlar EPUB, PDF ve MOBI'dir. Çoğu cihaz bu üçünü destekler; ancak Kindle sadece MOBI/AZW'yi yerel olarak okur."
+    },
+    {
+      "q": "Ön aydınlatma neden önemli?",
+      "a": "Ön aydınlatma, karanlıkta okumayı sağlar ve gözleri arkadan aydınlatmalı ekranlar gibi yormaz. Gece okumaları için olmazsa olmazdır."
+    },
+    {
+      "q": "Not alma özelliği okuma deneyimini etkiler mi?",
+      "a": "Genelde etkilemez; kalemle not almak istediğinizde kullanılır. Ancak bazı modellerde kalem girişi cihaz kalınlığını artırabilir."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:38.905Z"
+}

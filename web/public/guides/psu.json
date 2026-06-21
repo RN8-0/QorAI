@@ -1,0 +1,77 @@
+{
+  "category": "psu",
+  "label": "PSU",
+  "title": "2026'nın En İyi Güç Kaynakları: Yüksek Performanslı PSU Rehberi",
+  "lead": "Güç kaynağı, bilgisayarınızın kalbidir; doğru seçim yapmazsanız tüm sisteminiz riske girer. Bu rehberde, 1000W ve üzeri, yüksek verimli ve güvenilir PSU modellerini inceliyoruz.",
+  "sections": [
+    {
+      "h": "PSU Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle watt değeri, sisteminizin toplam tüketimini karşılayacak kadar yüksek olmalı; %20-30 boşluk bırakmak idealdir. 80+ sertifikası (Gold, Platinum) verimliliği ve ısıyı belirler. Modüler kablolama, kasa içi hava akışını kolaylaştırır. Ayrıca, bileşenlerinizi korumak için OVP, OCP, SCP gibi koruma devrelerinin bulunması şart."
+    },
+    {
+      "h": "Yüksek Wattlı PSU'lar Kimler İçin Uygun?",
+      "body": "1000W ve üzeri güç kaynakları, çift ekran kartlı sistemler, yüksek performanslı iş istasyonları veya yoğun overclock yapan kullanıcılar için idealdir. Tek bir RTX 4090 ve üst düzey bir işlemci için bile 1000W önerilir. Daha düşük sistemlerde 750W-850W yeterli olabilir."
+    },
+    {
+      "h": "Popüler Markalar ve Modeller",
+      "body": "Asus ROG serisi, yüksek kaliteli bileşenleri ve sıfır fan moduyla öne çıkıyor. Be Quiet! modelleri ise sessiz çalışması ve sağlam yapısıyla biliniyor. Cougar GEX1050, fiyat/performans dengesiyle dikkat çekerken, Zalman TeraMax 1000W da iddialı bir seçenek."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Asus Rog Thor 1000P2 Gaming 1000W",
+      "why": "OLED ekranı ve 80+ Platinum verimliliği ile hem görsel hem performans açısından zirve.",
+      "id": "3iue39qec083nmx",
+      "slug": "asus-rog-thor-1000w"
+    },
+    {
+      "name": "Be Quiet! BN285 Straıght Power 11 1000W",
+      "why": "Sessiz çalışması ve yüksek kaliteli Japon kapasitörleriyle güvenilir bir seçenek.",
+      "id": "6g2e2o5s46nrjx4",
+      "slug": "be-quiet-bn285-straight-power-11-1000w"
+    },
+    {
+      "name": "Cougar GEX1050 1050W",
+      "why": "1050W gücü ve uygun fiyatıyla bütçe dostu ama güçlü bir alternatif.",
+      "id": "43hef3aaw05xc2d",
+      "slug": "cougar-gex1050-1050w"
+    },
+    {
+      "name": "Asus ROG Loki SFX-L 1000W Platinum (90YE00N1-B0NA00)",
+      "why": "SFX-L form faktörüyle küçük kasalar için ideal, 80+ Platinum verimlilik.",
+      "id": "0lcxvhrhj2k4hm3",
+      "slug": "asus-rog-loki-sfx-l-1000w"
+    },
+    {
+      "name": "Be Quiet! BN332 Dark Power 13 1600W",
+      "why": "1600W ile en yüksek güç gereksinimlerini karşılar, overclockçular için biçilmiş kaftan.",
+      "id": "0yewnxxpfoaedkg",
+      "slug": "be-quiet-bn332-dark-power-13-1600w"
+    },
+    {
+      "name": "Zalman TeraMax 1000W",
+      "why": "Tam modüler yapısı ve 135mm sessiz fanıyla dengeli bir performans sunar.",
+      "id": "66hkojarbbd1s4o",
+      "slug": "zalman-teramax-1000w"
+    }
+  ],
+  "faq": [
+    {
+      "q": "PSU alırken watt değerini nasıl hesaplamalıyım?",
+      "a": "İşlemci ve ekran kartının TDP değerlerini toplayın, diğer bileşenler için 100W ekleyin ve %20-30 güvenlik payı koyun. Örneğin 850W toplam için 1000W idealdir."
+    },
+    {
+      "q": "80+ Gold mu yoksa Platinum mu almalıyım?",
+      "a": "Platinum daha verimlidir ve elektrik faturanızı düşürür, ancak Gold da çoğu kullanıcı için yeterlidir. Uzun vadede Platinum farkı amorti edebilir."
+    },
+    {
+      "q": "Modüler PSU şart mı?",
+      "a": "Tam modüler olması şart değil ancak kasa içi kablolama ve hava akışı için avantajlıdır. Yarı modeller de iyi bir seçenektir."
+    },
+    {
+      "q": "Hangi markalar daha güvenilir?",
+      "a": "Asus, Be Quiet!, Corsair, Seasonic gibi markalar uzun ömür ve kaliteli bileşenleriyle öne çıkar. Listemizdeki modeller güvenilirlik testlerinde üst sıralarda yer alır."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:10:32.177Z"
+}

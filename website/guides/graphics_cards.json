@@ -1,0 +1,65 @@
+{
+  "category": "graphics_cards",
+  "label": "Ekran Kartı",
+  "title": "2026'nın En İyi Ekran Kartları: RTX 5090 ve 5080 Rehberi",
+  "lead": "Yeni nesil ekran kartları oyun ve yapay zeka performansında çıtayı yükseltti. RTX 5090 ve 5080 serisi, sundukları güç ve soğutma teknolojileriyle öne çıkıyor.",
+  "sections": [
+    {
+      "h": "Hangi Ekran Kartını Seçmeli?",
+      "body": "RTX 5090, 32 GB GDDR7 bellek ve 600W'a yakın TDP ile amiral gemisi arayanlar için biçilmiş kaftan. RTX 5080 ise 16 GB bellek ve daha düşük güç tüketimiyle fiyat/performans dengesi sunuyor. Oyun ve içerik üretimi için 5090, orta-üst segment için 5080 ideal."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Soğutma çözümü çok önemli: Aorus su soğutmalı modeller sessiz çalışırken, Ventus gibi hava soğutmalı kartlar daha uygun fiyatlı. Ayrıca güç kaynağınızın yeterli watt değerini (en az 1000W) ve 12VHPWR kablosunu desteklediğinden emin olun. Overclock potansiyeli için ROG Matrix gibi modeller öne çıkıyor."
+    },
+    {
+      "h": "Fiyat-Performans Canavarları",
+      "body": "RTX 5080, 90/100 Qor AI skoru ile 5090'ın yarı fiyatına benzer oyun performansı sunuyor. Palit GameRock ise 5090'da 99/100 puanla en iyi fiyat-performans amiral gemisi. MSI Ventus 3X OC, sağlam soğutmasıyla bütçe dostu bir seçenek."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Asus ROG Matrix Platinum GeForce RTX 5090 30th Anniversary Edition Ekran Kartı (ROG-MATRIX-RTX5090-P32G-30TH)",
+      "why": "Sıvı metal ve yüksek overclock ile en iyi performansı sunan özel sürüm.",
+      "id": "2q9m6lpx018d5xw",
+      "slug": "asus-rog-matrix-platinum-geforce-rtx-5090-30th-anniversary-edition"
+    },
+    {
+      "name": "MSI GeForce RTX 5090 Ventus 3X OC Ekran Kartı (G5090-32V3C)",
+      "why": "Uygun fiyatlı 5090 seçeneği, üç fanlı soğutma ile yeterli performans.",
+      "id": "0jdag77qopog6i8",
+      "slug": "msi-geforce-rtx-5090-ventus-3x-oc"
+    },
+    {
+      "name": "Gigabyte GeForce RTX 5080 Gaming OC 16G Ekran Kartı (GV-N5080GAMING-OC-16GD)",
+      "why": "Fiyatına göre sunduğu soğutma ve hız aşırtma potansiyeli ile en iyi 5080.",
+      "id": "5lsz01ax51olvr4",
+      "slug": "gigabyte-geforce-rtx-5080-gaming-oc-16g"
+    },
+    {
+      "name": "Zotac Gaming GeForce RTX 5090 AMP Extreme Infinity Ekran Kartı (ZT-B50900B-10P)",
+      "why": "Sağlam yapısı ve yüksek saat hızlarıyla güvenilir bir amiral gemisi.",
+      "id": "3r4rdt18vgmk1vd",
+      "slug": "zotac-gaming-geforce-rtx-5090-amp-extreme-infinity"
+    }
+  ],
+  "faq": [
+    {
+      "q": "RTX 5090 için kaç watt güç kaynağı gerekli?",
+      "a": "En az 1000W, tercihen 1200W 80+ Gold sertifikalı bir PSU önerilir."
+    },
+    {
+      "q": "RTX 5080, 5090'ın yarısı kadar mı performans veriyor?",
+      "a": "Hayır, oyunlarda %20-30 daha düşük, ancak fiyatı neredeyse yarı yarıya."
+    },
+    {
+      "q": "Su soğutmalı kart almaya değer mi?",
+      "a": "Sessiz çalışma ve düşük sıcaklık istiyorsanız evet, ancak kurulumu daha zahmetli."
+    },
+    {
+      "q": "Hangi marka daha iyi soğutma sunuyor?",
+      "a": "Gigabyte'ın Aorus su soğutmalı modelleri en iyisi, hava soğutmada ise MSI Gaming Trio öne çıkıyor."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:38.273Z"
+}

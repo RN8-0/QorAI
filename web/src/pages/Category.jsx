@@ -3,6 +3,7 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
+import CategoryGuide from '../components/CategoryGuide.jsx';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -479,6 +480,7 @@ export default function Category() {
           )}
         </div>
       </div>
+      {cat && <CategoryGuide cat={cat} />}
     </div>
   );
 }

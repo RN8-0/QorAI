@@ -1,0 +1,65 @@
+{
+  "category": "pc_cases",
+  "label": "Kasa",
+  "title": "2026'nın En İyi Bilgisayar Kasaları: Hangi Model Sana Uygun?",
+  "lead": "Bilgisayar toplarken kasa seçimi, soğutma ve estetik dengesini kurmak kadar bütçeyi de etkiler. İşte en iyi performanslı ve en şık kasaları bir araya getirdik.",
+  "sections": [
+    {
+      "h": "Kasa Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle anakart form faktörünü (ATX, Micro-ATX, Mini-ITX) ve kasanın desteklediği güç kaynağı boyutunu kontrol et. Soğutma için fan yuvaları, radyatör desteği ve toz filtreleri önemli; kablosuz bağlantı ve USB-C gibi modern bağlantı noktaları da işini kolaylaştırır."
+    },
+    {
+      "h": "Hava Akışı mı, Sessizlik mi?",
+      "body": "Yüksek performanslı sistemler için mesh ön panelli kasalar (Eternal Power Pro X Mesh 2 gibi) hava akışında sınır tanımaz. Sessizlik öncelikliyse Be Quiet! Dark Base 700 gibi ses yalıtımlı modeller tercih edilmeli. Ayrıca sıvı soğutma planlıyorsan, kasanın üst veya önden radyatör desteğine bak."
+    },
+    {
+      "h": "Estetik ve Özelleştirme İmkanları",
+      "body": "RGB aydınlatma, cam paneller ve temalı tasarımlar (Havn HS 420 DOOM gibi) oyuncular için cazip. Hyte Y70 ve X50 gibi modeller yaratıcı iç düzenleme ve kablolama kanalları sunuyor. Ayrıca güç kaynağı kapağı ve fan hub gibi detaylar montajı kolaylaştırır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Havn HS 420 DOOM: The Dark Ages Limited Edition Bilgisayar Kasası (HVN -HS420-05-DOOM)",
+      "why": "Sınırlı sayıda üretilen bu tema kasası, hem görsel olarak etkileyici hem de üstün soğutma performansı sunuyor.",
+      "id": "4bsq79ng9wfzvys",
+      "slug": "havn-hs-420-doom-the-dark-ages-limited-edition"
+    },
+    {
+      "name": "Eternal Power Pro X Mesh 2 650W Bilgisayar Kasası",
+      "why": "Mesh ön panel ve 650W güç kaynağıyla fiyat/performans dengesini en iyi tuturan modellerden.",
+      "id": "4rs0actc8y30n8f",
+      "slug": "eternal-power-pro-x-mesh-2-650w"
+    },
+    {
+      "name": "Be Quiet! Dark Base 700 Bilgisayar Kasası (BGW23)",
+      "why": "Sessizlik ve kalite arayanlar için pasif soğutma ve geniş iç hacmiyle ideal.",
+      "id": "48bj0sww7ydb05e",
+      "slug": "be-quiet-dark-base-700"
+    },
+    {
+      "name": "Hyte Y70 Bilgisayar Kasası (CS-HYTE-Y70-B)",
+      "why": "Modern tasarımı ve kolay kablolama sistemiyle hem oyunculara hem modifiye severlere hitap ediyor.",
+      "id": "0s89ee4mdixz8fa",
+      "slug": "hyte-y70"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kasa alırken güç kaynağı dahil mi olmalı?",
+      "a": "Dahil PSU'lu kasalar genelde orta segmentte iyi bir seçenek; ancak yüksek güç gereksinimi varsa ayrı PSU almak daha mantıklı."
+    },
+    {
+      "q": "Hangi kasa boyutunu seçmeliyim?",
+      "a": "ATX anakart kullanıyorsan orta kule (mid-tower) genelde yeterli; büyük soğutucu veya çoklu GPU için full-tower düşünebilirsin."
+    },
+    {
+      "q": "RGB fanlar önemli mi?",
+      "a": "Estetik tercih meselesi. Performans olarak RGB fanlar genelde aynı hava akışını sağlar; ancak sessizlik ve basınç değerlerine bakmak daha önemli."
+    },
+    {
+      "q": "Cam yan panel avantajlı mı?",
+      "a": "Görsellik için güzel, ancak temperli cam daha dayanıklıdır. Darbelere karşı akrilikten daha iyi korur, ama ağırlığı biraz artırır."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:26.759Z"
+}

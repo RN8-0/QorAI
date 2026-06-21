@@ -1,0 +1,71 @@
+{
+  "category": "smartphones",
+  "label": "Akıllı Telefon",
+  "title": "2026'nın En İyi Akıllı Telefonları: Hangi Model Sana Uygun?",
+  "lead": "Yeni bir telefon alırken seçenekler o kadar fazla ki karar vermek zor olabiliyor. İşte en iyi modelleri ve nelere dikkat etmen gerektiğini anlatan rehber.",
+  "sections": [
+    {
+      "h": "Yeni Bir Telefon Alırken Nelere Dikkat Etmeli?",
+      "body": "İlk olarak kullanım alışkanlıklarını belirle: oyun, fotoğraf, video ya da günlük kullanım. İşlemci ve RAM, performansı belirlerken depolama kapasitesi de önemli. Kamera kalitesi için sensör boyutu ve yazılım optimizasyonuna bak. Pil ömrü ve şarj hızı da günlük kullanımda büyük fark yaratır."
+    },
+    {
+      "h": "Amiral Gemileri: iPhone 17 Pro ve Samsung Galaxy S26 Ultra",
+      "body": "Bu yılın en güçlü telefonları Apple ve Samsung'dan geliyor. iPhone 17 Pro serisi, A19 çipi ve ProMotion ekranıyla üstün bir deneyim sunuyor. Samsung Galaxy S26 Ultra ise 200 MP kamerası ve S Pen desteğiyle yaratıcı kullanıcılar için ideal. Her iki seri de Qor AI skorunda 100/100 alarak zirveyi paylaşıyor."
+    },
+    {
+      "h": "Farklı İhtiyaçlar: Sony Xperia 1 VIII ve iPhone Air",
+      "body": "Sony Xperia 1 VIII, 4K OLED ekranı ve manuel kamera kontrolleriyle fotoğrafçılar için biçilmiş kaftan. iPhone Air ise ince ve hafif tasarımıyla günlük taşıma kolaylığı sağlıyor. Her ikisi de 96/100 Qor AI skoruyla amiral gemilerine yakın performans gösteriyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Apple iPhone 17 Pro Max (1 TB)",
+      "why": "En yüksek depolama ve pil ömrüyle sınırsız kullanım sunar.",
+      "id": "hgdv5rhrnjut55c",
+      "slug": "apple-iphone-17-pro-max-1tb"
+    },
+    {
+      "name": "Samsung Galaxy S26 Ultra (16 GB / 1 TB)",
+      "why": "Çoklu görev ve profesyonel fotoğrafçılık için en iyi seçenek.",
+      "id": "qbe5nt308olpeux",
+      "slug": "samsung-galaxy-s26-ultra-1tb"
+    },
+    {
+      "name": "Apple iPhone 17 Pro (512 GB)",
+      "why": "Mükemmel performans ve dengeli depolama ile çoğu kullanıcıya yeter.",
+      "id": "o9sqdbhecu166jg",
+      "slug": "apple-iphone-17-pro-512gb"
+    },
+    {
+      "name": "Sony Xperia 1 VIII",
+      "why": "Medya tüketimi ve yaratıcı çalışmalar için benzersiz ekran ve kamera.",
+      "id": "5w3xix1dam856h0",
+      "slug": "sony-xperia-1-viii"
+    },
+    {
+      "name": "Apple iPhone Air (512 GB)",
+      "why": "Hafif ve şık tasarımıyla günlük kullanımda konfor ön planda.",
+      "id": "xbzjzyk1ehbhilw",
+      "slug": "apple-iphone-air-512gb"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Hangi telefon daha iyi kamera kalitesine sahip?",
+      "a": "Kamera odaklıysan Samsung Galaxy S26 Ultra'nın 200 MP sensörü ve Sony Xperia 1 VIII'in profesyonel kontrolleri öne çıkar."
+    },
+    {
+      "q": "iPhone 17 Pro mu yoksa Pro Max mi almalıyım?",
+      "a": "Büyük ekran ve uzun pil ömrü istiyorsan Pro Max; tek elle kullanım ve taşınabilirlik için Pro yeterli."
+    },
+    {
+      "q": "Samsung Galaxy S26 Ultra'nın depolama seçenekleri arasında ne fark var?",
+      "a": "12 GB RAM/512 GB depolama ortalama kullanım için ideal; 16 GB RAM/1 TB ise yoğun çoklu görev ve büyük dosyalar için uygun."
+    },
+    {
+      "q": "iPhone Air amiral gemisi sayılır mı?",
+      "a": "Hayır, iPhone Air orta-üst segmentte yer alır; amiral gemisi performansı istiyorsan 17 Pro serisine yönelmelisin."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:08:58.991Z"
+}

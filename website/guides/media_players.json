@@ -1,0 +1,77 @@
+{
+  "category": "media_players",
+  "label": "Medya Oynatıcı",
+  "title": "En İyi Medya Oynatıcı 2026: Akıllı TV'nize Güç Katın",
+  "lead": "Medya oynatıcılar, eski televizyonları akıllı cihazlara dönüştürmenin en pratik yolu. İster 4K film keyfi, ister oyun akışı olsun, doğru modeli seçmek için performans, bağlantı ve yazılım desteğine odaklanmalısınız.",
+  "sections": [
+    {
+      "h": "Medya Oynatıcı Seçerken Nelere Dikkat Etmeli?",
+      "body": "İşlemci gücü ve RAM, akıcı bir deneyim için kritik. 4K HDR ve Dolby Vision desteği, görüntü kalitesini belirler. Depolama alanı ve microSD kart yuvası, uygulama ve medya depolamada esneklik sağlar. Ayrıca Wi-Fi 6 ve Bluetooth 5.0 gibi güncel bağlantı standartları, kesintisiz akış için önemli."
+    },
+    {
+      "h": "Fiyat/Performans Dengesi",
+      "body": "Orta segmentte RockTek G2 ve Thomson Streaming Box 240, uygun fiyatla sağlam özellikler sunuyor. Daha yüksek bütçeniz varsa NVIDIA Shield TV, oyun ve yapay zeka iyileştirmeleriyle öne çıkıyor. Karar verirken ihtiyacınız olan codec ve platform desteğini (Android TV, Google TV) göz önünde bulundurun."
+    },
+    {
+      "h": "Geleceğe Yönelik Yatırım",
+      "body": "Homatics Box R 4K Plus gibi modeller, düzenli güncellemelerle uzun ömürlü kullanım vadediyor. AV1 codec desteği, gelecekteki yayın platformları için hazırlıklı olmanızı sağlar. Ayrıca USB 3.0 ve Ethernet portu, harici depolama ve kablolu bağlantıda hız avantajı getiriyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Ugoos AM8 Pro Medya Oynatıcı (8 GB / 64 GB)",
+      "why": "En yüksek Qor AI skoruna sahip, amiral gemisi performansı ve bol depolama sunuyor.",
+      "id": "b315kxr0c6q16cp",
+      "slug": "ugoos-am8-pro"
+    },
+    {
+      "name": "NVIDIA Shield TV Medya Oynatıcı",
+      "why": "Oyun akışı ve AI upscaling ile medya deneyimini üst seviyeye taşıyan referans model.",
+      "id": "297jpyoty6wh6ww",
+      "slug": "nvidia-shield-tv"
+    },
+    {
+      "name": "Homatics Box R 4K Plus Medya Oynatıcı (4 GB / 32 GB)",
+      "why": "Düzenli yazılım güncellemeleri ve sağlam yapısıyla uzun vadeli kullanım için ideal.",
+      "id": "o67101mj1q34uwj",
+      "slug": "homatics-box-r-4k-plus"
+    },
+    {
+      "name": "RockTek G2 Medya Oynatıcı",
+      "why": "Fiyatına göre güçlü donanımı ve Android TV deneyimiyle dengeli bir seçenek.",
+      "id": "eprc8z6mf3m50kq",
+      "slug": "rocktek-g2"
+    },
+    {
+      "name": "Thomson Streaming Box 240 Medya Oynatıcı",
+      "why": "Uygun fiyatlı, temel ihtiyaçları karşılayan ve 4K HDR desteği sunan giriş seviyesi model.",
+      "id": "1uzul1mnzd6eld2",
+      "slug": "thomson-streaming-box-240"
+    },
+    {
+      "name": "Sunplus Tesla S6 Air Medya Oynatıcı (4 GB / 64 GB)",
+      "why": "Geniş depolama ve iyi bağlantı seçenekleriyle orta segmentte dikkat çekiyor.",
+      "id": "2nlynooihv21qp8",
+      "slug": "sunplus-tesla-s6-air"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Medya oynatıcı ile akıllı TV arasındaki fark nedir?",
+      "a": "Medya oynatıcı, akıllı olmayan TV'lere akıllı özellikler kazandırır. Ayrıca mevcut akıllı TV'nizden daha hızlı işlemci ve daha fazla uygulama desteği sunabilir."
+    },
+    {
+      "q": "4K medya oynatıcı alırken HDR desteği önemli mi?",
+      "a": "Evet, HDR10, Dolby Vision gibi formatlar daha canlı renkler ve kontrast sağlar. İzlediğiniz içeriklerin çoğu HDR destekliyorsa, bu özellik önemli."
+    },
+    {
+      "q": "Medya oynatıcılar oyun oynamak için uygun mu?",
+      "a": "NVIDIA Shield TV gibi modeller, GeForce Now gibi bulut oyun servisleri için optimize edilmiştir. Ancak yüksek grafikli oyunlar için oyun konsolu veya PC daha iyidir."
+    },
+    {
+      "q": "Hangi medya oynatıcı en iyi yazılım desteğine sahip?",
+      "a": "NVIDIA Shield TV ve Homatics Box R 4K Plus, düzenli güncellemeler ve geniş uygulama desteğiyle öne çıkar. Android TV işletim sistemi, Google Play Store erişimi sunar."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:00.340Z"
+}

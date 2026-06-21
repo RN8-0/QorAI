@@ -1,0 +1,75 @@
+{
+  "category": "laptop_coolers",
+  "label": "Laptop Soğutucu",
+  "title": "En İyi Laptop Soğutucu Modelleri 2026",
+  "lead": "Laptop'ınızın aşırı ısınması hem performansı düşürür hem de donanım ömrünü kısaltır. İyi bir soğutucu, bilgisayarınızın serin kalmasını sağlayarak oyun ve iş deneyiminizi iyileştirir.",
+  "sections": [
+    {
+      "h": "Neden Laptop Soğutucu Almalısınız?",
+      "body": "Yoğun işlem gücü gerektiren uygulamalar veya oyunlar sırasında laptoplar hızla ısınır. Bu ısı, işlemcinin kendini korumak için frekans düşürmesine (throttling) yol açar. Soğutucu, havayı doğrudan alt havalandırmalara yönlendirerek sıcaklıkları 5-15°C düşürebilir."
+    },
+    {
+      "h": "Nelere Dikkat Etmelisiniz?",
+      "body": "Soğutucunun fan boyutu ve sayısı kadar, hava akış yönü de önemlidir. Ayrıca laptop boyutunuza uygun bir model seçmeli, yüksekliğin ergonomi için ayarlanabilir olmasına dikkat etmelisiniz. USB bağlantı noktası sayısı da ekstra cihazlar için kullanışlıdır."
+    },
+    {
+      "h": "Hangi Marka ve Modeller Öne Çıkıyor?",
+      "body": "Dark, Xigmatek, Vertux ve Platoon gibi markalar, yüksek hava akışı ve sessiz çalışma sunan modelleriyle dikkat çekiyor. Özellikle 120mm'lik büyük fanlar daha düşük devirde daha fazla hava taşıyarak sessizliği korur."
+    },
+    {
+      "h": "Fiyat/Performans Dengesi",
+      "body": "Uygun fiyatlı modeller genellikle tek veya iki küçük fan ile gelirken, orta segmentte dört fanlı ve metal gövdeli seçenekler bulunur. Bu modeller hem soğutma hem de dayanıklılık açısından idealdir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Dark Luna DKACNBLNS Laptop Soğutucu",
+      "why": "Uygun fiyatıyla geniş fan alanı ve sessiz çalışma sunar, çoğu laptop boyutuna uyar.",
+      "id": "u9w254uvtjku3fd",
+      "slug": "dark-luna-dkacnblns"
+    },
+    {
+      "name": "Xigmatek D2011 Laptop Soğutucu",
+      "why": "İki büyük fanlı yapısı sayesinde yüksek hava akışı sağlar ve RGB aydınlatma ile oyunculara hitap eder.",
+      "id": "4sakvbn32lv39lq",
+      "slug": "xigmatek-d2011"
+    },
+    {
+      "name": "Vertux Glare Laptop Soğutucu",
+      "why": "Şık tasarımı ve ayarlanabilir fan hızlarıyla hem performans hem de estetik sunar.",
+      "id": "d6jep2wbt7c6k9o",
+      "slug": "vertux-glare"
+    },
+    {
+      "name": "Platoon -9951 Laptop Soğutucu",
+      "why": "Güçlü fanları ve metal yüzeyi ile ağır yük altında bile etkili soğutma vaat eder.",
+      "id": "t5r84s9iujnjkmx",
+      "slug": "platoon-pl-9951"
+    },
+    {
+      "name": "Promate Arctic Laptop Soğutucu",
+      "why": "İnce ve taşınabilir yapısı sayesinde sık seyahat edenler için idealdir.",
+      "id": "le8lvyv8lz0xeel",
+      "slug": "promate-arctic"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Laptop soğutucu gerçekten işe yarıyor mu?",
+      "a": "Evet, özellikle yoğun işlemci/ekran kartı kullanımında sıcaklıkları 5-15°C düşürerek performans kaybını engelleyebilir."
+    },
+    {
+      "q": "Hangi boyutta soğutucu almalıyım?",
+      "a": "Laptop boyutunuza uygun olanı seçin; çoğu model 15-17 inç cihazları destekler, ancak küçük modeller de mevcuttur."
+    },
+    {
+      "q": "Fan sayısı ne kadar önemli?",
+      "a": "Genelde 2-4 fan yeterlidir; daha fazla fan daha yüksek hava akışı demek değildir, fan çapı da önemlidir. Büyük fanlar daha sessizdir."
+    },
+    {
+      "q": "Soğutucu laptop pilini tüketir mi?",
+      "a": "USB üzerinden çalıştığı için pil tüketir, ancak düşük güçlüdür. Masaüstü kullanımda adaptöre takılıyken sorun olmaz."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:12.771Z"
+}

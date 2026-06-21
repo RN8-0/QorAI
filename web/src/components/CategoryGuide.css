@@ -1,0 +1,49 @@
+.cguide {
+  margin: 32px auto 8px;
+  padding: 0 16px;
+  max-width: 980px;
+}
+.cguide-inner {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 18px;
+  padding: 28px 26px;
+}
+.cguide-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  line-height: 1.25;
+}
+.cguide-lead {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-soft, #475569);
+  margin: 0 0 18px;
+}
+.cguide-sec { margin: 16px 0; }
+.cguide-sec h3,
+.cguide-picks h3,
+.cguide-faq h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 18px 0 8px;
+}
+.cguide-sec p { line-height: 1.7; color: var(--text, #334155); margin: 0; }
+.cguide-picks ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.9; }
+.cguide-picks a { color: var(--brand, #2563eb); font-weight: 600; text-decoration: none; }
+.cguide-picks a:hover { text-decoration: underline; }
+.cguide-why { color: var(--text-soft, #64748b); }
+.cguide-faq details {
+  border-top: 1px solid var(--border, #e2e8f0);
+  padding: 12px 0;
+}
+.cguide-faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+.cguide-faq summary::-webkit-details-marker { display: none; }
+.cguide-faq summary::before { content: '+ '; color: var(--brand, #2563eb); font-weight: 700; }
+.cguide-faq details[open] summary::before { content: '– '; }
+.cguide-faq p { line-height: 1.7; color: var(--text-soft, #475569); margin: 8px 0 0; }

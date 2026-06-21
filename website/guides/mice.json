@@ -1,0 +1,71 @@
+{
+  "category": "mice",
+  "label": "Mouse",
+  "title": "2026'nın En İyi Mouse Modelleri: Hangi Fareyi Seçmelisiniz?",
+  "lead": "İster oyun ister ofis işleri için olsun, doğru fareyi seçmek verimliliğinizi ve konforunuzu doğrudan etkiler. Bu rehberde, bütçenize ve ihtiyaçlarınıza uygun en iyi seçenekleri inceliyoruz.",
+  "sections": [
+    {
+      "h": "Fare Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle kullanım amacınızı belirleyin: oyun, ofis veya günlük kullanım. Ergonomi ve tutuş stili (palmiye, pençe, parmak ucu) önemli. DPI (çözünürlük) oyuncular için kritikken, ofis kullanıcıları için sessiz tıklama daha önemli olabilir. Kablolu/kablosuz bağlantı ve pil ömrü de göz ardı edilmemeli."
+    },
+    {
+      "h": "Oyun ve Ofis için En İyi Seçenekler",
+      "body": "Oyuncular için yüksek DPI ve hassas sensörler ön planda. Örneğin, Onikuma CW906 yüksek performansıyla dikkat çekiyor. Ofis kullanıcıları içinse Kensington Pro Fit Mouse, ergonomik yapısıyla uzun çalışma saatlerinde konfor sağlıyor. Trust modelleri ise sessiz tıklama ve uygun fiyat dengesi sunuyor."
+    },
+    {
+      "h": "Fiyat/Performans Canavarları",
+      "body": "Everest, farklı modelleriyle geniş bir yelpazede kullanıcıları hedefliyor. SM-161 gibi uygun fiyatlı modeller temel ihtiyaçları karşılarken, CM-890G oyuncular için makro tuşları ve RGB aydınlatma sunuyor. Warp modelleri ise sağlam yapılarıyla öne çıkıyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Kensington Pro Fit Mouse (K72405EU)",
+      "why": "Ergonomik tasarımı ve yüksek kalite standartlarıyla ofis kullanımı için en iyi seçim.",
+      "id": "0blp3739p3f9f7k",
+      "slug": "kensington-pro-fit"
+    },
+    {
+      "name": "Onikuma CW906 Mouse",
+      "why": "Yüksek DPI ve hassas sensörüyle oyunlarda üstün performans vadediyor.",
+      "id": "3e2vgddmcdb24t0",
+      "slug": "onikuma-cw906"
+    },
+    {
+      "name": "Everest SM-161 Mouse",
+      "why": "Giriş seviyesi fiyatıyla temel ihtiyaçları karşılayan güvenilir bir model.",
+      "id": "2734y8p3iyvm97e",
+      "slug": "everest-sm-161"
+    },
+    {
+      "name": "Trust Sula Mouse",
+      "why": "Sessiz tıklama ve şık tasarımıyla ofis ve ev kullanımına uygun.",
+      "id": "1szuhi7gzvf8x3n",
+      "slug": "trust-sula"
+    },
+    {
+      "name": "Warp WRP-S12800 Mouse",
+      "why": "Sağlam yapısı ve uygun fiyatıyla günlük kullanım için ideal.",
+      "id": "58f2vued9jxsicu",
+      "slug": "warp-wrp-s12800"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kablolu mu yoksa kablosuz mu fare tercih etmeliyim?",
+      "a": "Kablolu fareler daha düşük gecikme ve pil derdi olmaması sunar, oyuncular için idealdir. Kablosuz fareler ise daha düzenli bir masa ve taşınabilirlik sağlar."
+    },
+    {
+      "q": "DPI nedir ve kaç olmalı?",
+      "a": "DPI, farenin hassasiyetini belirler. Ofis kullanımı için 800-1600 DPI yeterliyken, oyuncular 3200 DPI ve üzerini tercih edebilir."
+    },
+    {
+      "q": "Ergonomi neden önemli?",
+      "a": "Yanlış tutuş uzun vadede el, bilek ve kol ağrılarına yol açabilir. Fare seçerken el büyüklüğünüze uygun ve rahat bir tutuş sunan modelleri tercih edin."
+    },
+    {
+      "q": "Sessiz tıklama farkı nedir?",
+      "a": "Sessiz tıklamalı fareler, ofis ortamında veya gece kullanımda rahatsızlık vermez. Trust modelleri bu konuda öne çıkar."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:24.840Z"
+}

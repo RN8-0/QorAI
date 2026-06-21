@@ -1,0 +1,71 @@
+{
+  "category": "hardware_wallets",
+  "label": "Soğuk Cüzdan",
+  "title": "Kripto Varlıklarınız İçin En İyi Soğuk Cüzdan Rehberi 2026",
+  "lead": "Kripto paranızı çevrimiçi tehditlerden korumak için soğuk cüzdan en güvenli yöntemdir. Bu rehberde, donanım cüzdanı seçerken dikkat etmeniz gerekenleri ve piyasanın öne çıkan modellerini inceliyoruz.",
+  "sections": [
+    {
+      "h": "Soğuk Cüzdan Nedir ve Neden Kullanmalısınız?",
+      "body": "Soğuk cüzdan, özel anahtarlarınızı internet bağlantısı olmayan bir cihazda saklayarak siber saldırılara karşı koruma sağlar. Sıcak cüzdanlara göre çok daha güvenlidir, özellikle büyük miktarlarda kripto tutuyorsanız soğuk cüzdan olmazsa olmazdır."
+    },
+    {
+      "h": "Soğuk Cüzdan Seçerken Nelere Dikkat Etmelisiniz?",
+      "body": "Öncelikle desteklenen kripto para sayısı ve blok zinciri uyumluluğu kontrol edilmeli. Güvenlik açısından açık kaynak kodlu ve PIN korumalı modeller tercih edilmeli. Ayrıca kullanıcı arayüzü, mobil uyumluluk ve yedekleme kolaylığı da seçimde belirleyicidir."
+    },
+    {
+      "h": "Fiyat-Performans Dengesi: Hangi Model Ne Sunuyor?",
+      "body": "Trezor One ve Ledger Nano S Plus giriş seviyesinde uygun fiyatlı ve güvenilir seçeneklerdir. Daha fazla özellik isteyenler için Trezor Model T ve SecuX Nifty dokunmatik ekran ve geniş coin desteği sunar. Biyometrik güvenlik arayanlar D'Cent Biometric Wallet'ı değerlendirebilir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Trezor Safe 3 Soğuk Cüzdan",
+      "why": "En yüksek güvenlik puanına sahip, kullanıcı dostu arayüzü ve geniş coin desteğiyle öne çıkıyor.",
+      "id": "tj301savseiu64o",
+      "slug": "trezor-safe-3"
+    },
+    {
+      "name": "Ledger Nano S Plus Soğuk Cüzdan",
+      "why": "Uygun fiyatı ve sağlam güvenlik altyapısıyla yeni başlayanlar için ideal.",
+      "id": "7qgpkh2818iut43",
+      "slug": "ledger-nano-s-plus"
+    },
+    {
+      "name": "Trezor Model T Soğuk Cüzdan",
+      "why": "Dokunmatik ekranı ve gelişmiş güvenlik özellikleriyle profesyonel kullanıcıların tercihi.",
+      "id": "oosi21znk5lziar",
+      "slug": "trezor-model-t"
+    },
+    {
+      "name": "SecuX W10 Soğuk Cüzdan",
+      "why": "Büyük ekranı ve kolay kurulumuyla dikkat çeken, yüksek puanlı bir model.",
+      "id": "0w5i0lrfjz2xf5k",
+      "slug": "secux-w10"
+    },
+    {
+      "name": "SafePal S1 Soğuk Cüzdan",
+      "why": "Uygun fiyatlı ve taşınabilir yapısıyla mobil kullanıcılar için pratik bir çözüm.",
+      "id": "d8eg3tg98o1ulkz",
+      "slug": "safepal-s1"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Soğuk cüzdan ile sıcak cüzdan arasındaki fark nedir?",
+      "a": "Soğuk cüzdan özel anahtarları çevrimdışı saklarken, sıcak cüzdan internete bağlıdır. Soğuk cüzdan daha güvenlidir ancak işlem yapmak için bağlantı gerektirir."
+    },
+    {
+      "q": "Soğuk cüzdanımı kaybedersem ne olur?",
+      "a": "Kurtarma ifadeniz (seed phrase) varsa cüzdanınızı yeni bir cihazda kurtarabilirsiniz. Bu yüzden kurtarma ifadesini güvenli bir yerde saklayın."
+    },
+    {
+      "q": "Hangi kripto paraları soğuk cüzdanda saklayabilirim?",
+      "a": "Çoğu soğuk cüzdan Bitcoin, Ethereum ve birçok ERC-20 tokenini destekler. Satın almadan önce desteklenen coin listesini kontrol edin."
+    },
+    {
+      "q": "Soğuk cüzdan alırken nelere dikkat etmeliyim?",
+      "a": "Cihazın orijinal olduğundan emin olmak için resmi distribütörden satın alın. Ayrıca açık kaynak yazılım ve güçlü PIN koruması gibi güvenlik özelliklerini kontrol edin."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:49.543Z"
+}

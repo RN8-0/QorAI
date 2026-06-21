@@ -1,0 +1,77 @@
+{
+  "category": "smartwatches",
+  "label": "Akıllı Saat",
+  "title": "En İyi Akıllı Saatler 2026: Hangi Model Size Uygun?",
+  "lead": "Akıllı saat seçimi, spor takibinden günlük bildirimlere kadar birçok ihtiyaca göre değişiyor. Bu rehberde, Apple ve Samsung'un en yeni modellerini karşılaştırarak ihtiyacınıza en uygun saati bulmanıza yardımcı oluyoruz.",
+  "sections": [
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Bir akıllı saat seçerken öncelikle uyumluluk kritik: Apple Watch yalnızca iPhone ile çalışırken, Samsung Galaxy Watch hem Android hem iOS'ta sınırlı özellikler sunuyor. Pil ömrü, spor modları, sensörler (kan oksijen, EKG) ve ekran kalitesi de belirleyici faktörler. Ayrıca, kullanım amacınıza göre GPS, LTE gibi bağlantı seçeneklerini değerlendirin."
+    },
+    {
+      "h": "Apple mı Samsung mu?",
+      "body": "Apple Watch Ultra 3, dayanıklılık ve gelişmiş spor özellikleriyle öne çıkarken, Series 11 her gün kullanım için dengeli bir seçenek. Samsung Galaxy Watch8 ise işletim sistemi esnekliği ve uygun fiyatıyla dikkat çekiyor. Watch8 Classic, fiziksel bezeliyle kullanıcılara farklı bir deneyim sunuyor."
+    },
+    {
+      "h": "Bütçe Dostu Alternatifler",
+      "body": "Apple Watch SE 3, temel özellikleri kaçırmak istemeyenler için ideal. Samsung Galaxy Watch8'in 40mm ve 44mm versiyonları, farklı bilek boyutlarına hitap ederken benzer performansı daha uygun fiyata sunuyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Apple Watch Ultra 3",
+      "why": "En üst düzey dayanıklılık, uzun pil ömrü ve profesyonel spor takibi ile en iyi performansı sunuyor.",
+      "id": "s2a3vqn9en3ij1t",
+      "slug": "apple-watch-ultra-3-v211261"
+    },
+    {
+      "name": "Apple Watch Ultra 3",
+      "why": "Her gün kullanım için ideal, güçlü sağlık sensörleri ve şık tasarımıyla dengeli bir seçenek.",
+      "id": "s2a3vqn9en3ij1t",
+      "slug": "apple-watch-ultra-3-v211261"
+    },
+    {
+      "name": "Apple Watch Ultra 3",
+      "why": "Temel ihtiyaçları karşılayan, uygun fiyatlı ve geniş kullanıcı kitlesine hitap eden model.",
+      "id": "s2a3vqn9en3ij1t",
+      "slug": "apple-watch-ultra-3-v211261"
+    },
+    {
+      "name": "Samsung Galaxy Watch8",
+      "why": "Android kullanıcıları için en iyi seçenek; geniş özellik seti ve uygun fiyatıyla öne çıkıyor.",
+      "id": "d30g58mb1yn3539",
+      "slug": "samsung-galaxy-watch8-v204983"
+    },
+    {
+      "name": "Samsung Galaxy Watch8",
+      "why": "Klasik tasarımı ve LTE desteği ile hem şık hem bağımsız kullanım sunuyor.",
+      "id": "d30g58mb1yn3539",
+      "slug": "samsung-galaxy-watch8-v204983"
+    },
+    {
+      "name": "Samsung Galaxy Watch 8 44mm Smartwatch (SM-L330NZSATUR)",
+      "why": "Büyük ekran ve uzun pil ömrü arayanlar için ideal, orta segmentte güçlü bir alternatif.",
+      "id": "84chmq6kad75j7u",
+      "slug": "samsung-galaxy-watch-8-44mm"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Apple Watch sadece iPhone ile mi çalışır?",
+      "a": "Evet, Apple Watch yalnızca iPhone ile uyumludur. Android telefonlarla kullanılamaz."
+    },
+    {
+      "q": "Samsung Galaxy Watch iPhone ile kullanılabilir mi?",
+      "a": "Evet, ancak özellikler sınırlıdır. Tam uyumluluk için Samsung Galaxy telefon önerilir."
+    },
+    {
+      "q": "Hangi model spor yapmak için daha uygun?",
+      "a": "Apple Watch Ultra 3 ve Samsung Galaxy Watch8 Classic, gelişmiş spor modları ve GPS ile en iyi seçeneklerdir."
+    },
+    {
+      "q": "Pil ömrü ne kadar?",
+      "a": "Apple Watch Ultra 3'te 36 saate kadar, Series 11'de 18 saat, Samsung Galaxy Watch8'de ise 40 saate kadar pil ömrü alabilirsiniz."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:37.730Z"
+}

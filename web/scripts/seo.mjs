@@ -133,7 +133,26 @@ function productBody(d, label, categoryUrl, related = []) {
 // every curated product in the category. This is the spine of internal linking
 // (home → category → product, all within 3 clicks) and turns category pages from
 // head-only shells into content-rich hubs Google can crawl without running JS.
-function categoryBody(label, categoryUrl, items) {
+// Renders the AI buying guide as static HTML (mirrors CategoryGuide.jsx) so
+// non-JS crawlers + first paint see it too. The SPA re-renders the same guide.
+function guideHtml(guide) {
+  if (!guide || !guide.lead) return '';
+  const secs = (guide.sections || []).map((s) =>
+    `<h3 style="font-size:18px;margin:18px 0 6px">${esc(s.h)}</h3><p style="line-height:1.7;color:#334155">${esc(s.body)}</p>`).join('');
+  const picks = (guide.picks || []).filter((p) => p && p.id && p.name).map((p) =>
+    `<li style="margin:6px 0"><a href="/product/${esc(p.slug)}-${esc(p.id)}" style="color:#2563eb;font-weight:600">${esc(p.name)}</a>${p.why ? ` <span style="color:#64748b">— ${esc(p.why)}</span>` : ''}</li>`).join('');
+  const faq = (guide.faq || []).map((f) =>
+    `<h4 style="font-size:15px;margin:14px 0 4px">${esc(f.q)}</h4><p style="line-height:1.7;color:#475569">${esc(f.a)}</p>`).join('');
+  return `<section style="margin-top:28px;border-top:1px solid #e2e8f0;padding-top:20px">`
+    + `<h2 style="font-size:24px;font-weight:800;margin:0 0 8px">${esc(guide.title)}</h2>`
+    + `<p style="line-height:1.7;color:#475569;margin:0 0 14px">${esc(guide.lead)}</p>`
+    + secs
+    + (picks ? `<h3 style="font-size:18px;margin:18px 0 6px">Öne çıkan ${esc(guide.label)} modelleri</h3><ul style="line-height:1.9">${picks}</ul>` : '')
+    + (faq ? `<h3 style="font-size:18px;margin:18px 0 6px">Sık sorulan sorular</h3>${faq}` : '')
+    + `</section>`;
+}
+
+function categoryBody(label, categoryUrl, items, guide) {
   const lbl = esc(label);
   const links = items
     .filter((d) => d && d.name && d.id)
@@ -148,7 +167,31 @@ function categoryBody(label, categoryUrl, items) {
     + `<h1 style="font-size:28px;margin:12px 0 6px">${lbl} Karşılaştırma</h1>`
     + `<p style="line-height:1.7;color:#334155;max-width:680px">En iyi ${lbl.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
+    + guideHtml(guide)
     + `</main>`;
+}
+
+// Load all generated buying guides keyed by category.
+function loadGuides() {
+  const dir = join(here, '..', 'public', 'guides');
+  const map = new Map();
+  if (!existsSync(dir)) return map;
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.json'))) {
+    try { const g = JSON.parse(readFileSync(join(dir, f), 'utf8')); if (g && g.category) map.set(g.category, g); } catch (_) {}
+  }
+  return map;
+}
+
+// FAQPage JSON-LD from a guide's FAQ — eligible for the FAQ rich result.
+function guideFaqLd(guide, url) {
+  if (!guide || !Array.isArray(guide.faq) || !guide.faq.length) return null;
+  return {
+    '@type': 'FAQPage', '@id': `${url}#faq`,
+    mainEntity: guide.faq.map((f) => ({
+      '@type': 'Question', name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  };
 }
 
 // ── comparison ("X vs Y") pages ─────────────────────────────────
@@ -553,6 +596,8 @@ async function main() {
   //    curated per-product prerender below (step 2c). We bake a bounded,
   //    de-duplicated subset of top products (not all 106k), so the sitemap and
   //    the prerendered HTML stay in lock-step and Google gets real pages.
+  const guides = loadGuides();
+  if (guides.size) console.log(`[seo] loaded ${guides.size} buying guides`);
   let products = [];
   try {
     products = await fetchAllProducts();
@@ -618,6 +663,8 @@ async function main() {
     if (!path) continue;
     const label = categoryLabel(cat, 'tr');
     const url = `${SITE}${path}`;
+    const guide = guides.get(cat);
+    const faqLd = guideFaqLd(guide, url);
     const top = picked.slice(0, 24);
     const heroImg = String(top[0]?.imageUrl || '');
     const itemList = {
@@ -646,8 +693,8 @@ async function main() {
       url,
       image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
       type: 'website',
-      jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb] },
-    }, categoryBody(label, url, picked)));
+      jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
+    }, categoryBody(label, url, picked, guide)));
     categoryShells += 1;
   }
   console.log(`[seo] wrote ${categoryShells} per-category landing shells (with internal product links)`);

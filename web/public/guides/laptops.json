@@ -1,0 +1,71 @@
+{
+  "category": "laptops",
+  "label": "Laptop",
+  "title": "En İyi Laptop Modelleri 2026: Performans ve Kullanım Rehberi",
+  "lead": "Yeni bir laptop alırken işlemci gücünden ekran kalitesine kadar pek çok detay kafa karıştırabilir. Bu rehberde, ihtiyacınıza en uygun seçimi yapmanız için öne çıkan modelleri ve dikkat etmeniz gereken noktaları derledik.",
+  "sections": [
+    {
+      "h": "Laptop Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle kullanım amacınızı netleştirin: Oyun, video düzenleme, yazılım geliştirme veya günlük ofis işleri. İşlemci ve grafik kartı performansı, RAM kapasitesi (16 GB ve üzeri önerilir) ve depolama türü (NVMe SSD hız için kritik) öncelikleriniz arasında olmalı. Ayrıca ekran boyutu, çözünürlük ve pil ömrü de taşınabilirlik açısından belirleyicidir."
+    },
+    {
+      "h": "Apple M5 Serisi Neden Öne Çıkıyor?",
+      "body": "Apple’ın M5 Pro ve M5 Max çipleri, özellikle yaratıcı profesyoneller için olağanüstü bir performans sunuyor. 18 çekirdekli CPU ve 32/40 çekirdekli GPU seçenekleri, video render ve 3D modelleme gibi ağır iş yüklerinde rakipsiz. Ayrıca 16.2 inç Liquid Retina XDR ekran ve 22 saate varan pil ömrüyle MacBook Pro modelleri, hem güç hem de taşınabilirlik arayanlar için ideal."
+    },
+    {
+      "h": "Oyun ve Yüksek Performans İçin Windows Laptoplar",
+      "body": "Asus ROG Strix Scar 18 ve MSI Titan 18 HX AI gibi modeller, en yeni Intel/AMD işlemciler ve RTX 50 serisi ekran kartlarıyla donatılmış. 18 inç 4K 144Hz ekranlar, mekanik klavyeler ve gelişmiş soğutma sistemleri sayesinde oyun performansı ve sürükleyicilik açısından üst düzey bir deneyim vadediyor. Fiyat/performans dengesi arayanlar için MSI Raider 18 HX AI da güçlü bir alternatif."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Apple MacBook Pro 16.2\" M5 Pro (18CPU/20GPU) Laptop (MGE64TU/A)",
+      "why": "En üst düzey işlemci ve grafik performansıyla profesyonel kullanıcılar için rakipsiz.",
+      "id": "um8wu2b66z22hsh",
+      "slug": "apple-macbook-pro-16-2-m5-pro-18cpu-20gpu-mge64tu-a"
+    },
+    {
+      "name": "Apple MacBook Pro 16.2\" M5 Pro (18CPU/20GPU) Laptop (MGE64TU/A)",
+      "why": "Daha taşınabilir boyutta aynı M5 Max gücünü sunar, yaratıcı iş akışları için ideal.",
+      "id": "um8wu2b66z22hsh",
+      "slug": "apple-macbook-pro-16-2-m5-pro-18cpu-20gpu-mge64tu-a"
+    },
+    {
+      "name": "Asus ROG Strix Scar 18 G835LX-SA152W Laptop",
+      "why": "Oyun severler için en güçlü Windows laptop: 18 inç ekran, RTX 50 serisi ve üstün soğutma.",
+      "id": "5spjgkzwgg4yxcx",
+      "slug": "asus-rog-strix-scar-18-g835lx-sa152w"
+    },
+    {
+      "name": "MSI Titan 18 HX AI A2XWJG-620 Laptop",
+      "why": "Yapay zeka destekli performans optimizasyonu ve devasa ekranıyla ağır iş yüklerinde fark yaratır.",
+      "id": "wv2ipunxfxd3nsw",
+      "slug": "msi-titan-18-hx-ai-a2xwjg-620tr"
+    },
+    {
+      "name": "Apple MacBook Pro 16.2\" M5 Pro (18CPU/20GPU) Laptop (MGE64TU/A)",
+      "why": "M5 Pro, çoğu kullanıcı için fazlasıyla yeterli performansı daha erişilebilir fiyatla sunar.",
+      "id": "um8wu2b66z22hsh",
+      "slug": "apple-macbook-pro-16-2-m5-pro-18cpu-20gpu-mge64tu-a"
+    }
+  ],
+  "faq": [
+    {
+      "q": "M5 Pro mu yoksa M5 Max mi almalıyım?",
+      "a": "M5 Pro, video düzenleme ve yazılım geliştirme gibi işler için yeterli. M5 Max ise 3D render, AI eğitimi gibi çok çekirdekli iş yüklerinde belirgin fark yaratır."
+    },
+    {
+      "q": "Oyun için MacBook Pro alınır mı?",
+      "a": "MacBook Pro, oyun için optimize edilmiş değil. Windows oyunları için Asus ROG veya MSI Titan gibi gaming laptoplar daha uygun."
+    },
+    {
+      "q": "Ne kadar RAM yeterli olur?",
+      "a": "Günlük kullanım için 16 GB, profesyonel işler ve oyun için 32 GB veya üzeri önerilir."
+    },
+    {
+      "q": "Taşınabilirlik için 14 inç mi 16 inç mi?",
+      "a": "14 inç modeller daha hafif ve çanta dostu, 16 inç modeller ise daha büyük ekran ve soğutma avantajı sunar. Sık seyahat ediyorsanız 14 inç, masaüstü yerine kullanacaksanız 16 inç tercih edin."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:08:48.364Z"
+}

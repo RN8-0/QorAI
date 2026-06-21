@@ -1,0 +1,77 @@
+{
+  "category": "projectors",
+  "label": "Projeksiyon",
+  "title": "Projeksiyon Satın Alma Rehberi 2026",
+  "lead": "Ev sineması veya ofis sunumlarınız için doğru projeksiyonu seçmek, görüntü kalitesi ve kullanım kolaylığı açısından kritik. Bu rehberde, DLP ve LCD teknolojileri arasındaki farklardan parlaklık ve çözünürlük gibi temel özelliklere kadar bilmeniz gereken her şeyi bulacaksınız.",
+  "sections": [
+    {
+      "h": "DLP mi LCD mi?",
+      "body": "DLP projeksiyonlar genellikle daha yüksek kontrast oranı ve siyah seviyeleri sunarken, LCD modeller daha canlı renkler ve daha yüksek lümen değerleriyle öne çıkar. Ev sineması için DLP tercih edilirken, ofis kullanımında LCD daha avantajlı olabilir."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Parlaklık (ANSI lümen), çözünürlük (Full HD, 4K), kontrast oranı, lamba ömrü, bağlantı seçenekleri ve kısa mesafe atış özelliği gibi faktörleri göz önünde bulundurun. Ayrıca, mekânın ışık koşulları ve perde boyutu da seçiminizi etkiler."
+    },
+    {
+      "h": "Kısa Mesafe vs Uzun Mesafe",
+      "body": "Dar alanlarda kısa mesafe atışlı projeksiyonlar (örneğin Optoma 4K400STx) büyük görüntü elde etmek için idealdir. Uzun mesafe modeller ise daha fazla esneklik sunar ancak daha geniş bir oda gerektirir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Canon LX-MH502Z DLP Projeksiyon",
+      "why": "Tam 100 puanla en yüksek performansı sunan, profesyonel kullanım için ideal bir model.",
+      "id": "fxae80olbvlsb4o",
+      "slug": "canon-lx-mh502z"
+    },
+    {
+      "name": "Epson LS500 LCD Projeksiyon (V11H922540)",
+      "why": "LCD teknolojisiyle canlı renkler ve uzun ömürlü lazer ışık kaynağı.",
+      "id": "vu7zo3m75jjj2es",
+      "slug": "epson-ls500"
+    },
+    {
+      "name": "BenQ LK952 DLP Projeksiyon",
+      "why": "Yüksek parlaklık ve 4K çözünürlükle hem ev sineması hem de iş toplantıları için mükemmel.",
+      "id": "pgshl24ze8025g7",
+      "slug": "benq-lk952"
+    },
+    {
+      "name": "Optoma UHZ66 DLP Projeksiyon",
+      "why": "Lazer ışık kaynağı sayesinde düşük bakım maliyeti ve etkileyici görüntü kalitesi.",
+      "id": "svd20cz4f4s6ubx",
+      "slug": "optoma-uhz66"
+    },
+    {
+      "name": "Acer X1827 DLP Projeksiyon (MR.JWK11.00Q)",
+      "why": "Uygun fiyatlı giriş seviyesi DLP modeli, temel ihtiyaçlar için yeterli performans.",
+      "id": "fm5o5bjt5qb8nf8",
+      "slug": "acer-x1827"
+    },
+    {
+      "name": "Epson EH-LS800 LCD Projeksiyon",
+      "why": "Ultra kısa mesafe atışıyla büyük ekran keyfi, lazer kaynaklı yüksek parlaklık.",
+      "id": "to1hafzll6ztbri",
+      "slug": "epson-eh-ls800"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Projeksiyon alırken lümen değeri ne kadar önemli?",
+      "a": "Ortam ışığı fazlaysa yüksek lümen (3000+), loş ortamda ise daha düşük lümen yeterlidir. Ev sineması için 2000-3000 lümen idealdir."
+    },
+    {
+      "q": "4K projeksiyon gerçek 4K mı?",
+      "a": "Bazı modeller piksel kaydırma ile 4K görüntü sunarken, gerçek 4K çip kullananlar daha pahalıdır. Gerçek 4K istiyorsanız, ürün açıklamasında 'native 4K' ifadesini arayın."
+    },
+    {
+      "q": "DLP ve LCD arasında hangisi daha dayanıklı?",
+      "a": "DLP projeksiyonlar renk çarkı kullandığı için zamanla renk bozulması yaşanabilir, LCD'lerde ise panel ömrü daha uzundur. Ancak her ikisi de düzenli bakımla yıllarca kullanılabilir."
+    },
+    {
+      "q": "Kısa mesafe projeksiyon için özel perde gerekir mi?",
+      "a": "Genellikle gerekmez, ancak ultra kısa mesafe modellerde ALR (ortam ışığını reddeden) perdeler görüntü kalitesini artırır."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:10:06.975Z"
+}

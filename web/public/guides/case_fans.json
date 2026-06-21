@@ -1,0 +1,77 @@
+{
+  "category": "case_fans",
+  "label": "Kasa Fanı",
+  "title": "Kasa Fanı Alırken Nelere Dikkat Etmeli? 2026 Rehberi",
+  "lead": "Kasa fanı seçimi, bilgisayarınızın ömrünü ve performansını doğrudan etkiler. Doğru fanlarla hem sessiz bir sistem kurabilir hem de bileşenlerinizi serin tutabilirsiniz.",
+  "sections": [
+    {
+      "h": "Kasa Fanı Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle fan boyutuna karar verin; 120mm fanlar yaygın ve dengelidir, 80mm ise dar kasalar için uygundur. Hava akışı (CFM) ve statik basınç değerlerine bakın; yüksek CFM genel soğutma, yüksek statik basınç ise radyatör veya dar alanlar için idealdir. Gürültü seviyesi (dB) de önemli; 25dB altı sessiz kabul edilir. Son olarak, fanın bağlantı tipi (3-pin, 4-pin PWM) ve RGB uyumluluğu gibi ek özellikleri kontrol edin."
+    },
+    {
+      "h": "Hava Akışı mı, Statik Basınç mı?",
+      "body": "Hava akışı fanları, kasa içindeki genel sirkülasyon için tasarlanmıştır; genellikle ön veya arka egzozda kullanılır. Statik basınç fanlarıysa, radyatör veya yoğun filtreler gibi dirençli ortamlarda havayı itmek için daha uygundur. Çoğu kullanıcı için 120mm ve yüksek CFM değerine sahip bir fan yeterli olacaktır."
+    },
+    {
+      "h": "PWM ve RGB: Gereksiz mi, Gerekli mi?",
+      "body": "PWM (4-pin) fanlar, anakart üzerinden hız kontrolü sağlayarak sessiz çalışma ve enerji tasarrufu sunar. 3-pin fanlarsa sabit voltajla çalışır ve daha gürültülü olabilir. RGB aydınlatma estetik katarken, bütçenizi şişirebilir. Eğer yan paneliniz şeffaf değilse veya RGB'ye ihtiyacınız yoksa, ARGB'siz modeller daha uygun olacaktır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Rampage JBT-21 Kasa Fanı",
+      "why": "Yüksek hava akışı ve uygun fiyatıyla giriş seviyesinde en iyi seçeneklerden.",
+      "id": "9uxrd209vhof679",
+      "slug": "rampage-jbt-21"
+    },
+    {
+      "name": "DeepCool RF120R Kasa Fanı (Kırmızı)",
+      "why": "Sessiz çalışması ve dayanıklı yapısıyla uzun ömürlü bir tercih.",
+      "id": "jdh79ea0p7yye7j",
+      "slug": "deep-cool-rf120r"
+    },
+    {
+      "name": "Galax Vortex Kasa Fanı",
+      "why": "Şık tasarımı ve dengeli performansı ile RGB arayanlara hitap ediyor.",
+      "id": "pmmxmna1btq0f15",
+      "slug": "galax-vortex"
+    },
+    {
+      "name": "MSI Max F12A-3H Kasa Fanı",
+      "why": "Yüksek statik basınç sayesinde radyatörlü sistemler için ideal.",
+      "id": "mwh6umfh554roxy",
+      "slug": "msi-max-f12a-3h"
+    },
+    {
+      "name": "Performax Aurora RGB Kasa Fanı",
+      "why": "RGB aydınlatma ve uygun fiyat dengesiyle popüler bir model.",
+      "id": "d8rlv6301iz2grd",
+      "slug": "performax-aurora-rgb"
+    },
+    {
+      "name": "Dragos LS300 ARGB Kasa Fanı",
+      "why": "ARGB uyumluluğu ve sessiz fan teknolojisi ile öne çıkıyor.",
+      "id": "ny70uahebco2q6n",
+      "slug": "dragos-ls300-argb"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kasa fanı boyutu nasıl seçilir?",
+      "a": "Kasanızın fan yuvalarını ölçün; 120mm en yaygın boyuttur. Küçük kasalar için 80mm veya 92mm modelleri tercih edin."
+    },
+    {
+      "q": "3-pin ve 4-pin fan arasındaki fark nedir?",
+      "a": "4-pin PWM fanlar, anakart üzerinden hız kontrolü yaparak sessiz çalışır. 3-pin fanlar sabit hızda döner ve daha gürültülü olabilir."
+    },
+    {
+      "q": "RGB fanlar daha mı pahalı?",
+      "a": "Evet, RGB özellikli fanlar genellikle 2-3 kat daha pahalıdır. Bütçeniz kısıtlıysa RGB'siz modeller iş görür."
+    },
+    {
+      "q": "Kaç tane kasa fanı almalıyım?",
+      "a": "En az bir ön giriş ve bir arka egzoz fanı önerilir. Orta seviye sistemler için 3-4 fan, yüksek performanslı sistemler için 5-6 fan ideal."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:13.250Z"
+}

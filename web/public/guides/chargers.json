@@ -1,0 +1,77 @@
+{
+  "category": "chargers",
+  "label": "Şarj Aleti",
+  "title": "En İyi Şarj Aleti 2026: Hızlı Şarj İçin Doğru Seçim",
+  "lead": "Akıllı telefonunuzu, tabletinizi veya kablosuz kulaklığınızı şarj ederken zaman kaybetmek istemezsiniz. Doğru şarj aletiyle cihazınızı dakikalar içinde hayata döndürebilirsiniz.",
+  "sections": [
+    {
+      "h": "Şarj Aleti Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle cihazınızın desteklediği şarj teknolojisini (Quick Charge, Power Delivery, USB-C) ve güç çıkışını (watt) kontrol edin. Kablosuz şarj düşünüyorsanız MagSafe uyumluluğu veya Qi standardı önemli. Marka güvenilirliği ve garanti süresi de uzun vadede belirleyici."
+    },
+    {
+      "h": "Kablolu ve Kablosuz Şarj Arasındaki Farklar",
+      "body": "Kablolu şarj aletleri genelde daha yüksek watt değerleri sunar, bu sayede çok daha hızlı doldurur. Kablosuz şarj ise pratiklik sağlar; telefonu yerleştirmek yeterlidir. Günlük kullanımda kablosuz, acil durumlarda kablolu tercih edilebilir."
+    },
+    {
+      "h": "Çoklu Cihaz Şarj İstasyonları Avantajlı mı?",
+      "body": "Eğer telefon, saat ve kulaklık gibi birden fazla cihazınız varsa, çoklu şarj istasyonları tek prizden hepsini besler. Belkin WIB003btBK gibi modeller aynı anda üç cihazı şarj edebilir, masa düzeninizi korur."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Havit W320 Şarj Aleti",
+      "why": "Uygun fiyatlı olmasına rağmen yüksek güç ve güvenilirlik sunar, günlük kullanım için ideal.",
+      "id": "5vi18z75zzxpyl2",
+      "slug": "havit-w320"
+    },
+    {
+      "name": "Anker MagSafe Cube 30W Şarj Aleti (Y1811)",
+      "why": "Apple cihazlar için tasarlanmış MagSafe uyumlu, 30W hızlı şarj ve şık tasarım bir arada.",
+      "id": "5y2yjoav3wirsi4",
+      "slug": "anker-magsafe-cube-30w"
+    },
+    {
+      "name": "Belkin WIB003btBK Şarj Aleti",
+      "why": "Üç cihazı aynı anda şarj edebilen çoklu istasyon, masaüstü düzeninizi dağıtmaz.",
+      "id": "5as5h8zi3jrdsfg",
+      "slug": "belkin-wib003btbk"
+    },
+    {
+      "name": "Samsung EP-PG950 Şarj Aleti (EP-PG950BBEGWW)",
+      "why": "Samsung cihazlarla tam uyumlu, kablosuz hızlı şarjda referans model.",
+      "id": "78ernpl7vemyx7s",
+      "slug": "samsung-ep-pg950"
+    },
+    {
+      "name": "Xiaomi Watch S1 Charging Dock Şarj Aleti",
+      "why": "Özellikle akıllı saat şarjı için optimize edilmiş, manyetik tutuş ve hızlı şarj.",
+      "id": "3y17az77rl50psm",
+      "slug": "xiaomi-watch-s1-charging-dock"
+    },
+    {
+      "name": "Varta Wıreless Charger Pro Şarj Aleti (57905)",
+      "why": "Alman kalitesi, geniş Qi uyumluluğu ve sağlam yapısıyla uzun ömürlü bir seçenek.",
+      "id": "21zfz07tc11tdsz",
+      "slug": "varta-wireless-charger-pro"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Telefonum kaç watt destekliyor?",
+      "a": "Telefonunuzun teknik özelliklerinde veya orijinal adaptör üzerinde yazan watt değerine bakın. Genelde orta segmentler 18W, üst segmentler 25W ve üzeri destekler."
+    },
+    {
+      "q": "Kablosuz şarj her telefonla çalışır mı?",
+      "a": "Qi standardına uygun tüm telefonlarla çalışır. iPhone 8 ve üzeri, çoğu Android model kablosuz şarjı destekler."
+    },
+    {
+      "q": "Şarj aleti cihazıma zarar verir mi?",
+      "a": "Kaliteli markalar akıllı çip kullanarak aşırı akım, ısı ve voltaja karşı koruma sağlar. Ucuz, sertifikasız ürünlerden kaçının."
+    },
+    {
+      "q": "Hızlı şarj batarya ömrünü kısaltır mı?",
+      "a": "Modern bataryalar ve şarj aletleri sıcaklık kontrolü sayesinde hasarı minimize eder. Ancak sürekli %100'de tutmak yerine %20-80 aralığında kullanmak daha sağlıklıdır."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:12.486Z"
+}

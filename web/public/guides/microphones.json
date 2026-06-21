@@ -1,0 +1,65 @@
+{
+  "category": "microphones",
+  "label": "Mikrofon",
+  "title": "En İyi Mikrofon 2026: Stüdyo ve Yayın İçin Seçenekler",
+  "lead": "Mikrofon seçimi, kayıt kalitesinden canlı yayın deneyimine kadar her şeyi etkiler. İster podcast yapın ister şarkı kaydedin, doğru mikrofonu bulmak için bu rehberi takip edin.",
+  "sections": [
+    {
+      "h": "Nelere Dikkat Etmeli",
+      "body": "Mikrofon alırken kullanım amacınızı belirleyin: vokal için kondenser, enstrüman için dinamik modeller öne çıkar. Bağlantı tipi (USB mi XLR mi) ve kutup deseni (kardioid, çift yönlü) kayıt ortamınıza uygun olmalı. Frekans tepkisi ve hassasiyet değerlerini kontrol edin."
+    },
+    {
+      "h": "Stüdyo ve Yayın İçin Modeller",
+      "body": "Rode NT4 gibi çift diyaframlı kondenser mikrofonlar, stereo kayıt için idealdir. JLab Talk ise USB bağlantısıyla yayıncılar için pratik bir seçenek sunar. Her iki model de yüksek Qor AI skoruyla dikkat çeker."
+    },
+    {
+      "h": "Taşınabilir ve Uygun Fiyatlı Alternatifler",
+      "body": "Comica CVM-D02 gibi lavalier mikrofonlar, röportaj ve mobil çekimler için hafif ve etkilidir. Techstorm Xiaokoa Q18 ise oyuncular için uygun fiyatlı bir USB mikrofon arayanlara hitap eder."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Rode NT4 Mikrofon",
+      "why": "Stereo kayıt yeteneği ve sağlam yapısıyla stüdyo kalitesinde sonuçlar verir.",
+      "id": "0jlygwoz4d55z0d",
+      "slug": "rode-nt4"
+    },
+    {
+      "name": "JLab Talk Mikrofon",
+      "why": "USB bağlantısı ve üç farklı kutup deseniyle yayıncılar için çok yönlü bir seçenek.",
+      "id": "42dawtinb4dy7b6",
+      "slug": "jlab-talk"
+    },
+    {
+      "name": "Comica CVM-D02 Mikrofon",
+      "why": "Kablosuz kullanım kolaylığı ve net ses kalitesiyle mobil çekimlerde öne çıkar.",
+      "id": "1s89unciew2g566",
+      "slug": "comica-cvm-d02"
+    },
+    {
+      "name": "Techstorm Xiaokoa Q18 Mikrofon",
+      "why": "RGB aydınlatmalı tasarımı ve uygun fiyatıyla oyuncular arasında popüler.",
+      "id": "4a3ploggi1gwcgq",
+      "slug": "techstorm-xiaokoa-q18"
+    }
+  ],
+  "faq": [
+    {
+      "q": "USB mikrofon mu XLR mikrofon mu tercih etmeliyim?",
+      "a": "USB mikrofonlar tak-çalıştır olduğu için yeni başlayanlar için idealdir. XLR mikrofonlar ise ses arabirimi gerektirir ancak daha profesyonel ses kalitesi ve esneklik sunar."
+    },
+    {
+      "q": "Kardioid kutup deseni ne işe yarar?",
+      "a": "Kardioid desen, sadece mikrofonun önünden gelen sesi alır, arka ve yanlardaki gürültüyü bastırır. Bu sayede yalıtımı artar, özellikle ev stüdyolarında tercih edilir."
+    },
+    {
+      "q": "Mikrofonumda pop filtresi gerekli mi?",
+      "a": "Evet, özellikle vokal kayıtlarında patlamalı sesleri (p, b, t) yumuşatmak için pop filtresi kullanmanız önerilir."
+    },
+    {
+      "q": "En iyi mikrofon markası hangisi?",
+      "a": "Rode, JLab ve Comica gibi markalar hem amatör hem profesyonel kullanıcılar için güvenilir seçenekler sunar. Seçim, bütçenize ve ihtiyacınıza bağlıdır."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:10:05.290Z"
+}

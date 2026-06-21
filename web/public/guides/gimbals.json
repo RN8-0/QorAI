@@ -1,0 +1,65 @@
+{
+  "category": "gimbals",
+  "label": "Gimbal",
+  "title": "2026'nın En İyi Gimbal Modelleri ve Satın Alma Rehberi",
+  "lead": "İster telefonunuzla ister aynasız kameranızla çekim yapın, doğru gimbal sayesinde profesyonel görüntüler elde edebilirsiniz. İşte ihtiyacınıza göre seçim yapmanızı kolaylaştıracak en iyi modeller ve püf noktaları.",
+  "sections": [
+    {
+      "h": "Gimbal Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle gimbalın taşıma kapasitesini kontrol edin: telefon gimballeri hafif ama sınırlı yük taşırken, aynasız ve DSLR kameralar için daha güçlü modeller gerekir. Pil ömrü de uzun çekimler için kritik; en az 8-10 saat dayanıklılık ideal. Ayrıca taşınabilirlik, hızlı kurulum ve akıllı takip gibi özellikler de kullanım konforunu doğrudan etkiler."
+    },
+    {
+      "h": "Hangi Tip Gimbal Sizin İçin Uygun?",
+      "body": "Telefon gimballeri (örneğin DJI Osmo Mobile SE) günlük vlog ve seyahat için hafif ve pratik. Aynasız kameralar için DJI Ronin-S veya RS 4 gibi modeller daha ağır yükleri stabil tutar. Profesyonel sinema çekimleri içinse DJI RS 3 Pro gibi gelişmiş özelliklere sahip gimballer tercih edilmeli."
+    },
+    {
+      "h": "Fiyat/Performans Dengesi",
+      "body": "Bütçenizi zorlamadan iyi sonuçlar almak istiyorsanız FeiyuTech MG Lite veya Hohem Isteady VS2 gibi uygun fiyatlı seçenekler iş görür. Daha profesyonel bir setup için ise Moza AirCross 2 veya Zhiyun Crane M3 Pro gibi modeller sundukları aksesuar desteğiyle öne çıkar."
+    }
+  ],
+  "picks": [
+    {
+      "name": "DJI RS 4 Gimbal",
+      "why": "Hızlı ayar kilitleri ve artırılmış taşıma kapasitesiyle aynasız fotoğraf makineleri için en dengeli seçenek.",
+      "id": "7vm95xvh59yow37",
+      "slug": "dji-rs-4"
+    },
+    {
+      "name": "FeiyuTech MG Lite Gimbal",
+      "why": "Uygun fiyatı ve 100/100 Qor AI puanıyla telefon kullanıcıları için mükemmel bir başlangıç.",
+      "id": "ebtil0xccchb28o",
+      "slug": "feiyutech-mg-lite"
+    },
+    {
+      "name": "DJI Osmo Mobile SE Gimbal",
+      "why": "Kompakt yapısı ve akıllı takip özellikleriyle günlük çekimler için en pratik telefon gimbalı.",
+      "id": "ez8lypo2swflp5c",
+      "slug": "dji-osmo-mobile-se"
+    },
+    {
+      "name": "Zhiyun Crane M3 Pro Gimbal (Mikrofon)",
+      "why": "Dahili mikrofon ve telefon tutucu gibi aksesuarlarla hem kamera hem telefon kullanıcılarına hitap ediyor.",
+      "id": "q0mv79znfrdw727",
+      "slug": "zhiyun-crane-m3-pro"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Gimbal kullanmak zor mu?",
+      "a": "Hayır, çoğu modern gimbal otomatik dengeleme ve akıllı modlar sayesinde yeni başlayanlar için bile kolaydır. Birkaç denemeden sonra rahatça kullanabilirsiniz."
+    },
+    {
+      "q": "Telefon gimbalı ile aynasız kamera gimbalı arasındaki fark nedir?",
+      "a": "Telefon gimballeri hafif ve taşınabilirken, aynasız kamera gimballeri daha ağır yükler için güçlü motorlara ve daha sağlam yapıya sahiptir."
+    },
+    {
+      "q": "Gimbal pil ömrü ne kadar olmalı?",
+      "a": "Günlük kullanım için en az 6-8 saat yeterlidir; profesyonel çekimlerde 10 saat ve üzeri modeller tercih edilmelidir."
+    },
+    {
+      "q": "Hangi marka daha güvenilir?",
+      "a": "DJI, Zhiyun ve FeiyuTech sektörde en çok tercih edilen markalardır. DJI özellikle stabilite ve yazılım desteğiyle öne çıkar."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:11:37.451Z"
+}

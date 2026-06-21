@@ -1,0 +1,71 @@
+{
+  "category": "ram",
+  "label": "RAM",
+  "title": "En İyi RAM 2026: Performans ve Fiyat Dengesi",
+  "lead": "RAM seçimi, bilgisayarınızın hızını ve çoklu görev performansını doğrudan etkiler. Doğru kapasite ve hızı seçmek için bu rehber size yol gösterecek.",
+  "sections": [
+    {
+      "h": "RAM Seçerken Nelere Dikkat Etmeli",
+      "body": "Öncelikle anakartınızın desteklediği RAM türünü (DDR4, DDR5) ve maksimum hızı kontrol edin. DDR5, daha yüksek hızlar ve bant genişliği sunarken DDR4 hâlâ uygun fiyatlı bir seçenek. Kapasite olarak günlük kullanımda 16 GB yeterliyken, oyun ve profesyonel işler için 32 GB veya üzeri idealdir."
+    },
+    {
+      "h": "Hız ve Gecikme Süreleri",
+      "body": "MHz değeri ne kadar yüksekse RAM o kadar hızlıdır, ancak CL (CAS latency) gecikmesi de önemlidir. 5600 MHz CL46 gibi modeller genellikle iyi bir denge sunar. Oyun ve içerik üretiminde yüksek hızlı RAM'ler (5600 MT/s) fark yaratır."
+    },
+    {
+      "h": "Fiyat/Performans Liderleri",
+      "body": "Listede 100/100 Qor AI skoru alan birçok 16 GB 5600 MT model var; bunlar üst düzey performans sunar. Dragos Aquarius, Dell ve Samsung modelleri bu segmentte öne çıkıyor. Bütçe dostu seçenekler arasında 4800 MT hızındaki Codegen ve Bory modelleri iyi bir alternatif."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Dragos Aquarius 16 GB 5600 MT (ID9994194)",
+      "why": "Yüksek hız ve mükemmel Qor AI skoruyla üst düzey performans sunar.",
+      "id": "vkrpgckwak0ab46",
+      "slug": "dragos-aquarius-id9994194"
+    },
+    {
+      "name": "Samsung M323R2GA3DB0-CWM 16 GB 5600 MT",
+      "why": "Güvenilir marka, yüksek hız ve düşük gecikme ile oyun ve iş için ideal.",
+      "id": "ym3g0t25j9pb5e7",
+      "slug": "samsung-m323r2ga3db0-cwm"
+    },
+    {
+      "name": "Codegen CDG-NBD538400/32G 32 GB 4800 MT",
+      "why": "Uygun fiyata büyük kapasite, çoklu görev ve ağır iş yükleri için yeterli.",
+      "id": "swx8mowe4707ay0",
+      "slug": "codegen-cdg-nbd538400-32g"
+    },
+    {
+      "name": "Lenovo ThinkPad 48 GB 5600 MT (4X71M23190)",
+      "why": "En yüksek kapasite ve hız, profesyonel kullanıcılar için sınıfının en iyisi.",
+      "id": "hbh59kjt3bdydsp",
+      "slug": "lenovo-thinkpad"
+    },
+    {
+      "name": "SK Hynix HMCG78AGBSA092N 16 GB 5600 MT",
+      "why": "Sağlam üretim kalitesi ve yüksek performansla dikkat çeker.",
+      "id": "ppsczwqpevpp689",
+      "slug": "sk-hynix-hmcg78agbsa092n"
+    }
+  ],
+  "faq": [
+    {
+      "q": "DDR5 RAM almalı mıyım?",
+      "a": "Yeni bir sistem kuruyorsanız ve bütçeniz yetiyorsa DDR5 önerilir. DDR4 hâlâ iyi performans verir ve daha ucuzdur."
+    },
+    {
+      "q": "32 GB RAM gerekli mi?",
+      "a": "Oyun, video düzenleme veya sanal makineler gibi ağır işler için 32 GB idealdir. Günlük kullanımda 16 GB yeterlidir."
+    },
+    {
+      "q": "RAM hızı oyun performansını etkiler mi?",
+      "a": "Evet, özellikle yüksek kare hızı hedefliyorsanız daha hızlı RAM (5600 MT/s) belirgin fark yaratır."
+    },
+    {
+      "q": "RAM markası önemli mi?",
+      "a": "Samsung, SK Hynix, Dell gibi tanınmış markalar daha güvenilirdir. Ancak Codegen gibi uygun fiyatlı markalar da bütçe dostudur."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:08:58.670Z"
+}

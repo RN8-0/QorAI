@@ -1,0 +1,71 @@
+{
+  "category": "drones",
+  "label": "Drone",
+  "title": "2026'nın En İyi Drone'ları: Hangi Model Sana Uygun?",
+  "lead": "Drone seçerken kamera kalitesi, uçuş süresi ve taşınabilirlik ön planda. İster profesyonel çekimler ister eğlence amaçlı olsun, doğru drone'u bulmak için bu rehberi takip et.",
+  "sections": [
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Öncelikle kullanım amacını belirle: sinema kalitesi mi, yoksa hobi amaçlı mı? Pil ömrü, kamera çözünürlüğü ve GPS stabilitesi kritik. Ayrıca yedek parça ve batarya bulunabilirliği de uzun vadede belirleyici."
+    },
+    {
+      "h": "Fiyat/Performans Dengesi",
+      "body": "Giriş seviyesinde Toys-Sky CSJ-X7GPS gibi modeller uygun fiyata GPS ve HD kamera sunuyor. Orta segmentte DJI Avata 2, FPV deneyimi ve üç bataryalı setiyle öne çıkıyor. Profesyoneller içinse Autel Evo II serisi 8K çekim ve sağlam yapıyla ideal."
+    },
+    {
+      "h": "Taşınabilirlik ve Dayanıklılık",
+      "body": "Seyahat edenler için DJI Mavic 3 Classic kompakt ve hafif. Dayanıklılık arayanlar Autel'in Rugged Bundle modellerini tercih edebilir; bu setler ek koruma ve taşıma çantası içeriyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "DJI Avata 2 Fly More Combo (Üç Batarya) Drone",
+      "why": "FPV uçuş keyfi ve uzun pil ömrüyle en yüksek skoru alan model.",
+      "id": "6vstmons9zulow7",
+      "slug": "dji-avata-2-fly-more-combo-uc-batarya"
+    },
+    {
+      "name": "Autel Robotics Evo II 8K Drone",
+      "why": "8K video çekimi ve sağlam yapısıyla profesyonellere hitap ediyor.",
+      "id": "bv3x13m4wt9mg8p",
+      "slug": "autel-robotics-evo-ii-8k"
+    },
+    {
+      "name": "DJI Mavic 3 Classic Drone",
+      "why": "Taşınabilir gövdesi ve üstün kamerasıyla seyahat severlerin favorisi.",
+      "id": "33emv4i03k99f3n",
+      "slug": "dji-mavic-3-classic"
+    },
+    {
+      "name": "Toys-Sky CSJ-X7GPS Drone",
+      "why": "Uygun fiyata GPS ve HD kamera sunan başlangıç dostu model.",
+      "id": "dagq9kzsgmwg5e6",
+      "slug": "toys-sky-csj-x7gps"
+    },
+    {
+      "name": "4DRC F9 Drone",
+      "why": "Bütçe dostu fiyatıyla temel ihtiyaçları karşılayan giriş seviyesi drone.",
+      "id": "12z3culakdcrg1g",
+      "slug": "4drc-f9"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Drone alırken lisans gerekli mi?",
+      "a": "Türkiye'de 500 gram üzeri drone'lar için Uçuşa Elverişlilik Belgesi ve İHA pilot lisansı gerekiyor."
+    },
+    {
+      "q": "En iyi drone markası hangisi?",
+      "a": "DJI, geniş ürün yelpazesi ve güvenilirliğiyle lider; Autel ise yüksek çözünürlük ve dayanıklılıkla rekabet ediyor."
+    },
+    {
+      "q": "İkinci el drone alınır mı?",
+      "a": "Alınabilir ancak batarya ömrü, motor aşınması ve güncelleme durumu mutlaka kontrol edilmeli."
+    },
+    {
+      "q": "Drone'lar ne kadar uzağa gidebilir?",
+      "a": "Giriş seviyesi modeller 100-500 metre, profesyonel modeller ise 10 km'ye kadar menzil sunar."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:10:57.530Z"
+}

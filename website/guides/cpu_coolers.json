@@ -1,0 +1,77 @@
+{
+  "category": "cpu_coolers",
+  "label": "İşlemci Soğutucu",
+  "title": "2026'nın En İyi İşlemci Soğutucuları: Hava mı Sıvı mı?",
+  "lead": "İşlemcinizin performansını ve ömrünü korumak için doğru soğutucuyu seçmek kritik. Bu rehberde, hava ve sıvı soğutma seçeneklerini karşılaştırıp ihtiyacınıza en uygun modeli bulmanıza yardımcı olacağız.",
+  "sections": [
+    {
+      "h": "Hava Soğutucu mu Sıvı Soğutucu mu?",
+      "body": "Hava soğutucular, düşük fiyat ve uzun ömür avantajı sunar. Sıvı soğutucular ise daha iyi termal performans ve estetik sağlar. Eğer overclock yapıyorsanız veya yüksek TDP'li bir işlemciniz varsa 360mm radyatörlü bir sıvı soğutucu idealdir. Düşük bütçeli ve sessiz bir sistem için kaliteli bir hava soğutucu yeterli olacaktır."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Soğutucu seçerken işlemcinizin TDP değerini, kasa uyumluluğunu ve bellek yuvalarına olan mesafeyi kontrol edin. Ayrıca fan ses seviyesi ve radyatör boyutu da önemli. RGB aydınlatma istiyorsanız, kontrolcü ve yazılım uyumluluğunu göz önünde bulundurun."
+    },
+    {
+      "h": "Montaj ve Bakım",
+      "body": "Sıvı soğutucuların montajı daha karmaşıktır ancak genellikle termal macun önceden uygulanmış gelir. Hava soğutucular daha basittir ancak ağırlıkları anakarta baskı yapabilir. Düzenli temizlik tozlanmayı önler ve performansı korur."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Xaser XRC-240 İşlemci Soğutucu",
+      "why": "Mükemmel soğutma performansı ve 100/100 Qor AI skoru ile en üst seviye sıvı soğutma.",
+      "id": "117n6gg1794qfrv",
+      "slug": "xaser-xrc-240"
+    },
+    {
+      "name": "Antec Vortex View 360 İşlemci Soğutucu",
+      "why": "360mm radyatörü ve yüksek hava akışı sayesinde overclock için ideal.",
+      "id": "2rnve9hubould6a",
+      "slug": "antec-vortex-view-360"
+    },
+    {
+      "name": "AeroCool Mirage L360 İşlemci Soğutucu",
+      "why": "Şık tasarımı ve RGB aydınlatmasıyla performans ve estetiği birleştiriyor.",
+      "id": "3z107kfnf9ruoum",
+      "slug": "aerocool-mirage-l360"
+    },
+    {
+      "name": "Gelid Rev.5 Tranquillo İşlemci Soğutucu (CC-TRANQ-05-A)",
+      "why": "Sessiz çalışması ve uygun fiyatıyla hava soğutma kategorisinde en iyi seçenek.",
+      "id": "dhjo46hzqxxj9p0",
+      "slug": "gelid-rev-5-tranquillo"
+    },
+    {
+      "name": "DeepCool LE720 İşlemci Soğutucu (3 adet) (R-LE720-BKAMMN-G-1)",
+      "why": "Üçlü fanlı 360mm radyatörüyle yüksek TDP'li işlemciler için güvenilir çözüm.",
+      "id": "s9ybd9vs99s4jta",
+      "slug": "deepcool-le720"
+    },
+    {
+      "name": "James Donkey Lugis JDC240 İşlemci Soğutucu",
+      "why": "240mm boyutuyla orta segmentte fiyat/performans dengesi en iyi modellerden.",
+      "id": "x6t321fu8152wwm",
+      "slug": "james-donkey-lugis-jdc240"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Hava soğutucu mu sıvı soğutucu mu daha iyi?",
+      "a": "Sıvı soğutucular genelde daha iyi performans sunarken hava soğutucular daha sessiz ve uzun ömürlüdür. Seçim bütçe ve ihtiyaca göre değişir."
+    },
+    {
+      "q": "Sıvı soğutucu sızdırma yapar mı?",
+      "a": "Kaliteli markalarda sızdırma riski çok düşüktür. Çoğu üretici garanti kapsamında olası hasarları karşılar."
+    },
+    {
+      "q": "Soğutucu alırken TDP'ye mi bakmalıyım?",
+      "a": "Evet, soğutucunun işlemcinizin TDP değerini karşılayabildiğinden emin olun. Özellikle overclock yapacaksanız daha yüksek TDP destekli modeller tercih edin."
+    },
+    {
+      "q": "360mm radyatör her kasaya sığar mı?",
+      "a": "Hayır, kasanızın radyatör desteğini kontrol edin. Çoğu büyük kasa 360mm'yi destekler ancak küçük kasalarda 240mm veya hava soğutucu daha uygun olabilir."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:10:19.188Z"
+}

@@ -1,0 +1,81 @@
+{
+  "category": "powerbanks",
+  "label": "Powerbank",
+  "title": "2026'nın En İyi Powerbank'leri: Hangi Model Sana Uygun?",
+  "lead": "Günümüzde akıllı telefonlar ve taşınabilir cihazların en büyük derdi pil ömrü. Doğru powerbank'i seçmek, bu derde kesin çözüm sunar.",
+  "sections": [
+    {
+      "h": "Kapasite ve Taşınabilirlik Dengesi",
+      "body": "Powerbank alırken ilk bakman gereken şey kapasite. 10000 mAh modeller günlük kullanım için ideal, 20000-30000 mAh arası ise uzun yolculuklarda iş görür. Ancak büyük kapasite her zaman iyi değil; çantanı şişiren bir cihaz istemezsin. Sprange SR-P40 gibi 40000 mAh modellerde ağırlık ve boyut artıyor, bu yüzden ihtiyacını net belirle."
+    },
+    {
+      "h": "Çıkış Gücü ve Hızlı Şarj Desteği",
+      "body": "Hızlı şarj, powerbank'lerde olmazsa olmaz. Telefonun destekliyorsa PD (Power Delivery) veya QC (Quick Charge) protokollerine dikkat et. Preo PS11 ve Phixi Force P60 gibi modeller yüksek watt çıkışı sunarak dizüstü bilgisayarını bile şarj edebilir. Ayrıca en az iki USB portu bulunan modeller, aynı anda birden fazla cihazı şarj etmek için avantajlı."
+    },
+    {
+      "h": "Güvenlik ve Dayanıklılık: Nelere Dikkat Etmeli?",
+      "body": "Güvenlik sertifikaları (CE, FCC, RoHS) ve aşırı akım, kısa devre koruması gibi özellikler can güvenliğin için kritik. Romoss Polymos 20 ve ACL PW-06 gibi modeller bu konuda iyi puan alır. Ayrıca darbelere dayanıklı kasa ve LED gösterge gibi detaylar kullanışlılığı artırır."
+    },
+    {
+      "h": "Fiyat/Performans ve Marka Güveni",
+      "body": "Piyasada çok sayıda powerbank var, ancak kalite her zaman fiyatla doğru orantılı değil. Torima TRM-1014 ve Pineng PN-560 gibi 10000 mAh modeller uygun fiyatlı ve güvenilir. Intouch Max-In Slim 30000 mAh ise ince tasarımıyla farklılaşır. Marka seçerken kullanıcı yorumlarına ve garanti süresine mutlaka bak."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Preo PS11 30000 mAh Powerbank",
+      "why": "Yüksek kapasite ve hızlı şarj desteğiyle dizüstü bilgisayarını bile şarj edebilirsin.",
+      "id": "5g6xj59il3cvf50",
+      "slug": "preo-ps11"
+    },
+    {
+      "name": "Phixi Force P60 60000 mAh Powerbank",
+      "why": "Devasa kapasitesiyle uzun kamp veya seyahatlerde kesintisiz güç sağlar.",
+      "id": "47pgt5u3oaf6ns1",
+      "slug": "phixi-force-p60"
+    },
+    {
+      "name": "Sprange SR-P40 40000 mAh Powerbank",
+      "why": "40 bin mAh ile yüksek kapasite arayanlar için ideal, fiyat/performans dengesi iyi.",
+      "id": "7hsxymw7cavenvf",
+      "slug": "sprange-sr-p40"
+    },
+    {
+      "name": "Romoss Polymos 20 20000 mAh Powerbank (PB20)",
+      "why": "Güvenilir marka, 20000 mAh kapasite ve uygun fiyatıyla günlük kullanımda öne çıkıyor.",
+      "id": "1ip8yg0f4y9mdm9",
+      "slug": "romoss-polymos-20"
+    },
+    {
+      "name": "Torima TRM-1014 10000 mAh Powerbank",
+      "why": "Kompakt ve hafif, her gün çantada taşımak için birebir.",
+      "id": "1sd7vv015ww26di",
+      "slug": "torima-trm-1014"
+    },
+    {
+      "name": "Pineng PN-560 10000 mAh Powerbank",
+      "why": "Uygun fiyatlı ve sağlam, temel ihtiyaçlar için yeterli performans sunar.",
+      "id": "1l0y9ooo5mtbjyz",
+      "slug": "pineng-pn-560"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Powerbank kapasitesi ne kadar olmalı?",
+      "a": "Günlük kullanımda 10000-20000 mAh yeterli; uzun yolculuklarda 30000 mAh ve üzeri tercih edin."
+    },
+    {
+      "q": "Hızlı şarj desteği önemli mi?",
+      "a": "Evet, telefonunuz hızlı şarj destekliyorsa PD veya QC özellikli bir powerbank alın, yoksa standart USB yeterli olur."
+    },
+    {
+      "q": "Uçakta powerbank taşınır mı?",
+      "a": "Evet, ancak kapasite 100 Wh (yaklaşık 27000 mAh) altındaysa el bagajında taşıyabilirsiniz; büyük kapasiteler için havayolu kurallarını kontrol edin."
+    },
+    {
+      "q": "Powerbank şarj olurken kullanılır mı?",
+      "a": "Çoğu model passthrough şarj destekler, yani powerbank şarj olurken cihazınızı da şarj edebilirsiniz, ancak bu durum pil ömrünü etkileyebilir."
+    }
+  ],
+  "updatedAt": "2026-06-21T09:09:54.889Z"
+}
