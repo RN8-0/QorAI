@@ -52,45 +52,32 @@
 .post-prod-title .ppn { color: var(--brand,#2563eb); }
 .post-prod-score { display: inline-block; font-size: 14px; font-weight: 700; color: #16a34a; margin-left: 10px; vertical-align: middle; }
 .post-prod-desc { font-size: 17px; line-height: 1.85; color: var(--text-soft,#334155); margin: 0 0 16px; max-width: 760px; }
-.post-prod-img { display: block; margin: 6px 0 18px; border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--border,#eef2f7); }
-.post-prod-img img { display: block; width: 100%; max-height: 460px; object-fit: contain; padding: 20px; }
+.post-prod-img { display: block; margin: 6px 0 18px; border-radius: 14px; overflow: hidden; background: #fff; border: 1px solid var(--border,#eef2f7); }
+.post-prod-img img { display: block; width: 100%; object-fit: contain; padding: 16px; }
+/* image size templates (default = medium, no more giant blocks) */
+.post-prod-img.pp-s img { max-height: 190px; }
+.post-prod-img.pp-m img { max-height: 290px; }
+.post-prod-img.pp-l img { max-height: 420px; }
+/* side-by-side layouts (image left / right) */
+.post-prod-row { display: flex; gap: 26px; align-items: flex-start; margin: 6px 0 8px; }
+.post-prod-row.rev { flex-direction: row-reverse; }
+.post-prod-row .post-prod-img { flex: 0 0 40%; margin: 0; }
+.post-prod-row .post-prod-rowtext { flex: 1; min-width: 0; }
+.post-prod-row .post-prod-desc { margin-bottom: 12px; }
+@media (max-width: 640px) { .post-prod-row, .post-prod-row.rev { flex-direction: column; } .post-prod-row .post-prod-img { flex-basis: auto; width: 100%; } }
 
-/* ── conclusion / ai help / similar ─────────────────────────── */
-.blog-concl { margin: 34px 0; border-top: 2px solid var(--border,#e2e8f0); padding-top: 22px; }
-.blog-concl h2 { font-size: 26px; font-weight: 800; margin: 0 0 12px; }
-.blog-concl div { font-size: 17.5px; line-height: 1.85; color: var(--text,#1e293b); }
-.blog-aihelp { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 30px 0; padding: 22px 24px; border-radius: 16px; background: linear-gradient(135deg,#6366f115,#2563eb15); border: 1px solid #2563eb33; }
-.blog-aihelp strong { font-size: 18px; }
-.blog-aihelp p { margin: 4px 0 0; color: var(--text-soft,#475569); font-size: 14px; }
-.blog-similar { margin: 36px 0; }
-.blog-similar h2 { font-size: 23px; font-weight: 700; margin: 0 0 16px; }
+/* ── conclusion (flows with the article) / ai button / similar ── */
+.blog-concl-flow { margin-top: 14px; }
+.blog-ai-row { margin: 26px 0 8px; }
+.blog-ai-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--brand,#2563eb); background: color-mix(in srgb, var(--brand,#2563eb) 9%, transparent); border: 1px solid color-mix(in srgb, var(--brand,#2563eb) 28%, transparent); transition: background .12s; }
+.blog-ai-btn:hover { background: color-mix(in srgb, var(--brand,#2563eb) 16%, transparent); }
+.blog-similar { margin: 40px 0; }
 .blog-similar-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 16px; }
 .blog-similar-card { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--border,#e2e8f0); border-radius: 14px; overflow: hidden; background: var(--surface,#fff); transition: transform .15s; }
 .blog-similar-card:hover { transform: translateY(-2px); }
 .blog-similar-img { aspect-ratio: 16/10; background: #f8fafc; display: flex; align-items: center; justify-content: center; }
 .blog-similar-img img { width: 100%; height: 100%; object-fit: contain; padding: 12px; }
 .blog-similar-card span { padding: 12px 14px; font-size: 14px; font-weight: 600; line-height: 1.35; }
-/* ── related products under the article ─────────────────────── */
-.blog-relprods { margin: 40px 0; }
-.blog-relprods h2 { font-size: 23px; font-weight: 800; margin: 0 0 18px; }
-.blog-relprods-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 18px; }
-
-/* ── comments ───────────────────────────────────────────────── */
-.blog-comments { margin: 44px 0 0; border-top: 2px solid var(--border,#e2e8f0); padding-top: 26px; }
-.blog-comments h2 { font-size: 23px; font-weight: 800; margin: 0 0 18px; }
-.bc-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
-.bc-form textarea { width: 100%; resize: vertical; padding: 14px 16px; border: 1px solid var(--border,#e2e8f0); border-radius: 14px; font: inherit; font-size: 15.5px; line-height: 1.6; background: var(--surface,#fff); color: var(--text,#0f172a); }
-.bc-form textarea:focus { outline: none; border-color: var(--brand,#2563eb); }
-.bc-form .btn { align-self: flex-end; }
-.bc-signin { color: var(--text-soft,#64748b); font-size: 15px; margin: 0 0 22px; }
-.bc-link { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--brand,#2563eb); cursor: pointer; }
-.bc-list { display: flex; flex-direction: column; gap: 18px; }
-.bc-empty { color: var(--text-soft,#94a3b8); font-size: 15px; }
-.bc-item { border-bottom: 1px solid var(--border,#eef2f7); padding-bottom: 16px; }
-.bc-item:last-child { border-bottom: none; }
-.bc-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 5px; }
-.bc-name { font-weight: 700; font-size: 15px; color: var(--text,#0f172a); }
-.bc-date { font-size: 12.5px; color: var(--text-soft,#94a3b8); }
-.bc-text { margin: 0; font-size: 15.5px; line-height: 1.7; color: var(--text-soft,#334155); white-space: pre-wrap; word-break: break-word; }
-
-.blog-foot { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
+/* similar products reuse the global .rail / ScrollRail + ProductCard */
+.blog-simprods { margin: 40px 0; }
+/* comments reuse the shared <Reviews> component (components/Reviews.css) */

@@ -68,22 +68,34 @@ function blogArticleBody(a, lang = 'tr') {
   const lead = esc(t('lead'));
   const body = safeBodyHtml(t('body'));
   const products = Array.isArray(a.products) ? a.products.filter((p) => p && p.id && p.name) : [];
+  const IMG_H = { s: 190, m: 290, l: 420 };
   const blocks = products.map((p, i) => {
     const slug = slugifyProduct(p.slug || p.name);
     const href = slug ? `/product/${slug}-${p.id}` : `/product/${p.id}`;
     const d1 = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
     const d2 = esc(p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '');
-    const img = /^https?:\/\//i.test(p.imageUrl || '') ? esc(p.imageUrl) : '';
+    const imgSrc = p.image || p.imageUrl || '';
+    const img = /^https?:\/\//i.test(imgSrc) ? esc(imgSrc) : '';
     const buy = esc(amazonGoPath(p, 'TR'));
+    const layout = p.layout || 'split';
+    const maxH = IMG_H[p.imgSize] || IMG_H.m;
+    const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
+    const imgEl = img ? `<a href="${href}" style="display:block;margin:6px 0 16px;border:1px solid #eef2f7;border-radius:14px;overflow:hidden;background:#fff"><img src="${img}" alt="${esc(p.name)}" style="display:block;width:100%;max-height:${maxH}px;object-fit:contain;padding:16px" loading="lazy" /></a>` : '';
+    let inner;
+    if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
+    else if (layout === 'top') inner = imgEl + dEl(d1) + dEl(d2);
+    else if (layout === 'left' || layout === 'right') {
+      const imgCol = `<div style="flex:0 0 40%">${imgEl}</div>`;
+      const txtCol = `<div style="flex:1;min-width:0">${dEl(d1)}${dEl(d2)}</div>`;
+      inner = `<div style="display:flex;gap:24px;align-items:flex-start;flex-direction:${layout === 'right' ? 'row-reverse' : 'row'}">${imgCol}${txtCol}</div>`;
+    } else inner = dEl(d1) + imgEl + dEl(d2); // split
     return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
       + `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;font-weight:600">`
       + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
       + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${p.price ? `<b style="color:#0f172a">${esc(p.price)}</b>` : ''}</a>`
       + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`
       + `<a href="${href}" style="display:block;font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;margin:0 0 14px"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`
-      + (d1 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0 0 16px;max-width:760px">${d1}</p>` : '')
-      + (img ? `<a href="${href}" style="display:block;margin:6px 0 18px;border:1px solid #eef2f7;border-radius:16px;overflow:hidden;background:#fff"><img src="${img}" alt="${esc(p.name)}" style="display:block;width:100%;max-height:460px;object-fit:contain;padding:20px" loading="lazy" /></a>` : '')
-      + (d2 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0;max-width:760px">${d2}</p>` : '')
+      + inner
       + `</div>`;
   }).join('');
   const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
@@ -95,8 +107,7 @@ function blogArticleBody(a, lang = 'tr') {
     + (lead ? `<p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">${lead}</p>` : '')
     + `<div style="font-size:17.5px;line-height:1.85">${body}</div>`
     + blocks
-    + (concl ? `<section style="margin:34px 0;border-top:2px solid #e2e8f0;padding-top:22px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">${lbl.verdict}</h2><div style="font-size:17.5px;line-height:1.85">${concl}</div></section>` : '')
-    + `<p style="margin-top:30px"><a href="/blog" style="color:#2563eb;font-weight:600">${lbl.all}</a></p>`
+    + (concl ? `<div style="font-size:17.5px;line-height:1.85;margin-top:16px">${concl}</div>` : '')
     + `</article>`;
 }
 

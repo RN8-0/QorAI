@@ -1127,19 +1127,5 @@
   .pd-compare-plus { width: 48px; height: 48px; }
   .pd-compare-open { grid-column: 1 / -1; width: 100%; }
 }
-
-/* similar-products rail with arrows */
-.pd-rail-wrap { position: relative; }
-.pd-rail-arr {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
-  width: 42px; height: 42px; padding: 0;
-  display: grid; place-items: center;
-  border-radius: 999px;
-  background: var(--surface); border: 1px solid var(--border);
-  color: var(--text); box-shadow: 0 8px 22px color-mix(in srgb, #020617 16%, transparent);
-}
-.pd-rail-arr svg { width: 18px; height: 18px; display: block; }
-.pd-rail-arr:hover { border-color: var(--brand-cyan); color: var(--accent); }
-.pd-rail-prev { left: -8px; }
-.pd-rail-next { right: -8px; }
-@media (max-width: 560px) { .pd-rail-arr { display: none; } }
+/* .pd-rail-wrap / .pd-rail-arr moved to styles/global.css so the shared
+   ScrollRail component is styled on the blog pages too. */

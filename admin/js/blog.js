@@ -228,18 +228,29 @@
   function renderProducts() {
     const box = document.getElementById('b_prodlist'); if (!box) return;
     const langName = (LANGS.find(([c]) => c === _lang) || [])[1] || _lang;
+    const LAYOUTS = [['split', 'Açıklama → Görsel → Açıklama'], ['top', 'Görsel üstte'], ['left', 'Solda görsel · sağda yazı'], ['right', 'Sağda görsel · solda yazı'], ['text', 'Görselsiz (sadece yazı)']];
+    const SIZES = [['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']];
     box.innerHTML = _products.map((p, i) => `
       <div class="ba-prod">
         <div class="ba-prod-ord">
           <button class="ba-mini" onclick="blogProdMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="ba-mini" onclick="blogProdMove(${i},1)" ${i === _products.length - 1 ? 'disabled' : ''}>↓</button>
         </div>
-        <img src="${esc(p.imageUrl || '')}" onerror="this.style.visibility='hidden'"/>
+        <img src="${esc(p.image || p.imageUrl || '')}" onerror="this.style.visibility='hidden'"/>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700">${i + 1}. ${esc(p.name)} ${p.techScore ? `<span style="opacity:.6;font-weight:400">· ${esc(p.techScore)}/100</span>` : ''}</div>
+          <div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
           <div style="opacity:.55;font-size:12px;margin-bottom:8px">→ /product/${esc(p.slug)}-${esc(p.id)} · <b>${esc(langName)}</b></div>
-          <textarea class="ba-input" style="font-size:13px;margin-bottom:6px" rows="2" placeholder="Açıklama (görselin ÜSTÜNDE)" oninput="blogProdField(${i},'desc_${_lang}',this.value)">${esc(p['desc_' + _lang] || '')}</textarea>
-          <textarea class="ba-input" style="font-size:13px" rows="2" placeholder="Açıklama (görselin ALTINDA)" oninput="blogProdField(${i},'desc2_${_lang}',this.value)">${esc(p['desc2_' + _lang] || '')}</textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <select class="ba-input" style="flex:1;min-width:170px;font-size:12px" onchange="blogProdField(${i},'layout',this.value)" title="Şablon">
+              ${LAYOUTS.map(([v, n]) => `<option value="${v}"${(p.layout || 'split') === v ? ' selected' : ''}>📐 ${n}</option>`).join('')}
+            </select>
+            <select class="ba-input" style="width:120px;font-size:12px" onchange="blogProdField(${i},'imgSize',this.value)" title="Görsel boyutu">
+              ${SIZES.map(([v, n]) => `<option value="${v}"${(p.imgSize || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
+            </select>
+          </div>
+          <input class="ba-input" style="font-size:12px;margin-bottom:8px" placeholder="Özel görsel URL (boşsa sitedeki ürün görseli)" value="${esc(p.image || '')}" oninput="blogProdField(${i},'image',this.value);var im=this.closest('.ba-prod').querySelector('img');im.src=this.value||'${esc(p.imageUrl || '')}';im.style.visibility='visible'" />
+          <textarea class="ba-input" style="font-size:13px;margin-bottom:6px" rows="2" placeholder="Açıklama 1 (${esc(langName)})" oninput="blogProdField(${i},'desc_${_lang}',this.value)">${esc(p['desc_' + _lang] || '')}</textarea>
+          <textarea class="ba-input" style="font-size:13px" rows="2" placeholder="Açıklama 2 (${esc(langName)})" oninput="blogProdField(${i},'desc2_${_lang}',this.value)">${esc(p['desc2_' + _lang] || '')}</textarea>
         </div>
         <button class="ba-mini" onclick="blogProdRemove(${i})" style="color:#f87171">✕</button>
       </div>`).join('') || '<div style="opacity:.5;padding:8px">No products added yet.</div>';

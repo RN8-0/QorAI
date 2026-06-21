@@ -5,6 +5,7 @@ import { useCompare, setCompareList } from '../lib/compare';
 import {
   refreshUser, updateProfile, requestVerification, requestAccountDeletion,
 } from '../lib/pocketbase';
+import { pb } from '../lib/pocketbase';
 import { formatQorCoins } from '../lib/qorCoins';
 import {
   getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview,
@@ -345,13 +346,21 @@ function ReviewsTab({ t }) {
       await Promise.all(revs.map(async (r) => {
         if (!r.productId) return;
         try {
-          const p = await getProduct(r.productId);
-          if (p) map[r.productId] = p.name;
+          if (r.productId.startsWith('blog:')) {
+            const s = r.productId.slice(5);
+            const a = await pb.collection('articles').getFirstListItem(`slug="${s.replace(/"/g, '\\"')}"`, { $autoCancel: false });
+            if (a) map[r.productId] = a.title_tr || a.title_en || a.title_de || s;
+          } else {
+            const p = await getProduct(r.productId);
+            if (p) map[r.productId] = p.name;
+          }
         } catch { /* noop */ }
       }));
       setNames(map);
     });
   }, []);
+
+  const reviewLink = (productId) => (productId.startsWith('blog:') ? `/blog/${productId.slice(5)}` : productPath(productId));
 
   async function remove(id) {
     setItems((list) => list.filter((r) => r.id !== id));
@@ -377,8 +386,8 @@ function ReviewsTab({ t }) {
           </div>
           {r.text && <p className="pf-rev-text">{r.text}</p>}
           {r.productId && (
-            <Link to={productPath(r.productId)} className="pf-rev-link">
-              {names[r.productId] || t('pf.viewProduct')} →
+            <Link to={reviewLink(r.productId)} className="pf-rev-link">
+              {names[r.productId] || (r.productId.startsWith('blog:') ? t('pf.viewArticle') : t('pf.viewProduct'))} →
             </Link>
           )}
         </div>

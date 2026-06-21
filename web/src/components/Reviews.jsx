@@ -6,6 +6,7 @@ import {
   toggleReviewLike, toggleReviewDislike,
   getReplies, addReply, deleteReply, toggleReplyLike, toggleReplyDislike,
 } from '../lib/reviews';
+import './Reviews.css';
 
 function Stars({ value }) {
   return (

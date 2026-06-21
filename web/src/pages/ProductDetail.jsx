@@ -37,6 +37,7 @@ import { categoryPath, extractProductId, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { cleanProductName, displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
+import ScrollRail from '../components/ScrollRail.jsx';
 import Reviews from '../components/Reviews.jsx';
 import './ProductDetail.css';
 
@@ -1406,40 +1407,6 @@ export default function ProductDetail() {
 
 // Horizontally scrollable rail with prev/next arrows (desktop affordance for
 // the otherwise touch-only swipe). Arrows hide when there's nothing to scroll.
-function ScrollRail({ children }) {
-  const ref = useRef(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
-  const update = () => {
-    const el = ref.current;
-    if (!el) return;
-    setEdges({ left: el.scrollLeft > 8, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 8 });
-  };
-  useEffect(() => {
-    update();
-    const el = ref.current;
-    if (!el) return undefined;
-    el.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => { el.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
-  }, [children]); // eslint-disable-line
-  const scroll = (dir) => ref.current?.scrollBy({ left: dir * Math.max(320, ref.current.clientWidth * 0.85), behavior: 'smooth' });
-  return (
-    <div className="pd-rail-wrap">
-      {edges.left && (
-        <button type="button" className="pd-rail-arr pd-rail-prev" aria-label="‹" onClick={() => scroll(-1)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg>
-        </button>
-      )}
-      <div className="rail" ref={ref}>{children}</div>
-      {edges.right && (
-        <button type="button" className="pd-rail-arr pd-rail-next" aria-label="›" onClick={() => scroll(1)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg>
-        </button>
-      )}
-    </div>
-  );
-}
-
 function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
   const daily = (() => {
     const byDay = new Map();

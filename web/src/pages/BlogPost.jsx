@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { pb, currentUser } from '../lib/pocketbase';
+import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
-import { useAuth } from '../lib/auth';
 import { useSeo, SITE_URL } from '../lib/seo';
-import { productPath, categoryPath, articlePath } from '../lib/routes';
+import { productPath, articlePath } from '../lib/routes';
 import { amazonGoPath } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
-import { getCategoryPage, searchProducts } from '../lib/typesense';
+import { getSimilar } from '../lib/typesense';
 import { usePageContext } from '../lib/pageContext';
 import ProductCard from '../components/ProductCard.jsx';
+import ScrollRail from '../components/ScrollRail.jsx';
+import Reviews from '../components/Reviews.jsx';
+import { useT } from '../i18n/index.jsx';
 import './Blog.css';
 
 function esc(v) { return String(v || '').replace(/"/g, '\\"'); }
@@ -26,9 +28,8 @@ function track(slug, type, duration) {
   } catch { /* ignore */ }
 }
 // Deterministic per-article baseline so a brand-new guide carries social proof
-// instead of a discouraging "0". Stable (seeded by slug, never random/jittery);
-// the public count = baseline + real events. The admin panel always shows the
-// REAL numbers (it reads article_events directly), never this baseline.
+// instead of a discouraging "0". Stable (seeded by slug); public count =
+// baseline + real events. The admin panel always shows REAL numbers only.
 function seedCount(slug, min, max) {
   let h = 2166136261;
   for (let i = 0; i < slug.length; i++) { h ^= slug.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -38,16 +39,13 @@ function seedCount(slug, min, max) {
 export default function BlogPost() {
   const { slug } = useParams();
   const { lang } = useI18n();
-  const { user, openAuth } = useAuth();
+  const t = useT();
   const geoCountry = useGeoCountry();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [post, setPost] = useState(null);
   const [status, setStatus] = useState('loading');
   const [more, setMore] = useState([]);
-  const [relProds, setRelProds] = useState([]);
-  const [comments, setComments] = useState([]);
-  const [cText, setCText] = useState('');
-  const [cBusy, setCBusy] = useState(false);
+  const [similarProds, setSimilarProds] = useState([]);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
@@ -58,7 +56,7 @@ export default function BlogPost() {
 
   useEffect(() => {
     let live = true;
-    setStatus('loading'); setPost(null); setComments([]); setRelProds([]); setMore([]);
+    setStatus('loading'); setPost(null); setSimilarProds([]); setMore([]);
     openedAt.current = Date.now(); readSent.current = false;
     // Resolve by canonical slug OR any per-language slug → same article.
     pb.collection('articles').getFirstListItem(
@@ -75,17 +73,21 @@ export default function BlogPost() {
         setViewCount(vBase); setLikeCount(lBase);
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="like"`, $autoCancel: false }).then((r) => { if (live) setLikeCount(lBase + r.totalItems); }).catch(() => {});
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="view"`, $autoCancel: false }).then((r) => { if (live) setViewCount(vBase + r.totalItems + 1); }).catch(() => {});
-        // comments (public read), keyed by canonical slug
-        pb.collection('article_comments').getList(1, 100, { filter: `slug="${esc(key)}"`, sort: '-created', $autoCancel: false }).then((r) => { if (live) setComments(r.items || []); }).catch(() => {});
         // similar articles
         pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${esc(rec.slug)}"`, sort: '-updated', fields: 'slug,slug_tr,slug_en,slug_de,cover,coverFile,collectionId,collectionName,title_tr,title_en,title_de' })
           .then((r) => { if (live) setMore(r.items || []); }).catch(() => {});
-        // related products under the article (popular in the same category)
+        // similar products — same getSimilar() the product page uses, then ranked
+        // by closeness to the article's average tech score ("yaklaşık teknik puan").
+        const prods = Array.isArray(rec.products) ? rec.products.filter((p) => p && p.id) : [];
         if (rec.category) {
-          getCategoryPage({ category: rec.category, perPage: 8, sort: 'trend' })
-            .then((r) => { if (live && r.hits?.length) setRelProds(r.hits.slice(0, 8)); }).catch(() => {});
-        } else {
-          searchProducts(rec.title_tr || rec.title_en || '', 8).then((hits) => { if (live) setRelProds(hits.slice(0, 8)); }).catch(() => {});
+          const avg = prods.length ? Math.round(prods.reduce((s, p) => s + (Number(p.techScore) || 0), 0) / prods.length) : 0;
+          const exclude = new Set(prods.map((p) => p.id));
+          getSimilar(rec.category, avg, null, 24).then((list) => {
+            if (!live) return;
+            const ranked = (list || []).filter((p) => !exclude.has(p.id));
+            if (avg) ranked.sort((a, b) => Math.abs((Number(a.techScore) || 0) - avg) - Math.abs((Number(b.techScore) || 0) - avg));
+            setSimilarProds(ranked.slice(0, 12));
+          }).catch(() => {});
         }
       })
       .catch(() => { if (live) setStatus('notfound'); });
@@ -118,10 +120,10 @@ export default function BlogPost() {
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
+  const pimg = (p) => p.image || p.imageUrl || '';
   const publishedAt = post?.publishedAt || post?.created || '';
 
-  // Feed the whole article to the chat bubble so "Ask Qor AI" — and any chat
-  // opened on this page — can read and comment on it.
+  // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(post ? [
     `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
     ...products.map((p, i) => `${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()),
@@ -157,19 +159,11 @@ export default function BlogPost() {
       else { await navigator.clipboard.writeText(url); }
     } catch { /* ignore */ }
   };
-  const submitComment = async (e) => {
-    e.preventDefault();
-    const u = currentUser();
-    if (!u) { openAuth?.(); return; }
-    const text = cText.trim();
-    if (!text || cBusy) return;
-    setCBusy(true);
-    const name = u.name || u.displayName || (u.email ? u.email.split('@')[0] : 'User');
-    try {
-      const rec = await pb.collection('article_comments').create({ slug: canonKey, name, text, userId: u.id }, { $autoCancel: false });
-      setComments((list) => [rec, ...list]);
-      setCText('');
-    } catch { /* ignore */ } finally { setCBusy(false); }
+  const askAi = () => {
+    const parts = [`${title}`, lead];
+    products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()));
+    if (conclusion) parts.push(conclusion.replace(/<[^>]+>/g, ' '));
+    window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: { context: parts.filter(Boolean).join('\n') } }));
   };
 
   if (status === 'notfound') {
@@ -185,19 +179,48 @@ export default function BlogPost() {
   }
 
   const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+  const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
+
+  // One product block, rendered per its chosen layout template.
+  const renderProd = (p, i) => {
+    const to = productPath({ id: p.id, slug: p.slug, name: p.name });
+    const layout = p.layout || 'split';
+    const size = p.imgSize || 'm';
+    const img = pimg(p);
+    const btns = (
+      <div className="post-prod-btns">
+        <Link to={`${to}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
+        <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
+          <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
+          {p.price ? <span className="ppbtn-price">{p.price}</span> : null}
+        </a>
+        <Link to={to} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
+      </div>
+    );
+    const titleEl = <Link to={to} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
+    const d1 = pdesc(p) ? <p className="post-prod-desc">{pdesc(p)}</p> : null;
+    const d2 = pdesc2(p) ? <p className="post-prod-desc">{pdesc2(p)}</p> : null;
+    const imgEl = img ? <Link to={to} className={`post-prod-img pp-${size}`}><img src={img} alt={p.name} loading="lazy" /></Link> : null;
+    let inner;
+    if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
+    else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
+    else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
+    else if (layout === 'right') inner = <div className="post-prod-row rev">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
+    else inner = <>{d1}{imgEl}{d2}</>; // split (default)
+    return <div className={`post-prod layout-${layout}`} key={p.id}>{btns}{titleEl}{inner}</div>;
+  };
 
   return (
     <div className="container blog-page">
       <article className="blog-article">
         <nav className="blog-crumb"><Link to="/">Qor AI</Link> › <Link to="/blog">Blog</Link></nav>
 
-        {/* stats bar — date + views on the left, like + share on the right */}
+        {/* stats — date + views left, like + share right */}
         <div className="blog-stats">
           {dateStr ? <span className="blog-stat">📅 {dateStr}</span> : null}
-          <span className="blog-stat">👁 {viewCount.toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US')}</span>
+          <span className="blog-stat">👁 {nf(viewCount)}</span>
           <div className="blog-stats-actions">
-            <button className={`blog-act blog-like ${liked ? 'on' : ''}`} onClick={onLike} aria-label="like">❤ {likeCount.toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US')}</button>
+            <button className={`blog-act blog-like ${liked ? 'on' : ''}`} onClick={onLike} aria-label="like">❤ {nf(likeCount)}</button>
             <button className="blog-act" onClick={onShare} aria-label="share">↗ {L('Share', 'Paylaş', 'Teilen')}</button>
           </div>
         </div>
@@ -206,57 +229,26 @@ export default function BlogPost() {
         {lead ? <p className="blog-lead">{lead}</p> : null}
         {body ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: body }} /> : null}
 
-        {/* products: tiny buttons → title(link) → desc → image → desc2 (no tech score) */}
-        {products.length > 0 && (
-          <section className="post-prods">
-            {products.map((p, i) => {
-              const to = productPath({ id: p.id, slug: p.slug, name: p.name });
-              return (
-                <div className="post-prod" key={p.id}>
-                  <div className="post-prod-btns">
-                    <Link to={`${to}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
-                    <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
-                      <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
-                      {p.price ? <span className="ppbtn-price">{p.price}</span> : null}
-                    </a>
-                    <Link to={to} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
-                  </div>
-                  <Link to={to} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>
-                  {pdesc(p) ? <p className="post-prod-desc">{pdesc(p)}</p> : null}
-                  {p.imageUrl ? <Link to={to} className="post-prod-img"><img src={p.imageUrl} alt={p.name} loading="lazy" /></Link> : null}
-                  {pdesc2(p) ? <p className="post-prod-desc">{pdesc2(p)}</p> : null}
-                </div>
-              );
-            })}
-          </section>
-        )}
+        {products.length > 0 && <section className="post-prods">{products.map(renderProd)}</section>}
 
-        {/* conclusion */}
-        {conclusion ? (
-          <section className="blog-concl">
-            <h2>{L('Verdict', 'Sonuç', 'Fazit')}</h2>
-            <div dangerouslySetInnerHTML={{ __html: conclusion }} />
-          </section>
-        ) : null}
+        {/* conclusion flows as part of the article (no rigid "Sonuç" box) */}
+        {conclusion ? <div className="blog-body blog-concl-flow" dangerouslySetInnerHTML={{ __html: conclusion }} /> : null}
 
-        {/* AI chat help */}
-        <div className="blog-aihelp">
-          <div>
-            <strong>{L('Need help deciding?', 'Karar veremedin mi?', 'Unentschlossen?')}</strong>
-            <p>{L('Ask Qor AI about this guide and your needs.', 'Bu rehber ve ihtiyacın hakkında Qor AI’ya sor.', 'Frag Qor AI zu diesem Ratgeber.')}</p>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={() => {
-            const parts = [`${title}`, lead];
-            products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()));
-            if (conclusion) parts.push(conclusion.replace(/<[^>]+>/g, ' '));
-            window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: { context: parts.filter(Boolean).join('\n') } }));
-          }}>{L('Ask Qor AI', 'Qor AI’ya Sor', 'Qor AI fragen')}</button>
+        {/* small AI button */}
+        <div className="blog-ai-row">
+          <button type="button" className="blog-ai-btn" onClick={askAi}>
+            ✨ {L('Ask Qor AI about this article', 'Bu makale hakkında Qor AI’ya sor', 'Frag Qor AI zu diesem Artikel')}
+          </button>
         </div>
+
+        {/* comments — same review system as product / compare pages (shows on the
+            user's profile too) */}
+        <Reviews productId={`blog:${canonKey}`} productName={title} lang={lang} />
 
         {/* similar articles */}
         {more.length > 0 && (
           <section className="blog-similar">
-            <h2>{L('Related guides', 'Benzer rehberler', 'Ähnliche Ratgeber')}</h2>
+            <div className="sec-head"><h2><span className="bar" /> {L('Related guides', 'Benzer rehberler', 'Ähnliche Ratgeber')}</h2></div>
             <div className="blog-similar-grid">
               {more.map((m) => {
                 const mcover = m.coverFile ? pb.files.getURL(m, m.coverFile) : (m.cover || '');
@@ -271,53 +263,14 @@ export default function BlogPost() {
           </section>
         )}
 
-        {/* related products under the article */}
-        {relProds.length > 0 && (
-          <section className="blog-relprods">
-            <h2>{L('Popular products', 'Popüler ürünler', 'Beliebte Produkte')}</h2>
-            <div className="blog-relprods-grid">
-              {relProds.map((p) => <ProductCard key={p.id} product={p} />)}
-            </div>
+        {/* similar products — same rail + cards as the product page */}
+        {similarProds.length > 0 && (
+          <section className="blog-simprods">
+            <div className="sec-head" style={{ marginTop: 40 }}><h2><span className="bar" /> {t('pd.similar')}</h2></div>
+            <ScrollRail>
+              {similarProds.map((sp) => <ProductCard key={sp.id} product={sp} />)}
+            </ScrollRail>
           </section>
-        )}
-
-        {/* comments */}
-        <section className="blog-comments">
-          <h2>{L('Comments', 'Yorumlar', 'Kommentare')} ({comments.length})</h2>
-          {user ? (
-            <form className="bc-form" onSubmit={submitComment}>
-              <textarea value={cText} onChange={(e) => setCText(e.target.value)} rows={3}
-                placeholder={L('Write a comment…', 'Bir yorum yaz…', 'Schreibe einen Kommentar…')} maxLength={2000} />
-              <button type="submit" className="btn btn-primary" disabled={cBusy || !cText.trim()}>
-                {cBusy ? '…' : L('Post', 'Gönder', 'Senden')}
-              </button>
-            </form>
-          ) : (
-            <p className="bc-signin">
-              {L('Sign in to join the conversation.', 'Yorum yapmak için giriş yap.', 'Melde dich an, um mitzureden.')}{' '}
-              <button className="bc-link" onClick={() => openAuth?.()}>{L('Sign in', 'Giriş yap', 'Anmelden')}</button>
-            </p>
-          )}
-          <div className="bc-list">
-            {comments.length === 0 ? (
-              <p className="bc-empty">{L('No comments yet — be the first.', 'Henüz yorum yok — ilk sen ol.', 'Noch keine Kommentare.')}</p>
-            ) : comments.map((c) => (
-              <div className="bc-item" key={c.id}>
-                <div className="bc-head"><span className="bc-name">{c.name}</span><span className="bc-date">{fmtDate(c.created)}</span></div>
-                <p className="bc-text">{c.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* footer nav */}
-        {post?.category ? (
-          <div className="blog-foot">
-            <Link to={categoryPath(post.category)} className="btn btn-ghost">{L('Browse all', 'Tümünü gör', 'Alle ansehen')} →</Link>
-            <Link to="/blog" className="btn btn-ghost">{L('← All guides', '← Tüm rehberler', '← Alle Ratgeber')}</Link>
-          </div>
-        ) : (
-          <div className="blog-foot"><Link to="/blog" className="btn btn-ghost">{L('← All guides', '← Tüm rehberler', '← Alle Ratgeber')}</Link></div>
         )}
       </article>
     </div>
