@@ -100,7 +100,10 @@ function blogArticleBody(a, lang = 'tr') {
       + `</div>`;
   }).join('');
   const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
-  const dateStr = (a.publishedAt || a.created) ? String(a.publishedAt || a.created).slice(0, 10) : '';
+  const DLOC = { tr: 'tr-TR', en: 'en-US', de: 'de-DE' };
+  const dRaw = a.publishedAt || a.created;
+  let dateStr = '';
+  if (dRaw) { try { dateStr = new Date(String(dRaw).replace(' ', 'T')).toLocaleDateString(DLOC[lang] || 'tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (_) { dateStr = String(dRaw).slice(0, 10); } }
   const author = esc((a.author || '').trim() || 'Qor AI');
   const tags = String(a.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
   const tagsHtml = tags.length

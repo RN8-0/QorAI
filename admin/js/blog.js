@@ -87,6 +87,16 @@
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
   }
+  // PB returns datetime as "2026-06-21 10:11:00.000Z" (space, seconds, Z) which a
+  // <input type="datetime-local"> cannot parse → garbage/0006. Convert to the
+  // local "YYYY-MM-DDTHH:mm" the input expects.
+  function toDtLocal(v) {
+    if (!v) return '';
+    const d = new Date(String(v).replace(' ', 'T'));
+    if (Number.isNaN(d.getTime())) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
   const root = () => document.getElementById('blogAdminRoot');
 
   function injectStyles() {
@@ -229,7 +239,7 @@
   async function blogNew() {
     injectStyles();
     await loadCats();
-    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: new Date().toISOString().slice(0, 16) };
+    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: toDtLocal(new Date()) };
     _products = []; _lang = 'tr';
     renderEditor();
   }
@@ -240,7 +250,7 @@
       const a = await getPb().collection('articles').getOne(id, { $autoCancel: false });
       _editing = a; _lang = 'tr';
       _products = Array.isArray(a.products) ? a.products.map((p) => ({ ...p })) : [];
-      if (a.publishedAt) _editing.publishedAt = String(a.publishedAt).slice(0, 16);
+      _editing.publishedAt = toDtLocal(a.publishedAt);
       renderEditor();
     } catch (e) { toast('Load failed: ' + e.message, 'e'); }
   }
@@ -442,7 +452,7 @@
     LANGS.forEach(([c]) => { data['slug_' + c] = (a['slug_' + c] || '').trim() || slugify(a['title_' + c] || '') || slug; });
     try {
       if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
-      else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = String(rec.publishedAt || '').slice(0, 16); }
+      else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = toDtLocal(rec.publishedAt); }
       if (!silent) { toast(data.status === 'published' ? 'Published — live on the site now' : 'Draft saved', 's'); loadBlogAdmin(); }
     } catch (e) { toast('Save failed: ' + e.message, 'e'); if (silent) throw e; }
   }
