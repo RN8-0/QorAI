@@ -4,6 +4,15 @@
 # capped at SEO_MAX_PRODUCTS (default 8000) — and wipes stale subdirs each build,
 # so this stays a few thousand real model pages, never the old 100k-SKU dump.
 
+# Local diagnostics / scratch — never commit (a stray `git add -A` once swept
+# these into the repo). These are throwaway scrape/translate debug artifacts.
+.shots/
+scripts/.applog*
+scripts/.diag_*
+scripts/.fix_*
+scripts/.test-*
+scripts/_*
+
 # Miscellaneous
 *.class
 *.log

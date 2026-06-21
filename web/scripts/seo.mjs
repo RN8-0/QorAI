@@ -29,6 +29,12 @@ const TS_COLLECTION = 'products';
 const DEFAULT_IMG = `${SITE}/assets/qor_logo_512.png?v=20260605a`;
 const NOW = new Date().toISOString().slice(0, 10);
 
+// IndexNow key — lets Bing / Yandex / DuckDuckGo / Copilot crawl new & changed
+// URLs within hours instead of waiting weeks. The key is proven by hosting
+// <key>.txt at the site root; the scheduled refresh then POSTs changed URLs to
+// the IndexNow API (see web/scripts/indexnow.mjs).
+const INDEXNOW_KEY = '2c03809d550d2c5ae87a65ed1f0fcd1e';
+
 // ── helpers ─────────────────────────────────────────────────────
 function esc(s) {
   return String(s == null ? '' : s)
@@ -791,7 +797,11 @@ async function main() {
     ].join('\n'),
   );
 
-  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${prerendered.length} product shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls, robots.txt`);
+  // 5) IndexNow key file (served at https://qorai.net/<key>.txt) — proves
+  //    ownership so the scheduled refresh can push changed URLs to IndexNow.
+  writeTextFile(join(site, `${INDEXNOW_KEY}.txt`), `${INDEXNOW_KEY}\n`);
+
+  console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${prerendered.length} product shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls, robots.txt, indexnow key`);
 }
 
 main().catch((err) => {
