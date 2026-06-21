@@ -34,8 +34,8 @@ export default function Blog() {
     let live = true;
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
-      sort: '-updated',
-      fields: 'slug,category,cover,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      sort: '-publishedAt',
+      fields: 'slug,category,cover,publishedAt,created,likes,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
@@ -64,6 +64,10 @@ export default function Blog() {
               {a.cover ? <div className="blog-row-img"><img src={a.cover} alt={pick(a, 'title')} loading="lazy" /></div> : null}
               <div className="blog-row-body">
                 <h2>{pick(a, 'title')}</h2>
+                <div className="blog-row-meta">
+                  {(a.publishedAt || a.created) ? <span>📅 {new Date(a.publishedAt || a.created).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> : null}
+                  {Number(a.likes) ? <span>❤ {a.likes}</span> : null}
+                </div>
                 <p>{pick(a, 'lead')}</p>
                 <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →', 'Ratgeber lesen →')}</span>
               </div>

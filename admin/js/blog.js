@@ -1,14 +1,18 @@
 // ══════════════════════════════════════════════════════════════
 //  QOR AI ADMIN — Blog (articles collection)
-//  List / create / edit / delete blog articles. Product picker uses
-//  Typesense search and stores the on-site product ref so the public
-//  blog links straight to /product/<slug>-<id> (specs page).
+//  Modern list + editor (language tabs, manual publish date, product
+//  blocks with per-language descriptions + reorder, instant publish).
+//  Product picker uses Typesense and stores the on-site product ref so
+//  the public blog links to /product/<slug>-<id> (specs page).
 // ══════════════════════════════════════════════════════════════
 (function () {
-  const LANGS = [['tr', 'Türkçe'], ['en', 'English'], ['de', 'Deutsch']];
-  let _editing = null;       // current article record/draft
-  let _products = [];        // [{id,slug,name,brand,techScore,imageUrl,desc_tr,desc_en,desc_de}]
+  const LANGS = [['tr', '🇹🇷 Türkçe'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch']];
+  const SITE = 'https://qorai.net';
+  let _editing = null;
+  let _products = [];
+  let _lang = 'tr';
   let _searchTimer = null;
+  let _stats = {};   // slug -> {views, likes, reads}
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function slugify(v) {
@@ -19,40 +23,97 @@
   }
   const root = () => document.getElementById('blogAdminRoot');
 
+  function injectStyles() {
+    if (document.getElementById('blogAdminStyles')) return;
+    const s = document.createElement('style'); s.id = 'blogAdminStyles';
+    s.textContent = `
+      .ba-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+      .ba-card{background:var(--surface,#161b24);border:1px solid var(--border,#262c38);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+      .ba-card-cover{height:130px;background:#0e131a;display:flex;align-items:center;justify-content:center}
+      .ba-card-cover img{width:100%;height:100%;object-fit:contain;padding:10px}
+      .ba-card-b{padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+      .ba-card-title{font-weight:700;font-size:15px;line-height:1.3}
+      .ba-card-meta{display:flex;gap:12px;font-size:12px;opacity:.7;flex-wrap:wrap}
+      .ba-card-actions{display:flex;gap:6px;margin-top:auto}
+      .ba-badge{font-size:11px;padding:2px 8px;border-radius:20px;background:#334155;color:#e2e8f0}
+      .ba-badge.pub{background:#16a34a33;color:#4ade80}
+      .ba-stat{display:inline-flex;gap:4px;align-items:center}
+      .ba-tabs{display:flex;gap:6px;margin:14px 0 0}
+      .ba-tab{padding:8px 16px;border-radius:10px 10px 0 0;cursor:pointer;border:1px solid var(--border,#262c38);border-bottom:none;background:transparent;opacity:.6}
+      .ba-tab.on{opacity:1;background:var(--surface,#161b24);font-weight:700}
+      .ba-pane{border:1px solid var(--border,#262c38);border-radius:0 12px 12px 12px;padding:16px}
+      .ba-field{margin:0 0 12px}
+      .ba-field label{display:block;font-size:12px;font-weight:600;opacity:.8;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+      .ba-input{width:100%;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:9px;padding:10px 12px;color:inherit;font:inherit}
+      .ba-prod{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface,#161b24)}
+      .ba-prod img{width:60px;height:60px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 60px}
+      .ba-prod-ord{display:flex;flex-direction:column;gap:4px}
+      .ba-mini{padding:4px 9px;border-radius:8px;border:1px solid var(--border,#3a4150);background:transparent;color:inherit;cursor:pointer;font-size:12px}
+      .ba-results{position:absolute;z-index:30;left:0;right:0;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:10px;max-height:300px;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+      .ba-results div.hit{padding:9px 12px;cursor:pointer;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border,#222936)}
+      .ba-results div.hit:hover{background:#1a2230}
+    `;
+    document.head.appendChild(s);
+  }
+
+  // ── analytics aggregation (from article_events) ────────────────
+  async function loadStats() {
+    _stats = {};
+    try {
+      const evs = await getPb().collection('article_events').getFullList({ fields: 'slug,type', $autoCancel: false, batch: 2000 });
+      for (const e of evs) {
+        const s = _stats[e.slug] || (_stats[e.slug] = { view: 0, read: 0, like: 0 });
+        if (s[e.type] != null) s[e.type] += 1;
+      }
+    } catch (_) { /* events may be empty */ }
+  }
+
   // ── LIST ──────────────────────────────────────────────────────
   async function loadBlogAdmin() {
+    injectStyles();
     const el = root(); if (!el) return;
     el.innerHTML = '<div style="padding:24px;opacity:.6">Loading…</div>';
     try {
+      await loadStats();
       const items = await getPb().collection('articles').getFullList({ sort: '-updated', $autoCancel: false });
       const badge = document.getElementById('blogCount'); if (badge) badge.textContent = items.length;
-      if (!items.length) { el.innerHTML = '<div style="padding:24px;opacity:.6">No articles yet. Click “+ New article”.</div>'; return; }
-      el.innerHTML = `<div class="card" style="overflow:auto"><table class="data-table" style="width:100%">
-        <thead><tr><th>Title (TR)</th><th>Slug</th><th>Status</th><th>Products</th><th>Updated</th><th></th></tr></thead>
-        <tbody>${items.map((a) => `<tr>
-          <td>${esc(a.title_tr || a.title_en || '—')}</td>
-          <td><code>${esc(a.slug)}</code></td>
-          <td><span class="badge ${a.status === 'published' ? 'badge-green' : ''}">${esc(a.status)}</span></td>
-          <td>${(a.products || []).length}</td>
-          <td style="white-space:nowrap;opacity:.7">${esc(String(a.updated || '').slice(0, 10))}</td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-ghost btn-sm" onclick="blogEdit('${a.id}')">Edit</button>
-            <a class="btn btn-ghost btn-sm" href="https://qorai.net/blog/${esc(a.slug)}" target="_blank">View</a>
-            <button class="btn btn-ghost btn-sm" onclick="blogDelete('${a.id}','${esc(a.slug)}')">Delete</button>
-          </td></tr>`).join('')}</tbody></table></div>`;
+      if (!items.length) { el.innerHTML = '<div style="padding:32px;text-align:center;opacity:.6">No articles yet.<br>Click “+ New article” to write one.</div>'; return; }
+      el.innerHTML = `<div class="ba-grid">${items.map((a) => {
+        const st = _stats[a.slug] || {};
+        return `<div class="ba-card">
+          <div class="ba-card-cover"><img src="${esc(a.cover || '')}" onerror="this.style.visibility='hidden'"/></div>
+          <div class="ba-card-b">
+            <div><span class="ba-badge ${a.status === 'published' ? 'pub' : ''}">${esc(a.status)}</span></div>
+            <div class="ba-card-title">${esc(a.title_tr || a.title_en || a.slug)}</div>
+            <div class="ba-card-meta">
+              <span class="ba-stat">👁 ${st.view || 0}</span>
+              <span class="ba-stat">❤ ${st.like || 0}</span>
+              <span class="ba-stat">📖 ${st.read || 0}</span>
+              <span class="ba-stat">📅 ${esc(String(a.publishedAt || a.created || '').slice(0, 10))}</span>
+            </div>
+            <div class="ba-card-actions">
+              <button class="btn btn-primary btn-sm" onclick="blogEdit('${a.id}')">Edit</button>
+              <a class="btn btn-ghost btn-sm" href="${SITE}/blog/${esc(a.slug)}" target="_blank">View</a>
+              <button class="btn btn-ghost btn-sm" onclick="blogDelete('${a.id}','${esc(a.slug)}')">Delete</button>
+            </div>
+          </div></div>`;
+      }).join('')}</div>`;
     } catch (e) { el.innerHTML = `<div style="padding:24px;color:#ef4444">Error: ${esc(e.message)}</div>`; }
   }
 
   function blogNew() {
-    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '' };
-    _products = [];
+    injectStyles();
+    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: new Date().toISOString().slice(0, 16) };
+    _products = []; _lang = 'tr';
     renderEditor();
   }
   async function blogEdit(id) {
+    injectStyles();
     try {
       const a = await getPb().collection('articles').getOne(id, { $autoCancel: false });
-      _editing = a;
+      _editing = a; _lang = 'tr';
       _products = Array.isArray(a.products) ? a.products.map((p) => ({ ...p })) : [];
+      if (a.publishedAt) _editing.publishedAt = String(a.publishedAt).slice(0, 16);
       renderEditor();
     } catch (e) { toast('Load failed: ' + e.message, 'e'); }
   }
@@ -65,59 +126,76 @@
   // ── EDITOR ────────────────────────────────────────────────────
   function renderEditor() {
     const a = _editing; const el = root(); if (!el) return;
-    const langFields = LANGS.map(([code, name]) => `
-      <fieldset style="border:1px solid var(--border,#2a2f3a);border-radius:10px;padding:14px;margin:10px 0">
-        <legend style="padding:0 8px;font-weight:700">${name}</legend>
-        <label class="form-label">Title</label>
-        <input class="form-input" id="b_title_${code}" value="${esc(a['title_' + code] || '')}" />
-        <label class="form-label">Lead (1-2 sentences)</label>
-        <textarea class="form-input" id="b_lead_${code}" rows="2">${esc(a['lead_' + code] || '')}</textarea>
-        <label class="form-label">Body (HTML: &lt;h2&gt; &lt;p&gt; &lt;ul&gt;&lt;li&gt; &lt;strong&gt;)</label>
-        <textarea class="form-input" id="b_body_${code}" rows="6">${esc(a['body_' + code] || '')}</textarea>
-      </fieldset>`).join('');
-
     el.innerHTML = `
-      <div class="card" style="padding:18px;max-width:900px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card" style="padding:18px;max-width:920px;margin:0 auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
           <button class="btn btn-ghost" onclick="loadBlogAdmin()">← Back</button>
-          <strong>${a.id ? 'Edit article' : 'New article'}</strong>
-          <button class="btn btn-primary" onclick="blogSave()">Save</button>
+          <strong style="font-size:16px">${a.id ? 'Edit article' : 'New article'}</strong>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="blogSave('draft')">Save draft</button>
+            <button class="btn btn-primary" onclick="blogSave('published')">Publish</button>
+          </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div><label class="form-label">Slug (URL)</label><input class="form-input" id="b_slug" value="${esc(a.slug || '')}" placeholder="en-iyi-telefonlar" /></div>
-          <div><label class="form-label">Status</label><select class="form-input" id="b_status">
-            <option value="draft"${a.status === 'draft' ? ' selected' : ''}>draft</option>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="ba-field"><label>Slug (URL)</label><input class="ba-input" id="b_slug" value="${esc(a.slug || '')}" placeholder="en-iyi-telefonlar-2026" /></div>
+          <div class="ba-field"><label>Publish date</label><input class="ba-input" id="b_pub" type="datetime-local" value="${esc(a.publishedAt || '')}" /></div>
+          <div class="ba-field"><label>Category (optional)</label><input class="ba-input" id="b_category" value="${esc(a.category || '')}" placeholder="smartphones" /></div>
+          <div class="ba-field"><label>Status</label><select class="ba-input" id="b_status">
+            <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
             <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
-          <div><label class="form-label">Category (optional)</label><input class="form-input" id="b_category" value="${esc(a.category || '')}" placeholder="smartphones" /></div>
         </div>
-        <label class="form-label">Cover image URL</label>
-        <input class="form-input" id="b_cover" value="${esc(a.cover || '')}" oninput="document.getElementById('b_cover_prev').src=this.value" />
-        <img id="b_cover_prev" src="${esc(a.cover || '')}" style="max-height:120px;margin-top:8px;border-radius:8px;${a.cover ? '' : 'display:none'}" onerror="this.style.display='none'" onload="this.style.display='block'" />
-        ${langFields}
-        <h3 style="margin:18px 0 8px">Products (link to on-site specs page)</h3>
-        <div style="position:relative">
-          <input class="form-input" id="b_prodsearch" placeholder="Type a product name…" autocomplete="off" oninput="blogProdSearch(this.value)" />
-          <div id="b_prodresults" style="position:absolute;z-index:20;left:0;right:0;background:var(--surface,#1a1f29);border:1px solid var(--border,#2a2f3a);border-radius:8px;max-height:280px;overflow:auto;display:none"></div>
+        <div class="ba-field"><label>Cover image URL</label>
+          <input class="ba-input" id="b_cover" value="${esc(a.cover || '')}" oninput="var p=document.getElementById('b_cover_prev');p.src=this.value;p.style.display=this.value?'block':'none'" />
+          <img id="b_cover_prev" src="${esc(a.cover || '')}" style="max-height:130px;margin-top:8px;border-radius:8px;background:#fff;${a.cover ? '' : 'display:none'}" onerror="this.style.display='none'" />
         </div>
-        <div id="b_prodlist" style="margin-top:12px"></div>
+        <div class="ba-tabs">${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')">${n}</div>`).join('')}</div>
+        <div class="ba-pane" id="b_pane"></div>
+        <h3 style="margin:20px 0 8px">Products <span style="opacity:.5;font-weight:400;font-size:13px">— link to on-site specs page, ordered</span></h3>
+        <div style="position:relative" class="ba-field">
+          <input class="ba-input" id="b_prodsearch" placeholder="🔍 Type a product name to add…" autocomplete="off" oninput="blogProdSearch(this.value)" />
+          <div id="b_prodresults" class="ba-results" style="display:none"></div>
+        </div>
+        <div id="b_prodlist"></div>
       </div>`;
+    renderPane();
     renderProducts();
+  }
+
+  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); }
+  function renderPaneTabs() { const tabs = document.querySelectorAll('.ba-tab'); LANGS.forEach(([c], i) => { if (tabs[i]) tabs[i].classList.toggle('on', c === _lang); }); }
+  function syncPane() {
+    const a = _editing; const c = _lang;
+    const g = (id) => (document.getElementById(id) || {}).value;
+    if (document.getElementById('p_title') != null) {
+      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead');
+      a['body_' + c] = g('p_body'); a['conclusion_' + c] = g('p_concl');
+    }
+  }
+  function renderPane() {
+    const a = _editing; const c = _lang; const pane = document.getElementById('b_pane'); if (!pane) return;
+    pane.innerHTML = `
+      <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
+      <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
+      <div class="ba-field"><label>Intro / general text (HTML: &lt;p&gt; &lt;h2&gt; &lt;ul&gt;&lt;li&gt; &lt;strong&gt;)</label><textarea class="ba-input" id="p_body" rows="6">${esc(a['body_' + c] || '')}</textarea></div>
+      <div class="ba-field"><label>Conclusion (after products)</label><textarea class="ba-input" id="p_concl" rows="3">${esc(a['conclusion_' + c] || '')}</textarea></div>`;
   }
 
   function renderProducts() {
     const box = document.getElementById('b_prodlist'); if (!box) return;
     box.innerHTML = _products.map((p, i) => `
-      <div style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#2a2f3a);border-radius:10px;padding:10px;margin-bottom:8px">
-        <img src="${esc(p.imageUrl || '')}" style="width:54px;height:54px;object-fit:contain;background:#fff;border-radius:8px" onerror="this.style.visibility='hidden'" />
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700">${esc(p.name)} ${p.techScore ? `<span style="opacity:.6;font-weight:400">· ${esc(p.techScore)}/100</span>` : ''}</div>
-          <div style="opacity:.6;font-size:12px;margin-bottom:6px">→ /product/${esc(p.slug)}-${esc(p.id)}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-            ${LANGS.map(([c]) => `<input class="form-input" style="font-size:12px" placeholder="desc ${c}" value="${esc(p['desc_' + c] || '')}" oninput="blogProdDesc(${i},'${c}',this.value)" />`).join('')}
-          </div>
+      <div class="ba-prod">
+        <div class="ba-prod-ord">
+          <button class="ba-mini" onclick="blogProdMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="ba-mini" onclick="blogProdMove(${i},1)" ${i === _products.length - 1 ? 'disabled' : ''}>↓</button>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="blogProdRemove(${i})">✕</button>
-      </div>`).join('') || '<div style="opacity:.5">No products added.</div>';
+        <img src="${esc(p.imageUrl || '')}" onerror="this.style.visibility='hidden'"/>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700">${i + 1}. ${esc(p.name)} ${p.techScore ? `<span style="opacity:.6;font-weight:400">· ${esc(p.techScore)}/100</span>` : ''}</div>
+          <div style="opacity:.55;font-size:12px;margin-bottom:6px">→ /product/${esc(p.slug)}-${esc(p.id)}</div>
+          ${LANGS.map(([c, n]) => `<textarea class="ba-input" style="font-size:13px;margin-bottom:5px" rows="2" placeholder="${n} açıklama" oninput="blogProdDesc(${i},'${c}',this.value)">${esc(p['desc_' + c] || '')}</textarea>`).join('')}
+        </div>
+        <button class="ba-mini" onclick="blogProdRemove(${i})" style="color:#f87171">✕</button>
+      </div>`).join('') || '<div style="opacity:.5;padding:8px">No products added yet.</div>';
   }
 
   function blogProdSearch(q) {
@@ -128,9 +206,8 @@
       try {
         const r = await window.TsClient.search(q, { perPage: 8 });
         const hits = (r.hits || []).map((h) => h.document);
-        res.innerHTML = hits.map((d) => `<div style="padding:8px 10px;cursor:pointer;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--border,#2a2f3a)"
-            onclick='blogProdAdd(${JSON.stringify({ id: d.id, slug: d.slug || '', name: d.name, brand: d.brand || '', techScore: d.techScore || 0, imageUrl: d.imageUrl || '' }).replace(/'/g, "&#39;")})'>
-            <img src="${esc(d.imageUrl || '')}" style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:6px" onerror="this.style.visibility='hidden'" />
+        res.innerHTML = hits.map((d) => `<div class="hit" onclick='blogProdAdd(${JSON.stringify({ id: d.id, slug: d.slug || '', name: d.name, brand: d.brand || '', techScore: d.techScore || 0, imageUrl: d.imageUrl || '' }).replace(/'/g, "&#39;")})'>
+            <img src="${esc(d.imageUrl || '')}" style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:6px"/>
             <span>${esc(d.name)} <span style="opacity:.5">${esc(d.brand || '')}</span></span></div>`).join('') || '<div style="padding:10px;opacity:.6">No match</div>';
         res.style.display = 'block';
       } catch (e) { /* ignore */ }
@@ -138,43 +215,39 @@
   }
   function blogProdAdd(p) {
     if (!p || !p.id) return;
-    if (!_products.some((x) => x.id === p.id)) {
-      p.slug = p.slug || slugify(p.name);
-      _products.push(p);
-      renderProducts();
-    }
+    if (!_products.some((x) => x.id === p.id)) { p.slug = p.slug || slugify(p.name); _products.push(p); renderProducts(); }
     const res = document.getElementById('b_prodresults'); if (res) res.style.display = 'none';
     const inp = document.getElementById('b_prodsearch'); if (inp) inp.value = '';
   }
   function blogProdRemove(i) { _products.splice(i, 1); renderProducts(); }
+  function blogProdMove(i, d) { const j = i + d; if (j < 0 || j >= _products.length) return; const t = _products[i]; _products[i] = _products[j]; _products[j] = t; renderProducts(); }
   function blogProdDesc(i, lang, v) { if (_products[i]) _products[i]['desc_' + lang] = v; }
 
-  async function blogSave() {
+  async function blogSave(forceStatus) {
+    syncPane();
+    const a = _editing;
     const val = (id) => (document.getElementById(id) || {}).value || '';
-    const slug = slugify(val('b_slug') || val('b_title_tr'));
+    const slug = slugify(val('b_slug') || a.title_tr || '');
     if (!slug) { toast('Slug or TR title required', 'w'); return; }
-    if (!val('b_title_tr')) { toast('TR title required', 'w'); return; }
+    if (!a.title_tr) { toast('TR title required', 'w'); return; }
     const data = {
-      slug, status: val('b_status') || 'draft', category: val('b_category'), cover: val('b_cover'),
+      slug, status: forceStatus || val('b_status') || 'draft',
+      category: val('b_category'), cover: val('b_cover'),
+      publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
       products: _products,
     };
-    LANGS.forEach(([c]) => { data['title_' + c] = val('b_title_' + c); data['lead_' + c] = val('b_lead_' + c); data['body_' + c] = val('b_body_' + c); });
+    LANGS.forEach(([c]) => { data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || ''; data['body_' + c] = a['body_' + c] || ''; data['conclusion_' + c] = a['conclusion_' + c] || ''; });
     try {
-      if (_editing && _editing.id) await getPb().collection('articles').update(_editing.id, data, { $autoCancel: false });
-      else await getPb().collection('articles').create(data, { $autoCancel: false });
-      toast('Saved — live on the site after the next deploy/refresh', 's');
+      if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
+      else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing = rec; _editing.publishedAt = String(rec.publishedAt || '').slice(0, 16); }
+      toast(data.status === 'published' ? 'Published — live on the site now' : 'Draft saved', 's');
       loadBlogAdmin();
     } catch (e) { toast('Save failed: ' + e.message, 'e'); }
   }
 
-  // expose globals (admin scripts are plain, non-module)
   window.loadBlogAdmin = loadBlogAdmin;
-  window.blogNew = blogNew;
-  window.blogEdit = blogEdit;
-  window.blogDelete = blogDelete;
-  window.blogSave = blogSave;
-  window.blogProdSearch = blogProdSearch;
-  window.blogProdAdd = blogProdAdd;
-  window.blogProdRemove = blogProdRemove;
-  window.blogProdDesc = blogProdDesc;
+  window.blogNew = blogNew; window.blogEdit = blogEdit; window.blogDelete = blogDelete;
+  window.blogSave = blogSave; window.blogTab = blogTab;
+  window.blogProdSearch = blogProdSearch; window.blogProdAdd = blogProdAdd;
+  window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdDesc = blogProdDesc;
 })();

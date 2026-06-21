@@ -78,12 +78,16 @@ function blogArticleBody(a, lang = 'tr') {
       + `<a href="${href}" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid #cbd5e1;color:#334155">İncele</a>`
       + `</div></div></div>`;
   }).join('');
-  return `<article class="seo-prerender" style="max-width:820px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+  const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
+  const dateStr = (a.publishedAt || a.created) ? String(a.publishedAt || a.created).slice(0, 10) : '';
+  return `<article class="seo-prerender" style="max-width:800px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
-    + `<h1 style="font-size:32px;font-weight:800;line-height:1.2;margin:12px 0 12px">${title}</h1>`
+    + (dateStr ? `<p style="font-size:13px;color:#64748b;margin:8px 0 0">📅 ${esc(dateStr)}</p>` : '')
+    + `<h1 style="font-size:33px;font-weight:800;line-height:1.18;margin:8px 0 12px">${title}</h1>`
     + (lead ? `<p style="font-size:19px;color:#475569;line-height:1.6;margin:0 0 20px">${lead}</p>` : '')
-    + `<div style="font-size:16.5px;line-height:1.8">${body}</div>`
+    + `<div style="font-size:16.5px;line-height:1.85">${body}</div>`
     + blocks
+    + (concl ? `<section style="margin:30px 0;border-top:1px solid #e2e8f0;padding-top:20px"><h2 style="font-size:23px;margin:0 0 10px">Sonuç</h2><div style="font-size:16.5px;line-height:1.85">${concl}</div></section>` : '')
     + `<p style="margin-top:28px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
     + `</article>`;
 }
@@ -875,7 +879,7 @@ async function main() {
       const cover = /^https?:\/\//i.test(a.cover || '') ? a.cover : DEFAULT_IMG;
       const articleLd = {
         '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
-        image: [cover], datePublished: a.created, dateModified: a.updated,
+        image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
         author: { '@type': 'Organization', name: 'Qor AI' },
         publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
         mainEntityOfPage: url,
@@ -885,7 +889,7 @@ async function main() {
         url, image: cover, imageAlt: t('title'), type: 'article',
         jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
       }, blogArticleBody(a)));
-      blogUrls.push({ loc: url, lastmod: String(a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
+      blogUrls.push({ loc: url, lastmod: String(a.publishedAt || a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
     }
   }
   console.log(`[seo] wrote ${Math.max(0, blogUrls.length - 1)} blog article shells`);
