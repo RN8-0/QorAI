@@ -92,7 +92,7 @@
   // local "YYYY-MM-DDTHH:mm" the input expects.
   function toDtLocal(v) {
     if (!v) return '';
-    const d = new Date(String(v).replace(' ', 'T'));
+    const d = v instanceof Date ? v : new Date(String(v).replace(' ', 'T'));
     if (Number.isNaN(d.getTime())) return '';
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -286,12 +286,8 @@
             <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
             <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
           <div class="ba-field"><label>Author</label><input class="ba-input" id="b_author" value="${esc(a.author || 'Qor AI')}" /></div>
-          <div class="ba-field"><label>Tags (virgülle ayır)</label><input class="ba-input" id="b_tags" value="${esc(a.tags || '')}" placeholder="telefon, 2026, amiral gemisi" /></div>
+          <div class="ba-field" style="display:flex;align-items:flex-end"><span style="font-size:12px;opacity:.6">Etiketler ve SEO meta <b>her dil sekmesinde ayrı</b> ↓</span></div>
         </div>
-        <details class="ba-field"><summary style="cursor:pointer;font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.4px">SEO (opsiyonel)</summary>
-          <div class="ba-field" style="margin-top:10px"><label>Meta title <span style="opacity:.5">(boşsa başlık kullanılır)</span></label><input class="ba-input" id="b_metaTitle" value="${esc(a.metaTitle || '')}" /></div>
-          <div class="ba-field"><label>Meta description <span style="opacity:.5">(boşsa özet kullanılır)</span></label><textarea class="ba-input" id="b_metaDescription" rows="2">${esc(a.metaDescription || '')}</textarea></div>
-        </details>
         <div class="ba-field"><label>Cover image — upload from device or paste a URL</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <input type="file" accept="image/*" onchange="blogUploadCover(this)" />
@@ -358,15 +354,22 @@
     const g = (id) => (document.getElementById(id) || {}).value;
     if (document.getElementById('p_title') != null) {
       a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead');
+      a['tags_' + c] = g('p_tags'); a['metaTitle_' + c] = g('p_metaTitle'); a['metaDescription_' + c] = g('p_metaDescription');
     }
     flushEditors();
   }
   function renderPane() {
     const a = _editing; const c = _lang; const pane = document.getElementById('b_pane'); if (!pane) return;
+    const ln = (LANGS.find(([x]) => x === c) || [])[1] || c;
     pane.innerHTML = `
       <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
-      <div class="ba-field"><label>Intro / general text</label><div id="p_body_wrap" class="ba-rte"></div></div>`;
+      <div class="ba-field"><label>Intro / general text</label><div id="p_body_wrap" class="ba-rte"></div></div>
+      <div class="ba-field"><label>Etiketler · ${esc(ln)} <span style="opacity:.5">(virgülle ayır)</span></label><input class="ba-input" id="p_tags" value="${esc(a['tags_' + c] || '')}" placeholder="telefon, 2026, amiral gemisi" /></div>
+      <details class="ba-field"><summary style="cursor:pointer;font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.4px">SEO · ${esc(ln)} (opsiyonel)</summary>
+        <div class="ba-field" style="margin-top:10px"><label>Meta title <span style="opacity:.5">(boşsa başlık)</span></label><input class="ba-input" id="p_metaTitle" value="${esc(a['metaTitle_' + c] || '')}" /></div>
+        <div class="ba-field"><label>Meta description <span style="opacity:.5">(boşsa özet)</span></label><textarea class="ba-input" id="p_metaDescription" rows="2">${esc(a['metaDescription_' + c] || '')}</textarea></div>
+      </details>`;
   }
 
   function renderProducts() {
@@ -439,13 +442,16 @@
       slug, status: forceStatus || val('b_status') || 'draft',
       category: val('b_category'), cover: val('b_cover'),
       author: val('b_author').trim() || 'Qor AI',
-      tags: val('b_tags').trim(),
-      metaTitle: val('b_metaTitle').trim(),
-      metaDescription: val('b_metaDescription').trim(),
       publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
       products: _products,
     };
-    LANGS.forEach(([c]) => { data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || ''; data['body_' + c] = a['body_' + c] || ''; data['conclusion_' + c] = a['conclusion_' + c] || ''; });
+    LANGS.forEach(([c]) => {
+      data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || '';
+      data['body_' + c] = a['body_' + c] || ''; data['conclusion_' + c] = a['conclusion_' + c] || '';
+      data['tags_' + c] = (a['tags_' + c] || '').trim();
+      data['metaTitle_' + c] = (a['metaTitle_' + c] || '').trim();
+      data['metaDescription_' + c] = (a['metaDescription_' + c] || '').trim();
+    });
     // Per-language slugs so a TR/EN/DE visitor reaches the same article from its
     // own URL. Preserve any existing slug, otherwise derive from that language's
     // title (fallback to the canonical slug).

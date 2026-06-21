@@ -105,7 +105,7 @@ function blogArticleBody(a, lang = 'tr') {
   let dateStr = '';
   if (dRaw) { try { dateStr = new Date(String(dRaw).replace(' ', 'T')).toLocaleDateString(DLOC[lang] || 'tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (_) { dateStr = String(dRaw).slice(0, 10); } }
   const author = esc((a.author || '').trim() || 'Qor AI');
-  const tags = String(a.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const tags = String(a[`tags_${lang}`] || a.tags_tr || a.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
   const tagsHtml = tags.length
     ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:24px 0">${tags.map((tg) => `<a href="/blog?tag=${encodeURIComponent(tg)}" style="font-size:13px;font-weight:600;color:#2563eb;background:#2563eb14;padding:5px 12px;border-radius:999px;text-decoration:none">#${esc(tg)}</a>`).join('')}</div>`
     : '';
@@ -919,13 +919,14 @@ async function main() {
         const url = `${SITE}/blog/${s}`;
         const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
         const authorName = (a.author || '').trim() || 'Qor AI';
-        const metaT = (a.metaTitle || '').trim();
-        const metaD = (a.metaDescription || '').trim();
+        const metaT = (a[`metaTitle_${lang}`] || a.metaTitle_tr || a.metaTitle || '').trim();
+        const metaD = (a[`metaDescription_${lang}`] || a.metaDescription_tr || a.metaDescription || '').trim();
+        const kw = (a[`tags_${lang}`] || a.tags_tr || a.tags || '').trim();
         const articleLd = {
           '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: metaD || t('lead'),
           image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
           inLanguage: lang,
-          ...(Array.isArray(a.tags) ? {} : (a.tags ? { keywords: String(a.tags) } : {})),
+          ...(kw ? { keywords: kw } : {}),
           author: { '@type': 'Organization', name: authorName },
           publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
           mainEntityOfPage: url,

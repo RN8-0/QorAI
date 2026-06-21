@@ -147,9 +147,9 @@ export default function BlogPost() {
   const pimg = (p) => p.image || p.imageUrl || '';
   const publishedAt = post?.publishedAt || post?.created || '';
   const author = (post?.author || '').trim() || 'Qor AI';
-  const tags = String(post?.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const metaTitle = (post?.metaTitle || '').trim();
-  const metaDescription = (post?.metaDescription || '').trim();
+  const tags = String(pick(post, 'tags') || post?.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const metaTitle = (pick(post, 'metaTitle') || post?.metaTitle || '').trim();
+  const metaDescription = (pick(post, 'metaDescription') || post?.metaDescription || '').trim();
 
   // Inject ids into h2/h3 of the body + build a table of contents.
   const { bodyHtml, toc } = useMemo(() => {

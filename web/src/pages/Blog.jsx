@@ -50,7 +50,7 @@ export default function Blog() {
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
       sort: '-publishedAt',
-      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,tags_tr,tags_en,tags_de,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
@@ -88,7 +88,7 @@ export default function Blog() {
             </div>
           ) : null}
           {posts
-            .filter((a) => !tag || String(a.tags || '').toLowerCase().split(',').map((s) => s.trim()).includes(tag))
+            .filter((a) => !tag || String(pick(a, 'tags') || a.tags || '').toLowerCase().split(',').map((s) => s.trim()).includes(tag))
             .map((a) => (
             <Link key={a.slug} to={articlePath(a, lang)} className="blog-row">
               {coverOf(a) ? <div className="blog-row-img"><img src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /></div> : null}
