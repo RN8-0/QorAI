@@ -89,12 +89,13 @@ function blogArticleBody(a, lang = 'tr') {
       const txtCol = `<div style="flex:1;min-width:0">${dEl(d1)}${dEl(d2)}</div>`;
       inner = `<div style="display:flex;gap:24px;align-items:flex-start;flex-direction:${layout === 'right' ? 'row-reverse' : 'row'}">${imgCol}${txtCol}</div>`;
     } else inner = dEl(d1) + imgEl + dEl(d2); // split
-    return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
-      + `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;font-weight:600">`
+    const btnsHtml = `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto">`
       + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
       + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${p.price ? `<b style="color:#0f172a">${esc(p.price)}</b>` : ''}</a>`
-      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`
-      + `<a href="${href}" style="display:block;font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;margin:0 0 14px"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`
+      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`;
+    const titleHtml = `<a href="${href}" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`;
+    return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
+      + `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px">${titleHtml}${btnsHtml}</div>`
       + inner
       + `</div>`;
   }).join('');

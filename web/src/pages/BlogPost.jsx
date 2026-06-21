@@ -237,7 +237,12 @@ export default function BlogPost() {
     else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
     else if (layout === 'right') inner = <div className="post-prod-row rev">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
     else inner = <>{d1}{imgEl}{d2}</>; // split (default)
-    return <div className={`post-prod layout-${layout}`} key={p.id}>{btns}{titleEl}{inner}</div>;
+    return (
+      <div className={`post-prod layout-${layout}`} key={p.id}>
+        <div className="post-prod-head">{titleEl}{btns}</div>
+        {inner}
+      </div>
+    );
   };
 
   return (

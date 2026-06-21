@@ -49,7 +49,10 @@
 /* ── products: no box, full width; buttons(tiny) → title → desc → image → desc ── */
 .post-prods { margin: 36px 0; }
 .post-prod { padding: 30px 0; border-top: 1px solid var(--border,#e8edf3); }
-.post-prod-btns { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
+/* title left, action buttons right on the same row */
+.post-prod-head { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+.post-prod-head .post-prod-title { margin: 0; flex: 1 1 auto; }
+.post-prod-btns { display: flex; flex-wrap: wrap; gap: 14px; flex: 0 0 auto; }
 .ppbtn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-soft,#64748b); text-decoration: none; padding: 0; border: none; background: none; opacity: .85; transition: color .12s, opacity .12s; }
 .ppbtn:hover { opacity: 1; color: var(--brand,#2563eb); }
 .ppbtn-amz { gap: 7px; }

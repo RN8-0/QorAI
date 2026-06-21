@@ -52,11 +52,28 @@
     _bodyQ = mkQuill('p_body_editor', _editing['body_' + c] || '', (h) => { _editing['body_' + c] = h; });
     _conclQ = mkQuill('b_concl_editor', _editing['conclusion_' + c] || '', (h) => { _editing['conclusion_' + c] = h; });
   }
+  // Quill 2 renders BOTH bullet & numbered lists as <ol> with a data-list
+  // attribute (it relies on its own CSS for the bullets). On the public site
+  // that CSS isn't present, so an all-bullet list would show as numbered.
+  // Normalise to plain <ul>/<ol> and drop the data-list attributes.
+  function normalizeRte(html) {
+    if (!html || html === '<p><br></p>') return '';
+    try {
+      const doc = new DOMParser().parseFromString('<div id="r">' + html + '</div>', 'text/html');
+      doc.querySelectorAll('ol').forEach((ol) => {
+        const items = [...ol.children].filter((n) => n.tagName === 'LI');
+        const allBullet = items.length && items.every((li) => li.getAttribute('data-list') === 'bullet');
+        items.forEach((li) => li.removeAttribute('data-list'));
+        if (allBullet) { const ul = doc.createElement('ul'); while (ol.firstChild) ul.appendChild(ol.firstChild); ol.replaceWith(ul); }
+      });
+      return doc.getElementById('r').innerHTML;
+    } catch (_) { return html; }
+  }
   function flushEditors() {
     if (!_editing) return;
     const c = _lang;
-    if (_bodyQ && _bodyQ.root && _bodyQ.root.isConnected) { const h = _bodyQ.root.innerHTML; _editing['body_' + c] = h === '<p><br></p>' ? '' : h; }
-    if (_conclQ && _conclQ.root && _conclQ.root.isConnected) { const h = _conclQ.root.innerHTML; _editing['conclusion_' + c] = h === '<p><br></p>' ? '' : h; }
+    if (_bodyQ && _bodyQ.root && _bodyQ.root.isConnected) _editing['body_' + c] = normalizeRte(_bodyQ.root.innerHTML);
+    if (_conclQ && _conclQ.root && _conclQ.root.isConnected) _editing['conclusion_' + c] = normalizeRte(_conclQ.root.innerHTML);
   }
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -89,11 +106,21 @@
       .ba-pane{border:1px solid var(--border,#262c38);border-radius:0 12px 12px 12px;padding:16px}
       .ba-field{margin:0 0 12px}
       .ba-field label{display:block;font-size:12px;font-weight:600;opacity:.8;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
-      .ba-rte{background:#fff;border-radius:9px;overflow:hidden}
-      .ba-rte .ql-toolbar{border:1px solid var(--border,#2a3140);border-bottom:none;border-radius:9px 9px 0 0;background:#f8fafc}
-      .ba-rte .ql-container{border:1px solid var(--border,#2a3140);border-radius:0 0 9px 9px;font:inherit;font-size:15px}
-      .ba-rte .ql-editor{min-height:200px;color:#0f172a;line-height:1.7}
-      .ba-rte .ql-editor.ql-blank::before{color:#94a3b8;font-style:normal}
+      .ba-rte{border-radius:9px;overflow:hidden}
+      .ba-rte .ql-toolbar{border:1px solid var(--border,#2a3140);border-bottom:none;border-radius:9px 9px 0 0;background:#0e131a}
+      .ba-rte .ql-container{border:1px solid var(--border,#2a3140);border-radius:0 0 9px 9px;font:inherit;font-size:15px;background:#0e131a}
+      .ba-rte .ql-editor{min-height:200px;color:#e2e8f0;line-height:1.7}
+      .ba-rte .ql-editor.ql-blank::before{color:#64748b;font-style:normal}
+      .ba-rte .ql-toolbar .ql-stroke{stroke:#cbd5e1}
+      .ba-rte .ql-toolbar .ql-fill{fill:#cbd5e1}
+      .ba-rte .ql-toolbar .ql-picker{color:#cbd5e1}
+      .ba-rte .ql-toolbar button:hover .ql-stroke,.ba-rte .ql-toolbar button.ql-active .ql-stroke,.ba-rte .ql-toolbar .ql-picker-label:hover .ql-stroke{stroke:#3b82f6}
+      .ba-rte .ql-toolbar button:hover .ql-fill,.ba-rte .ql-toolbar button.ql-active .ql-fill{fill:#3b82f6}
+      .ba-rte .ql-toolbar button:hover,.ba-rte .ql-toolbar button.ql-active,.ba-rte .ql-toolbar .ql-picker-label:hover{color:#3b82f6}
+      .ba-rte .ql-toolbar .ql-picker-options{background:#0e131a;border-color:#2a3140}
+      .ba-rte .ql-editor a{color:#60a5fa}
+      .ba-rte .ql-editor blockquote{border-left:3px solid #3b82f6;color:#cbd5e1;padding-left:14px}
+      .ba-rte .ql-editor h2,.ba-rte .ql-editor h3{color:#f1f5f9}
       .ba-input{width:100%;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:9px;padding:10px 12px;color:inherit;font:inherit}
       .ba-prod{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface,#161b24)}
       .ba-prod img{width:60px;height:60px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 60px}
