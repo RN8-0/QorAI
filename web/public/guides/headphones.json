@@ -1,0 +1,77 @@
+{
+  "category": "headphones",
+  "label": "Kulaklık",
+  "title": "En İyi Kulaklık Modelleri 2026: Ses Kalitesi ve Konfor",
+  "lead": "Kulaklık seçerken ses kalitesi, konfor ve kullanım amacı en kritik faktörler. Sizin için Qor AI skorlarına göre en yüksek puanlı modelleri derledik.",
+  "sections": [
+    {
+      "h": "Kulaklık Alırken Nelere Dikkat Etmeli?",
+      "body": "İlk olarak kablolu mu kablosuz mu istediğinize karar verin. Kablosuz modellerde pil ömrü ve bağlantı stabilitesi önemli. Ayrıca kulaklık tipi (over-ear, on-ear, in-ear) konforu ve ses yalıtımını doğrudan etkiler. Aktif gürültü engelleme (ANC) özelliği, kalabalık ortamlarda vazgeçilmez olabilir."
+    },
+    {
+      "h": "Oyun ve Müzik İçin En İyi Seçenekler",
+      "body": "Oyun oynuyorsanız düşük gecikme süresi ve surround ses desteği arayın. Audeze Maxwell modelleri, planarmanyetik sürücüleriyle hem oyunda hem müzikte üstün performans sunar. Müzik severler içinse Bowers & Wilkins Px8 S2 McLaren, detaylı ve dengeli sesiyle öne çıkıyor."
+    },
+    {
+      "h": "Bütçe Dostu Seçenekler ve Marka Farklılıkları",
+      "body": "Yüksek fiyatlı modeller her zaman en iyisi değildir. Tecno ve Yesido gibi markalar, uygun fiyata iyi ses kalitesi ve sağlam yapı sunuyor. Concord C-909 ise kablosuz özgürlük isteyenler için ideal bir giriş seviyesi tercihi."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Audeze Maxwell Playstation Kablosuz Kulaklık (208-MW-1120-01)",
+      "why": "Planarmanyetik sürücüleri ve 100/100 Qor AI skoruyla oyun ve müzikte sınıfının en iyisi.",
+      "id": "grygb786jp51u76",
+      "slug": "audeze-maxwell-playstation"
+    },
+    {
+      "name": "Bowers & Wilkins Px8 S2 McLaren Kablosuz Kulaklık",
+      "why": "Üstün ses yalıtımı ve lüks tasarımıyla müzik tutkunları için mükemmel bir seçenek.",
+      "id": "ptuoq5ovqa14imn",
+      "slug": "bowers-wilkins-px8-s2-mclaren"
+    },
+    {
+      "name": "Tecno Nightingale N1 Kablosuz Kulaklık",
+      "why": "94/100 skoru ve uygun fiyatıyla dengeli bir performans sunuyor.",
+      "id": "eghmq1lr2lvgxp8",
+      "slug": "tecno-nightingale-n1"
+    },
+    {
+      "name": "Yesido YH35 Kablolu Kulaklık",
+      "why": "Kablolu kullanımda yüksek ses kalitesi ve dayanıklı yapısıyla öne çıkıyor.",
+      "id": "m66ri7zfguk5z65",
+      "slug": "yesido-yh35"
+    },
+    {
+      "name": "Concord C-909 Wireless Headphones",
+      "why": "Kablosuz kategoride bütçe dostu fiyatıyla iyi bir giriş seçeneği.",
+      "id": "9mfoxk5z4dv7amk",
+      "slug": "concord-c-909"
+    },
+    {
+      "name": "MTL MT-A271 Kablolu Kulaklık",
+      "why": "Sağlam yapısı ve net sesiyle günlük kullanım için ideal.",
+      "id": "ngapiax3y0i4i4u",
+      "slug": "mtl-mt-a271"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kablosuz kulaklık mı yoksa kablolu mu daha iyi?",
+      "a": "Kablosuz modeller hareket özgürlüğü sağlar, kablolu modeller ise daha düşük gecikme ve kesintisiz ses sunar. Kullanım amacınıza göre seçim yapın."
+    },
+    {
+      "q": "Aktif gürültü engelleme (ANC) önemli mi?",
+      "a": "Özellikle toplu taşıma veya gürültülü ortamlarda kullanıyorsanız ANC büyük fark yaratır. Ancak daha pahalıdır."
+    },
+    {
+      "q": "Hangi kulaklık türü daha rahat?",
+      "a": "Over-ear (kulak üstü) modeller uzun süreli kullanımda daha rahattır, in-ear (kulak içi) modeller ise taşınabilirlikte öne çıkar."
+    },
+    {
+      "q": "Oyun için hangi özelliklere bakmalıyım?",
+      "a": "Düşük gecikme, surround ses desteği ve konforlu bir tasarım oyun deneyimini iyileştirir. Audeze Maxwell bu konuda en iyilerden."
+    }
+  ],
+  "updatedAt": "2026-06-21T12:06:56.086Z"
+}
