@@ -13,6 +13,7 @@
   let _lang = 'tr';
   let _searchTimer = null;
   let _stats = {};   // slug -> {views, likes, reads}
+  let _cats = [];    // site category tokens for the datalist
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function slugify(v) {
@@ -54,6 +55,29 @@
       .ba-results div.hit:hover{background:#1a2230}
     `;
     document.head.appendChild(s);
+  }
+
+  async function loadCats() {
+    if (_cats.length) return;
+    try {
+      const r = await window.TsClient.request('GET', '/collections/products/documents/search?q=*&query_by=name&per_page=0&facet_by=category&max_facet_values=80');
+      _cats = ((r.facet_counts && r.facet_counts[0] && r.facet_counts[0].counts) || []).map((c) => c.value).filter(Boolean).sort();
+    } catch (_) { _cats = []; }
+  }
+  async function uploadCover(input) {
+    const file = input.files && input.files[0]; if (!file) return;
+    try {
+      // a record id is required to attach a file → save a draft first if new
+      if (!_editing.id) { syncPane(); await blogSave('draft', true); }
+      if (!_editing.id) { toast('Save the article first', 'w'); return; }
+      const fd = new FormData(); fd.append('coverFile', file);
+      const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
+      _editing.coverFile = rec.coverFile; _editing.cover = '';
+      const u = getPb().files.getURL(rec, rec.coverFile);
+      const prev = document.getElementById('b_cover_prev'); if (prev) { prev.src = u; prev.style.display = 'block'; }
+      const ci = document.getElementById('b_cover'); if (ci) ci.value = '';
+      toast('Cover uploaded', 's');
+    } catch (e) { toast('Upload failed: ' + e.message, 'e'); }
   }
 
   // ── analytics aggregation (from article_events) ────────────────
@@ -101,14 +125,16 @@
     } catch (e) { el.innerHTML = `<div style="padding:24px;color:#ef4444">Error: ${esc(e.message)}</div>`; }
   }
 
-  function blogNew() {
+  async function blogNew() {
     injectStyles();
+    await loadCats();
     _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: new Date().toISOString().slice(0, 16) };
     _products = []; _lang = 'tr';
     renderEditor();
   }
   async function blogEdit(id) {
     injectStyles();
+    await loadCats();
     try {
       const a = await getPb().collection('articles').getOne(id, { $autoCancel: false });
       _editing = a; _lang = 'tr';
@@ -126,6 +152,7 @@
   // ── EDITOR ────────────────────────────────────────────────────
   function renderEditor() {
     const a = _editing; const el = root(); if (!el) return;
+    const coverPrev = a.coverFile && a.id ? getPb().files.getURL(a, a.coverFile) : (a.cover || '');
     el.innerHTML = `
       <div class="card" style="padding:18px;max-width:920px;margin:0 auto">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
@@ -139,14 +166,21 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="ba-field"><label>Slug (URL)</label><input class="ba-input" id="b_slug" value="${esc(a.slug || '')}" placeholder="en-iyi-telefonlar-2026" /></div>
           <div class="ba-field"><label>Publish date</label><input class="ba-input" id="b_pub" type="datetime-local" value="${esc(a.publishedAt || '')}" /></div>
-          <div class="ba-field"><label>Category (optional)</label><input class="ba-input" id="b_category" value="${esc(a.category || '')}" placeholder="smartphones" /></div>
+          <div class="ba-field"><label>Category</label>
+            <input class="ba-input" id="b_category" list="b_catlist" value="${esc(a.category || '')}" placeholder="kategori seç ya da yaz…" />
+            <datalist id="b_catlist">${_cats.map((c) => `<option value="${esc(c)}"></option>`).join('')}</datalist>
+          </div>
           <div class="ba-field"><label>Status</label><select class="ba-input" id="b_status">
             <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
             <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
         </div>
-        <div class="ba-field"><label>Cover image URL</label>
-          <input class="ba-input" id="b_cover" value="${esc(a.cover || '')}" oninput="var p=document.getElementById('b_cover_prev');p.src=this.value;p.style.display=this.value?'block':'none'" />
-          <img id="b_cover_prev" src="${esc(a.cover || '')}" style="max-height:130px;margin-top:8px;border-radius:8px;background:#fff;${a.cover ? '' : 'display:none'}" onerror="this.style.display='none'" />
+        <div class="ba-field"><label>Cover image — upload from device or paste a URL</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <input type="file" accept="image/*" onchange="blogUploadCover(this)" />
+            <span style="opacity:.5">veya</span>
+            <input class="ba-input" style="flex:1;min-width:220px" id="b_cover" value="${esc(a.cover || '')}" placeholder="https://…" oninput="var p=document.getElementById('b_cover_prev');p.src=this.value;p.style.display=this.value?'block':'none'" />
+          </div>
+          <img id="b_cover_prev" src="${esc(coverPrev)}" style="max-height:140px;margin-top:10px;border-radius:10px;background:#fff;${coverPrev ? '' : 'display:none'}" onerror="this.style.display='none'" />
         </div>
         <div class="ba-tabs">${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')">${n}</div>`).join('')}</div>
         <div class="ba-pane" id="b_pane"></div>
@@ -161,7 +195,7 @@
     renderProducts();
   }
 
-  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); }
+  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); }
   function renderPaneTabs() { const tabs = document.querySelectorAll('.ba-tab'); LANGS.forEach(([c], i) => { if (tabs[i]) tabs[i].classList.toggle('on', c === _lang); }); }
   function syncPane() {
     const a = _editing; const c = _lang;
@@ -182,6 +216,7 @@
 
   function renderProducts() {
     const box = document.getElementById('b_prodlist'); if (!box) return;
+    const langName = (LANGS.find(([c]) => c === _lang) || [])[1] || _lang;
     box.innerHTML = _products.map((p, i) => `
       <div class="ba-prod">
         <div class="ba-prod-ord">
@@ -191,8 +226,9 @@
         <img src="${esc(p.imageUrl || '')}" onerror="this.style.visibility='hidden'"/>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700">${i + 1}. ${esc(p.name)} ${p.techScore ? `<span style="opacity:.6;font-weight:400">· ${esc(p.techScore)}/100</span>` : ''}</div>
-          <div style="opacity:.55;font-size:12px;margin-bottom:6px">→ /product/${esc(p.slug)}-${esc(p.id)}</div>
-          ${LANGS.map(([c, n]) => `<textarea class="ba-input" style="font-size:13px;margin-bottom:5px" rows="2" placeholder="${n} açıklama" oninput="blogProdDesc(${i},'${c}',this.value)">${esc(p['desc_' + c] || '')}</textarea>`).join('')}
+          <div style="opacity:.55;font-size:12px;margin-bottom:8px">→ /product/${esc(p.slug)}-${esc(p.id)} · <b>${esc(langName)}</b></div>
+          <textarea class="ba-input" style="font-size:13px;margin-bottom:6px" rows="2" placeholder="Açıklama (görselin ÜSTÜNDE)" oninput="blogProdField(${i},'desc_${_lang}',this.value)">${esc(p['desc_' + _lang] || '')}</textarea>
+          <textarea class="ba-input" style="font-size:13px" rows="2" placeholder="Açıklama (görselin ALTINDA)" oninput="blogProdField(${i},'desc2_${_lang}',this.value)">${esc(p['desc2_' + _lang] || '')}</textarea>
         </div>
         <button class="ba-mini" onclick="blogProdRemove(${i})" style="color:#f87171">✕</button>
       </div>`).join('') || '<div style="opacity:.5;padding:8px">No products added yet.</div>';
@@ -221,9 +257,9 @@
   }
   function blogProdRemove(i) { _products.splice(i, 1); renderProducts(); }
   function blogProdMove(i, d) { const j = i + d; if (j < 0 || j >= _products.length) return; const t = _products[i]; _products[i] = _products[j]; _products[j] = t; renderProducts(); }
-  function blogProdDesc(i, lang, v) { if (_products[i]) _products[i]['desc_' + lang] = v; }
+  function blogProdField(i, key, v) { if (_products[i]) _products[i][key] = v; }
 
-  async function blogSave(forceStatus) {
+  async function blogSave(forceStatus, silent) {
     syncPane();
     const a = _editing;
     const val = (id) => (document.getElementById(id) || {}).value || '';
@@ -239,15 +275,15 @@
     LANGS.forEach(([c]) => { data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || ''; data['body_' + c] = a['body_' + c] || ''; data['conclusion_' + c] = a['conclusion_' + c] || ''; });
     try {
       if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
-      else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing = rec; _editing.publishedAt = String(rec.publishedAt || '').slice(0, 16); }
-      toast(data.status === 'published' ? 'Published — live on the site now' : 'Draft saved', 's');
-      loadBlogAdmin();
-    } catch (e) { toast('Save failed: ' + e.message, 'e'); }
+      else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = String(rec.publishedAt || '').slice(0, 16); }
+      if (!silent) { toast(data.status === 'published' ? 'Published — live on the site now' : 'Draft saved', 's'); loadBlogAdmin(); }
+    } catch (e) { toast('Save failed: ' + e.message, 'e'); if (silent) throw e; }
   }
 
   window.loadBlogAdmin = loadBlogAdmin;
   window.blogNew = blogNew; window.blogEdit = blogEdit; window.blogDelete = blogDelete;
   window.blogSave = blogSave; window.blogTab = blogTab;
   window.blogProdSearch = blogProdSearch; window.blogProdAdd = blogProdAdd;
-  window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdDesc = blogProdDesc;
+  window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdField = blogProdField;
+  window.blogUploadCover = uploadCover;
 })();

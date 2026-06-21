@@ -52,50 +52,52 @@ function safeBodyHtml(html) {
   return String(html || '').replace(/<(?!\/?(?:h2|h3|p|ul|ol|li|strong|em|br|a)\b)[^>]*>/gi, '');
 }
 
+function articleCoverUrl(a) {
+  if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
+  return /^https?:\/\//i.test(a.cover || '') ? a.cover : '';
+}
 function blogArticleBody(a, lang = 'tr') {
   const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const title = esc(t('title'));
   const lead = esc(t('lead'));
-  const cover = /^https?:\/\//i.test(a.cover || '') ? esc(a.cover) : '';
   const body = safeBodyHtml(t('body'));
   const products = Array.isArray(a.products) ? a.products.filter((p) => p && p.id && p.name) : [];
   const blocks = products.map((p, i) => {
     const slug = slugifyProduct(p.slug || p.name);
     const href = slug ? `/product/${slug}-${p.id}` : `/product/${p.id}`;
-    const desc = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
+    const d1 = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
+    const d2 = esc(p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '');
     const img = /^https?:\/\//i.test(p.imageUrl || '') ? esc(p.imageUrl) : '';
     const buy = esc(amazonGoPath(p, 'TR'));
-    return `<div style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin:16px 0;position:relative">`
-      + `<div style="position:absolute;top:-10px;left:-10px;width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${i + 1}</div>`
-      + (img ? `<a href="${href}" style="flex:0 0 168px;height:168px;border:1px solid #eef2f7;border-radius:14px;display:flex;align-items:center;justify-content:center"><img src="${img}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:contain;padding:12px" loading="lazy" /></a>` : '')
-      + `<div style="flex:1;min-width:0">`
-      + `<div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">${p.brand ? `<span style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase">${esc(p.brand)}</span>` : ''}${p.techScore ? `<span style="font-size:12px;font-weight:700;color:#16a34a">${esc(p.techScore)}/100</span>` : ''}</div>`
-      + `<a href="${href}" style="display:block;font-size:19px;font-weight:700;color:#0f172a;text-decoration:none;margin-bottom:6px">${esc(p.name)}</a>`
-      + (desc ? `<p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 14px">${desc}</p>` : '')
-      + `<div style="display:flex;flex-wrap:wrap;gap:10px">`
-      + `<a href="${href}?ai=1" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;background:#2563eb;color:#fff">✨ AI ile Analiz Et</a>`
-      + `<a href="${buy}" rel="sponsored nofollow" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;background:#ff9900;color:#1a1a1a">🛒 Satın Al</a>`
-      + `<a href="${href}" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid #cbd5e1;color:#334155">İncele</a>`
-      + `</div></div></div>`;
+    return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
+      + `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;font-weight:600">`
+      + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ AI Analizi</a>`
+      + `<a href="${buy}" rel="sponsored nofollow" style="color:#64748b;text-decoration:none">🛒 Amazon'da Gör</a>`
+      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ Ürüne Git</a></div>`
+      + `<a href="${href}" style="display:block;font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;margin:0 0 14px"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}${p.techScore ? ` <span style="font-size:14px;font-weight:700;color:#16a34a">${esc(p.techScore)}/100</span>` : ''}</a>`
+      + (d1 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0 0 16px;max-width:760px">${d1}</p>` : '')
+      + (img ? `<a href="${href}" style="display:block;margin:6px 0 18px;border:1px solid #eef2f7;border-radius:16px;overflow:hidden;background:#fff"><img src="${img}" alt="${esc(p.name)}" style="display:block;width:100%;max-height:460px;object-fit:contain;padding:20px" loading="lazy" /></a>` : '')
+      + (d2 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0;max-width:760px">${d2}</p>` : '')
+      + `</div>`;
   }).join('');
   const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
   const dateStr = (a.publishedAt || a.created) ? String(a.publishedAt || a.created).slice(0, 10) : '';
-  return `<article class="seo-prerender" style="max-width:800px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+  return `<article class="seo-prerender" style="max-width:920px;margin:0 auto;padding:24px 24px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
-    + (dateStr ? `<p style="font-size:13px;color:#64748b;margin:8px 0 0">📅 ${esc(dateStr)}</p>` : '')
-    + `<h1 style="font-size:33px;font-weight:800;line-height:1.18;margin:8px 0 12px">${title}</h1>`
-    + (lead ? `<p style="font-size:19px;color:#475569;line-height:1.6;margin:0 0 20px">${lead}</p>` : '')
-    + `<div style="font-size:16.5px;line-height:1.85">${body}</div>`
+    + (dateStr ? `<p style="font-size:14px;color:#64748b;margin:10px 0 0">📅 ${esc(dateStr)}</p>` : '')
+    + `<h1 style="font-size:40px;font-weight:800;line-height:1.12;margin:6px 0 14px">${title}</h1>`
+    + (lead ? `<p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">${lead}</p>` : '')
+    + `<div style="font-size:17.5px;line-height:1.85">${body}</div>`
     + blocks
-    + (concl ? `<section style="margin:30px 0;border-top:1px solid #e2e8f0;padding-top:20px"><h2 style="font-size:23px;margin:0 0 10px">Sonuç</h2><div style="font-size:16.5px;line-height:1.85">${concl}</div></section>` : '')
-    + `<p style="margin-top:28px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
+    + (concl ? `<section style="margin:34px 0;border-top:2px solid #e2e8f0;padding-top:22px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">Sonuç</h2><div style="font-size:17.5px;line-height:1.85">${concl}</div></section>` : '')
+    + `<p style="margin-top:30px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
     + `</article>`;
 }
 
 function blogListBody(articles, lang = 'tr') {
   const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const rows = articles.map((a) => {
-    const cover = /^https?:\/\//i.test(a.cover || '') ? esc(a.cover) : '';
+    const cover = esc(articleCoverUrl(a));
     return `<a href="/blog/${esc(a.slug)}" style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;margin:14px 0">`
       + (cover ? `<div style="flex:0 0 200px;background:#f8fafc;display:flex;align-items:center;justify-content:center"><img src="${cover}" alt="${esc(t(a, 'title'))}" style="width:100%;max-height:150px;object-fit:contain;padding:16px" loading="lazy" /></div>` : '')
       + `<div style="padding:18px 20px"><h2 style="font-size:20px;font-weight:700;margin:0 0 6px">${esc(t(a, 'title'))}</h2>`
@@ -876,7 +878,7 @@ async function main() {
       if (!a.slug) continue;
       const url = `${SITE}/blog/${a.slug}`;
       const t = (f) => a[`${f}_tr`] || a[`${f}_en`] || '';
-      const cover = /^https?:\/\//i.test(a.cover || '') ? a.cover : DEFAULT_IMG;
+      const cover = articleCoverUrl(a) || DEFAULT_IMG;
       const articleLd = {
         '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
         image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,

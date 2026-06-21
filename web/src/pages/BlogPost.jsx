@@ -73,10 +73,11 @@ export default function BlogPost() {
   const lead = pick(post, 'lead');
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
-  const cover = post?.cover || '';
+  const cover = post?.coverFile ? pb.files.getURL(post, post.coverFile) : (post?.cover || '');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
+  const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
   const publishedAt = post?.publishedAt || post?.created || '';
 
   const readMin = useMemo(() => {
@@ -146,30 +147,25 @@ export default function BlogPost() {
         {lead ? <p className="blog-lead">{lead}</p> : null}
         {body ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: body }} /> : null}
 
-        {/* 5) product blocks: buttons → title → (image floated, desc wraps) */}
+        {/* 5) products: tiny buttons → title(link) → desc → image → desc2 */}
         {products.length > 0 && (
-          <section className="blog-rank">
+          <section className="post-prods">
             {products.map((p, i) => {
               const to = productPath({ id: p.id, slug: p.slug, name: p.name });
               return (
-                <div className="rank-item2" key={p.id}>
-                  <div className="rank-top">
-                    <span className="rank-num2">{i + 1}</span>
-                    <div className="rank-btns">
-                      <Link to={`${to}?ai=1`} className="rank-btn rank-btn-ai">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
-                      <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="rank-btn rank-btn-buy">🛒 {L('See on Amazon', "Amazon'da Gör", 'Bei Amazon')}</a>
-                      <Link to={to} className="rank-btn rank-btn-ghost">→ {L('Go to product', 'Ürüne Git', 'Zum Produkt')}</Link>
-                    </div>
+                <div className="post-prod" key={p.id}>
+                  <div className="post-prod-btns">
+                    <Link to={`${to}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
+                    <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">🛒 {L('Amazon', "Amazon'da Gör", 'Amazon')}</a>
+                    <Link to={to} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
                   </div>
-                  <Link to={to} className="rank-title2">
-                    {p.brand ? <span className="rank-brand">{p.brand}</span> : null}
-                    {p.name}
-                    {p.techScore ? <span className="rank-score">{p.techScore}/100</span> : null}
+                  <Link to={to} className="post-prod-title">
+                    <span className="ppn">{i + 1}.</span> {p.name}
+                    {p.techScore ? <span className="post-prod-score">{p.techScore}/100</span> : null}
                   </Link>
-                  <div className="rank-flow">
-                    {p.imageUrl ? <Link to={to} className="rank-flow-img"><img src={p.imageUrl} alt={p.name} loading="lazy" /></Link> : null}
-                    <p>{pdesc(p)}</p>
-                  </div>
+                  {pdesc(p) ? <p className="post-prod-desc">{pdesc(p)}</p> : null}
+                  {p.imageUrl ? <Link to={to} className="post-prod-img"><img src={p.imageUrl} alt={p.name} loading="lazy" /></Link> : null}
+                  {pdesc2(p) ? <p className="post-prod-desc">{pdesc2(p)}</p> : null}
                 </div>
               );
             })}
