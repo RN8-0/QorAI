@@ -234,16 +234,17 @@ export default function BlogPost() {
         {/* conclusion flows as part of the article (no rigid "Sonuç" box) */}
         {conclusion ? <div className="blog-body blog-concl-flow" dangerouslySetInnerHTML={{ __html: conclusion }} /> : null}
 
-        {/* small AI button */}
-        <div className="blog-ai-row">
-          <button type="button" className="blog-ai-btn" onClick={askAi}>
-            ✨ {L('Ask Qor AI about this article', 'Bu makale hakkında Qor AI’ya sor', 'Frag Qor AI zu diesem Artikel')}
-          </button>
-        </div>
-
         {/* comments — same review system as product / compare pages (shows on the
-            user's profile too) */}
-        <Reviews productId={`blog:${canonKey}`} productName={title} lang={lang} />
+            user's profile too). The small "Ask Qor AI" button sits across from
+            the "Comments" heading. */}
+        <Reviews
+          productId={`blog:${canonKey}`} productName={title} lang={lang}
+          headerSlot={(
+            <button type="button" className="blog-ai-btn" onClick={askAi}>
+              ✨ {L('Ask Qor AI about this article', 'Bu makale hakkında Qor AI’ya sor', 'Frag Qor AI zu diesem Artikel')}
+            </button>
+          )}
+        />
 
         {/* similar articles */}
         {more.length > 0 && (

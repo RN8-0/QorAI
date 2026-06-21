@@ -42,6 +42,7 @@
 }
 
 .pd-section-head span { font-size: 13px; color: var(--text3); }
+.pd-section-head-right { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 /* ─── Reviews ────────────────────────────────────────────────── */
 .stars { display: inline-flex; gap: 1px; color: var(--bg5); font-size: 14px; }

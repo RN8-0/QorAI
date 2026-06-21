@@ -180,7 +180,7 @@ function YouTubeSearchCard({ productName, lang }) {
   );
 }
 
-export default function Reviews({ productId, productName, lang }) {
+export default function Reviews({ productId, productName, lang, headerSlot = null }) {
   const t = useT();
   const { user, openAuth } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -243,12 +243,15 @@ export default function Reviews({ productId, productName, lang }) {
     <section className="pd-section">
       <div className="pd-section-head">
         <h2>{t('pd.reviews')}</h2>
-        {reviews.length > 0 && (
-          <span className="pd-rev-avg">
-            <Stars value={Math.round(avg)} />
-            {t('pd.revAvg', { n: reviews.length, avg: avg.toFixed(1) })}
-          </span>
-        )}
+        {(() => {
+          const avgEl = reviews.length > 0 ? (
+            <span className="pd-rev-avg">
+              <Stars value={Math.round(avg)} />
+              {t('pd.revAvg', { n: reviews.length, avg: avg.toFixed(1) })}
+            </span>
+          ) : null;
+          return headerSlot ? <div className="pd-section-head-right">{avgEl}{headerSlot}</div> : avgEl;
+        })()}
       </div>
       {reviews.length > 0 && (
         <div className="pd-rev-summary">
