@@ -51,11 +51,15 @@ function raw(method, urlPath, body, extraHeaders, redirectCount = 0, baseUrl = B
           .catch(reject)
         return;
       }
-      let chunks = '';
-      res.on('data', c => chunks += c);
+      // Collect raw Buffers and decode once — concatenating chunks as strings
+      // (`chunks += c`) splits multi-byte UTF-8 sequences across chunk
+      // boundaries and corrupts non-ASCII text (e.g. Turkish ı/ş/ğ → U+FFFD).
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
       res.on('end', () => {
-        let parsed = chunks;
-        try { parsed = JSON.parse(chunks); } catch {}
+        const text = Buffer.concat(chunks).toString('utf8');
+        let parsed = text;
+        try { parsed = JSON.parse(text); } catch {}
         resolve({ status: res.statusCode, body: parsed });
       });
     });

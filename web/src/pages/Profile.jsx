@@ -8,9 +8,11 @@ import {
 import { pb } from '../lib/pocketbase';
 import { formatQorCoins } from '../lib/qorCoins';
 import {
-  getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview,
+  getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview, getMyLikedArticles,
   readSearchHistory, readQuizHistory,
 } from '../lib/pbHistory';
+import { useI18n } from '../i18n/index.jsx';
+import { articlePath } from '../lib/routes';
 import { getProduct } from '../lib/typesense';
 import { premiumStatus } from '../lib/premium';
 import { catMeta } from '../lib/format';
@@ -57,6 +59,7 @@ function ProfileBody({ user, ids, logout, t }) {
     { key: 'comparisons', label: t('pf.tabComparisons') },
     { key: 'analyses', label: t('pf.tabAnalyses') },
     { key: 'reviews', label: t('pf.tabReviews') },
+    { key: 'liked', label: t('pf.tabLiked') },
     { key: 'history', label: t('pf.tabHistory') },
   ];
 
@@ -80,6 +83,7 @@ function ProfileBody({ user, ids, logout, t }) {
       {tab === 'comparisons' && <ComparisonsTab t={t} />}
       {tab === 'analyses' && <AnalysesTab t={t} />}
       {tab === 'reviews' && <ReviewsTab t={t} />}
+      {tab === 'liked' && <LikedTab t={t} />}
       {tab === 'history' && <HistoryTab user={user} t={t} />}
     </div>
   );
@@ -391,6 +395,31 @@ function ReviewsTab({ t }) {
             </Link>
           )}
         </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Liked articles tab ─────────────────────────────────────────── */
+function LikedTab({ t }) {
+  const { lang } = useI18n();
+  const [items, setItems] = useState(null);
+  const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const coverOf = (a) => (a.coverFile ? pb.files.getURL(a, a.coverFile) : (a.cover || ''));
+
+  useEffect(() => { getMyLikedArticles().then(setItems); }, []);
+
+  if (items === null) return <Loading t={t} />;
+  if (!items.length) return <Empty icon="❤" text={t('pf.noLiked')} />;
+
+  return (
+    <div className="pf-list fade-up">
+      {items.map((a) => (
+        <Link key={a.id} to={articlePath(a, lang)} className="pf-liked">
+          {coverOf(a) ? <img className="pf-liked-img" src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /> : null}
+          <span className="pf-liked-title">{pick(a, 'title')}</span>
+          <span className="pf-liked-go">→</span>
+        </Link>
       ))}
     </div>
   );

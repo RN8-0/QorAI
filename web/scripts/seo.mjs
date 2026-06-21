@@ -49,7 +49,7 @@ async function fetchArticles() {
 // Sanitise stored article HTML for the static shell: allow only the tags the
 // generator/editor produces (defensive — body is our own content).
 function safeBodyHtml(html) {
-  return String(html || '').replace(/<(?!\/?(?:h2|h3|p|ul|ol|li|strong|em|br|a)\b)[^>]*>/gi, '');
+  return String(html || '').replace(/<(?!\/?(?:h2|h3|p|ul|ol|li|strong|em|br|a|blockquote|img|u|s)\b)[^>]*>/gi, '');
 }
 
 function articleCoverUrl(a) {
@@ -80,7 +80,7 @@ function blogArticleBody(a, lang = 'tr') {
     const layout = p.layout || 'split';
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
-    const imgEl = img ? `<a href="${href}" style="display:block;margin:6px 0 16px;border:1px solid #eef2f7;border-radius:14px;overflow:hidden;background:#fff"><img src="${img}" alt="${esc(p.name)}" style="display:block;width:100%;max-height:${maxH}px;object-fit:contain;padding:16px" loading="lazy" /></a>` : '';
+    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(p.name)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px" loading="lazy" /></a>` : '';
     let inner;
     if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
     else if (layout === 'top') inner = imgEl + dEl(d1) + dEl(d2);

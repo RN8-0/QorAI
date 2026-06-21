@@ -14,6 +14,50 @@
   let _searchTimer = null;
   let _stats = {};   // slug -> {views, likes, reads}
   let _cats = [];    // site category tokens for the datalist
+  let _bodyQ = null; // Quill rich-text editor (intro/body)
+  let _conclQ = null; // Quill rich-text editor (conclusion)
+
+  // Rich-text editor (Quill) — professional editorial editing for body + conclusion.
+  function mkQuill(elId, html, onChange) {
+    const el = document.getElementById(elId);
+    if (!el || !window.Quill) return null;
+    el.innerHTML = '';
+    const q = new Quill(el, {
+      theme: 'snow',
+      placeholder: 'Yazmaya başla…',
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['blockquote', 'link', 'image'],
+            ['clean'],
+          ],
+          handlers: {
+            image() {
+              const url = prompt('Görsel URL (cihazdan yüklemek için kapak alanını kullan)');
+              if (url) { const r = this.quill.getSelection(true); this.quill.insertEmbed(r.index, 'image', url, 'user'); this.quill.setSelection(r.index + 1); }
+            },
+          },
+        },
+      },
+    });
+    if (html) q.clipboard.dangerouslyPasteHTML(html);
+    q.on('text-change', () => { const h = q.root.innerHTML; onChange(h === '<p><br></p>' ? '' : h); });
+    return q;
+  }
+  function initEditors() {
+    const c = _lang;
+    _bodyQ = mkQuill('p_body_editor', _editing['body_' + c] || '', (h) => { _editing['body_' + c] = h; });
+    _conclQ = mkQuill('b_concl_editor', _editing['conclusion_' + c] || '', (h) => { _editing['conclusion_' + c] = h; });
+  }
+  function flushEditors() {
+    if (!_editing) return;
+    const c = _lang;
+    if (_bodyQ && _bodyQ.root && _bodyQ.root.isConnected) { const h = _bodyQ.root.innerHTML; _editing['body_' + c] = h === '<p><br></p>' ? '' : h; }
+    if (_conclQ && _conclQ.root && _conclQ.root.isConnected) { const h = _conclQ.root.innerHTML; _editing['conclusion_' + c] = h === '<p><br></p>' ? '' : h; }
+  }
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function slugify(v) {
@@ -45,6 +89,11 @@
       .ba-pane{border:1px solid var(--border,#262c38);border-radius:0 12px 12px 12px;padding:16px}
       .ba-field{margin:0 0 12px}
       .ba-field label{display:block;font-size:12px;font-weight:600;opacity:.8;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+      .ba-rte{background:#fff;border-radius:9px;overflow:hidden}
+      .ba-rte .ql-toolbar{border:1px solid var(--border,#2a3140);border-bottom:none;border-radius:9px 9px 0 0;background:#f8fafc}
+      .ba-rte .ql-container{border:1px solid var(--border,#2a3140);border-radius:0 0 9px 9px;font:inherit;font-size:15px}
+      .ba-rte .ql-editor{min-height:200px;color:#0f172a;line-height:1.7}
+      .ba-rte .ql-editor.ql-blank::before{color:#94a3b8;font-style:normal}
       .ba-input{width:100%;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:9px;padding:10px 12px;color:inherit;font:inherit}
       .ba-prod{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface,#161b24)}
       .ba-prod img{width:60px;height:60px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 60px}
@@ -199,30 +248,29 @@
         </div>
         <div id="b_prodlist"></div>
         <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
-        <div class="ba-field"><textarea class="ba-input" id="b_concl" rows="4" placeholder="Sonuç / kapanış paragrafı…"></textarea></div>
+        <div class="ba-field"><div id="b_concl_editor" class="ba-rte"></div></div>
       </div>`;
     renderPane();
     renderProducts();
-    renderConcl();
+    initEditors();
   }
 
-  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); renderConcl(); }
-  function renderConcl() { const el = document.getElementById('b_concl'); if (el) el.value = _editing['conclusion_' + _lang] || ''; }
+  function blogTab(c) { flushEditors(); syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); initEditors(); }
   function renderPaneTabs() { const tabs = document.querySelectorAll('.ba-tab'); LANGS.forEach(([c], i) => { if (tabs[i]) tabs[i].classList.toggle('on', c === _lang); }); }
   function syncPane() {
     const a = _editing; const c = _lang;
     const g = (id) => (document.getElementById(id) || {}).value;
     if (document.getElementById('p_title') != null) {
-      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead'); a['body_' + c] = g('p_body');
+      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead');
     }
-    if (document.getElementById('b_concl') != null) a['conclusion_' + c] = g('b_concl');
+    flushEditors();
   }
   function renderPane() {
     const a = _editing; const c = _lang; const pane = document.getElementById('b_pane'); if (!pane) return;
     pane.innerHTML = `
       <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
-      <div class="ba-field"><label>Intro / general text (HTML: &lt;p&gt; &lt;h2&gt; &lt;ul&gt;&lt;li&gt; &lt;strong&gt;)</label><textarea class="ba-input" id="p_body" rows="6">${esc(a['body_' + c] || '')}</textarea></div>`;
+      <div class="ba-field"><label>Intro / general text</label><div id="p_body_editor" class="ba-rte"></div></div>`;
   }
 
   function renderProducts() {

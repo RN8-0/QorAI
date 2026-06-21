@@ -250,3 +250,10 @@
   .pf-id { flex-wrap: wrap; }
   .pf-tab { flex: 0 0 auto; }
 }
+
+/* liked articles tab */
+.pf-liked { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.pf-liked:hover { border-color: var(--brand-cyan); transform: translateY(-1px); }
+.pf-liked-img { width: 64px; height: 44px; object-fit: contain; border-radius: 8px; background: var(--surface-2); flex: 0 0 auto; }
+.pf-liked-title { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; }
+.pf-liked-go { color: var(--text3); }

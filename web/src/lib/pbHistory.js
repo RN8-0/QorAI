@@ -472,6 +472,30 @@ export async function deleteMyReview(id) {
   return pb.collection('reviews').delete(id);
 }
 
+// Blog articles the signed-in user has liked (article_events, type="like").
+export async function getMyLikedArticles(limit = 60) {
+  const user = currentUser();
+  if (!user) return [];
+  try {
+    const evs = await pb.collection('article_events').getList(1, limit, {
+      filter: `type="like" && userId="${user.id}"`,
+      sort: '-created',
+      $autoCancel: false,
+    });
+    const slugs = [...new Set(evs.items.map((e) => e.slug).filter(Boolean))];
+    const arts = await Promise.all(slugs.map((s) => pb.collection('articles')
+      .getFirstListItem(`slug="${String(s).replace(/"/g, '\\"')}" && status="published"`, { $autoCancel: false })
+      .catch(() => null)));
+    return arts.filter(Boolean).map((a) => ({
+      id: a.id, slug: a.slug, slug_tr: a.slug_tr, slug_en: a.slug_en, slug_de: a.slug_de,
+      cover: a.cover, coverFile: a.coverFile, collectionId: a.collectionId, collectionName: a.collectionName,
+      title_tr: a.title_tr, title_en: a.title_en, title_de: a.title_de,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // Search / quiz history live as arrays on the user record itself.
 export function readSearchHistory(user) {
   return Array.isArray(user?.searchHistory) ? user.searchHistory : [];

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { pb } from '../lib/pocketbase';
+import { pb, currentUser } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { productPath, articlePath } from '../lib/routes';
@@ -49,8 +49,10 @@ export default function BlogPost() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [progress, setProgress] = useState(0);
   const openedAt = useRef(Date.now());
   const readSent = useRef(false);
+  const likeEventId = useRef(null);
 
   const pick = (a, f) => (a ? (a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
@@ -66,8 +68,16 @@ export default function BlogPost() {
         if (!live) return;
         const key = rec.slug || slug; // canonical key → counts/comments aggregate across languages
         setPost(rec); setStatus('ok');
-        try { setLiked(localStorage.getItem('qor-liked-' + key) === '1'); } catch { /* ignore */ }
         track(key, 'view');
+        // liked state: for signed-in users it's their own like event (so it
+        // works across devices + can be undone); otherwise localStorage.
+        const me = currentUser();
+        if (me) {
+          pb.collection('article_events').getList(1, 1, { filter: `type="like" && userId="${esc(me.id)}" && slug="${esc(key)}"`, $autoCancel: false })
+            .then((r) => { if (live && r.items[0]) { setLiked(true); likeEventId.current = r.items[0].id; } }).catch(() => {});
+        } else {
+          try { setLiked(localStorage.getItem('qor-liked-' + key) === '1'); } catch { /* ignore */ }
+        }
         const vBase = seedCount(key, 180, 520);
         const lBase = seedCount(key + '·l', 5, 22);
         setViewCount(vBase); setLikeCount(lBase);
@@ -100,6 +110,8 @@ export default function BlogPost() {
   useEffect(() => {
     if (status !== 'ok') return undefined;
     const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? Math.min(100, Math.round((window.scrollY / max) * 100)) : 0);
       if (readSent.current) return;
       const scrolled = window.scrollY + window.innerHeight;
       if (scrolled >= document.body.scrollHeight - 600) {
@@ -148,10 +160,28 @@ export default function BlogPost() {
   });
 
   const onLike = () => {
-    if (liked) return;
-    setLiked(true); setLikeCount((c) => c + 1);
-    try { localStorage.setItem('qor-liked-' + canonKey, '1'); } catch { /* ignore */ }
-    track(canonKey, 'like');
+    const me = currentUser();
+    if (me) {
+      if (liked) { // undo
+        setLiked(false); setLikeCount((c) => Math.max(0, c - 1));
+        const id = likeEventId.current; likeEventId.current = null;
+        if (id) pb.collection('article_events').delete(id, { $autoCancel: false }).catch(() => {});
+      } else {
+        setLiked(true); setLikeCount((c) => c + 1);
+        pb.collection('article_events').create({ slug: canonKey, type: 'like', session: sessionId(), userId: me.id }, { $autoCancel: false })
+          .then((rec) => { likeEventId.current = rec.id; }).catch(() => {});
+      }
+      return;
+    }
+    // anonymous: localStorage toggle
+    if (liked) {
+      setLiked(false); setLikeCount((c) => Math.max(0, c - 1));
+      try { localStorage.removeItem('qor-liked-' + canonKey); } catch { /* ignore */ }
+    } else {
+      setLiked(true); setLikeCount((c) => c + 1);
+      try { localStorage.setItem('qor-liked-' + canonKey, '1'); } catch { /* ignore */ }
+      track(canonKey, 'like');
+    }
   };
   const onShare = async () => {
     try {
@@ -212,6 +242,7 @@ export default function BlogPost() {
 
   return (
     <div className="container blog-page">
+      <div className="blog-progress" style={{ width: `${progress}%` }} />
       <article className="blog-article">
         <nav className="blog-crumb"><Link to="/">Qor AI</Link> › <Link to="/blog">Blog</Link></nav>
 
