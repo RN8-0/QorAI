@@ -17,6 +17,7 @@ import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/amazon_link.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/data/models/other_models.dart';

@@ -56,6 +56,10 @@ class _PricesTabContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Always-present, country-correct Amazon link (mirrors the web).
+                // TR shoppers get amazon.com.tr (qorai-21); others their market.
+                _AmazonSearchCard(product: product, country: country),
+                const SizedBox(height: 16),
                 if (firstOfferChunk.isNotEmpty) ...[
                   _OfferLinksCard(
                     product: product,
@@ -381,6 +385,95 @@ class _OfferLinkRow extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Amazon search card — always present, country-correct (mirrors web) ───────
+class _AmazonSearchCard extends ConsumerWidget {
+  final ProductEntity product;
+  final String country;
+  const _AmazonSearchCard({required this.product, required this.country});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final url = amazonUrlForProduct(product, country);
+    if (url.isEmpty) return const SizedBox.shrink();
+    final brand = _resolveStoreBrand('amazon');
+    final market = amazonMarketForCountry(country);
+    final flag = amazonMarketFlag[market] ?? '🌍';
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () async {
+          final uri = Uri.tryParse(url);
+          if (uri == null) return;
+          try {
+            ref.read(behaviorTrackingProvider).trackAffiliateTap(product.id);
+          } catch (_) {}
+          try {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: context.surfaceVariantColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.dividerColor),
+          ),
+          child: Row(
+            children: [
+              _StoreLogo(brand: brand),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amazon',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        isTr
+                            ? "$flag Amazon'da fiyatlara bak"
+                            : '$flag Check prices on Amazon',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: context.textTertiaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isTr ? 'Fiyata bak' : 'See price',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 16,
+                color: context.textTertiaryColor,
+              ),
+            ],
           ),
         ),
       ),
