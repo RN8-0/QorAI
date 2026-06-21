@@ -162,6 +162,7 @@ function showView(name){
   }else{
     stopProductsLivePoll();
   }
+  if(name==='blog'&&typeof loadBlogAdmin==='function')loadBlogAdmin();
   if(name==='users')loadUsers();
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();

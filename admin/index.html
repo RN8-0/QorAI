@@ -67,6 +67,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
           <span>Products</span>
         </a>
+        <a class="nav-link" data-view="blog" onclick="showView('blog')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7M9 11h7"/></svg>
+          <span>Blog</span>
+        </a>
         <a class="nav-link" data-view="users" onclick="showView('users')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span>Users</span>
@@ -221,6 +225,17 @@
       </section>
 
       <!-- ===== USERS ===== -->
+      <section id="blogView" class="view">
+        <div class="view-header">
+          <h1>Blog <span class="count-badge" id="blogCount">0</span></h1>
+          <div class="view-actions">
+            <button class="btn btn-ghost" onclick="loadBlogAdmin()">Refresh</button>
+            <button class="btn btn-primary" onclick="blogNew()">+ New article</button>
+          </div>
+        </div>
+        <div id="blogAdminRoot"></div>
+      </section>
+
       <section id="usersView" class="view">
         <div class="view-header">
           <h1>Users <span class="count-badge" id="usersCount">0</span></h1>
@@ -1404,6 +1419,7 @@
         'js/scraper-geizhals.js',
         'js/notifications.js',
         'js/support.js',
+        'js/blog.js',
         'js/app.js'
       ];
       var head = document.head;
