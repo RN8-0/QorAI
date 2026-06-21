@@ -18,10 +18,14 @@
   let _conclQ = null; // Quill rich-text editor (conclusion)
 
   // Rich-text editor (Quill) — professional editorial editing for body + conclusion.
-  function mkQuill(elId, html, onChange) {
-    const el = document.getElementById(elId);
-    if (!el || !window.Quill) return null;
-    el.innerHTML = '';
+  // Quill inserts its toolbar as a SIBLING of the target element, so re-initing
+  // on the same node stacks toolbars. We reset a wrapper to a fresh inner <div>
+  // before each init so there is always exactly one toolbar.
+  function mkQuill(wrapId, html, onChange) {
+    const wrap = document.getElementById(wrapId);
+    if (!wrap || !window.Quill) return null;
+    wrap.innerHTML = '<div></div>';
+    const el = wrap.firstChild;
     const q = new Quill(el, {
       theme: 'snow',
       placeholder: 'Yazmaya başla…',
@@ -49,8 +53,8 @@
   }
   function initEditors() {
     const c = _lang;
-    _bodyQ = mkQuill('p_body_editor', _editing['body_' + c] || '', (h) => { _editing['body_' + c] = h; });
-    _conclQ = mkQuill('b_concl_editor', _editing['conclusion_' + c] || '', (h) => { _editing['conclusion_' + c] = h; });
+    _bodyQ = mkQuill('p_body_wrap', _editing['body_' + c] || '', (h) => { _editing['body_' + c] = h; });
+    _conclQ = mkQuill('b_concl_wrap', _editing['conclusion_' + c] || '', (h) => { _editing['conclusion_' + c] = h; });
   }
   // Quill 2 renders BOTH bullet & numbered lists as <ol> with a data-list
   // attribute (it relies on its own CSS for the bullets). On the public site
@@ -295,7 +299,7 @@
         </div>
         <div id="b_prodlist"></div>
         <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
-        <div class="ba-field"><div id="b_concl_editor" class="ba-rte"></div></div>
+        <div class="ba-field"><div id="b_concl_wrap" class="ba-rte"></div></div>
         <h3 style="margin:24px 0 8px">Yorumlar <span style="opacity:.5;font-weight:400;font-size:13px">— moderasyon (uygunsuzları sil)</span></h3>
         <div id="b_comments" style="opacity:.6;font-size:13px">${a.id ? 'Yükleniyor…' : 'Önce makaleyi kaydet.'}</div>
       </div>`;
@@ -352,7 +356,7 @@
     pane.innerHTML = `
       <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
-      <div class="ba-field"><label>Intro / general text</label><div id="p_body_editor" class="ba-rte"></div></div>`;
+      <div class="ba-field"><label>Intro / general text</label><div id="p_body_wrap" class="ba-rte"></div></div>`;
   }
 
   function renderProducts() {
