@@ -24,7 +24,7 @@ export default function Blog() {
   const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const coverOf = (a) => (a.coverFile ? pb.files.getURL(a, a.coverFile) : (a.cover || ''));
+  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || ''));
   const viewsOf = (a) => seedCount(a.slug, 180, 520) + (stats[a.slug]?.view || 0);
   const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 

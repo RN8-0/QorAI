@@ -139,7 +139,7 @@ export default function BlogPost() {
   const lead = pick(post, 'lead');
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
-  const cover = post?.coverFile ? pb.files.getURL(post, post.coverFile) : (post?.cover || '');
+  const cover = post?.coverFile ? pb.files.getUrl(post, post.coverFile) : (post?.cover || '');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
@@ -337,7 +337,7 @@ export default function BlogPost() {
             <div className="sec-head"><h2><span className="bar" /> {L('Related guides', 'Benzer rehberler', 'Ähnliche Ratgeber')}</h2></div>
             <div className="blog-similar-grid">
               {more.map((m) => {
-                const mcover = m.coverFile ? pb.files.getURL(m, m.coverFile) : (m.cover || '');
+                const mcover = m.coverFile ? pb.files.getUrl(m, m.coverFile) : (m.cover || '');
                 return (
                   <Link key={m.slug} to={articlePath(m, lang)} className="blog-similar-card">
                     {mcover ? <div className="blog-similar-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}

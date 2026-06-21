@@ -163,7 +163,7 @@
       const fd = new FormData(); fd.append('coverFile', file);
       const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
       _editing.coverFile = rec.coverFile; _editing.cover = '';
-      const u = getPb().files.getURL(rec, rec.coverFile);
+      const u = getPb().files.getUrl(rec, rec.coverFile);
       const prev = document.getElementById('b_cover_prev'); if (prev) { prev.src = u; prev.style.display = 'block'; }
       const ci = document.getElementById('b_cover'); if (ci) ci.value = '';
       toast('Cover uploaded', 's');
@@ -177,7 +177,7 @@
       const fd = new FormData(); fd.append('media+', file); // append to multi-file field
       const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
       const fname = Array.isArray(rec.media) ? rec.media[rec.media.length - 1] : rec.media;
-      const url = getPb().files.getURL(rec, fname);
+      const url = getPb().files.getUrl(rec, fname);
       if (_products[i]) { _products[i].image = url; renderProducts(); }
       toast('Görsel yüklendi', 's');
     } catch (e) { toast('Yükleme başarısız: ' + e.message, 'e'); }
@@ -263,7 +263,7 @@
   // ── EDITOR ────────────────────────────────────────────────────
   function renderEditor() {
     const a = _editing; const el = root(); if (!el) return;
-    const coverPrev = a.coverFile && a.id ? getPb().files.getURL(a, a.coverFile) : (a.cover || '');
+    const coverPrev = a.coverFile && a.id ? getPb().files.getUrl(a, a.coverFile) : (a.cover || '');
     el.innerHTML = `
       <div class="card" style="padding:18px;max-width:920px;margin:0 auto">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">

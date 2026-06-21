@@ -405,7 +405,7 @@ function LikedTab({ t }) {
   const { lang } = useI18n();
   const [items, setItems] = useState(null);
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const coverOf = (a) => (a.coverFile ? pb.files.getURL(a, a.coverFile) : (a.cover || ''));
+  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || ''));
 
   useEffect(() => { getMyLikedArticles().then(setItems); }, []);
 
