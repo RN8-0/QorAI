@@ -276,18 +276,17 @@
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="ba-field"><label>Slug (URL)</label><input class="ba-input" id="b_slug" value="${esc(a.slug || '')}" placeholder="en-iyi-telefonlar-2026" /></div>
           <div class="ba-field"><label>Publish date</label><input class="ba-input" id="b_pub" type="datetime-local" value="${esc(a.publishedAt || '')}" /></div>
+          <div class="ba-field"><label>Status</label><select class="ba-input" id="b_status">
+            <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
+            <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
           <div class="ba-field"><label>Category</label>
             <input class="ba-input" id="b_category" list="b_catlist" value="${esc(a.category || '')}" placeholder="kategori seç ya da yaz…" />
             <datalist id="b_catlist">${_cats.map((c) => `<option value="${esc(c)}"></option>`).join('')}</datalist>
           </div>
-          <div class="ba-field"><label>Status</label><select class="ba-input" id="b_status">
-            <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
-            <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
           <div class="ba-field"><label>Author</label><input class="ba-input" id="b_author" value="${esc(a.author || 'Qor AI')}" /></div>
-          <div class="ba-field" style="display:flex;align-items:flex-end"><span style="font-size:12px;opacity:.6">Etiketler ve SEO meta <b>her dil sekmesinde ayrı</b> ↓</span></div>
         </div>
+        <div style="font-size:12px;opacity:.6;margin:-4px 0 10px">Slug (URL), etiketler ve SEO meta <b>her dil sekmesinde ayrı</b> ↓</div>
         <div class="ba-field"><label>Cover image — upload from device or paste a URL</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <input type="file" accept="image/*" onchange="blogUploadCover(this)" />
@@ -353,7 +352,7 @@
     const a = _editing; const c = _lang;
     const g = (id) => (document.getElementById(id) || {}).value;
     if (document.getElementById('p_title') != null) {
-      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead');
+      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead'); a['slug_' + c] = g('p_slug');
       a['tags_' + c] = g('p_tags'); a['metaTitle_' + c] = g('p_metaTitle'); a['metaDescription_' + c] = g('p_metaDescription');
     }
     flushEditors();
@@ -363,6 +362,7 @@
     const ln = (LANGS.find(([x]) => x === c) || [])[1] || c;
     pane.innerHTML = `
       <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
+      <div class="ba-field"><label>Slug · ${esc(ln)} <span style="opacity:.5">(URL — boşsa başlıktan üretilir)</span></label><input class="ba-input" id="p_slug" value="${esc(a['slug_' + c] || '')}" placeholder="${c === 'en' ? 'best-phones-2026' : c === 'de' ? 'beste-handys-2026' : 'en-iyi-telefonlar-2026'}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
       <div class="ba-field"><label>Intro / general text</label><div id="p_body_wrap" class="ba-rte"></div></div>
       <div class="ba-field"><label>Etiketler · ${esc(ln)} <span style="opacity:.5">(virgülle ayır)</span></label><input class="ba-input" id="p_tags" value="${esc(a['tags_' + c] || '')}" placeholder="telefon, 2026, amiral gemisi" /></div>
@@ -435,8 +435,8 @@
     syncPane();
     const a = _editing;
     const val = (id) => (document.getElementById(id) || {}).value || '';
-    const slug = slugify(val('b_slug') || a.title_tr || '');
-    if (!slug) { toast('Slug or TR title required', 'w'); return; }
+    const slug = slugify(a.slug_tr || a.title_tr || '');
+    if (!slug) { toast('TR başlık (ya da TR slug) gerekli', 'w'); return; }
     if (!a.title_tr) { toast('TR title required', 'w'); return; }
     const data = {
       slug, status: forceStatus || val('b_status') || 'draft',
@@ -455,7 +455,7 @@
     // Per-language slugs so a TR/EN/DE visitor reaches the same article from its
     // own URL. Preserve any existing slug, otherwise derive from that language's
     // title (fallback to the canonical slug).
-    LANGS.forEach(([c]) => { data['slug_' + c] = (a['slug_' + c] || '').trim() || slugify(a['title_' + c] || '') || slug; });
+    LANGS.forEach(([c]) => { data['slug_' + c] = slugify(a['slug_' + c] || a['title_' + c] || '') || slug; });
     try {
       if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
       else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = toDtLocal(rec.publishedAt); }
