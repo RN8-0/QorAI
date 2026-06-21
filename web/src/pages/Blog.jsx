@@ -10,6 +10,7 @@ export default function Blog() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({});
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
 
@@ -39,6 +40,14 @@ export default function Blog() {
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
+    // aggregate view/like counts from the public article_events collection
+    pb.collection('article_events').getFullList({ fields: 'slug,type', batch: 2000 })
+      .then((evs) => {
+        if (!live) return;
+        const agg = {};
+        for (const e of evs) { const s = agg[e.slug] || (agg[e.slug] = { view: 0, like: 0 }); if (s[e.type] != null) s[e.type] += 1; }
+        setStats(agg);
+      }).catch(() => {});
     return () => { live = false; };
   }, []);
 
@@ -66,7 +75,8 @@ export default function Blog() {
                 <h2>{pick(a, 'title')}</h2>
                 <div className="blog-row-meta">
                   {(a.publishedAt || a.created) ? <span>📅 {new Date(a.publishedAt || a.created).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> : null}
-                  {Number(a.likes) ? <span>❤ {a.likes}</span> : null}
+                  {stats[a.slug]?.view ? <span>👁 {stats[a.slug].view}</span> : null}
+                  {stats[a.slug]?.like ? <span>❤ {stats[a.slug].like}</span> : null}
                 </div>
                 <p>{pick(a, 'lead')}</p>
                 <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →', 'Ratgeber lesen →')}</span>

@@ -84,13 +84,15 @@
   async function loadStats() {
     _stats = {};
     try {
-      const evs = await getPb().collection('article_events').getFullList({ fields: 'slug,type', $autoCancel: false, batch: 2000 });
+      const evs = await getPb().collection('article_events').getFullList({ fields: 'slug,type,duration', $autoCancel: false, batch: 2000 });
       for (const e of evs) {
-        const s = _stats[e.slug] || (_stats[e.slug] = { view: 0, read: 0, like: 0 });
+        const s = _stats[e.slug] || (_stats[e.slug] = { view: 0, read: 0, like: 0, dur: 0 });
         if (s[e.type] != null) s[e.type] += 1;
+        if (e.type === 'read') s.dur += Number(e.duration) || 0;
       }
     } catch (_) { /* events may be empty */ }
   }
+  function avgRead(s) { return s && s.read ? Math.round(s.dur / s.read) : 0; }
 
   // ── LIST ──────────────────────────────────────────────────────
   async function loadBlogAdmin() {
@@ -102,7 +104,12 @@
       const items = await getPb().collection('articles').getFullList({ sort: '-updated', $autoCancel: false });
       const badge = document.getElementById('blogCount'); if (badge) badge.textContent = items.length;
       if (!items.length) { el.innerHTML = '<div style="padding:32px;text-align:center;opacity:.6">No articles yet.<br>Click “+ New article” to write one.</div>'; return; }
-      el.innerHTML = `<div class="ba-grid">${items.map((a) => {
+      const tot = items.reduce((acc, a) => { const s = _stats[a.slug] || {}; acc.v += s.view || 0; acc.l += s.like || 0; acc.r += s.read || 0; acc.dur += s.dur || 0; return acc; }, { v: 0, l: 0, r: 0, dur: 0 });
+      const totAvg = tot.r ? Math.round(tot.dur / tot.r) : 0;
+      const summary = `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px">
+        ${[['👁 Görüntüleme', tot.v], ['❤ Beğeni', tot.l], ['📖 Okuma', tot.r], ['⏱ Ort. süre', totAvg + 's'], ['📝 Makale', items.length]].map(([k, val]) =>
+        `<div style="flex:1;min-width:130px;background:var(--surface,#161b24);border:1px solid var(--border,#262c38);border-radius:12px;padding:14px 16px"><div style="font-size:12px;opacity:.6">${k}</div><div style="font-size:24px;font-weight:800">${val}</div></div>`).join('')}</div>`;
+      el.innerHTML = summary + `<div class="ba-grid">${items.map((a) => {
         const st = _stats[a.slug] || {};
         return `<div class="ba-card">
           <div class="ba-card-cover"><img src="${esc(a.cover || '')}" onerror="this.style.visibility='hidden'"/></div>
@@ -113,6 +120,7 @@
               <span class="ba-stat">👁 ${st.view || 0}</span>
               <span class="ba-stat">❤ ${st.like || 0}</span>
               <span class="ba-stat">📖 ${st.read || 0}</span>
+              <span class="ba-stat">⏱ ${avgRead(st)}s</span>
               <span class="ba-stat">📅 ${esc(String(a.publishedAt || a.created || '').slice(0, 10))}</span>
             </div>
             <div class="ba-card-actions">

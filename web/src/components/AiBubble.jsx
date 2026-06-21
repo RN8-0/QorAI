@@ -80,6 +80,7 @@ export default function AiBubble() {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const sendRef = useRef(null);
+  const pageCtxRef = useRef('');
   const userRef = useRef(user);
   userRef.current = user;
   const geoCountry = useGeoCountry();
@@ -107,7 +108,13 @@ export default function AiBubble() {
       if (!hasCompletedQuiz(userRef.current)) { goQuiz(); return; }
       setOpen(true);
       const q = e.detail;
-      if (q && typeof q === 'string') setTimeout(() => sendRef.current?.(q), 120);
+      if (q && typeof q === 'string') { setTimeout(() => sendRef.current?.(q), 120); return; }
+      // Page-aware open: { context: "...", prompt?: "..." } — e.g. from a blog
+      // article so the chat can read what the user is looking at.
+      if (q && typeof q === 'object') {
+        pageCtxRef.current = String(q.context || '');
+        if (q.prompt) setTimeout(() => sendRef.current?.(q.prompt), 120);
+      }
     };
     window.addEventListener('qor-open-ai', onOpen);
     return () => window.removeEventListener('qor-open-ai', onOpen);
@@ -137,8 +144,12 @@ export default function AiBubble() {
         : [];
       const catalogResults = await searchProducts(q, 5).catch(() => []);
       const catalogContext = buildCatalogContext(catalogResults, lang);
+      const pageContext = pageCtxRef.current
+        ? [{ role: 'user', text: `The user is currently reading this Qor AI page; use it as context when relevant (do not repeat it verbatim):\n${pageCtxRef.current}` }]
+        : [];
       const reply = await askQorAi([
         ...profileContext,
+        ...pageContext,
         ...next.filter((m, i) => !(i === 0 && m === greetingRef.current)),
       ], { language: lang, context: catalogContext, country: geoCountry, currency });
       setMsgs((m) => [...m, { role: 'model', text: reply }]);

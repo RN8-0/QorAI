@@ -31,6 +31,7 @@ export default function BlogPost() {
   const [more, setMore] = useState([]);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
   const openedAt = useRef(Date.now());
   const readSent = useRef(false);
 
@@ -43,9 +44,11 @@ export default function BlogPost() {
       .then((rec) => {
         if (!live) return;
         setPost(rec); setStatus('ok');
-        setLikeCount(Number(rec.likes) || 0);
         try { setLiked(localStorage.getItem('qor-liked-' + slug) === '1'); } catch { /* ignore */ }
         track(slug, 'view');
+        // real aggregate counts (article_events is public-read)
+        pb.collection('article_events').getList(1, 1, { filter: `slug="${slug}" && type="like"`, $autoCancel: false }).then((r) => { if (live) setLikeCount(r.totalItems); }).catch(() => {});
+        pb.collection('article_events').getList(1, 1, { filter: `slug="${slug}" && type="view"`, $autoCancel: false }).then((r) => { if (live) setViewCount(r.totalItems + 1); }).catch(() => {});
         // similar articles
         pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${slug}"`, sort: '-updated', fields: 'slug,cover,title_tr,title_en,title_de,lead_tr,lead_en,lead_de' })
           .then((r) => { if (live) setMore(r.items || []); }).catch(() => {});
@@ -137,6 +140,7 @@ export default function BlogPost() {
         {/* 1) stats bar */}
         <div className="blog-stats">
           {dateStr ? <span className="blog-stat">📅 {dateStr}</span> : null}
+          <span className="blog-stat">👁 {viewCount}</span>
           <span className="blog-stat">⏱ {readMin} {L('min read', 'dk okuma', 'Min. Lesezeit')}</span>
           <button className={`blog-stat blog-like ${liked ? 'on' : ''}`} onClick={onLike}>❤ {likeCount}</button>
           <button className="blog-stat" onClick={onShare}>↗ {L('Share', 'Paylaş', 'Teilen')}</button>
@@ -186,7 +190,12 @@ export default function BlogPost() {
             <strong>{L('Need help deciding?', 'Karar veremedin mi?', 'Unentschlossen?')}</strong>
             <p>{L('Ask Qor AI about this guide and your needs.', 'Bu rehber ve ihtiyacın hakkında Qor AI’ya sor.', 'Frag Qor AI zu diesem Ratgeber.')}</p>
           </div>
-          <Link to={`/ai-chat?about=${encodeURIComponent(slug)}`} className="btn btn-primary">{L('Ask Qor AI', 'Qor AI’ya Sor', 'Qor AI fragen')}</Link>
+          <button type="button" className="btn btn-primary" onClick={() => {
+            const parts = [`${title}`, lead];
+            products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}${p.techScore ? ` — Qor AI ${p.techScore}/100` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()));
+            if (conclusion) parts.push(conclusion.replace(/<[^>]+>/g, ' '));
+            window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: { context: parts.filter(Boolean).join('\n') } }));
+          }}>{L('Ask Qor AI', 'Qor AI’ya Sor', 'Qor AI fragen')}</button>
         </div>
 
         {/* 7) similar articles */}
