@@ -597,7 +597,15 @@ async function main() {
   //    de-duplicated subset of top products (not all 106k), so the sitemap and
   //    the prerendered HTML stay in lock-step and Google gets real pages.
   const guides = loadGuides();
-  if (guides.size) console.log(`[seo] loaded ${guides.size} buying guides`);
+  if (guides.size) {
+    // Mirror guides into the served website/guides/ too. vite copies public/ on a
+    // full build, but the scheduled cron runs seo.mjs alone — this keeps the SPA's
+    // /guides/<cat>.json fetch in sync without a vite build.
+    const gOut = join(site, 'guides');
+    mkdirSync(gOut, { recursive: true });
+    for (const [cat, g] of guides) writeTextFile(join(gOut, `${cat}.json`), JSON.stringify(g));
+    console.log(`[seo] loaded + mirrored ${guides.size} buying guides`);
+  }
   let products = [];
   try {
     products = await fetchAllProducts();
