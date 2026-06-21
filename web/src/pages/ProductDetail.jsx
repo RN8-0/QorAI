@@ -12,7 +12,7 @@ import { useAiAccess } from '../lib/useAiAccess';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
-import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
+import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import ProductCard from '../components/ProductCard.jsx';
@@ -1184,7 +1184,7 @@ export default function ProductDetail() {
                 </div>
                 <div className="pd-prices-list">
                   {amazonUrl && (
-                    <a className="pd-price-row" href={amazonUrl} target="_blank" rel="sponsored noopener">
+                    <a className="pd-price-row" href={amazonGoPath(p, sel)} target="_blank" rel="sponsored noopener nofollow">
                       <span className="pd-price-store"><AmazonLogo height={26} /></span>
                       <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
                     </a>

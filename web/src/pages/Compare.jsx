@@ -4,7 +4,7 @@ import { getProduct, popularProducts, productMatchesRequestedCategory, searchPro
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
 import { getSavedComparisonAnalysis, saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, scoreClass, scoreLabel } from '../lib/format';
+import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, amazonGoPath, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -692,6 +692,7 @@ export default function Compare() {
                   {slots.map((p) => {
                     const cp = priceForCountry(p, geoCountry);
                     const amz = amazonUrlForProduct(p, (geoCountry || 'US'));
+                    const amzGo = amazonGoPath(p, (geoCountry || 'US'));
                     const name = displayProductName(p, lang);
                     return (
                       <div className="cmp-price-card" key={p.id}>
@@ -699,7 +700,7 @@ export default function Compare() {
                         {cp ? <div className="cmp-price-amt">{formatPriceAmount(cp.price, cp.currency, lang)}</div>
                           : <div className="cmp-price-none">{L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}</div>}
                         {amz && (
-                          <a className="cmp-price-row-link" href={amz} target="_blank" rel="sponsored noopener">
+                          <a className="cmp-price-row-link" href={amzGo} target="_blank" rel="sponsored noopener nofollow">
                             <AmazonLogo height={20} /><span>{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
                           </a>
                         )}

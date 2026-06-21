@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
 import { pb } from '../lib/pocketbase';
 import { isFreshPricedOffer, normalizeOffer } from '../lib/offers';
-import { localizeAmazonUrl, safeExternalUrl } from '../lib/format';
+import { localizeAmazonUrl, safeExternalUrl, amazonUrlFromParams } from '../lib/format';
 import { productPath } from '../lib/routes';
 import { useSeo } from '../lib/seo';
 import './Placeholder.css';
@@ -14,6 +14,12 @@ export default function Go() {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const offerId = params.get('offer') || '';
   const productId = params.get('product') || '';
+  // Direct Amazon search redirect (no offer record): /go?store=amazon&m=DE&q=...
+  // Used by product/compare pages so the click is on an internal link Skimlinks
+  // won't hijack; we then programmatically redirect to the chosen storefront.
+  const amazonDirect = params.get('store') === 'amazon'
+    ? amazonUrlFromParams(params.get('m'), params.get('q'))
+    : '';
   const [state, setState] = useState({ status: 'loading', offer: null, message: '' });
 
   useSeo({
@@ -25,6 +31,12 @@ export default function Go() {
 
   useEffect(() => {
     let live = true;
+    // Amazon direct redirect short-circuits the offer lookup entirely.
+    if (amazonDirect) {
+      setState({ status: 'redirecting', offer: null, message: '' });
+      const timer = window.setTimeout(() => { window.location.assign(amazonDirect); }, 300);
+      return () => { live = false; window.clearTimeout(timer); };
+    }
     async function run() {
       if (!offerId) {
         setState({ status: 'error', offer: null, message: L('Missing offer.', 'Teklif bulunamadı.', 'Angebot fehlt.') });
@@ -69,7 +81,7 @@ export default function Go() {
       live = false;
       if (cleanupPromise && typeof cleanupPromise.then === 'function') cleanupPromise.then(cleanup => cleanup && cleanup());
     };
-  }, [offerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [offerId, amazonDirect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const target = useMemo(() => (
     state.offer?.network === 'amazon'

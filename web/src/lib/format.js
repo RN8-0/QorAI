@@ -292,6 +292,28 @@ export function amazonUrlForProduct(product, country = 'US') {
   return amazonMarketUrl(market, query);
 }
 
+// Internal /go link for an Amazon search. We must NOT render the raw amazon.*
+// href in the page: third-party link rewriters loaded site-wide (Skimlinks)
+// hijack the click and re-localise it to the VISITOR's geo (e.g. a TR visitor
+// asking for amazon.de got bounced to amazon.it), ignoring the chosen ship-to.
+// Routing through our own /go (an internal URL, never skimmed) and doing a
+// programmatic redirect there keeps the user on the country THEY picked.
+export function amazonGoPath(product, country = 'US') {
+  const query = amazonQueryForProduct(product);
+  if (!query) return '';
+  const market = AMAZON_COUNTRY_TO_MARKET[String(country || 'US').toUpperCase()] || 'US';
+  return `/go?store=amazon&m=${encodeURIComponent(market)}&q=${encodeURIComponent(query)}`;
+}
+
+// Rebuild the Amazon URL on /go from whitelisted params (market must be a known
+// storefront — guards against open-redirect since we never pass a raw URL).
+export function amazonUrlFromParams(market, query) {
+  const m = String(market || '').toUpperCase();
+  const q = String(query || '').trim();
+  if (!AMAZON_DOMAIN[m] || !q) return '';
+  return amazonMarketUrl(m, q);
+}
+
 function rollupPriceIsFresh(product) {
   const expires = Date.parse(product?.bestOfferExpiresAt || '');
   return Number.isFinite(expires) && expires > Date.now();
