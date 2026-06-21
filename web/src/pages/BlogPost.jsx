@@ -4,11 +4,14 @@ import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { productPath } from '../lib/routes';
+import { amazonGoPath } from '../lib/format';
+import { useGeoCountry } from '../lib/geo';
 import './Blog.css';
 
 export default function BlogPost() {
   const { slug } = useParams();
   const { lang } = useI18n();
+  const geoCountry = useGeoCountry();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [post, setPost] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -28,8 +31,9 @@ export default function BlogPost() {
   const lead = pick(post, 'lead');
   const body = pick(post, 'body');
   const cover = post?.cover || '';
-  const products = Array.isArray(post?.products) ? post.products : [];
+  const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
   const url = `${SITE_URL}/blog/${slug}`;
+  const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
 
   useSeo({
     title: title ? `${title} | Qor AI` : 'Qor AI Blog',
@@ -62,7 +66,7 @@ export default function BlogPost() {
     );
   }
   if (status === 'loading') {
-    return <div className="container blog-page"><div className="blog-article blog-card-skel" style={{ minHeight: 400 }} /></div>;
+    return <div className="container blog-page"><div className="blog-article"><div className="blog-card-skel" style={{ minHeight: 360, borderRadius: 18 }} /></div></div>;
   }
 
   return (
@@ -73,26 +77,40 @@ export default function BlogPost() {
         </nav>
         <h1>{title}</h1>
         {lead ? <p className="blog-lead">{lead}</p> : null}
-        {cover ? <div className="blog-cover"><img src={cover} alt={title} /></div> : null}
-
-        {/* AI/admin-authored HTML body (h2/p/ul). Source is our own content. */}
-        <div className="blog-body" dangerouslySetInnerHTML={{ __html: body }} />
+        {body ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: body }} /> : null}
 
         {products.length > 0 && (
-          <section className="blog-products">
-            <h2>{L('Featured products', 'Öne çıkan ürünler', 'Empfohlene Produkte')}</h2>
-            <div className="blog-prod-grid">
-              {products.filter((p) => p && p.id && p.name).map((p) => (
-                <Link key={p.id} to={productPath({ id: p.id, slug: p.slug, name: p.name })} className="blog-prod-card">
-                  {p.imageUrl ? <div className="blog-prod-img"><img src={p.imageUrl} alt={p.name} loading="lazy" /></div> : null}
-                  <div className="blog-prod-info">
-                    {p.brand ? <span className="blog-prod-brand">{p.brand}</span> : null}
-                    <span className="blog-prod-name">{p.name}</span>
-                    {p.techScore ? <span className="blog-prod-score">{p.techScore}/100</span> : null}
+          <section className="blog-rank">
+            {products.map((p, i) => {
+              const to = productPath({ id: p.id, slug: p.slug, name: p.name });
+              return (
+                <div className="rank-item" key={p.id}>
+                  <div className="rank-num">{i + 1}</div>
+                  <Link to={to} className="rank-media">
+                    {p.imageUrl ? <img src={p.imageUrl} alt={p.name} loading="lazy" /> : null}
+                  </Link>
+                  <div className="rank-body">
+                    <div className="rank-head">
+                      {p.brand ? <span className="rank-brand">{p.brand}</span> : null}
+                      {p.techScore ? <span className="rank-score">{p.techScore}/100</span> : null}
+                    </div>
+                    <Link to={to} className="rank-title">{p.name}</Link>
+                    {pdesc(p) ? <p className="rank-desc">{pdesc(p)}</p> : null}
+                    <div className="rank-actions">
+                      <Link to={`${to}?ai=1`} className="rank-btn rank-btn-ai">
+                        ✨ {L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
+                      </Link>
+                      <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="rank-btn rank-btn-buy">
+                        🛒 {L('Buy', 'Satın Al', 'Kaufen')}
+                      </a>
+                      <Link to={to} className="rank-btn rank-btn-ghost">
+                        {L('Details', 'İncele', 'Details')}
+                      </Link>
+                    </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              );
+            })}
           </section>
         )}
 

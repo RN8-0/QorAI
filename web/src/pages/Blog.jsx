@@ -54,17 +54,18 @@ export default function Blog() {
       </div>
 
       {loading ? (
-        <div className="blog-grid">
-          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="blog-card blog-card-skel" />)}
+        <div className="blog-list">
+          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="blog-row blog-card-skel" style={{ height: 120 }} />)}
         </div>
       ) : (
-        <div className="blog-grid">
+        <div className="blog-list">
           {posts.map((a) => (
-            <Link key={a.slug} to={`/blog/${a.slug}`} className="blog-card">
-              {a.cover ? <div className="blog-card-img"><img src={a.cover} alt={pick(a, 'title')} loading="lazy" /></div> : null}
-              <div className="blog-card-body">
+            <Link key={a.slug} to={`/blog/${a.slug}`} className="blog-row">
+              {a.cover ? <div className="blog-row-img"><img src={a.cover} alt={pick(a, 'title')} loading="lazy" /></div> : null}
+              <div className="blog-row-body">
                 <h2>{pick(a, 'title')}</h2>
                 <p>{pick(a, 'lead')}</p>
+                <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →', 'Ratgeber lesen →')}</span>
               </div>
             </Link>
           ))}

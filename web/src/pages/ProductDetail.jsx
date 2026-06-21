@@ -837,6 +837,18 @@ export default function ProductDetail() {
     }
   }, [p, lang, t, user, aiFull.data, similar, offers]);
 
+  // Deep link from the blog "AI ile analiz et" buttons: /product/...?ai=1 opens
+  // the AI tab and kicks off the full analysis as soon as the product loads.
+  const aiAutoRef = useRef('');
+  useEffect(() => {
+    if (!p) return;
+    if (searchParams.get('ai') === '1' && aiAutoRef.current !== p.id) {
+      aiAutoRef.current = p.id;
+      setTab('premium');
+      startFullAnalysisQuiz();
+    }
+  }, [p, searchParams, startFullAnalysisQuiz]);
+
   useEffect(() => {
     let live = true;
     setCompareMsg('');

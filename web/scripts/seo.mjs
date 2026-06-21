@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { categoryLabel } from '../src/lib/format.js';
+import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
 
 const SITE = 'https://qorai.net';
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,34 +58,51 @@ function blogArticleBody(a, lang = 'tr') {
   const lead = esc(t('lead'));
   const cover = /^https?:\/\//i.test(a.cover || '') ? esc(a.cover) : '';
   const body = safeBodyHtml(t('body'));
-  const products = Array.isArray(a.products) ? a.products : [];
-  const prod = products.filter((p) => p && p.id && p.name).map((p) => {
+  const products = Array.isArray(a.products) ? a.products.filter((p) => p && p.id && p.name) : [];
+  const blocks = products.map((p, i) => {
     const slug = slugifyProduct(p.slug || p.name);
     const href = slug ? `/product/${slug}-${p.id}` : `/product/${p.id}`;
-    return `<li style="margin:6px 0"><a href="${href}" style="color:#2563eb;font-weight:600">${esc(p.name)}</a>${p.techScore ? ` <span style="color:#64748b">· ${esc(p.techScore)}/100</span>` : ''}</li>`;
+    const desc = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
+    const img = /^https?:\/\//i.test(p.imageUrl || '') ? esc(p.imageUrl) : '';
+    const buy = esc(amazonGoPath(p, 'TR'));
+    return `<div style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin:16px 0;position:relative">`
+      + `<div style="position:absolute;top:-10px;left:-10px;width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${i + 1}</div>`
+      + (img ? `<a href="${href}" style="flex:0 0 168px;height:168px;border:1px solid #eef2f7;border-radius:14px;display:flex;align-items:center;justify-content:center"><img src="${img}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:contain;padding:12px" loading="lazy" /></a>` : '')
+      + `<div style="flex:1;min-width:0">`
+      + `<div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">${p.brand ? `<span style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase">${esc(p.brand)}</span>` : ''}${p.techScore ? `<span style="font-size:12px;font-weight:700;color:#16a34a">${esc(p.techScore)}/100</span>` : ''}</div>`
+      + `<a href="${href}" style="display:block;font-size:19px;font-weight:700;color:#0f172a;text-decoration:none;margin-bottom:6px">${esc(p.name)}</a>`
+      + (desc ? `<p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 14px">${desc}</p>` : '')
+      + `<div style="display:flex;flex-wrap:wrap;gap:10px">`
+      + `<a href="${href}?ai=1" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;background:#2563eb;color:#fff">✨ AI ile Analiz Et</a>`
+      + `<a href="${buy}" rel="sponsored nofollow" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;background:#ff9900;color:#1a1a1a">🛒 Satın Al</a>`
+      + `<a href="${href}" style="padding:9px 16px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid #cbd5e1;color:#334155">İncele</a>`
+      + `</div></div></div>`;
   }).join('');
-  return `<article class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+  return `<article class="seo-prerender" style="max-width:820px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
-    + `<h1 style="font-size:30px;font-weight:800;line-height:1.2;margin:10px 0 10px">${title}</h1>`
-    + (lead ? `<p style="font-size:18px;color:#475569;line-height:1.6;margin:0 0 18px">${lead}</p>` : '')
-    + (cover ? `<img src="${cover}" alt="${title}" style="width:100%;max-height:420px;object-fit:contain;border-radius:16px;margin:0 0 22px" />` : '')
+    + `<h1 style="font-size:32px;font-weight:800;line-height:1.2;margin:12px 0 12px">${title}</h1>`
+    + (lead ? `<p style="font-size:19px;color:#475569;line-height:1.6;margin:0 0 20px">${lead}</p>` : '')
     + `<div style="font-size:16.5px;line-height:1.8">${body}</div>`
-    + (prod ? `<h2 style="font-size:20px;margin:28px 0 10px">Öne çıkan ürünler</h2><ul style="line-height:1.9">${prod}</ul>` : '')
+    + blocks
     + `<p style="margin-top:28px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
     + `</article>`;
 }
 
 function blogListBody(articles, lang = 'tr') {
   const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const cards = articles.map((a) =>
-    `<li style="margin:14px 0"><a href="/blog/${esc(a.slug)}" style="color:#0f172a;text-decoration:none">`
-    + `<strong style="font-size:18px">${esc(t(a, 'title'))}</strong>`
-    + `<br><span style="color:#64748b">${esc(t(a, 'lead'))}</span></a></li>`).join('');
+  const rows = articles.map((a) => {
+    const cover = /^https?:\/\//i.test(a.cover || '') ? esc(a.cover) : '';
+    return `<a href="/blog/${esc(a.slug)}" style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;margin:14px 0">`
+      + (cover ? `<div style="flex:0 0 200px;background:#f8fafc;display:flex;align-items:center;justify-content:center"><img src="${cover}" alt="${esc(t(a, 'title'))}" style="width:100%;max-height:150px;object-fit:contain;padding:16px" loading="lazy" /></div>` : '')
+      + `<div style="padding:18px 20px"><h2 style="font-size:20px;font-weight:700;margin:0 0 6px">${esc(t(a, 'title'))}</h2>`
+      + `<p style="font-size:15px;color:#64748b;margin:0 0 8px;line-height:1.6">${esc(t(a, 'lead'))}</p>`
+      + `<span style="font-size:14px;font-weight:600;color:#2563eb">Rehberi oku →</span></div></a>`;
+  }).join('');
   return `<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › Blog</nav>`
     + `<h1 style="font-size:32px;font-weight:800;margin:10px 0 6px">Alım Rehberleri</h1>`
     + `<p style="color:#475569;margin:0 0 18px">2026'nın en iyi modelleri — puanlandı, karşılaştırıldı ve anlatıldı.</p>`
-    + `<ul style="list-style:none;padding:0">${cards}</ul>`
+    + rows
     + `</main>`;
 }
 

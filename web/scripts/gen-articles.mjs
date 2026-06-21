@@ -120,9 +120,10 @@ function userMsg(lang, label, picks) {
     '{',
     '  "title": "<SEO title, intent: best <category> 2026, <=65 chars>",',
     '  "lead": "<2-sentence intro>",',
-    '  "body": "<HTML: an intro <p>, then one <h2> per top model with a <p> mini-take explaining strengths/who it suits, then an <h2> with a <ul> of buying tips. Use only <h2>,<h3>,<p>,<ul>,<li>,<strong>. No images, no links, no prices.>"',
+    '  "body": "<HTML: one intro <p>, then an <h2> with a <ul> of 3-5 buying tips (what to look for). Use only <h2>,<p>,<ul>,<li>,<strong>. No model headings here, no images, no links, no prices.>",',
+    '  "picks": [ {"name":"<EXACT name from the list above>","desc":"<2-3 sentence take: strengths + who it suits, no price>"}, ... one per listed model ]',
     '}',
-    `Everything in ${LANG_NAME[lang]}.`,
+    `Everything in ${LANG_NAME[lang]}. picks[].name MUST match the list exactly.`,
   ].join('\n');
 }
 
@@ -134,13 +135,21 @@ async function genOne(cat, existing) {
   }
   const picks = await tsTop(cat);
   if (picks.length < 3) return { cat, status: 'too-few' };
-  const rec = { slug: cat, status: 'published', category: cat, cover: picks[0].imageUrl, products: picks.map((p) => ({ id: p.id, slug: p.slug, name: p.name, brand: p.brand, techScore: p.techScore, imageUrl: p.imageUrl })) };
+  const prod = picks.map((p) => ({ id: p.id, slug: p.slug, name: p.name, brand: p.brand, techScore: p.techScore, imageUrl: p.imageUrl }));
+  const byName = new Map(picks.map((p, i) => [p.name.toLowerCase().trim(), i]));
+  const rec = { slug: cat, status: 'published', category: cat, cover: picks[0].imageUrl };
   for (const lang of LANGS) {
     const out = await deepseek(sys(lang), userMsg(lang, categoryLabel(cat, lang), picks));
     rec[`title_${lang}`] = String(out.title || '').trim().slice(0, 90);
     rec[`lead_${lang}`] = String(out.lead || '').trim();
     rec[`body_${lang}`] = String(out.body || '').trim();
+    for (const pk of (out.picks || [])) {
+      const key = String(pk.name || '').toLowerCase().trim();
+      let idx = byName.has(key) ? byName.get(key) : picks.findIndex((p) => key && p.name.toLowerCase().includes(key.slice(0, 14)));
+      if (idx != null && idx >= 0 && pk.desc) prod[idx][`desc_${lang}`] = String(pk.desc).trim();
+    }
   }
+  rec.products = prod;
   if (!rec.title_tr || !rec.body_tr) return { cat, status: 'thin' };
   if (existing) { const r = await pb('PATCH', `/api/collections/articles/records/${existing.id}`, rec); return { cat, status: r.status < 300 ? 'updated' : `err:${r.status}` }; }
   const r = await pb('POST', '/api/collections/articles/records', rec);
