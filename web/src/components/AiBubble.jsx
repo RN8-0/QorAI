@@ -8,6 +8,7 @@ import { useAiAccess } from '../lib/useAiAccess';
 import { productPath } from '../lib/routes';
 import { searchProducts } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
+import { getPageContext, setPageContext } from '../lib/pageContext';
 import { CURRENCY_BY_COUNTRY, formatPriceAmount } from '../lib/format';
 import { useI18n } from '../i18n/index.jsx';
 import AiText from './AiText.jsx';
@@ -80,7 +81,6 @@ export default function AiBubble() {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   const sendRef = useRef(null);
-  const pageCtxRef = useRef('');
   const userRef = useRef(user);
   userRef.current = user;
   const geoCountry = useGeoCountry();
@@ -112,7 +112,7 @@ export default function AiBubble() {
       // Page-aware open: { context: "...", prompt?: "..." } — e.g. from a blog
       // article so the chat can read what the user is looking at.
       if (q && typeof q === 'object') {
-        pageCtxRef.current = String(q.context || '');
+        if (q.context) setPageContext(String(q.context));
         if (q.prompt) setTimeout(() => sendRef.current?.(q.prompt), 120);
       }
     };
@@ -144,8 +144,9 @@ export default function AiBubble() {
         : [];
       const catalogResults = await searchProducts(q, 5).catch(() => []);
       const catalogContext = buildCatalogContext(catalogResults, lang);
-      const pageContext = pageCtxRef.current
-        ? [{ role: 'user', text: `The user is currently reading this Qor AI page; use it as context when relevant (do not repeat it verbatim):\n${pageCtxRef.current}` }]
+      const ctxText = getPageContext() || (typeof document !== 'undefined' ? `${document.title} — ${location.pathname}` : '');
+      const pageContext = ctxText
+        ? [{ role: 'user', text: `The user is currently on this Qor AI page; read it and use it as context when relevant (do not repeat it verbatim):\n${ctxText}` }]
         : [];
       const reply = await askQorAi([
         ...profileContext,

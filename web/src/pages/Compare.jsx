@@ -31,6 +31,7 @@ import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { displayProductName } from '../lib/productNames';
+import { usePageContext } from '../lib/pageContext';
 import CompareReviews from '../components/CompareReviews.jsx';
 import './Compare.css';
 
@@ -201,6 +202,11 @@ export default function Compare() {
   const ytUrl = ytQuery
     ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ytQuery} ${lang === 'tr' ? 'karşılaştırma' : lang === 'de' ? 'Vergleich' : 'comparison'}`)}`
     : '';
+
+  // Let the chat bubble read & comment on the comparison.
+  usePageContext(ytQuery
+    ? `${lang === 'tr' ? 'Karşılaştırma' : lang === 'de' ? 'Vergleich' : 'Comparison'}: ${products.map((p) => `${displayProductName(p, lang) || p.name}${Number(p.techScore) ? ` (${Math.round(p.techScore)}/100)` : ''}`).join(' vs ')}`
+    : (lang === 'tr' ? 'Karşılaştırma sayfası' : lang === 'de' ? 'Vergleichsseite' : 'Compare page'));
 
   useEffect(() => {
     let live = true;

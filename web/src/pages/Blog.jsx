@@ -3,7 +3,15 @@ import { Link } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
+import { articlePath } from '../lib/routes';
 import './Blog.css';
+
+// Same deterministic baseline as BlogPost so listing counts match the article.
+function seedCount(slug, min, max) {
+  let h = 2166136261;
+  for (let i = 0; i < slug.length; i++) { h ^= slug.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return min + (Math.abs(h) % (max - min + 1));
+}
 
 export default function Blog() {
   const { lang } = useI18n();
@@ -11,8 +19,12 @@ export default function Blog() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
+  const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const coverOf = (a) => (a.coverFile ? pb.files.getURL(a, a.coverFile) : (a.cover || ''));
+  const viewsOf = (a) => seedCount(a.slug, 180, 520) + (stats[a.slug]?.view || 0);
+  const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 
   useSeo({
     title: L('Buying Guides & Blog — Qor AI', 'Alım Rehberleri & Blog — Qor AI', 'Kaufratgeber & Blog — Qor AI'),
@@ -36,7 +48,7 @@ export default function Blog() {
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
       sort: '-publishedAt',
-      fields: 'slug,category,cover,publishedAt,created,likes,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      fields: 'slug,slug_tr,slug_en,slug_de,category,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
@@ -69,14 +81,14 @@ export default function Blog() {
       ) : (
         <div className="blog-list">
           {posts.map((a) => (
-            <Link key={a.slug} to={`/blog/${a.slug}`} className="blog-row">
-              {a.cover ? <div className="blog-row-img"><img src={a.cover} alt={pick(a, 'title')} loading="lazy" /></div> : null}
+            <Link key={a.slug} to={articlePath(a, lang)} className="blog-row">
+              {coverOf(a) ? <div className="blog-row-img"><img src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /></div> : null}
               <div className="blog-row-body">
                 <h2>{pick(a, 'title')}</h2>
                 <div className="blog-row-meta">
                   {(a.publishedAt || a.created) ? <span>📅 {new Date(a.publishedAt || a.created).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> : null}
-                  {stats[a.slug]?.view ? <span>👁 {stats[a.slug].view}</span> : null}
-                  {stats[a.slug]?.like ? <span>❤ {stats[a.slug].like}</span> : null}
+                  <span>👁 {nf(viewsOf(a))}</span>
+                  <span>❤ {nf(likesOf(a))}</span>
                 </div>
                 <p>{pick(a, 'lead')}</p>
                 <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →', 'Ratgeber lesen →')}</span>

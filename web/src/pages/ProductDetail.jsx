@@ -36,6 +36,7 @@ import { productImageList } from '../lib/imageUrl';
 import { categoryPath, extractProductId, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { cleanProductName, displayProductName } from '../lib/productNames';
+import { usePageContext } from '../lib/pageContext';
 import Reviews from '../components/Reviews.jsx';
 import './ProductDetail.css';
 
@@ -866,6 +867,15 @@ export default function ProductDetail() {
   useSeo(loading
     ? buildLoadingProductSeo(id, `${loc.pathname}${loc.search}`)
     : buildProductSeo(p, t, lang));
+
+  // Let the chat bubble read & comment on the product the user is viewing.
+  usePageContext(p ? [
+    `${lang === 'tr' ? 'Ürün' : lang === 'de' ? 'Produkt' : 'Product'}: ${displayProductName(p, lang) || cleanProductName(p.name)}`,
+    p.brand ? `${lang === 'tr' ? 'Marka' : lang === 'de' ? 'Marke' : 'Brand'}: ${p.brand}` : '',
+    p.category ? `${lang === 'tr' ? 'Kategori' : 'Category'}: ${p.category}` : '',
+    Number(p.techScore) ? `Qor AI techScore: ${Math.round(p.techScore)}/100` : '',
+    p.keySpecsText || '',
+  ].filter(Boolean).join('\n') : '');
 
   if (loading) {
     return (

@@ -53,6 +53,19 @@ export function categoryPath(category) {
   return cat ? `/category/${cat}` : '/category';
 }
 
+// A blog article carries a canonical `slug` plus optional per-language slugs
+// (slug_tr/slug_en/slug_de). Links use the language-appropriate slug so the URL
+// matches the content language, while BlogPost still resolves any of them to the
+// same article. Falls back to the canonical slug when a language slug is empty.
+export function articleSlug(article, lang) {
+  if (!article) return '';
+  return article[`slug_${lang}`] || article.slug || '';
+}
+export function articlePath(article, lang) {
+  const s = articleSlug(article, lang);
+  return s ? `/blog/${s}` : '/blog';
+}
+
 // Clean comparison URL: /compare/<slugA>-<idA>-vs-<slugB>-<idB>. Mirrors
 // comparePath() in web/scripts/seo.mjs so the prerendered file, its canonical
 // and the runtime canonical all agree. parseComparePair() recovers both 15-char

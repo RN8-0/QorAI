@@ -3,6 +3,7 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
+import { usePageContext } from '../lib/pageContext';
 import CategoryGuide from '../components/CategoryGuide.jsx';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
@@ -59,6 +60,10 @@ export default function Category() {
     : L('Browse every product category on Qor AI.',
         'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
         'Durchstöbere alle Produktkategorien auf Qor AI.');
+
+  usePageContext(cat
+    ? `${lang === 'tr' ? 'Kategori sayfası' : lang === 'de' ? 'Kategorieseite' : 'Category page'}: ${catTitle}`
+    : `${lang === 'tr' ? 'Tüm kategoriler sayfası' : lang === 'de' ? 'Alle Kategorien' : 'All categories page'}`);
 
   useSeo({
     title: cat

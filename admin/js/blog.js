@@ -198,28 +198,31 @@
           <div id="b_prodresults" class="ba-results" style="display:none"></div>
         </div>
         <div id="b_prodlist"></div>
+        <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
+        <div class="ba-field"><textarea class="ba-input" id="b_concl" rows="4" placeholder="Sonuç / kapanış paragrafı…"></textarea></div>
       </div>`;
     renderPane();
     renderProducts();
+    renderConcl();
   }
 
-  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); }
+  function blogTab(c) { syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); renderConcl(); }
+  function renderConcl() { const el = document.getElementById('b_concl'); if (el) el.value = _editing['conclusion_' + _lang] || ''; }
   function renderPaneTabs() { const tabs = document.querySelectorAll('.ba-tab'); LANGS.forEach(([c], i) => { if (tabs[i]) tabs[i].classList.toggle('on', c === _lang); }); }
   function syncPane() {
     const a = _editing; const c = _lang;
     const g = (id) => (document.getElementById(id) || {}).value;
     if (document.getElementById('p_title') != null) {
-      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead');
-      a['body_' + c] = g('p_body'); a['conclusion_' + c] = g('p_concl');
+      a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead'); a['body_' + c] = g('p_body');
     }
+    if (document.getElementById('b_concl') != null) a['conclusion_' + c] = g('b_concl');
   }
   function renderPane() {
     const a = _editing; const c = _lang; const pane = document.getElementById('b_pane'); if (!pane) return;
     pane.innerHTML = `
       <div class="ba-field"><label>Title</label><input class="ba-input" id="p_title" value="${esc(a['title_' + c] || '')}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
-      <div class="ba-field"><label>Intro / general text (HTML: &lt;p&gt; &lt;h2&gt; &lt;ul&gt;&lt;li&gt; &lt;strong&gt;)</label><textarea class="ba-input" id="p_body" rows="6">${esc(a['body_' + c] || '')}</textarea></div>
-      <div class="ba-field"><label>Conclusion (after products)</label><textarea class="ba-input" id="p_concl" rows="3">${esc(a['conclusion_' + c] || '')}</textarea></div>`;
+      <div class="ba-field"><label>Intro / general text (HTML: &lt;p&gt; &lt;h2&gt; &lt;ul&gt;&lt;li&gt; &lt;strong&gt;)</label><textarea class="ba-input" id="p_body" rows="6">${esc(a['body_' + c] || '')}</textarea></div>`;
   }
 
   function renderProducts() {
@@ -281,6 +284,10 @@
       products: _products,
     };
     LANGS.forEach(([c]) => { data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || ''; data['body_' + c] = a['body_' + c] || ''; data['conclusion_' + c] = a['conclusion_' + c] || ''; });
+    // Per-language slugs so a TR/EN/DE visitor reaches the same article from its
+    // own URL. Preserve any existing slug, otherwise derive from that language's
+    // title (fallback to the canonical slug).
+    LANGS.forEach(([c]) => { data['slug_' + c] = (a['slug_' + c] || '').trim() || slugify(a['title_' + c] || '') || slug; });
     try {
       if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
       else { const rec = await getPb().collection('articles').create(data, { $autoCancel: false }); _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = String(rec.publishedAt || '').slice(0, 16); }

@@ -56,7 +56,13 @@ function articleCoverUrl(a) {
   if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
   return /^https?:\/\//i.test(a.cover || '') ? a.cover : '';
 }
+const BLOG_LBL = {
+  tr: { ai: 'AI Analizi', amz: "Amazon'da Gör", prod: 'Ürüne Git', verdict: 'Sonuç', all: '← Tüm rehberler' },
+  en: { ai: 'AI analysis', amz: 'View on Amazon', prod: 'Product', verdict: 'Verdict', all: '← All guides' },
+  de: { ai: 'KI-Analyse', amz: 'Bei Amazon ansehen', prod: 'Produkt', verdict: 'Fazit', all: '← Alle Ratgeber' },
+};
 function blogArticleBody(a, lang = 'tr') {
+  const lbl = BLOG_LBL[lang] || BLOG_LBL.tr;
   const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const title = esc(t('title'));
   const lead = esc(t('lead'));
@@ -71,10 +77,10 @@ function blogArticleBody(a, lang = 'tr') {
     const buy = esc(amazonGoPath(p, 'TR'));
     return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
       + `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;font-weight:600">`
-      + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ AI Analizi</a>`
-      + `<a href="${buy}" rel="sponsored nofollow" style="color:#64748b;text-decoration:none">🛒 Amazon'da Gör</a>`
-      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ Ürüne Git</a></div>`
-      + `<a href="${href}" style="display:block;font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;margin:0 0 14px"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}${p.techScore ? ` <span style="font-size:14px;font-weight:700;color:#16a34a">${esc(p.techScore)}/100</span>` : ''}</a>`
+      + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
+      + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${p.price ? `<b style="color:#0f172a">${esc(p.price)}</b>` : ''}</a>`
+      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`
+      + `<a href="${href}" style="display:block;font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;margin:0 0 14px"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`
       + (d1 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0 0 16px;max-width:760px">${d1}</p>` : '')
       + (img ? `<a href="${href}" style="display:block;margin:6px 0 18px;border:1px solid #eef2f7;border-radius:16px;overflow:hidden;background:#fff"><img src="${img}" alt="${esc(p.name)}" style="display:block;width:100%;max-height:460px;object-fit:contain;padding:20px" loading="lazy" /></a>` : '')
       + (d2 ? `<p style="font-size:17px;line-height:1.85;color:#334155;margin:0;max-width:760px">${d2}</p>` : '')
@@ -89,8 +95,8 @@ function blogArticleBody(a, lang = 'tr') {
     + (lead ? `<p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">${lead}</p>` : '')
     + `<div style="font-size:17.5px;line-height:1.85">${body}</div>`
     + blocks
-    + (concl ? `<section style="margin:34px 0;border-top:2px solid #e2e8f0;padding-top:22px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">Sonuç</h2><div style="font-size:17.5px;line-height:1.85">${concl}</div></section>` : '')
-    + `<p style="margin-top:30px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
+    + (concl ? `<section style="margin:34px 0;border-top:2px solid #e2e8f0;padding-top:22px"><h2 style="font-size:26px;font-weight:800;margin:0 0 12px">${lbl.verdict}</h2><div style="font-size:17.5px;line-height:1.85">${concl}</div></section>` : '')
+    + `<p style="margin-top:30px"><a href="/blog" style="color:#2563eb;font-weight:600">${lbl.all}</a></p>`
     + `</article>`;
 }
 
@@ -411,11 +417,12 @@ function lastmodFromTs(value) {
 }
 
 // Renders the <head> SEO block injected between the seo markers.
-function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null }) {
+function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null }) {
   const lines = [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(description)}" />`,
     `<link rel="canonical" href="${esc(url)}" />`,
+    ...((alternates || []).map((alt) => `<link rel="alternate" hreflang="${esc(alt.hreflang)}" href="${esc(alt.href)}" />`)),
     `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'}" />`,
     `<meta property="og:type" content="${esc(type)}" />`,
     '<meta property="og:site_name" content="Qor AI" />',
@@ -874,24 +881,37 @@ async function main() {
       jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE}/blog#blog`, name: 'Qor AI Blog', url: `${SITE}/blog` },
     }, blogListBody(articles)));
     blogUrls.push({ loc: `${SITE}/blog`, changefreq: 'daily', priority: '0.7' });
+    const BLOG_LANGS = ['tr', 'en', 'de'];
     for (const a of articles) {
       if (!a.slug) continue;
-      const url = `${SITE}/blog/${a.slug}`;
-      const t = (f) => a[`${f}_tr`] || a[`${f}_en`] || '';
       const cover = articleCoverUrl(a) || DEFAULT_IMG;
-      const articleLd = {
-        '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
-        image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
-        author: { '@type': 'Organization', name: 'Qor AI' },
-        publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
-        mainEntityOfPage: url,
-      };
-      writeHtml(`blog/${a.slug}`, renderPage(template, {
-        title: truncate(`${t('title')} | Qor AI`, 70), description: truncate(t('lead')),
-        url, image: cover, imageAlt: t('title'), type: 'article',
-        jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
-      }, blogArticleBody(a)));
-      blogUrls.push({ loc: url, lastmod: String(a.publishedAt || a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
+      const slugs = { tr: a.slug_tr || a.slug, en: a.slug_en || a.slug, de: a.slug_de || a.slug };
+      // hreflang map (+ x-default → TR) so a TR/EN/DE searcher lands on the
+      // matching-language URL and Google treats them as one translated article.
+      const alternates = BLOG_LANGS.map((l) => ({ hreflang: l, href: `${SITE}/blog/${slugs[l]}` }));
+      alternates.push({ hreflang: 'x-default', href: `${SITE}/blog/${slugs.tr}` });
+      const written = new Set();
+      for (const lang of BLOG_LANGS) {
+        const s = slugs[lang];
+        if (!s || written.has(s)) continue; // skip when a language reuses the canonical slug
+        written.add(s);
+        const url = `${SITE}/blog/${s}`;
+        const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+        const articleLd = {
+          '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
+          image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
+          inLanguage: lang,
+          author: { '@type': 'Organization', name: 'Qor AI' },
+          publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
+          mainEntityOfPage: url,
+        };
+        writeHtml(`blog/${s}`, renderPage(template, {
+          title: truncate(`${t('title')} | Qor AI`, 70), description: truncate(t('lead')),
+          url, image: cover, imageAlt: t('title'), type: 'article', alternates,
+          jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
+        }, blogArticleBody(a, lang)));
+        blogUrls.push({ loc: url, lastmod: String(a.publishedAt || a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
+      }
     }
   }
   console.log(`[seo] wrote ${Math.max(0, blogUrls.length - 1)} blog article shells`);
