@@ -54,7 +54,10 @@ function safeBodyHtml(html) {
 
 function articleCoverUrl(a) {
   if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
-  return /^https?:\/\//i.test(a.cover || '') ? a.cover : '';
+  if (/^https?:\/\//i.test(a.cover || '')) return a.cover;
+  const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {};
+  const pi = p0.image || p0.imageUrl || '';
+  return /^https?:\/\//i.test(pi) ? pi : '';
 }
 const BLOG_LBL = {
   tr: { ai: 'AI Analizi', amz: "Amazon'da Gör", prod: 'Ürüne Git', verdict: 'Sonuç', all: '← Tüm rehberler' },
@@ -87,7 +90,7 @@ function blogArticleBody(a, lang = 'tr') {
     else if (layout === 'left' || layout === 'right') {
       const imgCol = `<div style="flex:0 0 40%">${imgEl}</div>`;
       const txtCol = `<div style="flex:1;min-width:0">${dEl(d1)}${dEl(d2)}</div>`;
-      inner = `<div style="display:flex;gap:24px;align-items:flex-start;flex-direction:${layout === 'right' ? 'row-reverse' : 'row'}">${imgCol}${txtCol}</div>`;
+      inner = `<div style="display:flex;gap:24px;align-items:center;flex-direction:${layout === 'right' ? 'row-reverse' : 'row'}">${imgCol}${txtCol}</div>`;
     } else inner = dEl(d1) + imgEl + dEl(d2); // split
     const btnsHtml = `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto">`
       + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`

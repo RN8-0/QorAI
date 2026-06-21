@@ -24,7 +24,9 @@ export default function Blog() {
   const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || ''));
+  const firstProdImg = (a) => { const p = (Array.isArray(a.products) ? a.products : [])[0] || {}; return p.image || p.imageUrl || ''; };
+  // Cover = explicit upload/URL, else default to the first product's image.
+  const coverOf = (a) => (a.coverFile ? pb.files.getUrl(a, a.coverFile) : (a.cover || firstProdImg(a)));
   const viewsOf = (a) => seedCount(a.slug, 180, 520) + (stats[a.slug]?.view || 0);
   const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 
@@ -50,7 +52,7 @@ export default function Blog() {
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
       sort: '-publishedAt',
-      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,tags_tr,tags_en,tags_de,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,tags_tr,tags_en,tags_de,cover,coverFile,products,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });

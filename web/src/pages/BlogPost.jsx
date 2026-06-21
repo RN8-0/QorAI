@@ -96,7 +96,7 @@ export default function BlogPost() {
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="like"`, $autoCancel: false }).then((r) => { if (live) setLikeCount(lBase + r.totalItems); }).catch(() => {});
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="view"`, $autoCancel: false }).then((r) => { if (live) setViewCount(vBase + r.totalItems + 1); }).catch(() => {});
         // similar articles
-        pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${esc(rec.slug)}"`, sort: '-updated', fields: 'slug,slug_tr,slug_en,slug_de,cover,coverFile,collectionId,collectionName,title_tr,title_en,title_de' })
+        pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${esc(rec.slug)}"`, sort: '-updated', fields: 'slug,slug_tr,slug_en,slug_de,cover,coverFile,products,collectionId,collectionName,title_tr,title_en,title_de,lead_tr,lead_en,lead_de' })
           .then((r) => { if (live) setMore(r.items || []); }).catch(() => {});
         // similar products — same getSimilar() the product page uses, then ranked
         // by closeness to the article's average tech score ("yaklaşık teknik puan").
@@ -139,8 +139,8 @@ export default function BlogPost() {
   const lead = pick(post, 'lead');
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
-  const cover = post?.coverFile ? pb.files.getUrl(post, post.coverFile) : (post?.cover || '');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
+  const cover = post?.coverFile ? pb.files.getUrl(post, post.coverFile) : (post?.cover || products[0]?.image || products[0]?.imageUrl || '');
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
@@ -331,17 +331,21 @@ export default function BlogPost() {
           )}
         />
 
-        {/* similar articles */}
+        {/* similar articles — horizontal rows: cover left, title + excerpt right */}
         {more.length > 0 && (
           <section className="blog-similar">
             <div className="sec-head"><h2><span className="bar" /> {L('Related guides', 'Benzer rehberler', 'Ähnliche Ratgeber')}</h2></div>
-            <div className="blog-similar-grid">
+            <div className="blog-simrows">
               {more.map((m) => {
-                const mcover = m.coverFile ? pb.files.getUrl(m, m.coverFile) : (m.cover || '');
+                const mp = Array.isArray(m.products) ? m.products : [];
+                const mcover = m.coverFile ? pb.files.getUrl(m, m.coverFile) : (m.cover || mp[0]?.image || mp[0]?.imageUrl || '');
                 return (
-                  <Link key={m.slug} to={articlePath(m, lang)} className="blog-similar-card">
-                    {mcover ? <div className="blog-similar-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
-                    <span>{pick(m, 'title')}</span>
+                  <Link key={m.slug} to={articlePath(m, lang)} className="blog-simrow">
+                    {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
+                    <div className="blog-simrow-body">
+                      <h3>{pick(m, 'title')}</h3>
+                      {pick(m, 'lead') ? <p>{pick(m, 'lead')}</p> : null}
+                    </div>
                   </Link>
                 );
               })}

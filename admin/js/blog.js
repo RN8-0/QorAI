@@ -214,8 +214,10 @@
         `<div style="flex:1;min-width:130px;background:var(--surface,#161b24);border:1px solid var(--border,#262c38);border-radius:12px;padding:14px 16px"><div style="font-size:12px;opacity:.6">${k}</div><div style="font-size:24px;font-weight:800">${val}</div></div>`).join('')}</div>`;
       el.innerHTML = summary + `<div class="ba-grid">${items.map((a) => {
         const st = _stats[a.slug] || {};
+        const lp0 = (a.products || [])[0] || {};
+        const lcov = a.cover || (a.coverFile ? getPb().files.getUrl(a, a.coverFile) : '') || lp0.image || lp0.imageUrl || '';
         return `<div class="ba-card">
-          <div class="ba-card-cover"><img src="${esc(a.cover || '')}" onerror="this.style.visibility='hidden'"/></div>
+          <div class="ba-card-cover"><img src="${esc(lcov)}" onerror="this.style.visibility='hidden'"/></div>
           <div class="ba-card-b">
             <div><span class="ba-badge ${a.status === 'published' ? 'pub' : ''}">${esc(a.status)}</span></div>
             <div class="ba-card-title">${esc(a.title_tr || a.title_en || a.slug)}</div>
@@ -263,7 +265,8 @@
   // ── EDITOR ────────────────────────────────────────────────────
   function renderEditor() {
     const a = _editing; const el = root(); if (!el) return;
-    const coverPrev = a.coverFile && a.id ? getPb().files.getUrl(a, a.coverFile) : (a.cover || '');
+    const fp0 = _products[0] || {};
+    const coverPrev = a.coverFile && a.id ? getPb().files.getUrl(a, a.coverFile) : (a.cover || fp0.image || fp0.imageUrl || '');
     el.innerHTML = `
       <div class="card" style="padding:18px;max-width:920px;margin:0 auto">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
@@ -287,12 +290,14 @@
           <div class="ba-field"><label>Author</label><input class="ba-input" id="b_author" value="${esc(a.author || 'Qor AI')}" /></div>
         </div>
         <div style="font-size:12px;opacity:.6;margin:-4px 0 10px">Slug (URL), etiketler ve SEO meta <b>her dil sekmesinde ayrı</b> ↓</div>
-        <div class="ba-field"><label>Cover image — upload from device or paste a URL</label>
+        <div class="ba-field"><label>Kapak görseli <span style="opacity:.5">— varsayılan: ilk ürün görseli · değiştirmek için ürün seç / yükle / URL</span></label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <input type="file" accept="image/*" onchange="blogUploadCover(this)" />
             <span style="opacity:.5">veya</span>
-            <input class="ba-input" style="flex:1;min-width:220px" id="b_cover" value="${esc(a.cover || '')}" placeholder="https://…" oninput="var p=document.getElementById('b_cover_prev');p.src=this.value;p.style.display=this.value?'block':'none'" />
+            <input class="ba-input" style="flex:1;min-width:220px" id="b_cover" value="${esc(a.cover || '')}" placeholder="https://…" oninput="blogSetCover(this.value)" />
+            <button class="ba-mini" onclick="blogSetCover('__default__')" title="Varsayılana dön (ilk ürün görseli)">↺ İlk ürün</button>
           </div>
+          <div id="b_coverthumbs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>
           <img id="b_cover_prev" src="${esc(coverPrev)}" style="max-height:140px;margin-top:10px;border-radius:10px;background:#fff;${coverPrev ? '' : 'display:none'}" onerror="this.style.display='none'" />
         </div>
         <div class="ba-tabs">${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')">${n}</div>`).join('')}</div>
@@ -310,8 +315,33 @@
       </div>`;
     renderPane();
     renderProducts();
+    renderCoverThumbs();
     initEditors();
     if (a.id) loadComments();
+  }
+
+  function effectiveCover() {
+    const a = _editing; const fp = _products[0] || {};
+    if (a.cover) return a.cover;
+    if (a.coverFile && a.id) { try { return getPb().files.getUrl(a, a.coverFile); } catch (_) { /* */ } }
+    return fp.image || fp.imageUrl || '';
+  }
+  function renderCoverThumbs() {
+    const box = document.getElementById('b_coverthumbs'); if (!box) return;
+    const imgs = _products.map((p) => p.image || p.imageUrl || '').filter(Boolean);
+    const cur = _editing.cover || '';
+    box.innerHTML = imgs.map((u, i) => `<img src="${esc(u)}" title="${i === 0 ? 'İlk ürün (varsayılan)' : 'Ürün görseli'} — kapak yap" onclick="blogSetCover('${esc(u).replace(/'/g, "\\'")}')" style="width:54px;height:54px;object-fit:contain;background:#fff;border-radius:8px;cursor:pointer;border:2px solid ${cur === u || (!cur && !_editing.coverFile && i === 0) ? '#7c3aed' : 'transparent'}" />`).join('')
+      || '<span style="opacity:.5;font-size:12px">Ürün ekleyince görselleri buradan kapak seçebilirsin.</span>';
+    if (!_editing.cover && !_editing.coverFile) { const prev = document.getElementById('b_cover_prev'); const eff = effectiveCover(); if (prev) { prev.src = eff; prev.style.display = eff ? 'block' : 'none'; } }
+  }
+  function blogSetCover(url) {
+    if (url === '__default__') { const fp = _products[0] || {}; url = fp.image || fp.imageUrl || ''; }
+    _editing.cover = url || '';
+    if (url) _editing.coverFile = ''; // an explicit cover URL overrides an uploaded file
+    const ci = document.getElementById('b_cover'); if (ci) ci.value = url || '';
+    const prev = document.getElementById('b_cover_prev'); const eff = effectiveCover();
+    if (prev) { prev.src = eff; prev.style.display = eff ? 'block' : 'none'; }
+    renderCoverThumbs();
   }
 
   async function loadComments() {
@@ -404,6 +434,7 @@
         </div>
         <button class="ba-mini" onclick="blogProdRemove(${i})" style="color:#f87171">✕</button>
       </div>`).join('') || '<div style="opacity:.5;padding:8px">No products added yet.</div>';
+    renderCoverThumbs();
   }
 
   function blogProdSearch(q) {
@@ -470,6 +501,7 @@
   window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdField = blogProdField;
   window.blogUploadCover = uploadCover;
   window.blogUploadProdImage = uploadProdImage;
+  window.blogSetCover = blogSetCover;
   window.blogPreview = blogPreview;
   window.blogDeleteComment = blogDeleteComment;
 })();
