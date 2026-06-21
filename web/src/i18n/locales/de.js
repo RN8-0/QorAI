@@ -7,6 +7,7 @@ export default {
   'nav.subscriptions': 'Abonnements',
   'nav.premium': 'Premium',
   'nav.linkAnalysis': 'Link-Analyse',
+  'nav.blog': 'Blog',
   'nav.signIn': 'Anmelden',
   'nav.profile': 'Mein Profil',
   'nav.settings': 'Einstellungen',

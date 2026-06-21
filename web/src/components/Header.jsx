@@ -14,6 +14,7 @@ import './Header.css';
 const NAV_REST = [
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
+  { to: '/blog', key: 'nav.blog' },
   { to: '/premium', key: 'nav.premium' },
 ];
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];

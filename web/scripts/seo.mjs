@@ -34,6 +34,60 @@ const NOW = new Date().toISOString().slice(0, 10);
 // <key>.txt at the site root; the scheduled refresh then POSTs changed URLs to
 // the IndexNow API (see web/scripts/indexnow.mjs).
 const INDEXNOW_KEY = '2c03809d550d2c5ae87a65ed1f0fcd1e';
+const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+
+// Published blog articles (public read — listRule is status="published"). Drives
+// the prerendered /blog listing + /blog/<slug> article pages.
+async function fetchArticles() {
+  try {
+    const r = await fetch(`${PB_URL}/api/collections/articles/records?filter=${encodeURIComponent('status="published"')}&sort=-updated&perPage=200`);
+    if (!r.ok) return [];
+    return ((await r.json()).items) || [];
+  } catch (_) { return []; }
+}
+
+// Sanitise stored article HTML for the static shell: allow only the tags the
+// generator/editor produces (defensive — body is our own content).
+function safeBodyHtml(html) {
+  return String(html || '').replace(/<(?!\/?(?:h2|h3|p|ul|ol|li|strong|em|br|a)\b)[^>]*>/gi, '');
+}
+
+function blogArticleBody(a, lang = 'tr') {
+  const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const title = esc(t('title'));
+  const lead = esc(t('lead'));
+  const cover = /^https?:\/\//i.test(a.cover || '') ? esc(a.cover) : '';
+  const body = safeBodyHtml(t('body'));
+  const products = Array.isArray(a.products) ? a.products : [];
+  const prod = products.filter((p) => p && p.id && p.name).map((p) => {
+    const slug = slugifyProduct(p.slug || p.name);
+    const href = slug ? `/product/${slug}-${p.id}` : `/product/${p.id}`;
+    return `<li style="margin:6px 0"><a href="${href}" style="color:#2563eb;font-weight:600">${esc(p.name)}</a>${p.techScore ? ` <span style="color:#64748b">· ${esc(p.techScore)}/100</span>` : ''}</li>`;
+  }).join('');
+  return `<article class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
+    + `<h1 style="font-size:30px;font-weight:800;line-height:1.2;margin:10px 0 10px">${title}</h1>`
+    + (lead ? `<p style="font-size:18px;color:#475569;line-height:1.6;margin:0 0 18px">${lead}</p>` : '')
+    + (cover ? `<img src="${cover}" alt="${title}" style="width:100%;max-height:420px;object-fit:contain;border-radius:16px;margin:0 0 22px" />` : '')
+    + `<div style="font-size:16.5px;line-height:1.8">${body}</div>`
+    + (prod ? `<h2 style="font-size:20px;margin:28px 0 10px">Öne çıkan ürünler</h2><ul style="line-height:1.9">${prod}</ul>` : '')
+    + `<p style="margin-top:28px"><a href="/blog" style="color:#2563eb;font-weight:600">← Tüm rehberler</a></p>`
+    + `</article>`;
+}
+
+function blogListBody(articles, lang = 'tr') {
+  const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const cards = articles.map((a) =>
+    `<li style="margin:14px 0"><a href="/blog/${esc(a.slug)}" style="color:#0f172a;text-decoration:none">`
+    + `<strong style="font-size:18px">${esc(t(a, 'title'))}</strong>`
+    + `<br><span style="color:#64748b">${esc(t(a, 'lead'))}</span></a></li>`).join('');
+  return `<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › Blog</nav>`
+    + `<h1 style="font-size:32px;font-weight:800;margin:10px 0 6px">Alım Rehberleri</h1>`
+    + `<p style="color:#475569;margin:0 0 18px">2026'nın en iyi modelleri — puanlandı, karşılaştırıldı ve anlatıldı.</p>`
+    + `<ul style="list-style:none;padding:0">${cards}</ul>`
+    + `</main>`;
+}
 
 // ── helpers ─────────────────────────────────────────────────────
 function esc(s) {
@@ -779,6 +833,46 @@ async function main() {
   }
   console.log(`[seo] wrote ${compares.length} comparison pages (top-${COMPARE_TOP}/category, distinct models)`);
 
+  // 2f) blog — prerender /blog listing + /blog/<slug> articles from PB so they're
+  //     crawlable HTML (the SPA also renders them live from PB). Wipe stale dirs.
+  const articles = await fetchArticles();
+  const blogRoot = join(site, 'blog');
+  if (existsSync(blogRoot)) {
+    for (const entry of readdirSync(blogRoot, { withFileTypes: true })) {
+      if (entry.isDirectory()) { try { rmSync(join(blogRoot, entry.name), { recursive: true, force: true }); } catch (_) {} }
+    }
+  }
+  const blogUrls = [];
+  if (articles.length) {
+    writeHtml('blog', renderPage(template, {
+      title: 'Alım Rehberleri & Blog — Qor AI',
+      description: 'Telefon, laptop, kulaklık, TV ve daha fazlası için 2026 alım rehberleri — Qor AI ile puanlandı ve karşılaştırıldı.',
+      url: `${SITE}/blog`, type: 'website',
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE}/blog#blog`, name: 'Qor AI Blog', url: `${SITE}/blog` },
+    }, blogListBody(articles)));
+    blogUrls.push({ loc: `${SITE}/blog`, changefreq: 'daily', priority: '0.7' });
+    for (const a of articles) {
+      if (!a.slug) continue;
+      const url = `${SITE}/blog/${a.slug}`;
+      const t = (f) => a[`${f}_tr`] || a[`${f}_en`] || '';
+      const cover = /^https?:\/\//i.test(a.cover || '') ? a.cover : DEFAULT_IMG;
+      const articleLd = {
+        '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
+        image: [cover], datePublished: a.created, dateModified: a.updated,
+        author: { '@type': 'Organization', name: 'Qor AI' },
+        publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
+        mainEntityOfPage: url,
+      };
+      writeHtml(`blog/${a.slug}`, renderPage(template, {
+        title: truncate(`${t('title')} | Qor AI`, 70), description: truncate(t('lead')),
+        url, image: cover, imageAlt: t('title'), type: 'article',
+        jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
+      }, blogArticleBody(a)));
+      blogUrls.push({ loc: url, lastmod: String(a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
+    }
+  }
+  console.log(`[seo] wrote ${Math.max(0, blogUrls.length - 1)} blog article shells`);
+
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
@@ -801,7 +895,7 @@ async function main() {
   const compareUrls = compares.map(({ path }) => ({
     loc: `${SITE}${path}`, changefreq: 'monthly', priority: '0.5',
   }));
-  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls];
+  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls];
 
   const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'
