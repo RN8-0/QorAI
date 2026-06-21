@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
@@ -15,6 +15,8 @@ function seedCount(slug, min, max) {
 
 export default function Blog() {
   const { lang } = useI18n();
+  const [sp] = useSearchParams();
+  const tag = (sp.get('tag') || '').trim().toLowerCase();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function Blog() {
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
       sort: '-publishedAt',
-      fields: 'slug,slug_tr,slug_en,slug_de,category,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,cover,coverFile,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
@@ -80,7 +82,14 @@ export default function Blog() {
         </div>
       ) : (
         <div className="blog-list">
-          {posts.map((a) => (
+          {tag ? (
+            <div className="blog-tagfilter">
+              {L('Tag', 'Etiket', 'Tag')}: <b>#{tag}</b> · <Link to="/blog">{L('clear', 'temizle', 'zurücksetzen')}</Link>
+            </div>
+          ) : null}
+          {posts
+            .filter((a) => !tag || String(a.tags || '').toLowerCase().split(',').map((s) => s.trim()).includes(tag))
+            .map((a) => (
             <Link key={a.slug} to={articlePath(a, lang)} className="blog-row">
               {coverOf(a) ? <div className="blog-row-img"><img src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /></div> : null}
               <div className="blog-row-body">

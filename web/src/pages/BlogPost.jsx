@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb, currentUser } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
@@ -36,8 +36,16 @@ function seedCount(slug, min, max) {
   return min + (Math.abs(h) % (max - min + 1));
 }
 
+function slugifyHeading(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+}
+
 export default function BlogPost() {
   const { slug } = useParams();
+  const [sp] = useSearchParams();
+  const previewId = sp.get('previewId') || '';
   const { lang } = useI18n();
   const t = useT();
   const geoCountry = useGeoCountry();
@@ -60,15 +68,19 @@ export default function BlogPost() {
     let live = true;
     setStatus('loading'); setPost(null); setSimilarProds([]); setMore([]);
     openedAt.current = Date.now(); readSent.current = false;
-    // Resolve by canonical slug OR any per-language slug → same article.
-    pb.collection('articles').getFirstListItem(
-      `(slug="${esc(slug)}" || slug_tr="${esc(slug)}" || slug_en="${esc(slug)}" || slug_de="${esc(slug)}") && status="published"`,
-    )
+    // Preview mode (admin): fetch the exact record by id, even if it's a draft.
+    // Otherwise resolve by canonical slug OR any per-language slug → same article.
+    const fetchArticle = previewId
+      ? pb.collection('articles').getOne(previewId, { $autoCancel: false })
+      : pb.collection('articles').getFirstListItem(
+        `(slug="${esc(slug)}" || slug_tr="${esc(slug)}" || slug_en="${esc(slug)}" || slug_de="${esc(slug)}") && status="published"`,
+      );
+    fetchArticle
       .then((rec) => {
         if (!live) return;
         const key = rec.slug || slug; // canonical key → counts/comments aggregate across languages
         setPost(rec); setStatus('ok');
-        track(key, 'view');
+        if (!previewId) track(key, 'view'); // don't count admin previews
         // liked state: for signed-in users it's their own like event (so it
         // works across devices + can be undone); otherwise localStorage.
         const me = currentUser();
@@ -102,7 +114,7 @@ export default function BlogPost() {
       })
       .catch(() => { if (live) setStatus('notfound'); });
     return () => { live = false; };
-  }, [slug]);
+  }, [slug, previewId]);
 
   const canonKey = post?.slug || slug;
 
@@ -134,6 +146,21 @@ export default function BlogPost() {
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
   const pimg = (p) => p.image || p.imageUrl || '';
   const publishedAt = post?.publishedAt || post?.created || '';
+  const author = (post?.author || '').trim() || 'Qor AI';
+  const tags = String(post?.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const metaTitle = (post?.metaTitle || '').trim();
+  const metaDescription = (post?.metaDescription || '').trim();
+
+  // Inject ids into h2/h3 of the body + build a table of contents.
+  const { bodyHtml, toc } = useMemo(() => {
+    if (!body) return { bodyHtml: '', toc: [] };
+    try {
+      const doc = new DOMParser().parseFromString(`<div id="b">${body}</div>`, 'text/html');
+      const heads = [...doc.querySelectorAll('h2, h3')];
+      const t = heads.map((h, i) => { const id = `s-${i}-${slugifyHeading(h.textContent)}`; h.id = id; return { id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 }; });
+      return { bodyHtml: doc.getElementById('b').innerHTML, toc: t.filter((x) => x.text) };
+    } catch { return { bodyHtml: body, toc: [] }; }
+  }, [body]);
 
   // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(post ? [
@@ -143,17 +170,17 @@ export default function BlogPost() {
   ].filter(Boolean).join('\n') : '');
 
   useSeo({
-    title: title ? `${title} | Qor AI` : 'Qor AI Blog',
-    description: lead,
+    title: metaTitle || (title ? `${title} | Qor AI` : 'Qor AI Blog'),
+    description: metaDescription || lead,
     image: cover || undefined,
     path: `/blog/${slug}`,
     type: 'article',
-    noindex: status === 'notfound',
+    noindex: status === 'notfound' || !!previewId,
     jsonLd: post ? {
       '@context': 'https://schema.org', '@type': 'Article', '@id': `${url}#article`,
-      headline: title, description: lead, ...(cover ? { image: [cover] } : {}),
+      headline: title, description: metaDescription || lead, ...(cover ? { image: [cover] } : {}),
       datePublished: publishedAt, dateModified: post.updated,
-      author: { '@type': 'Organization', name: 'Qor AI' },
+      author: { '@type': 'Organization', name: author },
       publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: `${SITE_URL}/assets/qor_logo_512.png?v=20260605a` } },
       mainEntityOfPage: url,
     } : null,
@@ -248,12 +275,14 @@ export default function BlogPost() {
   return (
     <div className="container blog-page">
       <div className="blog-progress" style={{ width: `${progress}%` }} />
+      {previewId ? <div className="blog-preview-banner">👁 {L('Preview — not public', 'Önizleme — yayında değil', 'Vorschau — nicht öffentlich')}{post?.status !== 'published' ? ` · ${L('draft', 'taslak', 'Entwurf')}` : ''}</div> : null}
       <article className="blog-article">
         <nav className="blog-crumb"><Link to="/">Qor AI</Link> › <Link to="/blog">Blog</Link></nav>
 
-        {/* stats — date + views left, like + share right */}
+        {/* stats — date + author + views left, like + share right */}
         <div className="blog-stats">
           {dateStr ? <span className="blog-stat">📅 {dateStr}</span> : null}
+          <span className="blog-stat">✍ {author}</span>
           <span className="blog-stat">👁 {nf(viewCount)}</span>
           <div className="blog-stats-actions">
             <button className={`blog-act blog-like ${liked ? 'on' : ''}`} onClick={onLike} aria-label="like">❤ {nf(likeCount)}</button>
@@ -263,12 +292,32 @@ export default function BlogPost() {
 
         <h1>{title}</h1>
         {lead ? <p className="blog-lead">{lead}</p> : null}
-        {body ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: body }} /> : null}
+
+        {toc.length >= 2 && (
+          <nav className="blog-toc">
+            <div className="blog-toc-h">{L('Contents', 'İçindekiler', 'Inhalt')}</div>
+            <ul>
+              {toc.map((h) => (
+                <li key={h.id} className={h.level === 3 ? 'lvl3' : ''}>
+                  <a href={`#${h.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
+        {bodyHtml ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : null}
 
         {products.length > 0 && <section className="post-prods">{products.map(renderProd)}</section>}
 
         {/* conclusion flows as part of the article (no rigid "Sonuç" box) */}
         {conclusion ? <div className="blog-body blog-concl-flow" dangerouslySetInnerHTML={{ __html: conclusion }} /> : null}
+
+        {tags.length > 0 && (
+          <div className="blog-tags">
+            {tags.map((tg) => <Link key={tg} to={`/blog?tag=${encodeURIComponent(tg)}`} className="blog-tag">#{tg}</Link>)}
+          </div>
+        )}
 
         {/* comments — same review system as product / compare pages (shows on the
             user's profile too). The small "Ask Qor AI" button sits across from

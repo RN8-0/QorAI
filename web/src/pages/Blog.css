@@ -7,6 +7,8 @@
 
 /* ── listing rows ───────────────────────────────────────────── */
 .blog-list { display: flex; flex-direction: column; gap: 14px; }
+.blog-tagfilter { font-size: 14px; color: var(--text-soft,#64748b); margin: 0 0 6px; }
+.blog-tagfilter a { color: var(--brand,#2563eb); text-decoration: none; }
 .blog-row { display: flex; gap: 22px; background: var(--surface,#fff); border: 1px solid var(--border,#e2e8f0); border-radius: 16px; overflow: hidden; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s, border-color .15s; }
 .blog-row:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,6,23,.08); border-color: var(--brand,#2563eb); }
 .blog-row-img { flex: 0 0 240px; background: #f8fafc; display: flex; align-items: center; justify-content: center; }
@@ -20,6 +22,21 @@
 
 /* reading progress bar */
 .blog-progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--grad-brand, linear-gradient(90deg,#2563eb,#06b6d4)); z-index: 60; transition: width .1s linear; border-radius: 0 3px 3px 0; }
+.blog-preview-banner { max-width: 920px; margin: 0 auto 16px; padding: 10px 16px; border-radius: 12px; background: #f59e0b22; border: 1px solid #f59e0b66; color: #b45309; font-size: 14px; font-weight: 600; text-align: center; }
+
+/* table of contents */
+.blog-toc { margin: 18px 0 26px; padding: 16px 20px; border: 1px solid var(--border,#e2e8f0); border-radius: 14px; background: var(--surface-2,#f8fafc); }
+.blog-toc-h { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-soft,#64748b); margin-bottom: 8px; }
+.blog-toc ul { list-style: none; margin: 0; padding: 0; }
+.blog-toc li { margin: 4px 0; }
+.blog-toc li.lvl3 { padding-left: 16px; }
+.blog-toc a { color: var(--text,#1e293b); text-decoration: none; font-size: 15px; }
+.blog-toc a:hover { color: var(--brand,#2563eb); text-decoration: underline; }
+
+/* tags */
+.blog-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
+.blog-tag { font-size: 13px; font-weight: 600; color: var(--brand,#2563eb); background: color-mix(in srgb, var(--brand,#2563eb) 8%, transparent); padding: 5px 12px; border-radius: 999px; text-decoration: none; }
+.blog-tag:hover { background: color-mix(in srgb, var(--brand,#2563eb) 16%, transparent); }
 
 /* ── article — wide, clean, no boxes ────────────────────────── */
 .blog-article { max-width: 920px; margin: 0 auto; }

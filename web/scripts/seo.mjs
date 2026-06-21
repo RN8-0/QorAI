@@ -101,14 +101,20 @@ function blogArticleBody(a, lang = 'tr') {
   }).join('');
   const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
   const dateStr = (a.publishedAt || a.created) ? String(a.publishedAt || a.created).slice(0, 10) : '';
+  const author = esc((a.author || '').trim() || 'Qor AI');
+  const tags = String(a.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const tagsHtml = tags.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:24px 0">${tags.map((tg) => `<a href="/blog?tag=${encodeURIComponent(tg)}" style="font-size:13px;font-weight:600;color:#2563eb;background:#2563eb14;padding:5px 12px;border-radius:999px;text-decoration:none">#${esc(tg)}</a>`).join('')}</div>`
+    : '';
   return `<article class="seo-prerender" style="max-width:920px;margin:0 auto;padding:24px 24px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
-    + (dateStr ? `<p style="font-size:14px;color:#64748b;margin:10px 0 0">📅 ${esc(dateStr)}</p>` : '')
+    + `<p style="font-size:14px;color:#64748b;margin:10px 0 0">${dateStr ? `📅 ${esc(dateStr)} · ` : ''}✍ ${author}</p>`
     + `<h1 style="font-size:40px;font-weight:800;line-height:1.12;margin:6px 0 14px">${title}</h1>`
     + (lead ? `<p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">${lead}</p>` : '')
     + `<div style="font-size:17.5px;line-height:1.85">${body}</div>`
     + blocks
     + (concl ? `<div style="font-size:17.5px;line-height:1.85;margin-top:16px">${concl}</div>` : '')
+    + tagsHtml
     + `</article>`;
 }
 
@@ -909,16 +915,20 @@ async function main() {
         written.add(s);
         const url = `${SITE}/blog/${s}`;
         const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+        const authorName = (a.author || '').trim() || 'Qor AI';
+        const metaT = (a.metaTitle || '').trim();
+        const metaD = (a.metaDescription || '').trim();
         const articleLd = {
-          '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: t('lead'),
+          '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: metaD || t('lead'),
           image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
           inLanguage: lang,
-          author: { '@type': 'Organization', name: 'Qor AI' },
+          ...(Array.isArray(a.tags) ? {} : (a.tags ? { keywords: String(a.tags) } : {})),
+          author: { '@type': 'Organization', name: authorName },
           publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
           mainEntityOfPage: url,
         };
         writeHtml(`blog/${s}`, renderPage(template, {
-          title: truncate(`${t('title')} | Qor AI`, 70), description: truncate(t('lead')),
+          title: metaT || truncate(`${t('title')} | Qor AI`, 70), description: truncate(metaD || t('lead')),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
           jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
         }, blogArticleBody(a, lang)));

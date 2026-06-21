@@ -155,6 +155,19 @@
       toast('Cover uploaded', 's');
     } catch (e) { toast('Upload failed: ' + e.message, 'e'); }
   }
+  async function uploadProdImage(input, i) {
+    const file = input.files && input.files[0]; if (!file) return;
+    try {
+      if (!_editing.id) { flushEditors(); syncPane(); await blogSave('draft', true); }
+      if (!_editing.id) { toast('Önce makaleyi kaydet', 'w'); return; }
+      const fd = new FormData(); fd.append('media+', file); // append to multi-file field
+      const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
+      const fname = Array.isArray(rec.media) ? rec.media[rec.media.length - 1] : rec.media;
+      const url = getPb().files.getURL(rec, fname);
+      if (_products[i]) { _products[i].image = url; renderProducts(); }
+      toast('Görsel yüklendi', 's');
+    } catch (e) { toast('Yükleme başarısız: ' + e.message, 'e'); }
+  }
 
   // ── analytics aggregation (from article_events) ────────────────
   async function loadStats() {
@@ -243,6 +256,7 @@
           <button class="btn btn-ghost" onclick="loadBlogAdmin()">← Back</button>
           <strong style="font-size:16px">${a.id ? 'Edit article' : 'New article'}</strong>
           <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="blogPreview()">👁 Önizle</button>
             <button class="btn btn-ghost" onclick="blogSave('draft')">Save draft</button>
             <button class="btn btn-primary" onclick="blogSave('published')">Publish</button>
           </div>
@@ -257,7 +271,13 @@
           <div class="ba-field"><label>Status</label><select class="ba-input" id="b_status">
             <option value="draft"${a.status !== 'published' ? ' selected' : ''}>draft</option>
             <option value="published"${a.status === 'published' ? ' selected' : ''}>published</option></select></div>
+          <div class="ba-field"><label>Author</label><input class="ba-input" id="b_author" value="${esc(a.author || 'Qor AI')}" /></div>
+          <div class="ba-field"><label>Tags (virgülle ayır)</label><input class="ba-input" id="b_tags" value="${esc(a.tags || '')}" placeholder="telefon, 2026, amiral gemisi" /></div>
         </div>
+        <details class="ba-field"><summary style="cursor:pointer;font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.4px">SEO (opsiyonel)</summary>
+          <div class="ba-field" style="margin-top:10px"><label>Meta title <span style="opacity:.5">(boşsa başlık kullanılır)</span></label><input class="ba-input" id="b_metaTitle" value="${esc(a.metaTitle || '')}" /></div>
+          <div class="ba-field"><label>Meta description <span style="opacity:.5">(boşsa özet kullanılır)</span></label><textarea class="ba-input" id="b_metaDescription" rows="2">${esc(a.metaDescription || '')}</textarea></div>
+        </details>
         <div class="ba-field"><label>Cover image — upload from device or paste a URL</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <input type="file" accept="image/*" onchange="blogUploadCover(this)" />
@@ -276,10 +296,45 @@
         <div id="b_prodlist"></div>
         <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
         <div class="ba-field"><div id="b_concl_editor" class="ba-rte"></div></div>
+        <h3 style="margin:24px 0 8px">Yorumlar <span style="opacity:.5;font-weight:400;font-size:13px">— moderasyon (uygunsuzları sil)</span></h3>
+        <div id="b_comments" style="opacity:.6;font-size:13px">${a.id ? 'Yükleniyor…' : 'Önce makaleyi kaydet.'}</div>
       </div>`;
     renderPane();
     renderProducts();
     initEditors();
+    if (a.id) loadComments();
+  }
+
+  async function loadComments() {
+    const box = document.getElementById('b_comments'); if (!box || !_editing.id) return;
+    try {
+      const key = 'blog:' + (_editing.slug || '');
+      const res = await getPb().collection('reviews').getList(1, 100, { filter: `productId = "${(key).replace(/"/g, '\\"')}"`, sort: '-created', $autoCancel: false });
+      const items = res.items || [];
+      if (!items.length) { box.innerHTML = '<div style="opacity:.5">Henüz yorum yok.</div>'; return; }
+      box.style.opacity = '1';
+      box.innerHTML = items.map((c) => `<div style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px"><b>${esc(c.authorDisplayName || 'User')}</b> <span style="opacity:.5">· ${esc(String(c.created || '').slice(0, 10))}</span>${c.rating ? ` <span style="color:#f59e0b">${'★'.repeat(Number(c.rating) || 0)}</span>` : ''}</div>
+          <div style="font-size:14px;margin-top:3px;white-space:pre-wrap;word-break:break-word">${esc(c.text || '')}</div>
+        </div>
+        <button class="ba-mini" style="color:#f87171" onclick="blogDeleteComment('${c.id}')" title="Sil">🗑</button>
+      </div>`).join('');
+    } catch (e) { box.innerHTML = `<div style="color:#ef4444">Yorumlar yüklenemedi: ${esc(e.message)}</div>`; }
+  }
+  async function blogDeleteComment(id) {
+    if (!confirm('Bu yorumu sil?')) return;
+    try { await getPb().collection('reviews').delete(id, { $autoCancel: false }); toast('Yorum silindi', 's'); loadComments(); }
+    catch (e) { toast('Silinemedi: ' + e.message, 'e'); }
+  }
+  async function blogPreview() {
+    flushEditors(); syncPane();
+    try {
+      await blogSave(_editing.status === 'published' ? 'published' : 'draft', true);
+      if (!_editing.id) { toast('Önce kaydet', 'w'); return; }
+      const slug = _editing.slug || slugify(_editing.title_tr || '');
+      window.open(`${SITE}/blog/${encodeURIComponent(slug)}?previewId=${_editing.id}`, '_blank');
+    } catch (e) { toast('Önizleme başarısız: ' + e.message, 'e'); }
   }
 
   function blogTab(c) { flushEditors(); syncPane(); _lang = c; document.querySelectorAll('.ba-tab').forEach((t) => t.classList.remove('on')); renderPaneTabs(); renderPane(); renderProducts(); initEditors(); }
@@ -323,7 +378,10 @@
               ${SIZES.map(([v, n]) => `<option value="${v}"${(p.imgSize || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
             </select>
           </div>
-          <input class="ba-input" style="font-size:12px;margin-bottom:8px" placeholder="Özel görsel URL (boşsa sitedeki ürün görseli)" value="${esc(p.image || '')}" oninput="blogProdField(${i},'image',this.value);var im=this.closest('.ba-prod').querySelector('img');im.src=this.value||'${esc(p.imageUrl || '')}';im.style.visibility='visible'" />
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input class="ba-input" style="flex:1;font-size:12px" placeholder="Özel görsel URL (boşsa sitedeki ürün görseli)" value="${esc(p.image || '')}" oninput="blogProdField(${i},'image',this.value);var im=this.closest('.ba-prod').querySelector('img');im.src=this.value||'${esc(p.imageUrl || '')}';im.style.visibility='visible'" />
+            <label class="ba-mini" style="cursor:pointer;white-space:nowrap" title="Cihazdan yükle">📷 Yükle<input type="file" accept="image/*" style="display:none" onchange="blogUploadProdImage(this, ${i})"></label>
+          </div>
           <textarea class="ba-input" style="font-size:13px;margin-bottom:6px" rows="2" placeholder="Açıklama 1 (${esc(langName)})" oninput="blogProdField(${i},'desc_${_lang}',this.value)">${esc(p['desc_' + _lang] || '')}</textarea>
           <textarea class="ba-input" style="font-size:13px" rows="2" placeholder="Açıklama 2 (${esc(langName)})" oninput="blogProdField(${i},'desc2_${_lang}',this.value)">${esc(p['desc2_' + _lang] || '')}</textarea>
         </div>
@@ -366,6 +424,10 @@
     const data = {
       slug, status: forceStatus || val('b_status') || 'draft',
       category: val('b_category'), cover: val('b_cover'),
+      author: val('b_author').trim() || 'Qor AI',
+      tags: val('b_tags').trim(),
+      metaTitle: val('b_metaTitle').trim(),
+      metaDescription: val('b_metaDescription').trim(),
       publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
       products: _products,
     };
@@ -387,4 +449,7 @@
   window.blogProdSearch = blogProdSearch; window.blogProdAdd = blogProdAdd;
   window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdField = blogProdField;
   window.blogUploadCover = uploadCover;
+  window.blogUploadProdImage = uploadProdImage;
+  window.blogPreview = blogPreview;
+  window.blogDeleteComment = blogDeleteComment;
 })();
