@@ -212,3 +212,40 @@ routerAdd('GET', '/api/qsimilar', (e) => {
     return e.json(200, { hits: [] });
   }
 });
+
+// ── Image proxy: GET /api/img?url=<image url> ───────────────────────────────
+//  Makes blog image links robust regardless of host. The browser fails on
+//  Wikipedia/Wikimedia "File:"/"Dosya:" *pages* and on hotlink-protected hosts;
+//  this fetches server-side (real browser UA, no CORS/referrer issue) and
+//  streams the bytes back from our own domain. Used as the on-error fallback by
+//  the website + admin. HTML pages (not images) return 415 so the <img> hides.
+//  NOTE: helpers are inlined — PB's JSVM runs each handler in an isolated scope.
+routerAdd('GET', '/api/img', (e) => {
+  try {
+    let url = '';
+    try { url = String(e.request.url.query().get('url') || '').trim(); } catch (_) {}
+    if (!url) return e.json(400, { error: 'missing_url' });
+
+    // Normalise common "page" URLs to a direct image URL.
+    // Wikipedia/Wikimedia file pages → Special:FilePath (redirects to the file).
+    const wiki = url.match(/^https?:\/\/[^/]*\bwiki(?:pedia|media)\.org\/wiki\/(?:File|Dosya|Datei|Fichier|Archivo):(.+)$/i);
+    if (wiki) url = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + wiki[1];
+
+    if (!/^https?:\/\//i.test(url)) return e.json(400, { error: 'bad_url' });
+
+    const res = $http.send({
+      method: 'GET', url,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'image/*,*/*' },
+      timeout: 15,
+    });
+    const hdr = res.headers || {};
+    const ctRaw = hdr['Content-Type'] || hdr['content-type'] || [];
+    const ct = String(Array.isArray(ctRaw) ? (ctRaw[0] || '') : ctRaw).toLowerCase();
+    if (res.statusCode !== 200 || ct.indexOf('image/') !== 0) {
+      return e.json(415, { error: 'not_an_image', status: res.statusCode, contentType: ct });
+    }
+    return e.blob(200, ct, res.body);
+  } catch (err) {
+    return e.json(502, { error: 'fetch_failed', detail: String(err) });
+  }
+});

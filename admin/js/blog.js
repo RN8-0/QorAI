@@ -253,6 +253,22 @@
   }
   function blogBlockField(i, j, key, v) { const p = _products[i]; if (p && p.blocks && p.blocks[j]) p.blocks[j][key] = v; }
 
+  // Wikipedia/Wikimedia "File:"/"Dosya:" page → direct image (Special:FilePath).
+  function _normImg(url) {
+    const u = String(url || '').trim();
+    const m = u.match(/^https?:\/\/[^/]*\bwiki(?:pedia|media)\.org\/wiki\/(?:File|Dosya|Datei|Fichier|Archivo):(.+)$/i);
+    return m ? ('https://commons.wikimedia.org/wiki/Special:FilePath/' + m[1]) : u;
+  }
+  // Editor preview that mirrors the website: direct → /api/img proxy → warning.
+  function _imgPreviewHtml(url) {
+    if (!url) return '';
+    const nu = _normImg(url);
+    const px = (getPb().baseUrl || '').replace(/\/$/, '') + '/api/img?url=' + encodeURIComponent(nu);
+    const onerr = "if(this.getAttribute('data-st')!=='px'){this.setAttribute('data-st','px');this.src=this.getAttribute('data-px')}else{this.style.display='none';var w=this.parentElement.querySelector('.bk-imgwarn');if(w)w.style.display='inline-block'}";
+    const onload = "var w=this.parentElement.querySelector('.bk-imgwarn');if(w)w.style.display='none'";
+    return `<div style="margin-top:8px"><img src="${esc(nu)}" data-px="${esc(px)}" style="max-height:78px;border-radius:8px;background:#fff" onload="${onload}" onerror="${onerr}"/><span class="bk-imgwarn" style="display:none;font-size:11px;color:#f59e0b">⚠ Görsel yüklenemedi — doğrudan görsel linki gerekli (.png/.jpg/.svg) ya da “Yükle” ile cihazdan ekle.</span></div>`;
+  }
+
   // ── analytics aggregation (from article_events) ────────────────
   async function loadStats() {
     _stats = {};
@@ -521,8 +537,8 @@
                        ${[['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']].map(([v, n]) => `<option value="${v}"${(b.size || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
                      </select>
                    </div>
-                   ${b.url ? `<div style="margin-top:8px"><img src="${esc(b.url)}" style="max-height:78px;border-radius:8px;background:#fff" onload="var w=this.nextElementSibling;if(w)w.style.display='none'" onerror="this.style.display='none';var w=this.nextElementSibling;if(w)w.style.display='inline-block'"/><span style="display:none;font-size:11px;color:#f59e0b">⚠ Görsel yüklenemedi — doğrudan görsel linki gerekli (.png/.jpg/.svg). Wiki “Dosya:” sayfası ÇALIŞMAZ; “Yükle” ile cihazdan ekleyebilirsin.</span></div>` : ''}
-                   <div style="font-size:11px;opacity:.5;margin-top:4px">Üst/alt için bloğu ↑↓ taşı (görsel metinden önce=üstte, sonra=altta) · yazı görselin yanından aşağı akar</div>
+                   ${_imgPreviewHtml(b.url)}
+                   <div style="font-size:11px;opacity:.5;margin-top:4px">Her görsel linki çalışır (Wikipedia “Dosya:” sayfası dahil) — olmazsa “Yükle” ile cihazdan ekle · Üst/alt için bloğu ↑↓ taşı (önce=üstte, sonra=altta)</div>
                  </div>`
               : `<div class="bk-block">
                    <div class="bk-block-bar"><span>✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>

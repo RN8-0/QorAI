@@ -42,6 +42,26 @@ function slugifyHeading(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
 }
 
+// Turn a "page" URL into a direct image URL where we can (Wikipedia/Wikimedia
+// File:/Dosya: pages → Special:FilePath, which redirects to the actual file).
+function normalizeImageUrl(url) {
+  const u = String(url || '').trim();
+  const m = u.match(/^https?:\/\/[^/]*\bwiki(?:pedia|media)\.org\/wiki\/(?:File|Dosya|Datei|Fichier|Archivo):(.+)$/i);
+  if (m) return `https://commons.wikimedia.org/wiki/Special:FilePath/${m[1]}`;
+  return u;
+}
+// On-error fallback chain for a blog image: direct → server proxy → hide.
+function imageOnError(e) {
+  const img = e.currentTarget;
+  const orig = img.getAttribute('data-orig') || img.src;
+  if (img.getAttribute('data-stage') !== 'proxy') {
+    img.setAttribute('data-stage', 'proxy');
+    img.src = `${pb.baseUrl.replace(/\/$/, '')}/api/img?url=${encodeURIComponent(orig)}`;
+  } else {
+    const fig = img.closest('figure'); if (fig) fig.style.display = 'none';
+  }
+}
+
 // Inline markdown: **bold** and *italic*. Returns an array of strings/elements.
 function parseInline(text, kp) {
   const parts = String(text).split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*)/g).filter((s) => s !== '');
@@ -398,10 +418,10 @@ export default function BlogPost() {
               if (!u) return null;
               const pos = b.pos || 'full';
               const bsize = b.size || 'm';
+              const nu = normalizeImageUrl(u);
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
-                  {linkFig(<img src={u} alt={p.name} loading="lazy"
-                    onError={(e) => { const f = e.currentTarget.closest('figure'); if (f) f.style.display = 'none'; }} />)}
+                  {linkFig(<img src={nu} data-orig={nu} alt={p.name} loading="lazy" onError={imageOnError} />)}
                 </figure>
               );
             }
@@ -418,7 +438,8 @@ export default function BlogPost() {
       // before an old article is re-saved into the block model.
       const d1 = pdesc(p) ? <div className="post-prod-rich">{renderRichText(pdesc(p), `${p.id || i}-d1`)}</div> : null;
       const d2 = pdesc2(p) ? <div className="post-prod-rich">{renderRichText(pdesc2(p), `${p.id || i}-d2`)}</div> : null;
-      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={img} alt={p.name} loading="lazy" />)}</span> : null;
+      const nimg = normalizeImageUrl(img);
+      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={nimg} data-orig={nimg} alt={p.name} loading="lazy" onError={imageOnError} />)}</span> : null;
       if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
       else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
       else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
