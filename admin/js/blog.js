@@ -334,13 +334,8 @@
           </div>
         </div>
         <div id="b_pick_custom" class="bk-pane" style="display:none">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>İsim *</label><input class="ba-input" id="b_cust_name" placeholder="Örn. Sony WH-1000XM6 / ChatGPT Plus" /></div>
-            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>Bağlantı (opsiyonel)</label><input class="ba-input" id="b_cust_link" placeholder="https://… (boşsa link yok)" /></div>
-            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>Görsel URL (opsiyonel)</label><input class="ba-input" id="b_cust_img" placeholder="https://…" /></div>
-            <button class="ba-mini" onclick="blogCustomAdd()" style="height:38px;padding:0 14px">+ Ekle</button>
-          </div>
-          <div style="opacity:.5;font-size:12px;margin-top:6px">PB'de olmayan ürün/abonelik için. İstersen sadece isim yaz — görsel ve açıklama aşağıdan eklenebilir.</div>
+          <button class="ba-mini" onclick="blogCustomAdd()" style="padding:10px 16px;font-size:13px;font-weight:700">+ Özel öğe ekle</button>
+          <div style="opacity:.5;font-size:12px;margin-top:8px">PB'de olmayan ürün/abonelik için boş bir öğe ekler. İsim, bağlantı, görsel, düzen ve açıklamaları aşağıda <b>ürünle birebir aynı</b> şekilde doldurursun.</div>
         </div>
         <div id="b_prodlist" style="margin-top:12px"></div>
         <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
@@ -507,8 +502,8 @@
     _pickKind = k;
     document.querySelectorAll('.bk-tab').forEach((t) => t.classList.toggle('on', t.getAttribute('data-k') === k));
     ['product', 'subscription', 'custom'].forEach((kk) => { const el = document.getElementById('b_pick_' + kk); if (el) el.style.display = kk === k ? 'block' : 'none'; });
-    const focusId = k === 'product' ? 'b_prodsearch' : k === 'subscription' ? 'b_subsearch' : 'b_cust_name';
-    setTimeout(() => document.getElementById(focusId)?.focus(), 30);
+    const focusId = k === 'product' ? 'b_prodsearch' : k === 'subscription' ? 'b_subsearch' : '';
+    if (focusId) setTimeout(() => document.getElementById(focusId)?.focus(), 30);
   }
 
   // Search the PocketBase `subscriptions` collection by name (Netflix, Spotify…).
@@ -538,15 +533,19 @@
     const res = document.getElementById('b_subresults'); if (res) res.style.display = 'none';
     const inp = document.getElementById('b_subsearch'); if (inp) inp.value = '';
   }
-  // Add a manual item that isn't in PocketBase (custom product/subscription).
+  // Add a blank manual item (custom product/subscription that isn't in PB). It
+  // lands in the list immediately with the SAME inline controls as a product —
+  // editable name + link, image (URL or upload), layout template, image size and
+  // both description blocks — so non-PB items are first-class, not a stripped form.
   function blogCustomAdd() {
-    const name = (document.getElementById('b_cust_name') || {}).value || '';
-    if (!name.trim()) { toast('İsim gerekli', 'w'); return; }
-    const link = (document.getElementById('b_cust_link') || {}).value || '';
-    const img = (document.getElementById('b_cust_img') || {}).value || '';
-    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: slugify(name), name: name.trim(), link: link.trim(), image: img.trim(), imageUrl: img.trim() });
-    ['b_cust_name', 'b_cust_link', 'b_cust_img'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: '', name: '', link: '', image: '', imageUrl: '', layout: 'split', imgSize: 'm' });
     renderProducts();
+    setTimeout(() => {
+      const list = document.getElementById('b_prodlist');
+      const cards = list ? list.querySelectorAll('.ba-prod') : [];
+      const last = cards[cards.length - 1];
+      if (last) { last.scrollIntoView({ behavior: 'smooth', block: 'center' }); const inp = last.querySelector('input'); if (inp) inp.focus(); }
+    }, 40);
   }
 
   async function blogSave(forceStatus, silent) {
@@ -561,7 +560,11 @@
       category: val('b_category'), cover: val('b_cover'),
       author: val('b_author').trim(),
       publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
-      products: _products,
+      // Drop unfinished custom items (no name) and keep slugs in sync so the
+      // website can render/link every item kind consistently.
+      products: _products
+        .filter((p) => (p.kind || 'product') !== 'custom' || String(p.name || '').trim())
+        .map((p) => ((p.kind || 'product') === 'custom' ? { ...p, slug: slugify(p.name || '') } : p)),
     };
     LANGS.forEach(([c]) => {
       data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || '';
