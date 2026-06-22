@@ -77,6 +77,9 @@
   --bg5: #1A1A1A;
   --text2: #94A3B8;
   --text3: #64748B;
+  /* soft body text — was undefined, so blog/guide text fell back to a dark
+     slate (#334155) and became unreadable in dark mode. */
+  --text-soft: #CBD5E1;
   --border2: rgba(255, 255, 255, 0.14);
   --accent-soft: rgba(33, 150, 243, 0.14);
   --accent-ring: rgba(33, 150, 243, 0.30);
@@ -115,6 +118,7 @@
   --bg5: #CBD5E1;
   --text2: #475569;
   --text3: #94A3B8;
+  --text-soft: #475569;
   --border2: rgba(15, 23, 42, 0.14);
   --accent-soft: rgba(33, 150, 243, 0.10);
   --accent-ring: rgba(33, 150, 243, 0.22);

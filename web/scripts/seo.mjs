@@ -274,7 +274,6 @@ function categoryBody(label, categoryUrl, items, guide) {
     + `<h1 style="font-size:28px;margin:12px 0 6px">${lbl} Karşılaştırma</h1>`
     + `<p style="line-height:1.7;color:#334155;max-width:680px">En iyi ${lbl.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
-    + guideHtml(guide)
     + `</main>`;
 }
 
