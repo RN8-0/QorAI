@@ -244,6 +244,13 @@ routerAdd('GET', '/api/img', (e) => {
     if (res.statusCode !== 200 || ct.indexOf('image/') !== 0) {
       return e.json(415, { error: 'not_an_image', status: res.statusCode, contentType: ct });
     }
+    // CORS + cache so the website can canvas-read the image (logo brightness
+    // detection) and browsers can cache the proxied bytes.
+    try {
+      const h = e.response.header();
+      h.set('Access-Control-Allow-Origin', '*');
+      h.set('Cache-Control', 'public, max-age=86400');
+    } catch (_) {}
     return e.blob(200, ct, res.body);
   } catch (err) {
     return e.json(502, { error: 'fetch_failed', detail: String(err) });

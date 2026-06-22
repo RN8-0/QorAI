@@ -486,7 +486,7 @@
     const g = (id) => (document.getElementById(id) || {}).value;
     if (document.getElementById('p_title') != null) {
       a['title_' + c] = g('p_title'); a['lead_' + c] = g('p_lead'); a['slug_' + c] = g('p_slug');
-      a['tags_' + c] = g('p_tags'); a['metaTitle_' + c] = g('p_metaTitle'); a['metaDescription_' + c] = g('p_metaDescription');
+      a['metaTitle_' + c] = g('p_metaTitle'); a['metaDescription_' + c] = g('p_metaDescription');
     }
     flushEditors();
   }
@@ -498,7 +498,6 @@
       <div class="ba-field"><label>Slug · ${esc(ln)} <span style="opacity:.5">(URL — boşsa başlıktan üretilir)</span></label><input class="ba-input" id="p_slug" value="${esc(a['slug_' + c] || '')}" placeholder="${c === 'en' ? 'best-phones-2026' : c === 'de' ? 'beste-handys-2026' : 'en-iyi-telefonlar-2026'}" /></div>
       <div class="ba-field"><label>Short description (lead)</label><textarea class="ba-input" id="p_lead" rows="2">${esc(a['lead_' + c] || '')}</textarea></div>
       <div class="ba-field"><label>Intro / general text</label><div id="p_body_wrap" class="ba-rte"></div></div>
-      <div class="ba-field"><label>Etiketler · ${esc(ln)} <span style="opacity:.5">(virgülle ayır)</span></label><input class="ba-input" id="p_tags" value="${esc(a['tags_' + c] || '')}" placeholder="telefon, 2026, amiral gemisi" /></div>
       <details class="ba-field"><summary style="cursor:pointer;font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.4px">SEO · ${esc(ln)} (opsiyonel)</summary>
         <div class="ba-field" style="margin-top:10px"><label>Meta title <span style="opacity:.5">(boşsa başlık)</span></label><input class="ba-input" id="p_metaTitle" value="${esc(a['metaTitle_' + c] || '')}" /></div>
         <div class="ba-field"><label>Meta description <span style="opacity:.5">(boşsa özet)</span></label><textarea class="ba-input" id="p_metaDescription" rows="2">${esc(a['metaDescription_' + c] || '')}</textarea></div>
