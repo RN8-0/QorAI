@@ -519,8 +519,9 @@
         <div style="flex:1;min-width:0">
           ${(() => { const k = p.kind || 'product'; const kl = k === 'subscription' ? '📺 Abonelik' : k === 'custom' ? '✏️ Özel' : '🛒 Ürün'; return `<span class="ba-prod-kind k-${k}">${kl}</span>`; })()}
           ${(p.kind || 'product') === 'custom'
-            ? `<div style="font-weight:700;display:flex;gap:6px;align-items:center"><span>${i + 1}.</span><input class="ba-input" style="font-size:13px;font-weight:700;padding:4px 8px" value="${esc(p.name || '')}" placeholder="İsim" oninput="blogProdField(${i},'name',this.value)" /></div>
-               <div style="margin:6px 0 8px"><input class="ba-input" style="font-size:12px" value="${esc(p.link || '')}" placeholder="Bağlantı (opsiyonel) https://…" oninput="blogProdField(${i},'link',this.value)" /></div>`
+            ? `<div style="font-weight:700;display:flex;gap:6px;align-items:center"><span>${i + 1}.</span><input class="ba-input" style="font-size:13px;font-weight:700;padding:4px 8px" value="${esc(p['name_' + _lang] || '')}" placeholder="İsim (${esc(langName)})" oninput="blogProdField(${i},'name_${_lang}',this.value)" /></div>
+               <div style="font-size:11px;opacity:.5;margin:2px 0 6px">İsim her dil için ayrı — sekmeyi değiştirip ${esc(langName)} adını yaz</div>
+               <div style="margin:0 0 8px"><input class="ba-input" style="font-size:12px" value="${esc(p.link || '')}" placeholder="Bağlantı (opsiyonel) https://…" oninput="blogProdField(${i},'link',this.value)" /></div>`
             : `<div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
                <div style="opacity:.55;font-size:12px;margin-bottom:8px">${(p.kind === 'subscription') ? `→ /subscriptions${p.affiliateUrl || p.website ? ' · resmi site' : ''}` : `→ /product/${esc(p.slug)}-${esc(p.id)}`} · <b>${esc(langName)}</b></div>`}
           <div class="bk-blocks">
@@ -650,11 +651,16 @@
       category: val('b_category'), cover: val('b_cover'),
       author: val('b_author').trim(),
       publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
-      // Drop unfinished custom items (no name) and keep slugs in sync so the
-      // website can render/link every item kind consistently.
+      // Custom items carry a per-language name (name_tr/en/de). Keep a fallback
+      // `name` (first filled language) + slug so the website can filter/link
+      // them, and drop items with no name in any language.
       products: _products
-        .filter((p) => (p.kind || 'product') !== 'custom' || String(p.name || '').trim())
-        .map((p) => ((p.kind || 'product') === 'custom' ? { ...p, slug: slugify(p.name || '') } : p)),
+        .map((p) => {
+          if ((p.kind || 'product') !== 'custom') return p;
+          const nm = (p.name_tr || p.name_en || p.name_de || p.name || '').trim();
+          return { ...p, name: nm, slug: slugify(nm) };
+        })
+        .filter((p) => (p.kind || 'product') !== 'custom' || String(p.name || '').trim()),
     };
     LANGS.forEach(([c]) => {
       data['title_' + c] = a['title_' + c] || ''; data['lead_' + c] = a['lead_' + c] || '';

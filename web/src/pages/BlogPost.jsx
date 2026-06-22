@@ -246,7 +246,10 @@ export default function BlogPost() {
   const lead = pick(post, 'lead');
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
-  const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
+  // Custom items have a per-language name (name_tr/en/de); products/subscriptions
+  // use their single catalog name. Resolve to the active language with fallbacks.
+  const itemName = (p) => p[`name_${lang}`] || p.name_tr || p.name_en || p.name_de || p.name || '';
+  const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && itemName(p)) : [];
   const cover = post?.cover || (post?.coverFile ? fileUrl(post, post.coverFile) : (products[0]?.image || products[0]?.imageUrl || ''));
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
@@ -279,7 +282,7 @@ export default function BlogPost() {
   // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(post ? [
     `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
-    ...products.map((p, i) => `${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
+    ...products.map((p, i) => `${i + 1}. ${itemName(p)}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
     conclusion ? conclusion.replace(/<[^>]+>/g, ' ') : '',
   ].filter(Boolean).join('\n') : '');
 
@@ -332,7 +335,7 @@ export default function BlogPost() {
   };
   const askAi = () => {
     const parts = [`${title}`, lead];
-    products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()));
+    products.forEach((p, i) => parts.push(`${i + 1}. ${itemName(p)}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()));
     if (conclusion) parts.push(conclusion.replace(/<[^>]+>/g, ' '));
     window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: { context: parts.filter(Boolean).join('\n') } }));
   };
@@ -355,11 +358,12 @@ export default function BlogPost() {
   // One content block (product / subscription / custom), per its layout template.
   const renderProd = (p, i) => {
     const kind = p.kind || 'product';
+    const name = itemName(p);
     const layout = p.layout || 'split';
     const size = p.imgSize || 'm';
     const img = pimg(p) || p.logo || '';
     // Resolve the internal/external link target for this item kind.
-    const productTo = kind === 'product' ? productPath({ id: p.id, slug: p.slug, name: p.name }) : null;
+    const productTo = kind === 'product' ? productPath({ id: p.id, slug: p.slug, name }) : null;
     const subTo = kind === 'subscription' ? '/subscriptions' : null;
     const extHref = kind === 'custom' ? (p.link || '') : (kind === 'subscription' ? (p.affiliateUrl || p.website || '') : '');
 
@@ -393,10 +397,10 @@ export default function BlogPost() {
 
     // Title — links internally for product/subscription, externally for custom.
     let titleEl;
-    if (kind === 'product') titleEl = <Link to={productTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
-    else if (kind === 'subscription') titleEl = <Link to={subTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
-    else if (extHref) titleEl = <a href={extHref} target="_blank" rel="noopener noreferrer" className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</a>;
-    else titleEl = <span className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</span>;
+    if (kind === 'product') titleEl = <Link to={productTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {name}</Link>;
+    else if (kind === 'subscription') titleEl = <Link to={subTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {name}</Link>;
+    else if (extHref) titleEl = <a href={extHref} target="_blank" rel="noopener noreferrer" className="post-prod-title"><span className="ppn">{i + 1}.</span> {name}</a>;
+    else titleEl = <span className="post-prod-title"><span className="ppn">{i + 1}.</span> {name}</span>;
 
     const linkFig = (el) => {
       if (kind === 'product') return <Link to={productTo}>{el}</Link>;
@@ -421,7 +425,7 @@ export default function BlogPost() {
               const nu = normalizeImageUrl(u);
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
-                  {linkFig(<img src={nu} data-orig={nu} alt={p.name} loading="lazy" onError={imageOnError} />)}
+                  {linkFig(<img src={nu} data-orig={nu} alt={name} loading="lazy" onError={imageOnError} />)}
                 </figure>
               );
             }
@@ -439,7 +443,7 @@ export default function BlogPost() {
       const d1 = pdesc(p) ? <div className="post-prod-rich">{renderRichText(pdesc(p), `${p.id || i}-d1`)}</div> : null;
       const d2 = pdesc2(p) ? <div className="post-prod-rich">{renderRichText(pdesc2(p), `${p.id || i}-d2`)}</div> : null;
       const nimg = normalizeImageUrl(img);
-      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={nimg} data-orig={nimg} alt={p.name} loading="lazy" onError={imageOnError} />)}</span> : null;
+      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={nimg} data-orig={nimg} alt={name} loading="lazy" onError={imageOnError} />)}</span> : null;
       if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
       else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
       else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
