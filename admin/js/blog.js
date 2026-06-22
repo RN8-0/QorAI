@@ -149,6 +149,10 @@
       .ba-prod-ord{display:flex;flex-direction:column;gap:4px}
       .ba-mini{padding:4px 9px;border-radius:8px;border:1px solid var(--border,#3a4150);background:transparent;color:inherit;cursor:pointer;font-size:12px}
       .bk-tab.on{background:#7c3aed;border-color:#7c3aed;color:#fff;font-weight:700}
+      .bk-blocks{margin-top:6px}
+      .bk-block{border:1px solid var(--border,#2a3140);border-radius:10px;padding:9px 11px;margin-bottom:8px;background:rgba(124,58,237,.04)}
+      .bk-block-bar{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:.3px}
+      .bk-block-ord{display:inline-flex;gap:4px}
       .ba-prod-kind{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1px 7px;border-radius:6px;margin-bottom:4px}
       .ba-prod-kind.k-product{background:#1d4ed833;color:#60a5fa}
       .ba-prod-kind.k-subscription{background:#7c3aed33;color:#a78bfa}
@@ -195,6 +199,59 @@
       toast('Görsel yüklendi', 's');
     } catch (e) { toast('Yükleme başarısız: ' + e.message, 'e'); }
   }
+  // Upload a device image into a specific content block of item i.
+  async function uploadBlockImage(input, i, j) {
+    const file = input.files && input.files[0]; if (!file) return;
+    try {
+      if (!_editing.id) { flushEditors(); syncPane(); await blogSave('draft', true); }
+      if (!_editing.id) { toast('Önce makaleyi kaydet', 'w'); return; }
+      const fd = new FormData(); fd.append('media+', file);
+      const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
+      const fname = Array.isArray(rec.media) ? rec.media[rec.media.length - 1] : rec.media;
+      const url = pbFileUrl(rec, fname);
+      if (_products[i] && _products[i].blocks && _products[i].blocks[j]) { _products[i].blocks[j].url = url; renderProducts(); }
+      toast('Görsel yüklendi', 's');
+    } catch (e) { toast('Yükleme başarısız: ' + e.message, 'e'); }
+  }
+
+  // Each content item holds an ordered list of `blocks` (text + image). Older
+  // articles only had desc/desc2/image/layout — migrate them to blocks on the
+  // fly so the editor and the website both speak one model.
+  function ensureBlocks(p) {
+    if (Array.isArray(p.blocks)) {
+      if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '', de: '' });
+      return;
+    }
+    const blocks = [];
+    const hasD1 = ['tr', 'en', 'de'].some((c) => p['desc_' + c]);
+    const hasD2 = ['tr', 'en', 'de'].some((c) => p['desc2_' + c]);
+    const img = p.image || p.imageUrl || p.logo || '';
+    const txt = (k) => ({ t: 'text', tr: p[k + '_tr'] || '', en: p[k + '_en'] || '', de: p[k + '_de'] || '' });
+    const imgBlock = () => ({ t: 'image', url: img, pos: p.layout === 'left' ? 'left' : p.layout === 'right' ? 'right' : 'full', size: p.imgSize || 'm' });
+    const layout = p.layout || 'split';
+    if (layout === 'top') { if (img) blocks.push(imgBlock()); if (hasD1) blocks.push(txt('desc')); if (hasD2) blocks.push(txt('desc2')); }
+    else if (layout === 'text') { if (hasD1) blocks.push(txt('desc')); if (hasD2) blocks.push(txt('desc2')); }
+    else { if (hasD1) blocks.push(txt('desc')); if (img) blocks.push(imgBlock()); if (hasD2) blocks.push(txt('desc2')); }
+    if (!blocks.some((b) => b.t === 'text')) blocks.push({ t: 'text', tr: '', en: '', de: '' });
+    p.blocks = blocks;
+  }
+  function blogBlockAdd(i, type) {
+    const p = _products[i]; if (!p) return; ensureBlocks(p);
+    p.blocks.push(type === 'image' ? { t: 'image', url: '', pos: 'right', size: 'm' } : { t: 'text', tr: '', en: '', de: '' });
+    renderProducts();
+  }
+  function blogBlockRemove(i, j) {
+    const p = _products[i]; if (!p || !p.blocks) return;
+    p.blocks.splice(j, 1);
+    if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '', de: '' });
+    renderProducts();
+  }
+  function blogBlockMove(i, j, d) {
+    const p = _products[i]; if (!p || !p.blocks) return;
+    const k = j + d; if (k < 0 || k >= p.blocks.length) return;
+    const tmp = p.blocks[j]; p.blocks[j] = p.blocks[k]; p.blocks[k] = tmp; renderProducts();
+  }
+  function blogBlockField(i, j, key, v) { const p = _products[i]; if (p && p.blocks && p.blocks[j]) p.blocks[j][key] = v; }
 
   // ── analytics aggregation (from article_events) ────────────────
   async function loadStats() {
@@ -435,8 +492,7 @@
   function renderProducts() {
     const box = document.getElementById('b_prodlist'); if (!box) return;
     const langName = (LANGS.find(([c]) => c === _lang) || [])[1] || _lang;
-    const LAYOUTS = [['split', 'Açıklama → Görsel → Açıklama'], ['top', 'Görsel üstte'], ['left', 'Solda görsel · sağda yazı'], ['right', 'Sağda görsel · solda yazı'], ['text', 'Görselsiz (sadece yazı)']];
-    const SIZES = [['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']];
+    _products.forEach(ensureBlocks);
     box.innerHTML = _products.map((p, i) => `
       <div class="ba-prod">
         <div class="ba-prod-ord">
@@ -451,23 +507,34 @@
                <div style="margin:6px 0 8px"><input class="ba-input" style="font-size:12px" value="${esc(p.link || '')}" placeholder="Bağlantı (opsiyonel) https://…" oninput="blogProdField(${i},'link',this.value)" /></div>`
             : `<div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
                <div style="opacity:.55;font-size:12px;margin-bottom:8px">${(p.kind === 'subscription') ? `→ /subscriptions${p.affiliateUrl || p.website ? ' · resmi site' : ''}` : `→ /product/${esc(p.slug)}-${esc(p.id)}`} · <b>${esc(langName)}</b></div>`}
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <select class="ba-input" style="flex:1;min-width:170px;font-size:12px" onchange="blogProdField(${i},'layout',this.value)" title="Şablon">
-              ${LAYOUTS.map(([v, n]) => `<option value="${v}"${(p.layout || 'split') === v ? ' selected' : ''}>📐 ${n}</option>`).join('')}
-            </select>
-            <select class="ba-input" style="width:120px;font-size:12px" onchange="blogProdField(${i},'imgSize',this.value)" title="Görsel boyutu">
-              ${SIZES.map(([v, n]) => `<option value="${v}"${(p.imgSize || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
-            </select>
+          <div class="bk-blocks">
+            ${p.blocks.map((b, j) => b.t === 'image'
+              ? `<div class="bk-block">
+                   <div class="bk-block-bar"><span>🖼 Görsel ${j + 1}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
+                   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
+                     <input class="ba-input" style="flex:1;min-width:150px;font-size:12px" placeholder="Görsel URL" value="${esc(b.url || '')}" oninput="blogBlockField(${i},${j},'url',this.value)" />
+                     <label class="ba-mini" style="cursor:pointer;white-space:nowrap">📷 Yükle<input type="file" accept="image/*" style="display:none" onchange="blogUploadBlockImage(this,${i},${j})"></label>
+                     <select class="ba-input" style="width:165px;font-size:12px" onchange="blogBlockField(${i},${j},'pos',this.value)" title="Konum">
+                       ${[['left', '◧ Solda · yazı sağda'], ['right', '◨ Sağda · yazı solda'], ['full', '▭ Tam genişlik']].map(([v, n]) => `<option value="${v}"${(b.pos || 'full') === v ? ' selected' : ''}>${n}</option>`).join('')}
+                     </select>
+                     <select class="ba-input" style="width:95px;font-size:12px" onchange="blogBlockField(${i},${j},'size',this.value)" title="Boyut">
+                       ${[['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']].map(([v, n]) => `<option value="${v}"${(b.size || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
+                     </select>
+                   </div>
+                   ${b.url ? `<img src="${esc(b.url)}" style="max-height:78px;margin-top:8px;border-radius:8px;background:#fff" onerror="this.style.display='none'"/>` : ''}
+                 </div>`
+              : `<div class="bk-block">
+                   <div class="bk-block-bar"><span>✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
+                   <textarea class="ba-input" style="font-size:13px;margin-top:6px" rows="3" placeholder="Metin (${esc(langName)}) — her satır ayrı görünür · madde için satır başına “- ” koy" oninput="blogBlockField(${i},${j},'${_lang}',this.value)">${esc(b[_lang] || '')}</textarea>
+                 </div>`).join('')}
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="ba-mini" onclick="blogBlockAdd(${i},'text')">＋ Metin</button>
+              <button class="ba-mini" onclick="blogBlockAdd(${i},'image')">＋ Görsel</button>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input class="ba-input" style="flex:1;font-size:12px" placeholder="Özel görsel URL (boşsa sitedeki ürün görseli)" value="${esc(p.image || '')}" oninput="blogProdField(${i},'image',this.value);var im=this.closest('.ba-prod').querySelector('img');im.src=this.value||'${esc(p.imageUrl || '')}';im.style.visibility='visible'" />
-            <label class="ba-mini" style="cursor:pointer;white-space:nowrap" title="Cihazdan yükle">📷 Yükle<input type="file" accept="image/*" style="display:none" onchange="blogUploadProdImage(this, ${i})"></label>
-          </div>
-          <textarea class="ba-input" style="font-size:13px;margin-bottom:6px" rows="2" placeholder="Açıklama 1 (${esc(langName)})" oninput="blogProdField(${i},'desc_${_lang}',this.value)">${esc(p['desc_' + _lang] || '')}</textarea>
-          <textarea class="ba-input" style="font-size:13px" rows="2" placeholder="Açıklama 2 (${esc(langName)})" oninput="blogProdField(${i},'desc2_${_lang}',this.value)">${esc(p['desc2_' + _lang] || '')}</textarea>
         </div>
         <button class="ba-mini" onclick="blogProdRemove(${i})" style="color:#f87171">✕</button>
-      </div>`).join('') || '<div style="opacity:.5;padding:8px">No products added yet.</div>';
+      </div>`).join('') || '<div style="opacity:.5;padding:8px">Henüz öğe eklenmedi.</div>';
     renderCoverThumbs();
   }
 
@@ -538,7 +605,7 @@
   // editable name + link, image (URL or upload), layout template, image size and
   // both description blocks — so non-PB items are first-class, not a stripped form.
   function blogCustomAdd() {
-    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: '', name: '', link: '', image: '', imageUrl: '', layout: 'split', imgSize: 'm' });
+    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: '', name: '', link: '', image: '', imageUrl: '', blocks: [{ t: 'text', tr: '', en: '', de: '' }] });
     renderProducts();
     setTimeout(() => {
       const list = document.getElementById('b_prodlist');
@@ -590,6 +657,7 @@
   window.blogProdSearch = blogProdSearch; window.blogProdAdd = blogProdAdd;
   window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdField = blogProdField;
   window.blogPickKind = blogPickKind; window.blogSubSearch = blogSubSearch; window.blogSubAdd = blogSubAdd; window.blogCustomAdd = blogCustomAdd;
+  window.blogBlockAdd = blogBlockAdd; window.blogBlockRemove = blogBlockRemove; window.blogBlockMove = blogBlockMove; window.blogBlockField = blogBlockField; window.blogUploadBlockImage = uploadBlockImage;
   window.blogUploadCover = uploadCover;
   window.blogUploadProdImage = uploadProdImage;
   window.blogSetCover = blogSetCover;

@@ -42,6 +42,33 @@ function slugifyHeading(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
 }
 
+// Renders a content-block's text as real structure (so the editor's line breaks
+// and bullet lists don't collapse into one run-on paragraph on the site):
+//  • lines starting with "- ", "• " or "* " become a <ul> bullet list
+//  • every other non-empty line is its own paragraph
+//  • a leading "Label:" / "Label?" is bolded (Artıları:, Kime Uygun? …)
+function renderRichText(text, kp) {
+  const lines = String(text || '').split(/\r?\n/);
+  const out = [];
+  let bullets = [];
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    out.push(<ul key={`${kp}-u${out.length}`} className="post-prod-ul">{bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>);
+    bullets = [];
+  };
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) { flushBullets(); return; }
+    if (/^[-•*]\s+/.test(line)) { bullets.push(line.replace(/^[-•*]\s+/, '')); return; }
+    flushBullets();
+    const m = line.match(/^([^:?]{2,32}[:?])\s+(.+)$/);
+    if (m) out.push(<p key={`${kp}-p${i}`} className="post-prod-desc"><strong>{m[1]}</strong> {m[2]}</p>);
+    else out.push(<p key={`${kp}-p${i}`} className="post-prod-desc">{line}</p>);
+  });
+  flushBullets();
+  return out;
+}
+
 export default function BlogPost() {
   const { slug } = useParams();
   const [sp] = useSearchParams();
@@ -145,6 +172,13 @@ export default function BlogPost() {
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
   const pimg = (p) => p.image || p.imageUrl || '';
+  // Plain text for SEO / chat context, from the new blocks model or legacy descs.
+  const blockText = (p) => {
+    if (Array.isArray(p.blocks) && p.blocks.length) {
+      return p.blocks.filter((b) => b.t === 'text').map((b) => b[lang] || b.tr || b.en || b.de || '').filter(Boolean).join(' ');
+    }
+    return `${pdesc(p)} ${pdesc2(p)}`.trim();
+  };
   const publishedAt = post?.publishedAt || post?.created || '';
   const author = (post?.author || '').trim();
   const tags = String(pick(post, 'tags') || post?.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -165,7 +199,7 @@ export default function BlogPost() {
   // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(post ? [
     `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
-    ...products.map((p, i) => `${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()),
+    ...products.map((p, i) => `${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
     conclusion ? conclusion.replace(/<[^>]+>/g, ' ') : '',
   ].filter(Boolean).join('\n') : '');
 
@@ -218,7 +252,7 @@ export default function BlogPost() {
   };
   const askAi = () => {
     const parts = [`${title}`, lead];
-    products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${pdesc(p)} ${pdesc2(p)}`.trim()));
+    products.forEach((p, i) => parts.push(`${i + 1}. ${p.name}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()));
     if (conclusion) parts.push(conclusion.replace(/<[^>]+>/g, ' '));
     window.dispatchEvent(new CustomEvent('qor-open-ai', { detail: { context: parts.filter(Boolean).join('\n') } }));
   };
@@ -284,24 +318,54 @@ export default function BlogPost() {
     else if (extHref) titleEl = <a href={extHref} target="_blank" rel="noopener noreferrer" className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</a>;
     else titleEl = <span className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</span>;
 
-    const d1 = pdesc(p) ? <p className="post-prod-desc">{pdesc(p)}</p> : null;
-    const d2 = pdesc2(p) ? <p className="post-prod-desc">{pdesc2(p)}</p> : null;
-    // Image wrapper links the same place as the title (or nowhere for plain custom).
-    const wrapImg = (el) => {
-      if (kind === 'product') return <Link to={productTo} className={`post-prod-img pp-${size}`}>{el}</Link>;
-      if (kind === 'subscription') return <Link to={subTo} className={`post-prod-img pp-${size}`}>{el}</Link>;
-      if (extHref) return <a href={extHref} target="_blank" rel="noopener noreferrer" className={`post-prod-img pp-${size}`}>{el}</a>;
-      return <span className={`post-prod-img pp-${size}`}>{el}</span>;
+    const linkFig = (el) => {
+      if (kind === 'product') return <Link to={productTo}>{el}</Link>;
+      if (kind === 'subscription') return <Link to={subTo}>{el}</Link>;
+      if (extHref) return <a href={extHref} target="_blank" rel="noopener noreferrer">{el}</a>;
+      return el;
     };
-    const imgEl = img ? wrapImg(<img src={img} alt={p.name} loading="lazy" />) : null;
+
     let inner;
-    if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
-    else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
-    else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
-    else if (layout === 'right') inner = <div className="post-prod-row rev">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
-    else inner = <>{d1}{imgEl}{d2}</>; // split (default)
+    const hasBlocks = Array.isArray(p.blocks) && p.blocks.length > 0;
+    if (hasBlocks) {
+      // New model: ordered text + image blocks. Floated images (left/right) let
+      // the following text wrap down beside them; block order sets top/bottom.
+      inner = (
+        <div className="post-prod-blocks">
+          {p.blocks.map((b, bi) => {
+            if (b.t === 'image') {
+              const u = b.url || '';
+              if (!u) return null;
+              const pos = b.pos || 'full';
+              const bsize = b.size || 'm';
+              return (
+                <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
+                  {linkFig(<img src={u} alt={p.name} loading="lazy" />)}
+                </figure>
+              );
+            }
+            const txt = b[lang] || b.tr || b.en || b.de || '';
+            if (!String(txt).trim()) return null;
+            return <div key={bi} className="post-prod-rich">{renderRichText(txt, `${p.id || i}-${bi}`)}</div>;
+          })}
+          <div className="post-prod-clear" />
+        </div>
+      );
+    } else {
+      // Legacy model: desc1 / image / desc2 with a fixed layout template.
+      // Run through renderRichText too so line breaks / bullets survive even
+      // before an old article is re-saved into the block model.
+      const d1 = pdesc(p) ? <div className="post-prod-rich">{renderRichText(pdesc(p), `${p.id || i}-d1`)}</div> : null;
+      const d2 = pdesc2(p) ? <div className="post-prod-rich">{renderRichText(pdesc2(p), `${p.id || i}-d2`)}</div> : null;
+      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={img} alt={p.name} loading="lazy" />)}</span> : null;
+      if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
+      else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
+      else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
+      else if (layout === 'right') inner = <div className="post-prod-row rev">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
+      else inner = <>{d1}{imgEl}{d2}</>; // split (default)
+    }
     return (
-      <div className={`post-prod layout-${layout} kind-${kind}`} key={p.id || `${kind}-${i}`}>
+      <div className={`post-prod kind-${kind}`} key={p.id || `${kind}-${i}`}>
         <div className="post-prod-head">{titleEl}{btns}</div>
         {inner}
       </div>
