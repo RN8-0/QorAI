@@ -97,10 +97,17 @@
 @media (max-width: 640px) { .post-prod-row, .post-prod-row.rev { flex-direction: column; } .post-prod-row .post-prod-img { flex-basis: auto; width: 100%; } }
 
 /* ── Block model: ordered text + floated images (text wraps beside them) ── */
-.post-prod-rich .post-prod-desc { margin: 0 0 14px; }
-.post-prod-rich .post-prod-desc:last-child { margin-bottom: 4px; }
-.post-prod-ul { margin: 4px 0 16px; padding-left: 22px; }
-.post-prod-ul li { font-size: 17px; line-height: 1.7; color: var(--text-soft,#334155); margin: 0 0 7px; max-width: 760px; }
+/* Even, symmetric vertical rhythm across paragraphs, headings and lists. */
+.post-prod-rich > *:first-child { margin-top: 0; }
+.post-prod-rich > *:last-child { margin-bottom: 0; }
+.post-prod-rich .post-prod-desc { margin: 0 0 12px; }
+.post-prod-sub { font-weight: 800; color: var(--text,#0f172a); margin: 18px 0 8px; line-height: 1.3; }
+.post-prod-sub-1 { font-size: 22px; letter-spacing: -.01em; }
+.post-prod-sub-2 { font-size: 18px; }
+.post-prod-sub-3 { font-size: 16px; }
+.post-prod-ul { margin: 0 0 12px; padding-left: 22px; list-style: disc; }
+.post-prod-ul li { font-size: 17px; line-height: 1.7; color: var(--text-soft,#334155); margin: 0 0 6px; max-width: 760px; }
+.post-prod-ul li:last-child { margin-bottom: 0; }
 .post-prod-fig { margin: 6px 0 14px; }
 .post-prod-fig img { display: block; max-width: 100%; object-fit: contain; border-radius: 12px; }
 .post-prod-fig.fig-full { float: none; clear: both; }

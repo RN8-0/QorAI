@@ -525,7 +525,8 @@
                  </div>`
               : `<div class="bk-block">
                    <div class="bk-block-bar"><span>✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
-                   <textarea class="ba-input" style="font-size:13px;margin-top:6px" rows="3" placeholder="Metin (${esc(langName)}) — her satır ayrı görünür · madde için satır başına “- ” koy" oninput="blogBlockField(${i},${j},'${_lang}',this.value)">${esc(b[_lang] || '')}</textarea>
+                   <textarea class="ba-input" style="font-size:13px;margin-top:6px" rows="4" placeholder="Metin (${esc(langName)}) — her satır ayrı görünür · madde: satır başına “- ” · kalın: **metin** · başlık: ## Başlık · etiket: “Artıları:” (otomatik kalın)" oninput="blogBlockField(${i},${j},'${_lang}',this.value)">${esc(b[_lang] || '')}</textarea>
+                   <div style="font-size:11px;opacity:.5;margin-top:4px">Biçim: <b>**kalın**</b> · <b>## büyük başlık</b> · <b>### küçük başlık</b> · <b>- madde</b> · satır başı “Artıları:” otomatik başlık olur</div>
                  </div>`).join('')}
             <div style="display:flex;gap:8px;margin-top:8px">
               <button class="ba-mini" onclick="blogBlockAdd(${i},'text')">＋ Metin</button>

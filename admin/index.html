@@ -76,13 +76,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span>Users</span>
         </a>
-        <a class="nav-link" data-view="userinsights" onclick="showView('userinsights')">
+        <a class="nav-link" data-view="insights" onclick="showView('userinsights')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-          <span>User Intelligence</span>
-        </a>
-        <a class="nav-link" data-view="algorithm" onclick="showView('algorithm')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-          <span>Algorithm</span>
+          <span>Insights</span>
         </a>
         <a class="nav-link" data-view="prompts" onclick="showView('prompts')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0110 10c0 3.31-1.61 6.24-4.09 8.05"/><path d="M12 2A10 10 0 002 12c0 3.31 1.61 6.24 4.09 8.05"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
@@ -91,10 +87,6 @@
         <a class="nav-link" data-view="scraper" onclick="showView('scraper')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
           <span>Scraper</span>
-        </a>
-        <a class="nav-link" data-view="activitylog" onclick="showView('activitylog')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <span>Activity Log</span>
         </a>
         <a class="nav-link" data-view="notifications" onclick="showView('notifications')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -288,6 +280,11 @@
       </div>
 
       <section id="userinsightsView" class="view">
+        <div class="insights-subtabs">
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+        </div>
         <div class="view-header">
           <h1>User Intelligence</h1>
           <div class="view-actions">
@@ -340,6 +337,11 @@
 
       <!-- ===== ALGORITHM ===== -->
       <section id="algorithmView" class="view">
+        <div class="insights-subtabs">
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+        </div>
         <div class="view-header"><h1>Algorithm</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Save</button></div>
         <div class="card">
           <div class="card-title">Algorithm Health</div>
@@ -1057,6 +1059,11 @@
 
       <!-- ===== ACTIVITY LOG ===== -->
       <section id="activitylogView" class="view">
+        <div class="insights-subtabs">
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+        </div>
         <div class="view-header">
           <h1>Activity Log</h1>
           <div class="view-actions">
@@ -1336,35 +1343,6 @@
               <label>Premium Price Display Text</label>
               <input class="input" type="text" id="rc_premium_price_display" placeholder="₺199.99 / year">
             </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🔑 API Keys</div>
-          <div class="form-grid">
-            <div class="form-field"><label>Gemini API Key</label><input class="input" type="password" id="rc_gemini_api_key" placeholder="Stored in public_config for server-side hooks"></div>
-            <div class="form-field"><label>DeepSeek API Key</label><input class="input" type="password" id="rc_deepseek_api_key" placeholder="Stored in public_config for server-side hooks"></div>
-            <div class="form-field"><label>Typesense Host</label><input class="input" type="text" id="rc_typesense_host" placeholder="https://search.example.com"></div>
-            <div class="form-field"><label>Typesense API Key</label><input class="input" type="password" id="rc_typesense_api_key" placeholder="Search write/read key"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🕒 Scraper Automation</div>
-          <div class="form-grid">
-            <div class="form-field"><label>Scraper Frequency</label><select class="input" id="rc_scraper_frequency"><option value="manual">Manual</option><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div>
-            <div class="form-field"><label>Scraper Max Products / Run</label><input class="input" type="number" id="rc_scraper_max_products" min="1" value="200"></div>
-            <div class="form-field"><label>Scraper Parallel Channels</label><input class="input" type="number" id="rc_scraper_channels" min="1" max="5" value="3"></div>
-            <div class="form-field"><label>Auto Map New Categories</label><select class="input" id="rc_scraper_auto_map_categories"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🛠 Maintenance</div>
-          <div class="form-grid">
-            <div class="form-field"><label>Global Maintenance Mode</label><select class="input" id="rc_maintenance_mode"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
-            <div class="form-field"><label>Read-only Admin Mode</label><select class="input" id="rc_admin_readonly"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
-            <div class="form-field" style="grid-column:1/-1"><label>Maintenance Message</label><input class="input" type="text" id="rc_maintenance_message" placeholder="Short message shown in the app"></div>
           </div>
         </div>
 

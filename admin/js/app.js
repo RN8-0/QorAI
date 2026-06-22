@@ -155,6 +155,11 @@ function showView(name){
   document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
   document.getElementById(name+'View')?.classList.add('active');
   document.querySelector(`[data-view="${name}"]`)?.classList.add('active');
+  // User Intelligence + Algorithm + Activity Log are merged under one "Insights"
+  // sidebar item with a shared sub-tab bar — keep it highlighted across the three.
+  const INSIGHTS_VIEWS=['userinsights','algorithm','activitylog'];
+  if(INSIGHTS_VIEWS.includes(name))document.querySelector('[data-view="insights"]')?.classList.add('active');
+  document.querySelectorAll('.ins-tab').forEach(b=>b.classList.toggle('active',b.dataset.sub===name));
   if(name==='dashboard')refreshDashboard();
   if(name==='products'){
     if(!allProducts.length)loadProducts();
@@ -5694,17 +5699,11 @@ const RC_KEYS = [
   { id: 'rc_free_link_paste_limit',            key: 'free_link_paste_limit',            type: 'int',    def: 3     },
   { id: 'rc_free_subscription_analysis_limit',key: 'free_subscription_analysis_limit', type: 'int',    def: 2     },
   { id: 'rc_premium_price_display',           key: 'premium_price_display',            type: 'string', def: '₺199.99 / year' },
-  { id: 'rc_gemini_api_key',                  key: 'gemini_api_key',                   type: 'string', def: '' },
-  { id: 'rc_deepseek_api_key',                key: 'deepseek_api_key',                 type: 'string', def: '' },
-  { id: 'rc_typesense_host',                  key: 'typesense_host',                   type: 'string', def: '' },
-  { id: 'rc_typesense_api_key',               key: 'typesense_api_key',                type: 'string', def: '' },
-  { id: 'rc_scraper_frequency',               key: 'scraper_frequency',                type: 'string', def: 'manual' },
-  { id: 'rc_scraper_max_products',            key: 'scraper_max_products',             type: 'int',    def: 200 },
-  { id: 'rc_scraper_channels',                key: 'scraper_channels',                 type: 'int',    def: 3 },
-  { id: 'rc_scraper_auto_map_categories',     key: 'scraper_auto_map_categories',      type: 'bool',   def: true },
-  { id: 'rc_maintenance_mode',                key: 'maintenance_mode',                 type: 'bool',   def: false },
-  { id: 'rc_admin_readonly',                  key: 'admin_readonly',                   type: 'bool',   def: false },
-  { id: 'rc_maintenance_message',             key: 'maintenance_message',              type: 'string', def: '' },
+  // NOTE: API keys (Gemini/DeepSeek/Typesense), scraper-automation and
+  // maintenance toggles were removed from Settings — they wrote to public_config
+  // but nothing consumed them (the AI/search hooks read keys from container env,
+  // and there is no scheduler/maintenance gate reading those values). Re-adding a
+  // control here is pointless until a real consumer exists.
 ];
 
 const AI_PROMPT_DEFS = [

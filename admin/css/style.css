@@ -73,6 +73,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
 .view.active{display:block}
 .view-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .view-header h1{font-size:22px;font-weight:800;letter-spacing:-.3px}
+.insights-subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.ins-tab{padding:8px 16px;border-radius:var(--radius-sm);background:transparent;border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.ins-tab:hover{border-color:rgba(56,189,248,.4);color:var(--text1)}
+.ins-tab.active{background:rgba(56,189,248,.12);color:#67e8f9;border-color:rgba(56,189,248,.3)}
 .view-actions{display:flex;gap:8px;align-items:center}
 .count-badge{font-size:14px;font-weight:500;color:var(--text2);margin-left:4px}
 

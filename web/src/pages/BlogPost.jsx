@@ -42,28 +42,70 @@ function slugifyHeading(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
 }
 
-// Renders a content-block's text as real structure (so the editor's line breaks
-// and bullet lists don't collapse into one run-on paragraph on the site):
-//  • lines starting with "- ", "• " or "* " become a <ul> bullet list
-//  • every other non-empty line is its own paragraph
-//  • a leading "Label:" / "Label?" is bolded (Artıları:, Kime Uygun? …)
+// Inline markdown: **bold** and *italic*. Returns an array of strings/elements.
+function parseInline(text, kp) {
+  const parts = String(text).split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*)/g).filter((s) => s !== '');
+  return parts.map((seg, i) => {
+    let m = seg.match(/^(?:\*\*|__)([\s\S]+)(?:\*\*|__)$/);
+    if (m) return <strong key={`${kp}-b${i}`}>{m[1]}</strong>;
+    m = seg.match(/^\*([\s\S]+)\*$/);
+    if (m) return <em key={`${kp}-i${i}`}>{m[1]}</em>;
+    return seg;
+  });
+}
+
+// Renders a content-block's text as real, evenly-spaced structure so the
+// editor's line breaks / bullets don't collapse into one run-on paragraph:
+//  • "## " / "### " lines → headings (size control)
+//  • a line that is just "Label:" / "Label?" → a bold sub-heading
+//  • lines starting with -, –, —, •, * (space optional) → a tight <ul>
+//  • "Label: rest" → bold label + rest
+//  • everything else → its own paragraph
+//  • inline **bold** / *italic* supported everywhere
 function renderRichText(text, kp) {
   const lines = String(text || '').split(/\r?\n/);
   const out = [];
   let bullets = [];
+  // A line, with a leading "Label:" / "Label?" bolded + inline **bold**/*italic*.
+  const fmtLine = (line, k) => {
+    const m = line.match(/^([^:?]{2,32}[:?])\s+([\s\S]+)$/);
+    if (m) return [<strong key={`${k}-l`}>{m[1]}</strong>, ' ', ...parseInline(m[2], k)];
+    return parseInline(line, k);
+  };
   const flushBullets = () => {
     if (!bullets.length) return;
-    out.push(<ul key={`${kp}-u${out.length}`} className="post-prod-ul">{bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>);
+    out.push(
+      <ul key={`${kp}-u${out.length}`} className="post-prod-ul">
+        {bullets.map((b, i) => <li key={i}>{fmtLine(b, `${kp}-u${out.length}-${i}`)}</li>)}
+      </ul>,
+    );
     bullets = [];
   };
   lines.forEach((raw, i) => {
     const line = raw.trim();
     if (!line) { flushBullets(); return; }
-    if (/^[-•*]\s+/.test(line)) { bullets.push(line.replace(/^[-•*]\s+/, '')); return; }
+    // bullet — dash/bullet glyph, with or without a following space
+    if (/^[-–—•*]\s*\S/.test(line)) { bullets.push(line.replace(/^[-–—•*]\s*/, '')); return; }
     flushBullets();
-    const m = line.match(/^([^:?]{2,32}[:?])\s+(.+)$/);
-    if (m) out.push(<p key={`${kp}-p${i}`} className="post-prod-desc"><strong>{m[1]}</strong> {m[2]}</p>);
-    else out.push(<p key={`${kp}-p${i}`} className="post-prod-desc">{line}</p>);
+    // explicit heading markers
+    let m = line.match(/^(#{1,3})\s+(.+)$/);
+    if (m) {
+      const lvl = m[1].length; // 1→big, 3→small
+      out.push(<p key={`${kp}-h${i}`} className={`post-prod-sub post-prod-sub-${lvl}`}>{parseInline(m[2], `${kp}-h${i}`)}</p>);
+      return;
+    }
+    // standalone label line (e.g. "Artıları:", "Eksileri:") → sub-heading
+    if (/^.{2,40}[:?]$/.test(line)) {
+      out.push(<p key={`${kp}-s${i}`} className="post-prod-sub post-prod-sub-2">{parseInline(line, `${kp}-s${i}`)}</p>);
+      return;
+    }
+    // "Label: rest" → bold the label, keep the rest inline
+    m = line.match(/^([^:?]{2,32}[:?])\s+(.+)$/);
+    if (m) {
+      out.push(<p key={`${kp}-p${i}`} className="post-prod-desc"><strong>{m[1]}</strong> {parseInline(m[2], `${kp}-p${i}`)}</p>);
+      return;
+    }
+    out.push(<p key={`${kp}-p${i}`} className="post-prod-desc">{parseInline(line, `${kp}-p${i}`)}</p>);
   });
   flushBullets();
   return out;
