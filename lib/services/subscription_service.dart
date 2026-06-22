@@ -837,6 +837,32 @@ class SubscriptionService extends ChangeNotifier {
     final cost = AppConstants.creditCostForFeature(featureName).toDouble();
     _bonusQCoins = max(0.0, _bonusQCoins - cost);
     unawaited(_persistSyncedDailyCredits());
+    unawaited(_logQCoinSpend(featureName, cost, _bonusQCoins));
+  }
+
+  // Append a spend row to the `qcoin_transactions` ledger so the admin panel
+  // shows exactly where a user's Q Coins went (matches the website behaviour).
+  // Best-effort — a failed ledger write must never block the AI feature.
+  Future<void> _logQCoinSpend(
+    String feature,
+    double cost,
+    double balanceAfter,
+  ) async {
+    if (cost <= 0) return;
+    final uid = pb.authStore.record?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      await pb.collection('qcoin_transactions').create(
+        body: {
+          'userId': uid,
+          'type': 'spend',
+          'feature': feature,
+          'amount': -cost,
+          'balanceAfter': balanceAfter,
+          'source': 'app',
+        },
+      );
+    } catch (_) {}
   }
 
   UsageCounter _normalizedUsage() {

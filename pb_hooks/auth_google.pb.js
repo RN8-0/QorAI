@@ -96,9 +96,13 @@ routerAdd("POST", "/api/auth/google", (e) => {
       const rand = $security.randomString(40);
       user.set("password", rand);
       user.set("passwordConfirm", rand);
-      // Google users are verified accounts — mark quiz as completed so they
-      // go directly to the home screen (not the onboarding quiz flow).
-      try { user.set("quizCompleted", true); } catch (_) {}
+      // NOTE: we intentionally do NOT mark quizCompleted here anymore. Google
+      // sign-ups used to skip onboarding and land straight on home, which meant
+      // the app never collected their profile (ecosystem/budget/interests/quiz
+      // answers) — so the admin user tabs were empty for app accounts. New
+      // Google sign-ups now go through the same onboarding quiz as the website,
+      // which writes profileVector + quizHistory (data collection). Existing
+      // accounts keep whatever quizCompleted value they already had.
       // NOTE: avatar is a file-type field in PB; we store the Google picture URL
       // in a separate text field "avatarUrl" if it exists, or skip it.
       try { if (picture) user.set("avatarUrl", picture); } catch (_) {}

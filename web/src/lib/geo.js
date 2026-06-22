@@ -48,12 +48,26 @@ export async function detectCountry() {
   return inflight;
 }
 
+// User override (Settings → Region). Writes the cache with a fresh timestamp so
+// detectCountry() returns it, and broadcasts a `qor-geo-change` event so every
+// mounted useGeoCountry() updates the displayed currency/market immediately.
+export function setGeoCountry(cc) {
+  const code = String(cc || '').toUpperCase().slice(0, 2);
+  if (!/^[A-Z]{2}$/.test(code)) return '';
+  memo = code;
+  writeCache(code);
+  try { window.dispatchEvent(new CustomEvent('qor-geo-change', { detail: code })); } catch { /* ignore */ }
+  return code;
+}
+
 export function useGeoCountry() {
   const [country, setCountry] = useState(() => readCache() || memo || '');
   useEffect(() => {
     let live = true;
     detectCountry().then((cc) => { if (live) setCountry(cc); });
-    return () => { live = false; };
+    const onChange = (e) => { if (live) setCountry((e && e.detail) || readCache() || ''); };
+    window.addEventListener('qor-geo-change', onChange);
+    return () => { live = false; window.removeEventListener('qor-geo-change', onChange); };
   }, []);
   return country;
 }

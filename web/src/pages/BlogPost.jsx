@@ -100,7 +100,7 @@ export default function BlogPost() {
           .then((r) => { if (live) setMore(r.items || []); }).catch(() => {});
         // similar products — same getSimilar() the product page uses, then ranked
         // by closeness to the article's average tech score ("yaklaşık teknik puan").
-        const prods = Array.isArray(rec.products) ? rec.products.filter((p) => p && p.id) : [];
+        const prods = Array.isArray(rec.products) ? rec.products.filter((p) => p && p.id && (p.kind || 'product') === 'product') : [];
         if (rec.category) {
           const avg = prods.length ? Math.round(prods.reduce((s, p) => s + (Number(p.techScore) || 0), 0) / prods.length) : 0;
           const exclude = new Set(prods.map((p) => p.id));
@@ -238,26 +238,62 @@ export default function BlogPost() {
   const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
 
-  // One product block, rendered per its chosen layout template.
+  // One content block (product / subscription / custom), per its layout template.
   const renderProd = (p, i) => {
-    const to = productPath({ id: p.id, slug: p.slug, name: p.name });
+    const kind = p.kind || 'product';
     const layout = p.layout || 'split';
     const size = p.imgSize || 'm';
-    const img = pimg(p);
-    const btns = (
-      <div className="post-prod-btns">
-        <Link to={`${to}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
-        <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
-          <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
-          {p.price ? <span className="ppbtn-price">{p.price}</span> : null}
-        </a>
-        <Link to={to} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
-      </div>
-    );
-    const titleEl = <Link to={to} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
+    const img = pimg(p) || p.logo || '';
+    // Resolve the internal/external link target for this item kind.
+    const productTo = kind === 'product' ? productPath({ id: p.id, slug: p.slug, name: p.name }) : null;
+    const subTo = kind === 'subscription' ? '/subscriptions' : null;
+    const extHref = kind === 'custom' ? (p.link || '') : (kind === 'subscription' ? (p.affiliateUrl || p.website || '') : '');
+
+    // Buttons per kind.
+    let btns;
+    if (kind === 'product') {
+      btns = (
+        <div className="post-prod-btns">
+          <Link to={`${productTo}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
+          <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
+            <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
+            {p.price ? <span className="ppbtn-price">{p.price}</span> : null}
+          </a>
+          <Link to={productTo} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
+        </div>
+      );
+    } else if (kind === 'subscription') {
+      btns = (
+        <div className="post-prod-btns">
+          <Link to={subTo} className="ppbtn">→ {L('Subscriptions', 'Abonelikler', 'Abos')}</Link>
+          {extHref ? <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">🌐 {L('Official site', 'Resmi site', 'Offizielle Seite')}</a> : null}
+        </div>
+      );
+    } else {
+      btns = extHref ? (
+        <div className="post-prod-btns">
+          <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">→ {L('View', 'İncele', 'Ansehen')}</a>
+        </div>
+      ) : null;
+    }
+
+    // Title — links internally for product/subscription, externally for custom.
+    let titleEl;
+    if (kind === 'product') titleEl = <Link to={productTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
+    else if (kind === 'subscription') titleEl = <Link to={subTo} className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</Link>;
+    else if (extHref) titleEl = <a href={extHref} target="_blank" rel="noopener noreferrer" className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</a>;
+    else titleEl = <span className="post-prod-title"><span className="ppn">{i + 1}.</span> {p.name}</span>;
+
     const d1 = pdesc(p) ? <p className="post-prod-desc">{pdesc(p)}</p> : null;
     const d2 = pdesc2(p) ? <p className="post-prod-desc">{pdesc2(p)}</p> : null;
-    const imgEl = img ? <Link to={to} className={`post-prod-img pp-${size}`}><img src={img} alt={p.name} loading="lazy" /></Link> : null;
+    // Image wrapper links the same place as the title (or nowhere for plain custom).
+    const wrapImg = (el) => {
+      if (kind === 'product') return <Link to={productTo} className={`post-prod-img pp-${size}`}>{el}</Link>;
+      if (kind === 'subscription') return <Link to={subTo} className={`post-prod-img pp-${size}`}>{el}</Link>;
+      if (extHref) return <a href={extHref} target="_blank" rel="noopener noreferrer" className={`post-prod-img pp-${size}`}>{el}</a>;
+      return <span className={`post-prod-img pp-${size}`}>{el}</span>;
+    };
+    const imgEl = img ? wrapImg(<img src={img} alt={p.name} loading="lazy" />) : null;
     let inner;
     if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
     else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
@@ -265,7 +301,7 @@ export default function BlogPost() {
     else if (layout === 'right') inner = <div className="post-prod-row rev">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
     else inner = <>{d1}{imgEl}{d2}</>; // split (default)
     return (
-      <div className={`post-prod layout-${layout}`} key={p.id}>
+      <div className={`post-prod layout-${layout} kind-${kind}`} key={p.id || `${kind}-${i}`}>
         <div className="post-prod-head">{titleEl}{btns}</div>
         {inner}
       </div>

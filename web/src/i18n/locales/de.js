@@ -211,7 +211,7 @@ export default {
   'pf.memberFree': 'Kostenloses Konto',
   'pf.premiumActive': 'Dein Premium-Abo ist aktiv.',
   'pf.premiumUntil': 'Premium ist bis {date} aktiv.',
-  'pf.premiumApp': 'Premium ist in der mobilen Qor AI App verfügbar.',
+  'pf.premiumApp': 'Schalte mit Premium unbegrenzte KI-Funktionen frei.',
   'pf.save': 'Speichern',
   'pf.cancel': 'Abbrechen',
   'pf.editName': 'Name bearbeiten',

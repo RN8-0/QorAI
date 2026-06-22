@@ -13,10 +13,17 @@ export const LANGS = [
 const AVAILABLE = LANGS.filter((l) => STRINGS[l.code]);
 const CODES = AVAILABLE.map((l) => l.code);
 const RTL = new Set(['ar']);
+const LANG_KEY = 'qor.lang';
+
 function detectLang() {
+  // A user-chosen language (Settings) always wins over the browser default.
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (saved && STRINGS[saved]) return saved;
+  } catch { /* storage blocked */ }
   const nav = (navigator.languages || [navigator.language || 'en'])
     .map((l) => String(l).slice(0, 2).toLowerCase());
-  
+
   for (const l of nav) {
     if (l === 'tr') return 'tr';
     if (l === 'de' || l === 'ge') return 'de';
@@ -44,6 +51,7 @@ export function LangProvider({ children }) {
 
   const setLang = useCallback((code) => {
     if (!CODES.includes(code)) return;
+    try { localStorage.setItem(LANG_KEY, code); } catch { /* storage blocked */ }
     setLangState(code);
   }, []);
 

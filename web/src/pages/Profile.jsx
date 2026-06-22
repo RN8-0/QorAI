@@ -185,6 +185,7 @@ function Overview({ user, ids, t }) {
               : t('pf.premiumApp')}
           </span>
         </div>
+        {!prem.isPremium && <Link to="/premium" className="btn btn-primary pf-mem-cta">{t('nav.premium')}</Link>}
       </div>
 
       <div className="pf-grid">

@@ -12,6 +12,8 @@
   let _products = [];
   let _lang = 'tr';
   let _searchTimer = null;
+  let _subSearchTimer = null;
+  let _pickKind = 'product';
   let _stats = {};   // slug -> {views, likes, reads}
   let _cats = [];    // site category tokens for the datalist
   let _bodyQ = null; // Quill rich-text editor (intro/body)
@@ -146,6 +148,11 @@
       .ba-prod img{width:60px;height:60px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 60px}
       .ba-prod-ord{display:flex;flex-direction:column;gap:4px}
       .ba-mini{padding:4px 9px;border-radius:8px;border:1px solid var(--border,#3a4150);background:transparent;color:inherit;cursor:pointer;font-size:12px}
+      .bk-tab.on{background:#7c3aed;border-color:#7c3aed;color:#fff;font-weight:700}
+      .ba-prod-kind{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1px 7px;border-radius:6px;margin-bottom:4px}
+      .ba-prod-kind.k-product{background:#1d4ed833;color:#60a5fa}
+      .ba-prod-kind.k-subscription{background:#7c3aed33;color:#a78bfa}
+      .ba-prod-kind.k-custom{background:#05966933;color:#34d399}
       .ba-results{position:absolute;z-index:30;left:0;right:0;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:10px;max-height:300px;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
       .ba-results div.hit{padding:9px 12px;cursor:pointer;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border,#222936)}
       .ba-results div.hit:hover{background:#1a2230}
@@ -308,12 +315,34 @@
         </div>
         <div class="ba-tabs">${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')">${n}</div>`).join('')}</div>
         <div class="ba-pane" id="b_pane"></div>
-        <h3 style="margin:20px 0 8px">Products <span style="opacity:.5;font-weight:400;font-size:13px">— link to on-site specs page, ordered</span></h3>
-        <div style="position:relative" class="ba-field">
-          <input class="ba-input" id="b_prodsearch" placeholder="🔍 Type a product name to add…" autocomplete="off" oninput="blogProdSearch(this.value)" />
-          <div id="b_prodresults" class="ba-results" style="display:none"></div>
+        <h3 style="margin:20px 0 8px">İçerik öğeleri <span style="opacity:.5;font-weight:400;font-size:13px">— ürün, abonelik veya özel öğe · sıralı</span></h3>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button type="button" class="ba-mini bk-tab on" data-k="product" onclick="blogPickKind('product')">🛒 Ürün</button>
+          <button type="button" class="ba-mini bk-tab" data-k="subscription" onclick="blogPickKind('subscription')">📺 Abonelik</button>
+          <button type="button" class="ba-mini bk-tab" data-k="custom" onclick="blogPickKind('custom')">✏️ Özel öğe</button>
         </div>
-        <div id="b_prodlist"></div>
+        <div id="b_pick_product" class="bk-pane">
+          <div style="position:relative" class="ba-field">
+            <input class="ba-input" id="b_prodsearch" placeholder="🔍 Ürün adı yaz (sitedeki katalogdan)…" autocomplete="off" oninput="blogProdSearch(this.value)" />
+            <div id="b_prodresults" class="ba-results" style="display:none"></div>
+          </div>
+        </div>
+        <div id="b_pick_subscription" class="bk-pane" style="display:none">
+          <div style="position:relative" class="ba-field">
+            <input class="ba-input" id="b_subsearch" placeholder="🔍 Abonelik adı yaz (Netflix, Spotify…) — Abonelikler sayfasına linklenir" autocomplete="off" oninput="blogSubSearch(this.value)" />
+            <div id="b_subresults" class="ba-results" style="display:none"></div>
+          </div>
+        </div>
+        <div id="b_pick_custom" class="bk-pane" style="display:none">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>İsim *</label><input class="ba-input" id="b_cust_name" placeholder="Örn. Sony WH-1000XM6 / ChatGPT Plus" /></div>
+            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>Bağlantı (opsiyonel)</label><input class="ba-input" id="b_cust_link" placeholder="https://… (boşsa link yok)" /></div>
+            <div class="ba-field" style="flex:2;min-width:180px;margin:0"><label>Görsel URL (opsiyonel)</label><input class="ba-input" id="b_cust_img" placeholder="https://…" /></div>
+            <button class="ba-mini" onclick="blogCustomAdd()" style="height:38px;padding:0 14px">+ Ekle</button>
+          </div>
+          <div style="opacity:.5;font-size:12px;margin-top:6px">PB'de olmayan ürün/abonelik için. İstersen sadece isim yaz — görsel ve açıklama aşağıdan eklenebilir.</div>
+        </div>
+        <div id="b_prodlist" style="margin-top:12px"></div>
         <h3 style="margin:24px 0 8px">Bitiş yazısı / Conclusion <span style="opacity:.5;font-weight:400;font-size:13px">— ürünlerden sonra · aktif dil sekmesi</span></h3>
         <div class="ba-field"><div id="b_concl_wrap" class="ba-rte"></div></div>
         <h3 style="margin:24px 0 8px">Yorumlar <span style="opacity:.5;font-weight:400;font-size:13px">— moderasyon (uygunsuzları sil)</span></h3>
@@ -419,10 +448,14 @@
           <button class="ba-mini" onclick="blogProdMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="ba-mini" onclick="blogProdMove(${i},1)" ${i === _products.length - 1 ? 'disabled' : ''}>↓</button>
         </div>
-        <img src="${esc(p.image || p.imageUrl || '')}" onerror="this.style.visibility='hidden'"/>
+        <img src="${esc(p.image || p.imageUrl || p.logo || '')}" onerror="this.style.visibility='hidden'"/>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
-          <div style="opacity:.55;font-size:12px;margin-bottom:8px">→ /product/${esc(p.slug)}-${esc(p.id)} · <b>${esc(langName)}</b></div>
+          ${(() => { const k = p.kind || 'product'; const kl = k === 'subscription' ? '📺 Abonelik' : k === 'custom' ? '✏️ Özel' : '🛒 Ürün'; return `<span class="ba-prod-kind k-${k}">${kl}</span>`; })()}
+          ${(p.kind || 'product') === 'custom'
+            ? `<div style="font-weight:700;display:flex;gap:6px;align-items:center"><span>${i + 1}.</span><input class="ba-input" style="font-size:13px;font-weight:700;padding:4px 8px" value="${esc(p.name || '')}" placeholder="İsim" oninput="blogProdField(${i},'name',this.value)" /></div>
+               <div style="margin:6px 0 8px"><input class="ba-input" style="font-size:12px" value="${esc(p.link || '')}" placeholder="Bağlantı (opsiyonel) https://…" oninput="blogProdField(${i},'link',this.value)" /></div>`
+            : `<div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
+               <div style="opacity:.55;font-size:12px;margin-bottom:8px">${(p.kind === 'subscription') ? `→ /subscriptions${p.affiliateUrl || p.website ? ' · resmi site' : ''}` : `→ /product/${esc(p.slug)}-${esc(p.id)}`} · <b>${esc(langName)}</b></div>`}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
             <select class="ba-input" style="flex:1;min-width:170px;font-size:12px" onchange="blogProdField(${i},'layout',this.value)" title="Şablon">
               ${LAYOUTS.map(([v, n]) => `<option value="${v}"${(p.layout || 'split') === v ? ' selected' : ''}>📐 ${n}</option>`).join('')}
@@ -460,6 +493,7 @@
   }
   function blogProdAdd(p) {
     if (!p || !p.id) return;
+    p.kind = 'product';
     if (!_products.some((x) => x.id === p.id)) { p.slug = p.slug || slugify(p.name); _products.push(p); renderProducts(); }
     const res = document.getElementById('b_prodresults'); if (res) res.style.display = 'none';
     const inp = document.getElementById('b_prodsearch'); if (inp) inp.value = '';
@@ -467,6 +501,53 @@
   function blogProdRemove(i) { _products.splice(i, 1); renderProducts(); }
   function blogProdMove(i, d) { const j = i + d; if (j < 0 || j >= _products.length) return; const t = _products[i]; _products[i] = _products[j]; _products[j] = t; renderProducts(); }
   function blogProdField(i, key, v) { if (_products[i]) _products[i][key] = v; }
+
+  // Switch the active item-picker pane (product / subscription / custom).
+  function blogPickKind(k) {
+    _pickKind = k;
+    document.querySelectorAll('.bk-tab').forEach((t) => t.classList.toggle('on', t.getAttribute('data-k') === k));
+    ['product', 'subscription', 'custom'].forEach((kk) => { const el = document.getElementById('b_pick_' + kk); if (el) el.style.display = kk === k ? 'block' : 'none'; });
+    const focusId = k === 'product' ? 'b_prodsearch' : k === 'subscription' ? 'b_subsearch' : 'b_cust_name';
+    setTimeout(() => document.getElementById(focusId)?.focus(), 30);
+  }
+
+  // Search the PocketBase `subscriptions` collection by name (Netflix, Spotify…).
+  function blogSubSearch(q) {
+    clearTimeout(_subSearchTimer);
+    const res = document.getElementById('b_subresults');
+    if (!q || q.trim().length < 2) { if (res) res.style.display = 'none'; return; }
+    _subSearchTimer = setTimeout(async () => {
+      try {
+        const r = await getPb().collection('subscriptions').getList(1, 8, {
+          filter: `name ~ "${q.replace(/"/g, '\\"')}"`, sort: 'name', $autoCancel: false,
+        });
+        const hits = r.items || [];
+        res.innerHTML = hits.map((d) => `<div class="hit" onclick='blogSubAdd(${JSON.stringify({ id: d.id, slug: d.slug || '', name: d.name, logo: d.logo || '', website: d.website || '', affiliateUrl: d.affiliateUrl || '', category: d.category || '' }).replace(/'/g, '&#39;')})'>
+            <img src="${esc(d.logo || '')}" style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:6px"/>
+            <span>${esc(d.name)} <span style="opacity:.5">${esc(d.category || '')}</span></span></div>`).join('') || '<div style="padding:10px;opacity:.6">Eşleşme yok</div>';
+        res.style.display = 'block';
+      } catch (e) { if (res) { res.innerHTML = `<div style="padding:10px;color:#ef4444">${esc(e.message)}</div>`; res.style.display = 'block'; } }
+    }, 250);
+  }
+  function blogSubAdd(s) {
+    if (!s || !s.id) return;
+    if (!_products.some((x) => x.kind === 'subscription' && x.id === s.id)) {
+      _products.push({ kind: 'subscription', id: s.id, slug: s.slug || slugify(s.name), name: s.name, image: '', imageUrl: s.logo || '', logo: s.logo || '', website: s.website || '', affiliateUrl: s.affiliateUrl || '', category: s.category || '' });
+      renderProducts();
+    }
+    const res = document.getElementById('b_subresults'); if (res) res.style.display = 'none';
+    const inp = document.getElementById('b_subsearch'); if (inp) inp.value = '';
+  }
+  // Add a manual item that isn't in PocketBase (custom product/subscription).
+  function blogCustomAdd() {
+    const name = (document.getElementById('b_cust_name') || {}).value || '';
+    if (!name.trim()) { toast('İsim gerekli', 'w'); return; }
+    const link = (document.getElementById('b_cust_link') || {}).value || '';
+    const img = (document.getElementById('b_cust_img') || {}).value || '';
+    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: slugify(name), name: name.trim(), link: link.trim(), image: img.trim(), imageUrl: img.trim() });
+    ['b_cust_name', 'b_cust_link', 'b_cust_img'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+    renderProducts();
+  }
 
   async function blogSave(forceStatus, silent) {
     syncPane();
@@ -505,6 +586,7 @@
   window.blogSave = blogSave; window.blogTab = blogTab;
   window.blogProdSearch = blogProdSearch; window.blogProdAdd = blogProdAdd;
   window.blogProdRemove = blogProdRemove; window.blogProdMove = blogProdMove; window.blogProdField = blogProdField;
+  window.blogPickKind = blogPickKind; window.blogSubSearch = blogSubSearch; window.blogSubAdd = blogSubAdd; window.blogCustomAdd = blogCustomAdd;
   window.blogUploadCover = uploadCover;
   window.blogUploadProdImage = uploadProdImage;
   window.blogSetCover = blogSetCover;
