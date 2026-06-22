@@ -521,12 +521,18 @@
                        ${[['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']].map(([v, n]) => `<option value="${v}"${(b.size || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
                      </select>
                    </div>
-                   ${b.url ? `<img src="${esc(b.url)}" style="max-height:78px;margin-top:8px;border-radius:8px;background:#fff" onerror="this.style.display='none'"/>` : ''}
+                   ${b.url ? `<div style="margin-top:8px"><img src="${esc(b.url)}" style="max-height:78px;border-radius:8px;background:#fff" onload="var w=this.nextElementSibling;if(w)w.style.display='none'" onerror="this.style.display='none';var w=this.nextElementSibling;if(w)w.style.display='inline-block'"/><span style="display:none;font-size:11px;color:#f59e0b">⚠ Görsel yüklenemedi — doğrudan görsel linki gerekli (.png/.jpg/.svg). Wiki “Dosya:” sayfası ÇALIŞMAZ; “Yükle” ile cihazdan ekleyebilirsin.</span></div>` : ''}
+                   <div style="font-size:11px;opacity:.5;margin-top:4px">Üst/alt için bloğu ↑↓ taşı (görsel metinden önce=üstte, sonra=altta) · yazı görselin yanından aşağı akar</div>
                  </div>`
               : `<div class="bk-block">
                    <div class="bk-block-bar"><span>✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
-                   <textarea class="ba-input" style="font-size:13px;margin-top:6px" rows="4" placeholder="Metin (${esc(langName)}) — her satır ayrı görünür · madde: satır başına “- ” · kalın: **metin** · başlık: ## Başlık · etiket: “Artıları:” (otomatik kalın)" oninput="blogBlockField(${i},${j},'${_lang}',this.value)">${esc(b[_lang] || '')}</textarea>
-                   <div style="font-size:11px;opacity:.5;margin-top:4px">Biçim: <b>**kalın**</b> · <b>## büyük başlık</b> · <b>### küçük başlık</b> · <b>- madde</b> · satır başı “Artıları:” otomatik başlık olur</div>
+                   <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                     <select class="ba-input" style="width:170px;font-size:12px" onchange="blogBlockField(${i},${j},'style',this.value)" title="Metin tipi">
+                       ${[['paragraph', '¶ Paragraf'], ['heading', '◆ Büyük başlık'], ['subheading', '— Alt başlık'], ['bullets', '• Madde listesi']].map(([v, n]) => `<option value="${v}"${(b.style || 'paragraph') === v ? ' selected' : ''}>${n}</option>`).join('')}
+                     </select>
+                     <span style="font-size:11px;opacity:.55">Madde listesi: her satır = bir madde · vurgu için <b>**kalın**</b></span>
+                   </div>
+                   <textarea class="ba-input" style="font-size:13px;margin-top:6px" rows="4" placeholder="${(b.style || 'paragraph') === 'bullets' ? 'Her satır bir madde olur' : (b.style === 'heading' || b.style === 'subheading') ? 'Başlık metni' : 'Paragraf metni — her satır ayrı görünür'} (${esc(langName)})" oninput="blogBlockField(${i},${j},'${_lang}',this.value)">${esc(b[_lang] || '')}</textarea>
                  </div>`).join('')}
             <div style="display:flex;gap:8px;margin-top:8px">
               <button class="ba-mini" onclick="blogBlockAdd(${i},'text')">＋ Metin</button>

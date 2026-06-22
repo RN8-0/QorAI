@@ -111,6 +111,24 @@ function renderRichText(text, kp) {
   return out;
 }
 
+// A text block with an explicit style chosen in the admin editor (no markdown
+// memorising needed). 'paragraph' keeps the smart auto-formatting; the others
+// force a heading / sub-heading / bullet list for a consistent article standard.
+function renderBlockText(text, style, kp) {
+  const s = style || 'paragraph';
+  if (s === 'heading' || s === 'subheading') {
+    const cls = s === 'heading' ? 'post-prod-sub post-prod-sub-1' : 'post-prod-sub post-prod-sub-2';
+    return String(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+      .map((l, i) => <p key={`${kp}-h${i}`} className={cls}>{parseInline(l, `${kp}-h${i}`)}</p>);
+  }
+  if (s === 'bullets') {
+    const items = String(text).split(/\r?\n/).map((l) => l.trim().replace(/^[-–—•*]\s*/, '')).filter(Boolean);
+    if (!items.length) return null;
+    return <ul className="post-prod-ul">{items.map((b, i) => <li key={i}>{parseInline(b, `${kp}-b${i}`)}</li>)}</ul>;
+  }
+  return renderRichText(text, kp); // paragraph: smart auto-format (bullets/labels/**bold**)
+}
+
 export default function BlogPost() {
   const { slug } = useParams();
   const [sp] = useSearchParams();
@@ -382,13 +400,14 @@ export default function BlogPost() {
               const bsize = b.size || 'm';
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
-                  {linkFig(<img src={u} alt={p.name} loading="lazy" />)}
+                  {linkFig(<img src={u} alt={p.name} loading="lazy"
+                    onError={(e) => { const f = e.currentTarget.closest('figure'); if (f) f.style.display = 'none'; }} />)}
                 </figure>
               );
             }
             const txt = b[lang] || b.tr || b.en || b.de || '';
             if (!String(txt).trim()) return null;
-            return <div key={bi} className="post-prod-rich">{renderRichText(txt, `${p.id || i}-${bi}`)}</div>;
+            return <div key={bi} className="post-prod-rich">{renderBlockText(txt, b.style, `${p.id || i}-${bi}`)}</div>;
           })}
           <div className="post-prod-clear" />
         </div>
