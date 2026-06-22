@@ -25,8 +25,8 @@ export default function Blog() {
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const firstProdImg = (a) => { const p = (Array.isArray(a.products) ? a.products : [])[0] || {}; return p.image || p.imageUrl || ''; };
-  // Cover = explicit upload/URL, else default to the first product's image.
-  const coverOf = (a) => (a.coverFile ? fileUrl(a, a.coverFile) : (a.cover || firstProdImg(a)));
+  // Cover priority: explicit URL/picked image > uploaded file > first product image.
+  const coverOf = (a) => (a.cover || (a.coverFile ? fileUrl(a, a.coverFile) : firstProdImg(a)));
   const viewsOf = (a) => seedCount(a.slug, 180, 520) + (stats[a.slug]?.view || 0);
   const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 

@@ -53,8 +53,8 @@ function safeBodyHtml(html) {
 }
 
 function articleCoverUrl(a) {
-  if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
   if (/^https?:\/\//i.test(a.cover || '')) return a.cover;
+  if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
   const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {};
   const pi = p0.image || p0.imageUrl || '';
   return /^https?:\/\//i.test(pi) ? pi : '';
@@ -107,14 +107,14 @@ function blogArticleBody(a, lang = 'tr') {
   const dRaw = a.publishedAt || a.created;
   let dateStr = '';
   if (dRaw) { try { dateStr = new Date(String(dRaw).replace(' ', 'T')).toLocaleDateString(DLOC[lang] || 'tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (_) { dateStr = String(dRaw).slice(0, 10); } }
-  const author = esc((a.author || '').trim() || 'Qor AI');
+  const author = esc((a.author || '').trim());
   const tags = String(a[`tags_${lang}`] || a.tags_tr || a.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
   const tagsHtml = tags.length
     ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:24px 0">${tags.map((tg) => `<a href="/blog?tag=${encodeURIComponent(tg)}" style="font-size:13px;font-weight:600;color:#2563eb;background:#2563eb14;padding:5px 12px;border-radius:999px;text-decoration:none">#${esc(tg)}</a>`).join('')}</div>`
     : '';
   return `<article class="seo-prerender" style="max-width:920px;margin:0 auto;padding:24px 24px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav>`
-    + `<p style="font-size:14px;color:#64748b;margin:10px 0 0">${dateStr ? `📅 ${esc(dateStr)} · ` : ''}✍ ${author}</p>`
+    + (() => { const ml = [dateStr ? `📅 ${esc(dateStr)}` : '', author ? `✍ ${author}` : ''].filter(Boolean).join(' · '); return ml ? `<p style="font-size:14px;color:#64748b;margin:10px 0 0">${ml}</p>` : ''; })()
     + `<h1 style="font-size:40px;font-weight:800;line-height:1.12;margin:6px 0 14px">${title}</h1>`
     + (lead ? `<p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">${lead}</p>` : '')
     + `<div style="font-size:17.5px;line-height:1.85">${body}</div>`

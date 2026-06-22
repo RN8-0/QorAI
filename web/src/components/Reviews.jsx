@@ -275,19 +275,13 @@ export default function Reviews({ productId, productName, lang, headerSlot = nul
               placeholder={t('pd.revPlaceholder')} rows={3} maxLength={1000} />
             {msg === 'ok' && <div className="pd-rev-ok">{t('pd.revThanks')}</div>}
             {msg === 'err' && <div className="pd-rev-er">{t('pd.revErr')}</div>}
+            <button type="submit" className="btn btn-primary"
+              disabled={busy || !rating || !text.trim()}>
+              {t('pd.revSubmit')}
+            </button>
           </>
         ) : (
-          <div className="pd-rev-login">
-            <span>{t('pd.revSignIn')}</span>
-          </div>
-        )}
-        {user ? (
-          <button type="submit" className="btn btn-primary"
-            disabled={busy || !rating || !text.trim()}>
-            {t('pd.revSubmit')}
-          </button>
-        ) : (
-          <button type="button" className="btn btn-ghost" onClick={openAuth}>
+          <button type="button" className="btn btn-ghost pd-rev-signin" onClick={openAuth}>
             {t('pd.revSignIn')}
           </button>
         )}

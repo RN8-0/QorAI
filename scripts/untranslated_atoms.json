@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "totalProducts": 275,
+    "totalAtoms": 3298,
+    "missing": 0,
+    "badEnglish": 7
+  },
+  "untranslated": [],
+  "badTranslation": [
+    [
+      "Dual Fan",
+      "Dual Fan"
+    ],
+    [
+      "Fan Count",
+      "Fan Count"
+    ],
+    [
+      "Fan Cooled",
+      "Fan Cooled"
+    ],
+    [
+      "Fan Cooling",
+      "Fan Cooling"
+    ],
+    [
+      "Dual Way Fan",
+      "Bi-directional Fan"
+    ],
+    [
+      "Asus Fan Xpert 4",
+      "Asus Fan Xpert 4"
+    ],
+    [
+      "Asus Axial Fan (Eksen)",
+      "Asus Axial Fan"
+    ]
+  ]
+}

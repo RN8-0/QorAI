@@ -98,6 +98,12 @@
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   }
   const root = () => document.getElementById('blogAdminRoot');
+  // pb.files.getUrl() returns '' on this SDK build → build the file URL manually.
+  function pbFileUrl(rec, fname) {
+    if (!rec || !fname) return '';
+    const coll = rec.collectionId || rec.collectionName || 'articles';
+    return getPb().baseUrl.replace(/\/$/, '') + '/api/files/' + coll + '/' + rec.id + '/' + fname;
+  }
 
   function injectStyles() {
     if (document.getElementById('blogAdminStyles')) return;
@@ -163,7 +169,7 @@
       const fd = new FormData(); fd.append('coverFile', file);
       const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
       _editing.coverFile = rec.coverFile; _editing.cover = '';
-      const u = getPb().files.getUrl(rec, rec.coverFile);
+      const u = pbFileUrl(rec, rec.coverFile);
       const prev = document.getElementById('b_cover_prev'); if (prev) { prev.src = u; prev.style.display = 'block'; }
       const ci = document.getElementById('b_cover'); if (ci) ci.value = '';
       toast('Cover uploaded', 's');
@@ -177,7 +183,7 @@
       const fd = new FormData(); fd.append('media+', file); // append to multi-file field
       const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
       const fname = Array.isArray(rec.media) ? rec.media[rec.media.length - 1] : rec.media;
-      const url = getPb().files.getUrl(rec, fname);
+      const url = pbFileUrl(rec, fname);
       if (_products[i]) { _products[i].image = url; renderProducts(); }
       toast('Görsel yüklendi', 's');
     } catch (e) { toast('Yükleme başarısız: ' + e.message, 'e'); }
@@ -215,7 +221,7 @@
       el.innerHTML = summary + `<div class="ba-grid">${items.map((a) => {
         const st = _stats[a.slug] || {};
         const lp0 = (a.products || [])[0] || {};
-        const lcov = a.cover || (a.coverFile ? getPb().files.getUrl(a, a.coverFile) : '') || lp0.image || lp0.imageUrl || '';
+        const lcov = a.cover || (a.coverFile ? pbFileUrl(a, a.coverFile) : '') || lp0.image || lp0.imageUrl || '';
         return `<div class="ba-card">
           <div class="ba-card-cover"><img src="${esc(lcov)}" onerror="this.style.visibility='hidden'"/></div>
           <div class="ba-card-b">
@@ -266,7 +272,7 @@
   function renderEditor() {
     const a = _editing; const el = root(); if (!el) return;
     const fp0 = _products[0] || {};
-    const coverPrev = a.coverFile && a.id ? getPb().files.getUrl(a, a.coverFile) : (a.cover || fp0.image || fp0.imageUrl || '');
+    const coverPrev = a.coverFile && a.id ? pbFileUrl(a, a.coverFile) : (a.cover || fp0.image || fp0.imageUrl || '');
     el.innerHTML = `
       <div class="card" style="padding:18px;max-width:920px;margin:0 auto">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
@@ -287,7 +293,7 @@
             <input class="ba-input" id="b_category" list="b_catlist" value="${esc(a.category || '')}" placeholder="kategori seç ya da yaz…" />
             <datalist id="b_catlist">${_cats.map((c) => `<option value="${esc(c)}"></option>`).join('')}</datalist>
           </div>
-          <div class="ba-field"><label>Author</label><input class="ba-input" id="b_author" value="${esc(a.author || 'Qor AI')}" /></div>
+          <div class="ba-field"><label>Author <span style="opacity:.5">(opsiyonel)</span></label><input class="ba-input" id="b_author" value="${esc(a.author || '')}" placeholder="boş bırakılabilir" /></div>
         </div>
         <div style="font-size:12px;opacity:.6;margin:-4px 0 10px">Slug (URL), etiketler ve SEO meta <b>her dil sekmesinde ayrı</b> ↓</div>
         <div class="ba-field"><label>Kapak görseli <span style="opacity:.5">— varsayılan: ilk ürün görseli · değiştirmek için ürün seç / yükle / URL</span></label>
@@ -323,7 +329,7 @@
   function effectiveCover() {
     const a = _editing; const fp = _products[0] || {};
     if (a.cover) return a.cover;
-    if (a.coverFile && a.id) { try { return getPb().files.getUrl(a, a.coverFile); } catch (_) { /* */ } }
+    if (a.coverFile && a.id) { try { return pbFileUrl(a, a.coverFile); } catch (_) { /* */ } }
     return fp.image || fp.imageUrl || '';
   }
   function renderCoverThumbs() {
@@ -472,7 +478,7 @@
     const data = {
       slug, status: forceStatus || val('b_status') || 'draft',
       category: val('b_category'), cover: val('b_cover'),
-      author: val('b_author').trim() || 'Qor AI',
+      author: val('b_author').trim(),
       publishedAt: val('b_pub') ? new Date(val('b_pub')).toISOString() : (a.publishedAt || new Date().toISOString()),
       products: _products,
     };

@@ -405,7 +405,7 @@ function LikedTab({ t }) {
   const { lang } = useI18n();
   const [items, setItems] = useState(null);
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const coverOf = (a) => { const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {}; return a.coverFile ? fileUrl(a, a.coverFile) : (a.cover || p0.image || p0.imageUrl || ''); };
+  const coverOf = (a) => { const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {}; return a.cover || (a.coverFile ? fileUrl(a, a.coverFile) : (p0.image || p0.imageUrl || '')); };
 
   useEffect(() => { getMyLikedArticles().then(setItems); }, []);
 

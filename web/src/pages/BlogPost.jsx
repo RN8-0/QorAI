@@ -140,13 +140,13 @@ export default function BlogPost() {
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && p.name) : [];
-  const cover = post?.coverFile ? fileUrl(post, post.coverFile) : (post?.cover || products[0]?.image || products[0]?.imageUrl || '');
+  const cover = post?.cover || (post?.coverFile ? fileUrl(post, post.coverFile) : (products[0]?.image || products[0]?.imageUrl || ''));
   const url = `${SITE_URL}/blog/${slug}`;
   const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
   const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
   const pimg = (p) => p.image || p.imageUrl || '';
   const publishedAt = post?.publishedAt || post?.created || '';
-  const author = (post?.author || '').trim() || 'Qor AI';
+  const author = (post?.author || '').trim();
   const tags = String(pick(post, 'tags') || post?.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
   const metaTitle = (pick(post, 'metaTitle') || post?.metaTitle || '').trim();
   const metaDescription = (pick(post, 'metaDescription') || post?.metaDescription || '').trim();
@@ -180,7 +180,7 @@ export default function BlogPost() {
       '@context': 'https://schema.org', '@type': 'Article', '@id': `${url}#article`,
       headline: title, description: metaDescription || lead, ...(cover ? { image: [cover] } : {}),
       datePublished: publishedAt, dateModified: post.updated,
-      author: { '@type': 'Organization', name: author },
+      author: { '@type': 'Organization', name: author || 'Qor AI' },
       publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: `${SITE_URL}/assets/qor_logo_512.png?v=20260605a` } },
       mainEntityOfPage: url,
     } : null,
@@ -282,7 +282,7 @@ export default function BlogPost() {
         {/* stats — date + author + views left, like + share right */}
         <div className="blog-stats">
           {dateStr ? <span className="blog-stat">📅 {dateStr}</span> : null}
-          <span className="blog-stat">✍ {author}</span>
+          {author ? <span className="blog-stat">✍ {author}</span> : null}
           <span className="blog-stat">👁 {nf(viewCount)}</span>
           <div className="blog-stats-actions">
             <button className={`blog-act blog-like ${liked ? 'on' : ''}`} onClick={onLike} aria-label="like">❤ {nf(likeCount)}</button>
@@ -338,7 +338,7 @@ export default function BlogPost() {
             <div className="blog-simrows">
               {more.map((m) => {
                 const mp = Array.isArray(m.products) ? m.products : [];
-                const mcover = m.coverFile ? fileUrl(m, m.coverFile) : (m.cover || mp[0]?.image || mp[0]?.imageUrl || '');
+                const mcover = m.cover || (m.coverFile ? fileUrl(m, m.coverFile) : (mp[0]?.image || mp[0]?.imageUrl || ''));
                 return (
                   <Link key={m.slug} to={articlePath(m, lang)} className="blog-simrow">
                     {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
