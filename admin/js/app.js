@@ -176,7 +176,6 @@ function showView(name){
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
   if(name==='support')initSupportInbox({ forceReload: true });
-  if(name==='settings')loadRemoteConfig();
 }
 
 // ── TOAST ──

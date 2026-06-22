@@ -410,7 +410,27 @@ body{background:#07080a;color:var(--text);letter-spacing:.01em}
 .next-action{width:100%;border:1px solid var(--border);background:var(--bg3);border-radius:10px;padding:11px 12px;text-align:left;color:var(--text);cursor:pointer;transition:all .15s ease;font-family:var(--font)}
 .next-action:hover{border-color:#38bdf8;background:rgba(56,189,248,.10)}.next-action span{display:block;font-weight:800;font-size:12px}.next-action b{display:block;color:var(--text2);font-size:11px;margin-top:3px;font-weight:600}
 .view{animation:fadeIn .28s ease}.product-card,.user-row,.recent-row,.brand-row,.log-row{animation:fadeIn .18s ease both}
-[data-theme="light"] body{background:#f8fafc}.modal-box{box-shadow:0 30px 80px rgba(0,0,0,.36)}
+.modal-box{box-shadow:0 30px 80px rgba(0,0,0,.36)}
+/* ── LIGHT THEME FIXES ──
+   The "command center refresh" block above hard-codes near-black surfaces
+   (cards, sidebar, hero, quick actions) for BOTH themes, so in light mode they
+   stayed dark while text flipped to dark var(--text) → unreadable. Re-skin every
+   hard-coded dark surface for light mode. Dark theme is untouched. */
+[data-theme="light"] body{background:#f8fafc}
+[data-theme="light"] .main-content{background:linear-gradient(180deg,rgba(124,58,237,.05),rgba(248,250,252,0) 260px)}
+[data-theme="light"] .sidebar{background:var(--bg2);border-right-color:var(--border);backdrop-filter:none}
+[data-theme="light"] .brand-text small{color:var(--accent)}
+[data-theme="light"] .nav-link{color:var(--text2)}
+[data-theme="light"] .nav-link:hover{background:var(--bg3);color:var(--text)}
+[data-theme="light"] .nav-link.active{background:rgba(124,58,237,.10);color:var(--accent);border-color:rgba(124,58,237,.24)}
+[data-theme="light"] .card,[data-theme="light"] .quick-action,[data-theme="light"] .next-action{background:var(--bg2);backdrop-filter:none}
+[data-theme="light"] .card,[data-theme="light"] .stat-card,[data-theme="light"] .stat-card-sm,[data-theme="light"] .product-card,[data-theme="light"] .user-row{box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(15,23,42,.06)}
+[data-theme="light"] .stat-card,[data-theme="light"] .ops-health-row,[data-theme="light"] .next-action{background:var(--bg2)}
+[data-theme="light"] .quick-action:hover{background:rgba(124,58,237,.06)}
+[data-theme="light"] .ops-hero{background:linear-gradient(135deg,rgba(56,189,248,.12),rgba(124,58,237,.08));border-color:rgba(124,58,237,.18);box-shadow:0 12px 32px rgba(15,23,42,.08)}
+[data-theme="light"] .eyebrow,[data-theme="light"] .quick-action span,[data-theme="light"] .next-action span,[data-theme="light"] .ops-health-row.info b{color:var(--accent)}
+[data-theme="light"] .pm-spec-row:nth-child(odd),[data-theme="light"] .pm-spec-tbl tr:nth-child(odd){background:rgba(15,23,42,.04)}
+[data-theme="light"] .pm-spec-row,[data-theme="light"] .pm-spec-tbl tr:nth-child(even){background:transparent}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-3,.user-overview-grid,.ops-layout{grid-template-columns:1fr}.quick-actions-bar{grid-template-columns:repeat(3,minmax(0,1fr))}.pm-masonry{column-count:1}.pm-hero{flex-direction:column;align-items:center}.scraper-tabs{flex-wrap:wrap}.metric-grid-compact{grid-template-columns:repeat(2,minmax(0,1fr))}}

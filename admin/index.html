@@ -96,10 +96,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           <span>Contact Us <span class="count-badge" id="supportBadge" style="display:none"></span></span>
         </a>
-        <a class="nav-link" data-view="settings" onclick="showView('settings')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>Settings</span>
-        </a>
       </div>
       <div class="sidebar-footer">
         <div class="sidebar-user" id="sidebarUser"></div>
@@ -133,7 +129,7 @@
           <button class="quick-action" onclick="showView('support')"><span>Inbox</span><b>Contact Us</b></button>
           <button class="quick-action" onclick="showView('notifications')"><span>Messaging</span><b>Notifications</b></button>
           <button class="quick-action" onclick="showView('scraper')"><span>Data</span><b>Scraper</b></button>
-          <button class="quick-action" onclick="showView('settings')"><span>Control</span><b>Settings</b></button>
+          <button class="quick-action" onclick="showView('userinsights')"><span>Analytics</span><b>Insights</b></button>
         </div>
         <div class="ops-layout">
           <div class="ops-main">
@@ -1277,81 +1273,6 @@
         </div>
       </div>
 
-      <!-- ===== SETTINGS ===== -->
-      <section id="settingsView" class="view">
-        <div class="view-header">
-          <h1>Settings</h1>
-          <div class="view-actions">
-            <button class="btn btn-primary" onclick="saveRemoteConfig()">💾 Save</button>
-            <button class="btn btn-ghost" onclick="loadRemoteConfig()">Refresh</button>
-          </div>
-        </div>
-
-        <!-- Feature Flags -->
-        <div class="card">
-          <div class="card-title">🚩 Feature Flags</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>Show Paywall on Start</label>
-              <select class="input" id="rc_show_paywall_on_start">
-                <option value="false">Disabled</option>
-                <option value="true">Enabled</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Link Paste Feature</label>
-              <select class="input" id="rc_feature_link_paste_enabled">
-                <option value="true">Enabled</option>
-                <option value="false">Disabled</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Free Tier Limits -->
-        <div class="card">
-          <div class="card-title">📊 Free Plan Limits</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>Daily AI Comparisons</label>
-              <input class="input" type="number" id="rc_ai_comparison_limit_free" min="0" value="3">
-            </div>
-            <div class="form-field">
-              <label>Signup Bonus Q Coins</label>
-              <input class="input" type="number" id="rc_signup_bonus_q_coins" min="0" value="20">
-            </div>
-            <div class="form-field">
-              <label>Daily AI Questions</label>
-              <input class="input" type="number" id="rc_free_ai_question_limit" min="0" value="15">
-            </div>
-            <div class="form-field">
-              <label>Weekly Link Paste</label>
-              <input class="input" type="number" id="rc_free_link_paste_limit" min="0" value="3">
-            </div>
-            <div class="form-field">
-              <label>Monthly Subscription Analysis</label>
-              <input class="input" type="number" id="rc_free_subscription_analysis_limit" min="0" value="2">
-            </div>
-          </div>
-        </div>
-
-        <!-- Display Text -->
-        <div class="card">
-          <div class="card-title">💬 Display Text</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>Premium Price Display Text</label>
-              <input class="input" type="text" id="rc_premium_price_display" placeholder="₺199.99 / year">
-            </div>
-          </div>
-        </div>
-
-        <!-- About -->
-        <div class="card">
-          <div class="card-title">About</div>
-          <p class="text-muted">Qor AI Admin v3.0 Web<br>Hetzner &middot; PocketBase &middot; Typesense<br>&copy; 2025 Qor AI</p>
-        </div>
-      </section>
 
     </main>
 
