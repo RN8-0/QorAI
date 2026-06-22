@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import PocketBase from 'pocketbase';
+import { detectCountry } from './geo';
 
 export const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 
@@ -27,28 +28,31 @@ export async function signIn(email, password) {
 // Mirrors the mobile app's signUpWithEmail body exactly (auth_repo.dart):
 // email, password, passwordConfirm, name + optional birthDate / gender.
 export async function register({ email, password, name, birthDate, gender }) {
+  // Detect the signup country up-front (Cloudflare /cdn-cgi/trace, then ipwho.is)
+  // so the admin panel shows where the account was created — and tag the source
+  // as the website. The signup bonus is intentionally NOT set here: the
+  // server-side hook grants the admin-configured amount on create (single source
+  // of truth) so it always matches the value set in the admin panel.
+  let country = '';
+  try { country = await detectCountry(); } catch { /* geo is best-effort */ }
   const body = {
     email,
     password,
     passwordConfirm: password,
     name: name || email.split('@')[0],
-    bonusQCoins: 20,
     dailyAiCreditsUsed: 0,
+    platform: 'web',
   };
+  if (country) body.country = country;
   if (birthDate) body.birthDate = birthDate;
   if (gender) body.gender = gender;
   await pb.collection('users').create(body);
   const auth = await pb.collection('users').authWithPassword(email, password);
-  // The 20-coin signup bonus must land on EVERY account. Some records came back
-  // with 0 (the create-time value didn't stick), so once we're authenticated as
-  // the owner, top the balance up to 20 if it isn't already positive. This makes
-  // the welcome bonus reliable regardless of the create path.
-  if (!(Number(auth?.record?.bonusQCoins) > 0)) {
-    try {
-      const topped = await pb.collection('users').update(auth.record.id, { bonusQCoins: 20 });
-      pb.authStore.save(pb.authStore.token, topped);
-    } catch { /* don't block sign-in on a bonus top-up */ }
-  }
+  // Pull the canonical record so the server-granted welcome bonus is reflected.
+  try {
+    const fresh = await pb.collection('users').authRefresh();
+    if (fresh?.record) pb.authStore.save(pb.authStore.token, fresh.record);
+  } catch { /* keep the create-time record if refresh fails */ }
   // Fire off the verification email — never block sign-in if it fails.
   try { await pb.collection('users').requestVerification(email); } catch { /* noop */ }
   return auth;
@@ -58,24 +62,33 @@ export async function register({ email, password, name, birthDate, gender }) {
 // PocketBase admin → users collection → OAuth2 settings).
 export async function signInWithGoogle() {
   const auth = await pb.collection('users').authWithOAuth2({ provider: 'google' });
-  // OAuth signups never go through register(), and the server-side welcome_bonus
-  // hook isn't live, so the 20-coin bonus has to be granted here too — otherwise
-  // every Google signup lands on 0 coins. Gate it on a genuinely fresh account
-  // (meta.isNew, or a record created seconds ago) so a user who has spent their
-  // balance down to 0 doesn't get re-granted every time they sign back in.
+  // OAuth signups don't go through register(). The server-side hook grants the
+  // admin-configured welcome bonus on create, so we don't touch the balance here.
+  // We DO tag the source as the website and backfill the signup country (the
+  // OAuth2 create can't carry these), so the admin panel knows where/how the
+  // account was created.
   try {
     const rec = auth?.record;
     const createdMs = rec?.created ? Date.parse(rec.created) : NaN;
     const isFresh = auth?.meta?.isNew === true
       || (Number.isFinite(createdMs) && Date.now() - createdMs < 120000);
-    if (rec && isFresh && !(Number(rec.bonusQCoins) > 0)) {
-      const topped = await pb.collection('users').update(rec.id, {
-        bonusQCoins: 20,
-        dailyAiCreditsUsed: 0,
-      });
-      pb.authStore.save(pb.authStore.token, topped);
+    if (rec) {
+      const patch = {};
+      if (!rec.platform) patch.platform = 'web';
+      if (!rec.country) {
+        try { const cc = await detectCountry(); if (cc) patch.country = cc; } catch { /* best-effort */ }
+      }
+      if (Object.keys(patch).length) {
+        const updated = await pb.collection('users').update(rec.id, patch);
+        pb.authStore.save(pb.authStore.token, updated);
+      } else if (isFresh) {
+        // Fresh account with everything already set — refresh to reflect the
+        // server-granted bonus in the auth store.
+        const fresh = await pb.collection('users').authRefresh();
+        if (fresh?.record) pb.authStore.save(pb.authStore.token, fresh.record);
+      }
     }
-  } catch { /* never block sign-in on a bonus top-up */ }
+  } catch { /* never block sign-in on profile enrichment */ }
   return auth;
 }
 

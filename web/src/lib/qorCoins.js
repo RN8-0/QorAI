@@ -176,5 +176,24 @@ export async function spendQorCoins(feature) {
   const nextBalance = Math.max(0, Math.round((balance - cost) * 10) / 10);
   const updated = await pb.collection('users').update(authUser.id, { bonusQCoins: nextBalance });
   pb.authStore.save(pb.authStore.token, updated);
+  // Append a ledger row so the admin panel can show exactly where Q Coins were
+  // spent. Best-effort: a failed ledger write must never block the AI feature.
+  logQCoinSpend(authUser.id, feature, cost, nextBalance);
   return { user: updated, cost, balance: nextBalance, premium: false };
+}
+
+// Records a spend in the qcoin_transactions ledger (fire-and-forget). The
+// collection's createRule only lets a user append rows for their own id; reads
+// are superuser-only (admin panel), so this is purely an audit trail.
+export function logQCoinSpend(userId, feature, cost, balanceAfter) {
+  try {
+    pb.collection('qcoin_transactions').create({
+      userId,
+      type: 'spend',
+      feature: String(feature || 'ai_usage'),
+      amount: -Math.abs(Number(cost) || 0),
+      balanceAfter: Number(balanceAfter) || 0,
+      source: 'web',
+    }).catch(() => { /* ignore — audit only */ });
+  } catch { /* ignore */ }
 }

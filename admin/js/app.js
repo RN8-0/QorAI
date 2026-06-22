@@ -4369,11 +4369,60 @@ function filterUsers(){
 }
 function uDate(u){return u.createdAt?new Date(u.createdAt).getTime():0}
 
+// Signup source from the `platform` field: android/ios → mobile app, web → website.
+// Older accounts created before source tracking show as Unknown.
+function userSourceInfo(u){
+  const p=String(u&&u.platform||'').toLowerCase();
+  if(p==='android'||p==='ios'||p==='app')return{label:'App',icon:'📱',color:'#22c55e',full:p==='ios'?'iOS App':p==='android'?'Android App':'Mobile App'};
+  if(p==='web'||p==='website')return{label:'Web',icon:'🌐',color:'#3b82f6',full:'Website'};
+  return{label:'—',icon:'',color:'var(--text3)',full:'Unknown'};
+}
+function userSourceBadgeHtml(u){
+  const s=userSourceInfo(u);
+  if(s.label==='—')return `<span style="font-size:11px;color:var(--text3)">—</span>`;
+  return `<span style="display:inline-flex;align-items:center;gap:3px;background:${s.color}1a;color:${s.color};padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700">${s.icon} ${s.label}</span>`;
+}
+const QCOIN_FEATURE_LABELS={signup_bonus:'Signup bonus',ai_question:'AI question',ai_chat:'AI chat',compare_ai:'AI compare',detail_ai:'Product AI',detail_ai_full:'Product AI',detail_match_ai:'Match AI',detail_match:'Match AI',link_paste:'Link analysis',link_analysis:'Link analysis',link_compare:'Link compare',subscription_analysis:'Subscription analysis',product_scan:'Product scan',admin_add:'Admin top-up',admin_reset:'Admin reset',ai_usage:'AI usage'};
+function qcoinFeatureLabel(f){return QCOIN_FEATURE_LABELS[String(f||'')]||(String(f||'').replace(/[_-]+/g,' ')||'—')}
+function renderQCoinHistory(rows){
+  if(!rows||!rows.length)return `<div style="color:var(--text3);font-size:12px;padding:10px 0">No Q Coin activity recorded yet. Grants, spends and admin adjustments will appear here.</div>`;
+  let h=`<div style="max-height:260px;overflow-y:auto">`;
+  for(const r of rows){
+    const amt=safeNumber(r.amount);
+    const isPos=amt>=0;
+    const color=r.type==='spend'?'#ef4444':(r.type==='grant'?'#22c55e':'#f59e0b');
+    const sign=isPos?'+':'';
+    const when=r.created?new Date(r.created).toLocaleString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    const srcChip=r.source?`<span style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-left:6px">${escHtml(r.source)}</span>`:'';
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(qcoinFeatureLabel(r.feature))}${srcChip}</div><div style="font-size:10px;color:var(--text3)">${when}</div></div>
+      <div style="text-align:right;white-space:nowrap"><div style="font-size:13px;font-weight:700;color:${color}">${sign}${formatQCoinAmount(amt)} Q</div><div style="font-size:10px;color:var(--text3)">→ ${formatQCoinAmount(safeNumber(r.balanceAfter))} Q</div></div>
+    </div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+async function loadUserQCoinHistory(uid){
+  const el=document.getElementById(`userQCoinHistory_${uid}`);
+  if(!el)return;
+  try{
+    const res=await pbGetList('qcoin_transactions',1,100,{filter:`userId="${uid}"`,sort:'-created'});
+    const rows=res.items||[];
+    const spent=rows.filter(r=>safeNumber(r.amount)<0).reduce((s,r)=>s+Math.abs(safeNumber(r.amount)),0);
+    const granted=rows.filter(r=>safeNumber(r.amount)>0).reduce((s,r)=>s+safeNumber(r.amount),0);
+    el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">🪙 Q Coin History</div><div style="font-size:11px;color:var(--text2)">Granted <b style="color:#22c55e">${formatQCoinAmount(granted)}</b> · Spent <b style="color:#ef4444">${formatQCoinAmount(spent)}</b></div></div>
+      ${renderQCoinHistory(rows)}
+    </div>`;
+  }catch(e){
+    el.innerHTML=`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🪙 Q Coin History</div><div style="color:var(--text3);font-size:12px">Could not load Q Coin history: ${escHtml(e.message)}</div></div>`;
+  }
+}
 function renderUsers(){
   const list=document.getElementById('userList'),start=(userPage-1)*UPER,page=filteredUsers.slice(start,start+UPER);
   if(!page.length){list.innerHTML='<div class="placeholder">No users</div>';return}
-  let h='<div class="user-hdr"><span></span><span>User</span><span>Country</span><span>Status</span><span>Joined</span></div>';
-  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);const qSnapshot=getUserQCoinSnapshot(u);const qLabel=u.isPremium?'Premium Q':`${formatQCoinAmount(qSnapshot.remaining)} Q`;return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div><div style="font-size:11px;color:var(--text2);margin-top:3px">Q Coin: <b style="color:var(--text1)">${escHtml(qLabel)}</b></div></div><span style="font-size:12px">${escHtml(u.country||'—')}</span><span>${premiumBadgeHtml(u)}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
+  let h='<div class="user-hdr"><span></span><span>User</span><span>Country / Source</span><span>Status</span><span>Joined</span></div>';
+  h+=page.map(u=>{const av=userAvatarHtml(u);const j=formatDateLabel(u.createdAt||u.created||u.updated);const qSnapshot=getUserQCoinSnapshot(u);const qLabel=u.isPremium?'Premium Q':`${formatQCoinAmount(qSnapshot.remaining)} Q`;return`<div class="user-row" onclick="openUserDetail('${escJs(u.uid)}')"><div class="user-avatar">${av}</div><div><div class="user-name">${escHtml(u.displayName||'Anonymous')}</div><div class="user-email">${escHtml(u.email||'')}</div><div style="font-size:11px;color:var(--text2);margin-top:3px">Q Coin: <b style="color:var(--text1)">${escHtml(qLabel)}</b></div></div><span style="font-size:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-start"><span>${escHtml(u.country||'—')}</span>${userSourceBadgeHtml(u)}</span><span>${premiumBadgeHtml(u)}</span><span style="font-size:11px;color:var(--text2)">${j}</span></div>`}).join('');
   list.innerHTML=h;
   const total=Math.ceil(filteredUsers.length/UPER),pe=document.getElementById('userPagination');
   if(total<=1){pe.innerHTML='';return}
@@ -4435,7 +4484,7 @@ function openUserDetail(uid){
       <div style="flex:1">
         <div style="font-size:16px;font-weight:700">${escHtml(u.displayName||'Anonymous')}</div>
         <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'')}</div>
-        <div style="font-size:11px;color:${actColor};margin-top:2px">${activityStatus}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="font-size:11px;color:${actColor}">${activityStatus}</span>${userSourceBadgeHtml(u)}${u.country?`<span style="font-size:11px;color:var(--text3)">${escHtml(u.country)}</span>`:''}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-sm btn-ghost" onclick="openUserSupportChat('${safeUid}')" title="Open conversation with user" style="font-size:18px;padding:6px 10px">💬</button>
@@ -4487,6 +4536,7 @@ function openUserDetail(uid){
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="showAddQCoinModal('${safeUid}')">Add Extra Q</button><button class="btn btn-ghost btn-sm" onclick="showResetQCoinModal('${safeUid}')">Reset Q Coin</button></div>
         </div>
       </div>
+      <div id="userQCoinHistory_${safeUid}"><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🪙 Q Coin History</div><div style="color:var(--text3);font-size:12px">Loading...</div></div></div>
       <div class="card" style="margin:0 0 16px;padding:14px">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">⭐ Premium Management</div>
         <div class="form-grid" style="align-items:end;margin-bottom:12px">
@@ -4572,6 +4622,7 @@ function openUserDetail(uid){
   document.getElementById('userModal').style.display='flex';
   setTimeout(()=>renderUserOverviewCharts(uid),0);
   setTimeout(()=>loadUserSupportPreview(uid),0);
+  setTimeout(()=>loadUserQCoinHistory(uid),0);
 }
 
 function switchUserTab(btn, uid){
@@ -4879,9 +4930,15 @@ async function loadUserAnalysis(uid){
     const u=allUsers.find(x=>x.uid===uid)||{};
     const analyzedProducts=safeArray(u.analyzedProducts);
     const aiProfileHtml=renderAdminAiProfileCard(u.adminAiProfile,uid);
+    // Saved analyses live in their own collection (website "save" + app). Pull
+    // them so the tab reflects everything the user analysed, not just the
+    // embedded array that some clients don't populate.
+    let savedAnalyses=[];
+    try{ const sa=await pbGetList('saved_analyses',1,50,{filter:`userId="${uid}"`,sort:'-created'}); savedAnalyses=safeArray(sa.items); }catch(_){ }
+    const savedHtml=savedAnalyses.length?`<div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">💾 Saved Analyses (${savedAnalyses.length})</div>${savedAnalyses.map(s=>{const d=s.created?new Date(s.created).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):'—';const sc=s.aiScore?Math.round(s.aiScore):null;return `<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.title||s.url||'Analysis')}</span>${sc!=null?`<span style="font-size:11px;font-weight:700;color:#22c55e">${sc}%</span>`:''}</div><div style="font-size:10px;color:var(--text3)">${escHtml(s.category||'')} · ${d}</div>${s.aiSummary?`<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4">${escHtml(String(s.aiSummary).substring(0,160))}${String(s.aiSummary).length>160?'...':''}</div>`:''}</div>`;}).join('')}</div>`:'';
 
     if(!analyzedProducts.length){
-      el.innerHTML=`${aiProfileHtml}<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>No in-app AI analysis yet.</div></div>`;
+      el.innerHTML=`${aiProfileHtml}${savedHtml}${savedAnalyses.length?'':`<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>No in-app AI analysis yet.</div></div>`}`;
       el.dataset.loaded='1';
       return;
     }
@@ -4891,7 +4948,7 @@ async function loadUserAnalysis(uid){
     const scores=analyzedProducts.map(item=>Number(item.score)||0).filter(Boolean);
     const avgScore=scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length):0;
 
-    let html=`${aiProfileHtml}<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analysis Categories</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
+    let html=`${aiProfileHtml}${savedHtml}<div class="metric-grid-compact"><div class="metric-tile"><div class="metric-tile-value">${analyzedProducts.length}</div><div class="metric-tile-label">Analyses</div></div><div class="metric-tile"><div class="metric-tile-value">${avgScore||'—'}</div><div class="metric-tile-label">Avg Match</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='compare')).length}</div><div class="metric-tile-label">Compare AI</div></div><div class="metric-tile"><div class="metric-tile-value">${safeArray(analyzedProducts.filter(item=>item.mode==='subscription')).length}</div><div class="metric-tile-label">Subs AI</div></div></div><div class="card" style="margin:0 0 16px;padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px">🤖 Analysis Categories</div><div class="chart-shell" style="height:220px"><canvas id="userAnalysisCategoryChartCanvas"></canvas></div></div>`;
 
     for(const p of analyzedProducts){
       const date=p.timestamp?new Date(p.timestamp).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -5032,6 +5089,16 @@ async function saveUserPremiumPlan(uid,forcedPlan){
   }catch(e){toast('Error: '+e.message,'e')}
 }
 async function togglePremium(uid,v){return saveUserPremiumPlan(uid,v?'yearly':'free')}
+// Appends a row to the qcoin_transactions ledger so the user's Q Coin History
+// shows admin grants/resets alongside spends. Best-effort — never blocks the action.
+async function logQCoinLedger(uid,type,feature,amount,balanceAfter,note){
+  try{
+    await getPb().collection('qcoin_transactions').create({
+      userId:uid,type,feature:feature||'',amount:safeNumber(amount),
+      balanceAfter:safeNumber(balanceAfter),source:'admin',note:note||''
+    },{$autoCancel:false});
+  }catch(e){console.warn('[qcoin_transactions] ledger write failed',e)}
+}
 async function addQCoinsToUser(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   const raw=prompt('Extra Q amount to add','5');
@@ -5044,6 +5111,7 @@ async function addQCoinsToUser(uid){
     await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
     u.bonusQCoins=nextBonus;
     u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
+    await logQCoinLedger(uid,'admin_adjust','admin_add',amount,nextBonus,'Admin added Q Coins');
     logActivity('user_qcoin_add',`Extra Q added: ${uid}`,{userId:uid,amount});
     openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q added`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
@@ -5059,6 +5127,7 @@ async function resetUserQCoins(uid){
     u.bonusQCoins=0;
     u.dailyAiCreditsUsed=snapshot.total;
     u.dailyAiCreditsDate=todayKey;
+    await logQCoinLedger(uid,'reset','admin_reset',-safeNumber(snapshot.remaining),0,'Admin reset balance to 0');
     logActivity('user_qcoin_reset',`Q Coin reset: ${uid}`,{userId:uid});
     openUserDetail(uid);renderUsers();toast('Q Coin balance reset','s');
   }catch(e){toast('Error: '+e.message,'e')}
@@ -5103,6 +5172,7 @@ async function addQCoinsToUser_internal(uid,amount){
     await pbUpdateDoc('users',uid,{bonusQCoins:nextBonus,dailyAiCreditsDate:u.dailyAiCreditsDate||qCoinPeriodKey()});
     u.bonusQCoins=nextBonus;
     u.dailyAiCreditsDate=u.dailyAiCreditsDate||qCoinPeriodKey();
+    await logQCoinLedger(uid,'admin_adjust','admin_add',amount,nextBonus,'Admin added Q Coins');
     logActivity('user_qcoin_add',`Extra Q added: ${uid}`,{userId:uid,amount});
     openUserDetail(uid);renderUsers();toast(`${formatQCoinAmount(amount)} Q added`,'s');
   }catch(e){toast('Error: '+e.message,'e')}
@@ -5141,6 +5211,7 @@ async function resetUserQCoins_internal(uid){
     u.bonusQCoins=0;
     u.dailyAiCreditsUsed=snapshot.total;
     u.dailyAiCreditsDate=todayKey;
+    await logQCoinLedger(uid,'reset','admin_reset',-safeNumber(snapshot.remaining),0,'Admin reset balance to 0');
     logActivity('user_qcoin_reset',`Q Coin reset: ${uid}`,{userId:uid});
     openUserDetail(uid);renderUsers();toast('Q Coin balance reset','s');
   }catch(e){toast('Error: '+e.message,'e')}

@@ -20,7 +20,7 @@ function writeCache(cc) {
   try { localStorage.setItem(KEY, JSON.stringify({ c: cc, t: Date.now() })); } catch { /* ignore */ }
 }
 
-async function detectCountry() {
+export async function detectCountry() {
   const cached = readCache();
   if (cached) { memo = cached; return cached; }
   if (memo) return memo;
