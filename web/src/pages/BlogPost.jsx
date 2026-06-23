@@ -62,11 +62,12 @@ function imageOnError(e) {
   }
 }
 // Logo visibility: a black logo vanishes on the dark theme and a white logo on
-// the light theme. We sample the image (a CORS-clean copy via /api/img) and put
-// transparent logos on a contrasting chip — dark logo → white chip, light logo →
-// dark chip — so it's readable in BOTH themes. Photos (mostly opaque) are left
-// untouched. If sampling fails we default to a white chip (fixes the common
-// dark-logo case). Runs once per image.
+// the light theme. We sample the image (a CORS-clean copy via /api/img) and tag
+// transparent mono logos as logo-dark / logo-light by brightness. The CSS then
+// inverts ONLY the blending case per theme (dark logo on dark theme, light logo
+// on light theme) — so the logo keeps its original transparent look (no box) and
+// flips automatically when the theme changes. Photos (opaque) and colour logos
+// are left untouched. Runs once per image.
 function adaptLogoBg(e) {
   const img = e.currentTarget;
   const box = img.closest('figure') || img.closest('.post-prod-img');
@@ -88,13 +89,12 @@ function adaptLogoBg(e) {
         const avg = lum / op / 255;       // 0 (black) … 1 (white)
         const transparent = 1 - op / total;
         if (transparent > 0.28) {          // a logo, not a full photo
-          if (avg < 0.45) box.classList.add('logo-chip-light');
-          else if (avg > 0.6) box.classList.add('logo-chip-dark');
+          if (avg < 0.42) box.classList.add('logo-dark');       // dark logo → invert on dark theme
+          else if (avg > 0.6) box.classList.add('logo-light');  // light logo → invert on light theme
         }
       }
-    } catch { box.classList.add('logo-chip-light'); } // tainted canvas → safe default
+    } catch { /* tainted canvas → leave the logo as-is */ }
   };
-  probe.onerror = () => { box.classList.add('logo-chip-light'); };
   probe.src = `${pb.baseUrl.replace(/\/$/, '')}/api/img?url=${encodeURIComponent(orig)}`;
 }
 

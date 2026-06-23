@@ -121,11 +121,14 @@
 .post-prod-fig.fig-full.pp-m img { max-height: 340px; }
 .post-prod-fig.fig-full.pp-l img { max-height: 520px; }
 .post-prod-clear { clear: both; }
-/* Logo visibility chip (applied by adaptLogoBg when a logo would blend into the
-   theme background). Theme-independent: chip colour is chosen from the logo's
-   own brightness, so it reads in both dark and light mode. */
-.post-prod-fig.logo-chip-light, .post-prod-img.logo-chip-light { background: #ffffff; padding: 14px; border-radius: 14px; }
-.post-prod-fig.logo-chip-dark, .post-prod-img.logo-chip-dark { background: #0f172a; padding: 14px; border-radius: 14px; }
+/* Logo visibility: keep the logo's original transparent look (no box) and only
+   invert it when it would blend into the current theme — a dark logo on the dark
+   theme, a light logo on the light theme. adaptLogoBg() tags the figure; the
+   theme selector here flips it automatically when the theme changes. */
+[data-theme='dark'] .post-prod-fig.logo-dark img,
+[data-theme='dark'] .post-prod-img.logo-dark img { filter: invert(1) hue-rotate(180deg); }
+[data-theme='light'] .post-prod-fig.logo-light img,
+[data-theme='light'] .post-prod-img.logo-light img { filter: invert(1) hue-rotate(180deg); }
 @media (max-width: 640px) {
   .post-prod-fig.fig-left, .post-prod-fig.fig-right { float: none; margin: 8px 0 14px; max-width: 100%; }
   .post-prod-fig.fig-left img, .post-prod-fig.fig-right img { max-width: 100%; }
