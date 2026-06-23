@@ -2806,9 +2806,17 @@ final topInCategoryProvider =
 /// "Recently Analyzed" — products user has analyzed with AI
 final recentlyAnalyzedProvider =
     FutureProvider.autoDispose<List<ProductEntity>>((ref) async {
-      final userAsync = ref.watch(userProfileProvider);
-      final user = userAsync.valueOrNull;
+      final user = ref.watch(userProfileProvider).valueOrNull;
       if (user == null) return [];
+
+      // ref'ten türeyen her şeyi await'lerden ÖNCE yakala. Bu autoDispose
+      // provider userProfile + homeFeed'i izliyor; bir await sırasında bu
+      // bağımlılıklardan biri değişirse, await sonrası `ref` kullanımı
+      // `!_didChangeDependency` assertion'ını fırlatıyordu (logda görülen
+      // `[recentlyAnalyzed] Error` kaynağı). watch/read senkron yapılınca
+      // reaktiflik korunur, hata yok olur.
+      final repo = ref.read(productRepositoryProvider);
+      final feedFuture = ref.watch(homeFeedProvider.future);
 
       try {
         final userRecord = await pb.collection('users').getOne(user.uid);
@@ -2830,7 +2838,7 @@ final recentlyAnalyzedProvider =
         if (productIds.isEmpty) return [];
 
         // Try to find these products in the home feed cache first
-        final feed = await ref.watch(homeFeedProvider.future);
+        final feed = await feedFuture;
         final feedMap = {for (final p in feed.all) p.id: p};
         final result = <ProductEntity>[];
         for (final id in productIds) {
@@ -2846,9 +2854,7 @@ final recentlyAnalyzedProvider =
               .toList();
           for (final id in missingIds.take(5)) {
             try {
-              final pResult = await ref
-                  .read(productRepositoryProvider)
-                  .getProduct(id);
+              final pResult = await repo.getProduct(id, preferCache: true);
               pResult.when(success: (p) => result.add(p), failure: (_) {});
             } catch (_) {}
           }
@@ -3064,7 +3070,7 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
     final dead = <String>{};
     final futures = lookup.map((id) async {
       try {
-        final result = await repo.getProduct(id);
+        final result = await repo.getProduct(id, preferCache: true);
         return result.when(
           success: (p) => MapEntry(id, p),
           failure: (_) {

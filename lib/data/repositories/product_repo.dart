@@ -23,7 +23,16 @@ class ProductRepository {
   /// Get single product — PocketBase is the source of truth, with a Typesense
   /// fallback so the detail page still loads when PocketBase is overloaded
   /// (e.g. while the scraper runs) or the record 404s but is still indexed.
-  Future<Result<ProductEntity>> getProduct(String id) async {
+  /// [preferCache]: hydration call-site'ları (recently viewed/analyzed) için.
+  /// `homeFeedProvider` her rebuild'inde bu provider'lar yeniden çalışıp aynı
+  /// eksik id'leri ağdan tekrar tekrar çekiyordu (cihaz logunda ~15 eşzamanlı
+  /// getProductFromTypesense fırtınası, hatta iki burst). Taze bir Hive kopyası
+  /// (≤ productCacheDuration) varsa ağ round-trip'ini atlayıp anında döneriz.
+  /// Detay ekranı bu bayrağı geçmez → her zaman taze veri görür (davranış aynı).
+  Future<Result<ProductEntity>> getProduct(
+    String id, {
+    bool preferCache = false,
+  }) async {
     // Session-level dead-id short-circuit. `recentlyViewedProductsProvider`
     // re-runs on every homeFeedProvider rebuild, and without this each dead
     // id costs (PB call + TS call) every time — 5-10 wasted requests per
@@ -31,6 +40,10 @@ class ProductRepository {
     // the device log that drove this fix.
     if (PbDataSource.isProductKnownMissing(id)) {
       return const Failure(ServerException(message: 'Product not found'));
+    }
+    if (preferCache) {
+      final cached = _freshCachedProduct(id);
+      if (cached != null) return Success(cached);
     }
     try {
       final product = await _pbDS.getProduct(id);
@@ -62,18 +75,25 @@ class ProductRepository {
         _cacheProduct(id, tsProduct);
         return Success(tsProduct);
       }
-      try {
-        final cached = _hiveDS.getSetting<Map<String, dynamic>>('product_$id');
-        if (cached != null) {
-          final cachedAt = cached['_cachedAt'] as int? ?? 0;
-          final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
-          if (age < AppConstants.productCacheDuration.inMilliseconds) {
-            return Success(ProductModel.fromMap(cached));
-          }
-        }
-      } catch (_) {}
+      final cached = _freshCachedProduct(id);
+      if (cached != null) return Success(cached);
       return Failure(ServerException(message: e.toString()));
     }
+  }
+
+  /// Returns the Hive-cached product if present and younger than
+  /// [AppConstants.productCacheDuration]; otherwise null.
+  ProductModel? _freshCachedProduct(String id) {
+    try {
+      final cached = _hiveDS.getSetting<Map<String, dynamic>>('product_$id');
+      if (cached == null) return null;
+      final cachedAt = cached['_cachedAt'] as int? ?? 0;
+      final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
+      if (age < AppConstants.productCacheDuration.inMilliseconds) {
+        return ProductModel.fromMap(cached);
+      }
+    } catch (_) {}
+    return null;
   }
 
   void _cacheProduct(String id, ProductModel product) {
