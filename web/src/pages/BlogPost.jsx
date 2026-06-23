@@ -61,42 +61,6 @@ function imageOnError(e) {
     const fig = img.closest('figure'); if (fig) fig.style.display = 'none';
   }
 }
-// Logo visibility: a black logo vanishes on the dark theme and a white logo on
-// the light theme. We sample the image (a CORS-clean copy via /api/img) and put
-// transparent logos on a contrasting chip — dark logo → white chip, light logo →
-// dark chip — so it's readable in BOTH themes. Photos (mostly opaque) are left
-// untouched. If sampling fails we default to a white chip (fixes the common
-// dark-logo case). Runs once per image.
-function adaptLogoBg(e) {
-  const img = e.currentTarget;
-  const box = img.closest('figure') || img.closest('.post-prod-img');
-  if (!box || box.dataset.adapted) return;
-  box.dataset.adapted = '1';
-  const orig = img.getAttribute('data-orig') || img.src;
-  const probe = new Image();
-  probe.crossOrigin = 'anonymous';
-  probe.onload = () => {
-    try {
-      const n = 28;
-      const c = document.createElement('canvas'); c.width = n; c.height = n;
-      const x = c.getContext('2d'); x.drawImage(probe, 0, 0, n, n);
-      const d = x.getImageData(0, 0, n, n).data;
-      let lum = 0; let op = 0;
-      for (let i = 0; i < d.length; i += 4) { if (d[i + 3] > 24) { op++; lum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; } }
-      const total = n * n;
-      if (op) {
-        const avg = lum / op / 255;       // 0 (black) … 1 (white)
-        const transparent = 1 - op / total;
-        if (transparent > 0.28) {          // a logo, not a full photo
-          if (avg < 0.45) box.classList.add('logo-chip-light');
-          else if (avg > 0.6) box.classList.add('logo-chip-dark');
-        }
-      }
-    } catch { box.classList.add('logo-chip-light'); } // tainted canvas → safe default
-  };
-  probe.onerror = () => { box.classList.add('logo-chip-light'); };
-  probe.src = `${pb.baseUrl.replace(/\/$/, '')}/api/img?url=${encodeURIComponent(orig)}`;
-}
 
 // Inline markdown: **bold** and *italic*. Returns an array of strings/elements.
 function parseInline(text, kp) {
@@ -460,7 +424,7 @@ export default function BlogPost() {
               const nu = normalizeImageUrl(u);
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
-                  {linkFig(<img src={nu} data-orig={nu} alt={name} loading="lazy" onLoad={adaptLogoBg} onError={imageOnError} />)}
+                  {linkFig(<img src={nu} data-orig={nu} alt={name} loading="lazy" onError={imageOnError} />)}
                 </figure>
               );
             }
@@ -478,7 +442,7 @@ export default function BlogPost() {
       const d1 = pdesc(p) ? <div className="post-prod-rich">{renderRichText(pdesc(p), `${p.id || i}-d1`)}</div> : null;
       const d2 = pdesc2(p) ? <div className="post-prod-rich">{renderRichText(pdesc2(p), `${p.id || i}-d2`)}</div> : null;
       const nimg = normalizeImageUrl(img);
-      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={nimg} data-orig={nimg} alt={name} loading="lazy" onLoad={adaptLogoBg} onError={imageOnError} />)}</span> : null;
+      const imgEl = img ? <span className={`post-prod-img pp-${size}`}>{linkFig(<img src={nimg} data-orig={nimg} alt={name} loading="lazy" onError={imageOnError} />)}</span> : null;
       if (layout === 'text' || !img) inner = <>{d1}{d2}</>;
       else if (layout === 'top') inner = <>{imgEl}{d1}{d2}</>;
       else if (layout === 'left') inner = <div className="post-prod-row">{imgEl}<div className="post-prod-rowtext">{d1}{d2}</div></div>;
