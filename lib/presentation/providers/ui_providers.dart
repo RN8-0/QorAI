@@ -357,7 +357,12 @@ String normalizeProductName(String name) {
         .trim();
   }
 
-  return lower
+  // Generic fallback: çalış `probe` üzerinden (parantez/köşeli ayraç zaten
+  // strip'li). Önceden `lower` kullanılıyordu → "iPhone Air (512 GB)" içindeki
+  // parantezler kalıp "iphone air ( )" üretiyor, base "iphone air" ile
+  // eşleşmiyordu; aynı modelin depolama varyantları ayrı kart olarak
+  // gösteriliyordu (kullanıcı şikayeti).
+  return probe
       .replaceAll(RegExp(r'\((?:intel|amd|qualcomm|apple)\)'), '')
       .replaceAll(RegExp(r'\b\d+\s*TB\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+\s*GB\b', caseSensitive: false), '')
@@ -380,6 +385,28 @@ String normalizeProductName(String name) {
       .replaceAll(
         RegExp(
           r'\b(?:windows|macos|linux|freebsd|pro|home|laptop|notebook|computer|pc|spanish|german|french|italian|english|turkish|ispanyolca|almanca|fransizca|fransızca|italyanca|ingilizce|turkce|türkçe)\b',
+        ),
+        '',
+      )
+      // Bağlantı + Almanca/İngilizce/Türkçe bağlaçlar (Icecat/Geizhals
+      // kayıtları "schwarz mit Ozean Armband" gibi kozmetik kuyruk taşıyor).
+      .replaceAll(
+        RegExp(r'\b(?:wi-?fi|cellular|gps|lte|esim|[45]g|mit|with|ile)\b'),
+        '',
+      )
+      // Kozmetik renk token'ları (çok-dilli). Model katmanları (ultra/pro/
+      // air/max/plus/mini/fe) listede YOK — onlar korunur. Renk yalnızca
+      // kozmetik olduğundan farklı modelleri yanlış birleştirmez.
+      .replaceAll(
+        RegExp(
+          r'\b(?:black|schwarz|siyah|white|wei(?:ss|ß)|beyaz|silver|silber|g(?:ü|u)m(?:ü|u)ş|gold|alt(?:ı|i)n|gr[ae]y|grau|gri|blue|blau|mavi|navy|lacivert|red|rot|k(?:ı|i)rm(?:ı|i)z(?:ı|i)|green|gr(?:ü|ue)n|ye(?:ş|s)il|pink|rosa|pembe|purple|lila|mor|titan(?:ium|yum)?|graphite|grafit|midnight|starlight|space|natural|desert|ultramarine|teal|bronze?|bronz|copper|beige|bej|cream|krem|orange|turuncu|yellow|gelb|sar(?:ı|i)|brown|braun|kahverengi)\b',
+        ),
+        '',
+      )
+      // Kozmetik materyal / kayış / kılıf token'ları.
+      .replaceAll(
+        RegExp(
+          r'\b(?:armband|strap|kordon|kay(?:ı|i)(?:ş|s)|kordonlu|k(?:ı|i)l(?:ı|i)f|kapak|sleeve|ozean|milanese|braided)\b',
         ),
         '',
       )
@@ -420,34 +447,43 @@ int _storageCapacityMB(ProductEntity p) {
 /// Groups by `variantGroup` field (set by scraper from URL slug).
 /// Representative is the base model (no storage in ID) or smallest storage.
 List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
-  final seen = <String, ProductEntity>{};
-  final nameKeys = <String, ProductEntity>{};
-  for (final p in products) {
-    // Primary dedup: variantGroup
-    final key = p.variantGroup.isNotEmpty ? p.variantGroup : p.id;
-    final existing = seen[key];
-    if (existing == null ||
-        _storageCapacityMB(p) < _storageCapacityMB(existing)) {
-      seen[key] = p;
-    }
-    // Secondary dedup: normalized name (catches same product with different IDs)
-    final nameKey = _normalizeProductName(p.name);
-    if (!nameKeys.containsKey(nameKey)) {
-      nameKeys[nameKey] = p;
-    }
-  }
-  // Merge: prefer variantGroup dedup, then name dedup
-  final result = <String, ProductEntity>{};
-  for (final p in seen.values) {
-    final nameKey = _normalizeProductName(p.name);
-    result.putIfAbsent(nameKey, () => p);
-  }
-  return result.values.toList();
-}
+  // İki model arasında daha küçük depolamalı (base) olanı seç — temsilci
+  // kart hep "iPhone Air" gibi base olsun, "iPhone Air 512GB" değil.
+  ProductEntity smaller(ProductEntity a, ProductEntity b) =>
+      _storageCapacityMB(b) < _storageCapacityMB(a) ? b : a;
 
-/// Normalize product name for dedup (strip storage/color/connectivity variants)
-String _normalizeProductName(String name) {
-  return normalizeProductName(name);
+  // Pass 1 — scraper'ın variantGroup'u (Icecat depolama/RAM varyantlarını
+  // gruplar). variantGroup boşsa id ile geçici grup.
+  final byGroup = <String, ProductEntity>{};
+  final groupOrder = <String>[];
+  for (final p in products) {
+    final key = p.variantGroup.isNotEmpty ? p.variantGroup : p.id;
+    final existing = byGroup[key];
+    if (existing == null) {
+      byGroup[key] = p;
+      groupOrder.add(key);
+    } else {
+      byGroup[key] = smaller(existing, p);
+    }
+  }
+
+  // Pass 2 — isim normalizasyonu. Epey varyantları variantGroup taşımaz, bu
+  // yüzden "iPhone Air" ve "iPhone Air (512 GB)" pass 1'de ayrı kalır; burada
+  // aynı normalize anahtara inip tek modele iner. İlk görülme sırası korunur.
+  final byName = <String, ProductEntity>{};
+  final nameOrder = <String>[];
+  for (final key in groupOrder) {
+    final p = byGroup[key]!;
+    final nameKey = normalizeProductName(p.name);
+    final existing = byName[nameKey];
+    if (existing == null) {
+      byName[nameKey] = p;
+      nameOrder.add(nameKey);
+    } else {
+      byName[nameKey] = smaller(existing, p);
+    }
+  }
+  return [for (final k in nameOrder) byName[k]!];
 }
 
 /// Static per-category cache — survives provider re-reads, cleared only on app restart.

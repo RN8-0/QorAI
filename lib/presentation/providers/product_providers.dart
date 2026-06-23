@@ -592,7 +592,10 @@ class HomeFeed {
   });
 }
 
-const _homeFeedReadyCacheVersion = 'v5';
+// v6: deduplicateVariants normalize fix (storage "(512 GB)" + çok-dilli renk/
+// materyal varyantları). Eski cache deduped-feed'i gömülü tuttuğu için
+// versiyon bump'ı rebuild'i zorlar → yeni dedup uygulanır.
+const _homeFeedReadyCacheVersion = 'v6';
 
 String _homeFeedReadyCacheKey(String country, UserEntity? user) {
   return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';

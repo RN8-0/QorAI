@@ -1108,7 +1108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 ),
               ),
-            ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
+            ).animate().fadeIn(duration: 400.ms),
           );
         }
         return const SizedBox.shrink();
@@ -1187,8 +1187,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               )
               .animate()
-              .fadeIn(duration: 300.ms)
-              .slideY(begin: 0.05, duration: 300.ms),
+              .fadeIn(duration: 300.ms),
     );
   }
 
