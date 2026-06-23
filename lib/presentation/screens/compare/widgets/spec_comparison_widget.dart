@@ -108,6 +108,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   bool _fullCompareError = false;
   AiReportStageLite _fullCompareStage = AiReportStageLite.prep;
 
+  // Web-parity quiz step before the compare report (same UI as link/sub quiz).
+  ProductQuiz? _compareQuiz;
+  List<QuizQuestion> _compareQuizAnswers = const [];
+  int _compareQuizIndex = 0;
+  bool _compareQuizLoading = false;
+
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
 
@@ -6942,6 +6948,14 @@ Rules:
   }
 
   Widget _buildCompareFullReportSection() {
+    if (_compareQuizLoading) {
+      return _buildCompareQuizLoadingCard();
+    }
+    if (_compareQuiz != null &&
+        _fullCompareReport == null &&
+        !_fullCompareRunning) {
+      return _buildCompareQuizCard();
+    }
     if (_fullCompareRunning) {
       return AiReportWorkboard(
         lang: _appLang,
@@ -6965,6 +6979,104 @@ Rules:
       );
     }
     return Center(child: _buildAiStartButton(_runCompareFullReport, _fullCompareError));
+  }
+
+  Widget _buildCompareQuizSurround({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.premiumPurple, AppTheme.primaryBlue],
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.tune_rounded,
+                    color: Colors.white, size: 19),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _isTr
+                      ? 'Sana göre kişiselleştir — birkaç soru'
+                      : 'Personalize — a few quick questions',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompareQuizLoadingCard() {
+    return _buildCompareQuizSurround(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _isTr ? 'Sorular hazırlanıyor...' : 'Preparing questions...',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompareQuizCard() {
+    return _buildCompareQuizSurround(
+      child: SharedQuizView(
+        products: widget.products
+            .map((p) => SharedQuizProduct(
+                  title: p.nameForLanguage(_appLang),
+                  imageUrl: p.imageUrl,
+                  fallbackImages: p.allImages,
+                  subtitle: p.brand,
+                ))
+            .toList(),
+        questions: _compareQuizAnswers,
+        currentIndex: _compareQuizIndex,
+        onAnswer: _onCompareQuizAnswer,
+        onSubmit: _submitCompareQuiz,
+        onSkip: _skipCompareQuiz,
+        submitLabel: _isTr ? 'Analizi Başlat' : 'See analysis',
+        skipLabel: _isTr ? 'Quizi atla & analiz et' : 'Skip & analyze',
+      ),
+    );
   }
 
   Widget _buildAiStartButton(VoidCallback onStart, bool error) {
@@ -7018,6 +7130,99 @@ Rules:
       return;
     }
     sub.recordCompareAi();
+    // Web paritesi: önce karşılaştırmaya özel quiz üret + göster (link/abonelik
+    // analizindeki AYNI quiz UI'ı), sonra cevaplarla raporu çalıştır.
+    setState(() {
+      _compareQuizLoading = true;
+      _compareQuiz = null;
+      _fullCompareError = false;
+    });
+    // Web paritesi: Gemini öncelikli + allProducts ile compare quizi (link
+    // compare akışıyla aynı), DeepSeek fallback.
+    final names =
+        widget.products.map((p) => p.nameForLanguage(_appLang)).join(' vs ');
+    final cat = widget.products.first.category;
+    final allInfo = widget.products
+        .map((p) => {
+              'title': p.nameForLanguage(_appLang),
+              'url': '',
+              'category': p.category,
+            })
+        .toList();
+    final aiProfile = ref.read(userProfileProvider).valueOrNull;
+    ProductQuiz? quiz;
+    try {
+      quiz = await ref
+          .read(geminiServiceProvider)
+          .generateQuiz(
+            category: cat,
+            productTitle: names,
+            url: '',
+            language: _appLang,
+            allProducts: allInfo,
+            profile: aiProfile,
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (e) {
+      debugPrint('[Qor AI] compare quiz (gemini) failed, trying deepseek: $e');
+      try {
+        quiz = await ref
+            .read(deepSeekServiceProvider)
+            .generateQuiz(
+              category: cat,
+              productTitle: names,
+              url: '',
+              language: _appLang,
+            )
+            .timeout(const Duration(seconds: 45));
+      } catch (e2) {
+        debugPrint('[Qor AI] compare quiz generation failed: $e2');
+      }
+    }
+    if (!mounted) return;
+    if (quiz != null && quiz.questions.isNotEmpty) {
+      setState(() {
+        _compareQuiz = quiz;
+        _compareQuizAnswers =
+            quiz!.questions.map((q) => q.copyWith()).toList();
+        _compareQuizIndex = 0;
+        _compareQuizLoading = false;
+      });
+    } else {
+      setState(() => _compareQuizLoading = false);
+      await _runCompareReport(const []);
+    }
+  }
+
+  void _onCompareQuizAnswer(int index, String answer) {
+    if (index < 0 || index >= _compareQuizAnswers.length) return;
+    setState(() {
+      _compareQuizAnswers[index] =
+          _compareQuizAnswers[index].copyWith(selectedOption: answer);
+      if (index == _compareQuizIndex &&
+          _compareQuizIndex < _compareQuizAnswers.length - 1) {
+        _compareQuizIndex++;
+      }
+    });
+  }
+
+  Future<void> _submitCompareQuiz() async {
+    final answers = _compareQuizAnswers;
+    setState(() => _compareQuiz = null);
+    await _runCompareReport(answers);
+  }
+
+  Future<void> _skipCompareQuiz() async {
+    setState(() => _compareQuiz = null);
+    await _runCompareReport(const []);
+  }
+
+  /// Runs the compare_full_report with collected quiz answers. The AI feature
+  /// limit is recorded by [_runCompareFullReport] before the quiz, so this does
+  /// NOT re-gate.
+  Future<void> _runCompareReport(List<QuizQuestion> quizAnswers) async {
+    if (_fullCompareRunning) return;
+    if (!mounted) return;
     setState(() {
       _fullCompareRunning = true;
       _fullCompareError = false;
@@ -7029,6 +7234,7 @@ Rules:
         products: widget.products,
         lang: _appLang,
         profile: _buildAiProfile(),
+        quizAnswers: quizAnswers,
         onStage: (s) {
           if (!mounted) return;
           setState(() => _fullCompareStage = _mapStage(s));

@@ -8,9 +8,11 @@ import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/services/ai_report_service.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
+import 'package:qor_ai/presentation/widgets/shared/shared_quiz_view.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
@@ -53,6 +55,12 @@ class SharedPremiumFeaturesSectionState
   bool _fullReportRunning = false;
   bool _fullReportError = false;
   AiReportStageLite _fullReportStage = AiReportStageLite.prep;
+
+  // Web-parity quiz step (shown before the report — same UI as link/sub quiz).
+  ProductQuiz? _quiz;
+  List<QuizQuestion> _quizAnswers = const [];
+  int _quizIndex = 0;
+  bool _quizLoading = false;
 
   // ignore: unused_field
   bool _deepAnalysisUserCollapsed = false;
@@ -159,6 +167,12 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildFullReportSection() {
+    if (_quizLoading) {
+      return _buildQuizLoadingCard();
+    }
+    if (_quiz != null && _fullReport == null && !_fullReportRunning) {
+      return _buildQuizCard();
+    }
     if (_fullReportRunning) {
       return AiReportWorkboard(
         lang: _reportLang,
@@ -193,6 +207,123 @@ class SharedPremiumFeaturesSectionState
       );
     }
     return _buildFullReportStartCard();
+  }
+
+  Widget _buildQuizSurround({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.premiumPurple, AppTheme.primaryBlue],
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.tune_rounded,
+                  color: Colors.white,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _txt(tr: 'Sana Göre Kişiselleştir', en: 'Personalize'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _txt(
+                        tr: 'Birkaç soruyu yanıtla, analiz sana göre olsun',
+                        en: 'Answer a few questions for a tailored analysis',
+                      ),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuizLoadingCard() {
+    return _buildQuizSurround(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _txt(tr: 'Sorular hazırlanıyor...', en: 'Preparing questions...'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuizCard() {
+    final p = widget.product;
+    return _buildQuizSurround(
+      child: SharedQuizView(
+        products: [
+          SharedQuizProduct(
+            title: p.nameForLanguage(_reportLang),
+            imageUrl: p.imageUrl,
+            fallbackImages: p.allImages,
+            subtitle: p.brand,
+          ),
+        ],
+        questions: _quizAnswers,
+        currentIndex: _quizIndex,
+        onAnswer: _onQuizAnswer,
+        onSubmit: _submitQuiz,
+        onSkip: _skipQuiz,
+        submitLabel: _txt(tr: 'Analizi Başlat', en: 'See analysis'),
+        skipLabel: _txt(tr: 'Quizi atla & analiz et', en: 'Skip & analyze'),
+      ),
+    );
   }
 
   Widget _buildFullReportStartCard() {
@@ -296,9 +427,92 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
+  /// "Analizi Başlat" → web paritesi: önce ürüne özel quiz üret + göster
+  /// (link/abonelik analizindeki AYNI quiz UI'ı), sonra cevaplarla raporu
+  /// çalıştır. Quiz üretilemezse zarifçe doğrudan rapora geçer.
   Future<void> _runProductFullReport() async {
-    if (_fullReportRunning) return;
+    if (_fullReportRunning || _quizLoading) return;
     if (!await _checkAiFeatureLimit()) return;
+    if (!mounted) return;
+    setState(() {
+      _quizLoading = true;
+      _quiz = null;
+      _fullReportError = false;
+    });
+    // Web paritesi: Gemini öncelikli (link/abonelik akışıyla aynı), DeepSeek
+    // fallback — DeepSeek proxy zaman zaman "temporarily unavailable" dönüyor.
+    final cat = widget.product.category;
+    final title = widget.product.nameForLanguage(_reportLang);
+    final aiProfile = ref.read(userProfileProvider).valueOrNull;
+    ProductQuiz? quiz;
+    try {
+      quiz = await ref
+          .read(geminiServiceProvider)
+          .generateQuiz(
+            category: cat,
+            productTitle: title,
+            url: '',
+            language: _reportLang,
+            profile: aiProfile,
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (e) {
+      debugPrint('[Qor AI] product quiz (gemini) failed, trying deepseek: $e');
+      try {
+        quiz = await ref
+            .read(deepSeekServiceProvider)
+            .generateQuiz(
+              category: cat,
+              productTitle: title,
+              url: '',
+              language: _reportLang,
+            )
+            .timeout(const Duration(seconds: 45));
+      } catch (e2) {
+        debugPrint('[Qor AI] product quiz generation failed: $e2');
+      }
+    }
+    if (!mounted) return;
+    if (quiz != null && quiz.questions.isNotEmpty) {
+      setState(() {
+        _quiz = quiz;
+        _quizAnswers = quiz!.questions.map((q) => q.copyWith()).toList();
+        _quizIndex = 0;
+        _quizLoading = false;
+      });
+    } else {
+      setState(() => _quizLoading = false);
+      await _runReport(const []);
+    }
+  }
+
+  void _onQuizAnswer(int index, String answer) {
+    if (index < 0 || index >= _quizAnswers.length) return;
+    setState(() {
+      _quizAnswers[index] =
+          _quizAnswers[index].copyWith(selectedOption: answer);
+      if (index == _quizIndex && _quizIndex < _quizAnswers.length - 1) {
+        _quizIndex++;
+      }
+    });
+  }
+
+  Future<void> _submitQuiz() async {
+    final answers = _quizAnswers;
+    setState(() => _quiz = null);
+    await _runReport(answers);
+  }
+
+  Future<void> _skipQuiz() async {
+    setState(() => _quiz = null);
+    await _runReport(const []);
+  }
+
+  /// Runs the product_full_report with the collected quiz answers. The AI
+  /// feature limit is recorded by [_runProductFullReport] before the quiz, so
+  /// this does NOT re-gate.
+  Future<void> _runReport(List<QuizQuestion> quizAnswers) async {
+    if (_fullReportRunning) return;
     if (!mounted) return;
     final lang = _reportLang;
     setState(() {
@@ -322,6 +536,7 @@ class SharedPremiumFeaturesSectionState
         product: widget.product,
         lang: lang,
         profile: _buildAiProfile(),
+        quizAnswers: quizAnswers,
         similarProducts: similar,
         onStage: (s) {
           if (!mounted) return;
