@@ -682,7 +682,15 @@ class AppTheme {
   // LIGHT THEME — Clean slate/white + brand blue accents
   // ─────────────────────────────────────────────────────────────────────────
 
-  static ThemeData get lightTheme {
+  // KRİTİK PERF: tema bir kez üretilip CACHE'lenir. Eskiden bu bir getter'dı →
+  // her erişimde YENİ ThemeData instance. MaterialApp her rebuild'de (country/
+  // locale/router provider'ları emit edince) yeni instance alıyor, içindeki
+  // AnimatedTheme "tema değişti" sanıp 200ms animasyon başlatıyor; o sırada
+  // Theme.of(context) her frame interpole edip TÜM tema-bağımlı widget'ları
+  // (tüm ürün kartları!) yeniden kuruyordu → idle'da bile ~20fps, build 13-50ms.
+  static final ThemeData lightTheme = _buildLightTheme();
+
+  static ThemeData _buildLightTheme() {
     const colorScheme = ColorScheme.light(
       primary: brandBlue,
       secondary: brandDeepBlue,
@@ -957,7 +965,9 @@ class AppTheme {
   // DARK THEME — OLED Black + Neon accents
   // ─────────────────────────────────────────────────────────────────────────
 
-  static ThemeData get darkTheme {
+  static final ThemeData darkTheme = _buildDarkTheme();
+
+  static ThemeData _buildDarkTheme() {
     const colorScheme = ColorScheme.dark(
       primary: neonCyan,
       secondary: neonPurple,
