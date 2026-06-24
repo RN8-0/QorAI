@@ -46,6 +46,12 @@ class _PricesTabContent extends ConsumerWidget {
     final hasAnyStores = liveOffers.isNotEmpty || fallbackEntries.isNotEmpty;
     final isLoadingOffers = offersAsync is AsyncLoading;
 
+    // Amazon'u iki kez gösterme: "Canlı Fiyatlar"da zaten bir Amazon teklifi
+    // (gerçek fiyatlı) varsa, üstteki genel Amazon arama kartını gizle.
+    final hasLiveAmazon = liveOffers.any(
+      (o) => o.store.toLowerCase().contains('amazon'),
+    );
+
     return CustomScrollView(
       key: PageStorageKey<String>('prices-tab-${product.id}'),
       physics: const ClampingScrollPhysics(),
@@ -56,10 +62,13 @@ class _PricesTabContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Always-present, country-correct Amazon link (mirrors the web).
-                // TR shoppers get amazon.com.tr (qorai-21); others their market.
-                _AmazonSearchCard(product: product, country: country),
-                const SizedBox(height: 16),
+                // Country-correct Amazon link (mirrors the web): TR shoppers get
+                // amazon.com.tr (qorai-21); others their market. Canlı Fiyatlar'da
+                // zaten Amazon varsa tekrar göstermemek için gizlenir.
+                if (!hasLiveAmazon) ...[
+                  _AmazonSearchCard(product: product, country: country),
+                  const SizedBox(height: 16),
+                ],
                 if (firstOfferChunk.isNotEmpty) ...[
                   _OfferLinksCard(
                     product: product,
@@ -290,7 +299,8 @@ class _OfferLinkRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brand = _resolveStoreBrand(
-      '${offer.displayStore} ${offer.network} ${offer.url}',
+      '${offer.displayStore} ${offer.network}',
+      url: offer.url,
     );
     final showCountry =
         offer.country.isNotEmpty &&
@@ -582,7 +592,7 @@ class _StoreLinkRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final brand = _resolveStoreBrand(name);
+    final brand = _resolveStoreBrand(name, url: url);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -649,8 +659,20 @@ class _StoreBrandData {
   ]);
 }
 
-_StoreBrandData _resolveStoreBrand(String rawName) {
-  final n = rawName.toLowerCase().trim();
+/// Bir URL/serbest metinden alan adını (host) çıkarır; favicon logosu için.
+/// Fiyat gibi "1.299" sayılarına yakalanmamak için son parça harf (TLD) olmalı.
+String? _extractStoreDomain(String? s) {
+  if (s == null || s.trim().isEmpty) return null;
+  final m = RegExp(
+    r'([a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,})',
+    caseSensitive: false,
+  ).firstMatch(s.toLowerCase());
+  if (m == null) return null;
+  return m.group(1)!.replaceFirst(RegExp(r'^www\.'), '');
+}
+
+_StoreBrandData _resolveStoreBrand(String rawName, {String? url}) {
+  final n = (url == null ? rawName : '$rawName $url').toLowerCase().trim();
   if (n.contains('amazon')) {
     return _StoreBrandData(
       'Amazon',
@@ -771,9 +793,17 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
       'https://www.google.com/s2/favicons?sz=64&domain=store.google.com',
     );
   }
-  // Generic fallback — title-case the raw name.
-  final display = rawName
-      .split(RegExp(r'[\s_-]+'))
+  // Generic fallback — VERİ-ODAKLI: bilinmeyen/yeni eklenen merchant'lar için
+  // alan adından gerçek favicon logosunu çıkar. Böylece admin'den yeni bir
+  // affiliate (örn. Walmart, başka mağaza) eklenince app güncellemesi GEREKMEDEN
+  // logosuyla listede yer alır. Domain yoksa jenerik mağaza ikonu gösterilir.
+  final domain = _extractStoreDomain(url) ?? _extractStoreDomain(rawName);
+  // Görünen ad: domain varsa kökünü (örn. "walmart"), yoksa URL'siz ham adı kullan.
+  final source = domain != null
+      ? domain.split('.').first
+      : rawName.replaceAll(RegExp(r'https?://\S+'), '');
+  final display = source
+      .split(RegExp(r'[\s_.-]+'))
       .where((p) => p.isNotEmpty)
       .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
       .join(' ');
@@ -781,6 +811,9 @@ _StoreBrandData _resolveStoreBrand(String rawName) {
     display.isEmpty ? 'Store' : display,
     AppTheme.primaryBlue,
     Icons.storefront_rounded,
+    domain != null
+        ? 'https://www.google.com/s2/favicons?sz=64&domain=$domain'
+        : null,
   );
 }
 

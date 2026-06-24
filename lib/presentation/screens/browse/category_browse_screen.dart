@@ -8,7 +8,6 @@ library;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1005,6 +1004,25 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   }
 
   Future<void> _rebuildVisibleProducts(int requestId) async {
+    // HIZLI YOL — saf metin araması (aktif filtre yokken). Sıralama/filtreleme
+    // tek başına `rankProductsForQuery` ile (string skorlama) binlerce üründe
+    // <10ms sürer. Eski yol her tuşta TÜM kataloğu Map'e serialize edip
+    // compute() isolate'ine kopyalıyordu; bu serileştirme asıl işten çok daha
+    // pahalıydı ve ana thread'i kilitliyordu → arama yazarken donma, klavyenin
+    // takılması ve büyük kategorilerde OOM/çökme. Arama için isolate gereksiz.
+    if (_searchQuery.isNotEmpty && !_filterState.isActive) {
+      final query = _searchQuery;
+      final merged = <ProductEntity>[
+        ..._allProducts,
+        ...(_remoteSearchResults ?? const <ProductEntity>[]),
+      ];
+      // rankProductsForQuery zaten id-dedup + score>0 filtre + skor sıralaması yapar.
+      final ranked = rankProductsForQuery(merged, query);
+      if (!mounted || requestId != _visibleProductsRequestId) return;
+      setState(() => _visibleProducts = ranked);
+      return;
+    }
+
     final allProducts = List<ProductEntity>.from(
       _filterState.isActive && !_usesServerSideFiltering()
           ? _filterDefinitionProducts
@@ -1579,66 +1597,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   // ── build ─────────────────────────────────────────────────────────────────
 
-  Widget _buildSubcategoryChips() {
-    return SizedBox(
-      height: 44,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        itemCount: widget.groupItems!.length,
-        itemBuilder: (context, index) {
-          final item = widget.groupItems![index];
-          final id = item['id'] as String? ?? '';
-          final itemName = item['name'] as String? ?? id;
-          final isActive = _activeCategoryId == id;
-          return GestureDetector(
-            onTap: () {
-              if (!isActive) {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  _activeCategoryId = id;
-                  _activeCategoryName = itemName;
-                  _allProducts = [];
-                  _filterCatalogProducts = [];
-                  _filterCatalogCategoryId = null;
-                  _typesenseFacets = {};
-                  _facetsLoaded = false;
-                  _visibleProducts = [];
-                  _searchBarKey.currentState?.clear();
-                  _searchQuery = '';
-                  _filterState = const FilterState();
-                });
-                _loadProducts();
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: isActive ? AppTheme.primaryGradient : null,
-                color: isActive ? null : context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? Colors.transparent : context.dividerColor,
-                  width: 0.5,
-                ),
-              ),
-              child: Text(
-                itemName,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? Colors.white : context.textSecondary,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = _visibleProducts;
@@ -1649,8 +1607,8 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          if (widget.groupItems != null && widget.groupItems!.length > 1)
-            _buildSubcategoryChips(),
+          // Kategori-değiştirici chip satırı kaldırıldı: bir kategoriye
+          // girince üstte diğer kategoriler gösterilmiyor (kullanıcı isteği).
           _buildSearchBar(),
           _buildSortBar(_displayProductCount(filtered.length)),
           if (_filterState.isActive) _buildActiveFilterChips(),
