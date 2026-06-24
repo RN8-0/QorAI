@@ -168,7 +168,14 @@ class SharedPremiumFeaturesSectionState
 
   Widget _buildFullReportSection() {
     if (_quizLoading) {
-      return _buildQuizLoadingCard();
+      // TEK STANDART loader: küçük "Sorular hazırlanıyor" kartı yerine, analiz
+      // aşamasıyla (ve abonelik akışıyla) AYNI adım-listeli workboard kullan.
+      // Quiz üretimi de analiz de aynı formatta görünür.
+      return AiReportWorkboard(
+        lang: _reportLang,
+        mode: 'product',
+        stage: AiReportStageLite.prep,
+      );
     }
     if (_quiz != null && _fullReport == null && !_fullReportRunning) {
       return _buildQuizCard();
@@ -272,33 +279,6 @@ class SharedPremiumFeaturesSectionState
           const SizedBox(height: 16),
           child,
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuizLoadingCard() {
-    return _buildQuizSurround(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              _txt(tr: 'Sorular hazırlanıyor...', en: 'Preparing questions...'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: context.textSecondary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -6949,7 +6949,12 @@ Rules:
 
   Widget _buildCompareFullReportSection() {
     if (_compareQuizLoading) {
-      return _buildCompareQuizLoadingCard();
+      // TEK STANDART loader: küçük kart yerine analiz aşamasıyla aynı workboard.
+      return AiReportWorkboard(
+        lang: _appLang,
+        mode: 'compare',
+        stage: AiReportStageLite.prep,
+      );
     }
     if (_compareQuiz != null &&
         _fullCompareReport == null &&
@@ -7026,33 +7031,6 @@ Rules:
           const SizedBox(height: 16),
           child,
         ],
-      ),
-    );
-  }
-
-  Widget _buildCompareQuizLoadingCard() {
-    return _buildCompareQuizSurround(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              _isTr ? 'Sorular hazırlanıyor...' : 'Preparing questions...',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: context.textSecondary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

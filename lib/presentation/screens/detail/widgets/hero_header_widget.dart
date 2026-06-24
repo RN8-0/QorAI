@@ -241,8 +241,9 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
         precacheImage(
           CachedNetworkImageProvider(
             url,
-            maxWidth: cacheWidth,
-            maxHeight: cacheHeight,
+            // SADECE genişlik → oran korunur (display ile aynı, bozuk
+            // versiyon önbelleğe alınmaz).
+            maxWidth: dart_math.max(cacheWidth, cacheHeight),
           ),
           context,
         ).catchError((_) {});
@@ -789,11 +790,16 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
             child: CachedNetworkImage(
               key: ValueKey(url),
               imageUrl: url,
-              fit: BoxFit.scaleDown,
-              memCacheWidth: widget.cacheWidth,
-              memCacheHeight: widget.cacheHeight,
-              maxWidthDiskCache: widget.cacheWidth,
-              maxHeightDiskCache: widget.cacheHeight,
+              fit: BoxFit.contain,
+              // KRİTİK: SADECE genişlik. Hem width hem height verilince decoder
+              // görseli o boyuta sıkıştırıp en-boy oranını bozuyordu (dikey
+              // telefon görselleri yatay ezik görünüyordu). Tek boyut → oran
+              // korunur; BoxFit.contain slota sığdırır.
+              memCacheWidth: dart_math.max(widget.cacheWidth, widget.cacheHeight),
+              maxWidthDiskCache: dart_math.max(
+                widget.cacheWidth,
+                widget.cacheHeight,
+              ),
               filterQuality: FilterQuality.medium,
               fadeInDuration: const Duration(milliseconds: 80),
               placeholder: (_, _) => const _HeroImageLoadingIndicator(),

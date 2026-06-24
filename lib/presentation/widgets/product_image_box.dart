@@ -9,6 +9,8 @@
 /// Use this everywhere a product image is shown in a card.
 library;
 
+import 'dart:math' as dart_math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -126,16 +128,21 @@ class _ProductImageBoxState extends State<ProductImageBox> {
       // explicit width geçmesi önerilir (_WideProductCard gibi).
       final targetW = widget.width ?? widget.height ?? 140.0;
       final targetH = widget.height ?? widget.width ?? 140.0;
-      final cacheW = (targetW * dpr).round().clamp(120, 720);
-      final cacheH = (targetH * dpr).round().clamp(120, 720);
+      // KRİTİK: SADECE genişlik ver. Hem memCacheWidth HEM memCacheHeight
+      // verilince decoder görseli tam o boyuta SIKIŞTIRIYOR (en-boy oranını
+      // bozar) → dikey ürün görselleri yatay ezik görünüyordu. Tek boyut
+      // verilince diğeri oran korunarak hesaplanır; BoxFit zaten slota
+      // sığdırır. Net kalsın diye slotun büyük kenarını baz al.
+      final cacheW = (dart_math.max(targetW, targetH) * dpr).round().clamp(
+        120,
+        900,
+      );
       imageWidget = CachedNetworkImage(
         key: ValueKey(url),
         imageUrl: url,
         fit: widget.fit,
         memCacheWidth: cacheW,
-        memCacheHeight: cacheH,
         maxWidthDiskCache: cacheW,
-        maxHeightDiskCache: cacheH,
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         filterQuality: FilterQuality.medium,

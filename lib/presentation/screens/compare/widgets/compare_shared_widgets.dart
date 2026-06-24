@@ -47,10 +47,14 @@ class _CompareFullScreenImageViewerState
                 child: CachedNetworkImage(
                   imageUrl: widget.images[i],
                   fit: BoxFit.contain,
-                  memCacheWidth: cacheWidth,
-                  memCacheHeight: cacheHeight,
-                  maxWidthDiskCache: cacheWidth,
-                  maxHeightDiskCache: cacheHeight,
+                  // SADECE genişlik → en-boy oranı korunur (ikisi birden
+                  // verilince decoder görseli sıkıştırıp bozuyordu).
+                  memCacheWidth: cacheWidth > cacheHeight
+                      ? cacheWidth
+                      : cacheHeight,
+                  maxWidthDiskCache: cacheWidth > cacheHeight
+                      ? cacheWidth
+                      : cacheHeight,
                   placeholder: (_, _) => Center(
                     child: CircularProgressIndicator(
                       color: fgColor.withValues(alpha: 0.6),
