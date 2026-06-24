@@ -64,11 +64,19 @@ class _FloatingAiAssistantOverlayState
       TweenSequenceItem(tween: Tween(begin: 1, end: 0.88), weight: 45),
       TweenSequenceItem(tween: Tween(begin: 0.88, end: 1), weight: 55),
     ]).animate(CurvedAnimation(parent: _fabCtrl, curve: Curves.easeOutCubic));
+    // Panel dismiss olunca AIChatScreen'i ağaçtan düşürmek için tek bir
+    // rebuild tetikle (aşağıdaki _panelContentMounted kontrolü).
+    _panelCtrl.addStatusListener(_onPanelStatus);
+  }
+
+  void _onPanelStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _routeInformationProvider.removeListener(_handleRouteChanged);
+    _panelCtrl.removeStatusListener(_onPanelStatus);
     _panelCtrl.dispose();
     _fabCtrl.dispose();
     super.dispose();
@@ -495,9 +503,21 @@ class _FloatingAiAssistantOverlayState
                           ),
                         ],
                       ),
+                      // KRİTİK PERF: Panel kapalıyken AIChatScreen'i İNŞA ETME.
+                      // Bu overlay app kökündeki kalıcı Overlay'de yaşıyor (route
+                      // değil) → TickerMode hiç mute edilmiyor. AIChatScreen
+                      // initState'te sonsuz bir pulse AnimationController başlatır;
+                      // her zaman mount edilirse o Ticker tüm uygulama ömrü boyunca
+                      // her vsync'te frame zorlar (idle'da bile ~25fps üretim →
+                      // uygulama genelinde "kasma"nın kök nedeni). Sadece açıkken
+                      // ya da kapanış animasyonu sürerken mount et.
                       child: Material(
                         type: MaterialType.transparency,
-                        child: _showHistory
+                        child:
+                            (!_isOpen &&
+                                _panelCtrl.status == AnimationStatus.dismissed)
+                            ? const SizedBox.shrink()
+                            : _showHistory
                             ? ChatHistoryScreen(
                                 isOverlay: true,
                                 onBack: _closeHistory,

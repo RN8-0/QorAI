@@ -55,10 +55,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   @override
   void initState() {
     super.initState();
+    // Pulse SADECE AI düşünürken (typing indicator görünürken) çalışır.
+    // Önceden initState'te koşulsuz `..repeat()` ediliyordu → bu ekran
+    // floating overlay'de sürekli mount olduğundan, çalışan Ticker tüm
+    // uygulamada her vsync'te frame zorluyordu (idle jank kök nedeni).
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    );
     _ctrl.addListener(_handleTextChanged);
     _initSpeech();
     _schedulePageContextUpdate(forceWelcome: widget.isOverlay);
@@ -237,6 +241,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatSessionProvider);
+    // Typing indicator pulse'unu yalnızca loading sürerken döndür; idle'da
+    // durdur ki Ticker sürekli frame zorlamasın.
+    if (chatState.isLoading) {
+      if (!_pulseCtrl.isAnimating) _pulseCtrl.repeat(reverse: true);
+    } else if (_pulseCtrl.isAnimating) {
+      _pulseCtrl.stop();
+    }
     final bottom = widget.isOverlay
         ? 0.0
         : MediaQuery.of(context).padding.bottom;

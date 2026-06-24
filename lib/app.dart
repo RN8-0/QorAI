@@ -31,6 +31,7 @@ class QorAiApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Qor AI',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const _NoStretchScrollBehavior(),
 
       // Lokalizasyon - Blueprint Section 11.3
       localizationsDelegates: const [
@@ -80,6 +81,21 @@ class QorAiApp extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Android'in varsayılan "stretch" overscroll göstergesini kapatır.
+/// Her Scrollable bir StretchingOverscrollIndicator + AnimationController sarar;
+/// ana sayfadaki ~19 yatay rail ile bu, idle'da bile sürekli frame zorlayan
+/// bir ticker yığını yaratıyordu. Overscroll efekti olmadan da kaydırma sorunsuz.
+class _NoStretchScrollBehavior extends MaterialScrollBehavior {
+  const _NoStretchScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }
 
 /// Overlay that shows a Material banner when a foreground FCM notification arrives.
