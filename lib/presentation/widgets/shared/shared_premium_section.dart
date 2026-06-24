@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -479,8 +480,42 @@ class SharedPremiumFeaturesSectionState
 
   Future<void> _submitQuiz() async {
     final answers = _quizAnswers;
+    _persistQuizAnswers(answers); // best-effort: profile + tanıma algoritması
     setState(() => _quiz = null);
     await _runReport(answers);
+  }
+
+  /// Ürün-detay quizinin cevaplarını kullanıcı profiline (quizHistory) yazar —
+  /// link/abonelik akışlarındaki AYNI desen. quizHistory, eşleşme/tanıma
+  /// algoritması tarafından (cache_providers match-cache + weightVector)
+  /// okunduğu için cevaplar kullanıcı tanımaya da katkı sağlar.
+  void _persistQuizAnswers(List<QuizQuestion> answers) {
+    final uid = ref.read(userProfileProvider).valueOrNull?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final answered = answers
+        .where((q) => q.selectedOption != null)
+        .map((q) => {'question': q.text, 'answer': q.selectedOption})
+        .toList();
+    if (answered.isEmpty) return;
+    final p = widget.product;
+    unawaited(
+      ref
+          .read(pbDataSourceProvider)
+          .saveQuizHistory(uid, {
+            'timestamp': DateTime.now().toIso8601String(),
+            'status': 'completed',
+            'productId': p.id,
+            'productTitle': p.nameForLanguage(_reportLang),
+            'category': p.category,
+            'mode': 'product',
+            'questionCount': answers.length,
+            'questions': answers
+                .map((q) => {'question': q.text, 'options': q.options})
+                .toList(),
+            'answers': answered,
+          })
+          .catchError((_) {}),
+    );
   }
 
   Future<void> _skipQuiz() async {

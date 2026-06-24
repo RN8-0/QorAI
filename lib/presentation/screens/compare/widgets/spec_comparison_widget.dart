@@ -7186,8 +7186,43 @@ Rules:
 
   Future<void> _submitCompareQuiz() async {
     final answers = _compareQuizAnswers;
+    _persistCompareQuizAnswers(answers); // profile + tanıma algoritması
     setState(() => _compareQuiz = null);
     await _runCompareReport(answers);
+  }
+
+  /// Karşılaştırma quiz cevaplarını kullanıcı profiline (quizHistory) yazar —
+  /// link/abonelik/detay akışlarıyla aynı desen; tanıma algoritması okur.
+  void _persistCompareQuizAnswers(List<QuizQuestion> answers) {
+    final uid = ref.read(userProfileProvider).valueOrNull?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final answered = answers
+        .where((q) => q.selectedOption != null)
+        .map((q) => {'question': q.text, 'answer': q.selectedOption})
+        .toList();
+    if (answered.isEmpty) return;
+    final titles = widget.products
+        .map((p) => p.nameForLanguage(_appLang))
+        .toList();
+    unawaited(
+      ref
+          .read(pbDataSourceProvider)
+          .saveQuizHistory(uid, {
+            'timestamp': DateTime.now().toIso8601String(),
+            'status': 'completed',
+            'productTitle': titles.join(' vs '),
+            'category': widget.products.isNotEmpty
+                ? widget.products.first.category
+                : '',
+            'mode': 'compare',
+            'questionCount': answers.length,
+            'questions': answers
+                .map((q) => {'question': q.text, 'options': q.options})
+                .toList(),
+            'answers': answered,
+          })
+          .catchError((_) {}),
+    );
   }
 
   Future<void> _skipCompareQuiz() async {
