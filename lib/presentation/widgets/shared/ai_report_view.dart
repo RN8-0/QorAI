@@ -1781,8 +1781,44 @@ class AiReportWorkboard extends StatefulWidget {
 /// service into the widget layer just for an enum).
 enum AiReportStageLite { prep, research, report }
 
-class _AiReportWorkboardState extends State<AiReportWorkboard> {
+class _AiReportWorkboardState extends State<AiReportWorkboard>
+    with SingleTickerProviderStateMixin {
   int _active = 0;
+
+  // Orb pulse — transient (yalnızca yükleme ekranı görünürken çalışır), bu
+  // yüzden sürekli-frame perf sorunu yaratmaz.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  // Adım ikonları (abonelik akışındaki gibi). steps ile aynı sırada.
+  static const _icons = <String, List<IconData>>{
+    'product': [
+      Icons.inventory_2_rounded,
+      Icons.person_rounded,
+      Icons.travel_explore_rounded,
+      Icons.auto_graph_rounded,
+      Icons.swap_horizontal_circle_rounded,
+      Icons.description_rounded,
+    ],
+    'compare': [
+      Icons.inventory_2_rounded,
+      Icons.person_rounded,
+      Icons.travel_explore_rounded,
+      Icons.compare_arrows_rounded,
+      Icons.auto_graph_rounded,
+      Icons.verified_rounded,
+    ],
+    'link': [
+      Icons.link_rounded,
+      Icons.person_rounded,
+      Icons.travel_explore_rounded,
+      Icons.auto_graph_rounded,
+      Icons.swap_horizontal_circle_rounded,
+      Icons.description_rounded,
+    ],
+  };
 
   static const _sets = <String, Map<String, dynamic>>{
     'product': {
@@ -1805,6 +1841,17 @@ class _AiReportWorkboardState extends State<AiReportWorkboard> {
         ['Comparing specs head-to-head', 'Özellikler karşılıklı karşılaştırılıyor', 'Specs werden direkt verglichen'],
         ['Scoring the best fit for you', 'Sana en uygunu puanlanıyor', 'Beste Wahl wird bewertet'],
         ['Composing the verdict', 'Sonuç hazırlanıyor', 'Fazit wird erstellt'],
+      ],
+    },
+    'link': {
+      'title': ['Analyzing the link', 'Bağlantı analiz ediliyor', 'Link wird analysiert'],
+      'steps': [
+        ['Reading the product page', 'Ürün sayfası okunuyor', 'Produktseite wird gelesen'],
+        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
+        ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
+        ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
+        ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor', 'Alternativen und Preis-Timing werden geprüft'],
+        ['Composing the final report', 'Son rapor hazırlanıyor', 'Der Bericht wird zusammengestellt'],
       ],
     },
   };
@@ -1854,80 +1901,172 @@ class _AiReportWorkboardState extends State<AiReportWorkboard> {
   }
 
   @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final set = _sets[widget.mode] ?? _sets['product']!;
     final steps = set['steps'] as List;
+    final icons = _icons[widget.mode] ?? _icons['product']!;
+    final total = steps.length;
+    final done = _active.clamp(0, total);
+    final percent = total == 0 ? 0 : ((done / total) * 100).round();
+    final activeIdx = _active.clamp(0, total - 1);
+    final activeLabel = _t(steps[activeIdx] as List);
+    final activeIcon = icons[activeIdx.clamp(0, icons.length - 1)];
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
         color: context.surfaceVariantColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.dividerColor),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(AppTheme.brandBlue),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _t(set['title'] as List),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: context.textPrimary,
+          // ── Büyük orb: ilerleme halkası + nabız + çekirdek (ikon + %) ──
+          Center(
+            child: SizedBox(
+              width: 150,
+              height: 150,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      tween: Tween(
+                        begin: 0,
+                        end: total == 0 ? 0.0 : done / total,
+                      ),
+                      builder: (ctx, value, _) => CircularProgressIndicator(
+                        value: value,
+                        strokeWidth: 6,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: AppTheme.brandBlue.withValues(
+                          alpha: 0.10,
+                        ),
+                        color: AppTheme.brandCyan,
+                      ),
+                    ),
                   ),
-                ),
+                  AnimatedBuilder(
+                    animation: _pulse,
+                    builder: (ctx, _) => Container(
+                      width: 108 + _pulse.value * 8,
+                      height: 108 + _pulse.value * 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppTheme.brandBlue.withValues(
+                              alpha: 0.22 + _pulse.value * 0.12,
+                            ),
+                            AppTheme.brandBlue.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.brandBlue, AppTheme.brandDeepBlue],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(activeIcon, color: Colors.white, size: 26),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$percent%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+          // ── Aktif adım etiketi ──
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Text(
+              activeLabel,
+              key: ValueKey(activeLabel),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          // ── Adım listesi (timeline) ──
           for (var i = 0; i < steps.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.only(bottom: 11),
               child: Row(
                 children: [
                   Container(
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: i < _active
                           ? _green
                           : (i == _active
-                              ? AppTheme.brandBlue
-                              : context.dividerColor),
+                                ? AppTheme.brandBlue
+                                : context.dividerColor),
                     ),
                     child: i < _active
-                        ? const Icon(Icons.check, size: 13, color: Colors.white)
-                        : Text(
-                            '${i + 1}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: i == _active
-                                  ? Colors.white
-                                  : context.textTertiaryColor,
-                            ),
+                        ? const Icon(Icons.check, size: 15, color: Colors.white)
+                        : Icon(
+                            icons[i.clamp(0, icons.length - 1)],
+                            size: 14,
+                            color: i == _active
+                                ? Colors.white
+                                : context.textTertiaryColor,
                           ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _t(steps[i] as List),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
-                        fontWeight: i == _active ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: i == _active
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: i <= _active
                             ? context.textPrimary
                             : context.textTertiaryColor,
