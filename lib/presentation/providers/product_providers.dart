@@ -2511,14 +2511,36 @@ Return only the JSON array, no explanation.''';
 final personalizedRecommendationsProvider = FutureProvider<List<ProductEntity>>((
   ref,
 ) async {
-  // Only rebuild when user logs in/out — not on every profile stream emit
-  ref.watch(userProfileProvider.select((u) => u.valueOrNull?.uid));
+  // Auth'u çöz: authStateChanges persistent store'daki uid'i İLK yield eder,
+  // bu yüzden cold start'ta anında doğru uid'e çözülür. Eskiden burada
+  // `userProfileProvider.valueOrNull` okunuyordu — o auth-loading sırasında
+  // null olduğu için provider önce ANON "trending" sonucu emit edip, login
+  // gelince behavior-based sonuca SWAP ediyordu (kullanıcı: "ekran bir anda
+  // değişiyor, yukarıdaki ürünler aşağı geliyor tekrar eski haline dönüyor").
+  // userProfile.future de auth-loading'de transient null emit ettiği için
+  // güvenilmez → user objesi yoksa direkt getUser ile çekilir. Sonuç: ilk
+  // çalıştırmada doğru (user) yol hesaplanır, swap yok.
+  final uid = await ref.watch(authStateProvider.future);
   final activeSearchQuery = ref.watch(searchQueryProvider).trim();
-  final user = ref.read(userProfileProvider).valueOrNull;
+  UserEntity? user =
+      uid == null ? null : ref.read(userProfileProvider).valueOrNull;
+  if (uid != null && user == null) {
+    try {
+      user = await ref.read(pbDataSourceProvider).getUser(uid);
+    } catch (_) {}
+  }
   final country = ref.read(selectedCountryProvider);
   final feed = await ref.watch(homeFeedProvider.future);
-  final behavior = await ref.watch(behaviorSignalsProvider.future);
-  final recentlyViewed = await ref.watch(recentlyViewedProductsProvider.future);
+  // Behavior + recentlyViewed: SNAPSHOT (ref.read — bloklamadan, re-run YOK).
+  // Eskiden await/watch ediliyordu: recentlyViewed'in Typesense fetch'leri
+  // saniyelerce sürüp "For You" rail'ini boş bırakıyor, ayrıca her güncellemede
+  // re-run + içerik SWAP yapıyordu. Hazır olanı kullan; hazır değilse profil
+  // bazlı öneri üret → rail hızlı dolar, swap/oscillation yok.
+  final behavior =
+      ref.read(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
+  final recentlyViewed =
+      ref.read(recentlyViewedProductsProvider).valueOrNull ??
+      const <ProductEntity>[];
 
   if (feed.all.isEmpty) return <ProductEntity>[];
 

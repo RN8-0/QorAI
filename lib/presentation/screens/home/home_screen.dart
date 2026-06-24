@@ -91,11 +91,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // 7 = + Discover
   int _renderStage = 0;
   static const int _kMaxRenderStage = 7;
-  // Stage'ler arası gecikme. 140ms ≈ 8-9 vsync — zayıf cihazlarda (Xiaomi
-  // mid-range, eski tablet) her stage arasında frame budget açar. 32ms'de
-  // arka arkaya gelen rebuild'ler aynı vsync'e düşebilir -> spike.
-  // Toplam Stage 2->7 reveal: ~700ms; ilk viewport daha akıcı kalır.
-  static const Duration _kStageDelay = Duration(milliseconds: 140);
   // Feed READY guard: feed AsyncValue.data state'e geçmeden Stage 2+
   // açılmaz. Aksi halde shimmer→gerçek geçiş tüm Consumer'ları aynı anda
   // rebuild eder → büyük spike. Feed hazır olunca kademeli olarak açılır.
@@ -132,43 +127,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // tetiklenir; otomatik Stage 1'e atlama yok (gereksiz frame).
   }
 
-  void _scheduleNextStage() {
-    if (!mounted || _renderStage >= _kMaxRenderStage) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // Bir önceki stage'in pipeline'ı tamamen bitsin diye delay veriyoruz.
-      Future<void>.delayed(_kStageDelay, () {
-        if (!mounted || _renderStage >= _kMaxRenderStage) return;
-        // Stage 0 → 1 (Categories) feed'den bağımsız — hemen açılabilir.
-        // Stage 2+ ürün section'larıdır → feed READY beklemeli.
-        // Aksi halde feed sonradan READY olduğunda shimmer→data geçişi
-        // tüm Consumer'ları aynı frame'de rebuild eder ve büyük spike olur.
-        final nextStage = _renderStage + 1;
-        if (nextStage >= 2 && !_feedReadyForReveal) {
-          // Feed henüz hazır değil. Listener feed READY olunca
-          // _scheduleNextStage'i tekrar tetikleyecek.
-          return;
-        }
-        setState(() => _renderStage = nextStage);
-        _scheduleNextStage();
-      });
-    });
-  }
-
   /// homeFeedProvider AsyncValue.data state'e ilk kez geçtiğinde çağrılır.
-  /// Feed gelmeden Stage 2+ açılmamalı; aksi halde aynı frame'de tüm
-  /// shimmer'lar gerçek karta dönüp Consumer rebuild dalgası yaratır.
+  /// Feed hazır olunca TÜM stage'leri tek frame'de aç. Eskiden stage'ler
+  /// 140ms aralıkla kademeli açılıyordu → ekran ilk ~1-3sn boyunca "section
+  /// section beliriyor" gibi görünüp içerik aşağı kayıyordu (kullanıcı
+  /// şikayeti: "ekran bir anda değişiyor, yukarıdaki ürünler aşağı geliyor").
+  /// CustomScrollView slivers'ları ZATEN lazy — ekran dışı section'lar
+  /// (Trending altı) viewport'a girene kadar build EDİLMEZ, dolayısıyla
+  /// hepsini aynı anda "eligible" yapmak ekran dışı iş yaratmaz; sadece
+  /// görünür section'lar (Kategoriler + For You + Trending başı) build olur.
   void _onFeedReady() {
     if (_feedReadyForReveal) return;
     _feedReadyForReveal = true;
-    // Direkt Stage 2'ye sıçra (postFrame timer beklemesi yok). Feed
-    // hazır -> For You hemen render etmeli. Sonraki stage'ler normal
-    // kademeli akışla açılır.
-    if (mounted && _renderStage < 2) {
+    if (mounted && _renderStage < _kMaxRenderStage) {
       setState(() {
-        _renderStage = 2;
+        _renderStage = _kMaxRenderStage;
       });
-      _scheduleNextStage();
     }
   }
 
@@ -1647,12 +1621,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               }
               return buildRow(products);
             },
-            loading: () => loadingFallback.isNotEmpty
-                ? buildRow(loadingFallback)
-                : _buildSkeletonRow(
-                    height: _kHorizontalCardRowHeight,
-                    cardWidth: 132,
-                  ),
+            // İlk yüklemede trending fallback GÖSTERME — personalized (~birkaç
+            // sn) gelince gerçek-içerik→gerçek-içerik swap'ı (telefon→kasa fanı)
+            // yapıp "ekran bir anda değişiyor" hissi yaratıyordu. Skeleton →
+            // personalized tek geçiş. (skipLoadingOnReload/Refresh true olduğu
+            // için bu sadece ilk yüklemede; sonraki reload'larda data korunur.)
+            loading: () => _buildSkeletonRow(
+              height: _kHorizontalCardRowHeight,
+              cardWidth: 132,
+            ),
             error: (error, stackTrace) => loadingFallback.isNotEmpty
                 ? buildRow(loadingFallback)
                 : const SizedBox.shrink(),
