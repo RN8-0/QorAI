@@ -119,15 +119,23 @@ class ProductEntity extends Equatable {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
     if (trimmed.contains('/reklam/') || trimmed.contains('/banner/')) return '';
-    return trimmed.replaceFirst(
+    // NOT: replaceFirst(regex, r'$1b_') Dart'ta capture group'u substitute
+    // ETMEZ ($1 literal yazılır → bozuk URL). replaceFirstMapped şart.
+    return trimmed.replaceFirstMapped(
       RegExp(r'(resim\.epey\.com/[^/]+/)[stc]_'),
-      r'$1b_',
+      (m) => '${m.group(1)}b_',
     );
   }
 
   static String _imageIdentityKey(String raw) {
     var key = raw.trim().toLowerCase().split(RegExp(r'[?#]')).first;
-    key = key.replaceFirst(RegExp(r'(resim\.epey\.com/[^/]+/)[a-z]_'), r'$1');
+    // replaceFirst($1) Dart'ta literal yazar → group substitute İÇİN mapped.
+    // Bu bug yüzünden "m_x.jpg" ile "x.jpg" farklı key üretip dedup'tan kaçıyor
+    // ve galeride aynı görsel iki kez görünüyordu.
+    key = key.replaceFirstMapped(
+      RegExp(r'(resim\.epey\.com/[^/]+/)[a-z]_'),
+      (m) => m.group(1)!,
+    );
     key = key.replaceFirstMapped(RegExp(r'-(?:k|s|m|t|c|l|n)(\d*)\.(webp|jpe?g|png)$', caseSensitive: false), (match) => '${match.group(1)}.${match.group(2)}');
     return key;
   }
