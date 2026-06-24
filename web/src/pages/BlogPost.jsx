@@ -61,6 +61,7 @@ function imageOnError(e) {
     const fig = img.closest('figure'); if (fig) fig.style.display = 'none';
   }
 }
+
 // Inline markdown: **bold** and *italic*. Returns an array of strings/elements.
 function parseInline(text, kp) {
   const parts = String(text).split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*)/g).filter((s) => s !== '');
