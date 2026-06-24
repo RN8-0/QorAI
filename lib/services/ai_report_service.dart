@@ -536,6 +536,22 @@ class AiReportService {
 
   /// Builds a `product_full_report` for one product. Returns null only when the
   /// model never produced parseable JSON.
+  /// HIZ: web araştırmasını quiz gösterilirken paralel başlatmak için. Rapor
+  /// çağrısı bu future'ı bekler; kullanıcı quiz'i yanıtlarken araştırma çoktan
+  /// bitmiş olur. Ekstra çağrı yok — sadece daha erken başlatılmış olur.
+  static Future<String> prefetchProductResearch(
+    WidgetRef ref,
+    ProductEntity product,
+    String lang, {
+    List<dynamic> quizAnswers = const [],
+  }) {
+    return _askGrounded(
+      ref,
+      buildProductResearchPrompt(product, lang, quizAnswers),
+      lang,
+    );
+  }
+
   static Future<Map<String, dynamic>?> runProductReport({
     required WidgetRef ref,
     required ProductEntity product,
@@ -543,15 +559,24 @@ class AiReportService {
     Map<String, dynamic> profile = const {},
     List<dynamic> quizAnswers = const [],
     List<ProductEntity> similarProducts = const [],
+    Future<String>? researchFuture,
     void Function(AiReportStage stage)? onStage,
   }) async {
     onStage?.call(AiReportStage.prep);
     onStage?.call(AiReportStage.research);
-    final research = await _askGrounded(
-      ref,
-      buildProductResearchPrompt(product, lang, quizAnswers),
-      lang,
-    );
+    // Önceden başlatılmış (paralel) araştırma varsa onu kullan; boş/başarısızsa
+    // güvenli şekilde normal araştırmaya düş.
+    String research = '';
+    if (researchFuture != null) {
+      research = await researchFuture.catchError((_) => '');
+    }
+    if (research.isEmpty) {
+      research = await _askGrounded(
+        ref,
+        buildProductResearchPrompt(product, lang, quizAnswers),
+        lang,
+      );
+    }
     onStage?.call(AiReportStage.report);
     final startedAt = DateTime.now();
     final prompt = buildFullPrompt(

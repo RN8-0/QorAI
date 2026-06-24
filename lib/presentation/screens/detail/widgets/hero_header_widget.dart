@@ -174,9 +174,13 @@ class _HeroHeaderState extends ConsumerState<_HeroHeader> {
                             tag: 'product_image_${widget.product.id}_$i',
                             child: _HeroNetworkImage(
                               url: allImages[i],
-                              fallbackUrls: i == 0
-                                  ? allImages.skip(1).toList(growable: false)
-                                  : const <String>[],
+                              // KRİTİK: çapraz görsel fallback YOK. Eskiden index 0,
+                              // yüklenemezse allImages.skip(1)'e (diğer slide'lar)
+                              // düşüyordu → aynı görsel iki slide'da görünüyordu.
+                              // _HeroNetworkImage zaten her görselin kendi boyut
+                              // varyantlarını (m_/b_/orijinal) dener; çapraz fallback
+                              // gereksiz ve "çift görsel" bug'ına yol açıyordu.
+                              fallbackUrls: const <String>[],
                               cacheWidth: heroCacheWidth,
                               cacheHeight: heroCacheHeight,
                               fallback: _CategoryEmoji(

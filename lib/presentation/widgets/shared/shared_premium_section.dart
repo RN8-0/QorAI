@@ -56,6 +56,8 @@ class SharedPremiumFeaturesSectionState
   bool _fullReportRunning = false;
   bool _fullReportError = false;
   AiReportStageLite _fullReportStage = AiReportStageLite.prep;
+  // HIZ: web araştırmasını quiz cevaplanırken paralel çalıştırmak için.
+  Future<String>? _researchFuture;
 
   // Web-parity quiz step (shown before the report — same UI as link/sub quiz).
   ProductQuiz? _quiz;
@@ -420,6 +422,14 @@ class SharedPremiumFeaturesSectionState
       _quiz = null;
       _fullReportError = false;
     });
+    // HIZ: web araştırmasını ŞİMDİ başlat (quiz üretimi + kullanıcının quiz'i
+    // yanıtlaması ile paralel çalışsın). Submit'te rapor, biten araştırmayı
+    // beklemeden kullanır → analiz belirgin şekilde daha hızlı görünür.
+    _researchFuture = AiReportService.prefetchProductResearch(
+      ref,
+      widget.product,
+      _reportLang,
+    );
     // Web paritesi: Gemini öncelikli (link/abonelik akışıyla aynı), DeepSeek
     // fallback — DeepSeek proxy zaman zaman "temporarily unavailable" dönüyor.
     final cat = widget.product.category;
@@ -553,6 +563,7 @@ class SharedPremiumFeaturesSectionState
         profile: _buildAiProfile(),
         quizAnswers: quizAnswers,
         similarProducts: similar,
+        researchFuture: _researchFuture,
         onStage: (s) {
           if (!mounted) return;
           setState(() => _fullReportStage = _mapStage(s));
