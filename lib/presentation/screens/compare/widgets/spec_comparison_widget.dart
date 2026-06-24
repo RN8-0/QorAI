@@ -7058,41 +7058,15 @@ Rules:
   }
 
   Widget _buildAiStartButton(VoidCallback onStart, bool error) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (error) ...[
-          Text(
-            _isTr
-                ? 'AI analizi tamamlanamadı. Lütfen tekrar dene.'
-                : 'AI analysis could not be completed. Please try again.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 12.5, color: AppTheme.error),
-          ),
-          const SizedBox(height: 14),
-        ],
-        FilledButton.icon(
-          onPressed: onStart,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.brandBlue,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          icon: const Icon(Icons.auto_awesome_rounded, size: 19),
-          label: Text(
-            error
-                ? (_isTr ? 'Tekrar Dene' : 'Try Again')
-                : (_isTr ? 'Analizi Başlat' : 'Start Analysis'),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
+    // Tekli ürün analiziyle BİRE BİR aynı: ortalanmış, yaratıcı animasyonlu
+    // ortak başlangıç kartı. Butona basınca normal akış (quiz → rapor) devam eder.
+    return AiAnalysisStartCard(
+      onStart: onStart,
+      isTr: _isTr,
+      isError: error,
+      subtitleOverride: _isTr
+          ? 'Ürünleri yan yana puanlar, sana en uygunu önerir.'
+          : 'Scores products head-to-head and recommends the best for you.',
     );
   }
 

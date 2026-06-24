@@ -1433,7 +1433,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         });
       }
     }
-    return flat;
+    // POPÜLERLİK SIRASI (kullanıcı isteği): en popüler kategoriler önce; sağa
+    // kaydırdıkça daha az popüler olanlar. Listede olmayanlar sona, kendi
+    // aralarında mevcut sırada (stable, orijinal index tiebreaker).
+    const popularityOrder = <String>[
+      'smartphones',
+      'laptops',
+      'tablets',
+      'smartwatches',
+      'headphones',
+      'tvs',
+      'gaming_consoles',
+      'graphics_cards',
+      'cpus',
+      'ram',
+      'monitors',
+      'ssd',
+      'motherboards',
+      'keyboards',
+      'mice',
+      'speakers',
+      'desktops',
+      'powerbanks',
+      'chargers',
+      'gamepads',
+      'webcams',
+      'microphones',
+      'e_readers',
+      'vr_headsets',
+      'drones',
+      'routers',
+      'modem_routers',
+      'printers',
+    ];
+    final rank = <String, int>{
+      for (var i = 0; i < popularityOrder.length; i++) popularityOrder[i]: i,
+    };
+    final indexed = <(int, Map<String, Object>)>[
+      for (var i = 0; i < flat.length; i++) (i, flat[i]),
+    ];
+    indexed.sort((a, b) {
+      final ra = rank[a.$2['id']] ?? 500;
+      final rb = rank[b.$2['id']] ?? 500;
+      if (ra != rb) return ra.compareTo(rb);
+      return a.$1.compareTo(b.$1); // stable
+    });
+    return [for (final e in indexed) e.$2];
   }
 
   /// Locale-aware cache — recreates only when locale changes.

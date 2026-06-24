@@ -3256,12 +3256,11 @@ final productVariantsProvider = FutureProvider.autoDispose
         }).toList();
         final byConfig = <String, ProductEntity>{};
         for (final v in variants) {
-          // configKey'e DEPOLAMA eklenir: Apple/Xiaomi gibi ailelerde configKey
-          // storage'ı ayırt etmiyor → 256/512GB/1TB aynı sayılıp birleşiyor ve
-          // varyant bölümü ≤1'e düşüp gizleniyordu.
-          final key = v.configKey.isNotEmpty
-              ? '${v.configKey}|${_storageFromNameMB(v)}'
-              : '${v.variantGroup}|${_storageFromNameMB(v)}|${v.name.toLowerCase()}';
+          // DEDUP = tam ürün ADI (lowercase). configKey/specs Apple/Xiaomi'de
+          // bozuk/paylaşımlı (512GB kaydı configKey "...s1024..." + specs 1024GB
+          // taşıyor) → tek güvenilir ayraç isim. Aynı isim = gerçek dup (birleşir);
+          // "(512 GB)" vs "(1 TB)" / farklı CPU-GPU = farklı isim (ayrışır).
+          final key = v.name.toLowerCase().trim();
           final existing = byConfig[key];
           if (existing == null ||
               v.id == product.id ||
@@ -3271,7 +3270,7 @@ final productVariantsProvider = FutureProvider.autoDispose
         }
         final unique = byConfig.values.toList();
         unique.sort(
-          (a, b) => _storageCapacityMB(a).compareTo(_storageCapacityMB(b)),
+          (a, b) => _storageFromNameMB(a).compareTo(_storageFromNameMB(b)),
         );
         return unique;
       }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:qor_ai/core/quiz_gate.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_start_card.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
@@ -311,6 +312,17 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildFullReportStartCard() {
+    // Tekli + karşılaştırma analizinde AYNI ortak, sayfanın ortasında duran
+    // yaratıcı animasyonlu başlangıç kartı. Butona basınca normal akış devam eder.
+    return AiAnalysisStartCard(
+      onStart: _runProductFullReport,
+      isTr: _reportLang == 'tr',
+      isError: _fullReportError,
+    );
+  }
+
+  // ignore: unused_element
+  Widget _legacyFullReportStartCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),

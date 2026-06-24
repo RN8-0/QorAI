@@ -993,57 +993,103 @@ class _CompactVariantsSection extends ConsumerWidget {
   final ProductEntity product;
   const _CompactVariantsSection({required this.product});
 
-  // Varyantlar arasında FARKLI olan spec türlerini (öncelik sırasıyla) bul —
-  // kartlarda sadece bunları göster (web'deki pickVariantDiffKinds gibi).
-  static const _kinds = ['storage', 'ram', 'display', 'cpu', 'gpu'];
+  // Web paritesi (ProductDetail.jsx variantSpecKind/Value/pickVariantDiffKinds):
+  // varyantın FARKLI olan GERÇEK spec değerini keySpecs'ten okuyup gösterir
+  // (isim regex'i değil). Böylece MacBook gibi storage'ı AYNI ama işlemci/çekirdek
+  // farklı (18CPU/32GPU) varyantlarda doğru fark yazılır; "2 TB" iki kez değil.
+  static const _priority = [
+    'ram',
+    'storage',
+    'processor',
+    'screen',
+    'battery',
+    'color',
+  ];
 
-  static String? _kindValue(ProductEntity p, String kind) {
-    switch (kind) {
-      case 'storage':
-        final s = _VariantChip._extractStorageOnly(p);
-        return s.isEmpty ? null : s;
-      case 'ram':
-        return _VariantChip._extractRam(
-          p,
-        )?.replaceAll(RegExp(r'\s*RAM$', caseSensitive: false), '');
-      case 'display':
-        return _VariantChip._extractDisplay(p);
-      case 'cpu':
-        return _VariantChip._extractCpu(p);
-      case 'gpu':
-        return _VariantChip._extractGpu(p);
+  static String _specKind(String label, String value) {
+    final t = '$label $value'.toLowerCase();
+    if (RegExp(r'\bram\b|bellek|memory|arbeitsspeicher').hasMatch(t)) {
+      return 'ram';
+    }
+    if (RegExp(r'storage|depolama|ssd|hdd|kapasite|speicher').hasMatch(t) &&
+        !RegExp(r'batar|pil|battery|akku').hasMatch(t)) {
+      return 'storage';
+    }
+    if (RegExp(
+      r'işlemci|islemci|processor|\bcpu\b|\bgpu\b|graphics|grafik|chip|yonga|çip',
+    ).hasMatch(t)) {
+      return 'processor';
+    }
+    if (RegExp(r'ekran|screen|display|inch|inç|zoll|bildschirm').hasMatch(t)) {
+      return 'screen';
+    }
+    if (RegExp(r'batar|pil|battery|akku|mah|\bwh\b').hasMatch(t)) {
+      return 'battery';
+    }
+    if (RegExp(r'renk|colou?r|farbe').hasMatch(t)) {
+      return 'color';
+    }
+    return '';
+  }
+
+  static String? _specValueForKind(ProductEntity p, String kind) {
+    for (final e in p.keySpecs.entries) {
+      final value = e.value.toString();
+      if (_specKind(e.key, value) == kind) {
+        final v = value.trim();
+        if (v.isNotEmpty) return v;
+      }
+    }
+    // keySpecs eksikse isimden türet (storage/ram).
+    if (kind == 'storage') {
+      final s = _VariantChip._extractStorageOnly(p);
+      if (s.isNotEmpty) return s;
+    }
+    if (kind == 'ram') {
+      return _VariantChip._extractRam(
+        p,
+      )?.replaceAll(RegExp(r'\s*RAM$', caseSensitive: false), '');
     }
     return null;
   }
 
   static String _kindLabel(String kind, bool isTr) {
     switch (kind) {
-      case 'storage':
-        return isTr ? 'Depolama' : 'Storage';
       case 'ram':
         return 'RAM';
-      case 'display':
+      case 'storage':
+        return isTr ? 'Depolama' : 'Storage';
+      case 'processor':
+        return isTr ? 'İşlemci/GPU' : 'Processor/GPU';
+      case 'screen':
         return isTr ? 'Ekran' : 'Screen';
-      case 'cpu':
-        return isTr ? 'İşlemci' : 'CPU';
-      case 'gpu':
-        return 'GPU';
+      case 'battery':
+        return isTr ? 'Batarya' : 'Battery';
+      case 'color':
+        return isTr ? 'Renk' : 'Color';
     }
     return kind;
   }
 
   static List<String> _diffKinds(List<ProductEntity> variants) {
     final out = <String>[];
-    for (final k in _kinds) {
+    for (final k in _priority) {
       final vals = <String>{};
       for (final v in variants) {
-        final val = _kindValue(v, k);
+        final val = _specValueForKind(v, k);
         if (val != null && val.isNotEmpty) vals.add(val.toLowerCase());
       }
-      if (vals.length > 1) out.add(k);
+      if (vals.length >= 2) out.add(k);
+      if (out.length >= 3) break;
     }
-    if (out.isEmpty) out.add('storage');
     return out;
+  }
+
+  /// Spec'lerden fark çıkmadığında kart için ismin ayırt edici model etiketi
+  /// (CPU/GPU/RAM/depolama/ekran karması — _variantLabelFor).
+  static String _fallbackLabel(ProductEntity p) {
+    final lbl = _VariantChip._variantLabelFor(p);
+    return lbl.length > 26 ? '${lbl.substring(0, 25)}…' : lbl;
   }
 
   @override
@@ -1057,25 +1103,17 @@ class _CompactVariantsSection extends ConsumerWidget {
         final all = [product, ...variants]
           ..sort((a, b) => a.name.compareTo(b.name));
 
-        // configKey ile dedup: gerçek konfigürasyon başına tek kart (Icecat
-        // kozmetik SKU'larını değil). Seçili ürünü temsilci olarak koru.
+        // DEDUP = tam ürün ADI (lowercase): configKey/specs Apple/Xiaomi'de
+        // bozuk/paylaşımlı; tek güvenilir ayraç isim. Aynı isim = gerçek dup;
+        // "(512 GB)" vs "(1 TB)" / farklı CPU-GPU = farklı isim → ayrı kart.
+        // Seçili ürünü temsilci olarak koru.
         final seen = <String>{};
         final unique = <ProductEntity>[];
         for (final v in all) {
-          // configKey + DEPOLAMA: configKey storage'ı ayırt etmeyen ailelerde
-          // (Apple/Xiaomi) storage varyantları birleşmesin.
-          final key = v.configKey.isNotEmpty
-              ? '${v.configKey}|${_VariantChip._extractStorageOnly(v)}'
-              : _VariantChip._variantLabelFor(v);
+          final key = v.name.toLowerCase().trim();
           if (seen.contains(key)) {
             if (v.id == product.id) {
-              unique.removeWhere(
-                (u) =>
-                    (u.configKey.isNotEmpty
-                        ? u.configKey
-                        : _VariantChip._variantLabelFor(u)) ==
-                    key,
-              );
+              unique.removeWhere((u) => u.name.toLowerCase().trim() == key);
               unique.add(v);
             }
             continue;
@@ -1177,6 +1215,17 @@ class _VariantGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cyan = AppTheme.brandCyan;
     final shown = diffKinds.take(2).toList();
+    // Kartta gösterilecek (değer, etiket) hücreleri. Fark bulunan spec türleri
+    // varsa onları; yoksa ismin ayırt edici kısmını (model etiketi) göster.
+    final List<(String, String)> cells = shown.isEmpty
+        ? [(_CompactVariantsSection._fallbackLabel(product), isTr ? 'Sürüm' : 'Version')]
+        : [
+            for (final k in shown)
+              (
+                _CompactVariantsSection._specValueForKind(product, k) ?? '—',
+                _CompactVariantsSection._kindLabel(k, isTr),
+              ),
+          ];
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -1253,18 +1302,14 @@ class _VariantGridCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final kind in shown) ...[
+                    for (final cell in cells) ...[
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              _CompactVariantsSection._kindValue(
-                                    product,
-                                    kind,
-                                  ) ??
-                                  '—',
+                              cell.$1,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
@@ -1275,7 +1320,7 @@ class _VariantGridCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              _CompactVariantsSection._kindLabel(kind, isTr),
+                              cell.$2,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
