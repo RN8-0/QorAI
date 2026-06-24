@@ -1695,8 +1695,15 @@ void clearInMemoryFeedCache() {
 Future<void> invalidateProductCatalogCaches(
   WidgetRef ref, {
   bool clearPersistent = false,
+  // disruptive=false: mevcut görünümü BOZMA — in-memory feed'i null'lama ve
+  // homeFeedProvider'ı invalidate ETME. Realtime "ürün değişti" eventi bunu
+  // kullanır: aksi halde kullanıcı home'a bakarken feed ~1sn yeniden yüklenip
+  // section'lar loading'e düşüp geri geliyordu ("ekran bir anda değişiyor,
+  // ~1sn sürüyor, eski haline dönüyor"). Sadece runtime cache temizlenir →
+  // sonraki cold start taze veri alır, mevcut ekran sabit kalır.
+  bool disruptive = true,
 }) async {
-  clearInMemoryFeedCache();
+  if (disruptive) clearInMemoryFeedCache();
   _categoryCacheMap.clear();
   _pendingFeedFetch = null;
   _isRefreshingFeed = false;
@@ -1727,7 +1734,7 @@ Future<void> invalidateProductCatalogCaches(
     }
   }
 
-  ref.invalidate(homeFeedProvider);
+  if (disruptive) ref.invalidate(homeFeedProvider);
 }
 
 /// Update an already-cached product in the in-memory feed with fresh data

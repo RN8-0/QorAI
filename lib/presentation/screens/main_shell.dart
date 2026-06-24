@@ -88,8 +88,16 @@ class _MainShellState extends ConsumerState<MainShell> {
                 const Duration(seconds: 2),
                 () {
                   if (!mounted) return;
+                  // disruptive:false → mevcut home görünümünü BOZMA (feed'i
+                  // yeniden yükleyip section'ları flash'latma). Scraper ürün
+                  // yazınca kullanıcı home'dayken ekranın ~1sn değişip eski
+                  // haline dönmesinin nedeni buydu.
                   unawaited(
-                    invalidateProductCatalogCaches(ref, clearPersistent: false),
+                    invalidateProductCatalogCaches(
+                      ref,
+                      clearPersistent: false,
+                      disruptive: false,
+                    ),
                   );
                 },
               );

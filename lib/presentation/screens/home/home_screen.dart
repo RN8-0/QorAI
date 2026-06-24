@@ -1691,6 +1691,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: SizedBox(
         height: _kHorizontalCardRowHeight,
         child: homeFeed.when(
+          skipLoadingOnReload: true,
+          skipLoadingOnRefresh: true,
           data: (feed) {
             final products = _categorySectionProducts(feed, categoryId);
             if (products.isEmpty) return const SizedBox.shrink();
@@ -1734,6 +1736,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return SizedBox(
       height: _kHorizontalCardRowHeight,
       child: homeFeed.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         data: (feed) {
           final products = _categorySectionProducts(feed, categoryId);
           if (products.isEmpty) return const SizedBox.shrink();
@@ -2145,6 +2149,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return ref
         .watch(recentlyAnalyzedProvider)
         .when(
+          skipLoadingOnReload: true,
+          skipLoadingOnRefresh: true,
           data: (products) {
             if (products.isEmpty) return [];
             return [
@@ -2220,6 +2226,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return ref
         .watch(valuePicsProvider)
         .when(
+          skipLoadingOnReload: true,
+          skipLoadingOnRefresh: true,
           data: (products) {
             if (products.isEmpty) return [];
             return [
