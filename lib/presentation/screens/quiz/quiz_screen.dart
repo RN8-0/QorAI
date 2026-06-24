@@ -1811,9 +1811,30 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   ],
                 ),
               ),
-              // Quiz tamamlanması zorunlu — adım atlama (Skip) butonu kaldırıldı.
-              // Kullanıcı çıkıp tekrar girse bile router redirect (router.dart)
-              // quizCompleted=false olduğu sürece /quiz'e yönlendirir.
+              // Skip (Atla): quiz zorunlu DEĞİL. Atlayınca quizSkipped=true →
+              // router artık /quiz'e zorlamaz, ana sayfaya gider. AI özellikleri
+              // yine quizCompleted ister (shared_premium gating) → atlamak AI'ı
+              // açmaz, kullanıcı AI'a girince "önce quizi çöz" uyarısı çıkar.
+              GestureDetector(
+                onTap: () {
+                  ref.read(cacheServiceProvider).setQuizSkipped(true);
+                  context.go(AppRoutes.home);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    _t('Atla', 'Skip'),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: _secondaryTextColor,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),

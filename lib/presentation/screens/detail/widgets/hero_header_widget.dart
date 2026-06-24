@@ -701,6 +701,7 @@ class _HeroNetworkImage extends StatefulWidget {
     this.heightFactor = 0.78,
     this.maxLogicalWidth,
     this.maxLogicalHeight,
+    this.highRes = false,
   });
 
   final String url;
@@ -713,27 +714,38 @@ class _HeroNetworkImage extends StatefulWidget {
   final double? maxLogicalWidth;
   final double? maxLogicalHeight;
 
+  /// Tam-ekran gibi büyük gösterimlerde EN YÜKSEK çözünürlüğü iste: epey'in
+  /// b_ (büyük) → orijinal → m_ sırasıyla dener. Thumbnail'de (false) hız için
+  /// m_ (orta) önce gelir.
+  final bool highRes;
+
   static final _epey = RegExp(
     r'^(https?://resim\.epey\.com/[^/]+/)(k_|s_|t_|c_|m_|b_)?(.+)$',
   );
 
-  static List<String> _expand(String url) {
+  static List<String> _expand(String url, {bool large = false}) {
     final m = _epey.firstMatch(url);
     if (m == null) return [url];
     final path = m.group(1)!;
     final file = m.group(3)!;
-    return ['${path}m_$file', '${path}b_$file', '$path$file'];
+    return large
+        ? ['${path}b_$file', '$path$file', '${path}m_$file']
+        : ['${path}m_$file', '${path}b_$file', '$path$file'];
   }
 
   static String bestCandidate(String url) => _expand(url).first;
 
-  static List<String> candidates(String primary, List<String> fallbacks) {
+  static List<String> candidates(
+    String primary,
+    List<String> fallbacks, {
+    bool large = false,
+  }) {
     final seen = <String>{};
     final out = <String>[];
     for (final raw in <String>[primary, ...fallbacks]) {
       final trimmed = raw.trim();
       if (trimmed.isEmpty) continue;
-      for (final candidate in _expand(trimmed)) {
+      for (final candidate in _expand(trimmed, large: large)) {
         if (seen.add(candidate.toLowerCase())) out.add(candidate);
       }
     }
@@ -758,7 +770,11 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
   void didUpdateWidget(_HeroNetworkImage old) {
     super.didUpdateWidget(old);
     if (old.url != widget.url || old.fallbackUrls != widget.fallbackUrls) {
-      _urls = _HeroNetworkImage.candidates(widget.url, widget.fallbackUrls);
+      _urls = _HeroNetworkImage.candidates(
+        widget.url,
+        widget.fallbackUrls,
+        large: widget.highRes,
+      );
       _idx = 0;
     }
   }
@@ -804,7 +820,9 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
                 widget.cacheWidth,
                 widget.cacheHeight,
               ),
-              filterQuality: FilterQuality.medium,
+              filterQuality: widget.highRes
+                  ? FilterQuality.high
+                  : FilterQuality.medium,
               fadeInDuration: const Duration(milliseconds: 80),
               placeholder: (_, _) => const _HeroImageLoadingIndicator(),
               errorWidget: (_, failed, _) {

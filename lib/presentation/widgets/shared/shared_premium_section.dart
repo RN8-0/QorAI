@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:qor_ai/core/quiz_gate.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
@@ -415,6 +416,16 @@ class SharedPremiumFeaturesSectionState
   /// çalıştır. Quiz üretilemezse zarifçe doğrudan rapora geçer.
   Future<void> _runProductFullReport() async {
     if (_fullReportRunning || _quizLoading) return;
+    // AI özelliği için önce kayıt-sonrası profil quiz'i tamamlanmalı (atlanmışsa
+    // uyarı + quize yönlendir). Quiz bittikten sonra Q Coin bakiyesi izin
+    // verdiği sürece tüm AI özellikleri kullanılabilir.
+    if (!await ensureOnboardingQuizGate(
+      context,
+      ref,
+      isTr: _reportLang == 'tr',
+    )) {
+      return;
+    }
     if (!await _checkAiFeatureLimit()) return;
     if (!mounted) return;
     setState(() {

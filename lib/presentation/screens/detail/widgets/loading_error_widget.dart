@@ -140,6 +140,7 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                   url: widget.images[index],
                   cacheWidth: fullCacheWidth,
                   cacheHeight: fullCacheHeight,
+                  highRes: true,
                   widthFactor: 0.9,
                   heightFactor: 0.82,
                   maxLogicalWidth: maxImageWidth,

@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/screens/login/login_screen.dart';
 import 'package:qor_ai/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:qor_ai/presentation/screens/quiz/quiz_screen.dart';
@@ -460,14 +461,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
-      // Force onboarding quiz for real (non-anonymous) users who haven't completed it.
-      // Anonymous guests use guest_*@qorai.local emails and are exempt.
+      // Kayıt sonrası quiz'i GÖSTER ama ZORUNLU değil: kullanıcı sağ üstten
+      // atlarsa (quizSkipped=true) ana sayfaya gidebilir. AI özellikleri yine
+      // quizCompleted ister (atlamak AI'ı açmaz; gating shared_premium'da).
+      // Anonim misafirler (guest_*@qorai.local) muaf.
       if (isLoggedIn && record != null) {
         final email = record.data['email']?.toString() ?? '';
         final isAnonymous = email.endsWith('@qorai.local');
         if (!isAnonymous) {
           final quizCompleted = record.data['quizCompleted'] == true;
-          if (!quizCompleted && location != AppRoutes.quiz) {
+          final quizSkipped = ref.read(cacheServiceProvider).getQuizSkipped();
+          if (!quizCompleted && !quizSkipped && location != AppRoutes.quiz) {
             return AppRoutes.quiz;
           }
         }

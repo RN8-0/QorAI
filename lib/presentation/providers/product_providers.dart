@@ -3256,9 +3256,12 @@ final productVariantsProvider = FutureProvider.autoDispose
         }).toList();
         final byConfig = <String, ProductEntity>{};
         for (final v in variants) {
+          // configKey'e DEPOLAMA eklenir: Apple/Xiaomi gibi ailelerde configKey
+          // storage'ı ayırt etmiyor → 256/512GB/1TB aynı sayılıp birleşiyor ve
+          // varyant bölümü ≤1'e düşüp gizleniyordu.
           final key = v.configKey.isNotEmpty
-              ? v.configKey
-              : '${v.variantGroup}|${_storageCapacityMB(v)}|${v.name.toLowerCase()}';
+              ? '${v.configKey}|${_storageFromNameMB(v)}'
+              : '${v.variantGroup}|${_storageFromNameMB(v)}|${v.name.toLowerCase()}';
           final existing = byConfig[key];
           if (existing == null ||
               v.id == product.id ||
@@ -3273,19 +3276,42 @@ final productVariantsProvider = FutureProvider.autoDispose
         return unique;
       }
 
-      // 0) Exact PocketBase lookup by variantGroup. Category browsing/search
-      // providers only carry a slice of a category; direct group lookup is the
-      // reliable path for Icecat families with dozens of variants.
+      // 0) variantGroup (PB) + İSİM araması (Typesense) BİRLEŞİK havuz.
+      // Tek kaynağa güvenmiyoruz çünkü:
+      //  - PB variantGroup kaydı eksik/storage varyantlarını içermeyebiliyor
+      //    (Apple/Xiaomi Icecat'te yok → grup sparse).
+      //  - Typesense'te variantGroup boş ama isimle (storage ekli) bulunuyor.
+      // İkisini birleştirip TEK filterVariants ile dedup'larız → tam aile.
+      // NOT: web getVariants() kategori filtresi kullanmaz; biz de eklemiyoruz.
+      final pool = <ProductEntity>[];
       if (baseGroup.isNotEmpty) {
-        final direct = await ref
+        try {
+          final direct = await ref
+              .read(pbDataSourceProvider)
+              .getProductVariantsByGroup(variantGroup: baseGroup, limit: 120)
+              .timeout(const Duration(seconds: 12));
+          pool.addAll(direct.cast<ProductEntity>());
+        } catch (e) {
+          debugPrint('[variants] group lookup skipped: $e');
+        }
+      }
+      try {
+        final byName = await ref
             .read(pbDataSourceProvider)
-            .getProductVariantsByGroup(
-              variantGroup: baseGroup,
-              category: product.category,
-              limit: 120,
-            )
-            .timeout(const Duration(seconds: 12));
-        final variants = filterVariants(direct.cast<ProductEntity>());
+            .searchProducts(query: product.name, limit: 40)
+            .timeout(const Duration(seconds: 6));
+        pool.addAll(byName.cast<ProductEntity>());
+      } catch (e) {
+        debugPrint('[variants] name search skipped: $e');
+      }
+      if (pool.isNotEmpty) {
+        // Aynı ürün iki kaynaktan (farklı configKey/variantGroup ile) gelebilir
+        // → önce id ile tekilleştir (PB önce eklendiği için zengin kayıt kalır).
+        final byId = <String, ProductEntity>{};
+        for (final p in pool) {
+          byId.putIfAbsent(p.id, () => p);
+        }
+        final variants = filterVariants(byId.values.toList());
         if (variants.isNotEmpty) return variants;
       }
 

@@ -9,8 +9,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 
 // Exact web palette so the app report matches the site 1:1.
@@ -757,13 +760,55 @@ class _CommunityBlock extends StatelessWidget {
   );
 }
 
-class _AlternativeCards extends StatelessWidget {
+class _AlternativeCards extends ConsumerWidget {
   final dynamic alternatives;
   final _L l;
   const _AlternativeCards({required this.alternatives, required this.l});
 
+  /// Alternatif bir Qor-katalog ürününün id'sini çıkar: önce a['id'], yoksa
+  /// a['url'] sonundaki kayıt id'si (web "/product/slug-RECORDID" biçimi).
+  static String _altProductId(Map a) {
+    final id = _str(a['id']).trim();
+    if (id.isNotEmpty) return id;
+    final url = _str(a['url']).trim();
+    if (url.isEmpty) return '';
+    final seg = url.split('?').first.split('#').first.split('/').last;
+    // "galaxy-s25-ultra-RECORDID" → son "-" sonrası; ya da düz id.
+    final dash = seg.contains('-') ? seg.split('-').last : seg;
+    return dash.length >= 10 ? dash : seg;
+  }
+
+  Future<void> _openAlternative(
+    BuildContext context,
+    WidgetRef ref,
+    Map a,
+  ) async {
+    final id = _altProductId(a);
+    if (id.isNotEmpty && id.length >= 10) {
+      context.push('/product/$id');
+      return;
+    }
+    // id yok (harici ya da eski kayıtlı analiz) → katalogda isimle ara, varsa aç.
+    final name = _str(a['name']).trim();
+    if (name.isEmpty) return;
+    try {
+      final results = await ref
+          .read(pbDataSourceProvider)
+          .searchProducts(query: name, limit: 1);
+      if (results.isEmpty) return;
+      final match = results.first;
+      // İsim makul ölçüde eşleşiyorsa aç (ilk kelime ortak).
+      final n0 = name.toLowerCase();
+      final n1 = match.name.toLowerCase();
+      final firstWord = n0.split(RegExp(r'\s+')).first;
+      if (n1.contains(firstWord) || n0.contains(n1.split(RegExp(r'\s+')).first)) {
+        if (context.mounted) context.push('/product/${match.id}');
+      }
+    } catch (_) {}
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final list = _arr(alternatives);
     if (list.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -774,13 +819,22 @@ class _AlternativeCards extends StatelessWidget {
               final a = a0 as Map;
               final specs = _arr(a['keySpecs']);
               final img = _str(a['imageUrl']);
-              return Container(
+              final tappable =
+                  _altProductId(a).isNotEmpty ||
+                  _str(a['source']) == 'qor_catalog';
+              return GestureDetector(
+                onTap: tappable ? () => _openAlternative(context, ref, a) : null,
+                child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
                   color: context.surfaceColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.dividerColor),
+                  border: Border.all(
+                    color: tappable
+                        ? AppTheme.brandCyan.withValues(alpha: 0.35)
+                        : context.dividerColor,
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,6 +911,7 @@ class _AlternativeCards extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
                 ),
               );
             },

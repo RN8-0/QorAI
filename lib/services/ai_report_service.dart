@@ -119,6 +119,7 @@ class AiReportService {
         .take(8)
         .map(
           (p) => {
+            'id': p.id,
             'name': p.nameForLanguage(lang),
             'brand': p.brand ?? '',
             'category': p.category,
@@ -273,13 +274,13 @@ class AiReportService {
         '    "weaknesses": ["5 detailed weaknesses or caveats"]\n'
         '  },\n'
         '  "community": {"satisfaction": <0-100>, "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums and specialist reviews", "pros": ["6 recurring positives"], "cons": ["5 recurring negatives"], "sources": ["Reddit", "<source type in requested language>"], "verificationNotes": ["what is grounded", "what remains uncertain"]},\n'
-        '  "alternatives": [{"name": "product name", "imageUrl": "copy from Qor catalog context when available, otherwise empty", "url": "copy from Qor catalog context when available, otherwise empty", "source": "qor_catalog|external", "keySpecs": [{"label": "spec", "value": "value"}], "difference": "2-3 sentences vs target", "shortComment": "1-2 sentence recommendation"}],\n'
+        '  "alternatives": [{"name": "product name", "id": "copy the EXACT id from Qor catalog context when source is qor_catalog, otherwise empty", "imageUrl": "copy from Qor catalog context when available, otherwise empty", "url": "copy from Qor catalog context when available, otherwise empty", "source": "qor_catalog|external", "keySpecs": [{"label": "spec", "value": "value"}], "difference": "2-3 sentences vs target", "shortComment": "1-2 sentence recommendation"}],\n'
         '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n'
         '}\n\n'
         'Rules:\n'
         '- product.factors must include 8-10 varied factor scores for chart bars.\n'
         '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n'
-        '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl exactly from the context for those. External alternatives may have empty imageUrl/url.\n'
+        '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl AND id exactly from the context for those (source="qor_catalog"). External alternatives may have empty id/imageUrl/url.\n'
         '- priceForecast must not pretend to know live prices unless research notes include them.\n\n'
         'MARKET / AVAILABILITY CONTEXT:\n${_availabilityContext(p)}\n\n'
         'PRODUCT CONTEXT:\nName: ${l.name}\nBrand: ${l.brand.isEmpty ? '-' : l.brand}\nCategory: ${l.category}\nQor AI Tech Score: ${l.score}/100\nApprox catalog price: ${l.price}\nCatalog specs: ${l.ks}\n\n'
@@ -532,6 +533,44 @@ class AiReportService {
     }
   }
 
+  /// MALİYET: Grounded research (Google Search) en pahalı kalemdir (~istek
+  /// başına ücret). Aynı ürünün araştırması dakikalık değişmediği için ürün+dil
+  /// bazında 24s cache'lenir → aynı ürün tekrar analiz edilince yeniden
+  /// grounding YAPILMAZ (kişisel rapor yine taze üretilir, o ucuz/non-grounded).
+  /// Quiz cevapları araştırmayı değil raporu kişiselleştirdiğinden cache anahtarı
+  /// ürün+dil ile sınırlıdır (maksimum cache isabeti).
+  static Future<String> _cachedGroundedResearch(
+    WidgetRef ref,
+    ProductEntity product,
+    String lang,
+    List<dynamic> quizAnswers,
+  ) async {
+    final cache = ref.read(cacheServiceProvider);
+    final key = 'ai_research_${product.id}_$lang';
+    try {
+      final cached = await cache.getLocalStaleAsync<String>(key);
+      if (cached.data != null && cached.data!.isNotEmpty && !cached.isStale) {
+        debugPrint('[Qor AI report] ✅ research cache HIT ($key)');
+        return cached.data!;
+      }
+    } catch (_) {}
+    final research = await _askGrounded(
+      ref,
+      buildProductResearchPrompt(product, lang, quizAnswers),
+      lang,
+    );
+    if (research.isNotEmpty) {
+      try {
+        await cache.setLocal(
+          key,
+          research,
+          duration: const Duration(hours: 24),
+        );
+      } catch (_) {}
+    }
+    return research;
+  }
+
   // ── Orchestration ─────────────────────────────────────────────────────────
 
   /// Builds a `product_full_report` for one product. Returns null only when the
@@ -545,11 +584,7 @@ class AiReportService {
     String lang, {
     List<dynamic> quizAnswers = const [],
   }) {
-    return _askGrounded(
-      ref,
-      buildProductResearchPrompt(product, lang, quizAnswers),
-      lang,
-    );
+    return _cachedGroundedResearch(ref, product, lang, quizAnswers);
   }
 
   static Future<Map<String, dynamic>?> runProductReport({
@@ -571,11 +606,7 @@ class AiReportService {
       research = await researchFuture.catchError((_) => '');
     }
     if (research.isEmpty) {
-      research = await _askGrounded(
-        ref,
-        buildProductResearchPrompt(product, lang, quizAnswers),
-        lang,
-      );
+      research = await _cachedGroundedResearch(ref, product, lang, quizAnswers);
     }
     onStage?.call(AiReportStage.report);
     final startedAt = DateTime.now();

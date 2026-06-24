@@ -338,7 +338,12 @@ String normalizeProductName(String name) {
     RegExp(
       r'\b(galaxy\s+(?:s|z|a|m)\d+[a-z]*(?:\s+(?:ultra|plus|fe|fold|flip))?)\b',
     ),
-    RegExp(r'\b(iphone\s+\d+[a-z]*(?:\s+(?:pro|max|plus|mini))?)\b'),
+    // "pro max" tek birim olarak yakalanır; aksi halde "iPhone 17 Pro Max"
+    // sadece "pro"ya inip "iPhone 17 Pro" ile aynı sayılıyor, iki farklı model
+    // varyant gibi gruplanıyordu. Sıra önemli: "pro max" > "pro".
+    RegExp(
+      r'\b(iphone\s+\d+[a-z]*(?:\s+(?:pro\s+max|pro|plus|max|mini|air|e))?)\b',
+    ),
     RegExp(r'\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b'),
   ];
   for (final re in familyPatterns) {
@@ -434,6 +439,28 @@ int _storageCapacityMB(ProductEntity p) {
     final val = int.tryParse(m.group(1)!) ?? 0;
     final unit = m.group(2)!.toLowerCase();
     final mb = switch (unit) {
+      'tb' => val * 1024 * 1024,
+      'gb' => val * 1024,
+      _ => val,
+    };
+    if (mb > best) best = mb;
+  }
+  return best;
+}
+
+/// Depolama SADECE üründen ADINDAN parse edilir (specs/configKey DEĞİL).
+/// Apple/Xiaomi gibi ailelerde configKey ve specs bozuk/paylaşımlı olabiliyor
+/// (ör. "iPhone 17 Pro (512 GB)" kaydında configKey "...s1024..." ve specs
+/// 1024 GB taşıyor) → bu yüzden varyant DEDUP ayracı olarak isimdeki depolama
+/// kullanılır; aksi halde 512 GB ve 1 TB aynı sayılıp birleşiyordu.
+int _storageFromNameMB(ProductEntity p) {
+  var best = 0;
+  for (final m in RegExp(
+    r'\b(\d+)\s*(tb|gb|mb)\b',
+    caseSensitive: false,
+  ).allMatches(p.name)) {
+    final val = int.tryParse(m.group(1)!) ?? 0;
+    final mb = switch (m.group(2)!.toLowerCase()) {
       'tb' => val * 1024 * 1024,
       'gb' => val * 1024,
       _ => val,

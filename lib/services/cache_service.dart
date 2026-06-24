@@ -77,6 +77,18 @@ class CacheService {
     return _settingsBox.get('currency_code', defaultValue: '') as String;
   }
 
+  // ─── Onboarding quiz skip (local) ───
+  /// Kullanıcı kayıt sonrası quiz'i "atla" derse true → router artık quiz'e
+  /// zorlamaz (ana sayfaya gider). AI özellikleri YİNE quizCompleted ister;
+  /// yani atlamak AI'ı açmaz, sadece girişi engellemez.
+  void setQuizSkipped(bool value) {
+    _settingsBox.put('quiz_skipped', value);
+  }
+
+  bool getQuizSkipped() {
+    return _settingsBox.get('quiz_skipped', defaultValue: false) as bool;
+  }
+
   /// Whether country was manually set by user (overrides IP detection)
   void setCountryManuallySet(bool value) {
     _settingsBox.put('country_manually_set', value);

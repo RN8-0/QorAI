@@ -7100,6 +7100,14 @@ Rules:
     if (_fullCompareRunning) return;
     if (widget.products.length < 2) return;
     if (!requireAuth(context)) return;
+    // AI özelliği için önce kayıt-sonrası profil quiz'i tamamlanmalı (atlanmışsa
+    // uyarı + quize yönlendir). Sonra Q Coin bakiyesi izin verdiğince kullanılır.
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final wantQuizGate = await ensureOnboardingQuizGate(context, ref, isTr: _isTr);
+    if (!wantQuizGate) return;
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
     if (!await ensureEmailVerified(context, ref)) return;
     if (!mounted) return;
     final sub = ref.read(subscriptionServiceProvider);

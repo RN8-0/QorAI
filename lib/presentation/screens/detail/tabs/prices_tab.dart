@@ -90,8 +90,6 @@ class _PricesTabContent extends ConsumerWidget {
                   _PriceFallbackCard(product: product, country: country),
                   const SizedBox(height: 16),
                 ],
-                _CompactVariantsSection(product: product),
-                const SizedBox(height: 16),
                 if (secondOfferChunk.isNotEmpty) ...[
                   _OfferLinksCard(
                     product: product,
@@ -114,6 +112,9 @@ class _PricesTabContent extends ConsumerWidget {
             ),
           ),
         ),
+        // Varyantlar (depolama/RAM farkları) — benzer ürünlerin hemen üstünde,
+        // tıpkı benzer ürünler gibi kart halinde + fark bilgisiyle (web gibi).
+        SliverToBoxAdapter(child: _CompactVariantsSection(product: product)),
         // Similar products — horizontal scrollable row
         SliverToBoxAdapter(child: _HorizontalSimilarSection(product: product)),
         if (restOfferChunk.isNotEmpty)
@@ -992,6 +993,59 @@ class _CompactVariantsSection extends ConsumerWidget {
   final ProductEntity product;
   const _CompactVariantsSection({required this.product});
 
+  // Varyantlar arasında FARKLI olan spec türlerini (öncelik sırasıyla) bul —
+  // kartlarda sadece bunları göster (web'deki pickVariantDiffKinds gibi).
+  static const _kinds = ['storage', 'ram', 'display', 'cpu', 'gpu'];
+
+  static String? _kindValue(ProductEntity p, String kind) {
+    switch (kind) {
+      case 'storage':
+        final s = _VariantChip._extractStorageOnly(p);
+        return s.isEmpty ? null : s;
+      case 'ram':
+        return _VariantChip._extractRam(
+          p,
+        )?.replaceAll(RegExp(r'\s*RAM$', caseSensitive: false), '');
+      case 'display':
+        return _VariantChip._extractDisplay(p);
+      case 'cpu':
+        return _VariantChip._extractCpu(p);
+      case 'gpu':
+        return _VariantChip._extractGpu(p);
+    }
+    return null;
+  }
+
+  static String _kindLabel(String kind, bool isTr) {
+    switch (kind) {
+      case 'storage':
+        return isTr ? 'Depolama' : 'Storage';
+      case 'ram':
+        return 'RAM';
+      case 'display':
+        return isTr ? 'Ekran' : 'Screen';
+      case 'cpu':
+        return isTr ? 'İşlemci' : 'CPU';
+      case 'gpu':
+        return 'GPU';
+    }
+    return kind;
+  }
+
+  static List<String> _diffKinds(List<ProductEntity> variants) {
+    final out = <String>[];
+    for (final k in _kinds) {
+      final vals = <String>{};
+      for (final v in variants) {
+        final val = _kindValue(v, k);
+        if (val != null && val.isNotEmpty) vals.add(val.toLowerCase());
+      }
+      if (vals.length > 1) out.add(k);
+    }
+    if (out.isEmpty) out.add('storage');
+    return out;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final variantsAsync = ref.watch(productVariantsProvider(product));
@@ -1003,19 +1057,23 @@ class _CompactVariantsSection extends ConsumerWidget {
         final all = [product, ...variants]
           ..sort((a, b) => a.name.compareTo(b.name));
 
+        // configKey ile dedup: gerçek konfigürasyon başına tek kart (Icecat
+        // kozmetik SKU'larını değil). Seçili ürünü temsilci olarak koru.
         final seen = <String>{};
         final unique = <ProductEntity>[];
         for (final v in all) {
+          // configKey + DEPOLAMA: configKey storage'ı ayırt etmeyen ailelerde
+          // (Apple/Xiaomi) storage varyantları birleşmesin.
           final key = v.configKey.isNotEmpty
-              ? v.configKey
-              : _CompactVariantChip._compactLabel(v);
+              ? '${v.configKey}|${_VariantChip._extractStorageOnly(v)}'
+              : _VariantChip._variantLabelFor(v);
           if (seen.contains(key)) {
             if (v.id == product.id) {
               unique.removeWhere(
                 (u) =>
                     (u.configKey.isNotEmpty
                         ? u.configKey
-                        : _CompactVariantChip._compactLabel(u)) ==
+                        : _VariantChip._variantLabelFor(u)) ==
                     key,
               );
               unique.add(v);
@@ -1027,91 +1085,214 @@ class _CompactVariantsSection extends ConsumerWidget {
         }
         if (unique.length <= 1) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                Localizations.localeOf(context).languageCode == 'tr'
-                    ? 'Mevcut Modeller'
-                    : 'Available Models',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: context.textSecondary,
-                  letterSpacing: 0.4,
+        final isTr =
+            Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+        final diffKinds = _diffKinds(unique);
+        // Seçili (mevcut) varyantı başa al.
+        unique.sort((a, b) {
+          if (a.id == product.id) return -1;
+          if (b.id == product.id) return 1;
+          return 0;
+        });
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.layers_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isTr ? 'Varyantlar' : 'Variants',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            SizedBox(
-              height: 30,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: unique.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
-                itemBuilder: (context, i) => _CompactVariantChip(
-                  product: unique[i],
-                  isSelected: unique[i].id == product.id,
+              SizedBox(
+                height: 214,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: unique.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) => SizedBox(
+                    width: 158,
+                    child: _VariantGridCard(
+                      product: unique[i],
+                      isSelected: unique[i].id == product.id,
+                      diffKinds: diffKinds,
+                      isTr: isTr,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _CompactVariantChip extends StatelessWidget {
+/// Varyant kartı — benzer ürün kartıyla aynı görünüm; alt bilgide bu varyantın
+/// FARKLI olan spec değerlerini (depolama/RAM/ekran...) gösterir.
+class _VariantGridCard extends StatelessWidget {
   final ProductEntity product;
   final bool isSelected;
-  const _CompactVariantChip({required this.product, required this.isSelected});
-
-  /// Compact label: just storage (+ RAM only when both differ).
-  /// Examples: "256 GB", "512 GB / 8 GB RAM"
-  static String _compactLabel(ProductEntity p) {
-    final storage = _VariantChip._extractStorageOnly(p);
-    final ram = _VariantChip._extractRam(p);
-    if (ram != null && ram != storage) {
-      return '$storage / $ram';
-    }
-    return storage;
-  }
+  final List<String> diffKinds;
+  final bool isTr;
+  const _VariantGridCard({
+    required this.product,
+    required this.isSelected,
+    required this.diffKinds,
+    required this.isTr,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final label = _compactLabel(product);
-    return GestureDetector(
-      onTap: isSelected
-          ? null
-          : () => context.replace('/product/${product.id}'),
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? primary.withValues(alpha: 0.12)
-              : context.surfaceVariantColor,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: isSelected
-                ? primary.withValues(alpha: 0.45)
-                : context.dividerColor,
-            width: 1,
+    final cyan = AppTheme.brandCyan;
+    final shown = diffKinds.take(2).toList();
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Material(
+        color: context.surfaceVariantColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isSelected ? cyan : cyan.withValues(alpha: 0.12),
+            width: isSelected ? 1.6 : 0.8,
           ),
         ),
-        child: Text(
-          label,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: isSelected ? primary : context.textPrimary,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isSelected
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  context.replace('/product/${product.id}');
+                },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const ColoredBox(color: Colors.white),
+                      Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: ProductImageBox(
+                          imageUrl: product.imageUrl,
+                          fallbackUrls: product.images,
+                          borderRadius: BorderRadius.circular(10),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                      if (isSelected)
+                        Positioned(
+                          top: 7,
+                          left: 7,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cyan,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isTr ? 'Şu an' : 'Current',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 7, 10, 9),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final kind in shown) ...[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _CompactVariantsSection._kindValue(
+                                    product,
+                                    kind,
+                                  ) ??
+                                  '—',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _CompactVariantsSection._kindLabel(kind, isTr),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: context.textTertiaryColor,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1156,7 +1337,7 @@ class _HorizontalSimilarSection extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
-                        Icons.widgets_rounded,
+                        Icons.hub_rounded,
                         size: 16,
                         color: Colors.white,
                       ),
