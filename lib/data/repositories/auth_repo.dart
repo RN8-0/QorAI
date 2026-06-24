@@ -55,9 +55,20 @@ class AuthRepository {
        _hive = hive;
 
   Stream<String?> get authStateChanges async* {
-    yield _currentUid;
+    // KRİTİK PERF: aynı uid için RE-EMIT ETME. providers.dart userProfile
+    // emit'inde authStore.save() çağırıyor (record snapshot senkronu); save →
+    // authStore.onChange → authStateProvider re-emit → userProfile yeniden
+    // abone → emit → save … sonsuz ~9/sn geribesleme döngüsü kuruyordu. Bu
+    // döngü ana sayfadaki ürün kartlarını saniyede ~100 kez yeniden inşa
+    // ettiriyordu (build fazı şişer, ~20fps). Yalnızca uid GERÇEKTEN
+    // değişince (login/logout/hesap değişimi) yay.
+    String? last = _currentUid;
+    yield last;
     await for (final event in _pb.authStore.onChange) {
-      yield event.record?.id;
+      final id = event.record?.id;
+      if (id == last) continue;
+      last = id;
+      yield id;
     }
   }
 
