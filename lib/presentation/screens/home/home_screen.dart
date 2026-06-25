@@ -1869,11 +1869,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         .where((product) => !blockedIds.contains(product.id))
         .toList();
 
-    // Aynı modelin farklı varyantları (renk/kordon/depolama) ana sayfada tekrar
-    // tekrar görünmesin → deduplicateVariants (isim-normalize + variantGroup).
-    // Sonra techScore'a göre sırala ve kategoride EN YÜKSEK PUANLI İLK 10'u göster.
+    // Aynı modelin farklı varyantları (renk/kordon/depolama + EKRAN BOYUTU)
+    // ana sayfada tekrar tekrar görünmesin → deduplicateForHome. Sonra
+    // techScore'a göre sırala ve kategoride EN YÜKSEK PUANLI İLK 10'u göster.
     List<ProductEntity> ranked(List<ProductEntity> pool) =>
-        deduplicateVariants(pool)
+        deduplicateForHome(pool)
           ..sort((a, b) => b.techScore.compareTo(a.techScore));
 
     var deduped = ranked(visible);
@@ -1903,7 +1903,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               '=== QOR AI: HomeScreen first data render in ${_initSw.elapsedMilliseconds}ms (${feed.all.length} products) ===',
             );
           }
-          final trending = feed.trending;
+          // Varyant/boyut tekrarını gider — aynı ürün trend'de birden çok olmasın.
+          final trending = deduplicateForHome(feed.trending);
           if (trending.isEmpty) {
             return Center(
               child: Column(
@@ -1976,7 +1977,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           .when(
             skipLoadingOnReload: true,
             skipLoadingOnRefresh: true,
-            data: (products) {
+            data: (rawProducts) {
+              // Varyant/boyut tekrarını gider — aynı ürün birden çok olmasın.
+              final products = deduplicateForHome(rawProducts);
               if (products.isEmpty) {
                 return Center(
                   child: Column(
@@ -2216,15 +2219,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         .when(
           skipLoadingOnReload: true,
           skipLoadingOnRefresh: true,
-          data: (products) {
-            if (products.isEmpty) return [];
+          data: (rawProducts) {
+            if (rawProducts.isEmpty) return [];
+            final isTr =
+                Localizations.localeOf(context).languageCode.toLowerCase() ==
+                'tr';
+            // Varyant/boyut tekrarını gider — aynı ürün birden çok görünmesin.
+            final products = deduplicateForHome(rawProducts);
             return [
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: context.l10n?.recentlyViewed ?? 'Recently Analyzed',
+                  // DÜZELTME: yanlış l10n key (recentlyViewed) yüzünden bu bölüm
+                  // de "Son Görüntülenenler" yazıyordu → doğru başlık.
+                  title: isTr ? 'Son Analiz Edilenler' : 'Recently Analyzed',
                   icon: Icons.psychology_rounded,
                   iconColor: AppTheme.brandCyan,
-                  subtitle: 'Products you analyzed with AI',
+                  subtitle: isTr
+                      ? 'AI ile incelediğin ürünler'
+                      : 'Products you analyzed with AI',
                 ),
               ),
               SliverToBoxAdapter(
@@ -2368,8 +2380,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<Widget> _recentlyViewedSlivers(WidgetRef ref) {
     final recentAsync = ref.watch(recentlyViewedProductsProvider);
-    final recentProducts = recentAsync.valueOrNull ?? [];
-    if (recentProducts.isEmpty) return [];
+    final rawRecent = recentAsync.valueOrNull ?? [];
+    if (rawRecent.isEmpty) return [];
+    // Varyant/boyut tekrarını gider — aynı ürün birden çok görünmesin.
+    final recentProducts = deduplicateForHome(rawRecent);
 
     return [
       SliverToBoxAdapter(

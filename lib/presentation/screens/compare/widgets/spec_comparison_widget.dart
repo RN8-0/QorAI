@@ -6147,6 +6147,36 @@ Rules:
     return widgets;
   }
 
+  /// Tekli ürün incelemesindeki "Ana Özellikler" bölümünü (SharedKeySpecsGrid)
+  /// compare specs sayfasının en başında her ürün için gösterir — bire bir aynı
+  /// UI. Birden çok ürün olduğundan her grid'in üstüne ürün adı etiketi konur.
+  Widget _buildCompareAnaOzellikler() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final p in widget.products) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Text(
+              p.nameForLanguage(_appLang),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.brandCyan,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+            child: SharedKeySpecsGrid(product: p),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildSpecsTab() {
     final groupEntries = _groupedSpecs.entries
         .where((entry) {
@@ -6159,6 +6189,10 @@ Rules:
         .toList(growable: false);
     return CustomScrollView(
       slivers: [
+        // EN BAŞTA: tekli ürün incelemesindeki "Ana Özellikler" bölümü (bire bir
+        // aynı SharedKeySpecsGrid + UI), her ürün için ürün adıyla. Kullanıcı
+        // isteği — detay ve compare ortak bileşeni kullanır.
+        SliverToBoxAdapter(child: _buildCompareAnaOzellikler()),
         // Key Specs Summary at top
         SliverToBoxAdapter(child: _buildKeySpecsSummary()),
         // Grouped spec comparison

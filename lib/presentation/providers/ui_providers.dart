@@ -522,6 +522,34 @@ List<ProductEntity> deduplicateVariants(List<ProductEntity> products) {
   return [for (final k in nameOrder) byName[k]!];
 }
 
+/// Ana sayfa rail'leri için DAHA AGRESİF tekilleştirme: deduplicateVariants
+/// (depolama/RAM/renk/çip varyantları) ÜSTÜNE, aynı model serisinin farklı
+/// EKRAN BOYUTU varyantlarını da (ör. MacBook Pro 14" vs 16", aynı çip) tek
+/// temsilciye indirir → rail'de aynı üründen birden çok kart görünmez. En
+/// yüksek puanlı temsilci tutulur. Telefon model numaraları (S26, iPhone 17)
+/// ONDALIKSIZ olduğundan etkilenmez; sadece "14.2"/"16.2" gibi ondalıklı ekran
+/// boyutları sıyrılır. Arama bunu KULLANMAZ (orada her boyut ayrı kalmalı).
+List<ProductEntity> deduplicateForHome(List<ProductEntity> products) {
+  final base = deduplicateVariants(products);
+  final byLine = <String, ProductEntity>{};
+  final order = <String>[];
+  for (final p in base) {
+    var key = '${(p.brand ?? '').toLowerCase()} ${normalizeProductName(p.name)}'
+        .replaceAll(RegExp(r'\b\d{1,2}[.,]\d\b'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (key.isEmpty) key = p.id;
+    final existing = byLine[key];
+    if (existing == null) {
+      byLine[key] = p;
+      order.add(key);
+    } else if (p.techScore > existing.techScore) {
+      byLine[key] = p;
+    }
+  }
+  return [for (final k in order) byLine[k]!];
+}
+
 /// Static per-category cache — survives provider re-reads, cleared only on app restart.
 final _categoryCacheMap = <String, List<ProductEntity>>{};
 
