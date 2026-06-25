@@ -6199,56 +6199,53 @@ Rules:
                   color: theme.dividerColor.withValues(alpha: 0.5),
                 ),
               ),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 92,
-                      child: Row(
-                        children: [
-                          Icon(
-                            SharedKeySpecsGrid.iconForSpec(r.key),
-                            size: 16,
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              r.key,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+              child: Column(
+                children: [
+                  // ORTADA tek başlık (ikon + spec adı) — solda label kolonu YOK.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        SharedKeySpecsGrid.iconForSpec(r.key),
+                        size: 14,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
                       ),
-                    ),
-                    for (var i = 0; i < r.values.length; i++) ...[
-                      Container(
-                        width: 1,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        color: theme.dividerColor.withValues(alpha: 0.4),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: SharedKeySpecsGrid.buildValue(
-                            context,
-                            r.values[i],
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          r.key,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.55,
+                            ),
                           ),
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Değerler — her ürün sütununda (üstteki ürün görselinin
+                  // DİKEY hizasında: sol değer sol ürün, sağ değer sağ ürün).
+                  Row(
+                    children: [
+                      for (var i = 0; i < r.values.length; i++)
+                        Expanded(
+                          child: Center(
+                            child: SharedKeySpecsGrid.buildValue(
+                              context,
+                              r.values[i],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
         ],
