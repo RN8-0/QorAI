@@ -2455,14 +2455,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   ) {
     final sections = <Widget>[];
 
-    final priorityCategories =
-        homeFeed.whenOrNull(data: (f) => f.priorityCategories) ?? [];
-
-    // KİŞİSELLEŞTİRME (kullanıcı isteği): ana sayfa kategori rail'leri her hesapta
-    // aynı olmasın. HER ZAMAN (interest boş olsa bile) smartphones + tablets +
-    // laptops EN ÖNCE; ardından kullanıcının kayıt quizinde seçtiği kategoriler
-    // (interestCategories); kalan yerler feed sırasıyla doldurulur.
-    // "size özel / For You" gibi genel section'lara dokunulmaz.
+    // KİŞİSELLEŞTİRME (kullanıcı isteği): ana sayfa kategori rail'leri SADECE
+    // smartphones + tablets + laptops (her zaman) + kullanıcının kayıt quizinde
+    // seçtiği kategoriler (interestCategories). Feed'in tüm kategorilerini
+    // EKLEME (önceki sürüm "bir sürü kategori" dolduruyordu). "For You / Size
+    // Özel" gibi genel section'lara dokunulmaz.
     // Quiz id'leri ↔ feed (Typesense) kategori id'leri bazı yerlerde ayrışır.
     const quizToFeed = <String, String>{
       'gpus': 'graphics_cards',
@@ -2490,12 +2487,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       addCat(c);
     }
     for (final c in interest) {
-      addCat(c);
-    }
-    // Kalan slot'ları feed önceliğiyle (yoksa makul öntanımlıyla) doldur.
-    for (final c in priorityCategories.isNotEmpty
-        ? priorityCategories
-        : const ['headphones', 'smartwatches', 'gpus', 'tvs', 'monitors']) {
       addCat(c);
     }
 

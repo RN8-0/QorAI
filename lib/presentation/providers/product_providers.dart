@@ -125,7 +125,10 @@ const int _homeFeedInitialCategoryCount = 48;
 // (each shows ≤12) while keeping the parsed-entity pool ~35% smaller than 28 —
 // less main-thread parse + memory + GC pressure on entry-level devices. The
 // "show more" paths refetch deeper on demand.
-const int _homeFeedInitialPerCategory = 18;
+// 18→40: varyant-ağırlıklı kategoriler (ör. tablets = iPad varyantları) dedup
+// sonrası çok az distinct modele düşüyordu (18→2). Daha derin çekim → kategori
+// rail'lerinde daha çok FARKLI ürün (kullanıcı isteği: kategoride ~10 ürün).
+const int _homeFeedInitialPerCategory = 40;
 
 /// Category aliases used by category browse providers and legacy deep links.
 /// Canonical keys and legacy deep-link keys both resolve to query variants.

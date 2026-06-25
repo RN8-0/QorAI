@@ -6799,30 +6799,17 @@ Rules:
                   ),
                 );
                 if (compact) {
-                  // Dar kolon (3-4 ürün): dikey kompakt — logo+isim üstte,
-                  // fiyat/link altta. Yatay taşma giderilir.
+                  // Dar kolon (3-4 ürün): MİNİMAL dikey — logo üstte, fiyat/CTA
+                  // altında ORTALANMIŞ. İsim ve ayrı ok ikonu YOK (logo zaten
+                  // mağazayı gösteriyor, tüm kart tıklanabilir) → yatay taşma
+                  // imkansız, her fiyat kendi ürün kolonunun altında hizalı.
                   return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          logo,
-                          const SizedBox(width: 6),
-                          Expanded(child: name),
-                        ],
-                      ),
+                      logo,
                       const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(child: _buildCompareOfferPrice(offer)),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.open_in_new_rounded,
-                            size: 13,
-                            color: context.textTertiaryColor,
-                          ),
-                        ],
-                      ),
+                      Center(child: _buildCompareOfferPrice(offer)),
                     ],
                   );
                 }
