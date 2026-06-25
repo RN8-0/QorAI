@@ -6535,9 +6535,13 @@ Rules:
     final displayCurrency = bestOffer?.currency ?? info.currency;
     final hasPrice = displayAmount != null && displayAmount > 0;
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    // 3-4 ürün karşılaştırılınca her kolon ~1/4 genişlik → kart içeriği taşıyordu.
+    // compact modda padding/font/logo küçülür, offer satırı dikeye geçer
+    // (hizalama bozulmaz, her fiyat+link yine kendi ürününün altında).
+    final compact = widget.products.length >= 3;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(compact ? 9 : 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -6594,7 +6598,7 @@ Rules:
                     : (isTr ? 'Fiyat yok' : 'No price'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: hasPrice ? 18 : 13.5,
+                  fontSize: hasPrice ? (compact ? 15 : 18) : 13.5,
                   fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w700,
                   color: hasPrice
                       ? AppTheme.scoreExcellent
@@ -6602,7 +6606,7 @@ Rules:
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: compact ? 8 : 12),
           ],
           if (offers.isEmpty && entries.isEmpty)
             Container(
@@ -6646,6 +6650,7 @@ Rules:
                   (offer) => _buildCompareOfferRow(
                     offer: offer,
                     selectedCountry: country,
+                    compact: compact,
                   ),
                 )
           else
@@ -6738,6 +6743,7 @@ Rules:
   Widget _buildCompareOfferRow({
     required ProductOfferModel offer,
     required String selectedCountry,
+    bool compact = false,
   }) {
     final brand = _resolveCompareStoreBrand(
       '${offer.displayStore} ${offer.network} ${offer.url}',
@@ -6756,17 +6762,20 @@ Rules:
             } catch (_) {}
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 10,
+              vertical: compact ? 8 : 10,
+            ),
             decoration: BoxDecoration(
               color: context.surfaceColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: context.dividerColor),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
+            child: Builder(
+              builder: (_) {
+                final logo = Container(
+                  width: compact ? 26 : 32,
+                  height: compact ? 26 : 32,
                   decoration: BoxDecoration(
                     color: brand.logoUrl == null
                         ? brand.color.withValues(alpha: 0.12)
@@ -6778,35 +6787,69 @@ Rules:
                   ),
                   alignment: Alignment.center,
                   child: _CompareStoreLogo(brand: brand),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
+                );
+                final name = Text(
+                  brand.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: compact ? 11 : 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                  ),
+                );
+                if (compact) {
+                  // Dar kolon (3-4 ürün): dikey kompakt — logo+isim üstte,
+                  // fiyat/link altta. Yatay taşma giderilir.
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        brand.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          logo,
+                          const SizedBox(width: 6),
+                          Expanded(child: name),
+                        ],
                       ),
-                      _buildCompareOfferSubtitle(offer, selectedCountry),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(child: _buildCompareOfferPrice(offer)),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.open_in_new_rounded,
+                            size: 13,
+                            color: context.textTertiaryColor,
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildCompareOfferPrice(offer),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.open_in_new_rounded,
-                  size: 15,
-                  color: context.textTertiaryColor,
-                ),
-              ],
+                  );
+                }
+                return Row(
+                  children: [
+                    logo,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          name,
+                          _buildCompareOfferSubtitle(offer, selectedCountry),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildCompareOfferPrice(offer),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 15,
+                      color: context.textTertiaryColor,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),

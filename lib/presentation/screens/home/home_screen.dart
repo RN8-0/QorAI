@@ -2458,18 +2458,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final priorityCategories =
         homeFeed.whenOrNull(data: (f) => f.priorityCategories) ?? [];
 
-    // Use priority order from feed; limit to maxCategories for performance.
-    // Additional categories are loaded progressively as the user scrolls.
-    final allCategories = priorityCategories.isNotEmpty
-        ? priorityCategories
-        : [
-            'smartphones',
-            'laptops',
-            'tablets',
-            'headphones',
-            'smartwatches',
-            'gpus',
-          ];
+    // KİŞİSELLEŞTİRME (kullanıcı isteği): ana sayfa kategori rail'leri her hesapta
+    // aynı olmasın. HER ZAMAN smartphones + tablets + laptops, ardından
+    // kullanıcının kayıt quizinde seçtiği kategoriler (interestCategories).
+    // Profil yoksa (giriş yapılmamış) eski davranışa (feed/öntanımlı) düşer.
+    // "size özel / For You" gibi genel section'lara dokunulmaz.
+    final interest = ref.watch(userProfileProvider).valueOrNull?.interestCategories
+        ?? const <String>[];
+    final List<String> allCategories;
+    if (interest.isNotEmpty) {
+      // Quiz id'leri ↔ feed (Typesense) kategori id'leri bazı yerlerde ayrışır.
+      const quizToFeed = <String, String>{
+        'gpus': 'graphics_cards',
+        'gpu': 'graphics_cards',
+        'cases': 'pc_cases',
+        'coolers': 'cpu_coolers',
+        'speakers': 'audio_systems',
+        'soundbars': 'audio_systems',
+        'lenses': 'camera_lenses',
+        'consoles': 'gaming_consoles',
+      };
+      final seen = <String>{};
+      allCategories = <String>[];
+      for (final c in <String>['smartphones', 'tablets', 'laptops', ...interest]) {
+        // tire→alt çizgi (media-players→media_players) + bilinen ayrışmalar.
+        final norm = c.toLowerCase().trim().replaceAll('-', '_');
+        final id = quizToFeed[norm] ?? norm;
+        if (id.isNotEmpty && seen.add(id)) allCategories.add(id);
+      }
+    } else {
+      // Use priority order from feed; limit to maxCategories for performance.
+      // Additional categories are loaded progressively as the user scrolls.
+      allCategories = priorityCategories.isNotEmpty
+          ? priorityCategories
+          : [
+              'smartphones',
+              'laptops',
+              'tablets',
+              'headphones',
+              'smartwatches',
+              'gpus',
+            ];
+    }
 
     final categoriesToShow = allCategories.take(maxCategories);
 
