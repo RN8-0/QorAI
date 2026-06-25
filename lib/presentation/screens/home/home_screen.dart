@@ -2459,46 +2459,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         homeFeed.whenOrNull(data: (f) => f.priorityCategories) ?? [];
 
     // KİŞİSELLEŞTİRME (kullanıcı isteği): ana sayfa kategori rail'leri her hesapta
-    // aynı olmasın. HER ZAMAN smartphones + tablets + laptops, ardından
-    // kullanıcının kayıt quizinde seçtiği kategoriler (interestCategories).
-    // Profil yoksa (giriş yapılmamış) eski davranışa (feed/öntanımlı) düşer.
+    // aynı olmasın. HER ZAMAN (interest boş olsa bile) smartphones + tablets +
+    // laptops EN ÖNCE; ardından kullanıcının kayıt quizinde seçtiği kategoriler
+    // (interestCategories); kalan yerler feed sırasıyla doldurulur.
     // "size özel / For You" gibi genel section'lara dokunulmaz.
-    final interest = ref.watch(userProfileProvider).valueOrNull?.interestCategories
-        ?? const <String>[];
-    final List<String> allCategories;
-    if (interest.isNotEmpty) {
-      // Quiz id'leri ↔ feed (Typesense) kategori id'leri bazı yerlerde ayrışır.
-      const quizToFeed = <String, String>{
-        'gpus': 'graphics_cards',
-        'gpu': 'graphics_cards',
-        'cases': 'pc_cases',
-        'coolers': 'cpu_coolers',
-        'speakers': 'audio_systems',
-        'soundbars': 'audio_systems',
-        'lenses': 'camera_lenses',
-        'consoles': 'gaming_consoles',
-      };
-      final seen = <String>{};
-      allCategories = <String>[];
-      for (final c in <String>['smartphones', 'tablets', 'laptops', ...interest]) {
-        // tire→alt çizgi (media-players→media_players) + bilinen ayrışmalar.
-        final norm = c.toLowerCase().trim().replaceAll('-', '_');
-        final id = quizToFeed[norm] ?? norm;
-        if (id.isNotEmpty && seen.add(id)) allCategories.add(id);
-      }
-    } else {
-      // Use priority order from feed; limit to maxCategories for performance.
-      // Additional categories are loaded progressively as the user scrolls.
-      allCategories = priorityCategories.isNotEmpty
-          ? priorityCategories
-          : [
-              'smartphones',
-              'laptops',
-              'tablets',
-              'headphones',
-              'smartwatches',
-              'gpus',
-            ];
+    // Quiz id'leri ↔ feed (Typesense) kategori id'leri bazı yerlerde ayrışır.
+    const quizToFeed = <String, String>{
+      'gpus': 'graphics_cards',
+      'gpu': 'graphics_cards',
+      'cases': 'pc_cases',
+      'coolers': 'cpu_coolers',
+      'speakers': 'audio_systems',
+      'soundbars': 'audio_systems',
+      'lenses': 'camera_lenses',
+      'consoles': 'gaming_consoles',
+    };
+    final interest =
+        ref.watch(userProfileProvider).valueOrNull?.interestCategories ??
+        const <String>[];
+    final seen = <String>{};
+    final allCategories = <String>[];
+    void addCat(String c) {
+      // tire→alt çizgi (media-players→media_players) + bilinen ayrışmalar.
+      final norm = c.toLowerCase().trim().replaceAll('-', '_');
+      final id = quizToFeed[norm] ?? norm;
+      if (id.isNotEmpty && seen.add(id)) allCategories.add(id);
+    }
+
+    for (final c in const ['smartphones', 'tablets', 'laptops']) {
+      addCat(c);
+    }
+    for (final c in interest) {
+      addCat(c);
+    }
+    // Kalan slot'ları feed önceliğiyle (yoksa makul öntanımlıyla) doldur.
+    for (final c in priorityCategories.isNotEmpty
+        ? priorityCategories
+        : const ['headphones', 'smartwatches', 'gpus', 'tvs', 'monitors']) {
+      addCat(c);
     }
 
     final categoriesToShow = allCategories.take(maxCategories);
@@ -2511,7 +2509,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ) ??
           0;
       final isLoading = homeFeed.isLoading;
-      if (!isLoading && productCount < 4) continue;
+      // smartphones/tablets/laptops HER ZAMAN gösterilir (kullanıcı isteği) —
+      // tablets gibi tek-marka varyant ağırlıklı kategoriler dedup sonrası az
+      // (örn. 2) ürüne düşebiliyor; bu 3'ü <4 eşiğinden muaf tut (≥1 yeter).
+      const guaranteedCats = {'smartphones', 'tablets', 'laptops'};
+      final minCount = guaranteedCats.contains(category) ? 1 : 4;
+      if (!isLoading && productCount < minCount) continue;
 
       final info = _categoryMeta(category);
       final isWide = shown < 4; // Keep initial render lighter on weak devices
