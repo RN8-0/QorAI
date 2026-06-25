@@ -113,7 +113,17 @@ SearchRank rankProductForQuery(ProductEntity product, String query) {
     }
   }
 
-  final matchingNameTokens = tokens.where(name.contains).length;
+  // TOKEN/kelime-sınırı eşleşmesi — substring DEĞİL. "lg" sorgu token'ı
+  // "biLGisayar"/"LoonG"/"LGA" gibi substring'lerle eşleşmemeli (compare/
+  // arama'da alakasız ürün gelmesinin kök nedeniydi). 1-2 harfli token'lar TAM
+  // eşleşir; 3+ harfliler prefix de eşleşebilir (kısmi yazım için).
+  final nameTokenSet = tokenizeSearchText(name).toSet();
+  final combinedTokenSet = tokenizeSearchText(combined).toSet();
+  bool tokenHit(Set<String> set, String t) =>
+      set.contains(t) || (t.length >= 3 && set.any((x) => x.startsWith(t)));
+
+  final matchingNameTokens =
+      tokens.where((t) => tokenHit(nameTokenSet, t)).length;
   if (matchingNameTokens == tokens.length && tokens.isNotEmpty) {
     score += 180;
     allTokensInName = true;
@@ -121,7 +131,8 @@ SearchRank rankProductForQuery(ProductEntity product, String query) {
     score += matchingNameTokens * 35;
   }
 
-  final matchingCombinedTokens = tokens.where(combined.contains).length;
+  final matchingCombinedTokens =
+      tokens.where((t) => tokenHit(combinedTokenSet, t)).length;
   if (matchingCombinedTokens == tokens.length && tokens.isNotEmpty) {
     score += 90;
   } else if (matchingCombinedTokens > 0) {
@@ -144,7 +155,8 @@ SearchRank rankProductForQuery(ProductEntity product, String query) {
   }
 
   if (score == 0 && tokens.isNotEmpty) {
-    final tokenOverlap = tokens.where(combined.contains).length;
+    final tokenOverlap =
+        tokens.where((t) => tokenHit(combinedTokenSet, t)).length;
     if (tokenOverlap > 0) {
       score += tokenOverlap * 12;
     }

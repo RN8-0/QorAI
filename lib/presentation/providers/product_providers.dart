@@ -472,11 +472,18 @@ final searchResultsProvider = FutureProvider.autoDispose
       final cached = feedAsync.valueOrNull;
       if (cached != null && cached.all.isNotEmpty) {
         localResults = cached.all.where((p) {
-          final name = p.name.toLowerCase();
-          final brand = (p.brand ?? '').toLowerCase();
-          final category = p.category.toLowerCase();
-          final searchable = '$name $brand $category';
-          return queryWords.every((w) => searchable.contains(w));
+          // TOKEN/kelime-sınırı eşleşmesi — substring DEĞİL. "lg" sorgusu
+          // SADECE "lg" KELİMESİYLE (LG markası) eşleşmeli; "biLGisayar",
+          // "LoonG", "LGA" gibi substring'lerle DEĞİL. Substring eşleşmesi
+          // compare/aramada alakasız ürün (anakart/kasa) gelmesinin kök nedeniydi.
+          final tokens = '${p.name} ${p.brand ?? ''} ${p.category}'
+              .toLowerCase()
+              .split(RegExp(r'[^a-z0-9]+'));
+          return queryWords.every(
+            (w) => tokens.any(
+              (t) => t == w || (w.length >= 3 && t.startsWith(w)),
+            ),
+          );
         }).toList();
       }
 
