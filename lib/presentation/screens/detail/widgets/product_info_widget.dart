@@ -146,10 +146,10 @@ class _TitlePriceSection extends ConsumerWidget {
         ? (countryInfo?.currency ?? 'USD')
         : 'USD';
     final locale = Localizations.localeOf(context).languageCode;
-    final displayName = localizeProductName(
-      product.nameForLanguage(locale),
-      locale,
-    );
+    // PB'nin o dildeki adını AYNEN göster. localizeProductName runtime çevirisi
+    // zaten doğru olan adı bozuyordu ("Apple iPhone 17 Pro" → "Apple The iphone
+    // 17 Pro"). nameForLanguage PB'nin lokalize adını (de/en/tr) verir — kaynak o.
+    final displayName = product.nameForLanguage(locale);
 
     return Container(
       width: double.infinity,

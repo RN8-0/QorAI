@@ -132,7 +132,9 @@ class SharedSimilarGridCard extends StatelessWidget {
                             letterSpacing: 0.6),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text(product.name,
+                  Text(product.nameForLanguage(
+                        Localizations.localeOf(context).languageCode,
+                      ),
                       maxLines: 2, overflow: TextOverflow.ellipsis,
                       softWrap: true,
                       style: GoogleFonts.plusJakartaSans(

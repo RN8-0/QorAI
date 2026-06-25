@@ -13,7 +13,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
-import 'package:qor_ai/core/product_name_localizer.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -3036,10 +3035,10 @@ class _WideProductCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String _displayName(BuildContext context) => localizeProductName(
-    product.nameForLanguage(Localizations.localeOf(context).languageCode),
-    Localizations.localeOf(context).languageCode,
-  );
+  // PB'nin lokalize adını AYNEN göster (localizeProductName runtime çevirisi
+  // doğru adı bozuyordu: "Apple iPhone 17 Pro" → "Apple The iphone 17 Pro").
+  String _displayName(BuildContext context) =>
+      product.nameForLanguage(Localizations.localeOf(context).languageCode);
 
   @override
   Widget build(BuildContext context) {
@@ -3231,10 +3230,10 @@ class _TrendingWideCard extends StatelessWidget {
       ? Colors.orange
       : const Color(0xFF6366F1);
 
-  String _displayName(BuildContext context) => localizeProductName(
-    product.nameForLanguage(Localizations.localeOf(context).languageCode),
-    Localizations.localeOf(context).languageCode,
-  );
+  // PB'nin lokalize adını AYNEN göster (localizeProductName runtime çevirisi
+  // doğru adı bozuyordu: "Apple iPhone 17 Pro" → "Apple The iphone 17 Pro").
+  String _displayName(BuildContext context) =>
+      product.nameForLanguage(Localizations.localeOf(context).languageCode);
 
   @override
   Widget build(BuildContext context) {

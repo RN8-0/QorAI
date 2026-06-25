@@ -1369,7 +1369,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     });
     final catKey = _activeCategoryId.toLowerCase().trim();
-    final hiveCacheKey = 'cat_products_${catKey}_v2';
+    // v3: kategori filtresi exact-OR'a geçti (token sızıntısı düzeldi); eski v2
+    // cache'inde camera_lenses altında kameralar olabilir → versiyon bump.
+    final hiveCacheKey = 'cat_products_${catKey}_v3';
 
     try {
       final cache = ref.read(cacheServiceProvider);

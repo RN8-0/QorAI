@@ -2786,9 +2786,11 @@ class PbDataSource {
     // inconsistent category slugs (hyphen vs underscore vs spaces) are all
     // covered in a single Typesense query.
     final variants = _categoryVariants(category);
-    final filterBy = variants.length == 1
-        ? 'category:=${variants.first}'
-        : 'category:[${variants.join(',')}]';
+    // Exact match per variant. TS `category:[...]` TOKEN-matches → bare 'cameras'
+    // token yanlışlıkla ip_cameras/action_cameras vb. yakalıyordu (615 lens yerine
+    // 1664). exact-OR (`category:=A || category:=B`) tüm kategorilerde token
+    // sızıntısını keser.
+    final filterBy = variants.map((v) => 'category:=$v').join(' || ');
     try {
       final sw = Stopwatch()..start();
       while (all.length < maxTotal) {
@@ -2863,9 +2865,8 @@ class PbDataSource {
     try {
       final sw = Stopwatch()..start();
       final variants = _categoryVariants(category);
-      final filterBy = variants.length == 1
-          ? 'category:=${variants.first}'
-          : 'category:[${variants.join(',')}]';
+      // exact-OR (token sızıntısı yok — bkz. getProductsPageTs notu).
+      final filterBy = variants.map((v) => 'category:=$v').join(' || ');
       final response = await _dio.get(
         '/collections/products/documents/search',
         queryParameters: {
@@ -3003,12 +3004,12 @@ class PbDataSource {
       // Typesense exact-match filter only finds records that match the stored
       // field value exactly, so we probe all plausible variants in one query.
       final variants = _categoryVariants(category);
-      final categoryFilterBy = variants.length == 1
-          ? 'category:=${variants.first}'
-          : 'category:[${variants.join(',')}]';
+      // exact-OR (token sızıntısı yok). extraFilterBy ile birleşirken parantez
+      // şart: `(A || B) && C` — yoksa `A || (B && C)` olur.
+      final categoryFilterBy = variants.map((v) => 'category:=$v').join(' || ');
       final filterBy =
           (extraFilterBy != null && extraFilterBy.trim().isNotEmpty)
-          ? '$categoryFilterBy && ${extraFilterBy.trim()}'
+          ? '($categoryFilterBy) && ${extraFilterBy.trim()}'
           : categoryFilterBy;
 
       final trimmedQuery = query.trim();
@@ -3429,23 +3430,15 @@ class PbDataSource {
     ],
     'av_receivers': ['av-receivers', 'hifi_receivers'],
     'media_players': ['media-players'],
+    // NOT: Typesense `category` filtresi TOKEN eşliyor — bare 'cameras' token'ı
+    // ip_cameras/action_cameras/security_cameras vb. HEPSİNİ yakalıyordu (615
+    // lens yerine 1664 karışık sonuç). Bu yüzden burada SADECE gerçek lens
+    // slug'ları olmalı; kamera kategorileri ASLA değil.
     'camera_lenses': [
       'camera-lenses',
-      'cameras',
-      'digital_cameras',
-      'digital-cameras',
-      'video_cameras',
-      'video-cameras',
-      'camcorders',
-      'film_cameras',
-      'film-cameras',
       'camera_objectives',
       'camera-objectives',
       'lenses',
-      'action_cameras',
-      'action-cameras',
-      'security_cameras',
-      'security-cameras',
     ],
     'ip_cameras': ['ip-cameras'],
     'routers': [
