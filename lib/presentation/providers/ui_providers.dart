@@ -345,6 +345,15 @@ String normalizeProductName(String name) {
       r'\b(iphone\s+\d+[a-z]*(?:\s+(?:pro\s+max|pro|plus|max|mini|air|e))?)\b',
     ),
     RegExp(r'\b(ipad\s+(?:pro|air|mini)?(?:\s+\d+(?:[.,]\d+)?)?)\b'),
+    // Akıllı saatler: model ailesini yakala, sonraki renk/kordon/boyut/bağlantı
+    // ("schwarz", "mit Ocean Armband", "GPS", "46mm") kelimelerini yok say →
+    // ana sayfada aynı saat farklı renk/kordonla tekrar tekrar görünmesin.
+    RegExp(
+      r'\b(apple\s+watch\s+(?:ultra|series|se|hermes|nike)(?:\s+\d+)?)\b',
+    ),
+    RegExp(
+      r'\b(galaxy\s+watch\s*\d+[a-z]*(?:\s+(?:ultra|classic|pro|fe|active))?)\b',
+    ),
   ];
   for (final re in familyPatterns) {
     final m = re.firstMatch(probe);

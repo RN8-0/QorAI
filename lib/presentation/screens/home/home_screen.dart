@@ -1478,7 +1478,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (ra != rb) return ra.compareTo(rb);
       return a.$1.compareTo(b.$1); // stable
     });
-    return [for (final e in indexed) e.$2];
+    // UYUMLU RENK: grup renkleri yerine brand-uyumlu (soğuk ton) tek bir palet;
+    // her SÜTUN (üst+alt çift) aynı renk, sütunlar palette boyunca dönerek
+    // yumuşak geçiş. Çakışan/dağınık renk yerine koordineli görünüm.
+    const harmonious = <Color>[
+      Color(0xFF3B82F6), // blue
+      Color(0xFF6366F1), // indigo
+      Color(0xFF8B5CF6), // violet
+      Color(0xFF06B6D4), // cyan
+      Color(0xFF0EA5E9), // sky
+      Color(0xFF14B8A6), // teal
+      Color(0xFFA855F7), // purple
+      Color(0xFF22D3EE), // light cyan
+    ];
+    final sorted = <Map<String, Object>>[for (final e in indexed) e.$2];
+    for (var i = 0; i < sorted.length; i++) {
+      sorted[i] = {
+        ...sorted[i],
+        'color': harmonious[(i ~/ 2) % harmonious.length],
+      };
+    }
+    return sorted;
   }
 
   /// Locale-aware cache — recreates only when locale changes.
@@ -1494,9 +1514,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildCategoriesSection() {
     final categories = _getCachedFlatCategories();
     if (categories.isEmpty) return const SizedBox.shrink();
-    final half = (categories.length / 2).ceil();
-    final row1 = categories.sublist(0, half);
-    final row2 = categories.sublist(half);
+    // ZIGZAG: en popüler üstte (index 0), 2. altta (1), 3. üstte (2)... yani
+    // her sütun [üst=rank2k, alt=rank2k+1] — soldan sağa popülerlik azalır.
+    final row1 = <Map<String, Object>>[
+      for (var i = 0; i < categories.length; i += 2) categories[i],
+    ];
+    final row2 = <Map<String, Object>>[
+      for (var i = 1; i < categories.length; i += 2) categories[i],
+    ];
 
     return Column(
       children: [
@@ -1787,7 +1812,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final products = _categorySectionProducts(feed, categoryId);
           if (products.isEmpty) return const SizedBox.shrink();
 
-          final display = products.take(_kHorizontalInitialItemLimit).toList();
+          // Kategori başına en yüksek puanlı ilk 10 (products zaten ≤10 dönüyor).
+          final display = products.take(10).toList();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: _kHorizontalCardRowPadding,
@@ -1835,30 +1861,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     HomeFeed feed,
     String categoryId,
   ) {
-    final products = feed.byCategory[categoryId] ?? const <ProductEntity>[];
-    if (products.isEmpty) return products;
+    final raw = feed.byCategory[categoryId] ?? const <ProductEntity>[];
+    if (raw.isEmpty) return raw;
 
     final blockedIds = _getBlockedIds(feed);
-
-    final filtered = products
+    final visible = raw
         .where((product) => !blockedIds.contains(product.id))
         .toList();
-    if (filtered.length >= _kHorizontalInitialItemLimit) {
-      return filtered;
-    }
 
-    final filled = <ProductEntity>[...filtered];
-    final seenIds = filled.map((product) => product.id).toSet();
-    for (final product in products) {
-      if (seenIds.add(product.id)) {
-        filled.add(product);
-      }
-      if (filled.length >= _kHorizontalInitialItemLimit) {
-        break;
-      }
-    }
+    // Aynı modelin farklı varyantları (renk/kordon/depolama) ana sayfada tekrar
+    // tekrar görünmesin → deduplicateVariants (isim-normalize + variantGroup).
+    // Sonra techScore'a göre sırala ve kategoride EN YÜKSEK PUANLI İLK 10'u göster.
+    List<ProductEntity> ranked(List<ProductEntity> pool) =>
+        deduplicateVariants(pool)
+          ..sort((a, b) => b.techScore.compareTo(a.techScore));
 
-    return filled.length >= 4 ? filled : products;
+    var deduped = ranked(visible);
+    if (deduped.length < 4) deduped = ranked(raw);
+    return deduped.take(10).toList();
   }
 
   Widget _buildTrendsSection() {

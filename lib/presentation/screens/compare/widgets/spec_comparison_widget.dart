@@ -5248,9 +5248,12 @@ Rules:
       'price',
       'nanometre',
       'nm',
-      'sar',
     ];
     if (lowerSignals.any(key.contains)) return 'lower';
+    // 'sar' (SAR radyasyonu) TAM KELİME olmalı; "şarj" (normalize: "sarj")
+    // içindeki "sar"a takılıp şarj döngüsü/hızını yanlışlıkla düşük-iyi
+    // saymasın (1200 döngü 1400'den iyi görünüyordu).
+    if (key.split(' ').contains('sar')) return 'lower';
 
     const higherSignals = [
       'cekirdek',
@@ -6325,7 +6328,7 @@ Rules:
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
-                  Icons.widgets_rounded,
+                  Icons.hub_rounded,
                   size: 14,
                   color: Colors.white,
                 ),
@@ -6725,7 +6728,7 @@ Rules:
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      Icons.widgets_rounded,
+                      Icons.hub_rounded,
                       size: 14,
                       color: Colors.white,
                     ),
@@ -6899,7 +6902,14 @@ Rules:
     // Single unified AI report (compare_full_report) — Personalized Match is
     // NOT a separate section; the report already includes per-product match
     // scores. One centered "Start analysis" button runs everything.
-    if (!_fullCompareRunning && _fullCompareReport == null) {
+    // KRİTİK: quiz yüklenirken/quiz gösterilirken de ListView'e geç. Aksi halde
+    // "Analizi Başlat" basınca _compareQuizLoading=true oluyor ama bu erken
+    // return (_fullCompareRunning hâlâ false) start butonunu tekrar gösterip
+    // quiz/loader'ı hiç açmıyordu → buton "çalışmıyor" görünüyordu.
+    if (!_compareQuizLoading &&
+        _compareQuiz == null &&
+        !_fullCompareRunning &&
+        _fullCompareReport == null) {
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),

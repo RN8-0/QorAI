@@ -947,13 +947,16 @@ class SpecDirectionService {
       'idle',
       'nm',
       'nanometre',
-      'sar',
       'radiation',
       'thd',
       'distortion',
       'delay',
     ];
-    return lowerKeywords.any((kw) => key.contains(kw));
+    if (lowerKeywords.any((kw) => key.contains(kw))) return true;
+    // 'sar' (SAR radyasyonu, düşük iyi) TAM KELİME olmalı. Aksi halde "şarj"
+    // (normalize: "sarj") içindeki "sar"a takılıp şarj döngüsü/hızını yanlışlıkla
+    // "düşük iyi" sayıyordu (1200 döngü, 1400'den iyi görünüyordu).
+    return key.split(' ').contains('sar');
   }
 
   static bool _matchesHigherBetter(String key) {
@@ -1010,6 +1013,9 @@ class SpecDirectionService {
       'density',
       'parlaklik',
       'renk',
+      // Şarj döngü sayısı: ne kadar çok döngü, o kadar iyi (pil ömrü).
+      'dongu',
+      'cycle',
     ];
     return higherKeywords.any((kw) => key.contains(kw));
   }

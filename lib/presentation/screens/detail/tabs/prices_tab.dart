@@ -86,10 +86,10 @@ class _PricesTabContent extends ConsumerWidget {
                 ] else if (isLoadingOffers && !hasAnyStores) ...[
                   _PriceLoadingCard(),
                   const SizedBox(height: 16),
-                ] else if (!hasAnyStores) ...[
-                  _PriceFallbackCard(product: product, country: country),
-                  const SizedBox(height: 16),
                 ],
+                // "Henüz fiyat bilgisi yok" kartı kaldırıldı: zaten üstte
+                // ülkeye-uygun Amazon affiliate kartı var, kullanıcı tıklayıp
+                // fiyatı görebilir (kullanıcı isteği).
                 if (secondOfferChunk.isNotEmpty) ...[
                   _OfferLinksCard(
                     product: product,
@@ -890,6 +890,9 @@ class _PriceLoadingCard extends StatelessWidget {
 }
 
 // ─── Fallback when no stores: just show price summary ────────────────────────
+// Kullanıcı isteğiyle artık gösterilmiyor (Amazon affiliate kartı yeterli);
+// ileride gerekirse diye saklanıyor.
+// ignore: unused_element
 class _PriceFallbackCard extends StatelessWidget {
   final ProductEntity product;
   final String country;
@@ -1085,11 +1088,42 @@ class _CompactVariantsSection extends ConsumerWidget {
     return out;
   }
 
-  /// Spec'lerden fark çıkmadığında kart için ismin ayırt edici model etiketi
-  /// (CPU/GPU/RAM/depolama/ekran karması — _variantLabelFor).
-  static String _fallbackLabel(ProductEntity p) {
-    final lbl = _VariantChip._variantLabelFor(p);
-    return lbl.length > 26 ? '${lbl.substring(0, 25)}…' : lbl;
+  /// Spec'lerden fark çıkmadığında: tüm varyant isimlerinden ortak BAŞ ve SON
+  /// token'ları çıkarıp `p`'nin BENZERSİZ orta kısmını döndürür. Böylece her
+  /// kartta gerçekten farklı olan yazı çıkar (anakart/komponent gibi spec'le
+  /// ayrışmayan ürünlerde bile), "Soket Anakart" gibi çöp etiket yerine.
+  static String _nameDiffLabel(ProductEntity p, List<ProductEntity> all) {
+    final tokenLists = all
+        .map((e) => e.name.trim().split(RegExp(r'\s+')))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    final mine = p.name.trim().split(RegExp(r'\s+'));
+    if (tokenLists.length < 2) {
+      final lbl = _VariantChip._variantLabelFor(p);
+      return lbl.length > 26 ? '${lbl.substring(0, 25)}…' : lbl;
+    }
+    int pre = 0;
+    while (true) {
+      if (tokenLists.any((t) => pre >= t.length)) break;
+      final w = tokenLists.first[pre].toLowerCase();
+      if (!tokenLists.every((t) => t[pre].toLowerCase() == w)) break;
+      pre++;
+    }
+    int suf = 0;
+    while (true) {
+      if (tokenLists.any((t) => suf >= t.length - pre)) break;
+      final w = tokenLists.first[tokenLists.first.length - 1 - suf].toLowerCase();
+      if (!tokenLists.every(
+        (t) => t[t.length - 1 - suf].toLowerCase() == w,
+      )) {
+        break;
+      }
+      suf++;
+    }
+    final endIdx = (mine.length - suf).clamp(pre, mine.length);
+    final mid = mine.sublist(pre.clamp(0, mine.length), endIdx).join(' ').trim();
+    final label = mid.isEmpty ? p.name.trim() : mid;
+    return label.length > 26 ? '${label.substring(0, 25)}…' : label;
   }
 
   @override
@@ -1184,6 +1218,9 @@ class _CompactVariantsSection extends ConsumerWidget {
                       product: unique[i],
                       isSelected: unique[i].id == product.id,
                       diffKinds: diffKinds,
+                      // Spec'ten fark çıkmazsa: ismin BENZERSİZ kısmı (ortak
+                      // baş/son atılmış) → her kartta gerçekten farklı olan yazar.
+                      fallbackLabel: _nameDiffLabel(unique[i], unique),
                       isTr: isTr,
                     ),
                   ),
@@ -1203,11 +1240,13 @@ class _VariantGridCard extends StatelessWidget {
   final ProductEntity product;
   final bool isSelected;
   final List<String> diffKinds;
+  final String fallbackLabel;
   final bool isTr;
   const _VariantGridCard({
     required this.product,
     required this.isSelected,
     required this.diffKinds,
+    required this.fallbackLabel,
     required this.isTr,
   });
 
@@ -1218,7 +1257,7 @@ class _VariantGridCard extends StatelessWidget {
     // Kartta gösterilecek (değer, etiket) hücreleri. Fark bulunan spec türleri
     // varsa onları; yoksa ismin ayırt edici kısmını (model etiketi) göster.
     final List<(String, String)> cells = shown.isEmpty
-        ? [(_CompactVariantsSection._fallbackLabel(product), isTr ? 'Sürüm' : 'Version')]
+        ? [(fallbackLabel, isTr ? 'Sürüm' : 'Version')]
         : [
             for (final k in shown)
               (
