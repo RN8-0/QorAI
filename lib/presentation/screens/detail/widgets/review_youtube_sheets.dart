@@ -638,6 +638,48 @@ class _UserReviewsListInlineState
                 currentUserId: currentUserId,
                 onDelete: review.userId == currentUserId
                     ? () async {
+                        // ONAY ŞART: bu sheet hem tekli ürün hem compare'de
+                        // kullanılıyordu ve silme butonu DOĞRUDAN siliyordu
+                        // (onaysız). Artık "emin misin?" dialog'u çıkar.
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: context.surfaceColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Text(
+                              context.l10n?.deleteReview ?? 'Yorumu Sil',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            content: Text(
+                              context.l10n?.deleteReviewConfirm ??
+                                  'Bu yorumu silmek istediğine emin misin? '
+                                      'Tüm yanıtlar da silinecek.',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: Text(context.l10n?.cancel ?? 'İptal'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: Text(
+                                  context.l10n?.delete ?? 'Sil',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
                         await ref
                             .read(productRepositoryProvider)
                             .deleteReview(review.id);
