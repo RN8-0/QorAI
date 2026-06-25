@@ -605,7 +605,9 @@ class HomeFeed {
 // v6: deduplicateVariants normalize fix (storage "(512 GB)" + çok-dilli renk/
 // materyal varyantları). Eski cache deduped-feed'i gömülü tuttuğu için
 // versiyon bump'ı rebuild'i zorlar → yeni dedup uygulanır.
-const _homeFeedReadyCacheVersion = 'v6';
+// v7: per-category fetch 18→40 (kategori rail'lerinde daha çok distinct ürün)
+// → eski cache'i geçersiz kıl.
+const _homeFeedReadyCacheVersion = 'v7';
 
 String _homeFeedReadyCacheKey(String country, UserEntity? user) {
   return 'home_feed_ready_${country.toLowerCase()}_${user?.uid ?? "anon"}_$_homeFeedReadyCacheVersion';
@@ -1849,7 +1851,7 @@ final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   await SchedulerBinding.instance.endOfFrame;
 
   // Cache key includes user UID for personalized feeds
-  final cacheKey = 'home_feed_v33_${user?.uid ?? "anon"}';
+  final cacheKey = 'home_feed_v34_${user?.uid ?? "anon"}';
   _scheduleLegacyFeedCacheCleanup(cache, user);
 
   // Start admin config fetch CONCURRENTLY (don't block product loading)
