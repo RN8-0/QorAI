@@ -875,7 +875,8 @@ class GeminiService implements AIService {
 You are Qor AI's Subscription Intelligence quiz engine.
 SESSION SEED: $sessionSeed  ← use this to vary phrasing and angles every time.
 
-TASK: Generate a DEEPLY PERSONALIZED, SCENARIO-DRIVEN quiz (5 questions) for: $names
+TASK: Generate a DEEPLY PERSONALIZED, SCENARIO-DRIVEN quiz for: $names
+QUESTION COUNT (web paritesi): ${isCompare ? '9-10 questions (comparing multiple services)' : 'exactly 8 questions (single service)'}.
 MODE: ${isCompare ? 'COMPARISON (user is deciding between these services)' : 'SINGLE ANALYSIS (user wants deep compatibility score)'}
 LANGUAGE: ALL text in $langName.
 
@@ -891,10 +892,10 @@ Bad (generic, boring, repetitive):
   ❌ "What type of content do you prefer?"
   ❌ "Do you use it on mobile?"
 
-Good (scenario-based, specific, revealing):
-  ✅ "It's Friday night and you have 2 hours free. What are you most likely opening on ${normalizedNames.first}? 🎬"
-  ✅ "Your friend asks which show/song/game to try first on ${isCompare ? names : normalizedNames.first}. What do you recommend? 🎯"
-  ✅ "You're traveling abroad for 3 weeks with no home WiFi. How important is offline mode on this service? ✈️"
+Good (scenario-based, specific, revealing — and WITHOUT naming any service):
+  ✅ "It's Friday night and you finally have 2 free hours to unwind. What kind of thing are you most likely to open and lose yourself in? 🎬"
+  ✅ "A friend texts asking what they should try first this weekend. What do you point them toward? 🎯"
+  ✅ "You're traveling abroad for 3 weeks with no home WiFi. How much does saving things for offline use matter to you? ✈️"
 
 ═══ PER-CATEGORY SCENARIO IDEAS ═══
 For VIDEO STREAMING (Netflix, Disney+, Amazon Prime, HBO Max, Apple TV+ etc.):
@@ -940,7 +941,11 @@ For PRODUCTIVITY (Microsoft 365, Google Workspace, Notion etc.):
 - NEVER use options like "Rarely / Sometimes / Often / Always" — these are boring and useless
 - Each of the 4 options must represent a genuinely DIFFERENT user archetype or behavior pattern
 - Options must be concrete and specific, not vague gradients
-- At least 2 questions should directly reference ${isCompare ? 'the specific services being compared by name' : 'the service by name'}
+- HARD RULE (web paritesi) — NEVER name, write, or hint at any of the selected
+  services or brands in the questions OR in the options. Not even once. The user
+  must NOT be able to tell which option maps to which service; each of the 4
+  options silently maps to a different service's strength (replace any service
+  name with the neutral everyday behavior instead).
 - One question should be a fun hypothetical scenario ("If you could only keep one subscription this year..." etc.)
 
 ═══ FORMAT ═══
@@ -1205,17 +1210,22 @@ Output a clear per-service research summary, labeled with each service name.
     }
 
     // Step 2: Analysis phase — structured JSON output (NO googleSearch, forces JSON)
+    // WEB PARİTESİ: app analizini web (linkAnalysis.js) ile AYNI uzunluk/derinlikte
+    // yap — kullanıcı "aynı uzunlukta analiz" istedi. Tüm uzunluklar web şemasıyla
+    // eşitlendi (4-6 cümle, 3-4 paragraf, 5-7 paragraf). Renderer bu alanları
+    // (detailed_comparison.{service_fit_summary,feature_comparison,user_experience})
+    // zaten işliyor; tekli şemada eksikti, eklendi.
     final jsonSchema = isCompare
         ? '''{
   "subscriptions": {
     "<service_name>": {
       "category": "string - shared subscription category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score",
-      "pros": ["string", "string", "string", "string", "string"],
-      "cons": ["string", "string", "string"],
-      "community_sentiment": "string - 2-3 sentence Reddit/forum summary",
-      "best_for": "string - ideal user type",
+      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to the quiz answers",
+      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
+      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
+      "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -1228,12 +1238,12 @@ Output a clear per-service research summary, labeled with each service name.
   "winner": {
     "best_content": "string - service name",
     "overall": "string - service name",
-    "recommendation": "string - 3-4 sentence personalized recommendation explaining WHY"
+    "recommendation": "string - 5-7 paragraph personalized recommendation explaining WHY, trade-offs, best use cases and the final decision"
   },
   "detailed_comparison": {
-    "service_fit_summary": "string - 2-3 sentences comparing overall fit",
-    "feature_comparison": "string - 2-3 sentences about feature differences",
-    "user_experience": "string - 2-3 sentences about UX differences"
+    "service_fit_summary": "string - 3-4 paragraphs comparing overall fit",
+    "feature_comparison": "string - 3-4 paragraphs about feature differences",
+    "user_experience": "string - 3-4 paragraphs about UX differences"
   }
 }'''
         : '''{
@@ -1241,11 +1251,11 @@ Output a clear per-service research summary, labeled with each service name.
     "$names": {
       "category": "string - service category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score",
-      "pros": ["string", "string", "string", "string", "string"],
-      "cons": ["string", "string", "string"],
-      "community_sentiment": "string - 2-3 sentence Reddit/forum summary",
-      "best_for": "string - ideal user type",
+      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to the quiz answers",
+      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
+      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
+      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
+      "best_for": "string - 2-3 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -1255,7 +1265,12 @@ Output a clear per-service research summary, labeled with each service name.
       }
     }
   },
-  "recommendation": "string - 3-4 sentence personalized recommendation"
+  "detailed_comparison": {
+    "service_fit_summary": "string - 3-4 paragraphs about overall fit",
+    "feature_comparison": "string - 3-4 paragraphs about features and content/use cases",
+    "user_experience": "string - 3-4 paragraphs about UX and everyday usage"
+  },
+  "recommendation": "string - 5-7 paragraph personalized recommendation explaining fit, trade-offs, usage scenarios and final decision"
 }''';
 
     // Identify unknown services for the analysis prompt
@@ -1290,11 +1305,11 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${normalizedNames.length} entries, one for EACH of: ${normalizedNames.map((n) => '"$n"').join(', ')}
 - You MUST complete ALL ${normalizedNames.length} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 items, cons exactly 3 items — keep each item concise (max 12 words)
+- pros must have exactly 5 detailed items, cons exactly 4 detailed items (full sentences, not 1-2 words)
 - factors are 0-100 integers
 - Be specific and personalized, not generic
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
-- community_sentiment should be max 2 sentences, compatibility_explanation max 2 sentences
+- DEPTH (web paritesi): match a premium, multi-paragraph analysis. compatibility_explanation = 4-6 detailed sentences; community_sentiment = 3-4 paragraphs (MUST include common complaints/negatives, not praise-only); every detailed_comparison field and the recommendation = multiple full paragraphs as specified. Do NOT shorten or summarize.
 
 Return ONLY valid JSON matching this exact schema:
 $jsonSchema
@@ -1329,9 +1344,12 @@ $jsonSchema
     }
 
     // Scale analysis tokens: 4096 base + 1024 per service beyond the first, max 8192
-    final analysisTokens = (4096 + (normalizedNames.length - 1) * 1024).clamp(
-      4096,
+    // Web paritesi: zenginleştirilmiş şema (4-6 cümle + 3-4 paragraf
+    // community_sentiment + detailed_comparison + 5-7 paragraf recommendation)
+    // çok daha uzun çıktı üretir; truncate olmaması için token tavanı yükseltildi.
+    final analysisTokens = (8192 + (normalizedNames.length - 1) * 1536).clamp(
       8192,
+      16384,
     );
 
     String text;
@@ -2301,8 +2319,11 @@ SCORING RULES:
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific, not generic.
 - Cite actual specs, real benchmarks, community observations, or market context.
-- verdict and personaAnalysis should be richly detailed (4-6 paragraphs each).
-- communityAnalysis should reflect a broad community synthesis (3-5 paragraphs).
+- WEB PARİTESİ — uzunluklar web ile AYNI olmalı: verdict = 5-7 rich paragraphs;
+  personaAnalysis = 3-5 paragraphs (deeply personalized to quiz answers).
+- communityAnalysis = 3-4 paragraphs and MUST clearly call out the most-reported
+  NEGATIVES and complaints (price hikes, defects, missing features, reliability,
+  support) — at least one paragraph on negatives, never a positives-only summary.
 - prosForUser and consForUser must be specific, detailed bullet points — not one-word answers.
 
 Return valid JSON (all text in $langName):
@@ -2316,10 +2337,10 @@ Return valid JSON (all text in $langName):
     {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "🏠"}
   ],
   "personaScore": <0-100>,
-  "personaAnalysis": "4-6 paragraph deep personal fit analysis. Cover: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) performance in scenarios the user cares about, (3) potential daily-use friction points, (4) value proposition relative to their budget range, (5) long-term ownership experience forecast. Be concrete and reference actual product characteristics. In $langName.",
+  "personaAnalysis": "3-5 paragraph deep personal fit analysis. Cover: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) performance in scenarios the user cares about, (3) potential daily-use friction points, (4) value proposition relative to their budget range, (5) long-term ownership experience forecast. Be concrete and reference actual product characteristics. In $langName.",
   "communityScore": <0-100>,
-  "communityAnalysis": "3-5 paragraph synthesis of community sentiment. Cover: (1) overall reception across tech communities, (2) what power users praise specifically, (3) recurring criticisms and how serious they are, (4) long-term ownership reports (1-2 years), (5) how the product compares to its direct competitors in community opinion. Reference real sources (Reddit, YouTube, review sites) where known. In $langName.",
-  "verdict": "4-6 paragraph comprehensive product verdict. Cover: (1) technical overview and market positioning, (2) performance analysis with specific metrics, (3) build quality and reliability, (4) software/ecosystem (if relevant), (5) value assessment, (6) who this product is best suited for. Professional tone, specific details. In $langName.",
+  "communityAnalysis": "3-4 paragraph synthesis of community sentiment. Cover overall reception and praise, but you MUST devote at least one clear paragraph to the NEGATIVES: the most common complaints, recurring criticisms, defects and disappointments users actually report — state them plainly, do not soften or bury them. Also cover long-term ownership reports (1-2 years) and how it compares to direct competitors. Reference real sources (Reddit, YouTube, review sites) where known. In $langName.",
+  "verdict": "5-7 paragraph comprehensive product verdict. Cover: (1) technical overview and market positioning, (2) performance analysis with specific metrics, (3) build quality and reliability, (4) software/ecosystem (if relevant), (5) value assessment, (6) who this product is best suited for. Professional tone, specific details. In $langName.",
   "overallVerdict": "3-4 paragraph definitive recommendation. Give a clear buy/consider/skip verdict with detailed reasoning. Reference the user's specific needs and how this product does or doesn't address them. Include a concrete alternative suggestion if recommending skip. In $langName.",
   "prosForUser": ["Detailed pro 1 with specifics", "Detailed pro 2 with performance context", "Detailed pro 3 citing real characteristic", "Detailed pro 4", "Detailed pro 5"],
   "consForUser": ["Specific con 1 with real-world impact", "Specific con 2 with severity assessment", "Specific con 3", "Specific con 4"],
