@@ -449,6 +449,45 @@ class SharedKeySpecsGrid extends StatelessWidget {
     return result.take(10).toList(growable: false);
   }
 
+  /// Karşılaştırma için: tüm ürünlerin "Ana Özellikler" concept'lerini HİZALAR.
+  /// Dönüş: her satır (key = ikon/etiket için örnek anahtar, values = her
+  /// ürünün o concept'teki değeri; eksikse "—"). Concept sırası ürünlerin
+  /// birleşimi (ilk görülme). Böylece compare'de "Ekran Boyutu" karşısında yine
+  /// "Ekran Boyutu" gelir — aynı SharedKeySpecsGrid kaynağı/UI.
+  static List<({String key, List<String> values})> comparisonRows(
+    List<ProductEntity> products,
+    String locale,
+  ) {
+    if (products.isEmpty) return const [];
+    final perProduct = <Map<String, MapEntry<String, String>>>[];
+    for (final p in products) {
+      final specs = SharedKeySpecsGrid(product: p).collectKeySpecs(locale);
+      final map = <String, MapEntry<String, String>>{};
+      for (final e in specs) {
+        map.putIfAbsent(_conceptForKey(e.key), () => e);
+      }
+      perProduct.add(map);
+    }
+    final order = <String>[];
+    final seen = <String>{};
+    final labelForConcept = <String, String>{};
+    for (final map in perProduct) {
+      for (final entry in map.entries) {
+        if (seen.add(entry.key)) {
+          order.add(entry.key);
+          labelForConcept[entry.key] = entry.value.key;
+        }
+      }
+    }
+    return [
+      for (final concept in order)
+        (
+          key: labelForConcept[concept]!,
+          values: [for (final map in perProduct) map[concept]?.value ?? '—'],
+        ),
+    ];
+  }
+
   static void _showSpecDetail(BuildContext context, String key, String value) {
     final theme = Theme.of(context);
     showModalBottomSheet<void>(

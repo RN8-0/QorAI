@@ -6147,33 +6147,112 @@ Rules:
     return widgets;
   }
 
-  /// Tekli ürün incelemesindeki "Ana Özellikler" bölümünü (SharedKeySpecsGrid)
-  /// compare specs sayfasının en başında her ürün için gösterir — bire bir aynı
-  /// UI. Birden çok ürün olduğundan her grid'in üstüne ürün adı etiketi konur.
+  /// Tekli üründeki "Ana Özellikler" bölümünü (SharedKeySpecsGrid kaynağı + aynı
+  /// UI: ikon, değer, etiket) compare specs sayfasının EN BAŞINDA, ama
+  /// KARŞILAŞTIRMALI gösterir: her spec TEK satır, ürünlerin değerleri yan yana
+  /// (ekran boyutu karşısında yine ekran boyutu).
   Widget _buildCompareAnaOzellikler() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final p in widget.products) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            child: Text(
-              p.nameForLanguage(_appLang),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.brandCyan,
+    final rows = SharedKeySpecsGrid.comparisonRows(widget.products, _appLang);
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final title = _isTr
+        ? 'Ana Özellikler'
+        : (_appLang == 'de' ? 'Wichtige Daten' : 'Key Specs');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final r in rows)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.5),
+                ),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 92,
+                      child: Row(
+                        children: [
+                          Icon(
+                            SharedKeySpecsGrid.iconForSpec(r.key),
+                            size: 16,
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              r.key,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    for (var i = 0; i < r.values.length; i++) ...[
+                      Container(
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        color: theme.dividerColor.withValues(alpha: 0.4),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: SharedKeySpecsGrid.buildValue(
+                            context,
+                            r.values[i],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-            child: SharedKeySpecsGrid(product: p),
-          ),
         ],
-      ],
+      ),
     );
   }
 
@@ -6506,26 +6585,28 @@ Rules:
           // store link exists, DON'T say "No price" (contradicts the link
           // below) — show a "Check price" hint. "No price" only when there is
           // genuinely no store/offer at all.
-          Center(
-            child: Text(
-              hasPrice
-                  ? AppUtils.formatCurrency(displayAmount, displayCurrency)
-                  : (offers.isNotEmpty || entries.isNotEmpty)
-                  ? (isTr ? 'Fiyatı gör →' : 'Check price →')
-                  : (isTr ? 'Fiyat yok' : 'No price'),
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: hasPrice ? 18 : 13.5,
-                fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w700,
-                color: hasPrice
-                    ? AppTheme.scoreExcellent
-                    : (offers.isNotEmpty || entries.isNotEmpty)
-                    ? AppTheme.brandBlue
-                    : context.textTertiaryColor,
+          // Üstte SADECE: kesin fiyat varsa fiyat; hiç mağaza/offer yoksa
+          // "Fiyat yok". Mağaza/offer varsa redundant "Fiyatı gör →" başlığını
+          // GÖSTERME (alttaki mağaza satırı zaten linki/fiyatı taşıyor) →
+          // iç içe/hizasız görünüm giderilir.
+          if (hasPrice || (offers.isEmpty && entries.isEmpty)) ...[
+            Center(
+              child: Text(
+                hasPrice
+                    ? AppUtils.formatCurrency(displayAmount, displayCurrency)
+                    : (isTr ? 'Fiyat yok' : 'No price'),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: hasPrice ? 18 : 13.5,
+                  fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w700,
+                  color: hasPrice
+                      ? AppTheme.scoreExcellent
+                      : context.textTertiaryColor,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
           if (offers.isEmpty && entries.isEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
