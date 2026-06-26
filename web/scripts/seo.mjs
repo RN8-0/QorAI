@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync,
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
+import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.js';
 
 const SITE = 'https://qorai.net';
 const here = dirname(fileURLToPath(import.meta.url));
@@ -466,6 +467,77 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
   return lines.join('\n  ');
 }
 
+// Crawlable body for the legal / policy / about / FAQ pages (privacy, terms,
+// refund, cookies, contact, about, faq). Mirrors LegalPage's render
+// (web/src/pages/Legal.jsx) from the SAME content source (legalContent.js), so
+// the static HTML the AdSense reviewer + non-JS crawlers read is the FULL
+// policy text — not the empty #root shell that got the site rejected twice.
+// React wipes #root on mount, so real visitors still get the live SPA.
+function legalBody(kind, lang = 'tr') {
+  const copy = LEGAL_COPY[lang] || LEGAL_COPY.en;
+  const meta = LEGAL_META[kind];
+  if (!meta || !copy[kind]) return '';
+  const common = copy.common;
+  const [title, desc] = meta[lang] || meta.en;
+  const sections = copy[kind];
+  const toc = sections
+    .map(([h], i) => `<a href="#s${i + 1}" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">${i + 1}. ${esc(h)}</a>`)
+    .join('');
+  const body = sections.map(([h, paras], i) =>
+    `<section id="s${i + 1}" style="margin:22px 0">`
+    + `<h2 style="font-size:20px;margin:0 0 8px">${esc(h)}</h2>`
+    + paras.map((p) => `<p style="line-height:1.7;color:#334155;margin:8px 0">${esc(p)}</p>`).join('')
+    + '</section>').join('');
+  const related = ['terms', 'privacy', 'refund', 'cookies', 'about', 'faq', 'contact']
+    .filter((k) => k !== kind && LEGAL_META[k])
+    .map((k) => { const m = LEGAL_META[k]; const t = (m[lang] || m.en)[0]; return `<a href="${esc(m.path)}" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">${esc(t)}</a>`; })
+    .join('');
+  return '<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
+    + `<nav style="font-size:13px;color:#64748b"><a href="/" style="color:#64748b">${esc(common.home)}</a> › ${esc(title)}</nav>`
+    + `<h1 style="font-size:28px;margin:14px 0 6px">${esc(title)}</h1>`
+    + `<p style="color:#475569;line-height:1.6">${esc(desc)}</p>`
+    + `<p style="font-size:13px;color:#94a3b8;margin:6px 0 0">${esc(common.updated)}</p>`
+    + `<div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">${esc(common.legalBrand)}</p></div>`
+    + (toc ? `<nav style="margin:16px 0;font-size:14px">${toc}</nav>` : '')
+    + body
+    + `<div style="margin:24px 0;font-size:14px"><strong>${esc(common.quickLinks)}:</strong><br/>${related}</div>`
+    + `<p style="font-size:14px;margin:8px 0"><a href="mailto:${esc(common.email)}" style="color:#2563eb">${esc(common.contact)}: ${esc(common.email)}</a></p>`
+    + '</main>';
+}
+
+// Crawlable homepage body: H1 + a real description of the service + an internal
+// link grid to every category landing page and the main tools. Turns the root
+// "/" from an empty SPA shell into a content-bearing hub — the first page the
+// AdSense reviewer and Googlebot hit. React wipes #root on mount.
+function homeBody(guides, lang = 'tr') {
+  const cats = [...guides.keys()]
+    .map((cat) => ({ href: categoryPath(cat), label: categoryLabel(cat, lang) }))
+    .filter((c) => c.href && c.label)
+    .sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+  const catLinks = cats
+    .map((c) => `<li style="margin:4px 0"><a href="${esc(c.href)}" style="color:#2563eb;text-decoration:none">${esc(c.label)}</a></li>`)
+    .join('');
+  const tools = [
+    ['/category', 'Tüm Kategoriler'],
+    ['/subscriptions', 'Abonelik Karşılaştır'],
+    ['/link-analysis', 'Link Analizi'],
+    ['/ai-chat', 'Qor AI Sohbet'],
+    ['/quiz', 'Kişisel Quiz'],
+    ['/blog', 'Blog & Alım Rehberleri'],
+    ['/premium', 'Premium'],
+    ['/about', 'Hakkımızda'],
+  ].map(([h, t]) => `<li style="margin:4px 0"><a href="${h}" style="color:#2563eb;text-decoration:none">${esc(t)}</a></li>`).join('');
+  return '<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
+    + '<h1 style="font-size:30px;margin:0 0 10px">Qor AI — Yapay Zekâ Ürün Danışmanı</h1>'
+    + '<p style="line-height:1.7;color:#334155;max-width:760px">Qor AI; telefon, laptop, ekran kartı, kulaklık, televizyon, akıllı saat ve PC bileşenlerinden dijital aboneliklere kadar binlerce ürünü yapay zekâ ile inceleyip karşılaştırmanı sağlayan bir alışveriş ve ürün karar asistanıdır. Ürünleri ara, yan yana karşılaştır, bir ürün linkini yapıştırıp anında AI analizini al, abonelikleri değerlendir ve sana en uygun seçeneği saniyeler içinde bul.</p>'
+    + '<p style="line-height:1.7;color:#334155;max-width:760px">Her üründe Qor AI teknik skoru, güncel fiyatlar, öne çıkan özellikler ve benzer modellerle karşılaştırma bir arada sunulur. Aşağıdan kategorilere göz at ya da bir aracı seç.</p>'
+    + '<h2 style="font-size:20px;margin:24px 0 8px">Kategoriler</h2>'
+    + `<ul style="columns:2;-webkit-columns:2;list-style:none;padding:0;margin:0">${catLinks}</ul>`
+    + '<h2 style="font-size:20px;margin:24px 0 8px">Araçlar</h2>'
+    + `<ul style="list-style:none;padding:0;margin:0">${tools}</ul>`
+    + '</main>';
+}
+
 function renderPage(template, seo, bodyHtml) {
   // Function replacers, not string replacers: product names flow into the SEO
   // block and body, and a literal "$&"/"$1" in a name would otherwise be
@@ -686,9 +758,29 @@ async function main() {
   }
   const template = readFileSync(templatePath, 'utf8');
 
-  // 1) static route shells with real per-route meta
+  // Buying guides drive the per-category landing pages AND the homepage's
+  // internal-link grid, so load them up front (pure local file read, no network)
+  // before the static shells are rendered.
+  const guides = loadGuides();
+  if (guides.size) {
+    // Mirror guides into the served website/guides/ too. vite copies public/ on a
+    // full build, but the scheduled cron runs seo.mjs alone — this keeps the SPA's
+    // /guides/<cat>.json fetch in sync without a vite build.
+    const gOut = join(site, 'guides');
+    mkdirSync(gOut, { recursive: true });
+    for (const [cat, g] of guides) writeTextFile(join(gOut, `${cat}.json`), JSON.stringify(g));
+    console.log(`[seo] loaded + mirrored ${guides.size} buying guides`);
+  }
+
+  // 1) static route shells. The homepage + every legal/policy page ALSO get a
+  //    real, crawlable #root body; the rest carry per-route meta only (category /
+  //    product / blog get their rich bodies in later steps). This is the fix for
+  //    the empty <div id="root"></div> that the AdSense reviewer kept rejecting.
   for (const r of STATIC_ROUTES) {
-    writeHtml(r.dir, renderPage(template, { ...r.seo, url: `${SITE}${r.path}` }));
+    let body = '';
+    if (r.dir === '') body = homeBody(guides, 'tr');
+    else if (LEGAL_META[r.dir]) body = legalBody(r.dir, 'tr');
+    writeHtml(r.dir, renderPage(template, { ...r.seo, url: `${SITE}${r.path}` }, body));
   }
   // 404 shell — noindex, keeps deep-link fallback working
   writeTextFile(
@@ -703,16 +795,6 @@ async function main() {
   //    curated per-product prerender below (step 2c). We bake a bounded,
   //    de-duplicated subset of top products (not all 106k), so the sitemap and
   //    the prerendered HTML stay in lock-step and Google gets real pages.
-  const guides = loadGuides();
-  if (guides.size) {
-    // Mirror guides into the served website/guides/ too. vite copies public/ on a
-    // full build, but the scheduled cron runs seo.mjs alone — this keeps the SPA's
-    // /guides/<cat>.json fetch in sync without a vite build.
-    const gOut = join(site, 'guides');
-    mkdirSync(gOut, { recursive: true });
-    for (const [cat, g] of guides) writeTextFile(join(gOut, `${cat}.json`), JSON.stringify(g));
-    console.log(`[seo] loaded + mirrored ${guides.size} buying guides`);
-  }
   let products = [];
   try {
     products = await fetchAllProducts();
