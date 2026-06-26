@@ -12,6 +12,7 @@ import {
   readSearchHistory, readQuizHistory,
 } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
+import { profileAnswers, optionLabel, STEPS } from './Quiz.jsx';
 import { articlePath } from '../lib/routes';
 import { getProduct } from '../lib/typesense';
 import { premiumStatus } from '../lib/premium';
@@ -208,6 +209,8 @@ function Overview({ user, ids, t }) {
         </div>
       </div>
 
+      <ProfileSignals user={user} />
+
       <div className="pf-card pf-links">
         <h3>{t('pf.quickAccess')}</h3>
         <div className="pf-link-row">
@@ -219,6 +222,70 @@ function Overview({ user, ids, t }) {
       </div>
 
       <DangerZone user={user} t={t} />
+    </div>
+  );
+}
+
+/* ─── Profile signals (app parity: ecosystem/budget/interests/…) ──── */
+function ProfileSignals({ user }) {
+  const { lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const v = profileAnswers(user);
+  const stepFor = (field) => STEPS.find((s) => s.field === field);
+  const lbl = (field, val) => {
+    const s = stepFor(field);
+    return s ? optionLabel(s, val, lang) : String(val).replace(/[_-]+/g, ' ');
+  };
+
+  const facts = [
+    v.ecosystem && { k: L('Ecosystem', 'Ekosistem', 'Ökosystem'), val: lbl('ecosystem', v.ecosystem) },
+    v.budgetRange && { k: L('Budget', 'Bütçe', 'Budget'), val: lbl('budgetRange', v.budgetRange) },
+    v.ageRange && { k: L('Age', 'Yaş', 'Alter'), val: String(v.ageRange) },
+    v.profession && { k: L('Profession', 'Meslek', 'Beruf'), val: lbl('profession', v.profession) },
+    v.usageIntent && { k: L('Usage', 'Kullanım', 'Nutzung'), val: lbl('usageIntent', v.usageIntent) },
+    user.country && { k: L('Country', 'Ülke', 'Land'), val: String(user.country).toUpperCase() },
+  ].filter(Boolean);
+
+  const groups = [
+    { title: L('Interest categories', 'İlgi Kategorileri', 'Interessen'), vals: v.interestCategories.map((x) => lbl('interestCategories', x)) },
+    { title: L('Decision priorities', 'Karar Öncelikleri', 'Prioritäten'), vals: v.priorities.map((x) => lbl('priorities', x)) },
+    { title: L('Current devices', 'Mevcut Cihazlar', 'Geräte'), vals: v.currentDevices.map((x) => lbl('currentDevices', x)) },
+    { title: L('Subscriptions', 'Abonelikler', 'Abos'), vals: v.subscriptions.filter((x) => x && x !== 'none').map((x) => lbl('subscriptions', x)) },
+  ].filter((g) => g.vals.length);
+
+  if (!facts.length && !groups.length) {
+    return (
+      <div className="pf-card pf-signals">
+        <h3>{L('Your profile', 'Profilin', 'Dein Profil')}</h3>
+        <p className="pf-signals-empty">{L(
+          'Complete the quick quiz so Qor AI can personalise recommendations and analyses.',
+          'Qor AI önerileri ve analizleri kişiselleştirebilmesi için hızlı quizi çöz.',
+          'Mach den kurzen Quiz, damit Qor AI Empfehlungen personalisieren kann.',
+        )}</p>
+        <Link to="/quiz" className="btn btn-primary">{L('Take the quiz', 'Quizi çöz', 'Quiz starten')}</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pf-card pf-signals">
+      <div className="pf-signals-head">
+        <h3>{L('Your profile', 'Profilin', 'Dein Profil')}</h3>
+        <Link to="/quiz" className="pf-signals-edit">✏️ {L('Edit', 'Düzenle', 'Bearbeiten')}</Link>
+      </div>
+      {facts.length > 0 && (
+        <div className="pf-sig-facts">
+          {facts.map((f) => (
+            <span key={f.k} className="pf-sig-fact"><b>{f.k}</b> {f.val}</span>
+          ))}
+        </div>
+      )}
+      {groups.map((g) => (
+        <div key={g.title} className="pf-sig-group">
+          <span className="pf-sig-group-title">{g.title}</span>
+          <div className="pf-sig-chips">{g.vals.map((x, i) => <span key={i}>{x}</span>)}</div>
+        </div>
+      ))}
     </div>
   );
 }

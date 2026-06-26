@@ -157,7 +157,7 @@ function initialVisibleFor(step) {
   return Math.min(step.options.length, INITIAL_VISIBLE[step.field] || step.options.length);
 }
 
-const STEPS = [
+export const STEPS = [
   {
     field: 'interestCategories',
     multiple: true,
@@ -397,7 +397,7 @@ function tx(lang, value) {
   return value[lang] || value.en || '';
 }
 
-function optionLabel(step, value, lang) {
+export function optionLabel(step, value, lang) {
   const match = step.options.find((o) => o[0] === value);
   if (!match) return String(value).replace(/[_-]+/g, ' ');
   return lang === 'tr' ? match[2] : lang === 'de' ? match[3] : match[1];
@@ -431,7 +431,7 @@ function valuesFromVector(vector, prefix) {
     .filter(Boolean);
 }
 
-function profileAnswers(user) {
+export function profileAnswers(user) {
   const base = emptyAnswers(user);
   // Locally-cached submitted answers (this browser) are the most reliable when
   // PB drops columns — overlay them first, then fill any remaining gaps from
