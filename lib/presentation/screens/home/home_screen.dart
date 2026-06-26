@@ -1477,18 +1477,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (ra != rb) return ra.compareTo(rb);
       return a.$1.compareTo(b.$1); // stable
     });
-    // UYUMLU RENK: grup renkleri yerine brand-uyumlu (soğuk ton) tek bir palet;
-    // her SÜTUN (üst+alt çift) aynı renk, sütunlar palette boyunca dönerek
-    // yumuşak geçiş. Çakışan/dağınık renk yerine koordineli görünüm.
+    // TEMA UYUMLU RENK: yalnızca markanın mavi/camgöbeği ailesi. Eski palet
+    // violet/purple/teal/yeşil karışımıyla "karmaşık" görünüyordu; brand
+    // mavileri ile koordineli, tema ile uyumlu sade görünüm. Her SÜTUN
+    // (üst+alt çift) aynı renk, sütunlar palette boyunca yumuşak döner.
     const harmonious = <Color>[
-      Color(0xFF3B82F6), // blue
-      Color(0xFF6366F1), // indigo
-      Color(0xFF8B5CF6), // violet
-      Color(0xFF06B6D4), // cyan
-      Color(0xFF0EA5E9), // sky
-      Color(0xFF14B8A6), // teal
-      Color(0xFFA855F7), // purple
-      Color(0xFF22D3EE), // light cyan
+      AppTheme.brandBlue,
+      AppTheme.brandCyan,
+      AppTheme.brandDeepBlue,
+      AppTheme.brandSkyBlue,
     ];
     final sorted = <Map<String, Object>>[for (final e in indexed) e.$2];
     for (var i = 0; i < sorted.length; i++) {

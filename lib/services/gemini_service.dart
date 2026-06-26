@@ -947,6 +947,7 @@ For PRODUCTIVITY (Microsoft 365, Google Workspace, Notion etc.):
   options silently maps to a different service's strength (replace any service
   name with the neutral everyday behavior instead).
 - One question should be a fun hypothetical scenario ("If you could only keep one subscription this year..." etc.)
+- HARD RULE (web paritesi) — EVERY question MUST include one or two fitting emojis that match its scene (exactly like the ✅ examples above and the website). No question may be emoji-less; place the emoji naturally at the end of the question text.
 
 ═══ FORMAT ═══
 Return ONLY valid JSON. No markdown, no explanation:
@@ -2246,7 +2247,7 @@ CRITICAL RULES:
 - For HOME: ask about living space, household size, usage frequency
 - Each question has exactly 4 options
 - Options should be nuanced and mutually distinct; avoid shallow yes/no framing
-- Keep questions conversational with emoji
+- Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
 - NEVER ask about budget (we already know that)
 - NEVER ask about brand preference
 - Do not ask generic questions like "What matters most?" without product-specific context
@@ -2292,7 +2293,7 @@ CRITICAL RULES:
 - Each question has exactly 4 options
 - Options should represent different priorities that favor different products
 - Options must be nuanced and mutually distinct; avoid shallow yes/no framing
-- Keep questions conversational with emoji
+- Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
 - NEVER ask about budget (we already know that)
 - NEVER ask about brand preference
 - Do not ask generic questions like "What matters most?" without product-specific context

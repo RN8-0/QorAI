@@ -187,6 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _signInWithApple() async {
     setState(() => _isLoading = true);
     final result = await ref.read(authRepositoryProvider).signInWithApple();
@@ -576,9 +577,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Google button
                   _buildGoogleButton(),
                   const SizedBox(height: 16),
-                  // Apple button
-                  _buildAppleButton(),
-                  const SizedBox(height: 16),
+                  // Apple girişi devre dışı — şu an bir yere bağlı değil
+                  // (kullanıcı isteği). _buildAppleButton() çağrılmıyor.
                   // Email button
                   _buildEmailGradientButton(),
                   const SizedBox(height: 24),
@@ -668,6 +668,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildAppleButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark ? Colors.white : const Color(0xFF111111);

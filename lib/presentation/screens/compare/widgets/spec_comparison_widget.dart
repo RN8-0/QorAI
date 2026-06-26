@@ -6828,12 +6828,8 @@ Rules:
                     ),
                     const SizedBox(width: 8),
                     _buildCompareOfferPrice(offer),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.open_in_new_rounded,
-                      size: 15,
-                      color: context.textTertiaryColor,
-                    ),
+                    // Yönlendirme (open_in_new) ikonu kaldırıldı — tüm satır zaten
+                    // tıklanabilir; asimetrik duruyordu (kullanıcı isteği).
                   ],
                 );
               },

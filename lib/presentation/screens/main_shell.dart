@@ -274,14 +274,10 @@ class _MainShellState extends ConsumerState<MainShell> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final useDesktopLayout = context.isDesktop;
 
-    // Abonelik analizi ARKA PLANDA bitince (kullanıcı başka sekmedeyse) alttan
-    // bir bildirim göster — analiz arka planda sürüyor, sonuç bozulmuyor.
-    ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
-      if (!mounted) return;
-      final justFinished =
-          prev?.phase != SubFlowPhase.result &&
-          next.phase == SubFlowPhase.result;
-      if (!justFinished || currentIndex == 3) return;
+    // Analiz ARKA PLANDA: kullanıcı analizi başlatıp başka sekmeye geçtiyse,
+    // QUIZ hazır olunca veya ANALİZ bittiğinde sayfa adıyla zengin bir bildirim
+    // göster; "Görüntüle" o analiz sekmesine direkt götürür. Link + Abonelik.
+    void notifyAnalysis(String title, IconData icon, int tabIndex) {
       final isTr = Localizations.localeOf(context).languageCode == 'tr';
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -289,17 +285,85 @@ class _MainShellState extends ConsumerState<MainShell> {
           SnackBar(
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppTheme.brandDeepBlue,
-            content: Text(
-              isTr ? 'Abonelik analizin hazır' : 'Your subscription analysis is ready',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            elevation: 8,
+            duration: const Duration(seconds: 6),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
             action: SnackBarAction(
-              label: isTr ? 'Gör' : 'View',
+              label: isTr ? 'Görüntüle' : 'View',
               textColor: AppTheme.brandCyan,
-              onPressed: () => _onNavTap(3),
+              onPressed: () => _onNavTap(tabIndex),
             ),
           ),
         );
+    }
+
+    // Abonelik akışı (sekme 3)
+    ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
+      if (!mounted || currentIndex == 3) return;
+      final isTr = Localizations.localeOf(context).languageCode == 'tr';
+      if (prev?.phase != SubFlowPhase.quiz &&
+          next.phase == SubFlowPhase.quiz) {
+        notifyAnalysis(
+          isTr ? 'Abonelik quizin hazır — yanıtla' : 'Your subscription quiz is ready',
+          Icons.quiz_rounded,
+          3,
+        );
+      } else if (prev?.phase != SubFlowPhase.result &&
+          next.phase == SubFlowPhase.result) {
+        notifyAnalysis(
+          isTr ? 'Abonelik analizin hazır' : 'Your subscription analysis is ready',
+          Icons.auto_awesome_rounded,
+          3,
+        );
+      }
+    });
+
+    // Link analizi akışı (sekme 2)
+    ref.listen<LinkQuizState>(linkQuizProvider, (prev, next) {
+      if (!mounted || currentIndex == 2) return;
+      final isTr = Localizations.localeOf(context).languageCode == 'tr';
+      if (prev?.phase != LinkFlowPhase.quiz &&
+          next.phase == LinkFlowPhase.quiz) {
+        notifyAnalysis(
+          isTr ? 'Analiz quizin hazır — yanıtla' : 'Your analysis quiz is ready',
+          Icons.quiz_rounded,
+          2,
+        );
+      } else if (prev?.phase != LinkFlowPhase.result &&
+          next.phase == LinkFlowPhase.result) {
+        notifyAnalysis(
+          isTr ? 'Link analizin hazır' : 'Your link analysis is ready',
+          Icons.auto_awesome_rounded,
+          2,
+        );
+      }
     });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

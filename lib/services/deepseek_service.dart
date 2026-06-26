@@ -425,7 +425,7 @@ Rules:
 - Questions must be directly relevant to the specific service type
   (e.g. streaming: genres/frequency; music: genres/offline; AI tools: use-cases)
 - Each question has exactly 4 options
-- Keep questions conversational with emoji
+- Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in $langName
 
@@ -963,7 +963,7 @@ LANGUAGE: Generate ALL questions and options in $langName.
 Rules:
 - Questions must be relevant to the product CATEGORY
 - Each question has exactly 4 options
-- Keep questions conversational with emoji
+- Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in $langName
 

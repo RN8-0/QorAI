@@ -228,11 +228,7 @@ class _CompareStoreRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.open_in_new_rounded,
-                  size: 16,
-                  color: context.textTertiaryColor,
-                ),
+                // Yönlendirme ikonu kaldırıldı — satır zaten tıklanabilir.
               ],
             ),
           ),
