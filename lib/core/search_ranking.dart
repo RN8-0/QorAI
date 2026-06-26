@@ -1,5 +1,39 @@
 import 'package:qor_ai/domain/entities/product_entity.dart';
 
+// ── Kategori arama önceliği ────────────────────────────────────────────────
+// Ana cihaz kategorileri (telefon, ekran kartı, laptop, tablet, saat…) aramada
+// AKSESUARLARIN (şarj aleti, kablo, powerbank) üstünde sıralanmalı. Aksi halde
+// techScore'u yüksek bir "LG G4 Şarj Aleti", asıl "LG G4" telefonunun üstüne
+// çıkıyordu (techScore:desc tiebreak). categorySearchPriorityBonus arama
+// skoruna eklenir; yalnızca zaten eşleşen (score>0) ürünlere uygulanır.
+const Set<String> kPrimaryDeviceCategories = {
+  'smartphones', 'feature_phones',
+  'laptops', 'desktops', 'tablets',
+  'smartwatches', 'smart_rings',
+  'graphics_cards', 'gpus', 'cpus',
+  'monitors', 'tvs',
+  'headphones', 'speakers', 'audio_systems', 'soundbars', 'av_receivers',
+  'cameras', 'camera_lenses', 'action_cameras', 'drones',
+  'gaming_consoles', 'consoles', 'gamepads',
+  'e_readers', 'vr_headsets',
+  'printers', '3d_printers',
+};
+
+const Set<String> kAccessoryCategories = {
+  'chargers', 'cables', 'powerbanks', 'power_banks',
+  'flash_drives', 'memory_cards',
+  'screen_protectors', 'phone_cases', 'cases_covers', 'tablet_cases',
+  'adapters', 'stands', 'mounts', 'styluses', 'docks', 'car_chargers',
+  'laptop_bags', 'camera_bags', 'tripods', 'gimbals',
+};
+
+int categorySearchPriorityBonus(String category) {
+  final c = category.toLowerCase().trim();
+  if (kPrimaryDeviceCategories.contains(c)) return 150;
+  if (kAccessoryCategories.contains(c)) return -200;
+  return 0;
+}
+
 class SearchRank {
   const SearchRank({
     required this.score,
@@ -169,6 +203,11 @@ SearchRank rankProductForQuery(ProductEntity product, String query) {
   if (score == 0) {
     return const SearchRank(score: 0);
   }
+
+  // Ana cihaz öne, aksesuar geri (yalnızca eşleşenlere). Ham kategori
+  // kullanılır — yereldeki `category` normalize edilip underscore'ları
+  // boşluğa çevirir ("graphics_cards"→"graphics cards") ve set'le eşleşmez.
+  score += categorySearchPriorityBonus(product.category);
 
   score += (product.techScore / 8).round();
   score += (product.trendScore / 20).round();

@@ -526,6 +526,8 @@ final searchResultsProvider = FutureProvider.autoDispose
               rel += 50;
             }
             rel += p.trendScore * 5;
+            // Ana cihaz öne, aksesuar (şarj aleti/kablo) geri.
+            rel += categorySearchPriorityBonus(p.category);
             final fit = algo.calculateTotalFitScore(
               user: user,
               product: p,
@@ -552,6 +554,9 @@ final searchResultsProvider = FutureProvider.autoDispose
             }
             scoreA += (a.trendScore * 10).toInt();
             scoreB += (b.trendScore * 10).toInt();
+            // Ana cihaz öne, aksesuar geri.
+            scoreA += categorySearchPriorityBonus(a.category);
+            scoreB += categorySearchPriorityBonus(b.category);
             return scoreB.compareTo(scoreA);
           });
         }

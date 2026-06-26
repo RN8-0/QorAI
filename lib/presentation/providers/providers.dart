@@ -48,6 +48,8 @@ import 'package:qor_ai/services/ip_location_service.dart';
 import 'package:qor_ai/services/analytics_service.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_filter.dart';
+import 'package:qor_ai/core/search_ranking.dart'
+    show categorySearchPriorityBonus;
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
