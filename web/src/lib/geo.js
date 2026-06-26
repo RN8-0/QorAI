@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react';
 // then US. Result cached in localStorage for a day and deduped across callers.
 
 const KEY = 'qor-geo-cc';
-const TTL = 24 * 60 * 60 * 1000;
+// Short TTL: the cached value is only an instant-paint seed. We ALWAYS revalidate
+// against Cloudflare in the background, so a VPN / real location change is
+// reflected within one render instead of being frozen for a day (the bug that
+// pinned a German-VPN visitor to a stale TR ship-to default).
+const TTL = 60 * 60 * 1000;
 let memo = '';
 let inflight = null;
 
@@ -20,10 +24,11 @@ function writeCache(cc) {
   try { localStorage.setItem(KEY, JSON.stringify({ c: cc, t: Date.now() })); } catch { /* ignore */ }
 }
 
-export async function detectCountry() {
-  const cached = readCache();
-  if (cached) { memo = cached; return cached; }
-  if (memo) return memo;
+// Live network probe. Cloudflare /cdn-cgi/trace reflects the CURRENT exit IP
+// (VPN-aware) for free with no third-party call; ipwho.is is the fallback. When
+// the fresh value differs from what we last served, broadcast qor-geo-change so
+// every mounted useGeoCountry() (and the ship-to selector) updates immediately.
+function probeCountry() {
   if (inflight) return inflight;
   inflight = (async () => {
     let cc = '';
@@ -34,18 +39,36 @@ export async function detectCountry() {
     } catch { /* ignore */ }
     if (!cc) {
       try {
-        const r = await fetch('https://ipwho.is/?fields=country_code');
+        const r = await fetch('https://ipwho.is/?fields=country_code', { cache: 'no-store' });
         const j = await r.json();
         cc = (j && j.country_code) || '';
       } catch { /* ignore */ }
     }
-    cc = (cc || 'US').toUpperCase();
+    inflight = null;
+    cc = String(cc || '').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(cc)) return memo || readCache() || 'US';
+    const prev = memo || readCache();
     memo = cc;
     writeCache(cc);
-    inflight = null;
+    // Real location change since we last served (e.g. VPN flipped TR→DE): push it
+    // to the UI so the ship-to default and Amazon storefront follow along.
+    if (prev && prev !== cc) {
+      try { window.dispatchEvent(new CustomEvent('qor-geo-change', { detail: cc })); } catch { /* ignore */ }
+    }
     return cc;
   })();
   return inflight;
+}
+
+export async function detectCountry() {
+  const cached = readCache();
+  if (cached) {
+    memo = cached;
+    probeCountry(); // serve instantly, but revalidate in the background
+    return cached;
+  }
+  if (memo) { probeCountry(); return memo; }
+  return probeCountry();
 }
 
 // User override (Settings → Region). Writes the cache with a fresh timestamp so

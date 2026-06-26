@@ -28,6 +28,7 @@ const CONNECTORS = [
   require('./connectors/amazon'),
   require('./connectors/awin'),
   require('./connectors/admitad'),
+  require('./connectors/jsonld'),
 ];
 
 const argv = process.argv.slice(2);
