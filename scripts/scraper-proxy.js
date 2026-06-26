@@ -164,6 +164,16 @@ function getOffersConfig() {
       tagDE: env.AMAZON_TAG_DE || '',
       marketplaces: normalizeMarketCsv(env.AMAZON_MARKETPLACES, 'GB,DE,US'),
     },
+    // JSON-LD scrape connector: gets REAL prices from merchant product pages via
+    // this proxy, no affiliate-network approval needed. Each merchant line:
+    //   KEY|Store|Country|Currency|network|searchUrl{q}|productLinkRegex
+    jsonld: {
+      configured: Boolean(env.JSONLD_MERCHANTS && env.JSONLD_MERCHANTS.trim()),
+      trackingConfigured: Boolean(env.JSONLD_MERCHANTS && env.JSONLD_MERCHANTS.trim()),
+      merchantsText: String(env.JSONLD_MERCHANTS || '').split(/[;\r\n]+/).map(s => s.trim()).filter(Boolean).join('\n'),
+      merchantCount: String(env.JSONLD_MERCHANTS || '').split(/[;\r\n]+/).map(s => s.trim()).filter(Boolean).length,
+      markets: normalizeMarketCsv(env.JSONLD_MARKETS, 'TR,DE,GB'),
+    },
   };
 }
 
@@ -1830,6 +1840,16 @@ const server = http.createServer(async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(amazon, 'tagDE')) {
         patch.AMAZON_TAG_DE = String(amazon.tagDE || '').trim();
       }
+
+      const jsonld = body.jsonld || {};
+      if (Object.prototype.hasOwnProperty.call(jsonld, 'merchantsText')) {
+        patch.JSONLD_MERCHANTS = String(jsonld.merchantsText || '')
+          .split(/[;\r\n]+/).map(s => s.trim()).filter(Boolean).join(';');
+      }
+      if (Object.prototype.hasOwnProperty.call(jsonld, 'markets')) {
+        patch.JSONLD_MARKETS = normalizeMarketCsv(jsonld.markets, 'TR,DE,GB');
+      }
+
       if (!Object.keys(patch).length) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'No config fields provided' }));

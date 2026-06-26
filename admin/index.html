@@ -641,6 +641,7 @@
                     <option value="admitad">Admitad</option>
                     <option value="awin">Awin</option>
                     <option value="amazon">Amazon</option>
+                    <option value="jsonld">JSON-LD — Mağaza Fiyat Scrape</option>
                     <option value="all">Tüm aktif connectorlar</option>
                   </select>
                 </div>
@@ -712,9 +713,31 @@
                   </div>
                 </div>
               </div>
+              <div class="offer-provider-panel" data-provider="jsonld" style="display:none">
+                <div class="affiliate-provider-note" style="margin-bottom:10px">
+                  Affiliate ağı / feed ONAYI GEREKTİRMEZ. Bu proxy üzerinden (cihaz IP'si) mağaza ürün sayfasını açıp
+                  <code>&lt;script type="application/ld+json"&gt;</code> içindeki gerçek fiyatı çeker. Gösterilen fiyat = scrape,
+                  tıklama linki = affiliate (varsa <code>buildAffiliateUrl</code>, yoksa direkt). Fiyat ≠ affiliate, ayrıktır.
+                </div>
+                <div class="form-grid" style="grid-template-columns:1fr">
+                  <div class="form-field">
+                    <label>Marketler (yalnız bu ülkeler gösterilir)</label>
+                    <input class="input" id="jsonldMarkets" autocomplete="off" value="TR,DE,GB" placeholder="TR,DE,GB">
+                  </div>
+                  <div class="form-field">
+                    <label>Mağaza satırları — <code>KEY|Mağaza|Ülke|ParaBirimi|network|aramaURL{q}|ürünLinkRegex</code></label>
+                    <textarea class="input" id="jsonldMerchants" rows="6" placeholder="INCEHESAP_TR|İnceHesap|TR|TRY|direct|https://www.incehesap.com/arama/{q}/|/[a-z0-9-]+-\d+&#10;HEPSIBURADA_TR|Hepsiburada|TR|TRY|direct|https://www.hepsiburada.com/ara?q={q}|/p-[A-Z0-9]+"></textarea>
+                  </div>
+                  <div class="affiliate-provider-note" style="font-size:11px">
+                    <strong>network</strong>: <code>direct</code> (link aynen), <code>amazon</code>/<code>awin</code> (affiliate sarılır).
+                    <strong>aramaURL</strong> <code>{q}</code> içermeli. <strong>ürünLinkRegex</strong> arama sonucundaki ürün sayfası
+                    href'ini yakalar (boşsa arama sayfasının kendi JSON-LD'si okunur). Gerçek URL desenleri proxy ile doğrulanıp yazılır.
+                  </div>
+                </div>
+              </div>
               <div class="offer-provider-panel" data-provider="all" style="display:none">
                 <div class="affiliate-provider-note">
-                  Tüm aktif connectorlar çalışır. Ayarları düzenlemek için üstte Admitad, Awin veya Amazon seç.
+                  Tüm aktif connectorlar çalışır. Ayarları düzenlemek için üstte Admitad, Awin, Amazon veya JSON-LD seç.
                 </div>
               </div>
               <div class="affiliate-provider-actions">

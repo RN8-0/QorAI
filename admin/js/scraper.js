@@ -9081,6 +9081,11 @@ const OFFERS_PROVIDER_META = {
     hint: 'Amazon tagleri marketplace bazlıdır. API fiyat erişimi açılana kadar search-link modunda fiyat yazmadan link üretir.',
     testLabel: 'Amazon test koşusu başladı…',
   },
+  jsonld: {
+    title: 'JSON-LD — Mağaza Fiyat Scrape',
+    hint: 'Ağ/feed onayı gerektirmez. Bu proxy üzerinden mağaza ürün sayfasının JSON-LD fiyatını çeker. Her satır: KEY|Mağaza|Ülke|ParaBirimi|network|aramaURL{q}|ürünLinkRegex.',
+    testLabel: 'JSON-LD scrape test koşusu başladı…',
+  },
   all: {
     title: 'Tüm aktif connectorlar',
     hint: 'Ayarı tamamlanmış tüm connectorlar aynı sync içinde çalışır.',
@@ -9107,7 +9112,7 @@ function _renderProviderStatus(provider = _currentOffersProvider(), config = _pr
     ? (tracking ? 'API + tracking hazır' : 'API hazır · tracking eksik')
     : 'API bilgisi eksik';
   if (provider === 'all') {
-    const active = ['admitad', 'awin', 'amazon'].filter(p => _providerConfig(p).configured);
+    const active = ['admitad', 'awin', 'amazon', 'jsonld'].filter(p => _providerConfig(p).configured);
     el.textContent = active.length ? `${active.join(', ')} aktif` : 'aktif connector yok';
     el.style.color = active.length ? '#10b981' : '#ef4444';
     return;
@@ -9179,6 +9184,10 @@ async function offersLoadConfig() {
     _setInputValue('amazonTagGB', amazon.tagGB || '');
     _setInputValue('amazonTagDE', amazon.tagDE || '');
 
+    const jsonld = cfg.jsonld || {};
+    _setInputValue('jsonldMarkets', jsonld.markets || 'TR,DE,GB');
+    _setInputValue('jsonldMerchants', jsonld.merchantsText || '');
+
     offersRenderProvider();
   } catch {
     _offersConfigCache = {};
@@ -9214,6 +9223,14 @@ function _selectedProviderPayload(provider = _currentOffersProvider()) {
         marketplaces: document.getElementById('amazonMarketplaces')?.value || 'GB,DE,US',
         tagGB: document.getElementById('amazonTagGB')?.value || '',
         tagDE: document.getElementById('amazonTagDE')?.value || '',
+      },
+    };
+  }
+  if (provider === 'jsonld') {
+    return {
+      jsonld: {
+        markets: document.getElementById('jsonldMarkets')?.value || 'TR,DE,GB',
+        merchantsText: document.getElementById('jsonldMerchants')?.value || '',
       },
     };
   }
