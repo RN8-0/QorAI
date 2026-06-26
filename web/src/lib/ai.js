@@ -11,7 +11,38 @@
 //     instead of "analysis failed".
 // ═══════════════════════════════════════════════════════════════
 
-import { PB_URL } from './pocketbase';
+import { PB_URL, pb } from './pocketbase';
+
+// ── Admin prompt override (shared with the mobile app) ──────────────
+// Reads PB `public_config.ai_prompts[key]` — the SAME keys the app's
+// GeminiService.adminPrompt uses — so the admin panel can update a prompt for
+// BOTH web and app WITHOUT shipping a new build. Falls back to the hardcoded
+// default when there is no override (or PB is unreachable). Cached per session
+// (5 min) so we don't refetch on every AI call.
+let _aiPromptsCache = null;
+let _aiPromptsAt = 0;
+async function loadAiPrompts() {
+  const now = Date.now();
+  if (_aiPromptsCache && now - _aiPromptsAt < 5 * 60 * 1000) return _aiPromptsCache;
+  try {
+    const rec = await pb.collection('public_config').getFirstListItem('key = "ai_prompts"');
+    const val = rec && rec.value;
+    _aiPromptsCache = val && typeof val === 'object' ? val : {};
+  } catch {
+    _aiPromptsCache = {};
+  }
+  _aiPromptsAt = now;
+  return _aiPromptsCache;
+}
+export async function adminPrompt(key, fallback) {
+  try {
+    const prompts = await loadAiPrompts();
+    const v = prompts ? prompts[key] : null;
+    const s = (v == null ? '' : String(v)).trim();
+    if (s.length >= 40) return s;
+  } catch { /* fall through to hardcoded default */ }
+  return fallback;
+}
 
 const GEMINI_URL = `${PB_URL}/api/ai/gemini`;
 const GEMINI_MODEL = 'gemini-2.5-flash'; // AppConstants.geminiModel

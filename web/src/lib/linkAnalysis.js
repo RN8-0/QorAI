@@ -10,7 +10,7 @@
 //  wording is identical even though the model differs.
 // ═══════════════════════════════════════════════════════════════
 
-import { askQorAiJson } from './ai';
+import { askQorAiJson, askQorAiGrounded, adminPrompt } from './ai';
 
 const LANG_NAMES = {
   en: 'English', tr: 'Turkish', de: 'German', fr: 'French', es: 'Spanish',
@@ -100,17 +100,18 @@ function subscriptionFactorDefinitions(language) {
 // ── Step 1: product identification + base analysis ────────────────
 function linkAnalysisSystemPrompt(language) {
   const langName = languageName(language);
-  return `You are Qor AI's link analysis engine. You receive a product URL, optional metadata, and a user profile. Your job is to identify the EXACT product and analyze it for the user.
+  return `You are Qor AI's link analysis engine. You receive a product URL, optional metadata, optional web research data, and a user profile. Your job is to identify the EXACT product and analyze it for the user.
 
-CRITICAL — PRODUCT IDENTIFICATION (ABSOLUTE RULES):
-1. The "productMetadata.title" field is your PRIMARY and MOST TRUSTED source. If it contains a clear product name, YOU MUST USE IT as the product title. Do NOT override it with a different product.
-2. The URL path segments (slugs, IDs, brand names) are your SECONDARY source.
-3. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product than what the metadata/URL indicates. This is the #1 unbreakable rule.
-4. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it and rely on URL structure.
-5. For Amazon ISBNs (all-numeric 10-digit IDs), this is a BOOK. Category = "books".
-6. For Amazon ASINs (alphanumeric starting with 'B'), you may cautiously identify but note uncertainty.
-7. If you cannot determine the product, set is_product to false. NEVER fabricate.
-8. NON-PRODUCT PAGES: if the URL is a social-media post, a forum / Q&A thread (Quora, Reddit…), a video, a news article, a blog post, search results, or a store homepage / category listing rather than ONE specific product, set is_product to false and do NOT invent a product. A real product link points to a single purchasable item.
+CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
+1. "webResearch" — If provided, this contains VERIFIED current web data (Google Search grounding) about the URL. This is your MOST RELIABLE source for product identification. USE IT.
+2. The "productMetadata.title" field is your next most trusted source. If it contains a clear product name, YOU MUST USE IT as the product title. Do NOT override it with a different product.
+3. The URL path segments (slugs, IDs, brand names) are your TERTIARY source.
+4. ABSOLUTELY NEVER substitute, replace, or hallucinate a different product than what the research/metadata/URL indicates. This is the #1 unbreakable rule.
+5. If productMetadata.title looks like a domain name (e.g. "trendyol.com"), ignore it and rely on webResearch or URL structure.
+6. For Amazon ISBNs (all-numeric 10-digit IDs), this is a BOOK. Category = "books".
+7. For Amazon ASINs (alphanumeric starting with 'B'): if webResearch is available, use its product name; otherwise, if NOT certain, set is_product to false rather than guessing.
+8. If you cannot determine the product, set is_product to false. NEVER fabricate.
+9. NON-PRODUCT PAGES: if the URL is a social-media post, a forum / Q&A thread (Quora, Reddit…), a video, a news article, a blog post, search results, or a store homepage / category listing rather than ONE specific product, set is_product to false and do NOT invent a product. A real product link points to a single purchasable item.
 
 CATEGORY DETECTION:
 - Detect the REAL category: books, smartphones, laptops, tablets, headphones, monitors, keyboards, clothing, home-appliances, gaming, toys, beauty, sports, furniture, kitchen, pet-supplies, etc.
@@ -228,15 +229,45 @@ export async function analyzeLink(url, language, userProfile = {}) {
   if (!looksLikeProductUrl(url)) {
     return { url, title: fallbackTitle || siteName || url, score: 0, analysis: '', category: '', siteName, price: null, isProduct: false };
   }
+  // ── Product verification (app parity) ─────────────────────────────
+  // Mirror the app's GeminiService.analyzeLink research step: when the URL has
+  // no readable product slug, or it's an Amazon page (ASINs have no human
+  // title), confirm the EXACT product with Google Search grounding. Optional —
+  // on any failure we proceed without it, exactly like the app.
+  let webResearch = '';
+  const needsResearch =
+    !fallbackTitle || fallbackTitle.length < 4 || /amazon\./i.test(siteName);
+  if (needsResearch) {
+    try {
+      const researchPrompt =
+        `Identify the EXACT product sold at this URL using Google Search.\n` +
+        `URL: ${url}\n` +
+        (fallbackTitle ? `Possible title from URL slug: ${fallbackTitle}\n` : '') +
+        (siteName ? `Store: ${siteName}\n` : '') +
+        `Return the exact product name (brand + model + key variant), its category, ` +
+        `and the current price with currency if visible. If you cannot confirm ONE ` +
+        `specific product, say so explicitly — do not guess.`;
+      webResearch = await askQorAiGrounded(researchPrompt, {
+        language,
+        maxOutputTokens: 768,
+        timeoutMs: 25000,
+      });
+    } catch { /* research is optional — proceed without it */ }
+  }
+
   let res = null;
   try {
+    const userPayload = {
+      url,
+      productMetadata: fallbackTitle ? { title: fallbackTitle, siteName } : { siteName },
+      userProfile,
+    };
+    if (webResearch) userPayload.webResearch = webResearch;
     res = await askQorAiJson({
-      system: linkAnalysisSystemPrompt(language),
-      user: JSON.stringify({
-        url,
-        productMetadata: fallbackTitle ? { title: fallbackTitle, siteName } : { siteName },
-        userProfile,
-      }),
+      // Shared admin override key with the mobile app — admin panel can update
+      // this prompt for BOTH web and app without a new build.
+      system: await adminPrompt('gemini_link_analysis_system', linkAnalysisSystemPrompt(language)),
+      user: JSON.stringify(userPayload),
       maxOutputTokens: 1536,
     });
   } catch {
@@ -514,7 +545,8 @@ export async function enhancedAnalysis({ base, answers, language, userProfile = 
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
   const res = await askQorAiJson({
-    system: enhancedAnalysisPrompt(language),
+    // Shared admin override key with the app (graceful fallback if unset).
+    system: await adminPrompt('gemini_enhanced_link_analysis_system', enhancedAnalysisPrompt(language)),
     user: JSON.stringify({
       product: {
         url: base.url,
@@ -817,7 +849,11 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
     .map((a) => ({ question: a.question, answer: a.answer }));
   // The AI request helper already backs off and retries on 429/5xx internally.
   const res = await askQorAiJson({
-    system: subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
+    // Shared admin override key with the app (graceful fallback if unset).
+    system: await adminPrompt(
+      'gemini_subscription_analysis',
+      subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
+    ),
     user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
     maxOutputTokens: 12288,
   });
