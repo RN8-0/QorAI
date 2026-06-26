@@ -927,7 +927,17 @@ class _ProductSearchList extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            // Az sonuçta da kaydırılabilsin + son ürün alt navbar arkasında
+            // kalmasın diye navbar clearance kadar alt boşluk bırak.
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              MediaQuery.of(context).padding.bottom +
+                  AppTheme.navBarTotalClearance +
+                  16,
+            ),
             itemCount: products.length,
             itemBuilder: (context, index) {
               final product = products[index];

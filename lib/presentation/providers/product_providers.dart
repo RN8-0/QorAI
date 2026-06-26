@@ -506,7 +506,24 @@ final searchResultsProvider = FutureProvider.autoDispose
         final merged = [...localResults, ...cloudProducts];
 
         // Deduplicate variants (same product, different storage/color)
-        final deduped = deduplicateVariants(merged);
+        var deduped = deduplicateVariants(merged);
+
+        // Cloud (Typesense) araması GEVŞEK eşleşir: "lg g3" → ortak "g"/"3"
+        // token'ı yüzünden "Green Griffin G3", "Gamdias M3" gibi ALAKASIZ
+        // ürünler (kasa/anakart) skor alıp gelir. Local sonuçlardaki AYNI
+        // TOKEN/kelime-sınırı filtresini merged listeye uygula → cloud gürültüsü
+        // elenir. Hiçbir ürün katı filtreyi geçmezse sıralı listeyi koru.
+        final strict = deduped.where((p) {
+          final tokens = '${p.name} ${p.brand ?? ''} ${p.category}'
+              .toLowerCase()
+              .split(RegExp(r'[^a-z0-9]+'));
+          return queryWords.every(
+            (w) => tokens.any(
+              (t) => t == w || (w.length >= 3 && t.startsWith(w)),
+            ),
+          );
+        }).toList();
+        if (strict.isNotEmpty) deduped = strict;
 
         // Personalize results using match score
         final user = ref.read(userProfileProvider).valueOrNull;

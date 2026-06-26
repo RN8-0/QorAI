@@ -6692,25 +6692,34 @@ Rules:
     return live;
   }
 
-  Widget _buildCompareOfferPrice(ProductOfferModel offer) {
+  Widget _buildCompareOfferPrice(ProductOfferModel offer, {bool compact = false}) {
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    // Dar kolonda (3-4 ürün) "Fiyatı gör/Check price" sığmıyordu → compact'ta
+    // kısa etiket. Kesin fiyat zaten kısa (₺1.234).
     final label = offer.hasExactPrice
         ? AppUtils.formatCurrency(offer.price, offer.currency)
         : (offer.priceText.isNotEmpty
               ? offer.priceText
-              : (isTr ? 'Fiyatı gör' : 'Check price'));
-    return Text(
+              : (compact
+                    ? (isTr ? 'Gör' : 'View')
+                    : (isTr ? 'Fiyatı gör' : 'Check price')));
+    final text = Text(
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
       style: GoogleFonts.plusJakartaSans(
-        fontSize: 12.5,
+        fontSize: compact ? 12 : 12.5,
         fontWeight: FontWeight.w900,
         color: offer.hasExactPrice
             ? AppTheme.scoreExcellent
             : context.textSecondary,
       ),
     );
+    // compact'ta kalan taşmayı da ölçekleyerek sığdır → "Che…" kesilmesi/
+    // alt-alta kayma olmaz (FittedBox bounded width gerektirir; çağıran
+    // Column stretch ile genişlik sağlar).
+    return compact ? FittedBox(fit: BoxFit.scaleDown, child: text) : text;
   }
 
   Widget _buildCompareOfferSubtitle(
@@ -6805,11 +6814,11 @@ Rules:
                   // imkansız, her fiyat kendi ürün kolonunun altında hizalı.
                   return Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      logo,
+                      Center(child: logo),
                       const SizedBox(height: 6),
-                      Center(child: _buildCompareOfferPrice(offer)),
+                      _buildCompareOfferPrice(offer, compact: true),
                     ],
                   );
                 }
