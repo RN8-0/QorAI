@@ -6609,40 +6609,86 @@ Rules:
             SizedBox(height: compact ? 8 : 12),
           ],
           if (offers.isEmpty && entries.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.dividerColor),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.price_change_outlined,
-                    size: 18,
-                    color: context.textTertiaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isTr
-                          ? (offersAsync is AsyncLoading
-                                ? 'Fiyatlar yükleniyor'
-                                : 'Bu ürün için mağaza/fiyat bilgisi yok')
-                          : (offersAsync is AsyncLoading
-                                ? 'Loading prices'
-                                : 'No store or price information for this product'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.textSecondary,
-                      ),
+            // Dar kolonda (3-4 ürün) uzun "mağaza/fiyat yok" mesajı Row içinde
+            // harf harf alt alta kayıyordu → compact'ta İkon üstte, KISA metin
+            // altta ortalı (dikey) düzen. Geniş 2-ürün modu aynı kalır.
+            (compact
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 10,
                     ),
-                  ),
-                ],
-              ),
-            )
+                    decoration: BoxDecoration(
+                      color: context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: context.dividerColor),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.price_change_outlined,
+                          size: 16,
+                          color: context.textTertiaryColor,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isTr
+                              ? (offersAsync is AsyncLoading
+                                    ? 'Yükleniyor'
+                                    : 'Mağaza yok')
+                              : (offersAsync is AsyncLoading
+                                    ? 'Loading'
+                                    : 'No store'),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.surfaceVariantColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: context.dividerColor),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.price_change_outlined,
+                          size: 18,
+                          color: context.textTertiaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isTr
+                                ? (offersAsync is AsyncLoading
+                                      ? 'Fiyatlar yükleniyor'
+                                      : 'Bu ürün için mağaza/fiyat bilgisi yok')
+                                : (offersAsync is AsyncLoading
+                                      ? 'Loading prices'
+                                      : 'No store or price information for this product'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
           else if (offers.isNotEmpty)
             ...offers
                 .take(4)

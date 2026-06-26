@@ -508,22 +508,38 @@ final searchResultsProvider = FutureProvider.autoDispose
         // Deduplicate variants (same product, different storage/color)
         var deduped = deduplicateVariants(merged);
 
-        // Cloud (Typesense) araması GEVŞEK eşleşir: "lg g3" → ortak "g"/"3"
+        // Cloud (Typesense) araması GEVŞEK eşleşir: "lg g3" → ortak "g3"
         // token'ı yüzünden "Green Griffin G3", "Gamdias M3" gibi ALAKASIZ
         // ürünler (kasa/anakart) skor alıp gelir. Local sonuçlardaki AYNI
         // TOKEN/kelime-sınırı filtresini merged listeye uygula → cloud gürültüsü
-        // elenir. Hiçbir ürün katı filtreyi geçmezse sıralı listeyi koru.
-        final strict = deduped.where((p) {
+        // elenir.
+        bool matchesWords(ProductEntity p, List<String> words) {
           final tokens = '${p.name} ${p.brand ?? ''} ${p.category}'
               .toLowerCase()
               .split(RegExp(r'[^a-z0-9]+'));
-          return queryWords.every(
+          return words.every(
             (w) => tokens.any(
               (t) => t == w || (w.length >= 3 && t.startsWith(w)),
             ),
           );
-        }).toList();
-        if (strict.isNotEmpty) deduped = strict;
+        }
+
+        final strict = deduped
+            .where((p) => matchesWords(p, queryWords))
+            .toList();
+        if (strict.isNotEmpty) {
+          deduped = strict;
+        } else if (queryWords.length > 1) {
+          // Tam eşleşme yok (ör. "LG G3" katalogda yok). ALAKASIZ ürün
+          // göstermektense EN AZ ilk kelimeyi (genelde marka) eşleyenleri
+          // göster; o da yoksa boş bırak → "ürün bulunamadı".
+          deduped = deduped
+              .where((p) => matchesWords(p, [queryWords.first]))
+              .toList();
+        } else {
+          // Tek kelime hiç eşleşmedi → boş (alakasız liste gösterme).
+          deduped = strict;
+        }
 
         // Personalize results using match score
         final user = ref.read(userProfileProvider).valueOrNull;
