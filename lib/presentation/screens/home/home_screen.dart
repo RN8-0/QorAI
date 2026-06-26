@@ -872,20 +872,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Consumer(
         builder: (context, ref, _) {
           final userProfile = ref.watch(userProfileProvider);
-          final covers =
-              ref.watch(categoryCoversProvider).valueOrNull ??
-              const <String, String>{};
-          final heroImage =
-              covers['smartphones'] ??
-              covers['laptops'] ??
-              covers['headphones'];
-          return _buildQuizReminderBody(userProfile, heroImage);
+          return _buildQuizReminderBody(userProfile);
         },
       ),
     );
   }
 
-  Widget _buildQuizReminderBody(AsyncValue userProfile, String? heroImage) {
+  Widget _buildQuizReminderBody(AsyncValue userProfile) {
     return userProfile.when(
       data: (user) {
         if (user != null && !user.quizCompleted) {
@@ -910,43 +903,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     borderRadius: BorderRadius.circular(24),
                     child: Stack(
                       children: [
-                        Positioned.fill(
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF071726),
-                                  Color(0xFF0B2442),
-                                  Color(0xFF0A1420),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (heroImage != null)
-                          Positioned.fill(
-                            child: CachedNetworkImage(
-                              imageUrl: heroImage,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 720,
-                              maxWidthDiskCache: 720,
-                              fadeInDuration: const Duration(milliseconds: 150),
-                              errorWidget: (context, url, error) =>
-                                  const SizedBox.shrink(),
-                            ),
-                          ),
-                        Positioned.fill(
+                        const Positioned.fill(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
+                              // Tema uyumlu SADE marka gradyanı — arkadaki ürün
+                              // görseli kaldırıldı (kullanıcı isteği). Daha ince,
+                              // koordineli, okunur.
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Colors.black.withValues(alpha: 0.18),
-                                  AppTheme.brandBlue.withValues(alpha: 0.64),
-                                  AppTheme.brandCyan.withValues(alpha: 0.22),
+                                  AppTheme.brandBlue,
+                                  AppTheme.brandDeepBlue,
                                 ],
                               ),
                             ),
@@ -1004,20 +972,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               ),
                               const SizedBox(height: 18),
                               Text(
-                                'Build your taste profile',
+                                Localizations.localeOf(context).languageCode ==
+                                        'tr'
+                                    ? 'Zevk profilini oluştur'
+                                    : 'Build your taste profile',
                                 style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white,
-                                  fontSize: 20,
+                                  fontSize: 19,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.4,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Unlock a smarter home feed, sharper AI compare guidance, and category-first recommendations.',
+                                Localizations.localeOf(context).languageCode ==
+                                        'tr'
+                                    ? 'Daha akıllı ana sayfa, daha isabetli AI karşılaştırma ve kategoriye özel öneriler.'
+                                    : 'Unlock a smarter home feed, sharper AI compare guidance, and category-first recommendations.',
                                 style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white.withValues(alpha: 0.78),
-                                  fontSize: 13,
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  fontSize: 12.5,
                                   height: 1.35,
                                 ),
                               ),
@@ -1026,11 +1000,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  for (final label in const [
-                                    'Home ranking',
-                                    'AI fit',
-                                    'Real product feed',
-                                  ])
+                                  for (final label
+                                      in (Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'tr'
+                                          ? const [
+                                              'Ana sayfa sıralaması',
+                                              'AI uyumu',
+                                              'Gerçek ürün akışı',
+                                            ]
+                                          : const [
+                                              'Home ranking',
+                                              'AI fit',
+                                              'Real product feed',
+                                            ]))
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10,
