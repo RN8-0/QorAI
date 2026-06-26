@@ -524,22 +524,12 @@ final searchResultsProvider = FutureProvider.autoDispose
           );
         }
 
-        final strict = deduped
-            .where((p) => matchesWords(p, queryWords))
-            .toList();
-        if (strict.isNotEmpty) {
-          deduped = strict;
-        } else if (queryWords.length > 1) {
-          // Tam eşleşme yok (ör. "LG G3" katalogda yok). ALAKASIZ ürün
-          // göstermektense EN AZ ilk kelimeyi (genelde marka) eşleyenleri
-          // göster; o da yoksa boş bırak → "ürün bulunamadı".
-          deduped = deduped
-              .where((p) => matchesWords(p, [queryWords.first]))
-              .toList();
-        } else {
-          // Tek kelime hiç eşleşmedi → boş (alakasız liste gösterme).
-          deduped = strict;
-        }
+        // Sorgunun TÜM kelimelerini (ad+marka+kategori token'larında, kelime-
+        // sınırı) içeren ürünler. Tam eşleşme yoksa BOŞ — "LG g4" gibi katalogda
+        // OLMAYAN sorguda alakasız LG TV'lerini veya marka-only listeyi
+        // DÖKMEKTENSE "ürün bulunamadı" göster. Ardışık tam eşleşme (ör. ad
+        // "...lg g3...") aşağıdaki relevance sıralamasında zaten en üste çıkar.
+        deduped = deduped.where((p) => matchesWords(p, queryWords)).toList();
 
         // Personalize results using match score
         final user = ref.read(userProfileProvider).valueOrNull;
