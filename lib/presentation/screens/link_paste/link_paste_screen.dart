@@ -15,6 +15,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/errors.dart';
+import 'package:qor_ai/core/quiz_gate.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -470,6 +471,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       return;
     }
 
+    // AI analizi quiz tamamlanmadan kullanılamaz → kibar uyarı + quize yönlendir.
+    if (!await ensureOnboardingQuizGate(context, ref)) return;
+    if (!mounted) return;
+
     setState(() => _singleSubmitInFlight = true);
     _singleFocusNode.unfocus();
     HapticFeedback.selectionClick();
@@ -565,6 +570,10 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
           );
       return;
     }
+
+    // AI analizi quiz tamamlanmadan kullanılamaz → kibar uyarı + quize yönlendir.
+    if (!await ensureOnboardingQuizGate(context, ref)) return;
+    if (!mounted) return;
 
     ref.read(compareAnalysisProvider.notifier).reset();
 

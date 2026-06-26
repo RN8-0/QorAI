@@ -12,6 +12,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/quiz_gate.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -511,6 +512,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
 
     setState(() => _chipError = null);
     _inputFocus.unfocus();
+
+    // AI analizi quiz tamamlanmadan kullanılamaz → kibar uyarı + quize yönlendir.
+    if (!mounted) return;
+    if (!await ensureOnboardingQuizGate(context, ref)) return;
+    if (!mounted) return;
+
     ref
         .read(subQuizProvider.notifier)
         .startQuiz(
