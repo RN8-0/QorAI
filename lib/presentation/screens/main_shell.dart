@@ -274,6 +274,34 @@ class _MainShellState extends ConsumerState<MainShell> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final useDesktopLayout = context.isDesktop;
 
+    // Abonelik analizi ARKA PLANDA bitince (kullanıcı başka sekmedeyse) alttan
+    // bir bildirim göster — analiz arka planda sürüyor, sonuç bozulmuyor.
+    ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
+      if (!mounted) return;
+      final justFinished =
+          prev?.phase != SubFlowPhase.result &&
+          next.phase == SubFlowPhase.result;
+      if (!justFinished || currentIndex == 3) return;
+      final isTr = Localizations.localeOf(context).languageCode == 'tr';
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.brandDeepBlue,
+            content: Text(
+              isTr ? 'Abonelik analizin hazır' : 'Your subscription analysis is ready',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            action: SnackBarAction(
+              label: isTr ? 'Gör' : 'View',
+              textColor: AppTheme.brandCyan,
+              onPressed: () => _onNavTap(3),
+            ),
+          ),
+        );
+    });
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
@@ -325,6 +353,15 @@ class _MainShellState extends ConsumerState<MainShell> {
                           s.phase == LinkFlowPhase.computing,
                     ),
                   );
+              // Abonelik analizi arka planda sürerken (quiz üretimi/analiz)
+              // alt sekmede (index 3) küçük dairesel yükleme göster.
+              final isSubAiAnalyzing = ref.watch(
+                subQuizProvider.select(
+                  (s) =>
+                      s.phase == SubFlowPhase.quizLoading ||
+                      s.phase == SubFlowPhase.analyzing,
+                ),
+              );
               final hideNavBar = ref.watch(hideNavBarProvider);
               final effectiveHideNavBar = isBrowseRoute || hideNavBar;
               if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
@@ -339,6 +376,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                   currentIndex: currentIndex,
                   onTap: _onNavTap,
                   isLinkAiAnalyzing: isLinkAiAnalyzing,
+                  isSubAiAnalyzing: isSubAiAnalyzing,
                 ),
               );
             },
@@ -420,11 +458,13 @@ class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final bool isLinkAiAnalyzing;
+  final bool isSubAiAnalyzing;
 
   const _FloatingNavBar({
     required this.currentIndex,
     required this.onTap,
     this.isLinkAiAnalyzing = false,
+    this.isSubAiAnalyzing = false,
   });
 
   static const _brandGradient = LinearGradient(
@@ -541,7 +581,8 @@ class _FloatingNavBar extends StatelessWidget {
                                       color: AppTheme.slate500,
                                     ),
                             ),
-                            if (index == 2 && isLinkAiAnalyzing)
+                            if ((index == 2 && isLinkAiAnalyzing) ||
+                                (index == 3 && isSubAiAnalyzing))
                               Positioned(
                                 right: -3,
                                 top: -3,

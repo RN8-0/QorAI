@@ -1374,34 +1374,53 @@ $jsonSchema
       );
     }
 
-    // Parse JSON response — responseMimeType should guarantee valid JSON
-    Map<String, dynamic>? parsed;
-    try {
-      var clean = text.trim();
-      // Strip markdown code fences if present
-      if (clean.startsWith('```')) {
-        clean = clean
-            .replaceFirst(RegExp(r'^```\w*\n?'), '')
-            .replaceFirst(RegExp(r'\n?```$'), '');
-      }
-      // Try parsing entire response as JSON
-      parsed = _normalizeSubscriptionAnalysisPayload(
-        jsonDecode(clean) as Map<String, dynamic>?,
-      );
-      debugPrint('=== QOR AI: Sub analysis JSON parsed successfully ===');
-    } catch (e) {
-      debugPrint('=== QOR AI: Sub analysis JSON parse failed: $e ===');
-      // Try to extract JSON from mixed text response
+    // Parse JSON response. responseMimeType=application/json normalde geçerli
+    // JSON garantiler AMA uzun web-paritesi şeması maxOutputTokens'i aşıp çıktıyı
+    // KESİYORDU → geçersiz/yarım JSON → "could not be fully parsed". Çözüm: parse
+    // helper + parse BAŞARISIZSA bir kez daha kompakt (araştırma verisi olmadan,
+    // daha kısa çıktı) deneme. Böylece sonuç bozulmuyor.
+    Map<String, dynamic>? tryParseSub(String t) {
       try {
-        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-        if (jsonMatch != null) {
-          parsed = _normalizeSubscriptionAnalysisPayload(
-            jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>?,
-          );
-          debugPrint('=== QOR AI: Sub analysis JSON extracted from text ===');
+        var clean = t.trim();
+        if (clean.startsWith('```')) {
+          clean = clean
+              .replaceFirst(RegExp(r'^```\w*\n?'), '')
+              .replaceFirst(RegExp(r'\n?```$'), '');
         }
+        return _normalizeSubscriptionAnalysisPayload(
+          jsonDecode(clean) as Map<String, dynamic>?,
+        );
       } catch (_) {
-        debugPrint('=== QOR AI: JSON extraction also failed ===');
+        try {
+          final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(t);
+          if (jsonMatch != null) {
+            return _normalizeSubscriptionAnalysisPayload(
+              jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>?,
+            );
+          }
+        } catch (_) {}
+        return null;
+      }
+    }
+
+    Map<String, dynamic>? parsed = tryParseSub(text);
+    if (parsed != null) {
+      debugPrint('=== QOR AI: Sub analysis JSON parsed successfully ===');
+    } else {
+      debugPrint(
+        '=== QOR AI: Sub analysis parse failed (muhtemel truncation) — kompakt yeniden deneme ===',
+      );
+      try {
+        text = await runStructuredAnalysis(
+          includeResearchData: false,
+          maxTokens: analysisTokens,
+        );
+        parsed = tryParseSub(text);
+        if (parsed != null) {
+          debugPrint('=== QOR AI: Sub analysis kompakt retry başarılı ===');
+        }
+      } catch (e) {
+        debugPrint('=== QOR AI: Sub analysis kompakt retry de başarısız: $e ===');
       }
     }
 
