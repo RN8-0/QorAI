@@ -40,8 +40,12 @@ String normalizeSearchText(String input) {
   // Split at letter-digit boundaries and multi-letter digit suffixes so
   // "note9" -> "note 9" and "9pro" -> "9 pro", while model suffixes such as
   // "2600x" and "5g" stay searchable as their real product-name tokens.
+  // KRİTİK: yalnızca 3+ harfli kök ("note", "iphone", "rtx") rakamdan ayrılır.
+  // 1-2 harfli model kodları ("g3", "s24", "a54", "m3", "i7") BÖLÜNMEZ —
+  // aksi halde "g3" → "g 3" olur, tek başına "3" token'ı HER üründeki model
+  // numarasıyla (M3/Z3/Meshify 3 …) eşleşip alakasız sonuç döker.
   normalized = normalized.replaceAllMapped(
-    RegExp(r'([a-z])(\d)'),
+    RegExp(r'([a-z]{3,})(\d)'),
     (m) => '${m[1]} ${m[2]}',
   );
   normalized = normalized.replaceAllMapped(

@@ -2204,7 +2204,12 @@ class PbDataSource {
         'prioritize_token_position': true,
         'prioritize_num_matching_fields': true,
         'text_match_type': 'max_score',
-        'infix': 'always,off,off,off,off',
+        // infix KAPALI. 'always' infix, "g3"/"lg" gibi kısa token'ları indeks
+        // token'larının İÇİNDE substring olarak eşleştirip aramayı 7000+ alakasız
+        // ürüne patlatıyordu (LG G3 → bilgisayar kasaları). Kapatınca "lg g3"
+        // yalnızca gerçek LG G3 modellerini döndürür; "rm850x" gibi gerçek
+        // token'lar zaten infix olmadan da eşleşir (cihazda doğrulandı).
+        'infix': 'off,off,off,off,off',
         // Only allow 1 typo for tokens with 4+ characters; short numeric
         // tokens (e.g. "8", "9") must match exactly — prevents "Note 8"
         // from matching "Note 9" or "Note 15" via typo expansion.
@@ -3028,7 +3033,9 @@ class PbDataSource {
           if (isSearch) 'prioritize_token_position': true,
           if (isSearch) 'prioritize_num_matching_fields': true,
           if (isSearch) 'text_match_type': 'max_score',
-          if (isSearch) 'infix': 'always,off,off,off,off',
+          // infix KAPALI — bkz. searchProducts notu (kısa token substring
+          // patlamasını önler; kategori içi aramada da alaka artar).
+          if (isSearch) 'infix': 'off,off,off,off,off',
           if (isSearch) 'num_typos': '1,0,1,1,1',
           if (isSearch) 'min_len_1typo': 4,
           if (isSearch) 'min_len_2typo': 8,
@@ -3288,8 +3295,10 @@ class PbDataSource {
   /// suffixes intact ("2600x", "5g").
   static String _normalizeSearchQuery(String query) {
     var q = query.trim().toLowerCase();
-    // letter → digit boundary: "note9" → "note 9"
-    q = q.replaceAllMapped(RegExp(r'([a-z])(\d)'), (m) => '${m[1]} ${m[2]}');
+    // letter → digit boundary: "note9" → "note 9". Yalnızca 3+ harfli kök
+    // ayrılır; "g3"/"s24"/"a54"/"m3" gibi model kodları bölünmez (bölünürse
+    // tek "3" token'ı Typesense'te tüm model numaralarıyla eşleşir).
+    q = q.replaceAllMapped(RegExp(r'([a-z]{3,})(\d)'), (m) => '${m[1]} ${m[2]}');
     // digit → multi-letter boundary: "9pro" → "9 pro", but keep "2600x".
     q = q.replaceAllMapped(
       RegExp(r'(\d)([a-z]{2,})'),
