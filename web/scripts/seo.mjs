@@ -538,6 +538,88 @@ function homeBody(guides, lang = 'tr') {
     + '</main>';
 }
 
+// Shared category link grid (used by the homepage + the /category landing).
+function categoryLinkGrid(guides, lang = 'tr') {
+  const cats = [...guides.keys()]
+    .map((cat) => ({ href: categoryPath(cat), label: categoryLabel(cat, lang) }))
+    .filter((c) => c.href && c.label)
+    .sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+  return '<ul style="columns:2;-webkit-columns:2;list-style:none;padding:0;margin:0">'
+    + cats.map((c) => `<li style="margin:4px 0"><a href="${esc(c.href)}" style="color:#2563eb;text-decoration:none">${esc(c.label)}</a></li>`).join('')
+    + '</ul>';
+}
+
+// Descriptive, crawlable bodies for the main navigable landing pages that
+// otherwise ship an empty #root — i.e. every nav target a reviewer clicks
+// (Kategoriler, Abonelikler, Link Analizi, Premium) plus AI Chat and Quiz. No
+// nav destination should be a blank page. Accurate to CURRENT features only
+// (no removed PC Builder). React wipes #root on mount.
+const LANDING = {
+  category: {
+    h1: 'Kategoriler',
+    paras: [
+      'Qor AI kataloğundaki teknoloji ürünlerini kategoriye göre keşfet: telefonlar, laptoplar, ekran kartları, işlemciler, kulaklıklar, televizyonlar, akıllı saatler, monitörler, PC bileşenleri ve daha fazlası. Her kategoride yapay zekâ teknik skoru, güncel fiyatlar ve öne çıkan özellikler bir arada sunulur.',
+      'Bir kategoriye gir, modelleri filtrele, yan yana karşılaştır ve sana en uygun olanı seç. Aşağıdaki kategorilerden başlayabilirsin.',
+    ],
+    grid: true,
+    links: [['/', 'Ana Sayfa'], ['/blog', 'Blog & Alım Rehberleri']],
+  },
+  subscriptions: {
+    h1: 'Abonelik Karşılaştırma',
+    paras: [
+      'Netflix, Spotify, YouTube Premium, Disney+, Amazon Prime, ChatGPT Plus, Game Pass ve daha fazla dijital aboneliği fiyat, içerik ve değer açısından yapay zekâ ile karşılaştır. Hangi platform sana daha çok değer sağlıyor, hangisi bütçene uygun — Qor AI yan yana gösterir.',
+      'Müzik, dizi-film, oyun ve yapay zekâ aboneliklerini tek ekranda değerlendir; ihtiyacına en uygun paketi seç, gereksiz aboneliklerden kurtul.',
+    ],
+    links: [['/subscriptions', 'Abonelikleri karşılaştır'], ['/premium', 'Premium'], ['/blog', 'Rehberler']],
+  },
+  'link-analysis': {
+    h1: 'Link Analizi',
+    paras: [
+      'Herhangi bir ürün bağlantısını yapıştır — Qor AI ürünü tanısın, özelliklerini çıkarsın, artılarını ve eksilerini özetlesin. Birden fazla linki aynı anda yapıştırıp ürünleri karşılaştırabilirsin.',
+      'Mağaza sayfaları arasında kaybolmadan, bir ürünün gerçekten değer verip vermediğini yapay zekâ destekli analizle saniyeler içinde gör.',
+    ],
+    links: [['/link-analysis', 'Link analizine başla'], ['/category', 'Kategoriler'], ['/ai-chat', 'Qor AI Sohbet']],
+  },
+  premium: {
+    h1: 'Premium',
+    paras: [
+      'Qor AI Premium, daha kapsamlı yapay zekâ kullanımı açar: Qor AI Sohbet, görsel tarayıcı, ürün AI analizi, link analizi, link karşılaştırma, abonelik analizi, premium öneriler ve genişletilmiş fiyat geçmişi.',
+      'Güncel fiyatlar, deneme bilgisi ve plan ayrıntıları bu sayfada listelenir. Web satın alımları Paddle, mobil satın alımlar ise ilgili uygulama mağazası üzerinden işlenir. İptal ve iade koşulları için İade Politikası\'na göz atabilirsin.',
+    ],
+    links: [['/premium', 'Premium planları'], ['/refund', 'İade Politikası'], ['/terms', 'Kullanım Koşulları']],
+  },
+  'ai-chat': {
+    h1: 'Qor AI Sohbet',
+    paras: [
+      'Telefon, laptop, kulaklık ya da abonelik — aklındaki ürün sorusunu sor, Qor AI yapay zekâ danışmanından anında, tarafsız öneri al. "Bu bütçeye hangi laptop?", "Bu iki telefondan hangisi?" gibi soruları doğrudan sorabilirsin.',
+      'Qor AI Sohbet bir araştırma asistanıdır; alternatifleri açıklar ve doğru soruları görünür kılar. Önemli özellik ve fiyatları satın almadan önce satıcı kaynağından doğrula.',
+    ],
+    links: [['/ai-chat', 'Sohbete başla'], ['/category', 'Kategoriler'], ['/quiz', 'Kişisel Quiz']],
+  },
+  quiz: {
+    h1: 'Kişisel Quiz',
+    paras: [
+      'Birkaç soruyu yanıtla, Qor AI sana en uygun teknoloji ürününü önersin. Bütçeni, kullanım amacını ve önceliklerini belirt; yapay zekâ profiline göre kişiselleştirilmiş öneriler getirsin.',
+      'Quiz, ne aradığından emin olmayanlar için hızlı bir başlangıç noktasıdır; sonrasında önerilen ürünleri karşılaştırıp inceleyebilirsin.',
+    ],
+    links: [['/quiz', 'Quizi başlat'], ['/category', 'Kategoriler'], ['/ai-chat', 'Qor AI Sohbet']],
+  },
+};
+
+function landingBody(kind, guides) {
+  const c = LANDING[kind];
+  if (!c) return '';
+  const paras = c.paras.map((t) => `<p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">${esc(t)}</p>`).join('');
+  const grid = c.grid ? `<h2 style="font-size:20px;margin:24px 0 8px">Tüm kategoriler</h2>${categoryLinkGrid(guides)}` : '';
+  const links = (c.links && c.links.length)
+    ? `<p style="margin:18px 0;font-size:14px">${c.links.map(([h, t]) => `<a href="${h}" style="color:#2563eb;margin-right:14px">${esc(t)}</a>`).join('')}</p>`
+    : '';
+  return '<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
+    + `<h1 style="font-size:28px;margin:0 0 10px">${esc(c.h1)}</h1>`
+    + paras + grid + links
+    + '</main>';
+}
+
 function renderPage(template, seo, bodyHtml) {
   // Function replacers, not string replacers: product names flow into the SEO
   // block and body, and a literal "$&"/"$1" in a name would otherwise be
@@ -780,6 +862,7 @@ async function main() {
     let body = '';
     if (r.dir === '') body = homeBody(guides, 'tr');
     else if (LEGAL_META[r.dir]) body = legalBody(r.dir, 'tr');
+    else if (LANDING[r.dir]) body = landingBody(r.dir, guides);
     writeHtml(r.dir, renderPage(template, { ...r.seo, url: `${SITE}${r.path}` }, body));
   }
   // 404 shell — noindex, keeps deep-link fallback working

@@ -71,7 +71,7 @@ export const COPY = {
       email: CONTACT_EMAIL,
       home: 'Home',
       premium: 'Premium pricing',
-      legalBrand: `Qor AI is the AI-powered shopping assistant available on qorai.net and in the Qor AI mobile app. The service helps people compare products, analyse links, review subscriptions, build PC configurations and ask product questions before they buy. The only official public contact address for Qor AI support, legal, privacy, account deletion and billing requests is ${CONTACT_EMAIL}.`,
+      legalBrand: `Qor AI is the AI-powered shopping assistant available on qorai.net and in the Qor AI mobile app. The service helps people compare products, analyse links, review subscriptions and ask product questions before they buy. The only official public contact address for Qor AI support, legal, privacy, account deletion and billing requests is ${CONTACT_EMAIL}.`,
     },
     terms: [
       ['Who We Are', [
@@ -263,14 +263,14 @@ export const COPY = {
     about: [
       ['What Qor AI Does', [
         'Qor AI is an AI-powered product research and decision assistant for people who compare before they buy. It helps users understand phones, laptops, GPUs, headphones, cameras, tablets, TVs, smartwatches, PC components and digital subscriptions without jumping between dozens of store pages and spec sheets.',
-        'The service combines catalog search, side-by-side comparison, AI product analysis, link analysis, visual scanning, PC Builder compatibility guidance, subscription review and AI Chat follow-up questions into one workflow.',
+        'The service combines catalog search, side-by-side comparison, AI product analysis, link analysis, visual scanning, subscription review and AI Chat follow-up questions into one workflow.',
       ]],
       ['What Qor AI Sells', [
         'Qor AI is not the seller of the third-party physical products shown in the catalog. Retailers, marketplaces and manufacturers remain responsible for product sales, shipping, returns, warranty terms, stock and final prices.',
         'Qor AI sells Premium access to software features. Premium may unlock broader AI usage, product AI analysis, link analysis, link comparison, visual scanner, subscription analysis, premium recommendations, deeper comparison output and extended price history.',
       ]],
       ['Who It Is For', [
-        'Qor AI is built for users asking questions like whether a product is worth buying, which laptop fits a budget, which phone is the better choice, which subscription offers more value or whether PC parts are compatible.',
+        'Qor AI is built for users asking questions like whether a product is worth buying, which laptop fits a budget, which phone is the better choice or which subscription offers more value.',
         'It is useful for students, creators, gamers, work laptop buyers, price-performance shoppers, people managing subscriptions and anyone comparing several product links before making a decision.',
       ]],
       ['Independence and Affiliate Links', [
@@ -338,7 +338,7 @@ COPY.tr = {
     email: CONTACT_EMAIL,
     home: 'Ana Sayfa',
     premium: 'Premium fiyatlandırma',
-    legalBrand: `Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine, PC yapılandırması oluşturmasına ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir.`,
+    legalBrand: `Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi ${CONTACT_EMAIL} adresidir.`,
   },
   terms: [
     ['Biz Kimiz', [
@@ -532,14 +532,14 @@ COPY.tr = {
   about: [
     ['Qor AI Ne Yapar', [
       'Qor AI, satın almadan önce araştırma yapan kullanıcılar için tasarlanmış yapay zeka destekli ürün karar asistanıdır. Telefon, laptop, ekran kartı, kulaklık, kamera, tablet, televizyon, akıllı saat, bilgisayar bileşenleri ve dijital abonelikler gibi çok sayıda kategoride ürünleri tek ekranda anlamayı kolaylaştırır.',
-      'Amaç, kullanıcıyı onlarca satıcı sayfası, teknik özellik tablosu, inceleme videosu ve forum yorumu arasında kaybettirmeden daha temiz bir karar akışına taşımaktır. Qor AI ürünleri yan yana karşılaştırır, güçlü ve zayıf yönleri açıklar, teknik değerleri sadeleştirir, link analizi yapar, PC Builder ile uyumluluk risklerini gösterir ve AI Chat üzerinden takip sorularına yanıt verir.',
+      'Amaç, kullanıcıyı onlarca satıcı sayfası, teknik özellik tablosu, inceleme videosu ve forum yorumu arasında kaybettirmeden daha temiz bir karar akışına taşımaktır. Qor AI ürünleri yan yana karşılaştırır, güçlü ve zayıf yönleri açıklar, teknik değerleri sadeleştirir, link analizi yapar, ürün görsellerini tarar ve AI Chat üzerinden takip sorularına yanıt verir.',
     ]],
     ['Qor AI Ne Satar', [
       'Qor AI fiziksel ürün satıcısı değildir; katalogda görünen telefon, laptop, kulaklık, PC parçası veya başka ürünlerin satışı ilgili mağaza, pazar yeri veya perakendeci tarafından yapılır. Qor AI, ürün kararını kolaylaştıran yazılım özellikleri ve Premium erişim sunar.',
       'Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açabilir. Web ödemeleri Paddle, mobil satın almalar ise platforma göre Google Play veya Apple App Store üzerinden yönetilebilir.',
     ]],
     ['Kimler İçin Tasarlandı', [
-      'Qor AI; "bu ürün alınır mı", "bu laptop bütçeme uygun mu", "bu telefon diğer modele göre mantıklı mı", "hangi abonelik bana daha çok değer sağlar" veya "bu PC parçaları uyumlu mu" gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.',
+      'Qor AI; "bu ürün alınır mı", "bu laptop bütçeme uygun mu", "bu telefon diğer modele göre mantıklı mı", "hangi abonelik bana daha çok değer sağlar" gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.',
       'Öğrenciler, içerik üreticileri, oyuncular, iş için laptop arayanlar, fiyat/performans ürün kovalayanlar, aboneliklerini sadeleştirmek isteyenler ve aynı anda birden fazla linki karşılaştırmak isteyen herkes Qor AI akışından faydalanabilir.',
     ]],
     ['Bağımsızlık ve Affiliate İlkesi', [
@@ -606,7 +606,7 @@ COPY.de = {
     email: CONTACT_EMAIL,
     home: 'Startseite',
     premium: 'Premium-Preise',
-    legalBrand: `Qor AI ist der KI-gestützte Shopping-Assistent auf qorai.net und in der Qor AI Mobile-App. Der Dienst hilft beim Vergleichen von Produkten, Analysieren von Links, Prüfen von Abonnements, Erstellen von PC-Konfigurationen und bei Produktfragen vor dem Kauf. Die einzige offizielle öffentliche Kontaktadresse für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist ${CONTACT_EMAIL}.`,
+    legalBrand: `Qor AI ist der KI-gestützte Shopping-Assistent auf qorai.net und in der Qor AI Mobile-App. Der Dienst hilft beim Vergleichen von Produkten, Analysieren von Links, Prüfen von Abonnements und bei Produktfragen vor dem Kauf. Die einzige offizielle öffentliche Kontaktadresse für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist ${CONTACT_EMAIL}.`,
   },
   terms: [
     ['Wer wir sind', [
@@ -795,14 +795,14 @@ COPY.de = {
   about: [
     ['Was Qor AI macht', [
       'Qor AI ist ein KI-gestützter Recherche- und Entscheidungsassistent für Menschen, die vor dem Kauf vergleichen. Der Dienst hilft bei Telefonen, Laptops, GPUs, Kopfhörern, Kameras, Tablets, Fernsehern, Smartwatches, PC-Komponenten und digitalen Abonnements.',
-      'Qor AI bündelt Katalogsuche, Produktvergleiche, KI-Produktanalyse, Linkanalyse, visuellen Scanner, PC-Builder-Kompatibilität, Abo-Bewertung und KI-Chat in einem Arbeitsablauf.',
+      'Qor AI bündelt Katalogsuche, Produktvergleiche, KI-Produktanalyse, Linkanalyse, visuellen Scanner, Abo-Bewertung und KI-Chat in einem Arbeitsablauf.',
     ]],
     ['Was Qor AI verkauft', [
       'Qor AI ist nicht Verkäufer der im Katalog gezeigten Drittprodukte. Händler, Marktplätze und Hersteller bleiben verantwortlich für Verkauf, Versand, Rückgaben, Garantie, Bestand und Endpreise.',
       'Qor AI verkauft Premium-Zugang zu Softwarefunktionen: umfangreichere KI-Nutzung, Produktanalyse, Linkanalyse, Linkvergleich, visueller Scanner, Abo-Analyse, Premium-Empfehlungen, tiefere Vergleichsausgaben und erweiterter Preisverlauf.',
     ]],
     ['Für wen Qor AI gedacht ist', [
-      'Qor AI ist für Nutzer gedacht, die wissen möchten, ob ein Produkt den Kauf wert ist, welcher Laptop zum Budget passt, welches Telefon sinnvoller ist, welches Abo mehr Wert bietet oder ob PC-Teile kompatibel sind.',
+      'Qor AI ist für Nutzer gedacht, die wissen möchten, ob ein Produkt den Kauf wert ist, welcher Laptop zum Budget passt, welches Telefon sinnvoller ist oder welches Abo mehr Wert bietet.',
       'Es hilft Studierenden, Kreativen, Gamern, Berufsnutzern, Preis-Leistungs-Käufern, Menschen mit vielen Abos und allen, die mehrere Produktlinks vor einer Entscheidung vergleichen möchten.',
     ]],
     ['Unabhängigkeit und Affiliate', [
