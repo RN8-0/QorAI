@@ -251,28 +251,54 @@ class _QuizView extends StatelessWidget {
         if (_allAnswered)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: ElevatedButton.icon(
-                onPressed: onSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.brandBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+            // Ortada, modern gradient, beyaz yazı — web "Analizi Başlat" ile aynı.
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  onSubmit();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        AppTheme.brandBlue,
+                        AppTheme.brandDeepBlue,
+                        AppTheme.brandBlue,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.brandDeepBlue.withValues(alpha: 0.45),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  elevation: 2,
-                ),
-                icon: const Icon(Icons.insights_rounded, size: 16),
-                label: Text(
-                  context.l10n?.seeMyMatchScore ?? 'See My Match Score',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.l10n?.startAnalysis ?? 'Start Analysis',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

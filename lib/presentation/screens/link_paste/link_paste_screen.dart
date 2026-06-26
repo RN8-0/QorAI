@@ -682,6 +682,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         compareState.phase != ComparePhase.idle ||
         compareState.error != null;
 
+    // "Baştan başla" (refresh) yalnızca SONUÇ hazır olduğunda gösterilir.
+    // Quiz / analiz / hesaplama esnasında sağ üstte HİÇBİR buton olmamalı
+    // (kullanıcı isteği: "analiz esnasında sağ üstte geçmiş butonu gözükmeyecek").
+    // Idle'da geçmiş butonu görünür (aşağıda !showBack).
+    final showRestart =
+        quizState.phase == LinkFlowPhase.result ||
+        compareState.phase == ComparePhase.done;
+
     return Scaffold(
       backgroundColor: context.backgroundColor,
       resizeToAvoidBottomInset: false,
@@ -756,7 +764,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   },
                 ),
                 actions: [
-                  if (showBack)
+                  if (showRestart)
                     _buildAppBarAction(
                       icon: Icons.refresh_rounded,
                       onPressed: () {

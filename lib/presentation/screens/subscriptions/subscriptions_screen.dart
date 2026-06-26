@@ -694,7 +694,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         },
       ),
       actions: [
-        if (state.phase != SubFlowPhase.idle)
+        // "Baştan başla" yalnızca SONUÇ hazırken. Quiz / analiz esnasında
+        // sağ üstte hiçbir buton yok (kullanıcı isteği). Idle'da geçmiş butonu.
+        if (state.phase == SubFlowPhase.result)
           _buildAppBarAction(
             icon: Icons.refresh_rounded,
             onPressed: () {
@@ -2150,51 +2152,51 @@ class _SubQuizViewState extends State<_SubQuizView> {
 
         const SizedBox(height: 16),
         if (_allAnswered)
-          UnconstrainedBox(
-            alignment: Alignment.centerLeft,
+          // Ortada, tam genişlik, modern gradient, BEYAZ yazı.
+          SizedBox(
+            width: double.infinity,
             child: GradientButton(
-              height: 38,
-              borderRadius: BorderRadius.circular(10),
+              height: 52,
+              borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
                 colors: _isSubmitting
                     ? [AppTheme.slate500, AppTheme.slate600]
-                    : [_kPrimary, _kDeep],
+                    : const [_kPrimary, _kDeep, _kPrimary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               onPressed: _isSubmitting ? () {} : _handleSubmit,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isSubmitting)
-                      const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    else
-                      Icon(
-                        Icons.insights_rounded,
-                        color: context.surfaceVariantColor,
-                        size: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_isSubmitting)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _isSubmitting
-                          ? 'Analyzing...'
-                          : (context.l10n?.seeMyMatchScore ??
-                              'See My Match Score'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: context.surfaceVariantColor,
-                      ),
+                    )
+                  else
+                    const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  ],
-                ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isSubmitting
+                        ? (context.l10n?.aiIsAnalyzing ?? 'Analyzing...')
+                        : (context.l10n?.startAnalysis ?? 'Start Analysis'),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
               ),
             ),
           )

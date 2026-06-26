@@ -763,7 +763,15 @@ class _HeroNetworkImageState extends State<_HeroNetworkImage> {
   @override
   void initState() {
     super.initState();
-    _urls = _HeroNetworkImage.candidates(widget.url, widget.fallbackUrls);
+    // KRİTİK: highRes (tam-ekran) ise b_ (büyük) varyant ÖNCE denenmeli.
+    // Eskiden initState `large:`yi geçmiyordu → tam-ekranda bile m_ (orta)
+    // varyant yükleniyor, büyütünce görsel düşük kaliteli görünüyordu.
+    // didUpdateWidget zaten large: veriyordu ama ilk açılışta o çalışmaz.
+    _urls = _HeroNetworkImage.candidates(
+      widget.url,
+      widget.fallbackUrls,
+      large: widget.highRes,
+    );
   }
 
   @override
